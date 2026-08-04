@@ -1,3 +1,52 @@
+# Ultimate Fish
+
+Ultimate Fish is a Fairy-Stockfish fork targeting the rules of Chess Ultimate
+5.731, including its drafting phase, custom-position analysis, and a local Mac
+play/analysis interface. Rule fidelity is the first release gate: behavior is
+implemented only after it is verified against the recovered Android game logic
+and recorded as a conformance fixture.
+
+Current status and reproducibility notes:
+
+- [Rule recovery and conformance](docs/rules/README.md)
+- [APK integrity and reverse-engineering notes](docs/reverse-engineering.md)
+- [Upstream engine baseline](docs/benchmarks/baseline.md)
+- Local interface source in [`ui`](ui)
+
+## Build and run on macOS
+
+Prerequisites are an Apple Clang-compatible C++17 compiler and Node.js
+22.13 or newer.
+
+```bash
+make -C src ultimate-test
+make -C src ultimatefish
+cd ui
+npm install
+```
+
+Start the engine bridge and UI in two terminals:
+
+```bash
+cd ui && npm run engine
+cd ui && npm run dev
+```
+
+Then open `http://localhost:3000`. The workbench can play legal actions against
+the engine, analyze/edit lossless UPN positions, and run the recovered
+twelve-window draft. Special move notation uses `~` (Mage swap), `@` (Devil
+spawn), `x` (Sniper shot), `!` (Fisherman pull), and `&` (Angel link).
+
+Use `tools/benchmark_ultimate.sh` for deterministic perft/search checks and
+`tools/selfplay_ultimate.py CANDIDATE BASELINE` for alternating-color matches
+between two revisions. Native conformance coverage and the unresolved edge
+cases are tracked in [`docs/rules/native-spec.md`](docs/rules/native-spec.md);
+the project does not yet claim 100% rule fidelity.
+
+The original Fairy-Stockfish documentation follows.
+
+---
+
 # Fairy-Stockfish
 
 ## Overview

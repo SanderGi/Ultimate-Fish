@@ -15,6 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+.DEFAULT_GOAL := help
+
 ### ==========================================================================
 ### Section 1. General Configuration
 ### ==========================================================================
@@ -46,6 +48,21 @@ SRCS = benchmark.cpp bitbase.cpp bitboard.cpp endgame.cpp evaluate.cpp main.cpp 
 	nnue/features/half_ka_v2_variants.cpp
 
 OBJS = $(notdir $(SRCS:.cpp=.o))
+
+# Chess Ultimate has linked pieces, multi-square occupancy, automatic moves,
+# and drafting state that cannot be represented by variants.ini. Keep its
+# specialized state machine in this Fairy-Stockfish tree and expose a separate
+# protocol binary while sharing the project's build/tooling conventions.
+ULTIMATE_SRCS = ultimate/main.cpp ultimate/position.cpp ultimate/search.cpp ultimate/draft.cpp
+
+.PHONY: ultimatefish ultimate-test
+ultimatefish:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic $(ULTIMATE_SRCS) -o ultimatefish
+
+ultimate-test:
+	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror ../tests/ultimate_rules.cpp \
+		ultimate/position.cpp ultimate/search.cpp ultimate/draft.cpp -o ultimate_rules_test
+	./ultimate_rules_test
 
 VPATH = syzygy:nnue:nnue/features
 

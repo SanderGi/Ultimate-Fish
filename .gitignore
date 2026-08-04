@@ -41,3 +41,12 @@ src/*.txt
 # IDEs
 .vscode
 .idea
+
+# Local proprietary reference packages. These are inputs, never project source.
+.DS_Store
+*.apk
+*.apks
+*.ipa
+*.xapk
+reverse-engineering/input/
+reverse-engineering/output/
