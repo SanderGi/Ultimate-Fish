@@ -38,6 +38,12 @@ STARTS = (
         "king,b,e10;bishop,b,f10;knight,b,g10;rook,b,h10;pawn,b,a9;pawn,b,b9;"
         "pawn,b,c9;pawn,b,d9;pawn,b,e9;pawn,b,f9;pawn,b,g9;pawn,b,h9"
     ),
+    (
+        "relocation",
+        "w;hm=0;fm=1;ep=-;cont=0;forced=-1;king,w,e1;mage,w,c2;giant,w,f2;"
+        "fisherman,w,a2;rook,w,d3;king,b,e10;mage,b,c9;giant,b,f8;"
+        "fisherman,b,a9;rook,b,d8"
+    ),
 )
 
 
@@ -140,7 +146,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("candidate")
     parser.add_argument("baseline")
-    parser.add_argument("--games", type=int, default=8)
+    parser.add_argument("--games", type=int, default=2 * len(STARTS))
     parser.add_argument("--depth", type=int, default=20,
                         help="maximum iterative-deepening depth")
     parser.add_argument("--nodes", type=int, default=20_000,

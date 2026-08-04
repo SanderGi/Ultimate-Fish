@@ -96,6 +96,10 @@ and remaps every relationship so captures cannot corrupt a round trip.
 - A Sniper's forward shot also passes through invisible Ghosts to the first
   visible character. Its one-square sideways action can attack an enemy; only
   a forward shot starts the reload cooldown.
+- A Mage can choose any of a Giant's four footprint tiles as its swap target
+  when the translated Giant remains in bounds. The Mage lands on the selected
+  tile; the Giant is forcibly translated to the Mage and knocks out either
+  team's characters in its new footprint.
 - An unmoved pawn can double-step from any valid deployment rank when both
   forward squares are available. Promotion occurs on rank 10 for Ivory and
   rank 1 for Onyx. En-passant stores and removes the exact pawn victim.

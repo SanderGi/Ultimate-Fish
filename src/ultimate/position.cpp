@@ -668,9 +668,31 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
         if (!attacksOnly)
             for (int target = 0; target < pieceCount_; ++target)
                 if (target != id && pieces_[target].alive && pieces_[target].onBoard &&
-                    pieces_[target].color == piece.color)
-                    moves.push_back({piece.square, pieces_[target].square,
-                                     static_cast<std::uint8_t>(target), MoveKind::Swap});
+                    pieces_[target].color == piece.color) {
+                    if (pieces_[target].type != PieceType::Giant) {
+                        moves.push_back({piece.square, pieces_[target].square,
+                                         static_cast<std::uint8_t>(target), MoveKind::Swap});
+                        continue;
+                    }
+                    // Native Mage generation visits all four Giant tiles.
+                    // The selected tile goes to the Mage while the Giant is
+                    // translated so that tile lands on the Mage's origin.
+                    Bitboard tiles = footprint(target, pieces_[target].square);
+                    while (tiles) {
+                        const int selected = pop_lsb(tiles);
+                        const int destinationFile = file_of(piece.square) +
+                          file_of(pieces_[target].square) - file_of(selected);
+                        const int destinationRank = rank_of(piece.square) +
+                          rank_of(pieces_[target].square) - rank_of(selected);
+                        if (destinationFile < 0 || destinationFile >= BoardFiles ||
+                            destinationRank < 0 || destinationRank >= BoardRanks)
+                            continue;
+                        const int destination = make_square(destinationFile, destinationRank);
+                        if (footprint(target, destination))
+                            moves.push_back({piece.square, static_cast<std::uint8_t>(selected),
+                                             static_cast<std::uint8_t>(target), MoveKind::Swap});
+                    }
+                }
         break;
     case PieceType::Penguin:
         add_step_moves(moves, id, Around, 8, 1, false, attacksOnly);
@@ -1040,12 +1062,47 @@ bool Position::make_move(const Move& move, Undo& undo) {
     if (move.kind == MoveKind::Swap) {
         const int other = move.auxiliary;
         const int otherSquare = pieces_[other].square;
-        erase_from_board(id);
-        erase_from_board(other);
-        actor.square = static_cast<std::uint8_t>(otherSquare);
-        pieces_[other].square = static_cast<std::uint8_t>(originalFrom);
-        place_on_board(id);
-        place_on_board(other);
+        if (pieces_[other].type == PieceType::Giant) {
+            const int destinationFile = file_of(originalFrom) + file_of(otherSquare) -
+                                        file_of(move.to);
+            const int destinationRank = rank_of(originalFrom) + rank_of(otherSquare) -
+                                        rank_of(move.to);
+            const int destination = make_square(destinationFile, destinationRank);
+            erase_from_board(id);
+            erase_from_board(other);
+            actor.square = move.to;
+            actor.moved = true;
+            place_on_board(id);
+            // SimulatedMage delegates this branch to Giant MakeMoveTurnSkip,
+            // which removes every other character in the translated 2x2
+            // footprint, including allies.
+            const auto displaced = victims_on(footprint(other, destination), other);
+            for (const int occupant : displaced)
+                if (pieces_[other].alive && pieces_[occupant].alive)
+                    capture_piece(occupant, other,
+                                  {pieces_[other].square, pieces_[occupant].square});
+            if (pieces_[other].alive) {
+                pieces_[other].square = static_cast<std::uint8_t>(destination);
+                pieces_[other].moved = true;
+                place_on_board(other);
+            }
+        }
+        else {
+            erase_from_board(id);
+            erase_from_board(other);
+            actor.square = static_cast<std::uint8_t>(otherSquare);
+            actor.moved = true;
+            pieces_[other].square = static_cast<std::uint8_t>(originalFrom);
+            pieces_[other].moved = true;
+            place_on_board(id);
+            place_on_board(other);
+            if (pieces_[other].type == PieceType::Ghost)
+                pieces_[other].visible = ghost_near_enemy_royal(pieces_[other].square,
+                                                                 pieces_[other].color);
+            else if (pieces_[other].type == PieceType::King ||
+                     pieces_[other].type == PieceType::Jester)
+                reveal_ghosts_near(pieces_[other].square, pieces_[other].color);
+        }
     }
     else if (move.kind == MoveKind::Spawn) {
         add_piece(PieceType::Minion, actor.color, move.to);

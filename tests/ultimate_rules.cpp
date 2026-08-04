@@ -127,6 +127,38 @@ void test_ninja_and_mage() {
            "mage occupies target square after swap");
     expect(swap.piece(swap.piece_on(Position::square_from_name("c2"))).type == PieceType::Rook,
            "ally occupies mage square after swap");
+
+    Position giantSwap;
+    giantSwap.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
+    giantSwap.add_piece(PieceType::King, Color::Black, Position::square_from_name("h10"));
+    const int mage = giantSwap.add_piece(PieceType::Mage, Color::White,
+                                         Position::square_from_name("c2"));
+    const int giant = giantSwap.add_piece(PieceType::Giant, Color::White,
+                                          Position::square_from_name("f6"));
+    const int ally = giantSwap.add_piece(PieceType::Pawn, Color::White,
+                                         Position::square_from_name("d3"));
+    const int enemy = giantSwap.add_piece(PieceType::Pawn, Color::Black,
+                                          Position::square_from_name("c3"));
+    expect(giantSwap.move_from_string("c2~f6").has_value() &&
+           giantSwap.move_from_string("c2~g7").has_value(),
+           "mage can select any Giant footprint tile that yields an in-bounds swap");
+    Undo giantSwapUndo;
+    expect(giantSwap.make_move(require_move(giantSwap, "c2~f6"), giantSwapUndo),
+           "mage/Giant swap applies");
+    expect(giantSwap.piece(mage).square == Position::square_from_name("f6") &&
+           giantSwap.piece(giant).square == Position::square_from_name("c2"),
+           "selected Giant tile and translated Giant anchor exchange correctly");
+    expect(!giantSwap.piece(ally).alive && !giantSwap.piece(enemy).alive,
+           "a Mage-swapped Giant knocks out both teams in its destination footprint");
+
+    Position edgeSwap;
+    edgeSwap.add_piece(PieceType::King, Color::White, Position::square_from_name("h1"));
+    edgeSwap.add_piece(PieceType::King, Color::Black, Position::square_from_name("h10"));
+    edgeSwap.add_piece(PieceType::Mage, Color::White, Position::square_from_name("a1"));
+    edgeSwap.add_piece(PieceType::Giant, Color::White, Position::square_from_name("f6"));
+    expect(edgeSwap.move_from_string("a1~f6").has_value() &&
+           !edgeSwap.move_from_string("a1~g7").has_value(),
+           "mage excludes Giant-tile swaps whose translated footprint leaves the board");
 }
 
 void test_checker_chain_and_prince_turns() {

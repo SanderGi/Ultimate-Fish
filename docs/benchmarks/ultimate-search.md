@@ -33,5 +33,7 @@ cycles cannot bias color pairs. The four-way TT scored a neutral 4.0/8 against
 its immediately preceding compatible build at 10,000 nodes per move. The
 current native-cost evaluation build scored 3.5/4 against the pre-tuning rules
 build at 20,000 nodes per move on the rule-compatible mixed/classic fixtures.
+The final five-fixture identical-binary control scored exactly 5.0/10; its new
+relocation pair exercises Mage/Giant/Fisherman state transitions.
 These small samples are regression signals, not statistically significant Elo
 estimates.
