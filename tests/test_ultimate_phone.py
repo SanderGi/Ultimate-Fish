@@ -588,11 +588,15 @@ class RankedDraftControllerTests(unittest.TestCase):
         stream = MODULE.EventStream.__new__(MODULE.EventStream)
         stream.draft_spawn_lock = MODULE.threading.Lock()
         stream.draft_spawn_generation = 4
-        stream.draft_spawn_complete = False
+        # An early OnSanityCheck must not override the spawn quiet period.
+        stream.draft_spawn_complete = True
         stream.draft_spawns = [
             MODULE.AppEvent("draft_piece_spawn", "ghost", None),
         ]
         stream.draft_spawn_updated_at = 10.0
+        with patch.object(MODULE.time, "monotonic", return_value=10.05):
+            _generation, complete, _spawns = stream.ranked_spawn_snapshot()
+        self.assertFalse(complete)
         with patch.object(MODULE.time, "monotonic", return_value=10.13):
             generation, complete, spawns = stream.ranked_spawn_snapshot()
         self.assertEqual(generation, 4)

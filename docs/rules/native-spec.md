@@ -65,8 +65,9 @@ records first-group royal candidates. The parser discards enemy Ghost
 coordinates before journaling; only their count is inferred from material.
 `OnSanityCheck` is not a reliable spawn delimiter: some live groups omit it
 until the following local action, while another emitted it 357 ms before the
-first delayed `Square.Spawn` coroutine. A 120 ms quiet period exposes a stable
-journal candidate, but the consumer continues waiting until the cumulative
+first delayed `Square.Spawn` coroutine. The marker is ignored as an end
+delimiter; a non-empty journal needs 120 ms of spawn-log quiet, and the consumer
+continues waiting until the cumulative
 public cells and inferred Ghosts reconcile exactly with the announced material;
 the opening candidate must also contain a royal. Ranked automation fails closed
 if that public journal is absent and never falls back to tapping cells obscured

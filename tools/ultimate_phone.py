@@ -1590,7 +1590,10 @@ class EventStream:
     def ranked_spawn_snapshot(self) -> tuple[int, bool, tuple[AppEvent, ...]]:
         """Return the non-consuming public spawn journal for the latest group."""
         with self.draft_spawn_lock:
-            complete = self.draft_spawn_complete or (
+            # OnSanityCheck may precede the Square.Spawn coroutines, so it is
+            # useful diagnostic evidence but not an end delimiter. A group is
+            # consumable only after at least one public record and log quiet.
+            complete = (
                 bool(self.draft_spawns)
                 and time.monotonic() - self.draft_spawn_updated_at >= 0.12
             )
@@ -2567,7 +2570,7 @@ def ranked_spawn_public(
         else:
             public.append((public_probe_piece(event.piece), square))
     if not saw_spawn:
-        raise RuntimeError("Ranked public spawn journal contains no opponent pieces")
+        raise RuntimeError("Ranked public spawn journal contains no piece records")
     return normalize_copycat_probes(
         sorted(public, key=lambda item: square_sort_key(item[1]))
     )
