@@ -1385,6 +1385,14 @@ class DraftDeployment:
         for rank in (3, 2, 1) for file in "defcbgah"
         if not (file == "a" and rank == 1)
     )
+    # The Ranked board supplies the King on a1 before the first pick.  Empty
+    # a2/b2/b1 rays permit a long-range piece to capture it on Ivory's opening
+    # move, before an Onyx controller can search.  Prefer placements which
+    # close those rays, while retaining live-drop clearance as the tie-breaker.
+    # Ghosts do not count because they are invisible to the attacker; Bombs
+    # are unsafe adjacent shields because their capture also kills the King.
+    KING_SHIELD = frozenset({"a2", "b2", "b1"})
+    NON_BLOCKING_SHIELDS = frozenset({"ghost", "bomb"})
 
     def __init__(self):
         self.occupied = {"a1"}
@@ -1431,13 +1439,21 @@ class DraftDeployment:
                     for left in candidate for right in self.occupied
                 )
 
-            best = max(distance(cells) for _square, cells in valid)
+            def safety(candidate_piece: str, cells: set[str]) -> int:
+                if candidate_piece in self.NON_BLOCKING_SHIELDS:
+                    return 0
+                return len(cells & (self.KING_SHIELD - self.occupied))
+
+            best = max(
+                (safety(piece, cells), distance(cells))
+                for _square, cells in valid
+            )
             # ``valid`` retains the tactical preference ordering for equally
-            # clear cells. During live drafting, clearance is more important:
-            # a neighbouring tall mesh can intercept the pointer-up and make
-            # Unity despawn or replace a different pending character.
+            # safe and clear cells.  Safety prevents a zero-ply royal loss;
+            # clearance then avoids neighbouring meshes intercepting the drop.
             return next(
-                square for square, cells in valid if distance(cells) == best
+                square for square, cells in valid
+                if (safety(piece, cells), distance(cells)) == best
             )
         if valid:
             return valid[0][0]

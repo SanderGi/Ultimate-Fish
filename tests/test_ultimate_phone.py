@@ -2526,6 +2526,32 @@ class BeliefConstructionTests(unittest.TestCase):
             2,
         )
 
+    def test_ranked_deployment_closes_opening_rays_to_corner_king(self):
+        deployment = MODULE.DraftDeployment()
+
+        # CopyCat can shield a2 with its mirror; subsequent solid pieces close
+        # the rank and diagonal.  A hidden Ghost must never be credited as a
+        # shield because an opposing slider attacks through it.
+        self.assertEqual(
+            deployment.propose("copycat", maximize_clearance=True), "h2"
+        )
+        deployment.reserve("copycat", "h2")
+        self.assertEqual(
+            deployment.propose("sniper", maximize_clearance=True), "b2"
+        )
+        deployment.reserve("sniper", "b2")
+        self.assertEqual(
+            deployment.propose("pawn", maximize_clearance=True), "b1"
+        )
+        deployment.reserve("pawn", "b1")
+        self.assertTrue(MODULE.DraftDeployment.KING_SHIELD <= deployment.occupied)
+
+        ghost_only = MODULE.DraftDeployment()
+        self.assertNotIn(
+            ghost_only.propose("ghost", maximize_clearance=True),
+            MODULE.DraftDeployment.KING_SHIELD,
+        )
+
     def test_ranked_reference_roster_has_no_overlap(self):
         deployment = MODULE.DraftDeployment()
         pieces = ("ghost", "dragon", "jester", "bomb", "berserker",
