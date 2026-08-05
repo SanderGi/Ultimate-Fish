@@ -30,7 +30,10 @@ Open `http://localhost:3000`. The bridge listens only on
 ## Useful commands
 
 - `npm run engine`: start the loopback engine bridge
-- `npm run dev`: start the workbench
-- `npm run build`: verify the vinext production build
+- `npm run dev`: start the local-only workbench
 - `npm run lint`: run static UI checks
-- `npm test`: build and verify the rendered shell
+- `npm test`: verify the local UI and engine bridge
+
+The workbench intentionally has no production deployment target, authentication,
+database, analytics, or cloud service. It is designed to be cloned and run on
+the same computer as the engine.

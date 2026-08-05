@@ -1,8 +1,8 @@
 /*
-  Ultimate Fish - Chess Ultimate rules for Fairy-Stockfish
+  Ultimate Fish - Chess Ultimate rules engine
   Copyright (C) 2026 Ultimate Fish contributors
 
-  This file is part of Fairy-Stockfish and is licensed under GPLv3 or later.
+  This file is part of Ultimate Fish and is licensed under GPLv3 or later.
 */
 
 #include "position.h"

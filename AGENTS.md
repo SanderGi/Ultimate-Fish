@@ -1,158 +1,110 @@
-# Fairy-Stockfish Development Guide
+# Ultimate Fish Development Guide
 
-## Repository Overview
+## Scope
 
-**Fairy-Stockfish** is a chess variant engine derived from Stockfish, designed to support numerous chess variants and protocols. Written primarily in C++17, it includes Python and JavaScript bindings for library use.
+Ultimate Fish is a standalone Chess Ultimate 5.731 engine and local workbench.
+It is derived from Fairy-Stockfish, but new work in this repository targets the
+native Ultimate rules, search, drafting, setup optimization, UI, and Android
+validation pipeline. Do not describe it as a generic Fairy-Stockfish variant or
+direct new features toward `variants.ini`.
 
-**Repository Statistics:**
-- **Languages:** C++17 (primary), Python, JavaScript, Shell scripts
-- **Architecture:** Multi-protocol chess engine (UCI, UCCI, USI, XBoard/CECP)
-- **Target Platforms:** Windows, Linux, macOS, Android, WebAssembly
-- **Supported Variants:** 90+ chess variants including regional, historical, and modern variants
+## Priorities
 
-## Build System & Requirements
+1. Match the shipping game's rules exactly.
+2. Preserve public-information boundaries for Ghosts, King/Jester ambiguity,
+   and private Ranked placement.
+3. Improve strength only against a rule-correct baseline, using reproducible
+   benchmarks and color-balanced matches.
+4. Keep the UI and engine bridge local-only. Do not add authentication,
+   databases, analytics, cloud bindings, deployment scaffolding, or remote
+   services without an explicit request.
 
-### Prerequisites
-- **Compiler:** GCC, Clang, or MSVC with C++17 support
-- **Build Tool:** GNU Make (required for C++ engine)
-- **Python:** 3.7+ (for Python bindings)
-- **Node.js:** (for JavaScript bindings)
-- **Additional Tools:** expect utility (for testing)
+## Architecture
 
-### Core Build Process
+- `src/ultimate/position.{h,cpp}`: 8×10 bitboards, pieces, legal actions, state,
+  UPN, terminal detection, and reversible move application.
+- `src/ultimate/search.{h,cpp}`: evaluation, iterative deepening, alpha-beta/PVS,
+  transposition table, move ordering, and multi-belief robust search.
+- `src/ultimate/draft.{h,cpp}`: the recovered twelve-window draft.
+- `src/ultimate/main.cpp`: the local text protocol used by tools and the UI.
+- `tests/ultimate_rules.cpp`: native conformance, perft, undo, and search tests.
+- `tools/ultimate_phone.py`: deterministic Android controller and state tracker.
+- `tools/evolve_ultimate_army.py`: roster plus placement evolution through
+  engine-versus-engine games.
+- `ui/`: local Next.js development server and loopback-only engine bridge.
 
-Note: Run engine and test commands from the `src/` directory unless specified otherwise.
+The inherited Fairy-Stockfish sources remain as the licensed baseline and may
+be reused when their optimized primitives fit Ultimate semantics. Ultimate's
+custom rules live under `src/ultimate/`; do not force them into the upstream
+variant configuration model.
 
-#### Basic Build Commands
+## Build and validation
+
+Run commands from the repository root unless noted otherwise:
+
 ```bash
-# Standard release build (recommended for most users)
-make -j2 ARCH=x86-64 build
-
-# Debug build (for development)
-make -j2 ARCH=x86-64 debug=yes build
-
-# All variants including ones with large boards (up to 12x10) and large branching factor (all)
-make -j2 ARCH=x86-64 largeboards=yes all=yes build
+make -C src ultimatefish
+make -C src ultimate-test
+python3 tests/test_ultimate_phone.py
+python3 -m py_compile tools/ultimate_phone.py tools/evolve_ultimate_army.py
+tools/benchmark_ultimate.sh
+git diff --check
 ```
 
-### Python Bindings (pyffish)
+For UI changes:
+
 ```bash
-# Build Python bindings (from repository root)
-python3 setup.py install
-
-# Alternative: Install from PyPI
-pip install pyffish
+cd ui
+npm install
+npm run lint
+npm test
 ```
 
-### JavaScript Bindings (ffish.js)
-Also see the `tests/js/README.md`.
-```bash
-cd src/
+The UI test starts a temporary local Next development server; there is no
+production build or deployment target.
 
-# Build JavaScript bindings (requires emscripten)
-make -f Makefile_js build
+## Rule changes
 
-# Alternative: Install from npm
-npm install ffish
-```
+- Treat native app behavior or recovered simulation code as authoritative.
+- Add the smallest position that reproduces a discovered interaction to
+  `tests/ultimate_rules.cpp` or `tests/test_ultimate_phone.py`.
+- Record confirmed behavior in `docs/rules/native-spec.md`.
+- Keep move application fully reversible and ensure UPN round trips preserve
+  every field that can affect legal moves, evaluation, or transposition keys.
+- Update bitboards incrementally in release paths. Debug/test rebuilds may be
+  used as invariant oracles.
+- Belief branching is for genuine hidden information, never for compensating
+  for a missed public move or known rule bug.
 
-## Testing & Validation
+## Search and strength changes
 
-All test commands below assume the current directory is `src/`.
+- Benchmark before and after on fixed UPN fixtures.
+- Use deterministic node limits for engine-versus-engine comparisons and swap
+  colors/setup orientation.
+- Report nodes, elapsed time, result distribution, and seeds. Small samples are
+  regression signals, not Elo claims.
+- Do not add hardcoded move overrides or fixture-specific evaluation bonuses.
+- Preserve iterative deepening so the controller can return the last completed
+  depth when a live clock limit expires.
 
-### Core Engine Tests
-```bash
-# Basic functionality test
-./stockfish bench
+## Android controller
 
-# Variant-specific benchmarks
-./stockfish bench xiangqi
-./stockfish bench shogi
-./stockfish bench capablanca
+- Keep the decision loop deterministic and engine-driven; an LLM must not be
+  required after launch.
+- Prefer native lifecycle logs for synchronization and public board probing for
+  state recovery. Accessibility APIs are not part of the supported path.
+- Validate only the local army in the setup editor. Once play starts, reconcile
+  public captures and moves instead of comparing against the pregame enemy side.
+- Never expose exact invisible enemy Ghost coordinates, unrevealed Ranked
+  placement, or concrete enemy King/Jester identity to search.
+- Spending currency, unlocking characters, and entering online modes require
+  explicit user authorization for that run.
 
-# Validate variants configuration
-./stockfish check variants.ini
-```
+## Repository hygiene
 
-### Comprehensive Test Suite
-```bash
-# Protocol compliance tests
-../tests/protocol.sh
-
-# Move generation validation
-../tests/perft.sh all
-../tests/perft.sh chess      # Chess only
-../tests/perft.sh largeboard # Large board variants only
-
-# Regression testing
-../tests/regression.sh
-
-# Reproducible search test
-../tests/reprosearch.sh
-
-# Build signature verification  
-../tests/signature.sh
-```
-
-
-## Project Architecture
-
-### Directory Structure
-```
-src/                  # Core C++ engine source
-tests/                # Test scripts and data
-.github/workflows/    # CI/CD configurations
-```
-
-### Configuration Files
-- **`src/variants.ini`**: Defines examples for configuration of chess variants
-- **`setup.py`**: Python package build configuration
-- **`tests/js/package.json`**: JavaScript bindings configuration
-
-### Key Source Files in `src/`
-- **`variant.h`**: Variant rule properties
-- **`variant.cpp`**: Variant-specific game rules
-- **`variant.ini`**: Variant rule configuration examples and documentation of variant properties
-- **`position.h`**: Position representation
-- **`position.cpp`**: Board logic
-- **`movegen.cpp`**: Move generation logic
-- **`parser.cpp`**: Variant rule configuration parsing
-- **`piece.cpp`**: Piece type definitions and behavior
-- **`pyffish.cpp`**: Python bindings
-- **`ffishjs.cpp`**: JavaScript bindings
-
-## Continuous Integration
-
-### GitHub Actions Workflows
-- **`fairy.yml`**: Core engine testing (perft, protocols, variants)
-- **`stockfish.yml`**: Standard Stockfish compatibility tests
-- **`release.yml`**: Binary releases for multiple platforms
-- **`wheels.yml`**: Python package builds
-- **`ffishjs.yml`**: JavaScript binding builds
-
-## Common Development Patterns
-
-### Making Engine Changes
-1. **Always test basic functionality:** `./stockfish bench` after changes
-2. **Validate variant compatibility:** `./stockfish check variants.ini`  
-3. **Run relevant tests:** `../tests/perft.sh all` for move generation changes
-
-### Adding New Configurable Variants
-1. **Edit `src/variants.ini`**: Add variant configuration
-2. **Test parsing:** `./stockfish check variants.ini`
-
-### Relevant websites for researching chess variant rules
-- [Chess Variants on Wikipedia](https://en.wikipedia.org/wiki/List_of_chess_variants)
-- [Chess Variants Wiki](https://www.chessvariants.com/)
-- [Variant Chess on BoardGameGeek](https://boardgamegeek.com/boardgamefamily/4024/traditional-games-chess)
-- [PyChess Variants](https://www.pychess.org/variants)
-- [Ludii](https://ludii.games/library.php)
-- [Lichess.org Variants](https://lichess.org/variant)
-- [Greenchess](https://greenchess.net/variants.php)
-- [Chess Variants on Chess.com](https://www.chess.com/variants)
-
-### Development Best Practices
-* Make sure to only stage and commit changes that were changed as part of the task, do not simply add all changes.
-* Keep changes minimal and focused on the task at hand.
-* After applying changes make sure that all places related to the task have been identified.
-* Stay consistent with the existing code style and conventions.
+- Preserve unrelated user changes in a dirty worktree.
+- Use focused commits and include the relevant tests in the commit message or
+  handoff.
+- Do not commit APK/IPA bundles, replay dumps containing account data, generated
+  binaries, `node_modules`, `.next`, device screenshots, or controller logs.
+- Keep the Fairy-Stockfish and Stockfish attribution and GPLv3 license intact.
