@@ -392,9 +392,11 @@ class RankedDraftControllerTests(unittest.TestCase):
             return RankedDraftControllerTests.FakeImage()
 
     class FakeEvents:
-        def __init__(self, responses):
+        def __init__(self, responses, precompleted_bans=()):
             self.responses = iter(responses)
             self.draft_generation = 0
+            self.ban_pieces = list(precompleted_bans)
+            self.ban_count = len(self.ban_pieces)
 
         def drain(self):
             return None
@@ -412,6 +414,8 @@ class RankedDraftControllerTests(unittest.TestCase):
                 raise AssertionError("scripted event failed predicate")
             if response.kind == "draft_pick_committed":
                 self.draft_generation += 1
+            elif response.kind == "draft_ban_piece" and response.piece:
+                self.ban_pieces.append(response.piece)
             return response
 
         def ranked_spawn_snapshot(self):
@@ -420,6 +424,12 @@ class RankedDraftControllerTests(unittest.TestCase):
                 True,
                 (MODULE.AppEvent("draft_piece_spawn", "king", "0:0"),),
             )
+
+        def ranked_bans_completed(self):
+            return self.ban_count
+
+        def ranked_ban_snapshot(self):
+            return tuple(self.ban_pieces)
 
     class FakeEngine:
         ACTIONS = (
@@ -475,7 +485,6 @@ class RankedDraftControllerTests(unittest.TestCase):
             "GetPoints() - player1 points : 100 - player2 points : 40",
         )
         responses = [
-            self._event(ban), MODULE.AppEvent("draft_ban_piece", piece="giant"),
             self._event(ban),
             self._event(pick), self._event(point_lines[0]), TimeoutError,
             self._event(pick),
@@ -491,8 +500,8 @@ class RankedDraftControllerTests(unittest.TestCase):
         first = [
             ("king", "a10"), ("queen", "b10"), ("king", "c10"),
         ]
-        middle = first + [("pawn", "d10")]
-        final = middle + [
+        middle_group = [("pawn", "d10")]
+        final_group = [
             ("rook", "e10"), ("rook", "f10"), ("rook", "g10"),
             ("rook", "h10"), ("rook", "a9"), ("turtle", "b9"),
             ("giant", "c8"), ("giant", "d8"),
@@ -501,7 +510,9 @@ class RankedDraftControllerTests(unittest.TestCase):
 
         game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
         game.adb = self.FakeAdb()
-        game.events = self.FakeEvents(responses)
+        # Captured winning trace: remote Angel phase zero completed while all
+        # 24 addressable pots were still being calibrated.
+        game.events = self.FakeEvents(responses, precompleted_bans=("angel",))
         game.engine = self.FakeEngine()
         game.geometry = MODULE.BoardGeometry()
         game.draft_pots = {piece: (index, index) for index, piece in enumerate(
@@ -521,7 +532,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         game.probe_enemy = Mock()
 
         with patch.object(MODULE, "ranked_spawn_public", side_effect=(
-            first, middle, final,
+            first, middle_group, final_group,
         )), patch.object(MODULE.time, "sleep", return_value=None):
             team = game.run_ranked_draft()
 
@@ -542,11 +553,19 @@ class RankedDraftControllerTests(unittest.TestCase):
             def tap_sync(self, x, y):
                 self.taps.append((x, y))
 
-        for source, expected in (("local", True), ("opponent", False)):
+        cases = (
+            ("local", 0, True), ("opponent", 0, False),
+            # Captured winning trace: the remote phase-zero Ban completed
+            # during pot calibration, then the local phase-one touch was usable.
+            ("local", 1, False), ("opponent", 1, True),
+        )
+        for source, completed_bans, expected in cases:
             game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
             game.adb = ProbeAdb()
             game.events = self.FakeEvents((
-                MODULE.AppEvent("draft_turn_probe", source=source),
+                MODULE.AppEvent(
+                    "draft_turn_probe", source=source, payload=completed_bans,
+                ),
             ))
             game.draft_pots = {"ninja": (123, 456)}
             self.assertEqual(game._ranked_is_ivory(), expected)
@@ -1761,6 +1780,48 @@ class BeliefConstructionTests(unittest.TestCase):
         self.assertEqual(
             MODULE.ranked_spawn_public(spawns, local_ivory=True),
             [("queen", "g9"), ("king", "h10")],
+        )
+
+    def test_captured_winning_ranked_trace_accumulates_group_deltas(self):
+        def group(*records):
+            return MODULE.ranked_spawn_public(tuple(
+                MODULE.AppEvent("draft_piece_spawn", piece, source)
+                for piece, source in records
+            ), local_ivory=False)
+
+        opening = group(
+            ("pawn", "7:2"), ("knight", "4:1"),
+            ("bishop", "6:0"), ("queen", "7:0"),
+            ("king", "0:0"), ("king", "7:9"),
+        )
+        middle = group(
+            ("checker", "1:0"), ("turtle", "1:2"),
+            ("turtle", "0:2"), ("berserker", "0:1"),
+            ("parasite", "1:1"),
+        )
+        final = group(
+            ("pawn", "6:2"), ("bishop", "2:0"), ("rook", "2:2"),
+        )
+        cumulative = opening + middle + final
+        self.assertEqual(
+            MODULE.ranked_public_roster(cumulative, 100),
+            MODULE.Counter({
+                "pawn": 2, "knight": 1, "bishop": 2, "queen": 1,
+                "checker": 1, "turtle": 2, "berserker": 1,
+                "parasite": 1, "rook": 1,
+            }),
+        )
+        self.assertEqual(
+            {square for piece, square in opening if piece == "king"},
+            {"h10"},
+        )
+
+    def test_hidden_only_ranked_group_is_a_valid_empty_public_delta(self):
+        self.assertEqual(
+            MODULE.ranked_spawn_public((
+                MODULE.AppEvent("draft_piece_spawn", "ghost", None),
+            ), local_ivory=True),
+            [],
         )
 
     def test_ranked_public_roster_uses_material_only_for_hidden_ghost_count(self):

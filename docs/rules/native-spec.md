@@ -57,19 +57,25 @@ a live 8x3 top/middle/bottom layout. The verified equal-cost order is
 Dragon, Ghost, Bomb, Penguin, Parasite, Devil, Berserker for the seven 15-point
 pots. `OnSpawnPieceGroup` delivers each newly committed group to the app and
 then advances the phase. The stock release exposes only the callback marker,
-but its subsequent public `Square.Spawn` journal redraws every locked board
-model as `prefab x:y` records. Phone automation consumes that journal,
-reconciles roster additions against the public material log, and records
-first-group royal candidates. The parser discards enemy Ghost coordinates
-before journaling; only their count is inferred from public material.
+but its subsequent public `Square.Spawn` journal names each model in that newly
+committed group as a `prefab x:y` record. The opening journal also redraws the
+two fixed Kings. Phone automation accumulates these immutable group deltas,
+reconciles roster additions against the public cumulative material log, and
+records first-group royal candidates. The parser discards enemy Ghost
+coordinates before journaling; only their count is inferred from material.
 `OnBanCharacter` is public. Its subsequent native
 `TEXURE ASSIGNED TO <piece>` diagnostic identifies the exact newly locked pot,
 so the controller applies that public ban without overlapping-pot image
-differencing. Before phase zero, a harmless local-pot touch logs the native
-`myBoard.turn != team` predicate and establishes whether the player is Ivory or
-Onyx; the Ban bubble remains only a compatibility fallback. Repeated
+differencing. After pot calibration, a harmless local-pot touch logs the native
+`myBoard.turn != team` predicate. The controller binds it to the non-consuming
+count of Bans already completed, because a fast remote phase zero can finish
+during calibration; together they establish whether the player is Ivory or
+Onyx. The Ban bubble remains only a compatibility fallback. Repeated
 `OnBanCharacter(Type)` method frames from the same callback are debounced as
-one transition before the next phase can advance.
+one transition before the next phase can advance. Both its unique callback
+count and named pot are journaled independently of queue consumers, so a remote
+phase-zero Ban completed during pot calibration is replayed into the engine
+before the twelve-window loop continues.
 
 `OnStartGameResponse.model_Pieces` and replay `initState` share the authoritative
 `Model_Piece` schema: type, team, x/y, skin, action, cooldown, freeze count,

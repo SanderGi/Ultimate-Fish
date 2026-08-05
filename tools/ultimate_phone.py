@@ -1370,6 +1370,8 @@ class EventStream:
         self.network_lock = threading.Lock()
         self.online_start: OnlineStartState | None = None
         self.ranked_groups: list[tuple[ModelPieceRecord, ...]] = []
+        self.draft_ban_count = 0
+        self.draft_ban_pieces: list[str] = []
         self.draft_spawn_lock = threading.Lock()
         self.draft_spawn_generation = 0
         self.draft_spawn_complete = False
@@ -1401,6 +1403,17 @@ class EventStream:
                     # this sub-frame interval.
                     if not self._accept_ban_callback(time.monotonic()):
                         continue
+                    with self.network_lock:
+                        self.draft_ban_count += 1
+                elif event.kind == "draft_turn_probe":
+                    # Bind the native turn predicate to the exact draft phase
+                    # at which Unity evaluated it. A remote Ban can finish
+                    # during slow addressable/pot calibration.
+                    with self.network_lock:
+                        event = AppEvent(
+                            event.kind, event.piece, event.source, event.target,
+                            event.raw, self.draft_ban_count,
+                        )
                 if event.kind == "bot_from":
                     self.bot_source = event.source
                     self.bot_target = None
@@ -1434,6 +1447,9 @@ class EventStream:
                         event.payload, tuple):
                     with self.network_lock:
                         self.ranked_groups.append(event.payload)
+                elif event.kind == "draft_ban_piece" and event.piece:
+                    with self.network_lock:
+                        self.draft_ban_pieces.append(event.piece)
                 if event.kind == "draft_pick_committed":
                     with self.draft_spawn_lock:
                         self.draft_spawn_generation += 1
@@ -1478,6 +1494,8 @@ class EventStream:
         with self.network_lock:
             self.online_start = None
             self.ranked_groups.clear()
+            self.draft_ban_count = 0
+            self.draft_ban_pieces.clear()
         with self.draft_spawn_lock:
             self.draft_spawn_generation = 0
             self.draft_spawn_complete = False
@@ -1497,6 +1515,16 @@ class EventStream:
             groups = tuple(piece for group in self.ranked_groups for piece in group)
             maximum = self.online_start.max_points if self.online_start else 100
             return OnlineStartState(initial + groups, maximum)
+
+    def ranked_bans_completed(self) -> int:
+        """Return the non-consuming count of unique public Ban callbacks."""
+        with self.network_lock:
+            return self.draft_ban_count
+
+    def ranked_ban_snapshot(self) -> tuple[str, ...]:
+        """Return exact public Ban names independently of queue consumers."""
+        with self.network_lock:
+            return tuple(self.draft_ban_pieces)
 
     def ranked_spawn_snapshot(self) -> tuple[int, bool, tuple[AppEvent, ...]]:
         """Return the non-consuming public spawn journal for the latest group."""
@@ -2445,17 +2473,19 @@ def rewind_public_enemy_opening(
 def ranked_spawn_public(
     spawns: Sequence[AppEvent], local_ivory: bool,
 ) -> list[tuple[str, str]]:
-    """Sanitize the app's public post-pick spawn journal into local coordinates.
+    """Sanitize one public committed-group journal into local coordinates.
 
-    The journal redraws both fixed Kings and every locked group. Onyx sees the
-    native coordinates rotated 180 degrees. Ghost coordinates were discarded by
-    the parser and are therefore absent here; their count is recovered later
-    from public material only.
+    The opening group also redraws the two fixed Kings; later callbacks contain
+    only their newly locked group. Onyx sees native coordinates rotated 180
+    degrees. Ghost coordinates were discarded by the parser and are therefore
+    absent here; their count is recovered later from public material only.
     """
     public: list[tuple[str, str]] = []
+    saw_spawn = False
     for event in spawns:
         if event.kind != "draft_piece_spawn" or not event.piece:
             continue
+        saw_spawn = True
         if event.piece == "ghost" or event.source is None:
             continue
         x_text, y_text = event.source.split(":", 1)
@@ -2471,7 +2501,7 @@ def ranked_spawn_public(
             )
         else:
             public.append((public_probe_piece(event.piece), square))
-    if not public:
+    if not saw_spawn:
         raise RuntimeError("Ranked public spawn journal contains no opponent pieces")
     return normalize_copycat_probes(
         sorted(public, key=lambda item: square_sort_key(item[1]))
@@ -4012,9 +4042,10 @@ class PhoneGame:
     def _ranked_is_ivory(self) -> bool:
         """Determine whether phase zero belongs to the local player."""
         # IsCharacterUsable logs the exact native turn predicate for a touched
-        # local pot. False means this is our phase-zero turn; True means the
-        # opponent owns phase zero. This is more reliable than the overlapping
-        # comic pot art and the short-lived Ban speech bubble.
+        # local pot. Bind that answer to the number of opening Bans already
+        # completed: addressable/pot calibration can outlast a fast remote
+        # phase zero. This is more reliable than overlapping comic pot art and
+        # the short-lived Ban speech bubble.
         probe = "ninja"
         self.events.drain()
         self.adb.tap_sync(*self.draft_pots[probe])
@@ -4029,19 +4060,30 @@ class PhoneGame:
                 raise RuntimeError(
                     f"Ranked game ended during side detection: {event.kind}"
                 )
+            completed_bans = (
+                event.payload if isinstance(event.payload, int)
+                else self.events.ranked_bans_completed()
+            )
+            if completed_bans not in (0, 1):
+                raise RuntimeError(
+                    "Ranked side detection occurred after both opening bans"
+                )
             if event.source == "local":
-                return True
+                return completed_bans % 2 == 0
             if event.source == "opponent":
-                return False
+                return completed_bans % 2 == 1
             raise RuntimeError("native Ranked turn probe had no side")
 
         # Compatibility fallback for a release without the predicate log.
+        completed_bans = self.events.ranked_bans_completed()
+        if completed_bans not in (0, 1):
+            raise RuntimeError("Ranked side detection occurred after both opening bans")
         deadline = time.monotonic() + 3.0
         while time.monotonic() < deadline:
             if self._pot_ban_control(self.adb.screenshot(), probe):
-                return True
+                return completed_bans % 2 == 0
             time.sleep(0.12)
-        return False
+        return completed_bans % 2 == 1
 
     @classmethod
     def _ranked_queue_visible(cls, image) -> bool:
@@ -4181,7 +4223,8 @@ class PhoneGame:
         generation, _complete, _spawns = self.events.ranked_spawn_snapshot()
         _local_points, opponent_points = self._ranked_committed_points(local_ivory)
         last_error: RuntimeError | None = None
-        public: list[tuple[str, str]] | None = None
+        group_public: list[tuple[str, str]] | None = None
+        used_tap_fallback = False
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline:
             current_generation, complete, spawns = self.events.ranked_spawn_snapshot()
@@ -4189,7 +4232,7 @@ class PhoneGame:
                 raise RuntimeError("Ranked spawn journal advanced across pick phases")
             if complete:
                 try:
-                    public = ranked_spawn_public(spawns, local_ivory)
+                    group_public = ranked_spawn_public(spawns, local_ivory)
                 except RuntimeError as exc:
                     last_error = exc
                 break
@@ -4198,11 +4241,14 @@ class PhoneGame:
         # The stock 5.73 app emits the public Square.Spawn journal. Retain the
         # older tap verifier only as a bounded compatibility fallback for a
         # release that omits it; pots can overlap the shallow board visually.
-        if public is None:
+        if group_public is None:
             self.log("public Ranked spawn journal unavailable; using tap fallback")
-        for attempt in range(3 if public is None else 0):
+            used_tap_fallback = True
+        for attempt in range(3 if group_public is None else 0):
             try:
-                public = self.probe_enemy(
+                # A compatibility tap scan sees the full cumulative public
+                # deployment, unlike the native group journal.
+                group_public = self.probe_enemy(
                     fast=True, minimum_confirmations=1,
                 )
                 break
@@ -4212,23 +4258,26 @@ class PhoneGame:
                     f"public Ranked group scan unsettled; retrying ({attempt + 1}/3)"
                 )
                 time.sleep(0.18)
-        if public is None:
+        if group_public is None:
             raise RuntimeError(
                 "could not recover the newly revealed Ranked group"
             ) from last_error
 
-        snapshot = tuple(sorted(public, key=lambda item: square_sort_key(item[1])))
-        current_cells = Counter(snapshot)
-        if self.ranked_enemy_snapshots:
-            previous_cells = Counter(self.ranked_enemy_snapshots[-1])
-            removed = previous_cells - current_cells
-            if removed:
+        if self.ranked_enemy_snapshots and not used_tap_fallback:
+            previous = list(self.ranked_enemy_snapshots[-1])
+            duplicate_cells = Counter(previous) & Counter(group_public)
+            if duplicate_cells:
                 raise RuntimeError(
-                    "a previously locked Ranked opponent piece moved or vanished: "
+                    "a newly committed Ranked group overlaps locked public cells: "
                     + ", ".join(
-                        f"{piece}@{square}" for (piece, square) in removed
+                        f"{piece}@{square}" for (piece, square) in duplicate_cells
                     )
                 )
+            public = previous + group_public
+        else:
+            # The tap fallback already returned the full cumulative board.
+            public = group_public
+        snapshot = tuple(sorted(public, key=lambda item: square_sort_key(item[1])))
 
         royal_squares = {
             square for piece, square in public if piece in ("king", "jester")
@@ -4385,6 +4434,17 @@ class PhoneGame:
         local_ivory = self._ranked_is_ivory()
         self.online_local_team = 0 if local_ivory else 1
         self.log("Ranked draft side: " + ("Ivory" if local_ivory else "Onyx"))
+        precompleted_count = self.events.ranked_bans_completed()
+        deadline = time.monotonic() + 1.5
+        precompleted_bans = self.events.ranked_ban_snapshot()
+        while (len(precompleted_bans) < precompleted_count
+               and time.monotonic() < deadline):
+            time.sleep(0.02)
+            precompleted_bans = self.events.ranked_ban_snapshot()
+        if len(precompleted_bans) != precompleted_count:
+            raise RuntimeError(
+                "Ranked calibration saw a Ban callback without its public piece name"
+            )
 
         for phase in range(12):
             status = self.engine.draft_status()
@@ -4393,6 +4453,19 @@ class PhoneGame:
             action = str(status["action"])
             local = (phase % 2 == 0) == local_ivory
             event_kind = "draft_ban_committed" if action == "ban" else "draft_pick_committed"
+            if action == "ban" and phase < precompleted_count:
+                if local:
+                    raise RuntimeError(
+                        "a local Ranked Ban completed before controller input"
+                    )
+                piece = precompleted_bans[phase]
+                self.log(f"recovered pre-calibration opponent ban: {piece}")
+                self.engine.draft_choose(piece)
+                self.engine.draft_commit()
+                banned.add(piece)
+                time.sleep(0.18)
+                previous = self.adb.screenshot()
+                continue
             if local:
                 choices = self.engine.draft_auto()
                 self.log(
