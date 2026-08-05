@@ -284,6 +284,53 @@ void test_bomb_check_legality() {
                              Position::square_from_name("c6"));
     expect(!copycatPartner.move_from_string("a2-a3").has_value(),
            "quiet Copycat half with a capturing mirrored partner counts as check");
+
+    // Captured Ranked evidence: an opponent that still owned a Jester legally
+    // moved a linked CopyCat while its real King remained attacked. Native
+    // play allows either royal silhouette to be in check until the Jester is
+    // gone; only actual real-King capture ends the game.
+    Position hiddenRoyal;
+    hiddenRoyal.add_piece(PieceType::King, Color::White,
+                          Position::square_from_name("b1"));
+    hiddenRoyal.add_piece(PieceType::Jester, Color::White,
+                          Position::square_from_name("a1"));
+    hiddenRoyal.add_piece(PieceType::Copycat, Color::White,
+                          Position::square_from_name("c2"));
+    hiddenRoyal.add_piece(PieceType::King, Color::Black,
+                          Position::square_from_name("h10"));
+    hiddenRoyal.add_piece(PieceType::Rook, Color::Black,
+                          Position::square_from_name("b10"));
+    expect(hiddenRoyal.move_from_string("c2-d3").has_value(),
+           "a side owning a Jester may make the captured linked Copycat move "
+           "while its real King remains in check");
+
+    Position revealedRoyal;
+    revealedRoyal.add_piece(PieceType::King, Color::White,
+                            Position::square_from_name("b1"));
+    revealedRoyal.add_piece(PieceType::Copycat, Color::White,
+                            Position::square_from_name("c2"));
+    revealedRoyal.add_piece(PieceType::King, Color::Black,
+                            Position::square_from_name("h10"));
+    revealedRoyal.add_piece(PieceType::Rook, Color::Black,
+                            Position::square_from_name("b10"));
+    expect(!revealedRoyal.move_from_string("c2-d3").has_value(),
+           "ordinary check legality resumes when the Jester is absent");
+
+    Position disappearingDecoy;
+    disappearingDecoy.add_piece(PieceType::King, Color::White,
+                                 Position::square_from_name("e1"));
+    disappearingDecoy.add_piece(PieceType::Jester, Color::White,
+                                 Position::square_from_name("b2"));
+    disappearingDecoy.add_piece(PieceType::Bomb, Color::White,
+                                 Position::square_from_name("a2"));
+    disappearingDecoy.add_piece(PieceType::King, Color::Black,
+                                 Position::square_from_name("h10"));
+    disappearingDecoy.add_piece(PieceType::Rook, Color::Black,
+                                 Position::square_from_name("e10"));
+    disappearingDecoy.add_piece(PieceType::Pawn, Color::Black,
+                                 Position::square_from_name("a3"));
+    expect(!disappearingDecoy.move_from_string("a2-a3").has_value(),
+           "check filtering resumes when the candidate move blasts the Jester");
 }
 
 void test_native_castling() {
@@ -934,7 +981,7 @@ void test_search_and_perft_regressions() {
       "jester,b,d10;ninja,b,b9;penguin,b,c9;devil,b,f9;sniper,b,g9;checker,b,h9;"
       "sludge,b,a9";
     expect(fixture.set_upn(upn, &error), "perft fixture parses: " + error);
-    expect(fixture.perft(1) == 44 && fixture.perft(2) == 1936 && fixture.perft(3) == 74084,
+    expect(fixture.perft(1) == 44 && fixture.perft(2) == 1936 && fixture.perft(3) == 74088,
            "mixed-roster perft remains stable at depths one through three");
 }
 

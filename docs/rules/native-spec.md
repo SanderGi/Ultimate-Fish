@@ -225,8 +225,14 @@ and remaps every relationship so captures cannot corrupt a round trip.
   least three files away, the royal may move two files toward it and the Rook
   lands on the square beside the royal. The native generator does not require
   the Rook to share the royal's team and does not test check on the starting or
-  crossed square. Ordinary post-move legality still rejects a real King that
-  remains threatened on its destination.
+  crossed square.
+- While a side still owns a Jester, either royal silhouette may remain in
+  check. The opponent has not proved which silhouette is the real King, so
+  ordinary real-King check filtering is suspended until that Jester is gone;
+  capturing the actual King still ends the game immediately. This was
+  confirmed in Ranked when a public linked CopyCat move was accepted while its
+  owner's real King remained attacked. Check filtering resumes in the first
+  resulting position without a living Jester.
 - The native insufficient-material table is implemented, including its special
   minor/color-bound/support combinations. With both real kings present and
   neither team sufficient, the result is a draw.

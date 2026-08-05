@@ -918,10 +918,18 @@ std::vector<Move> Position::legal_moves() const {
         if (!child.make_move_unchecked(move, undo))
             return true;
         const bool ownKingAlive = child.has_real_king(mover);
+        const bool jesterAlive = child.pieces(mover, PieceType::Jester) != 0;
         const bool continuation = child.sideToMove_ == mover && child.has_forced_action();
         const bool opponentKingDead = !child.has_real_king(~mover);
+        // Native hidden-royal semantics suspend ordinary check legality while
+        // the moving side still owns a Jester. Either royal silhouette may be
+        // attacked because the opponent has not proved which one is the real
+        // King; the game ends only when the real King is actually removed.
+        // Re-enable check immediately in a child where the Jester died (for
+        // example in the moving side's own Bomb blast).
         const bool legal = ownKingAlive &&
-          (continuation || opponentKingDead || !child.real_king_threatened(mover));
+          (continuation || opponentKingDead || jesterAlive ||
+           !child.real_king_threatened(mover));
         child.undo_move(undo);
         return !legal;
     }), moves.end());
