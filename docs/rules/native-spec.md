@@ -235,6 +235,9 @@ and remaps every relationship so captures cannot corrupt a round trip.
   duplicate has no new `Bot.RecordAiMove` diagnostic and no legal shot target
   on the opponent turn; the phone controller discards only this exact stale
   combination so it cannot be mistaken for the opponent's action.
+- A linked CopyCat action emits one movement callback for each half before the
+  common `ChangeTurn End` barrier. The phone controller consumes through that
+  barrier so the companion callback cannot be mistaken for an opponent move.
 - A Mage can choose any of a Giant's four footprint tiles as its swap target
   when the translated Giant remains in bounds. The Mage lands on the selected
   tile; the Giant is forcibly translated to the Mage and knocks out either

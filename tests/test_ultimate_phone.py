@@ -1816,6 +1816,47 @@ class ControllerActionTests(unittest.TestCase):
                          ("move", "d1", "f1"))
         self.assertEqual(game.events.pending, [])
 
+    def test_copycat_waits_through_the_linked_partner_animation(self):
+        class FakeAdb:
+            def tap_square(self, _geometry, _square):
+                pass
+
+        class FakeEvents:
+            def __init__(self):
+                self.pending = [
+                    MODULE.AppEvent("selected", "copycatClone"),
+                    MODULE.AppEvent("touch_end"),
+                    MODULE.AppEvent("move", "copycatClone", "b2", "a2"),
+                    MODULE.AppEvent("move", "copycat", "g2", "h2"),
+                    MODULE.AppEvent("turn_end"),
+                ]
+
+            @staticmethod
+            def drain():
+                return None
+
+            def wait(self, kinds, _timeout, predicate=None):
+                accepted = {kinds} if isinstance(kinds, str) else set(kinds)
+                while self.pending:
+                    event = self.pending.pop(0)
+                    if (event.kind in accepted and
+                            (predicate is None or predicate(event))):
+                        return event
+                raise TimeoutError
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.adb = FakeAdb()
+        game.events = FakeEvents()
+        game.perspective_flipped = False
+        game.beliefs = type("Beliefs", (), {"positions": [
+            "w;king,w,a1;copycat,w,g2;king,b,h10"
+        ]})()
+        event = game.execute("b2-a2")
+        self.assertEqual((event.kind, event.source, event.target),
+                         ("move", "b2", "a2"))
+        self.assertEqual(game.events.pending, [])
+
     def test_mage_swap_uses_drag_and_turn_completion(self):
         class FakeAdb:
             def __init__(self):

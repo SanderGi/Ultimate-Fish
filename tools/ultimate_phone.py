@@ -2025,6 +2025,18 @@ def is_castling_move(position: str, move: str) -> bool:
     return bool(actor and actor[0] in ("king", "jester"))
 
 
+def is_copycat_square(position: str, square: str) -> bool:
+    """Recognize an explicit CopyCat half or an implicit mirrored clone."""
+    actor = upn_piece_at(position, square)
+    if actor and actor[0] in ("copycat", "copycatClone"):
+        return True
+    mirror = f"{chr(ord('h') - (ord(square[0]) - ord('a')))}{square[1:]}"
+    mirrored = upn_piece_at(position, mirror)
+    # Compact/custom UPN names only the deployable half; the native parser
+    # creates its CopyCatClone on the mirrored square.
+    return bool(mirrored and mirrored[0] == "copycat")
+
+
 def giant_footprint(anchor: str) -> set[str]:
     file_index = ord(anchor[0]) - ord("a")
     rank = int(anchor[1:])
@@ -5693,6 +5705,12 @@ class PhoneGame:
                 for position in beliefs.positions
             )
         )
+        linked_copycat = bool(
+            beliefs and any(
+                is_copycat_square(position, source)
+                for position in beliefs.positions
+            )
+        )
 
         if separator in ("~", "!"):
             # Mage swaps and Fisherman hooks are presented as legal dots like
@@ -5859,13 +5877,15 @@ class PhoneGame:
                     continue
                 if event.kind == "move":
                     action_observed = True
-                    if not expect_bomb_resolution and not castling:
+                    if (not expect_bomb_resolution and not castling and
+                            not linked_copycat):
                         return event
                     deadline = time.monotonic() + 15.0
                     continue
                 if event.kind == "turn_end":
                     action_observed = True
-                    if castling or not expect_bomb_resolution or saw_bomb_death:
+                    if (castling or linked_copycat or
+                            not expect_bomb_resolution or saw_bomb_death):
                         return completed(event)
                     # Network turn dispatch precedes Bomb movement/death by
                     # several seconds. It is not yet an input-ready barrier.
