@@ -63,10 +63,14 @@ two fixed Kings. Phone automation accumulates these immutable group deltas,
 reconciles roster additions against the public cumulative material log, and
 records first-group royal candidates. The parser discards enemy Ghost
 coordinates before journaling; only their count is inferred from material.
-Some live groups do not emit `OnSanityCheck` until the following local action,
-so a non-empty spawn journal is complete after a bounded 120 ms log quiet
-period. Ranked automation fails closed if that public journal is absent; it
-never falls back to tapping cells obscured by character pots.
+`OnSanityCheck` is not a reliable spawn delimiter: some live groups omit it
+until the following local action, while another emitted it 357 ms before the
+first delayed `Square.Spawn` coroutine. A 120 ms quiet period exposes a stable
+journal candidate, but the consumer continues waiting until the cumulative
+public cells and inferred Ghosts reconcile exactly with the announced material;
+the opening candidate must also contain a royal. Ranked automation fails closed
+if that public journal is absent and never falls back to tapping cells obscured
+by character pots.
 `OnBanCharacter` is public. Its subsequent native
 `TEXURE ASSIGNED TO <piece>` diagnostic identifies the exact newly locked pot,
 so the controller applies that public ban without overlapping-pot image

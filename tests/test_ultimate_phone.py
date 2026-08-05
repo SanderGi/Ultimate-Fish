@@ -599,6 +599,46 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertTrue(complete)
         self.assertEqual(len(spawns), 1)
 
+    def test_ranked_pick_waits_for_spawns_after_early_sanity_check(self):
+        full = (
+            MODULE.AppEvent("draft_piece_spawn", "mage", "3:0"),
+            MODULE.AppEvent("draft_piece_spawn", "king", "0:0"),
+            MODULE.AppEvent("draft_piece_spawn", "king", "7:0"),
+            MODULE.AppEvent("draft_piece_spawn", "king", "7:9"),
+        )
+
+        class DelayedSpawns:
+            def __init__(self):
+                self.calls = 0
+
+            def ranked_spawn_snapshot(self):
+                self.calls += 1
+                if self.calls <= 2:
+                    return 1, True, ()
+                if self.calls == 3:
+                    return 1, True, full[:1]
+                return 1, True, full
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.events = DelayedSpawns()
+        game.engine = Mock()
+        game.ranked_enemy_roster = MODULE.Counter()
+        game.ranked_enemy_king_candidates = None
+        game.ranked_enemy_snapshots = []
+        game._ranked_committed_points = lambda _ivory: (0, 18)
+        game.log = lambda _message: None
+
+        with patch.object(MODULE.time, "sleep", return_value=None):
+            choices = game._observe_ranked_opponent_pick(local_ivory=False)
+
+        self.assertEqual(choices, ["mage", "jester"])
+        self.assertGreaterEqual(game.events.calls, 4)
+        self.assertEqual(
+            game.ranked_enemy_roster,
+            MODULE.Counter({"mage": 1, "jester": 1}),
+        )
+        self.assertEqual(game.ranked_enemy_king_candidates, {"a10", "h10"})
+
 
 class VisionTests(unittest.TestCase):
     def test_opening_emote_detector_does_not_sum_white_piece_skins(self):

@@ -4347,10 +4347,26 @@ class PhoneGame:
                 raise RuntimeError("Ranked spawn journal advanced across pick phases")
             if complete:
                 try:
-                    group_public = ranked_spawn_public(spawns, local_ivory)
+                    candidate_group = ranked_spawn_public(spawns, local_ivory)
+                    candidate_public = (
+                        list(self.ranked_enemy_snapshots[-1]) + candidate_group
+                        if self.ranked_enemy_snapshots else candidate_group
+                    )
+                    # OnSanityCheck can precede the delayed Square.Spawn
+                    # coroutines by hundreds of milliseconds. Do not accept a
+                    # syntactically complete marker until the records reconcile
+                    # exactly with the already-public cumulative material.
+                    ranked_public_roster(candidate_public, opponent_points)
+                    if (not self.ranked_enemy_snapshots and not any(
+                            piece == "king" for piece, _square in candidate_public)):
+                        raise RuntimeError(
+                            "opening Ranked journal has not spawned its royal yet"
+                        )
+                    group_public = candidate_group
                 except RuntimeError as exc:
                     last_error = exc
-                break
+                if group_public is not None:
+                    break
             time.sleep(0.02)
 
         # The stock 5.73 app emits the public Square.Spawn group journal. Do not
