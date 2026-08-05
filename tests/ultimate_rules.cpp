@@ -1253,8 +1253,10 @@ void test_sniper_berserker_and_dragon() {
     expect(!hiddenShot.move_from_string("d2xd5").has_value() &&
            hiddenShot.move_from_string("d2xd8").has_value(),
            "sniper fire passes through an unseen ghost to the first visible target");
-    expect(hiddenShot.move_from_string("d2-e2").has_value(),
-           "sniper can make a normal sideways attack on an enemy");
+    expect(!hiddenShot.move_from_string("d2-e2").has_value(),
+           "sniper cannot attack an occupied sideways square");
+    expect(hiddenShot.move_from_string("d2-c2").has_value(),
+           "sniper can make a quiet one-square sideways move");
 
     Position hiddenFriendlyGhost;
     hiddenFriendlyGhost.add_piece(PieceType::King, Color::White,

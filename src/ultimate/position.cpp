@@ -854,8 +854,10 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
                     continue;
                 const int to = make_square(targetFile, rank);
                 const int target = board_[to];
-                if (target == NoPiece ||
-                    (pieces_[target].visible && pieces_[target].color != piece.color))
+                // Native Sniper side-steps are quiet-only. An occupied lateral
+                // square produces no Dot; the only attack is the forward shot
+                // to the first visible character on its file.
+                if (target == NoPiece)
                     moves.push_back({piece.square, static_cast<std::uint8_t>(to)});
             }
         }

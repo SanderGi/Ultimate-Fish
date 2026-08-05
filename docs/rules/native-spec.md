@@ -231,8 +231,9 @@ and remaps every relationship so captures cannot corrupt a round trip.
   diagonally; a forward pawn move into it uses the native blind-collision path
   and knocks out both characters.
 - A Sniper's forward shot also passes through invisible Ghosts to the first
-  visible character. Its one-square sideways action can attack an enemy; only
-  a forward shot starts the reload cooldown.
+  visible character. Its one-square sideways action is quiet-only; an occupied
+  lateral square produces no legal Dot. Only a forward shot starts the reload
+  cooldown.
 - When a Sniper shoots a Bomb, the Bomb death path can invoke the Sniper's
   stay-put movement callback again just after `ChangeTurn End`. That delayed
   duplicate has no new `Bot.RecordAiMove` diagnostic and no legal shot target
