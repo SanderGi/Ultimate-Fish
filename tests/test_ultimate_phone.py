@@ -479,22 +479,17 @@ class RankedDraftControllerTests(unittest.TestCase):
     def test_actual_ban_callbacks_drive_all_twelve_ranked_phases(self):
         ban = "I/Unity: NetworkManager:OnBanCharacter(Type)"
         pick = "I/Unity: OnSpawnPieceGroup MESSAGE"
-        point_lines = (
-            "GetPoints() - player1 points : 27 - player2 points : 0",
-            "GetPoints() - player1 points : 30 - player2 points : 25",
-            "GetPoints() - player1 points : 100 - player2 points : 40",
-        )
         responses = [
             self._event(ban),
-            self._event(pick), self._event(point_lines[0]), TimeoutError,
+            self._event(pick),
             self._event(pick),
             self._event(ban), MODULE.AppEvent("draft_ban_piece", piece="bomb"),
             self._event(ban),
-            self._event(pick), self._event(point_lines[1]), TimeoutError,
+            self._event(pick),
             self._event(pick),
             self._event(ban), MODULE.AppEvent("draft_ban_piece", piece="ninja"),
             self._event(ban),
-            self._event(pick), self._event(point_lines[2]), TimeoutError,
+            self._event(pick),
             self._event(pick), MODULE.AppEvent("board_loaded"),
         ]
         first = [
@@ -521,6 +516,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         game.ranked_enemy_roster = MODULE.Counter()
         game.ranked_enemy_king_candidates = None
         game.ranked_enemy_snapshots = []
+        game.ranked_local_points = 0
         game.online_local_team = None
         game.own_team = []
         game.verbose = False
@@ -528,7 +524,15 @@ class RankedDraftControllerTests(unittest.TestCase):
         game._ranked_is_ivory = lambda: False
         game._ban_ranked_piece = lambda _piece, _timeout=3.0: None
         game._tap_draft_control = lambda _labels, _timeout=4.0: "LOCK"
-        game._place_ranked_piece = lambda _piece, _square: None
+        game._place_ranked_piece = lambda _piece, square, _ivory: square
+        game._ranked_committed_points = Mock(side_effect=(
+            (0, 27),       # remote opening group
+            (10, 27), (25, 27),  # local Jester + Dragon
+            (25, 30),      # remote middle group
+            (40, 30),      # local Penguin
+            (40, 100),     # remote final group
+            (53, 100),     # local Rook
+        ))
         game.probe_enemy = Mock()
 
         with patch.object(MODULE, "ranked_spawn_public", side_effect=(
@@ -544,6 +548,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertEqual(game.ranked_enemy_roster["rook"], 5)
         self.assertEqual(game.ranked_enemy_roster["giant"], 1)
         self.assertEqual(game.ranked_enemy_king_candidates, {"a10", "c10"})
+        game.probe_enemy.assert_not_called()
 
     def test_native_turn_probe_identifies_phase_zero_owner(self):
         class ProbeAdb:
@@ -578,6 +583,21 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertFalse(stream._accept_ban_callback(10.01))
         self.assertFalse(stream._accept_ban_callback(10.20))
         self.assertTrue(stream._accept_ban_callback(10.30))
+
+    def test_ranked_spawn_group_completes_after_public_log_quiet(self):
+        stream = MODULE.EventStream.__new__(MODULE.EventStream)
+        stream.draft_spawn_lock = MODULE.threading.Lock()
+        stream.draft_spawn_generation = 4
+        stream.draft_spawn_complete = False
+        stream.draft_spawns = [
+            MODULE.AppEvent("draft_piece_spawn", "ghost", None),
+        ]
+        stream.draft_spawn_updated_at = 10.0
+        with patch.object(MODULE.time, "monotonic", return_value=10.13):
+            generation, complete, spawns = stream.ranked_spawn_snapshot()
+        self.assertEqual(generation, 4)
+        self.assertTrue(complete)
+        self.assertEqual(len(spawns), 1)
 
 
 class VisionTests(unittest.TestCase):
@@ -665,6 +685,30 @@ class VisionTests(unittest.TestCase):
                 ),
                 expected,
             )
+
+    def test_game_over_classifier_retries_isolated_white_headline(self):
+        from PIL import Image
+
+        image = Image.new("RGB", (1080, 2400), (40, 155, 225))
+        blank = Mock(stdout=b"")
+        isolated = Mock(stdout=b"VICTORY\n")
+        with patch.object(
+            MODULE.subprocess, "run", side_effect=(blank, blank, isolated)
+        ) as run:
+            self.assertEqual(MODULE.read_game_over_result(image), "win")
+        self.assertEqual(run.call_count, 3)
+
+    def test_ranked_lock_checkmark_detector_uses_full_screen_coordinates(self):
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGB", (1080, 2400), (70, 110, 70))
+        draw = ImageDraw.Draw(image)
+        draw.ellipse((241, 2002, 421, 2182), fill=(115, 220, 55))
+        draw.line((285, 2090, 320, 2125, 380, 2050), fill="white", width=24)
+        point = MODULE.PhoneGame._draft_control(image, "LOCK")
+        self.assertIsNotNone(point)
+        self.assertTrue(320 <= point[0] <= 345)
+        self.assertTrue(2080 <= point[1] <= 2105)
 
     def test_reconnect_decline_detector(self):
         from PIL import Image, ImageDraw
@@ -1893,6 +1937,16 @@ class BeliefConstructionTests(unittest.TestCase):
         copycat = deployment.place("copycat")
         self.assertFalse(giant_cells & {copycat, deployment._mirror(copycat)})
         self.assertEqual(len(deployment.occupied), 7)  # King + Giant 4 + pair 2.
+
+    def test_ranked_deployment_reserves_measured_copycat_anchor(self):
+        deployment = MODULE.DraftDeployment()
+        requested = deployment.propose("copycat")
+        self.assertEqual(requested, "h2")
+        # Captured Onyx drag landed one file toward the center. Reserve the
+        # native coordinate and its true mirror, not the requested pixel cell.
+        deployment.reserve("copycat", "g2")
+        self.assertTrue({"b2", "g2"} <= deployment.occupied)
+        self.assertEqual(deployment.team[-1], ("copycat", "g2"))
 
     def test_ranked_reference_roster_has_no_overlap(self):
         deployment = MODULE.DraftDeployment()

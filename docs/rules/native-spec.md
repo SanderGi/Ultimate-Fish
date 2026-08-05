@@ -63,6 +63,10 @@ two fixed Kings. Phone automation accumulates these immutable group deltas,
 reconciles roster additions against the public cumulative material log, and
 records first-group royal candidates. The parser discards enemy Ghost
 coordinates before journaling; only their count is inferred from material.
+Some live groups do not emit `OnSanityCheck` until the following local action,
+so a non-empty spawn journal is complete after a bounded 120 ms log quiet
+period. Ranked automation fails closed if that public journal is absent; it
+never falls back to tapping cells obscured by character pots.
 `OnBanCharacter` is public. Its subsequent native
 `TEXURE ASSIGNED TO <piece>` diagnostic identifies the exact newly locked pot,
 so the controller applies that public ban without overlapping-pot image
@@ -76,6 +80,14 @@ one transition before the next phase can advance. Both its unique callback
 count and named pot are journaled independently of queue consumers, so a remote
 phase-zero Ban completed during pot calibration is replayed into the engine
 before the twelve-window loop continues.
+
+Local Ranked placement is likewise acknowledged rather than assumed. Each pot
+drag must produce the native `ArmyMove` coordinate and an increased cumulative
+`GetPoints` total before the cell is reserved in the engine draft. This matters
+for wide colliders such as CopyCat, which can land one file inward and create
+its mirror there, or can be despawned when that measured footprint collides.
+The committed total must equal the engine's expected roster cost before the
+controller presses the icon-only green Lock checkmark.
 
 `OnStartGameResponse.model_Pieces` and replay `initState` share the authoritative
 `Model_Piece` schema: type, team, x/y, skin, action, cooldown, freeze count,

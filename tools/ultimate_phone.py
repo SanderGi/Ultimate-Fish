@@ -1184,22 +1184,33 @@ def read_game_over_result(image, tesseract: str = "tesseract") -> str:
     than which player won; callers resolve those using whose move just ended.
     """
     import io
+    from PIL import Image
+
+    def classify(observations: Iterable[str]) -> str | None:
+        observed = re.sub(r"[^A-Z]", "", " ".join(observations).upper())
+        for token, result in (
+            ("VICTORY", "win"), ("DEFEAT", "loss"), ("DRAW", "draw"),
+            ("CHECKMATE", "checkmate"), ("KNOCKOUT", "knockout"),
+        ):
+            if token in observed:
+                return result
+        return None
 
     width, height = image.size
     resampling = getattr(type(image), "Resampling", None)
     if resampling is None:
-        from PIL import Image
         resampling = getattr(Image, "Resampling", Image)
     observations = []
-    for top, bottom in ((0.04, 0.25), (0.38, 0.60)):
+    headlines = []
+    for top, bottom in ((0.04, 0.25), (0.32, 0.64)):
         headline = image.crop((
-            round(width * 0.04), round(height * top),
-            round(width * 0.96), round(height * bottom),
+            0, round(height * top), width, round(height * bottom),
         ))
         headline = headline.resize(
             (max(1000, headline.width * 2), max(300, headline.height * 2)),
             resampling.LANCZOS,
         )
+        headlines.append(headline)
         encoded = io.BytesIO()
         headline.convert("RGB").save(encoded, format="PNG")
         result = subprocess.run(
@@ -1208,17 +1219,41 @@ def read_game_over_result(image, tesseract: str = "tesseract") -> str:
             stderr=subprocess.DEVNULL, check=True,
         )
         observations.append(result.stdout.decode(errors="replace").upper())
-    observed = re.sub(r"[^A-Z]", "", " ".join(observations))
-    if "VICTORY" in observed:
-        return "win"
-    if "DEFEAT" in observed:
-        return "loss"
-    if "DRAW" in observed:
-        return "draw"
-    if "CHECKMATE" in observed:
-        return "checkmate"
-    if "KNOCKOUT" in observed:
-        return "knockout"
+    classified = classify(observations)
+    if classified:
+        return classified
+
+    # The result screen uses a thick white font with a blue drop shadow.
+    # Tesseract can return no text at all on the RGB image even though the
+    # headline is visually unambiguous. Isolate bright lettering
+    # and retry as a single text block. This recognized the captured Ranked
+    # timeout victory where the unprocessed pass returned an empty string.
+    try:
+        import numpy as np
+        for headline in headlines:
+            enlarged = headline.resize(
+                (headline.width * 3 // 2, headline.height * 3 // 2),
+                resampling.LANCZOS,
+            )
+            rgb = np.asarray(enlarged.convert("RGB"))
+            bright = rgb.min(axis=2) > 175
+            isolated = Image.fromarray(
+                np.where(bright, 0, 255).astype("uint8"), mode="L"
+            )
+            encoded = io.BytesIO()
+            isolated.save(encoded, format="PNG")
+            result = subprocess.run(
+                [tesseract, "stdin", "stdout", "--psm", "6"],
+                input=encoded.getvalue(), stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL, check=True,
+            )
+            classified = classify([
+                result.stdout.decode(errors="replace")
+            ])
+            if classified:
+                return classified
+    except ImportError:  # pragma: no cover - raw OCR remains the fallback
+        pass
     # The game's extruded yellow condition font is reliably visible but can
     # be illegible to Tesseract. Both CHECKMATE and KNOCK-OUT occupy most of
     # the upper banner: measured captures contain ~77k yellow pixels there,
@@ -1297,6 +1332,11 @@ class DraftDeployment:
         "parasite": ("c3", "f3", "b3", "g3"),
         "penguin": ("d3", "e3", "c3", "f3", "e2", "d2", "f2", "c2"),
         "sniper": ("h1", "g1", "f1"),
+        # CopyCat's wide pot collider has landed one file toward the center in
+        # live Ranked. Start far from the center so the measured native anchor
+        # and its mirror still have room; the controller records the actual
+        # CompareDragDisplacement coordinate before reserving either cell.
+        "copycat": ("h2", "g2", "h3", "g3"),
         "rook": ("h1", "g1", "b1"),
         "queen": ("d1", "e1", "c1"),
         "fisherman": ("c2", "f2", "b2", "g2"),
@@ -1327,19 +1367,36 @@ class DraftDeployment:
             for dx in (0, 1) for dy in (0, 1)
         }
 
-    def place(self, piece: str) -> str:
+    def cells(self, piece: str, square: str) -> set[str]:
+        cells = {square}
+        if piece == "giant":
+            cells = self._giant_cells(square)
+        elif piece == "copycat":
+            cells.add(self._mirror(square))
+        return cells
+
+    def propose(self, piece: str, excluded: Iterable[str] = ()) -> str:
+        excluded = set(excluded)
         candidates = self.PREFERENCES.get(piece, ()) + self.FALLBACK
         for square in dict.fromkeys(candidates):
-            cells = {square}
-            if piece == "giant":
-                cells = self._giant_cells(square)
-            elif piece == "copycat":
-                cells.add(self._mirror(square))
-            if cells and not (cells & self.occupied):
-                self.occupied.update(cells)
-                self.team.append((piece, square))
+            cells = self.cells(piece, square)
+            if square not in excluded and cells and not (cells & self.occupied):
                 return square
         raise RuntimeError(f"no legal deployment cells remain for {piece}")
+
+    def reserve(self, piece: str, square: str) -> None:
+        cells = self.cells(piece, square)
+        if not cells or cells & self.occupied:
+            raise RuntimeError(
+                f"native deployment of {piece}@{square} overlaps locked cells"
+            )
+        self.occupied.update(cells)
+        self.team.append((piece, square))
+
+    def place(self, piece: str) -> str:
+        square = self.propose(piece)
+        self.reserve(piece, square)
+        return square
 
 
 class EventStream:
@@ -1376,6 +1433,7 @@ class EventStream:
         self.draft_spawn_generation = 0
         self.draft_spawn_complete = False
         self.draft_spawns: list[AppEvent] = []
+        self.draft_spawn_updated_at = float("-inf")
         self.last_ban_callback_at = float("-inf")
         # Keep a second, non-consuming public gameplay journal for the short
         # interval between Board.LoadBoard and search initialization. Queue
@@ -1455,10 +1513,12 @@ class EventStream:
                         self.draft_spawn_generation += 1
                         self.draft_spawn_complete = False
                         self.draft_spawns.clear()
+                        self.draft_spawn_updated_at = time.monotonic()
                 elif event.kind == "draft_piece_spawn":
                     with self.draft_spawn_lock:
                         if self.draft_spawn_generation:
                             self.draft_spawns.append(event)
+                            self.draft_spawn_updated_at = time.monotonic()
                 elif event.kind == "sanity_check":
                     with self.draft_spawn_lock:
                         if self.draft_spawn_generation:
@@ -1500,6 +1560,7 @@ class EventStream:
             self.draft_spawn_generation = 0
             self.draft_spawn_complete = False
             self.draft_spawns.clear()
+            self.draft_spawn_updated_at = float("-inf")
         self.last_ban_callback_at = float("-inf")
 
     def start_state(self) -> OnlineStartState | None:
@@ -1529,9 +1590,13 @@ class EventStream:
     def ranked_spawn_snapshot(self) -> tuple[int, bool, tuple[AppEvent, ...]]:
         """Return the non-consuming public spawn journal for the latest group."""
         with self.draft_spawn_lock:
+            complete = self.draft_spawn_complete or (
+                bool(self.draft_spawns)
+                and time.monotonic() - self.draft_spawn_updated_at >= 0.12
+            )
             return (
                 self.draft_spawn_generation,
-                self.draft_spawn_complete,
+                complete,
                 tuple(self.draft_spawns),
             )
 
@@ -2796,6 +2861,7 @@ class PhoneGame:
         self.ranked_enemy_roster: Counter[str] = Counter()
         self.ranked_enemy_king_candidates: set[str] | None = None
         self.ranked_enemy_snapshots: list[tuple[tuple[str, str], ...]] = []
+        self.ranked_local_points = 0
         self.army_drag_offsets: dict[tuple[str, str], tuple[float, float]] = {}
         self.army_pot_slots: dict[str, str] = {}
         self.army_verified_pre_ready = False
@@ -3861,6 +3927,35 @@ class PhoneGame:
     @staticmethod
     def _draft_control(image, label: str) -> tuple[int, int] | None:
         """Locate a prominent draft action button in the lower half."""
+        if label.upper() == "LOCK":
+            import numpy as np
+
+            rgb = np.asarray(image.convert("RGB"))
+            red, green, blue = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+            mask = (
+                (green > 145)
+                & (green > red * 1.20)
+                & (green > blue * 1.10)
+            )
+            candidates = []
+            for component in _components(mask):
+                if len(component) < 800:
+                    continue
+                ys = [point[0] for point in component]
+                xs = [point[1] for point in component]
+                width = max(xs) - min(xs) + 1
+                height = max(ys) - min(ys) + 1
+                center = (
+                    (min(xs) + max(xs)) // 2,
+                    (min(ys) + max(ys)) // 2,
+                )
+                if (image.width * 0.12 < width < image.width * 0.28
+                        and image.height * 0.05 < height < image.height * 0.12
+                        and image.width * 0.15 < center[0] < image.width * 0.50
+                        and image.height * 0.78 < center[1] < image.height * 0.93):
+                    candidates.append((len(component), center))
+            if candidates:
+                return max(candidates)[1]
         top = round(image.height * 0.58)
         crop = image.crop((0, top, image.width, image.height))
         point = find_text_center(crop, label)
@@ -3957,6 +4052,7 @@ class PhoneGame:
         self.ranked_enemy_roster.clear()
         self.ranked_enemy_king_candidates = None
         self.ranked_enemy_snapshots.clear()
+        self.ranked_local_points = 0
         cached_accept = None
         match_found = False
         for attempt in itertools.count(1):
@@ -4170,7 +4266,9 @@ class PhoneGame:
             time.sleep(0.10)
         raise TimeoutError(f"native Ban action did not appear for {piece}")
 
-    def _place_ranked_piece(self, piece: str, square: str) -> None:
+    def _place_ranked_piece(
+        self, piece: str, square: str, local_ivory: bool,
+    ) -> str:
         if piece not in self.draft_pots:
             raise RuntimeError(f"no calibrated Ranked pot for {piece}")
         # Ranked calls Board.LoadBoardDraft on the live 8x10 board (unlike the
@@ -4182,7 +4280,25 @@ class PhoneGame:
         # the native placement.  A moderately short gesture is fast while still
         # producing the pointer-enter callback on dense deployment cells.
         self.adb.drag_sync(source, target, 180)
-        time.sleep(0.10)
+        try:
+            landed = self.events.wait(
+                ("army_drop", "game_over", "out_of_time"), 0.9
+            )
+        except TimeoutError:
+            if piece == "giant":
+                # Giant's recovered override logs no coordinate pair. Its 2x2
+                # footprint is still confirmed by the following point update.
+                return square
+            raise TimeoutError(
+                f"Ranked {piece} drag produced no native landing coordinate"
+            )
+        if landed.kind != "army_drop" or landed.source is None:
+            raise RuntimeError(
+                f"Ranked draft ended while placing {piece}: {landed.kind}"
+            )
+        x_text, y_text = landed.source.split(":", 1)
+        record = ModelPieceRecord(piece, 1, int(x_text), int(y_text))
+        return _online_square(record, not local_ivory)
 
     def _ranked_committed_points(self, local_ivory: bool) -> tuple[int, int]:
         """Read the final cumulative totals emitted after a committed group."""
@@ -4224,7 +4340,6 @@ class PhoneGame:
         _local_points, opponent_points = self._ranked_committed_points(local_ivory)
         last_error: RuntimeError | None = None
         group_public: list[tuple[str, str]] | None = None
-        used_tap_fallback = False
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline:
             current_generation, complete, spawns = self.events.ranked_spawn_snapshot()
@@ -4238,32 +4353,15 @@ class PhoneGame:
                 break
             time.sleep(0.02)
 
-        # The stock 5.73 app emits the public Square.Spawn journal. Retain the
-        # older tap verifier only as a bounded compatibility fallback for a
-        # release that omits it; pots can overlap the shallow board visually.
-        if group_public is None:
-            self.log("public Ranked spawn journal unavailable; using tap fallback")
-            used_tap_fallback = True
-        for attempt in range(3 if group_public is None else 0):
-            try:
-                # A compatibility tap scan sees the full cumulative public
-                # deployment, unlike the native group journal.
-                group_public = self.probe_enemy(
-                    fast=True, minimum_confirmations=1,
-                )
-                break
-            except RuntimeError as exc:
-                last_error = exc
-                self.log(
-                    f"public Ranked group scan unsettled; retrying ({attempt + 1}/3)"
-                )
-                time.sleep(0.18)
+        # The stock 5.73 app emits the public Square.Spawn group journal. Do not
+        # fall back to taps: character pots overlap the shallow deployment and
+        # a missed Queen can otherwise look like a material-inferred Ghost.
         if group_public is None:
             raise RuntimeError(
-                "could not recover the newly revealed Ranked group"
+                "public Ranked spawn journal did not complete"
             ) from last_error
 
-        if self.ranked_enemy_snapshots and not used_tap_fallback:
+        if self.ranked_enemy_snapshots:
             previous = list(self.ranked_enemy_snapshots[-1])
             duplicate_cells = Counter(previous) & Counter(group_public)
             if duplicate_cells:
@@ -4275,7 +4373,6 @@ class PhoneGame:
                 )
             public = previous + group_public
         else:
-            # The tap fallback already returned the full cumulative board.
             public = group_public
         snapshot = tuple(sorted(public, key=lambda item: square_sort_key(item[1])))
 
@@ -4379,14 +4476,52 @@ class PhoneGame:
 
     def _commit_ranked_local_pick(
         self, choices: Sequence[str], deployment: DraftDeployment, phase: int,
+        local_ivory: bool,
     ) -> None:
-        """Place one immutable group and retry only its idempotent Lock action."""
+        """Place and verify one immutable group, then acknowledge its Lock."""
         placements = []
         self.events.drain()
+        starting_points = self.ranked_local_points
         for piece in choices:
-            square = deployment.place(piece)
-            self._place_ranked_piece(piece, square)
-            placements.append((piece, square))
+            excluded: set[str] = set()
+            while True:
+                requested = deployment.propose(piece, excluded)
+                try:
+                    actual = self._place_ranked_piece(
+                        piece, requested, local_ivory,
+                    )
+                    local_points, _opponent_points = self._ranked_committed_points(
+                        local_ivory
+                    )
+                except TimeoutError:
+                    excluded.add(requested)
+                    self.log(
+                        f"Ranked {piece}@{requested} did not materialize; "
+                        "retrying another legal cell"
+                    )
+                    continue
+                if local_points <= self.ranked_local_points:
+                    excluded.add(requested)
+                    self.log(
+                        f"Ranked {piece}@{requested} did not increase material; "
+                        "retrying another legal cell"
+                    )
+                    continue
+                deployment.reserve(piece, actual)
+                self.ranked_local_points = local_points
+                placements.append((piece, actual))
+                if actual != requested:
+                    self.log(
+                        f"native Ranked landing corrected {piece}: "
+                        f"{requested} -> {actual}"
+                    )
+                break
+        expected_points = starting_points + sum(PIECE_COST[piece] for piece in choices)
+        if self.ranked_local_points != expected_points:
+            raise RuntimeError(
+                "native Ranked placement total disagrees with engine draft: "
+                f"app {self.ranked_local_points}, engine {expected_points}"
+            )
         deadline = time.monotonic() + 45.0
         for attempt in itertools.count(1):
             remaining = deadline - time.monotonic()
@@ -4476,7 +4611,9 @@ class PhoneGame:
                     self._commit_ranked_local_ban(piece, phase)
                     banned.add(piece)
                 else:
-                    self._commit_ranked_local_pick(choices, deployment, phase)
+                    self._commit_ranked_local_pick(
+                        choices, deployment, phase, local_ivory,
+                    )
             else:
                 self.log(f"draft phase {phase}: waiting for opponent {action}")
                 committed = self.events.wait(
