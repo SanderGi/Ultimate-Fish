@@ -334,9 +334,17 @@ def mirror_square(piece: str, square: str) -> str:
 def position(candidate: Army, opponent: Army, candidate_color: str) -> str:
     white, black = (candidate, opponent) if candidate_color == "w" else (opponent, candidate)
     fields = ["w", "hm=0", "fm=1", "ep=-", "cont=0", "forced=-1", "epv=-1"]
-    fields.extend(f"{piece},w,{square}" for piece, square in white)
+    def deployed(piece: str, color: str, square: str) -> str:
+        if piece == "ghost":
+            # ``visible`` is relative to the Ghost's opponent. A locally
+            # visible newly deployed Ghost is still hidden from enemy rays.
+            return f"{piece},{color},{square},0,0,0,0,0,0,-1,1,-1,0"
+        return f"{piece},{color},{square}"
+
+    fields.extend(deployed(piece, "w", square) for piece, square in white)
     fields.extend(
-        f"{piece},b,{mirror_square(piece, square)}" for piece, square in black
+        deployed(piece, "b", mirror_square(piece, square))
+        for piece, square in black
     )
     return ";".join(fields)
 

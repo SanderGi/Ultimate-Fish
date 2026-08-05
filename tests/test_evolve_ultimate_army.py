@@ -68,6 +68,11 @@ class ArmyEvolutionTests(unittest.TestCase):
         self.assertIn("king,b,e9", black)
         self.assertIn("sniper,b,a8", black)
 
+    def test_deployed_ghosts_begin_hidden_from_both_opponents(self) -> None:
+        upn = evolve.position(evolve.PENGUIN_ARMY, evolve.SPECIAL_ARMY, "w")
+        self.assertIn("ghost,w,d2,0,0,0,0,0,0,-1,1,-1,0", upn)
+        self.assertIn("ghost,b,c10,0,0,0,0,0,0,-1,1,-1,0", upn)
+
     def test_result_summary_keeps_capped_tiebreaks_as_draws(self) -> None:
         self.assertEqual(
             evolve.result_summary((1.0, 0.5, 0.62, 0.0)),

@@ -93,6 +93,17 @@ engine binaries on a color-balanced fixture suite, while
 Re-rank saved finalists at a larger budget with
 `python3 tools/validate_ultimate_armies.py RESULTS.json --nodes 10000`.
 
+Ranked needs a separate coevolution because each opponent changes the available
+roster through six interleaved bans and publicly revealed locked groups. The
+draft-policy league executes those twelve native windows before every game and
+evolves pick, repeat, denial, and self-preservation values:
+
+```bash
+python3 tools/evolve_ultimate_draft.py --population 12 --generations 8 \
+  --nodes 2000 --final-nodes 12000 --workers 4 \
+  --output docs/benchmarks/evolved-draft.json
+```
+
 The reproducible 2026-08-05 league checkpoint is stored in
 [`docs/benchmarks/evolved-army-2026-08-05.json`](docs/benchmarks/evolved-army-2026-08-05.json),
 with deeper common-pool validation in
