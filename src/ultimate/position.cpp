@@ -818,8 +818,30 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
         break;
     case PieceType::Sludge:
         add_slider_moves(moves, id, Orthogonal, 4, 2, false, false);
+        // A hidden enemy Ghost is rendered as an empty destination to the
+        // Sludge owner. Native play lets Sludge enter that cell blindly, then
+        // knocks out both models without a Character.Move callback.
+        for (const auto& direction : Orthogonal) {
+            for (int distance = 1; distance <= 2; ++distance) {
+                const int file = file_of(piece.square) + direction[0] * distance;
+                const int rank = rank_of(piece.square) + direction[1] * distance;
+                if (file < 0 || file >= BoardFiles || rank < 0 || rank >= BoardRanks)
+                    break;
+                const int to = make_square(file, rank);
+                const int target = board_[to];
+                if (target == NoPiece)
+                    continue;
+                if (pieces_[target].type == PieceType::Ghost &&
+                    !pieces_[target].visible && pieces_[target].color != piece.color)
+                    moves.push_back({piece.square, static_cast<std::uint8_t>(to)});
+                break;
+            }
+        }
         moves.erase(std::remove_if(moves.begin(), moves.end(), [this](const Move& move) {
-                        return board_[move.to] != NoPiece;
+                        const int target = board_[move.to];
+                        return target != NoPiece &&
+                          !(pieces_[target].type == PieceType::Ghost &&
+                            !pieces_[target].visible);
                     }), moves.end());
         break;
     case PieceType::Sniper:
@@ -1634,11 +1656,14 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
     else {
         erase_from_board(id);
         int victim = target;
-        const bool blindGhostCollision = actor.type == PieceType::Pawn && victim != NoPiece &&
+        const bool blindGhostCollision =
+          (actor.type == PieceType::Pawn || actor.type == PieceType::Sludge) &&
+                                       victim != NoPiece &&
                                        pieces_[victim].type == PieceType::Ghost &&
                                        !pieces_[victim].visible &&
                                        pieces_[victim].color != actor.color &&
-                                       file_of(move.to) == file_of(originalFrom);
+                                       (actor.type == PieceType::Sludge ||
+                                        file_of(move.to) == file_of(originalFrom));
         if (actor.type == PieceType::Pawn && move.to == enPassantSquare_)
             victim = enPassantVictim_;
         if (checkerCapture)

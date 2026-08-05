@@ -212,6 +212,12 @@ and remaps every relationship so captures cannot corrupt a round trip.
   frozen direction set for serialization.
 - A Ghost is revealed by attacking or by enemy King/Jester adjacency. A quiet
   Ghost move away from those royals makes it invisible again.
+- Sludge may blindly enter a square occupied by an invisible enemy Ghost. Both
+  Sludge and Ghost are knocked out, the Sludge still leaves Goop on its origin,
+  and the dying Sludge emits no ordinary movement callback. The public online
+  action plus `ChangeTurn End` is therefore used to apply that exact move. A
+  live Ranked `c5-c4` collision reduced the two material totals by 12 and 15,
+  respectively, confirming that both characters died.
 - An invisible Ghost makes its square unavailable while ordinary sliding rays
   continue through it, even for a same-team ray. Pawns cannot deliberately capture it
   diagonally; a forward pawn move into it uses the native blind-collision path

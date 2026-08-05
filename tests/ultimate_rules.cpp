@@ -658,6 +658,29 @@ void test_sludge_and_victory() {
     expect(position.piece(position.piece_on(Position::square_from_name("c3"))).type == PieceType::Goop,
            "two-square sludge move also leaves goop on the intervening square");
 
+    Position blindCollision;
+    blindCollision.add_piece(PieceType::King, Color::White,
+                             Position::square_from_name("a1"));
+    blindCollision.add_piece(PieceType::King, Color::Black,
+                             Position::square_from_name("h10"));
+    blindCollision.add_piece(
+        PieceType::Sludge, Color::White, Position::square_from_name("c4"));
+    const int hiddenGhost = blindCollision.add_piece(
+        PieceType::Ghost, Color::Black, Position::square_from_name("c5"));
+    blindCollision.piece(hiddenGhost).visible = false;
+    Undo blindUndo;
+    expect(blindCollision.make_move(
+               require_move(blindCollision, "c4-c5"), blindUndo),
+           "Sludge can blindly enter an unseen enemy Ghost cell");
+    expect(blindCollision.pieces(Color::White, PieceType::Sludge) == 0 &&
+               blindCollision.pieces(Color::Black, PieceType::Ghost) == 0,
+           "blind Sludge and hidden Ghost collision knocks out both pieces");
+    const int blindGoop = blindCollision.piece_on(
+        Position::square_from_name("c4"));
+    expect(blindGoop != Position::NoPiece &&
+               blindCollision.piece(blindGoop).type == PieceType::Goop,
+           "a Sludge killed by a hidden Ghost still leaves Goop behind");
+
     Position knockout;
     knockout.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     knockout.add_piece(PieceType::King, Color::Black, Position::square_from_name("b2"));

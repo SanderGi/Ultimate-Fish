@@ -2082,6 +2082,38 @@ class BeliefConstructionTests(unittest.TestCase):
         beliefs.observe_continuation()
         self.assertEqual(beliefs.positions, [after])
 
+    def test_visible_self_death_uses_public_release_action_at_turn_barrier(self):
+        before = (
+            "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+            "king,w,a1;ghost,w,c4;king,b,h10;sludge,b,c5"
+        )
+        after = (
+            "w;hm=0;fm=2;ep=-;cont=0;forced=-1;epv=-1;"
+            "king,w,a1;king,b,h10;goop,b,c5"
+        )
+
+        class CollisionEngine:
+            @staticmethod
+            def legal_moves(position):
+                return ["c5-c4"] if position == before else ["a1-a2"]
+
+            @staticmethod
+            def apply(position, move):
+                self.assertEqual((position, move), (before, "c5-c4"))
+                return after
+
+        beliefs = MODULE.BeliefSet(CollisionEngine(), (before,))
+        beliefs.observe_unlogged_public_action(
+            MODULE.AppEvent("bot_action", "sludge", "c5", "c4")
+        )
+        beliefs.observe_continuation()
+        self.assertEqual(beliefs.positions, [after])
+
+        with self.assertRaisesRegex(ValueError, "non-Ghost"):
+            beliefs.observe_unlogged_public_action(
+                MODULE.AppEvent("bot_action", "ghost", "d6", "d5")
+            )
+
     def test_hidden_ghost_move_ignores_private_release_coordinates(self):
         first = (
             "b;king,w,a1;king,b,h10;"

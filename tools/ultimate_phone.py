@@ -2251,6 +2251,21 @@ class BeliefSet:
             False,
         )
 
+    def observe_unlogged_public_action(self, action: AppEvent) -> None:
+        """Apply a visible non-Ghost action that dies before Move logging."""
+        if (action.kind != "bot_action" or not action.piece or
+                action.piece == "ghost" or not action.source or
+                not action.target or action.source == action.target):
+            raise ValueError(
+                "unlogged public action requires a visible non-Ghost move"
+            )
+        self.observe_move(
+            AppEvent(
+                "move", action.piece, action.source, action.target, action.raw
+            ),
+            False,
+        )
+
     def observe_continuation(self) -> None:
         """Condition ambiguous royal identities on a public continuing game."""
         ongoing = [
@@ -6208,6 +6223,28 @@ class PhoneGame:
                     )
                     self.log(
                         "opponent Parasite possession: "
+                        f"{enemy_bot_action.source}-{enemy_bot_action.target}"
+                    )
+                    self.beliefs.observe_continuation()
+                    enemy_bot_action = None
+                    enemy_attack_target = None
+                    enemy_bomb_died_without_move = False
+                    ghost_became_visible = False
+                    continue
+                if (enemy_bot_action is not None and
+                        enemy_bot_action.piece != "ghost"):
+                    # Some blind collisions kill the visible moving model
+                    # before HasMovedHandler can emit its ordinary record. A
+                    # captured Ranked trace had Sludge c5-c4 collide with our
+                    # known hidden Ghost: both died, then ChangeTurn ended.
+                    # The release action is public for a non-Ghost actor and
+                    # identifies the exact legal engine transition. Never use
+                    # this fallback for a quiet invisible enemy Ghost.
+                    self.beliefs.observe_unlogged_public_action(
+                        enemy_bot_action
+                    )
+                    self.log(
+                        f"opponent unlogged {enemy_bot_action.piece} action: "
                         f"{enemy_bot_action.source}-{enemy_bot_action.target}"
                     )
                     self.beliefs.observe_continuation()
