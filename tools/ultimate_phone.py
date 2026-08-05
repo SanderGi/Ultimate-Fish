@@ -248,6 +248,16 @@ class OpeningTerminal:
     reason: str
 
 
+@dataclass(frozen=True)
+class RankedPlacementResult:
+    """Authoritative result of one live Ranked deployment drag."""
+
+    square: str
+    piece: str
+    local_points: int
+    point_history: tuple[int, ...] = ()
+
+
 def canonical_piece_name(prefab: str) -> str | None:
     """Map base and cosmetic prefab names to one rules-level piece type."""
     normalized = re.sub(r"[^a-z0-9]", "", prefab.lower())
@@ -1428,6 +1438,16 @@ class DraftDeployment:
             )
         self.occupied.update(cells)
         self.team.append((piece, square))
+
+    def release(self, piece: str, square: str) -> None:
+        """Forget one still-unlocked placement removed by a native collision."""
+        try:
+            self.team.remove((piece, square))
+        except ValueError as exc:
+            raise RuntimeError(
+                f"cannot release unreserved deployment {piece}@{square}"
+            ) from exc
+        self.occupied.difference_update(self.cells(piece, square))
 
     def place(self, piece: str) -> str:
         square = self.propose(piece)
@@ -4461,7 +4481,7 @@ class PhoneGame:
 
     def _place_ranked_piece(
         self, piece: str, square: str, local_ivory: bool,
-    ) -> str:
+    ) -> RankedPlacementResult:
         if piece not in self.draft_pots:
             raise RuntimeError(f"no calibrated Ranked pot for {piece}")
         # Ranked calls Board.LoadBoardDraft on the live 8x10 board (unlike the
@@ -4473,25 +4493,76 @@ class PhoneGame:
         # the native placement.  A moderately short gesture is fast while still
         # producing the pointer-enter callback on dense deployment cells.
         self.adb.drag_sync(source, target, 180)
-        try:
-            landed = self.events.wait(
-                ("army_drop", "game_over", "out_of_time"), 0.9
-            )
-        except TimeoutError:
-            if piece == "giant":
+        deadline = time.monotonic() + 1.5
+        last_received = time.monotonic()
+        received = False
+        landed_coordinate: tuple[int, int] | None = None
+        actual_piece: str | None = None
+        point_history: list[int] = []
+        while time.monotonic() < deadline:
+            try:
+                event = self.events.wait(
+                    ("army_drop", "army_piece", "army_points",
+                     "game_over", "out_of_time"),
+                    min(0.18, deadline - time.monotonic()),
+                )
+            except TimeoutError:
+                if received and time.monotonic() - last_received >= 0.18:
+                    break
+                continue
+            if event.kind in ("game_over", "out_of_time"):
+                raise RuntimeError(
+                    f"Ranked draft ended while placing {piece}: {event.kind}"
+                )
+            received = True
+            last_received = time.monotonic()
+            if event.kind == "army_drop" and event.source:
+                x_text, y_text = event.source.split(":", 1)
+                landed_coordinate = int(x_text), int(y_text)
+            elif event.kind == "army_piece":
+                actual_piece = event.piece
+            elif event.kind == "army_points":
+                player1 = int(event.source or -1)
+                player2 = int(event.target or -1)
+                point_history.append(player1 if local_ivory else player2)
+
+        if landed_coordinate is None:
+            if piece == "giant" and point_history:
                 # Giant's recovered override logs no coordinate pair. Its 2x2
-                # footprint is still confirmed by the following point update.
-                return square
-            raise TimeoutError(
-                f"Ranked {piece} drag produced no native landing coordinate"
+                # footprint is still confirmed by the point transition.
+                actual_square = square
+            elif not point_history or point_history[-1] == self.ranked_local_points:
+                raise TimeoutError(
+                    f"Ranked {piece} drag produced no native landing coordinate"
+                )
+            else:
+                raise RuntimeError(
+                    f"Ranked {piece} changed material without a landing coordinate"
+                )
+        else:
+            record = ModelPieceRecord(
+                piece, 1, landed_coordinate[0], landed_coordinate[1]
             )
-        if landed.kind != "army_drop" or landed.source is None:
-            raise RuntimeError(
-                f"Ranked draft ended while placing {piece}: {landed.kind}"
-            )
-        x_text, y_text = landed.source.split(":", 1)
-        record = ModelPieceRecord(piece, 1, int(x_text), int(y_text))
-        return _online_square(record, not local_ivory)
+            actual_square = _online_square(record, not local_ivory)
+
+        final_points = (
+            point_history[-1] if point_history else self.ranked_local_points
+        )
+        observed_added_cost = final_points - min(
+            (self.ranked_local_points, *point_history)
+        )
+        # CopyCat's override can share Giant's blank ArmyMove diagnostic. Use
+        # the transient removal/addition point sequence to retain the requested
+        # identity in that one ambiguous case. Comparing only the net increase
+        # is insufficient when a Giant replaces another pending model.
+        if actual_piece is None or (
+                actual_piece == "giant" and piece == "copycat" and
+                observed_added_cost == PIECE_COST[piece]
+        ):
+            actual_piece = piece
+        return RankedPlacementResult(
+            actual_square, actual_piece, final_points, tuple(point_history)
+        )
 
     def _ranked_committed_points(self, local_ivory: bool) -> tuple[int, int]:
         """Read the final cumulative totals emitted after a committed group."""
@@ -4692,59 +4763,146 @@ class PhoneGame:
         placements = []
         self.events.drain()
         starting_points = self.ranked_local_points
-        # Place the smallest models first. A short Pawn dropped after a Queen
-        # or Dragon can have its pointer-up swallowed by the taller model's
-        # collider. The native draft roster is unordered, so physical ordering
-        # has no rules effect and avoids that destructive interaction.
+        # Place wide linked models first, then taller/high-value models before
+        # short ones. Clearance targeting keeps later short drops away from
+        # their meshes. More importantly, the loop below reconciles any native
+        # replacement instead of abandoning the game and losing on time.
         ordered_choices = sorted(
             enumerate(choices),
-            key=lambda item: (PIECE_COST[item[1]], item[0]),
+            key=lambda item: (
+                item[1] == "giant",
+                item[1] == "copycat",
+                PIECE_COST[item[1]],
+                -item[0],
+            ),
+            reverse=True,
         )
-        for _choice_index, piece in ordered_choices:
-            excluded: set[str] = set()
-            while True:
-                requested = deployment.propose(
-                    piece, excluded, maximize_clearance=True,
+        desired = Counter(choices)
+        ordered_piece_names = [piece for _index, piece in ordered_choices]
+        excluded: dict[str, set[str]] = {
+            piece: set() for piece in desired
+        }
+        placement_deadline = time.monotonic() + 45.0
+
+        def current_roster() -> Counter[str]:
+            return Counter(piece for piece, _square in placements)
+
+        def removed_placements(
+            incoming_piece: str, incoming_square: str, removed_cost: int,
+        ) -> list[tuple[str, str]]:
+            if removed_cost == 0:
+                return []
+            incoming_cells = deployment.cells(incoming_piece, incoming_square)
+            exact: list[tuple[int, int, tuple[tuple[str, str], ...]]] = []
+            for count in range(1, len(placements) + 1):
+                for subset in itertools.combinations(placements, count):
+                    if sum(PIECE_COST[piece] for piece, _square in subset) != removed_cost:
+                        continue
+                    overlap = sum(
+                        len(deployment.cells(piece, square) & incoming_cells)
+                        for piece, square in subset
+                    )
+                    exact.append((overlap, -count, subset))
+            if not exact:
+                raise RuntimeError(
+                    f"native Ranked replacement removed {removed_cost} "
+                    "unreconciled points from the pending group"
                 )
-                before_points = self.ranked_local_points
-                try:
-                    actual = self._place_ranked_piece(
-                        piece, requested, local_ivory,
+            # Native replacement occurs at the reported landing. Prefer the
+            # exact-cost subset occupying that footprint, then the smallest
+            # subset. Equal-cost duplicates are interchangeable for roster
+            # recovery and retain deterministic placement order.
+            return list(max(exact, key=lambda item: (item[0], item[1]))[2])
+
+        while current_roster() != desired:
+            if time.monotonic() >= placement_deadline:
+                # Do not abandon the process and donate a timeout. Keep the
+                # fastest legal recovery running until the native phase itself
+                # acknowledges or terminates.
+                placement_deadline = time.monotonic() + 15.0
+                self.log("Ranked placement recovery is continuing past its soft deadline")
+
+            roster = current_roster()
+            piece = next(
+                candidate for candidate in ordered_piece_names
+                if roster[candidate] < desired[candidate]
+            )
+            extras = Counter(roster)
+            extras.subtract(desired)
+            replace = next(
+                (placement for placement in placements
+                 if extras[placement[0]] > 0),
+                None,
+            )
+            if replace is not None:
+                requested = replace[1]
+                extras[replace[0]] -= 1
+            else:
+                requested = deployment.propose(
+                    piece, excluded[piece], maximize_clearance=True,
+                )
+            before_points = self.ranked_local_points
+            try:
+                result = self._place_ranked_piece(
+                    piece, requested, local_ivory,
+                )
+            except TimeoutError:
+                if replace is None:
+                    excluded[piece].add(requested)
+                self.log(
+                    f"Ranked {piece}@{requested} did not materialize; "
+                    "retrying in-phase"
+                )
+                continue
+
+            local_points = result.local_points
+            if local_points == before_points:
+                if replace is None:
+                    excluded[piece].add(requested)
+                self.log(
+                    f"Ranked {piece}@{requested} did not increase material; "
+                    "retrying in-phase"
+                )
+                continue
+
+            actual_piece = result.piece
+            removed_cost = (
+                before_points + PIECE_COST[actual_piece] - local_points
+            )
+            if removed_cost < 0:
+                raise RuntimeError(
+                    f"Ranked {piece}@{requested} produced an impossible "
+                    f"material increase to {local_points}"
+                )
+            removed = removed_placements(
+                actual_piece, result.square, removed_cost
+            )
+            for removed_piece, removed_square in removed:
+                placements.remove((removed_piece, removed_square))
+                deployment.release(removed_piece, removed_square)
+
+            deployment.reserve(actual_piece, result.square)
+            placements.append((actual_piece, result.square))
+            self.ranked_local_points = local_points
+            if removed:
+                self.log(
+                    f"recovered Ranked replacement at {result.square}: "
+                    + " ".join(
+                        f"{removed_piece}@{removed_square}"
+                        for removed_piece, removed_square in removed
                     )
-                    local_points, _opponent_points = self._ranked_committed_points(
-                        local_ivory
-                    )
-                except TimeoutError:
-                    excluded.add(requested)
-                    self.log(
-                        f"Ranked {piece}@{requested} did not materialize; "
-                        "retrying another legal cell"
-                    )
-                    continue
-                expected_points = before_points + PIECE_COST[piece]
-                if local_points == before_points:
-                    excluded.add(requested)
-                    self.log(
-                        f"Ranked {piece}@{requested} did not increase material; "
-                        "retrying another legal cell"
-                    )
-                    continue
-                if local_points != expected_points:
-                    raise RuntimeError(
-                        f"Ranked {piece}@{requested} changed local material "
-                        f"from {before_points} to {local_points}; expected "
-                        f"exactly {expected_points}. The pending board was "
-                        "mutated by an intercepted drop"
-                    )
-                deployment.reserve(piece, actual)
-                self.ranked_local_points = local_points
-                placements.append((piece, actual))
-                if actual != requested:
-                    self.log(
-                        f"native Ranked landing corrected {piece}: "
-                        f"{requested} -> {actual}"
-                    )
-                break
+                    + f" -> {actual_piece}; re-adding the missing roster"
+                )
+            elif actual_piece != piece:
+                self.log(
+                    f"Ranked {piece} pot produced {actual_piece}@{result.square}; "
+                    "reconciling the pending roster in-phase"
+                )
+            elif result.square != requested:
+                self.log(
+                    f"native Ranked landing corrected {piece}: "
+                    f"{requested} -> {result.square}"
+                )
         expected_points = starting_points + sum(PIECE_COST[piece] for piece in choices)
         if self.ranked_local_points != expected_points:
             raise RuntimeError(

@@ -516,7 +516,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         game._ban_ranked_piece("prince")
         self.assertEqual(game.adb.taps, [(941, 1105), (157, 1967)])
 
-    def test_ranked_pick_places_small_models_first_and_checks_exact_points(self):
+    def test_ranked_pick_places_wide_and_high_value_models_first(self):
         class PickEvents:
             @staticmethod
             def drain():
@@ -535,12 +535,10 @@ class RankedDraftControllerTests(unittest.TestCase):
 
         def place(piece, square, _local_ivory):
             placed.append((piece, square))
-            return square
+            points = game.ranked_local_points + MODULE.PIECE_COST[piece]
+            return MODULE.RankedPlacementResult(square, piece, points, (points,))
 
         game._place_ranked_piece = place
-        game._ranked_committed_points = Mock(side_effect=(
-            (3, 0), (8, 0), (23, 0), (40, 0),
-        ))
         game._tap_draft_control = lambda _labels, _timeout: "LOCK"
 
         game._commit_ranked_local_pick(
@@ -550,32 +548,59 @@ class RankedDraftControllerTests(unittest.TestCase):
 
         self.assertEqual(
             [piece for piece, _square in placed],
-            ["pawn", "copycat", "dragon", "queen"],
+            ["copycat", "queen", "dragon", "pawn"],
         )
         self.assertEqual(game.ranked_local_points, 40)
 
-    def test_ranked_pick_rejects_intercepted_material_mutation(self):
+    def test_ranked_pick_repairs_intercepted_material_before_locking(self):
         class PickEvents:
             @staticmethod
             def drain():
                 return None
+
+            @staticmethod
+            def wait(_kinds, _timeout):
+                return MODULE.AppEvent("draft_pick_committed")
 
         game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
         game.events = PickEvents()
         game.ranked_local_points = 0
         game.verbose = False
         game.log = lambda _message: None
-        game._place_ranked_piece = (
-            lambda _piece, square, _local_ivory: square
-        )
-        # Pawn is accepted at +3. The following Queen should add 17, but the
-        # captured failure removed other pending material and returned only 6.
-        game._ranked_committed_points = Mock(side_effect=((3, 0), (6, 0)))
+        game._tap_draft_control = lambda _labels, _timeout: "LOCK"
+        calls = []
 
-        with self.assertRaisesRegex(RuntimeError, "intercepted drop"):
-            game._commit_ranked_local_pick(
-                ("queen", "pawn"), MODULE.DraftDeployment(), 6, True,
-            )
+        def place(piece, square, _local_ivory):
+            calls.append((piece, square))
+            if len(calls) == 1:
+                return MODULE.RankedPlacementResult(square, "queen", 17, (17,))
+            if len(calls) == 2:
+                # The Pawn collider lands on and replaces the pending Queen.
+                return MODULE.RankedPlacementResult(
+                    calls[0][1], "pawn", 3, (0, 3),
+                )
+            if len(calls) == 3:
+                # Recovery deliberately replaces the extra Pawn with Queen.
+                return MODULE.RankedPlacementResult(
+                    calls[0][1], "queen", 17, (0, 17),
+                )
+            return MODULE.RankedPlacementResult(square, "pawn", 20, (20,))
+
+        game._place_ranked_piece = place
+        deployment = MODULE.DraftDeployment()
+        game._commit_ranked_local_pick(
+            ("queen", "pawn"), deployment, 6, True,
+        )
+
+        self.assertEqual([piece for piece, _square in calls], [
+            "queen", "pawn", "queen", "pawn",
+        ])
+        self.assertEqual(MODULE.Counter(deployment.team), MODULE.Counter({
+            ("king", "a1"): 1,
+            ("queen", calls[0][1]): 1,
+            ("pawn", calls[3][1]): 1,
+        }))
+        self.assertEqual(game.ranked_local_points, 20)
 
     def test_actual_ban_callbacks_drive_all_twelve_ranked_phases(self):
         ban = "I/Unity: NetworkManager:OnBanCharacter(Type)"
@@ -625,14 +650,15 @@ class RankedDraftControllerTests(unittest.TestCase):
         game._ranked_is_ivory = lambda: False
         game._ban_ranked_piece = lambda _piece, _timeout=3.0: None
         game._tap_draft_control = lambda _labels, _timeout=4.0: "LOCK"
-        game._place_ranked_piece = lambda _piece, square, _ivory: square
+        def place(piece, square, _ivory):
+            points = game.ranked_local_points + MODULE.PIECE_COST[piece]
+            return MODULE.RankedPlacementResult(square, piece, points, (points,))
+
+        game._place_ranked_piece = place
         game._ranked_committed_points = Mock(side_effect=(
             (0, 27),       # remote opening group
-            (10, 27), (25, 27),  # local Jester + Dragon
             (25, 30),      # remote middle group
-            (40, 30),      # local Penguin
             (40, 100),     # remote final group
-            (53, 100),     # local Rook
         ))
         game.probe_enemy = Mock()
 

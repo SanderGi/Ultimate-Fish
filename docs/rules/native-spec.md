@@ -90,19 +90,21 @@ phase-zero Ban completed during pot calibration is replayed into the engine
 before the twelve-window loop continues.
 
 Local Ranked placement is likewise acknowledged rather than assumed. Each pot
-drag must produce the native `ArmyMove` coordinate and an increased cumulative
-`GetPoints` total before the cell is reserved in the engine draft. This matters
-for wide colliders such as CopyCat, which can land one file inward and create
-its mirror there, or can be despawned when that measured footprint collides.
-Pending models are placed from lowest to highest cost and candidate cells are
-ranked by clearance from the already occupied deployment. This prevents a
-short model's pointer-up from being intercepted by a previously placed tall
-mesh. Every accepted placement must increase material by exactly that
-character's recovered static cost; a decrease or other delta is evidence that
-the drop despawned or replaced a different pending character and fails before
-the controller can compound the mutation. The committed total must equal the
-engine's expected roster cost before the controller presses the icon-only green
-Lock checkmark.
+drag collects the native landing coordinate, `ArmyMove` identity, and complete
+cumulative `GetPoints` transition before the cell is reserved in the engine
+draft. This matters for wide colliders such as CopyCat, which can land one file
+inward and create its mirror there. A live Prince drop aimed at a clear `a3`
+was intercepted at `c3`, despawned the pending Ghost there, and produced the
+authoritative point sequence 22 -> 7 -> 25. Pending wide and high-value models
+are now placed first, and every new cell is ranked by clearance. More
+importantly, a replacement no longer aborts the controller: the removed cost
+and reported landing identify the displaced pending model(s), their cells are
+released, the actual landing is reserved, and the missing desired roster is
+re-added during the same pick window. An accidentally selected extra type is
+similarly replaced in place before remaining missing models move to clear
+cells. Earlier committed groups are never touched. The cumulative total and
+exact pending roster must both equal the engine's desired pick before the
+controller presses the icon-only green Lock checkmark.
 
 After selecting a Ban pot, the current Ranked UI exposes the actionable large
 red Ban button in the lower-left character inspector. The blue top-row `BAN`
