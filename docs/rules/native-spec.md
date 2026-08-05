@@ -72,6 +72,9 @@ public cells and inferred Ghosts reconcile exactly with the announced material;
 the opening candidate must also contain a royal. Ranked automation fails closed
 if that public journal is absent and never falls back to tapping cells obscured
 by character pots.
+The final group may legally stop below 100. Ranked initialization therefore
+uses the last public cumulative opponent total from `GetPoints`, not the global
+100-point ceiling, when reconstructing hidden Ghost count and royal hypotheses.
 `OnBanCharacter` is public. Its subsequent native
 `TEXURE ASSIGNED TO <piece>` diagnostic identifies the exact newly locked pot,
 so the controller applies that public ban without overlapping-pot image

@@ -2972,6 +2972,7 @@ class PhoneGame:
         self.ranked_enemy_king_candidates: set[str] | None = None
         self.ranked_enemy_snapshots: list[tuple[tuple[str, str], ...]] = []
         self.ranked_local_points = 0
+        self.ranked_opponent_points: int | None = None
         self.army_drag_offsets: dict[tuple[str, str], tuple[float, float]] = {}
         self.army_pot_slots: dict[str, str] = {}
         self.army_verified_pre_ready = False
@@ -4163,6 +4164,7 @@ class PhoneGame:
         self.ranked_enemy_king_candidates = None
         self.ranked_enemy_snapshots.clear()
         self.ranked_local_points = 0
+        self.ranked_opponent_points = None
         cached_accept = None
         match_found = False
         for attempt in itertools.count(1):
@@ -4493,6 +4495,7 @@ class PhoneGame:
         """Apply the newly public, locked opponent group to draft knowledge."""
         generation, _complete, _spawns = self.events.ranked_spawn_snapshot()
         _local_points, opponent_points = self._ranked_committed_points(local_ivory)
+        self.ranked_opponent_points = opponent_points
         last_error: RuntimeError | None = None
         group_public: list[tuple[str, str]] | None = None
         deadline = time.monotonic() + 2.0
@@ -5417,10 +5420,12 @@ class PhoneGame:
         """Initialize from the final public locked-group journal without taps."""
         if not self.ranked_enemy_snapshots:
             raise RuntimeError("Ranked draft has no public opponent snapshot")
+        if self.ranked_opponent_points is None:
+            raise RuntimeError("Ranked draft has no public opponent material total")
         positions = initial_beliefs(
             self.own_team,
             self.ranked_enemy_snapshots[-1],
-            100,
+            self.ranked_opponent_points,
             self.belief_limit,
             side,
             enemy_king_candidates=self.ranked_enemy_king_candidates,

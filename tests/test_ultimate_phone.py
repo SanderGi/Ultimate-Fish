@@ -733,6 +733,24 @@ class RankedDraftControllerTests(unittest.TestCase):
         )
         self.assertEqual(game.ranked_enemy_king_candidates, {"a10", "h10"})
 
+    def test_ranked_initialization_uses_actual_final_opponent_material(self):
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.own_team = [("king", "a1")]
+        game.ranked_enemy_snapshots = [(('king', 'a10'), ('mage', 'b10'))]
+        game.ranked_enemy_king_candidates = {"a10"}
+        game.ranked_opponent_points = 88
+        game.belief_limit = 64
+        game.initialize_position = Mock()
+        game.log = lambda _message: None
+
+        with patch.object(
+            MODULE, "initial_beliefs", return_value=["position"]
+        ) as beliefs:
+            game.initialize_ranked_public("w")
+
+        self.assertEqual(beliefs.call_args.args[2], 88)
+        game.initialize_position.assert_called_once_with(["position"])
+
 
 class VisionTests(unittest.TestCase):
     def test_opening_emote_detector_does_not_sum_white_piece_skins(self):
