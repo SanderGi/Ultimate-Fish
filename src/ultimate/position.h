@@ -178,6 +178,8 @@ class Position {
 
     static const PieceInfo& info(PieceType type);
     static int material_value(PieceType type);
+    [[nodiscard]] int material_points(int id) const;
+    [[nodiscard]] int material_points(Color color) const;
     static std::optional<PieceType> type_from_name(std::string_view name);
     static std::string_view type_name(PieceType type);
     static int square_from_name(std::string_view name);
@@ -185,11 +187,15 @@ class Position {
 
    private:
     friend struct Undo;
+    friend class Search;
 
     static constexpr std::size_t index(Color color) { return static_cast<std::size_t>(color); }
     static constexpr std::size_t index(PieceType type) { return static_cast<std::size_t>(type); }
 
     [[nodiscard]] std::vector<Move> moves_for(int id, bool attacksOnly = false) const;
+    [[nodiscard]] std::vector<Move> pseudo_legal_moves() const;
+    [[nodiscard]] bool real_king_threatened(Color color) const;
+    bool make_move_unchecked(const Move& move, Undo& undo);
     int add_piece_internal(PieceType type, Color color, int square, bool generateCompanions,
                            bool onBoard = true);
     void add_step_moves(std::vector<Move>& moves, int id, const int (*directions)[2], int count,
@@ -214,9 +220,12 @@ class Position {
     void erase_from_board(int id);
     void capture_piece(int victim, int attacker, const Move& move);
     void explode_at(int center, int attacker);
+    void relocate_giant(int id, int destination, bool markMoved = true);
     [[nodiscard]] int attached_angel(int host) const;
     void sacrifice_angel(int angel, int host);
-    void freeze_neighbors();
+    void clear_penguin_freeze(int penguin);
+    void apply_penguin_freeze(int penguin);
+    void detach_from_penguin_freezes(int target);
     void reveal_ghosts_near(int square, Color royalColor);
     [[nodiscard]] bool ghost_near_enemy_royal(int square, Color ghostColor) const;
     void advance_minions(Color color);

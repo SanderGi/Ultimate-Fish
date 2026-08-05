@@ -17,9 +17,11 @@ test("server-renders the Ultimate Fish workbench", async () => {
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
   const html = await response.text();
-  assert.match(html, /<title>Ultimate Fish Workbench<\/title>/i);
+  assert.match(html, /<title>Ultimate Fish<\/title>/i);
   assert.match(html, /Ultimate Fish/);
+  assert.match(html, /<img[^>]+src="\/ultimate-fish-logo\.png"/i);
   assert.match(html, /Board tools/);
-  assert.match(html, /Start Ultimate analysis/);
+  assert.ok(html.indexOf("Side to move") < html.indexOf("Place as"));
+  assert.match(html, /Start Ultimate Analysis/);
   assert.doesNotMatch(html, /Your site is taking shape|Building your site|react-loading-skeleton/);
 });

@@ -32,13 +32,46 @@ The `Character.value` initializer is a 30-element integer array, in exact
 This is now the engine/UI draft-cost table. Generated forms retain their
 serialized entries but are not selectable.
 
+Picks are deployed during each pick window, not in a separate post-draft
+step. Native `GameMenu.LockinPicks` scans the live board for newly placed
+characters, validates their cumulative point spend, clears their temporary
+pick markers, and only then advances `GameManager.ChangeTurnDraft`. The local
+UI mirrors that sequence and keeps the computer's home-zone arrangement
+private until the completed armies are transferred to Play.
+
+The shipping Ranked scene constructs all selectable pots from character
+prefabs, stably sorts them by the native `Character.value` table, and traverses
+a live 8x3 top/middle/bottom layout. The verified equal-cost order is
+Dragon, Ghost, Bomb, Penguin, Parasite, Devil, Berserker for the seven 15-point
+pots. `OnSpawnPieceGroup` delivers each newly committed group to the app and
+then advances the phase. Phone automation may buffer these records, but it does
+not inspect or apply them until the public board reveal. At that boundary,
+enemy Ghost coordinates are erased and concrete King/Jester identities are
+converted to royal hypotheses before any UPN reaches Ultimate Fish.
+`OnBanCharacter` is public, so the controller identifies the new rendered pot
+lock and applies that exact ban to its draft state.
+
+`OnStartGameResponse.model_Pieces` and replay `initState` share the authoritative
+`Model_Piece` schema: type, team, x/y, skin, action, cooldown, freeze count,
+movement-turn state, and army flag. The phone controller validates that schema,
+ignores cosmetic skins, retains exact local records, and reconstructs hidden
+enemy beliefs behind a dedicated sanitizer. The stock Android 5.73 build's
+logcat currently emits only `OnStartGame MESSAGE`, not the serialized response;
+therefore normal CPU, Unranked, and Ranked automation uses the public tap probe.
+That probe requires unanimous occupancy across three unobscured frames, requires
+one consistent native piece identity across an adaptive 3×3 hit probe, rejects
+stable outline spill only after all nine points select nothing, and fails before
+moving on singular or conflicting evidence. The tap-free parser
+is dormant unless an operator explicitly supplies `--structured-state` with a
+compatible diagnostic/replay source.
+
 ## Board, deployment, and analysis state
 
 `SimulatedBoard` stores an 8x10 array. Native army save/load traverses an 8x3
-home zone for each side. The UI deployment step therefore consumes the finite
-drafted roster into ranks 1-3 for Ivory and ranks 8-10 for Onyx. A Giant anchor
-must leave its entire 2x2 footprint inside that zone; placing a CopyCat also
-requires its mirrored clone square to be free.
+home zone for each side. Each pick window therefore consumes its finite new
+roster additions into ranks 1-3 for Ivory and ranks 8-10 for Onyx. A Giant
+anchor must leave its entire 2x2 footprint inside that zone; placing a CopyCat
+also requires its mirrored clone square to be free.
 
 Ultimate Position Notation (UPN) records every search-relevant field: side to
 move, half/full move counters, en-passant square and exact victim, forced
@@ -49,13 +82,18 @@ and remaps every relationship so captures cannot corrupt a round trip.
 ## Source-backed interactions implemented
 
 - A bomb's capture or death invokes its radius-one explosion and removes the
-  bomb, the other combatant, and every adjacent character.
+  bomb and every character in that area. Ordinary attackers land inside the
+  blast and die; a distant Sniper remains on its origin and survives. Bombs
+  caught in the area trigger their own chained radius-one explosions.
 - Ninja destinations are generated independently of intervening occupancy for
   each configured direction and distance.
 - A prince may capture with its first one-square move. An empty first step is
-  only generated as the first half of a queued second attack.
-- Checker jumps are forced, can queue further jumps, and promote at the far
-  rank.
+  generated as the first half of a queued second one-square move, which may be
+  quiet or capturing; only the completed pair ends the side's turn.
+- If a Checker has a jump, that Checker offers jumps instead of quiet steps,
+  but it does not suppress moves by the side's other characters. Once the
+  first jump is chosen, further jumps by that Checker are forced. Checkers
+  promote at the far rank.
 - Sludge creates goop on its origin and, for a two-square move, the intervening
   square.
 - Goop has no moves. When a melee character other than a bomb attacks it, goop
@@ -84,8 +122,10 @@ and remaps every relationship so captures cannot corrupt a round trip.
   Giant translates its anchor so the selected footprint square lands there;
   native forced-Giant movement knocks out allies and enemies in all four
   destination cells.
-- Penguin/`SimulatedFreeze` freezes all eight adjacent non-Penguin characters,
-  with counts stacking across Penguins. The action byte encodes the currently
+- Penguin/`SimulatedFreeze` steps to any adjacent empty square but cannot
+  attack. It has no aura merely from deployment: after the Penguin moves, it
+  freezes the adjacent non-Penguin characters until its next move or death,
+  with counts stacking across Penguins. The action byte encodes that currently
   frozen direction set for serialization.
 - A Ghost is revealed by attacking or by enemy King/Jester adjacency. A quiet
   Ghost move away from those royals makes it invisible again.
@@ -107,9 +147,58 @@ and remaps every relationship so captures cannot corrupt a round trip.
   minor/color-bound/support combinations. With both real kings present and
   neither team sufficient, the result is a draw.
 
-## Open conformance work
+## Conformance status
 
-Information-set search for hidden Ghosts, Fisherman interactions with attached
-Angels, the remaining deployment validation branches, and the remaining
-cross-piece interaction matrix still need extracted fixtures before the ruleset
-can be called 100% complete.
+Every rule branch recovered from the 5.731 simulation classes is now represented
+in the engine and reference suite. The final gap pass added the native
+Berserker Chebyshev leap/growth behavior, ordinary-move exclusion for invisible
+Ghost squares, Mage-triggered pawn/checker promotion, Fisherman relocation of
+Angel-protected hosts, dynamic Berserker material, and the 24-cell deployment
+limit with correct Giant/CopyCat footprints.
+
+Hidden information follows the shipping simulator rather than a chess-style
+determinization: the position retains an invisible Ghost's coordinate, while
+move generation applies the native blind-square, ray pass-through, pawn
+collision, royal reveal, and Sniper/Fisherman exceptions. Play mode additionally
+conceals enemy Ghost rendering, inspector data, capture-ring styling, invisible
+Ghost move coordinates, and enemy Jester identity. Analysis mode deliberately
+shows that state with a dashed translucent treatment.
+
+Engine play represents public state as an information set of those concrete
+positions. The native `belief clear` / `belief add <upn>` / `belief go` protocol
+intersects legal action notation across every retained belief. It audits every
+common root at depth two across the complete set, preserving immediate hidden-
+Ghost recaptures even outside the deep sample, and then deep-searches a robust
+shortlist across up to eight beliefs in parallel. The sample begins evenly
+spaced, and each root's worst shallow belief replaces one representative when
+necessary. Root utility is maximin, with complete-set shallow safety and mean
+score as deterministic tie-breaks. The phone controller
+only supplies public observations and verifies the returned root; it contains
+no piece-value, Ghost-adjacency, plurality, or repetition move override.
+
+A public continuing-turn event removes royal hypotheses in which the captured
+silhouette was the real King. A quiet invisible Ghost move expands over all
+legal hidden endpoints, a public attack applies its exact revealed source and
+destination, and `MakeVis` uses only the newly visible destination while
+rehydrating every adjacent legal hidden origin. Private release-log coordinates
+never participate in those transitions.
+
+The executable fixtures cover movement, queued actions, automatic turn effects,
+promotion, cooldown, freeze stacking, visibility, linked death/relocation,
+multi-square and mirrored occupancy, area effects, possession/retaliation,
+en-passant, victory/draw outcomes, UPN round trips, every ranked draft window,
+AI draft completion, and deployment capacity. Address/Undefined sanitizers pass
+the same suite.
+
+Live Android differential play additionally confirmed unconditional quiet
+Prince first steps followed by quiet or capturing second steps, Bomb removal of
+both combatants before the radius-one blast, adjacent Giant footprint tiling,
+Mage stay-put swap diagnostics, cosmetic prefab aliases, concealed/revealed
+Ghost transitions, and King/Jester ambiguity. A duplicate-heavy six-Rook army
+also demonstrated the shipping counter's bounded dynamic adjustment: its
+static visible-plus-Ghost values total 102 while the public counter reads 100.
+The phone controller reconciles only the uniquely determined Ghost count within
+that observed two-point adjustment and rejects larger mismatches.
+
+There is no known source-level or live differential rules gap in the recovered
+5.731 ledger.

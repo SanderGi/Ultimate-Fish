@@ -1,17 +1,12 @@
+<p align="center">
+  <img src="ui/public/ultimate-fish-logo.png" alt="Ultimate Fish Logo" width="200">
+</p>
+
 # Ultimate Fish
 
-Ultimate Fish is a Fairy-Stockfish fork targeting the rules of Chess Ultimate
-5.731, including its drafting phase, custom-position analysis, and a local Mac
-play/analysis interface. Rule fidelity is the first release gate: behavior is
-implemented only after it is verified against the recovered Android game logic
-and recorded as a conformance fixture.
-
-Current status and reproducibility notes:
-
-- [Rule recovery and conformance](docs/rules/README.md)
-- [APK integrity and reverse-engineering notes](docs/reverse-engineering.md)
-- [Upstream engine baseline](docs/benchmarks/baseline.md)
-- Local interface source in [`ui`](ui)
+Ultimate Fish is a Fairy-Stockfish fork targeting the rules of the latest version of Chess Ultimate
+(currently version 5.731), including its drafting phase and a local Mac
+play/analysis interface.
 
 ## Build and run on macOS
 
@@ -37,11 +32,80 @@ the engine, analyze/edit lossless UPN positions, and run the recovered
 twelve-window draft. Special move notation uses `~` (Mage swap), `@` (Devil
 spawn), `x` (Sniper shot), `!` (Fisherman pull), and `&` (Angel link).
 
+<p align="center">
+  <img src="engine-ui.png" alt="Ultimate Fish Logo" style="max-height: 60vh">
+</p>
+
 Use `tools/benchmark_ultimate.sh` for deterministic perft/search checks and
 `tools/selfplay_ultimate.py CANDIDATE BASELINE` for alternating-color matches
-between two revisions. Native conformance coverage and the unresolved edge
-cases are tracked in [`docs/rules/native-spec.md`](docs/rules/native-spec.md);
-the project does not yet claim 100% rule fidelity.
+between two revisions. Native conformance coverage is tracked in
+[`docs/rules/native-spec.md`](docs/rules/native-spec.md). All branches recovered
+from the 5.731 native simulation are implemented and covered, and the rules
+have also been differentially exercised against the shipping app on a
+compatible 32-bit ARM Android device.
+
+If you don't want the UI, you can drop the Node.js requirement and npm commands and instead use the CLI, e.g., `printf '%s\n' 'position upn w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,b,h10,0,0,0,0,0,1,-1,1,-1,0;king,w,a1,0,0,0,0,0,1,-1,1,-1,0;giant,w,f6,0,0,0,0,0,1,-1,1,-1,0;giant,w,a4,0,0,0,0,1,1,-1,1,-1,0' 'go depth 10' quit | ./src/ultimatefish`.
+
+## Android app controller
+
+[`tools/ultimate_phone.py`](tools/ultimate_phone.py) is a fast, deterministic
+ADB controller for runtime conformance and strength testing against the native
+app. It uses a persistent local Ultimate Fish process for every decision (no
+LLM or other models used for control, it is fully deterministic). Stock online play uses a public-board tap probe:
+three unobscured frames must unanimously agree on rendered occupancy, every occupied cell
+must return one unambiguous native prefab identity across an adaptive 3×3 hit probe, and
+the public material counter must stabilize across three reads. A validated
+`OnStartGameResponse.model_Pieces`/replay-state sanitizer remains available only
+behind the experimental `--structured-state` switch; stock Android 5.73 logcat
+prints the callback marker but not its serialized response. Native logs then
+synchronize completed selections, actions, animations, and turns so the
+controller does not wait on screenshots between moves.
+
+Release diagnostics expose concrete King/Jester identities and invisible Ghost
+coordinates. The controller deliberately masks both: it enumerates bounded
+public-information beliefs, rehydrates sampled-out alternatives whenever a
+Ghost source/destination becomes public, and hides quiet Ghost endpoints. Ultimate Fish intersects
+legal roots across the complete set, shallow-audits every common root in every
+belief, then deep-searches the robust shortlist in parallel. Native lifecycle events make queueing,
+board load, actions, queued Prince/Checker continuations, Mage/Devil/Sniper
+specials, and Bomb detonations independent of screenshot timing.
+
+With USB debugging enabled and the app already installed:
+
+```bash
+# Start and play repeated Very Hard CPU games at depth 6.
+python3 tools/ultimate_phone.py cpu --device SERIAL --depth 6 --games 3
+
+# Join the full Unranked pool and stay queued until a match is available.
+python3 tools/ultimate_phone.py unranked --device SERIAL --depth 6
+
+# Enter Ranked, automate all twelve public draft windows, then play at depth 7.
+# The revealed armies are verified through the same public tap probe.
+python3 tools/ultimate_phone.py ranked --device SERIAL --depth 7
+
+# Repeat Unranked autonomously and spend one earned character key per result.
+# The guarded shop path never selects gems or cash offers.
+python3 tools/ultimate_phone.py farm --device SERIAL --depth 6 --games 8
+
+# Spend earned character keys only. This path never selects gems or cash.
+python3 tools/ultimate_phone.py unlock --device SERIAL --keys 1
+```
+
+The Python recognition, privacy, and protocol suite is in
+[`tests/test_ultimate_phone.py`](tests/test_ultimate_phone.py).
+
+## Rule Adherance
+
+Priority number one is rule fidelity with the Ultimate Chess app. Behavior is
+implemented only after it is verified against the recovered Android game logic
+and recorded as a conformance fixture.
+
+Current status and reproducibility notes:
+
+- [Rule recovery and conformance](docs/rules/README.md)
+- [APK integrity and reverse-engineering notes](docs/reverse-engineering.md)
+- [Upstream engine baseline](docs/benchmarks/baseline.md)
+- Local interface source in [`ui`](ui)
 
 The original Fairy-Stockfish documentation follows.
 

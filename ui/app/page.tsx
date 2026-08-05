@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { UltimateWorkbench } from "./UltimateWorkbench";
 
 export const metadata: Metadata = {
-  title: "Ultimate Fish Workbench",
+  title: "Ultimate Fish",
   description:
     "Build a team, edit Chess Ultimate positions, and analyze with Ultimate Fish.",
   other: {

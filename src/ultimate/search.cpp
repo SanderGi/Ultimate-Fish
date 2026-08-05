@@ -7,7 +7,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <future>
 #include <limits>
+#include <numeric>
+#include <set>
 
 namespace Stockfish::Ultimate {
 namespace {
@@ -34,6 +37,21 @@ int score_from_tt(int score, int ply) {
     if (score <= -MateThreshold)
         return score + ply;
     return score;
+}
+
+bool is_forcing_move(const Position& position, const Move& move) {
+    if (position.is_capture(move))
+        return true;
+    if (move.kind == MoveKind::Pull) {
+        const int target = position.piece_on(move.to);
+        const int actor = position.piece_on(move.from);
+        return target != Position::NoPiece && actor != Position::NoPiece &&
+               position.piece(target).color != position.piece(actor).color;
+    }
+    // A Mage swap with a Giant delegates to the Giant's forced relocation
+    // routine and can knock out several characters on either team.
+    return move.kind == MoveKind::Swap && move.auxiliary < position.piece_count() &&
+           position.piece(move.auxiliary).type == PieceType::Giant;
 }
 
 }  // namespace
@@ -79,7 +97,12 @@ bool Search::stopped() {
         return true;
     if (limits_.nodes && nodes_ >= limits_.nodes)
         return stop_ = true;
-    if (limits_.moveTime.count() && (nodes_ & 1023) == 0 &&
+    // Ultimate nodes are substantially more expensive than orthodox chess
+    // nodes because move legality can simulate Bomb blasts, Giant footprints,
+    // and royal survival. Checking only every 1024 nodes overshot a 3-second
+    // phone budget by almost two seconds in a measured Unranked position.
+    // A 64-node cadence keeps the cutoff tight with negligible clock overhead.
+    if (limits_.moveTime.count() && (nodes_ & 63) == 0 &&
         std::chrono::steady_clock::now() - start_ >= limits_.moveTime)
         return stop_ = true;
     return false;
@@ -113,6 +136,10 @@ int Search::move_score(const Position& position, const Move& move, const Move* t
         score += 80'000 + piece_order_value(move.promotion);
     if (move.kind == MoveKind::Shoot)
         score += 90'000;
+    if (move.kind == MoveKind::Pull)
+        score += 8'000;
+    if (move.kind == MoveKind::Swap)
+        score += 6'000;
     if (move.kind == MoveKind::Link || move.kind == MoveKind::Spawn)
         score += 2'000;
     const int attacker = position.piece_on(move.from);
@@ -130,12 +157,13 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
     ++nodes_;
     if (stopped())
         return position.evaluate();
-    if (position.game_over()) {
-        const auto winner = position.winner();
-        if (!winner)
-            return 0;
-        return *winner == position.side_to_move() ? Mate - ply : -Mate + ply;
-    }
+    const Color side = position.side_to_move();
+    const bool ownKing = position.has_real_king(side);
+    const bool enemyKing = position.has_real_king(~side);
+    if (!ownKing || !enemyKing)
+        return ownKing == enemyKing ? 0 : ownKing ? Mate - ply : -Mate + ply;
+    if (!position.is_checkmate_possible())
+        return 0;
 
     // A Checker jump or Prince follow-up is not optional. Likewise, when any
     // Checker has a capture the native rules suppress every quiet action. Do
@@ -151,9 +179,11 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
     }
 
     auto moves = position.legal_moves();
+    if (moves.empty())
+        return position.real_king_threatened(side) ? -Mate + ply : 0;
     if (!forced)
         moves.erase(std::remove_if(moves.begin(), moves.end(), [&position](const Move& move) {
-                        return !position.is_capture(move);
+                        return !is_forcing_move(position, move);
                     }), moves.end());
     if (moves.empty())
         return forced ? position.evaluate() : alpha;
@@ -164,7 +194,9 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
     for (const Move& move : moves) {
         const Color before = position.side_to_move();
         Undo undo;
-        if (!position.make_move(move, undo))
+        // `moves` came from legal_moves(), so validating it again would
+        // regenerate and royal-check the complete sibling list at every node.
+        if (!position.make_move_unchecked(move, undo))
             continue;
         const bool sameSide = position.side_to_move() == before;
         const int score = sameSide ? quiescence(position, alpha, beta, ply + 1)
@@ -184,12 +216,13 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
     pv.clear();
     if (stopped())
         return position.evaluate();
-    if (position.game_over()) {
-        const auto winner = position.winner();
-        if (!winner)
-            return 0;
-        return *winner == position.side_to_move() ? Mate - ply : -Mate + ply;
-    }
+    const Color side = position.side_to_move();
+    const bool ownKing = position.has_real_king(side);
+    const bool enemyKing = position.has_real_king(~side);
+    if (!ownKing || !enemyKing)
+        return ownKing == enemyKing ? 0 : ownKing ? Mate - ply : -Mate + ply;
+    if (!position.is_checkmate_possible())
+        return 0;
     if (depth <= 0)
         return quiescence(position, alpha, beta, ply);
 
@@ -197,9 +230,10 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
     const int originalAlpha = alpha;
     const std::uint64_t key = position.key();
     Entry* entry = find_entry(key);
+    const bool restrictedRoot = ply == 0 && !rootMoves_.empty();
     Move ttMove{};
     const Move* ttMovePtr = nullptr;
-    if (entry) {
+    if (entry && !restrictedRoot) {
         ttMove = entry->move;
         ttMovePtr = &ttMove;
         if (entry->depth >= depth) {
@@ -220,8 +254,12 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
     }
 
     auto moves = position.legal_moves();
+    if (restrictedRoot)
+        moves.erase(std::remove_if(moves.begin(), moves.end(), [this](const Move& move) {
+            return std::find(rootMoves_.begin(), rootMoves_.end(), move) == rootMoves_.end();
+        }), moves.end());
     if (moves.empty())
-        return position.evaluate();
+        return position.real_king_threatened(side) ? -Mate + ply : 0;
     std::stable_sort(moves.begin(), moves.end(), [this, &position, ttMovePtr, ply](const Move& lhs,
                                                                              const Move& rhs) {
         return move_score(position, lhs, ttMovePtr, ply) > move_score(position, rhs, ttMovePtr, ply);
@@ -233,10 +271,15 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
     int moveNumber = 0;
     for (const Move& move : moves) {
         const Color before = position.side_to_move();
-        const bool quiet = !position.is_capture(move);
+        // Special actions can relocate multiple pieces, create material, or
+        // trigger a Giant collision. Treat only ordinary non-captures as LMR
+        // candidates; reducing those actions was a large tactical blind spot.
+        const bool quiet = move.kind == MoveKind::Normal && !position.is_capture(move);
         const int attacker = position.piece_on(move.from);
         Undo undo;
-        if (!position.make_move(move, undo))
+        // Search only iterates the already validated legal list. Applying the
+        // trusted move directly avoids a quadratic duplicate legality pass.
+        if (!position.make_move_unchecked(move, undo))
             continue;
         const bool sameSide = position.side_to_move() == before;
         const int nextDepth = depth - (sameSide ? 0 : 1);
@@ -282,7 +325,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
         }
     }
 
-    if (!stop_ && bestScore != -Infinity &&
+    if (!stop_ && !restrictedRoot && bestScore != -Infinity &&
         (!entry || depth >= entry->depth || entry->generation != generation_)) {
         Entry& replacement = replacement_entry(key);
         replacement.key = key;
@@ -300,6 +343,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
 
 SearchResult Search::think(Position& position, const SearchLimits& limits) {
     limits_ = limits;
+    rootMoves_ = limits.rootMoves;
     start_ = std::chrono::steady_clock::now();
     nodes_ = 0;
     stop_ = false;
@@ -334,6 +378,244 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
     result.nodes = nodes_;
     result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - start_);
+    return result;
+}
+
+BeliefSearchResult Search::think_beliefs(const std::vector<Position>& beliefs,
+                                         const SearchLimits& limits,
+                                         std::size_t maximumDeepBeliefs,
+                                         std::size_t maximumCandidates) {
+    const auto beliefStart = std::chrono::steady_clock::now();
+    BeliefSearchResult result;
+    result.beliefs = beliefs.size();
+    if (beliefs.empty())
+        return result;
+
+    const Color side = beliefs.front().side_to_move();
+    for (const Position& belief : beliefs)
+        if (belief.side_to_move() != side)
+            return result;
+
+    std::set<std::string> common;
+    for (const Move& move : beliefs.front().legal_moves())
+        common.insert(beliefs.front().move_to_string(move));
+    for (std::size_t index = 1; index < beliefs.size() && !common.empty(); ++index) {
+        std::set<std::string> legal;
+        for (const Move& move : beliefs[index].legal_moves())
+            legal.insert(beliefs[index].move_to_string(move));
+        std::set<std::string> intersection;
+        std::set_intersection(common.begin(), common.end(), legal.begin(), legal.end(),
+                              std::inserter(intersection, intersection.begin()));
+        common = std::move(intersection);
+    }
+    const std::vector<std::string> roots(common.begin(), common.end());
+    result.commonMoves = roots.size();
+    if (roots.empty())
+        return result;
+
+    // Exact information should retain the normal engine's full root search.
+    if (beliefs.size() == 1) {
+        Position position = beliefs.front();
+        SearchResult exact = think(position, limits);
+        result.bestMove = exact.bestMove
+                        ? std::optional<std::string>(position.move_to_string(*exact.bestMove))
+                        : std::nullopt;
+        result.score = result.worstScore = result.meanScore = exact.score;
+        result.completedDepth = exact.completedDepth;
+        result.nodes = exact.nodes;
+        result.deepBeliefs = 1;
+        result.candidates = roots.size();
+        for (const Move& move : exact.principalVariation)
+            result.principalVariation.push_back(position.move_to_string(move));
+        result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - beliefStart);
+        return result;
+    }
+
+    // First audit every common action in every retained world. Depth two is
+    // sufficient to see an immediate hidden-Ghost recapture and is cheap
+    // enough to cover the complete uncertainty set rather than a sample.
+    const int shallowDepth = std::min(2, std::max(1, limits.depth));
+    std::vector<std::vector<int>> shallowScores(
+      beliefs.size(), std::vector<int>(roots.size(), -Infinity));
+    const std::size_t workerCount = std::min<std::size_t>(8, beliefs.size());
+    std::vector<std::future<std::uint64_t>> shallowWorkers;
+    for (std::size_t worker = 0; worker < workerCount; ++worker) {
+        shallowWorkers.push_back(std::async(std::launch::async, [&, worker] {
+            Search local(4);
+            std::uint64_t workerNodes = 0;
+            for (std::size_t beliefIndex = worker; beliefIndex < beliefs.size();
+                 beliefIndex += workerCount) {
+                for (std::size_t rootIndex = 0; rootIndex < roots.size(); ++rootIndex) {
+                    Position position = beliefs[beliefIndex];
+                    const auto move = position.move_from_string(roots[rootIndex]);
+                    if (!move)
+                        continue;
+                    SearchLimits audit;
+                    audit.depth = shallowDepth;
+                    audit.rootMoves = {*move};
+                    const SearchResult searched = local.think(position, audit);
+                    workerNodes += searched.nodes;
+                    if (searched.bestMove)
+                        shallowScores[beliefIndex][rootIndex] = searched.score;
+                }
+            }
+            return workerNodes;
+        }));
+    }
+    for (auto& worker : shallowWorkers)
+        result.nodes += worker.get();
+
+    struct Summary {
+        std::size_t root = 0;
+        int worst = -Infinity;
+        int mean = -Infinity;
+        std::size_t worstBelief = 0;
+    };
+    std::vector<Summary> summaries;
+    summaries.reserve(roots.size());
+    for (std::size_t root = 0; root < roots.size(); ++root) {
+        int worst = Infinity;
+        std::size_t worstBelief = 0;
+        std::int64_t total = 0;
+        for (std::size_t belief = 0; belief < beliefs.size(); ++belief) {
+            if (shallowScores[belief][root] < worst) {
+                worst = shallowScores[belief][root];
+                worstBelief = belief;
+            }
+            total += shallowScores[belief][root];
+        }
+        summaries.push_back({root, worst,
+                             static_cast<int>(std::llround(
+                               static_cast<double>(total) / beliefs.size())),
+                             worstBelief});
+    }
+    std::stable_sort(summaries.begin(), summaries.end(), [&](const Summary& lhs,
+                                                              const Summary& rhs) {
+        if (lhs.worst != rhs.worst)
+            return lhs.worst > rhs.worst;
+        if (lhs.mean != rhs.mean)
+            return lhs.mean > rhs.mean;
+        return roots[lhs.root] < roots[rhs.root];
+    });
+    const std::size_t candidateCount = std::min(
+      std::max<std::size_t>(1, maximumCandidates), summaries.size());
+    summaries.resize(candidateCount);
+    result.candidates = candidateCount;
+
+    // Deep search evenly spaced representative worlds plus each candidate's
+    // own worst shallow world. This preserves the complete-set Ghost safety
+    // audit without capping a depth-six result at a depth-two evaluation.
+    const std::size_t deepCount = std::min(
+      std::max<std::size_t>(1, maximumDeepBeliefs), beliefs.size());
+    result.deepBeliefs = deepCount;
+    std::vector<std::size_t> representatives;
+    representatives.reserve(deepCount);
+    for (std::size_t index = 0; index < deepCount; ++index)
+        representatives.push_back(deepCount == 1 ? 0
+          : (index * (beliefs.size() - 1) + (deepCount - 1) / 2) / (deepCount - 1));
+
+    struct DeepRow {
+        std::vector<SearchResult> searches;
+        std::vector<std::vector<std::string>> pvs;
+    };
+    std::vector<std::future<DeepRow>> deepWorkers;
+    for (std::size_t candidateIndex = 0; candidateIndex < candidateCount; ++candidateIndex) {
+        deepWorkers.push_back(std::async(std::launch::async, [&, candidateIndex] {
+            Search local(8);
+            DeepRow row;
+            row.searches.reserve(deepCount);
+            row.pvs.reserve(deepCount);
+            std::vector<std::size_t> candidateBeliefs = representatives;
+            const std::size_t worstBelief = summaries[candidateIndex].worstBelief;
+            if (std::find(candidateBeliefs.begin(), candidateBeliefs.end(), worstBelief)
+                == candidateBeliefs.end())
+                candidateBeliefs.back() = worstBelief;
+            for (const std::size_t beliefIndex : candidateBeliefs) {
+                Position position = beliefs[beliefIndex];
+                SearchLimits deep = limits;
+                deep.rootMoves.clear();
+                const auto move = position.move_from_string(
+                  roots[summaries[candidateIndex].root]);
+                if (!move) {
+                    row.searches.push_back({});
+                    row.pvs.emplace_back();
+                    continue;
+                }
+                deep.rootMoves.push_back(*move);
+                if (deep.nodes)
+                    deep.nodes = std::max<std::uint64_t>(1, deep.nodes / deepCount);
+                if (deep.moveTime.count())
+                    deep.moveTime = std::chrono::milliseconds(std::max<std::int64_t>(
+                      1, deep.moveTime.count() / static_cast<std::int64_t>(deepCount)));
+                SearchResult searched = local.think(position, deep);
+                std::vector<std::string> pv;
+                for (const Move& pvMove : searched.principalVariation)
+                    pv.push_back(position.move_to_string(pvMove));
+                row.searches.push_back(std::move(searched));
+                row.pvs.push_back(std::move(pv));
+            }
+            return row;
+        }));
+    }
+    std::vector<DeepRow> deepRows;
+    deepRows.reserve(candidateCount);
+    for (auto& worker : deepWorkers)
+        deepRows.push_back(worker.get());
+
+    struct DeepSummary {
+        std::size_t candidate = 0;
+        int robust = -Infinity;
+        int mean = -Infinity;
+    };
+    std::vector<DeepSummary> deepSummaries;
+    for (std::size_t candidate = 0; candidate < candidateCount; ++candidate) {
+        int deepWorst = Infinity;
+        std::int64_t total = 0;
+        const DeepRow& row = deepRows[candidate];
+        for (const SearchResult& searched : row.searches) {
+            const int score = searched.bestMove ? searched.score : -Infinity;
+            deepWorst = std::min(deepWorst, score);
+            total += score;
+            result.nodes += searched.nodes;
+        }
+        deepSummaries.push_back({candidate,
+          deepWorst,
+          static_cast<int>(std::llround(static_cast<double>(total) / deepCount))});
+    }
+    std::stable_sort(deepSummaries.begin(), deepSummaries.end(), [&](const DeepSummary& lhs,
+                                                                      const DeepSummary& rhs) {
+        if (lhs.robust != rhs.robust)
+            return lhs.robust > rhs.robust;
+        if (summaries[lhs.candidate].worst != summaries[rhs.candidate].worst)
+            return summaries[lhs.candidate].worst > summaries[rhs.candidate].worst;
+        if (lhs.mean != rhs.mean)
+            return lhs.mean > rhs.mean;
+        const std::size_t lhsRoot = summaries[lhs.candidate].root;
+        const std::size_t rhsRoot = summaries[rhs.candidate].root;
+        return roots[lhsRoot] < roots[rhsRoot];
+    });
+
+    const DeepSummary& best = deepSummaries.front();
+    const Summary& bestCandidate = summaries[best.candidate];
+    result.bestMove = roots[bestCandidate.root];
+    result.score = result.worstScore = best.robust;
+    result.meanScore = best.mean;
+    result.completedDepth = limits.depth;
+    std::size_t pvBelief = 0;
+    int pvScore = Infinity;
+    const DeepRow& bestRow = deepRows[best.candidate];
+    for (std::size_t belief = 0; belief < bestRow.searches.size(); ++belief) {
+        const SearchResult& searched = bestRow.searches[belief];
+        result.completedDepth = std::min(result.completedDepth, searched.completedDepth);
+        if (searched.score < pvScore) {
+            pvScore = searched.score;
+            pvBelief = belief;
+        }
+    }
+    result.principalVariation = bestRow.pvs[pvBelief];
+    result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - beliefStart);
     return result;
 }
 

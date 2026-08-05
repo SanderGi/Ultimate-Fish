@@ -34,6 +34,7 @@ class DraftState {
     [[nodiscard]] DraftWindow window() const;
     [[nodiscard]] const std::vector<PieceType>& team(Color color) const;
     [[nodiscard]] int points(Color color) const;
+    [[nodiscard]] int deployment_slots(Color color) const;
     [[nodiscard]] bool banned(PieceType type) const;
     [[nodiscard]] std::vector<PieceType> legal_choices() const;
     [[nodiscard]] bool can_commit() const;
@@ -42,6 +43,7 @@ class DraftState {
     bool unchoose(PieceType type);
     bool commit(std::string* error = nullptr);
     [[nodiscard]] std::optional<PieceType> suggest() const;
+    bool autoplay(std::vector<PieceType>& choices, std::string* error = nullptr);
 
    private:
     static std::size_t index(Color color) { return static_cast<std::size_t>(color); }

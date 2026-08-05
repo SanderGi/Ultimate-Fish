@@ -106,6 +106,184 @@ void test_bomb_and_undo() {
            "adjacent character is removed by bomb explosion");
     position.undo_move(undo);
     expect(position.upn() == before, "bomb move undo is byte-for-byte equivalent");
+
+    Position bombVictim;
+    bombVictim.add_piece(PieceType::King, Color::White,
+                         Position::square_from_name("a1"));
+    bombVictim.add_piece(PieceType::King, Color::Black,
+                         Position::square_from_name("h10"));
+    bombVictim.add_piece(PieceType::Queen, Color::White,
+                         Position::square_from_name("f1"));
+    bombVictim.add_piece(PieceType::Bomb, Color::Black,
+                         Position::square_from_name("f8"));
+    bombVictim.add_piece(PieceType::Pawn, Color::Black,
+                         Position::square_from_name("g8"));
+    Undo longRangeBlast;
+    expect(bombVictim.make_move(require_move(bombVictim, "f1-f8"), longRangeBlast),
+           "long-range capture of a bomb applies");
+    expect(bombVictim.piece_on(Position::square_from_name("f1")) == Position::NoPiece &&
+           bombVictim.piece_on(Position::square_from_name("f8")) == Position::NoPiece &&
+           bombVictim.piece_on(Position::square_from_name("g8")) == Position::NoPiece,
+           "captured bomb removes the landing attacker and adjacent characters");
+
+    Position checkerBlast;
+    checkerBlast.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("h1"));
+    checkerBlast.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("h10"));
+    const int checker = checkerBlast.add_piece(PieceType::Checker, Color::White,
+                                               Position::square_from_name("b2"));
+    const int jumpedBomb = checkerBlast.add_piece(PieceType::Bomb, Color::Black,
+                                                  Position::square_from_name("c3"));
+    const int nearJumpedBomb = checkerBlast.add_piece(PieceType::Pawn, Color::Black,
+                                                      Position::square_from_name("b3"));
+    Undo checkerExplosion;
+    expect(checkerBlast.make_move(require_move(checkerBlast, "b2-d4"), checkerExplosion) &&
+           !checkerBlast.piece(checker).alive && !checkerBlast.piece(jumpedBomb).alive &&
+           !checkerBlast.piece(nearJumpedBomb).alive,
+           "Checker capture explodes a jumped Bomb around the Bomb square, not its landing square");
+
+    Position giantBlast;
+    giantBlast.add_piece(PieceType::King, Color::White,
+                         Position::square_from_name("h1"));
+    giantBlast.add_piece(PieceType::King, Color::Black,
+                         Position::square_from_name("h10"));
+    const int giant = giantBlast.add_piece(PieceType::Giant, Color::White,
+                                           Position::square_from_name("a1"));
+    const int footprintBomb = giantBlast.add_piece(PieceType::Bomb, Color::Black,
+                                                   Position::square_from_name("d2"));
+    const int beyondAnchor = giantBlast.add_piece(PieceType::Pawn, Color::Black,
+                                                  Position::square_from_name("e3"));
+    Undo giantExplosion;
+    expect(giantBlast.make_move(require_move(giantBlast, "a1-c1"), giantExplosion) &&
+           !giantBlast.piece(giant).alive && !giantBlast.piece(footprintBomb).alive &&
+           !giantBlast.piece(beyondAnchor).alive,
+           "Giant footprint capture explodes a Bomb around its occupied tile, not the Giant anchor");
+
+    Position chainBlast;
+    chainBlast.add_piece(PieceType::King, Color::White,
+                         Position::square_from_name("a1"));
+    chainBlast.add_piece(PieceType::King, Color::Black,
+                         Position::square_from_name("h10"));
+    chainBlast.add_piece(PieceType::Queen, Color::White,
+                         Position::square_from_name("a3"));
+    chainBlast.add_piece(PieceType::Bomb, Color::Black,
+                         Position::square_from_name("c3"));
+    const int chainedBomb = chainBlast.add_piece(PieceType::Bomb, Color::Black,
+                                                 Position::square_from_name("d4"));
+    const int chainOnlyVictim = chainBlast.add_piece(PieceType::Pawn, Color::Black,
+                                                     Position::square_from_name("e5"));
+    Undo chainExplosion;
+    expect(chainBlast.make_move(require_move(chainBlast, "a3-c3"), chainExplosion) &&
+           !chainBlast.piece(chainedBomb).alive && !chainBlast.piece(chainOnlyVictim).alive,
+           "a Bomb killed by another Bomb triggers its own radius-one chain explosion");
+
+    // Live Unranked regression: a Sniper on f10 shot a Bomb on f2, survived at
+    // its origin, reloaded, and later shot the Penguin on f8. Unlike ordinary
+    // capturers, the Sniper never enters the remote Bomb's blast radius.
+    Position rangedBomb;
+    rangedBomb.add_piece(PieceType::King, Color::White,
+                         Position::square_from_name("a1"));
+    const int remoteBomb = rangedBomb.add_piece(PieceType::Bomb, Color::White,
+                                                Position::square_from_name("f2"));
+    rangedBomb.add_piece(PieceType::King, Color::Black,
+                         Position::square_from_name("h10"));
+    const int remoteSniper = rangedBomb.add_piece(PieceType::Sniper, Color::Black,
+                                                  Position::square_from_name("f10"));
+    rangedBomb.set_side_to_move(Color::Black);
+    Undo rangedExplosion;
+    expect(rangedBomb.make_move(require_move(rangedBomb, "f10xf2"), rangedExplosion) &&
+           !rangedBomb.piece(remoteBomb).alive && rangedBomb.piece(remoteSniper).alive &&
+           rangedBomb.piece(remoteSniper).square == Position::square_from_name("f10"),
+           "a distant Sniper survives the radius-one blast of its Bomb target");
+
+    Position penguinShot;
+    penguinShot.add_piece(PieceType::King, Color::White,
+                          Position::square_from_name("a1"));
+    penguinShot.add_piece(PieceType::Penguin, Color::White,
+                          Position::square_from_name("f8"));
+    penguinShot.add_piece(PieceType::King, Color::Black,
+                          Position::square_from_name("h10"));
+    penguinShot.add_piece(PieceType::Sniper, Color::Black,
+                          Position::square_from_name("f10"));
+    penguinShot.set_side_to_move(Color::Black);
+    expect(penguinShot.move_from_string("f10xf8").has_value(),
+           "Sniper can shoot the first visible Penguin on its forward file");
+}
+
+void test_bomb_check_legality() {
+    // Regression from the 2026-08-05 Unranked loss.  The apparent King escape
+    // b1-c2 is illegal: Black's Rook can capture the Bomb on d1, whose radius-
+    // one blast removes the real King on c2.
+    Position position;
+    position.add_piece(PieceType::King, Color::White,
+                       Position::square_from_name("b1"));
+    position.add_piece(PieceType::Bomb, Color::White,
+                       Position::square_from_name("d1"));
+    position.add_piece(PieceType::Rook, Color::Black,
+                       Position::square_from_name("a1"));
+    position.add_piece(PieceType::King, Color::Black,
+                       Position::square_from_name("h10"));
+
+    expect(!position.move_from_string("b1-c2").has_value(),
+           "King cannot escape onto a square killed by a captured Bomb");
+
+    Position control;
+    control.add_piece(PieceType::King, Color::White,
+                      Position::square_from_name("b1"));
+    control.add_piece(PieceType::Ghost, Color::White,
+                      Position::square_from_name("d1"));
+    control.add_piece(PieceType::Bomb, Color::White,
+                      Position::square_from_name("f1"));
+    control.add_piece(PieceType::Rook, Color::Black,
+                      Position::square_from_name("a1"));
+    control.add_piece(PieceType::King, Color::Black,
+                      Position::square_from_name("h10"));
+    expect(control.move_from_string("b1-c2").has_value(),
+           "same King escape survives when d1 is a Ghost rather than a Bomb");
+
+    // Royal threats are not limited to an attacker landing on the King's
+    // square. Keep the optimized threat generator honest for every native
+    // action in which a quiet-looking move knocks the King out indirectly.
+    Position mageGiant;
+    mageGiant.add_piece(PieceType::King, Color::White,
+                        Position::square_from_name("e5"));
+    mageGiant.add_piece(PieceType::Pawn, Color::White,
+                        Position::square_from_name("a2"));
+    mageGiant.add_piece(PieceType::King, Color::Black,
+                        Position::square_from_name("h10"));
+    mageGiant.add_piece(PieceType::Mage, Color::Black,
+                        Position::square_from_name("d4"));
+    mageGiant.add_piece(PieceType::Giant, Color::Black,
+                        Position::square_from_name("f6"));
+    expect(!mageGiant.move_from_string("a2-a3").has_value(),
+           "Mage/Giant relocation that knocks out the King counts as check");
+
+    Position fishermanGiant;
+    fishermanGiant.add_piece(PieceType::King, Color::White,
+                             Position::square_from_name("d5"));
+    fishermanGiant.add_piece(PieceType::Pawn, Color::White,
+                             Position::square_from_name("a2"));
+    fishermanGiant.add_piece(PieceType::King, Color::Black,
+                             Position::square_from_name("h10"));
+    fishermanGiant.add_piece(PieceType::Fisherman, Color::Black,
+                             Position::square_from_name("c3"));
+    fishermanGiant.add_piece(PieceType::Giant, Color::Black,
+                             Position::square_from_name("f6"));
+    expect(!fishermanGiant.move_from_string("a2-a3").has_value(),
+           "Fisherman/Giant pull that knocks out the King counts as check");
+
+    Position copycatPartner;
+    copycatPartner.add_piece(PieceType::King, Color::White,
+                             Position::square_from_name("e5"));
+    copycatPartner.add_piece(PieceType::Pawn, Color::White,
+                             Position::square_from_name("a2"));
+    copycatPartner.add_piece(PieceType::King, Color::Black,
+                             Position::square_from_name("h10"));
+    copycatPartner.add_piece(PieceType::Copycat, Color::Black,
+                             Position::square_from_name("c6"));
+    expect(!copycatPartner.move_from_string("a2-a3").has_value(),
+           "quiet Copycat half with a capturing mirrored partner counts as check");
 }
 
 void test_ninja_and_mage() {
@@ -128,6 +306,17 @@ void test_ninja_and_mage() {
     expect(swap.piece(swap.piece_on(Position::square_from_name("c2"))).type == PieceType::Rook,
            "ally occupies mage square after swap");
 
+    Position promotionSwap;
+    promotionSwap.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
+    promotionSwap.add_piece(PieceType::King, Color::Black, Position::square_from_name("h10"));
+    promotionSwap.add_piece(PieceType::Mage, Color::White, Position::square_from_name("d10"));
+    promotionSwap.add_piece(PieceType::Pawn, Color::White, Position::square_from_name("d9"));
+    Undo promotionUndo;
+    expect(promotionSwap.make_move(require_move(promotionSwap, "d10~d9"), promotionUndo) &&
+           promotionSwap.piece(promotionSwap.piece_on(Position::square_from_name("d10"))).type ==
+             PieceType::Queen,
+           "Mage relocation invokes the native promotion check on the swapped ally");
+
     Position giantSwap;
     giantSwap.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     giantSwap.add_piece(PieceType::King, Color::Black, Position::square_from_name("h10"));
@@ -148,8 +337,43 @@ void test_ninja_and_mage() {
     expect(giantSwap.piece(mage).square == Position::square_from_name("f6") &&
            giantSwap.piece(giant).square == Position::square_from_name("c2"),
            "selected Giant tile and translated Giant anchor exchange correctly");
+    const Bitboard mageTile = Bitboard(1) << Position::square_from_name("f6");
+    expect((giantSwap.occupied(Color::White) & mageTile) != 0 &&
+           (giantSwap.pieces(Color::White, PieceType::Mage) & mageTile) != 0,
+           "Mage/Giant swap retains the Mage in incremental occupancy bitboards");
     expect(!giantSwap.piece(ally).alive && !giantSwap.piece(enemy).alive,
            "a Mage-swapped Giant knocks out both teams in its destination footprint");
+
+    Position savedGiant;
+    savedGiant.add_piece(PieceType::King, Color::White,
+                         Position::square_from_name("h1"));
+    savedGiant.add_piece(PieceType::King, Color::Black,
+                         Position::square_from_name("h10"));
+    savedGiant.add_piece(PieceType::Angel, Color::White,
+                         Position::square_from_name("a2"));
+    const int savedCollision = savedGiant.add_piece(
+      PieceType::Checker, Color::White, Position::square_from_name("b2"));
+    const int protectedGiant = savedGiant.add_piece(
+      PieceType::Giant, Color::White, Position::square_from_name("e3"));
+    savedGiant.add_piece(PieceType::Prince, Color::Black,
+                         Position::square_from_name("d5"));
+    Undo giantAttach;
+    expect(savedGiant.make_move(require_move(savedGiant, "a2&e3"), giantAttach),
+           "Angel can attach to a Giant before a collision save");
+    Undo princeFirst;
+    expect(savedGiant.make_move(require_move(savedGiant, "d5-e5"), princeFirst),
+           "Prince starts the Giant-capture sequence");
+    Undo princeCapture;
+    expect(savedGiant.make_move(require_move(savedGiant, "e5-f4"), princeCapture),
+           "Prince captures an Angel-protected Giant on its second move");
+    expect(savedGiant.piece(protectedGiant).alive &&
+           savedGiant.piece(protectedGiant).square == Position::square_from_name("a2") &&
+           !savedGiant.piece(savedCollision).alive,
+           "Angel-saved Giant uses native forced relocation and clears its full halo footprint");
+    Position savedRoundTrip;
+    std::string savedError;
+    expect(savedRoundTrip.set_upn(savedGiant.upn(), &savedError),
+           "Angel-saved Giant position remains losslessly round-trippable: " + savedError);
 
     Position edgeSwap;
     edgeSwap.add_piece(PieceType::King, Color::White, Position::square_from_name("h1"));
@@ -168,7 +392,8 @@ void test_checker_chain_and_prince_turns() {
     checker.add_piece(PieceType::Checker, Color::White, Position::square_from_name("b2"));
     checker.add_piece(PieceType::Pawn, Color::Black, Position::square_from_name("c3"));
     checker.add_piece(PieceType::Pawn, Color::Black, Position::square_from_name("e5"));
-    expect(checker.has_forced_action(), "available checker jump makes the action compulsory");
+    expect(!checker.has_forced_action(),
+           "an available checker jump does not suppress other characters");
     Undo first;
     expect(checker.make_move(require_move(checker, "b2-d4"), first), "first checker jump applies");
     expect(checker.has_forced_action(), "checker continuation remains compulsory");
@@ -179,6 +404,34 @@ void test_checker_chain_and_prince_turns() {
     expect(checker.make_move(require_move(checker, "d4-f6"), second), "second checker jump applies");
     expect(checker.side_to_move() == Color::Black, "checker chain ends the turn");
 
+    Position optionalChecker;
+    std::string checkerError;
+    expect(optionalChecker.set_upn(
+      "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,a1;queen,w,c8;"
+      "king,b,b10;bishop,b,b9;checker,b,d9",
+      &checkerError),
+      "live optional-checker regression parses: " + checkerError);
+    expect(optionalChecker.move_from_string("d9-b7").has_value(),
+           "checker jump remains available to that checker");
+    expect(optionalChecker.move_from_string("b9-c8").has_value(),
+           "checker jump does not suppress a native Bishop recapture");
+
+    Position quietChecker;
+    quietChecker.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("a1"));
+    quietChecker.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("h10"));
+    quietChecker.add_piece(PieceType::Rook, Color::Black,
+                           Position::square_from_name("g10"));
+    quietChecker.add_piece(PieceType::Checker, Color::Black,
+                           Position::square_from_name("b8"));
+    quietChecker.set_side_to_move(Color::Black);
+    Undo quietCheckerMove;
+    expect(quietChecker.make_move(require_move(quietChecker, "b8-c7"), quietCheckerMove),
+           "live quiet Checker move applies");
+    expect(quietChecker.has_real_king(Color::White) && !quietChecker.game_over(),
+           "quiet Checker auxiliary sentinel never captures the King on a1");
+
     Position prince;
     prince.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     prince.add_piece(PieceType::King, Color::Black, Position::square_from_name("h8"));
@@ -188,9 +441,15 @@ void test_checker_chain_and_prince_turns() {
     expect(prince.make_move(require_move(prince, "d4-d5"), move), "prince first move applies");
     expect(prince.side_to_move() == Color::White, "non-capturing prince first move retains turn");
     expect(prince.continuation() == Continuation::PrinceSecondMove, "prince second move is forced");
-    expect(prince.legal_moves().size() == 1 &&
-           prince.move_to_string(prince.legal_moves().front()) == "d5-d6",
-           "native prince continuation must attack after an empty first step");
+    expect(require_move(prince, "d5-d6").from == Position::square_from_name("d5"),
+           "prince second move may attack");
+    expect(require_move(prince, "d5-c5").from == Position::square_from_name("d5"),
+           "native prince continuation may also be quiet");
+    Undo quietSecond;
+    expect(prince.make_move(require_move(prince, "d5-c5"), quietSecond),
+           "quiet prince second move applies");
+    expect(prince.side_to_move() == Color::Black,
+           "prince turn ends after its queued second move");
 }
 
 void test_sludge_and_victory() {
@@ -366,6 +625,27 @@ void test_native_fisherman_rays() {
            "giant pull translates its anchor so the hooked footprint square lands adjacent");
     expect(!giantPull.piece(alliedCollision).alive && !giantPull.piece(enemyCollision).alive,
            "a forcibly pulled giant knocks out allies and enemies across its destination footprint");
+
+    Position protectedPull;
+    protectedPull.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
+    protectedPull.add_piece(PieceType::King, Color::Black, Position::square_from_name("h10"));
+    protectedPull.add_piece(PieceType::Fisherman, Color::White,
+                            Position::square_from_name("d4"));
+    const int angel = protectedPull.add_piece(PieceType::Angel, Color::Black,
+                                               Position::square_from_name("d8"));
+    const int protectedRook = protectedPull.add_piece(PieceType::Rook, Color::Black,
+                                                       Position::square_from_name("d7"));
+    protectedPull.set_side_to_move(Color::Black);
+    Undo attach;
+    expect(protectedPull.make_move(require_move(protectedPull, "d8&d7"), attach),
+           "opposing angel can attach before a fisherman pull");
+    Undo protectedHook;
+    expect(protectedPull.make_move(require_move(protectedPull, "d4!d7"), protectedHook),
+           "fisherman pulls an angel-protected host");
+    expect(protectedPull.piece(protectedRook).square == Position::square_from_name("d5") &&
+           !protectedPull.piece(angel).onBoard &&
+           protectedPull.piece(angel).square == Position::square_from_name("d5"),
+           "attached angels follow a fisherman-relocated host without consuming the save");
 }
 
 void test_ghost_visibility_transitions() {
@@ -464,6 +744,20 @@ void test_search_and_perft_regressions() {
     expect(cached.bestMove && tactical.move_to_string(*cached.bestMove) == "a1-b2",
            "root transposition hit retains a playable principal variation");
 
+    Position rootChoice;
+    rootChoice.add_piece(PieceType::King, Color::White,
+                         Position::square_from_name("a1"));
+    rootChoice.add_piece(PieceType::King, Color::Black,
+                         Position::square_from_name("h10"));
+    rootChoice.add_piece(PieceType::Pawn, Color::White,
+                         Position::square_from_name("h2"));
+    search.think(rootChoice, limits);
+    SearchLimits restricted = limits;
+    restricted.rootMoves = {require_move(rootChoice, "h2-h3")};
+    const SearchResult forcedRoot = search.think(rootChoice, restricted);
+    expect(forcedRoot.bestMove && rootChoice.move_to_string(*forcedRoot.bestMove) == "h2-h3",
+           "restricted root search ignores an unrestricted transposition hit");
+
     Position fixture;
     std::string error;
     const std::string upn =
@@ -472,8 +766,63 @@ void test_search_and_perft_regressions() {
       "jester,b,d10;ninja,b,b9;penguin,b,c9;devil,b,f9;sniper,b,g9;checker,b,h9;"
       "sludge,b,a9";
     expect(fixture.set_upn(upn, &error), "perft fixture parses: " + error);
-    expect(fixture.perft(1) == 44 && fixture.perft(2) == 1276 && fixture.perft(3) == 34928,
+    expect(fixture.perft(1) == 44 && fixture.perft(2) == 1936 && fixture.perft(3) == 74084,
            "mixed-roster perft remains stable at depths one through three");
+}
+
+void test_native_information_set_search() {
+    auto ghostFixture = [](int ghostSquare) {
+        Position position;
+        position.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("a1"));
+        position.add_piece(PieceType::Rook, Color::White,
+                           Position::square_from_name("b2"));
+        position.add_piece(PieceType::Queen, Color::White,
+                           Position::square_from_name("d4"));
+        position.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("e10"));
+        position.add_piece(PieceType::Pawn, Color::Black,
+                           Position::square_from_name("e5"));
+        const int ghost = position.add_piece(PieceType::Ghost, Color::Black, ghostSquare);
+        position.piece(ghost).visible = false;
+        return position;
+    };
+
+    Position unsafe = ghostFixture(Position::square_from_name("f6"));
+    Position safe = ghostFixture(Position::square_from_name("a9"));
+    SearchLimits limits;
+    limits.depth = 3;
+    Search exact(2);
+    const SearchResult safeOnly = exact.think(safe, limits);
+    expect(safeOnly.bestMove && safe.move_to_string(*safeOnly.bestMove) == "d4-e5",
+           "a concrete safe world takes the exposed pawn with a continuing attack");
+
+    Search informationSet(2);
+    const BeliefSearchResult robust = informationSet.think_beliefs({unsafe, safe}, limits);
+    expect(robust.bestMove && *robust.bestMove != "d4-e5",
+           "native information-set search rejects a queen move lost to one possible Ghost");
+    expect(robust.beliefs == 2 && robust.deepBeliefs == 2 && robust.commonMoves > 1,
+           "native information-set result reports complete belief/root coverage");
+
+    auto winningFixture = [](int ghostSquare) {
+        Position position;
+        position.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("a1"));
+        position.add_piece(PieceType::Queen, Color::White,
+                           Position::square_from_name("h9"));
+        position.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("h10"));
+        const int ghost = position.add_piece(PieceType::Ghost, Color::Black, ghostSquare);
+        position.piece(ghost).visible = false;
+        return position;
+    };
+    Position adjacentOne = winningFixture(Position::square_from_name("g9"));
+    Position adjacentTwo = winningFixture(Position::square_from_name("g10"));
+    Search forcedWin(2);
+    const BeliefSearchResult mate = forcedWin.think_beliefs(
+      {adjacentOne, adjacentTwo}, limits);
+    expect(mate.bestMove && *mate.bestMove == "h9-h10" && mate.score >= 29900,
+           "Ghost uncertainty never hard-filters a high-value move that captures the real king");
 }
 
 void test_native_insufficient_material() {
@@ -556,18 +905,59 @@ void test_cooldowns_minions_and_freeze_stacking() {
     freeze.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     freeze.add_piece(PieceType::King, Color::Black, Position::square_from_name("h8"));
     const int first = freeze.add_piece(PieceType::Penguin, Color::White,
-                                       Position::square_from_name("c3"));
+                                       Position::square_from_name("c2"));
     const int second = freeze.add_piece(PieceType::Penguin, Color::Black,
-                                        Position::square_from_name("e3"));
+                                        Position::square_from_name("e2"));
     const int rook = freeze.add_piece(PieceType::Rook, Color::White,
                                       Position::square_from_name("d3"));
+    expect(freeze.piece(rook).freezeCount == 0,
+           "a deployed Penguin has no freeze aura before it moves");
+    Undo firstFreeze;
+    expect(freeze.make_move(require_move(freeze, "c2-c3"), firstFreeze),
+           "first Penguin move applies");
+    Undo secondFreeze;
+    expect(freeze.make_move(require_move(freeze, "e2-e3"), secondFreeze),
+           "second Penguin move applies");
     expect(freeze.piece(rook).freezeCount == 2 && freeze.piece(first).freezeCount == 0 &&
            freeze.piece(second).freezeCount == 0,
-           "adjacent Penguin freezes stack while Penguins remain immune");
+           "move-triggered Penguin freezes stack while Penguins remain immune");
     freeze.remove_piece(first);
     expect(freeze.piece(rook).freezeCount == 1, "removing one Penguin removes only its freeze layer");
     freeze.remove_piece(second);
     expect(freeze.piece(rook).freezeCount == 0, "removing the final Penguin fully unfreezes its neighbor");
+
+    Position penguinMovement;
+    penguinMovement.add_piece(PieceType::King, Color::White,
+                              Position::square_from_name("a1"));
+    penguinMovement.add_piece(PieceType::King, Color::Black,
+                              Position::square_from_name("h10"));
+    penguinMovement.add_piece(PieceType::Penguin, Color::White,
+                              Position::square_from_name("h1"));
+    penguinMovement.add_piece(PieceType::Dragon, Color::Black,
+                              Position::square_from_name("h2"));
+    expect(!penguinMovement.move_from_string("h1-h2").has_value(),
+           "penguin cannot attack an occupied adjacent square");
+
+    Position dormantPenguin;
+    dormantPenguin.add_piece(PieceType::King, Color::White,
+                             Position::square_from_name("a1"));
+    dormantPenguin.add_piece(PieceType::King, Color::Black,
+                             Position::square_from_name("h10"));
+    const int bomb = dormantPenguin.add_piece(PieceType::Bomb, Color::White,
+                                              Position::square_from_name("g1"));
+    const int dormant = dormantPenguin.add_piece(PieceType::Penguin, Color::White,
+                                                 Position::square_from_name("h1"));
+    const int dragon = dormantPenguin.add_piece(PieceType::Dragon, Color::Black,
+                                                Position::square_from_name("h2"));
+    dormantPenguin.set_side_to_move(Color::Black);
+    const auto bombCapture = dormantPenguin.move_from_string("h2-g1");
+    expect(bombCapture.has_value(),
+           "an unmoved adjacent Penguin does not freeze an enemy Dragon");
+    Undo explosion;
+    expect(bombCapture && dormantPenguin.make_move(*bombCapture, explosion) &&
+           !dormantPenguin.piece(bomb).alive && !dormantPenguin.piece(dormant).alive &&
+           !dormantPenguin.piece(dragon).alive,
+           "Dragon capture of a dormant Penguin's Bomb resolves the full explosion");
 }
 
 void test_sniper_berserker_and_dragon() {
@@ -608,7 +998,22 @@ void test_sniper_berserker_and_dragon() {
     Undo knockout;
     expect(berserker.make_move(require_move(berserker, "d4-e5"), knockout),
            "berserker knockout applies");
-    expect(berserker.piece(berserkerId).power == 1, "berserker radius grows after a knockout");
+    expect(berserker.piece(berserkerId).power == 1 &&
+           berserker.material_points(berserkerId) == 30,
+           "berserker radius and dynamic native material grow after a knockout");
+    berserker.set_side_to_move(Color::White);
+    expect(berserker.move_from_string("e5-g6").has_value(),
+           "powered berserker reaches every square in its Chebyshev-radius box");
+
+    Position hiddenLeap;
+    hiddenLeap.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
+    hiddenLeap.add_piece(PieceType::King, Color::Black, Position::square_from_name("h10"));
+    hiddenLeap.add_piece(PieceType::Knight, Color::White, Position::square_from_name("d4"));
+    const int hiddenGhost = hiddenLeap.add_piece(PieceType::Ghost, Color::Black,
+                                                  Position::square_from_name("f5"));
+    hiddenLeap.piece(hiddenGhost).visible = false;
+    expect(!hiddenLeap.move_from_string("d4-f5").has_value(),
+           "ordinary leapers cannot deliberately target an unrevealed Ghost");
 
     Position dragon;
     dragon.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
@@ -661,6 +1066,33 @@ void test_native_draft_windows_and_costs() {
     expect(draft.window().lastPick && draft.window().maximumPoints == 100 && draft.commit(&error) &&
            draft.window().lastPick && draft.commit(&error) && draft.complete(),
            "both final-pick windows accept teams within the 100 point ceiling");
+
+    DraftState automatic;
+    std::vector<PieceType> automaticChoices;
+    for (int phase = 0; phase < DraftState::PhaseCount; ++phase) {
+        expect(automatic.autoplay(automaticChoices, &error),
+               "draft AI satisfies every ranked window: " + error);
+        expect(automatic.deployment_slots(Color::White) <= 24 &&
+               automatic.deployment_slots(Color::Black) <= 24,
+               "draft AI never exceeds either three-rank deployment zone");
+        if (phase == 2)
+            expect(automatic.points(Color::White) == 15,
+                   "draft AI satisfies Ivory's exact opening budget");
+        if (phase == 3)
+            expect(automatic.points(Color::Black) == 15,
+                   "draft AI satisfies Onyx's exact opening budget");
+    }
+    expect(automatic.complete() && automatic.points(Color::White) == 100 &&
+           automatic.points(Color::Black) == 100,
+           "draft AI completes all twelve ranked windows at the full budget");
+    const auto countPenguins = [&](Color color) {
+        int count = 0;
+        for (const PieceType type : automatic.team(color))
+            count += type == PieceType::Penguin;
+        return count;
+    };
+    expect(countPenguins(Color::White) == 4 && countPenguins(Color::Black) == 4,
+           "measured final-window Penguin stack is used by both draft sides");
 }
 
 }  // namespace
@@ -668,6 +1100,7 @@ void test_native_draft_windows_and_costs() {
 int main() {
     test_roster_and_position_round_trip();
     test_bomb_and_undo();
+    test_bomb_check_legality();
     test_ninja_and_mage();
     test_checker_chain_and_prince_turns();
     test_sludge_and_victory();
@@ -676,6 +1109,7 @@ int main() {
     test_native_fisherman_rays();
     test_ghost_visibility_transitions();
     test_search_and_perft_regressions();
+    test_native_information_set_search();
     test_native_insufficient_material();
     test_pawn_en_passant_lifetime();
     test_cooldowns_minions_and_freeze_stacking();

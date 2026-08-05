@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Ultimate Fish Workbench",
+  title: "Ultimate Fish",
   description: "A local Chess Ultimate play, draft, and analysis interface.",
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/ultimate-fish-logo.png",
+    shortcut: "/ultimate-fish-logo.png",
+    apple: "/ultimate-fish-logo.png",
   },
 };
 

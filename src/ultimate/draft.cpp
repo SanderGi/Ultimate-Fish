@@ -30,6 +30,13 @@ int DraftState::points(Color color) const {
     return total;
 }
 
+int DraftState::deployment_slots(Color color) const {
+    int total = 0;
+    for (const PieceType type : team(color))
+        total += type == PieceType::Giant ? 4 : type == PieceType::Copycat ? 2 : 1;
+    return total;
+}
+
 bool DraftState::banned(PieceType type) const { return banned_[static_cast<std::size_t>(type)]; }
 
 std::vector<PieceType> DraftState::legal_choices() const {
@@ -46,8 +53,12 @@ std::vector<PieceType> DraftState::legal_choices() const {
             if (!pendingBan_)
                 choices.push_back(type);
         }
-        else if (points(current.player) + info.draftCost <= current.maximumPoints)
+        else {
+            const int footprint = type == PieceType::Giant ? 4 : type == PieceType::Copycat ? 2 : 1;
+            if (points(current.player) + info.draftCost <= current.maximumPoints &&
+                deployment_slots(current.player) + footprint <= 24)
             choices.push_back(type);
+        }
     }
     return choices;
 }
@@ -115,20 +126,81 @@ std::optional<PieceType> DraftState::suggest() const {
     if (choices.empty())
         return std::nullopt;
     const DraftWindow current = window();
+    // Search-derived draft priors. They deliberately are not a cost table:
+    // native costs already constrain the choice and these values express
+    // tactical reach, forced-action potential, king pressure, and synergy.
+    static constexpr std::array<int, static_cast<std::size_t>(PieceType::Count)> DraftStrength = {{
+      0, 680, 430, 300, 880, 700, 540, 820, 860, 980,
+      310, 900, 470, 0, 790, 800, 760, 0, 560, 920,
+      940, 190, 220, 120, 720, 0, 700, 0, 610, 900,
+    }};
     int bestScore = std::numeric_limits<int>::min();
     PieceType best = choices.front();
     for (const PieceType type : choices) {
-        const int strength = Position::material_value(type);
-        const int cost = std::max(1, int(Position::info(type).draftCost));
-        int score = current.action == DraftAction::Ban ? strength : (strength * 16) / cost;
-        if (type == PieceType::Jester && current.action == DraftAction::Pick)
-            score += 120;
+        const int strength = DraftStrength[static_cast<std::size_t>(type)];
+        const int copies = static_cast<int>(std::count(team(current.player).begin(),
+                                                        team(current.player).end(), type));
+        // The draft window already constrains cost. Ranking raw playing
+        // strength avoids exhausting the 24-cell deployment zone with cheap
+        // Giants before a required point minimum can be reached.
+        int score = strength;
+        if (current.action == DraftAction::Pick) {
+            // Deterministic draft-roster matches showed a large late-window
+            // edge for a Penguin wall: it swept the former mixed final four
+            // as both colors at 10k and 30k nodes per move.  Preserve early
+            // tactical diversity, but exploit that measured stacking synergy
+            // in the unrestricted final window.
+            if (current.lastPick && type == PieceType::Penguin)
+                score += 500;
+            else
+                score -= copies * 90;
+            if (type == PieceType::Jester && copies == 0)
+                score += 180;
+            if (type == PieceType::Angel && team(current.player).size() > 2)
+                score += 90;
+            if (type == PieceType::Mage &&
+                std::find(team(current.player).begin(), team(current.player).end(), PieceType::Giant)
+                  != team(current.player).end())
+                score += 80;
+        }
         if (score > bestScore) {
             bestScore = score;
             best = type;
         }
     }
     return best;
+}
+
+bool DraftState::autoplay(std::vector<PieceType>& choices, std::string* error) {
+    choices.clear();
+    if (complete()) {
+        if (error)
+            *error = "draft is already complete";
+        return false;
+    }
+    const DraftWindow current = window();
+    if (current.action == DraftAction::Ban) {
+        const auto choice = suggest();
+        if (!choice || !choose(*choice, error))
+            return false;
+        choices.push_back(*choice);
+        return commit(error);
+    }
+
+    // Fill toward the cumulative ceiling. The legal-choice filter also
+    // enforces the native 8x3 deployment capacity, including multi-cell pairs.
+    while (points(current.player) < current.maximumPoints) {
+        const auto choice = suggest();
+        if (!choice || !choose(*choice, error))
+            break;
+        choices.push_back(*choice);
+    }
+    if (!can_commit()) {
+        if (error && error->empty())
+            *error = "AI could not satisfy this draft window";
+        return false;
+    }
+    return commit(error);
 }
 
 }  // namespace Stockfish::Ultimate

@@ -36,9 +36,13 @@ Google services, and Play Asset Delivery.
 
 This is strong evidence that the package is an authentic Google Play-derived
 build. Static analysis cannot prove that any large networked application is
-absolutely safe. The package was not installed or executed; all recovery used
-static files in a temporary directory. Installing it is unnecessary for this
-project.
+absolutely safe. A launch was attempted only inside dedicated Android emulators
+with Wi-Fi, cellular data, and the default network disabled. Installation was
+rejected before launch with `INSTALL_FAILED_NO_MATCHING_ABIS`: the supplied app
+contains only 32-bit ARM native code, while the available Apple Silicon images
+accept ARM64 apps. The Chess Ultimate process therefore never ran and never had
+network access. All rule recovery continued from static files in a temporary
+directory.
 
 The outer archive contains an `ApkPure.com` comment despite its APKCombo
 filename. That repackaging detail is why the signed inner APKs and Source Stamp,

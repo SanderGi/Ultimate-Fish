@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <charconv>
 #include <cctype>
 #include <cmath>
@@ -24,6 +25,20 @@ constexpr int Around[8][2] = {
   {1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
 constexpr int KnightOffsets[8][2] = {
   {1, 2}, {2, 1}, {-1, 2}, {-2, 1}, {1, -2}, {2, -1}, {-1, -2}, {-2, -1}};
+
+// SimulatedFreeze::Direction. These bits are serialized in Model_Piece.action
+// and identify the characters frozen by the Penguin's most recent move.
+constexpr std::uint8_t penguin_direction_bit(int deltaFile, int deltaRank) {
+    if (deltaFile == 0 && deltaRank == 1) return 1;    // Up
+    if (deltaFile == 0 && deltaRank == -1) return 2;   // Down
+    if (deltaFile == -1 && deltaRank == 0) return 4;   // Left
+    if (deltaFile == 1 && deltaRank == 0) return 8;    // Right
+    if (deltaFile == -1 && deltaRank == 1) return 16;  // UpLeft
+    if (deltaFile == 1 && deltaRank == 1) return 32;   // UpRight
+    if (deltaFile == -1 && deltaRank == -1) return 64; // DownLeft
+    if (deltaFile == 1 && deltaRank == -1) return 128; // DownRight
+    return 0;
+}
 
 constexpr std::array<PieceInfo, static_cast<std::size_t>(PieceType::Count)> PieceTable = {{
   // Draft costs are filled from Character.value in the shipping Android
@@ -136,10 +151,7 @@ void Position::clear() {
 }
 
 int Position::add_piece(PieceType type, Color color, int square) {
-    const int id = add_piece_internal(type, color, square, true);
-    if (id != NoPiece)
-        freeze_neighbors();
-    return id;
+    return add_piece_internal(type, color, square, true);
 }
 
 int Position::add_piece_internal(PieceType type, Color color, int square, bool generateCompanions,
@@ -214,6 +226,41 @@ int Position::attached_angel(int host) const {
     return found;
 }
 
+void Position::relocate_giant(int id, int destination, bool markMoved) {
+    if (id < 0 || id >= pieceCount_ || !pieces_[id].alive ||
+        pieces_[id].type != PieceType::Giant || !footprint(id, destination))
+        return;
+
+    erase_from_board(id);
+    // SimulatedGiant::MakeMoveTurnSkip invokes SimulateDeath on every
+    // character in the translated footprint, regardless of team.  Repeat the
+    // scan because an Angel save can relocate its host onto another one of
+    // those four cells; the native square-by-square routine then encounters
+    // that relocated host as well.  Each repeated victim consumes an Angel or
+    // dies, so MaxPieces is a conservative hard bound against malformed state.
+    for (int pass = 0; pass < MaxPieces && pieces_[id].alive; ++pass) {
+        const auto displaced = victims_on(footprint(id, destination), id);
+        if (displaced.empty())
+            break;
+        for (const int occupant : displaced)
+            if (pieces_[id].alive && pieces_[occupant].alive)
+                capture_piece(occupant, id,
+                              {pieces_[id].square, pieces_[occupant].square});
+    }
+    if (!pieces_[id].alive)
+        return;
+    // A legal native relocation cannot leave an occupied Giant footprint.
+    // Failing closed here prevents a malformed externally supplied attachment
+    // cycle from corrupting board/bitboard ownership.
+    if (!victims_on(footprint(id, destination), id).empty()) {
+        remove_piece(id);
+        return;
+    }
+    pieces_[id].square = static_cast<std::uint8_t>(destination);
+    pieces_[id].moved = pieces_[id].moved || markMoved;
+    place_on_board(id);
+}
+
 void Position::sacrifice_angel(int angel, int host) {
     if (angel < 0 || angel >= pieceCount_ || host < 0 || host >= pieceCount_ ||
         !pieces_[angel].alive || !pieces_[host].alive)
@@ -233,9 +280,12 @@ void Position::sacrifice_angel(int angel, int host) {
     int destination = returnSquare;
     if (pieces_[host].type == PieceType::Giant) {
         // The native Giant branch clamps the halo-derived anchor so its 2x2
-        // footprint remains inside the 8x10 board.
+        // footprint remains inside the 8x10 board, then delegates to
+        // SimulatedGiant::MakeMoveTurnSkip so every collision is resolved.
         destination = make_square(std::clamp(file_of(returnSquare), 0, BoardFiles - 2),
                                   std::clamp(rank_of(returnSquare), 0, BoardRanks - 2));
+        relocate_giant(host, destination);
+        return;
     }
     pieces_[host].square = static_cast<std::uint8_t>(destination);
     place_on_board(host);
@@ -253,6 +303,9 @@ bool Position::remove_piece(int id) {
 
     const PieceType type = pieces_[id].type;
     const int linked = pieces_[id].link;
+    if (type == PieceType::Penguin)
+        clear_penguin_freeze(id);
+    detach_from_penguin_freezes(id);
     erase_from_board(id);
     pieces_[id].alive = false;
     if (forcedPiece_ == id) {
@@ -265,8 +318,6 @@ bool Position::remove_piece(int id) {
     if ((type == PieceType::Angel || type == PieceType::Halo) && linked != NoPiece &&
         linked < pieceCount_ && pieces_[linked].alive)
         remove_piece(linked);
-    if (type == PieceType::Penguin)
-        freeze_neighbors();
     return true;
 }
 
@@ -277,6 +328,25 @@ int Position::piece_on(int square) const {
 const PieceInfo& Position::info(PieceType type) { return PieceTable[index(type)]; }
 
 int Position::material_value(PieceType type) { return MaterialValue[index(type)]; }
+
+int Position::material_points(int id) const {
+    if (id < 0 || id >= pieceCount_ || !pieces_[id].alive)
+        return 0;
+    const PieceState& item = pieces_[id];
+    const int base = info(item.type).draftCost;
+    // Native SimulatedBerserker starts at power level one, multiplies its
+    // pointValue by that level, and adds another base 15 after every attack.
+    // UPN stores the number of gained levels in PieceState::power.
+    return item.type == PieceType::Berserker ? base * (int(item.power) + 1) : base;
+}
+
+int Position::material_points(Color color) const {
+    int total = 0;
+    for (int id = 0; id < pieceCount_; ++id)
+        if (pieces_[id].alive && pieces_[id].color == color)
+            total += material_points(id);
+    return total;
+}
 
 std::string_view Position::type_name(PieceType type) { return info(type).name; }
 
@@ -381,6 +451,11 @@ bool Position::can_land(int id, int square, bool attacksOnly) const {
     const int target = board_[square];
     if (target == NoPiece)
         return !attacksOnly;
+    // SimulatedPiece::GetPieceSimulations marks an unrevealed Ghost square as
+    // unavailable for both leapers and steppers. Slider, Pawn, Sniper, and
+    // Fisherman have their own native blind-interaction branches.
+    if (pieces_[target].type == PieceType::Ghost && !pieces_[target].visible)
+        return false;
     return pieces_[target].color != pieces_[id].color;
 }
 
@@ -581,25 +656,6 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
         break;
     case PieceType::Prince:
         add_step_moves(moves, id, Around, 8, 1, false, attacksOnly);
-        if (!attacksOnly) {
-            moves.erase(std::remove_if(moves.begin(), moves.end(), [this, id](const Move& move) {
-                if (board_[move.to] != NoPiece)
-                    return false;
-                const int file = file_of(move.to);
-                const int rank = rank_of(move.to);
-                for (const auto& direction : Around) {
-                    const int targetFile = file + direction[0];
-                    const int targetRank = rank + direction[1];
-                    if (targetFile < 0 || targetFile >= BoardFiles || targetRank < 0 ||
-                        targetRank >= BoardRanks)
-                        continue;
-                    const int target = board_[make_square(targetFile, targetRank)];
-                    if (target != NoPiece && pieces_[target].color != pieces_[id].color)
-                        return false;
-                }
-                return true;
-            }), moves.end());
-        }
         break;
     case PieceType::Knight:
         add_knight_moves(moves, id, attacksOnly);
@@ -651,9 +707,20 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
     case PieceType::Bishop:
         add_slider_moves(moves, id, Diagonal, 4, BoardRanks, false, attacksOnly);
         break;
-    case PieceType::Berserker:
-        add_slider_moves(moves, id, Around, 8, std::min(7, 1 + int(piece.power)), false, attacksOnly);
+    case PieceType::Berserker: {
+        // Native SimulatedBerserker iterates every coordinate in its growing
+        // Chebyshev-radius box and does not trace rays between them.
+        const int radius = std::min(7, 1 + int(piece.power));
+        for (int file = std::max(0, file_of(piece.square) - radius);
+             file <= std::min(BoardFiles - 1, file_of(piece.square) + radius); ++file)
+            for (int rank = std::max(0, rank_of(piece.square) - radius);
+                 rank <= std::min(BoardRanks - 1, rank_of(piece.square) + radius); ++rank) {
+                const int to = make_square(file, rank);
+                if (to != piece.square && can_land(id, to, attacksOnly))
+                    moves.push_back({piece.square, static_cast<std::uint8_t>(to)});
+            }
         break;
+    }
     case PieceType::Bomb:
         add_slider_moves(moves, id, Orthogonal, 4, 2, false, attacksOnly);
         add_step_moves(moves, id, Diagonal, 4, 1, false, attacksOnly);
@@ -695,7 +762,17 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
                 }
         break;
     case PieceType::Penguin:
-        add_step_moves(moves, id, Around, 8, 1, false, attacksOnly);
+        // Native Freeze/Penguin can step to any adjacent empty square but has
+        // no attack action.  Its offensive effect is the adjacent freeze aura;
+        // occupied squares must not be generated as captures or attack-map
+        // entries.  This matters when answering check: the app rejected a
+        // live h1-h2 attempt against an enemy Dragon on h2.
+        if (!attacksOnly) {
+            add_step_moves(moves, id, Around, 8, 1, false, false);
+            moves.erase(std::remove_if(moves.begin(), moves.end(), [this](const Move& move) {
+                            return board_[move.to] != NoPiece;
+                        }), moves.end());
+        }
         break;
     case PieceType::Devil:
         if (!attacksOnly)
@@ -792,35 +869,39 @@ bool Position::checker_has_capture(int id) const {
 }
 
 bool Position::has_forced_action() const {
-    if (forcedPiece_ != NoPiece)
-        return true;
-    for (int id = 0; id < pieceCount_; ++id)
-        if (pieces_[id].alive && pieces_[id].onBoard && pieces_[id].color == sideToMove_ &&
-            (pieces_[id].type == PieceType::Checker ||
-             pieces_[id].type == PieceType::CheckerKing) &&
-            checker_has_capture(id))
-            return true;
-    return false;
+    return forcedPiece_ != NoPiece;
 }
 
 std::vector<Move> Position::legal_moves() const {
-    if (game_over())
+    if (!has_real_king(Color::White) || !has_real_king(Color::Black) ||
+        !is_checkmate_possible())
         return {};
-    if (forcedPiece_ != NoPiece)
-        return moves_for(forcedPiece_, true);
 
-    // The native SimulatedBoard keeps a forced set for checkers with an
-    // available jump. If any checker can capture, quiet moves are unavailable.
-    std::vector<Move> forcedCaptures;
-    for (int id = 0; id < pieceCount_; ++id) {
-        if (!pieces_[id].alive || !pieces_[id].onBoard || pieces_[id].color != sideToMove_ ||
-            (pieces_[id].type != PieceType::Checker && pieces_[id].type != PieceType::CheckerKing))
-            continue;
-        auto captures = moves_for(id, true);
-        forcedCaptures.insert(forcedCaptures.end(), captures.begin(), captures.end());
-    }
-    if (!forcedCaptures.empty())
-        return forcedCaptures;
+    auto moves = pseudo_legal_moves();
+    // Reuse one mutable child across the complete frontier. make_move_unchecked
+    // already snapshots every field in Undo, so constructing another full
+    // Position for each sibling only duplicated the hottest copy in search.
+    Position child = *this;
+    const Color mover = sideToMove_;
+    moves.erase(std::remove_if(moves.begin(), moves.end(), [&](const Move& move) {
+        Undo undo;
+        if (!child.make_move_unchecked(move, undo))
+            return true;
+        const bool ownKingAlive = child.has_real_king(mover);
+        const bool continuation = child.sideToMove_ == mover && child.has_forced_action();
+        const bool opponentKingDead = !child.has_real_king(~mover);
+        const bool legal = ownKingAlive &&
+          (continuation || opponentKingDead || !child.real_king_threatened(mover));
+        child.undo_move(undo);
+        return !legal;
+    }), moves.end());
+    return moves;
+}
+
+std::vector<Move> Position::pseudo_legal_moves() const {
+    if (forcedPiece_ != NoPiece)
+        return moves_for(
+            forcedPiece_, continuation_ == Continuation::CheckerJump);
 
     std::vector<Move> moves;
     for (int id = 0; id < pieceCount_; ++id) {
@@ -830,6 +911,164 @@ std::vector<Move> Position::legal_moves() const {
         moves.insert(moves.end(), generated.begin(), generated.end());
     }
     return moves;
+}
+
+bool Position::real_king_threatened(Color color) const {
+    if (!has_real_king(color))
+        return true;
+
+    int kingSquare = NoSquare;
+    for (int id = 0; id < pieceCount_; ++id)
+        if (pieces_[id].alive && pieces_[id].color == color &&
+            pieces_[id].type == PieceType::King) {
+            kingSquare = pieces_[id].square;
+            break;
+        }
+
+    const auto adjacent = [](int lhs, int rhs) {
+        return std::abs(file_of(lhs) - file_of(rhs)) <= 1 &&
+               std::abs(rank_of(lhs) - rank_of(rhs)) <= 1;
+    };
+
+    // A captured Bomb can reach the King through a chain of adjacent Bombs.
+    // Build that connected danger set once, then reject the many captures
+    // whose victim and blast cannot possibly affect the royal.
+    Bitboard dangerousBombs = 0;
+    for (int id = 0; id < pieceCount_; ++id)
+        if (pieces_[id].alive && pieces_[id].onBoard && pieces_[id].type == PieceType::Bomb &&
+            adjacent(pieces_[id].square, kingSquare))
+            dangerousBombs |= square_bb(pieces_[id].square);
+    for (bool changed = true; changed;) {
+        changed = false;
+        for (int id = 0; id < pieceCount_; ++id) {
+            if (!pieces_[id].alive || !pieces_[id].onBoard ||
+                pieces_[id].type != PieceType::Bomb ||
+                (dangerousBombs & square_bb(pieces_[id].square)))
+                continue;
+            Bitboard connected = dangerousBombs;
+            while (connected) {
+                if (adjacent(pieces_[id].square, pop_lsb(connected))) {
+                    dangerousBombs |= square_bb(pieces_[id].square);
+                    changed = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    const Bitboard royalDanger = square_bb(kingSquare) | dangerousBombs;
+    const auto dangerousVictim = [&](int id) {
+        return id != NoPiece && id < pieceCount_ && pieces_[id].alive &&
+          ((pieces_[id].type == PieceType::King && pieces_[id].color == color) ||
+           (pieces_[id].type == PieceType::Bomb &&
+            (dangerousBombs & square_bb(pieces_[id].square))));
+    };
+    const auto dangerousBlast = [&](int center) {
+        if (adjacent(center, kingSquare))
+            return true;
+        Bitboard bombs = dangerousBombs;
+        while (bombs)
+            if (adjacent(center, pop_lsb(bombs)))
+                return true;
+        return false;
+    };
+
+    // Chess Ultimate defines check through the same full piece simulations
+    // used for ordinary actions.  This is important for indirect royal kills:
+    // capturing a nearby Bomb, translating a Giant footprint, or possessing
+    // the King can remove the real King even when the attack does not land on
+    // the King's square.
+    Position attacker = *this;
+    attacker.sideToMove_ = ~color;
+    attacker.forcedPiece_ = NoPiece;
+    attacker.continuation_ = Continuation::None;
+    for (int actor = 0; actor < attacker.pieceCount_; ++actor) {
+        if (!attacker.pieces_[actor].alive || !attacker.pieces_[actor].onBoard ||
+            attacker.pieces_[actor].color != attacker.sideToMove_)
+            continue;
+        // Ghost attacks never produce check/checkmate in the app.  A royal may
+        // enter a hidden Ghost's adjacency, reveal it, and remain alive until
+        // the Ghost actually captures it on a later action.
+        if (attacker.pieces_[actor].type == PieceType::Ghost)
+            continue;
+
+        const PieceType actorType = attacker.pieces_[actor].type;
+        const bool needsQuietCompanion =
+          actorType == PieceType::Mage || actorType == PieceType::Fisherman ||
+          actorType == PieceType::Copycat || actorType == PieceType::CopycatClone;
+        // Most characters can knock out a King only through their native
+        // attack list. The four exceptions need their full list: Mage and
+        // Fisherman can forcibly translate a Giant, while either CopyCat half
+        // may move quietly as its mirrored partner captures the King.
+        const auto replies = attacker.moves_for(actor, !needsQuietCompanion);
+        for (const Move& reply : replies) {
+            // Simulate only actions whose affected square set intersects the
+            // King or a Bomb chain leading to it. This retains native death,
+            // Angel, Parasite, and blast semantics without applying unrelated
+            // captures merely to discover that the King survived.
+            bool canKnockOut = false;
+            if (actorType == PieceType::Bomb) {
+                canKnockOut = dangerousBlast(reply.to);
+            }
+            else if (actorType == PieceType::Giant) {
+                canKnockOut = bool(attacker.footprint(actor, reply.to) & royalDanger);
+            }
+            else if (reply.kind == MoveKind::Swap &&
+                     reply.auxiliary < attacker.pieceCount_ &&
+                     attacker.pieces_[reply.auxiliary].type == PieceType::Giant) {
+                const int giant = reply.auxiliary;
+                const int destinationFile = file_of(reply.from) +
+                  file_of(attacker.pieces_[giant].square) - file_of(reply.to);
+                const int destinationRank = rank_of(reply.from) +
+                  rank_of(attacker.pieces_[giant].square) - rank_of(reply.to);
+                if (destinationFile >= 0 && destinationFile < BoardFiles &&
+                    destinationRank >= 0 && destinationRank < BoardRanks)
+                    canKnockOut = bool(attacker.footprint(
+                      giant, make_square(destinationFile, destinationRank)) & royalDanger);
+            }
+            else if (reply.kind == MoveKind::Pull) {
+                const int pulled = valid_square(reply.to) ? attacker.board_[reply.to] : NoPiece;
+                if (pulled != NoPiece && attacker.pieces_[pulled].type == PieceType::Giant) {
+                    const int destinationFile = file_of(attacker.pieces_[pulled].square) +
+                                                file_of(reply.auxiliary) - file_of(reply.to);
+                    const int destinationRank = rank_of(attacker.pieces_[pulled].square) +
+                                                rank_of(reply.auxiliary) - rank_of(reply.to);
+                    if (destinationFile >= 0 && destinationFile < BoardFiles &&
+                        destinationRank >= 0 && destinationRank < BoardRanks)
+                        canKnockOut = bool(attacker.footprint(
+                          pulled, make_square(destinationFile, destinationRank)) & royalDanger);
+                }
+            }
+            else if (actorType == PieceType::Copycat ||
+                     actorType == PieceType::CopycatClone) {
+                const int primary = valid_square(reply.to) ? attacker.board_[reply.to] : NoPiece;
+                const int mirrored = valid_square(reply.auxiliary)
+                                   ? attacker.board_[reply.auxiliary] : NoPiece;
+                canKnockOut = dangerousVictim(primary) || dangerousVictim(mirrored);
+            }
+            else if (reply.kind == MoveKind::Shoot) {
+                canKnockOut = dangerousVictim(reply.auxiliary);
+            }
+            else if ((actorType == PieceType::Checker ||
+                      actorType == PieceType::CheckerKing) &&
+                     valid_square(reply.auxiliary)) {
+                canKnockOut = dangerousVictim(attacker.board_[reply.auxiliary]);
+            }
+            else if (valid_square(reply.to)) {
+                canKnockOut = dangerousVictim(attacker.board_[reply.to]);
+            }
+            if (!canKnockOut)
+                continue;
+            Undo undo;
+            if (!attacker.make_move_unchecked(reply, undo))
+                continue;
+            const bool killed = !attacker.has_real_king(color);
+            attacker.undo_move(undo);
+            if (killed)
+                return true;
+        }
+    }
+    return false;
 }
 
 bool Position::is_capture(const Move& move) const {
@@ -846,7 +1085,8 @@ bool Position::is_capture(const Move& move) const {
         return true;
     if ((pieces_[actor].type == PieceType::Checker ||
          pieces_[actor].type == PieceType::CheckerKing) &&
-        valid_square(move.auxiliary) && board_[move.auxiliary] != NoPiece)
+        move.auxiliary != 0 && valid_square(move.auxiliary) &&
+        board_[move.auxiliary] != NoPiece)
         return true;
     if ((pieces_[actor].type == PieceType::Copycat ||
          pieces_[actor].type == PieceType::CopycatClone) &&
@@ -885,8 +1125,21 @@ void Position::explode_at(int center, int attacker) {
         for (int rank = std::max(0, centerRank - 1);
              rank <= std::min(BoardRanks - 1, centerRank + 1); ++rank)
             blast |= square_bb(make_square(file, rank));
-    for (const int victim : victims_on(blast))
+    std::vector<int> chainedBombs;
+    for (const int victim : victims_on(blast)) {
+        if (!pieces_[victim].alive)
+            continue;
+        const bool bomb = pieces_[victim].type == PieceType::Bomb;
+        const int bombSquare = pieces_[victim].square;
         remove_piece(victim);
+        // SimulatedBomb::SimulateDeath invokes its own explosion even when it
+        // is only collateral damage from another Bomb. An Angel save leaves
+        // it alive and suppresses that secondary blast.
+        if (bomb && !pieces_[victim].alive)
+            chainedBombs.push_back(bombSquare);
+    }
+    for (const int bombSquare : chainedBombs)
+        explode_at(bombSquare, NoPiece);
     if (attacker != NoPiece && attacker < pieceCount_ && pieces_[attacker].alive &&
         (footprint(attacker, pieces_[attacker].square) & blast))
         remove_piece(attacker);
@@ -897,6 +1150,45 @@ void Position::capture_piece(int victim, int attacker, const Move& move) {
         return;
     const PieceType attackerType = pieces_[attacker].type;
     const PieceType victimType = pieces_[victim].type;
+
+    // SimulatedBerserker::MakeMove grows on any attack recorded in Move.target,
+    // including an Angel save or a possession interaction.
+    if (attackerType == PieceType::Berserker)
+        pieces_[attacker].power = std::min<std::uint8_t>(7, pieces_[attacker].power + 1);
+
+    // Native Bomb death always creates a radius-one blast. Ordinary attackers
+    // land inside it and die, while a genuinely ranged Sniper remains on its
+    // origin and survives when that square is outside the radius. Resolve this
+    // before Parasite/Halo branches so they cannot suppress the explosion.
+    if (attackerType == PieceType::Bomb) {
+        remove_piece(victim);
+        // An attacking Bomb explodes where it lands. This is also the victim
+        // Bomb's coordinate when two Bombs collide, so one blast is sufficient.
+        explode_at(move.to, NoPiece);
+        remove_piece(attacker);
+        return;
+    }
+    if (victimType == PieceType::Bomb) {
+        // Checker jumps and Giant moves can capture a character on a square
+        // other than move.to. Native SimulatedBomb explodes around its own
+        // targetSquare, not the attacker's landing/anchor square.
+        const int bombSquare = pieces_[victim].square;
+        remove_piece(victim);
+        if (pieces_[victim].alive)  // Saved by an attached Angel.
+            return;
+        explode_at(bombSquare, NoPiece);
+        // Ordinary attackers land on move.to and are therefore inside the
+        // blast. A Sniper's Shoot is genuinely ranged: it remains on its
+        // origin and survives when that square lies outside radius one. The
+        // app demonstrated this with f10xf2 followed later by f10xf8.
+        const int attackerSquare = move.kind == MoveKind::Shoot
+                                 ? pieces_[attacker].square : move.to;
+        if (pieces_[attacker].alive &&
+            std::abs(file_of(attackerSquare) - file_of(bombSquare)) <= 1 &&
+            std::abs(rank_of(attackerSquare) - rank_of(bombSquare)) <= 1)
+            remove_piece(attacker);
+        return;
+    }
 
     if (victimType == PieceType::Halo) {
         remove_piece(victim);
@@ -934,34 +1226,66 @@ void Position::capture_piece(int victim, int attacker, const Move& move) {
         remove_piece(attacker);
         return;
     }
-    if (attackerType == PieceType::Berserker && pieces_[attacker].alive)
-        pieces_[attacker].power = std::min<std::uint8_t>(7, pieces_[attacker].power + 1);
+}
 
-    if (attackerType == PieceType::Bomb || victimType == PieceType::Bomb) {
-        explode_at(move.to, attacker);
-        if (attackerType == PieceType::Bomb)
-            remove_piece(attacker);
+void Position::clear_penguin_freeze(int penguin) {
+    if (penguin < 0 || penguin >= pieceCount_ || !pieces_[penguin].alive ||
+        pieces_[penguin].type != PieceType::Penguin)
+        return;
+    const int file = file_of(pieces_[penguin].square);
+    const int rank = rank_of(pieces_[penguin].square);
+    for (const auto& direction : Around) {
+        const std::uint8_t bit = penguin_direction_bit(direction[0], direction[1]);
+        if (!(pieces_[penguin].action & bit))
+            continue;
+        const int targetFile = file + direction[0];
+        const int targetRank = rank + direction[1];
+        if (targetFile < 0 || targetFile >= BoardFiles || targetRank < 0 ||
+            targetRank >= BoardRanks)
+            continue;
+        const int target = board_[make_square(targetFile, targetRank)];
+        if (target != NoPiece && pieces_[target].type != PieceType::Penguin &&
+            pieces_[target].freezeCount)
+            --pieces_[target].freezeCount;
+    }
+    pieces_[penguin].action = 0;
+}
+
+void Position::apply_penguin_freeze(int penguin) {
+    if (penguin < 0 || penguin >= pieceCount_ || !pieces_[penguin].alive ||
+        pieces_[penguin].type != PieceType::Penguin)
+        return;
+    pieces_[penguin].action = 0;
+    const int file = file_of(pieces_[penguin].square);
+    const int rank = rank_of(pieces_[penguin].square);
+    for (const auto& direction : Around) {
+        const int targetFile = file + direction[0];
+        const int targetRank = rank + direction[1];
+        if (targetFile < 0 || targetFile >= BoardFiles || targetRank < 0 ||
+            targetRank >= BoardRanks)
+            continue;
+        const int target = board_[make_square(targetFile, targetRank)];
+        if (target == NoPiece || pieces_[target].type == PieceType::Penguin)
+            continue;
+        ++pieces_[target].freezeCount;
+        pieces_[penguin].action |= penguin_direction_bit(direction[0], direction[1]);
     }
 }
 
-void Position::freeze_neighbors() {
-    for (int id = 0; id < pieceCount_; ++id)
-        pieces_[id].freezeCount = 0;
+void Position::detach_from_penguin_freezes(int target) {
+    if (target < 0 || target >= pieceCount_ || !pieces_[target].alive)
+        return;
+    const int targetFile = file_of(pieces_[target].square);
+    const int targetRank = rank_of(pieces_[target].square);
     for (int penguin = 0; penguin < pieceCount_; ++penguin) {
-        if (!pieces_[penguin].alive || pieces_[penguin].type != PieceType::Penguin)
+        if (penguin == target || !pieces_[penguin].alive ||
+            pieces_[penguin].type != PieceType::Penguin)
             continue;
-        const int file = file_of(pieces_[penguin].square);
-        const int rank = rank_of(pieces_[penguin].square);
-        for (const auto& direction : Around) {
-            const int targetFile = file + direction[0];
-            const int targetRank = rank + direction[1];
-            if (targetFile < 0 || targetFile >= BoardFiles || targetRank < 0 ||
-                targetRank >= BoardRanks)
-                continue;
-            const int target = board_[make_square(targetFile, targetRank)];
-            if (target != NoPiece && pieces_[target].type != PieceType::Penguin)
-                pieces_[target].freezeCount++;
-        }
+        const int deltaFile = targetFile - file_of(pieces_[penguin].square);
+        const int deltaRank = targetRank - rank_of(pieces_[penguin].square);
+        const std::uint8_t bit = penguin_direction_bit(deltaFile, deltaRank);
+        if (bit && (pieces_[penguin].action & bit))
+            pieces_[penguin].action &= static_cast<std::uint8_t>(~bit);
     }
 }
 
@@ -1038,12 +1362,15 @@ void Position::finish_turn() {
         if (pieces_[id].alive && pieces_[id].cooldown)
             --pieces_[id].cooldown;
     advance_minions(sideToMove_);
-    freeze_neighbors();
 }
 
 bool Position::make_move(const Move& move, Undo& undo) {
     if (!is_legal(move))
         return false;
+    return make_move_unchecked(move, undo);
+}
+
+bool Position::make_move_unchecked(const Move& move, Undo& undo) {
     undo = {board_, pieces_, byType_, occupancy_, pieceCount_, sideToMove_, enPassantSquare_,
             enPassantVictim_, forcedPiece_, continuation_, halfmove_, fullmove_,
             nextAttachmentOrder_};
@@ -1055,9 +1382,18 @@ bool Position::make_move(const Move& move, Undo& undo) {
     const int originalFrom = actor.square;
     const int target = board_[move.to];
     const bool checkerJump = actor.type == PieceType::Checker || actor.type == PieceType::CheckerKing;
+    const bool checkerCapture = checkerJump && move.auxiliary != 0 &&
+                              valid_square(move.auxiliary) &&
+                              board_[move.auxiliary] != NoPiece;
     const bool capture = target != NoPiece || move.kind == MoveKind::Shoot
-                      || (checkerJump && board_[move.auxiliary] != NoPiece);
+                      || checkerCapture;
     bool createdEnPassant = false;
+
+    // A Penguin has no starting aura. SimulatedFreeze::MakeMove first removes
+    // the set created by its preceding move, then freezes the non-Penguins
+    // around its new square and serializes those directions in action.
+    if (actor.type == PieceType::Penguin)
+        clear_penguin_freeze(id);
 
     if (move.kind == MoveKind::Swap) {
         const int other = move.auxiliary;
@@ -1072,20 +1408,16 @@ bool Position::make_move(const Move& move, Undo& undo) {
             erase_from_board(other);
             actor.square = move.to;
             actor.moved = true;
-            place_on_board(id);
             // SimulatedMage delegates this branch to Giant MakeMoveTurnSkip,
             // which removes every other character in the translated 2x2
             // footprint, including allies.
-            const auto displaced = victims_on(footprint(other, destination), other);
-            for (const int occupant : displaced)
-                if (pieces_[other].alive && pieces_[occupant].alive)
-                    capture_piece(occupant, other,
-                                  {pieces_[other].square, pieces_[occupant].square});
-            if (pieces_[other].alive) {
-                pieces_[other].square = static_cast<std::uint8_t>(destination);
-                pieces_[other].moved = true;
-                place_on_board(other);
-            }
+            relocate_giant(other, destination);
+            // Place the Mage only after relocate_giant has finished clearing
+            // the Giant's old 2x2 bitboard. The selected target is one of
+            // those old cells, so placing it first silently cleared the Mage
+            // from occupancy_ even though board_ still contained it.
+            if (actor.alive)
+                place_on_board(id);
         }
         else {
             erase_from_board(id);
@@ -1094,6 +1426,16 @@ bool Position::make_move(const Move& move, Undo& undo) {
             actor.moved = true;
             pieces_[other].square = static_cast<std::uint8_t>(originalFrom);
             pieces_[other].moved = true;
+            if (pieces_[other].type == PieceType::Pawn) {
+                const int promotionRank = pieces_[other].color == Color::White ? BoardRanks - 1 : 0;
+                if (rank_of(pieces_[other].square) == promotionRank)
+                    pieces_[other].type = PieceType::Queen;
+            }
+            else if (pieces_[other].type == PieceType::Checker) {
+                const int promotionRank = pieces_[other].color == Color::White ? BoardRanks - 1 : 0;
+                if (rank_of(pieces_[other].square) == promotionRank)
+                    pieces_[other].type = PieceType::CheckerKing;
+            }
             place_on_board(id);
             place_on_board(other);
             if (pieces_[other].type == PieceType::Ghost)
@@ -1128,18 +1470,14 @@ bool Position::make_move(const Move& move, Undo& undo) {
                     // MakeMoveTurnSkip. Forced displacement differs from an
                     // ordinary Giant move: every other character in all four
                     // destination cells is knocked out, including allies.
-                    const auto displaced = victims_on(footprint(victim, destination), victim);
-                    for (const int occupant : displaced)
-                        if (pieces_[victim].alive && pieces_[occupant].alive)
-                            capture_piece(occupant, victim,
-                              {pieces_[victim].square, pieces_[occupant].square});
+                    relocate_giant(victim, destination);
                 }
                 else {
                     const int occupant = board_[move.auxiliary];
                     if (occupant != NoPiece)
                         capture_piece(occupant, victim, move);
                 }
-                if (pieces_[victim].alive) {
+                if (pieces_[victim].alive && pieces_[victim].type != PieceType::Giant) {
                     pieces_[victim].square = static_cast<std::uint8_t>(destination);
                     place_on_board(victim);
                 }
@@ -1206,7 +1544,7 @@ bool Position::make_move(const Move& move, Undo& undo) {
                                        file_of(move.to) == file_of(originalFrom);
         if (actor.type == PieceType::Pawn && move.to == enPassantSquare_)
             victim = enPassantVictim_;
-        if (actor.type == PieceType::Checker || actor.type == PieceType::CheckerKing)
+        if (checkerCapture)
             victim = board_[move.auxiliary];
         if (actor.type == PieceType::Giant) {
             const Bitboard destination = footprint(id, move.to);
@@ -1244,6 +1582,8 @@ bool Position::make_move(const Move& move, Undo& undo) {
                 actor.visible = capture || ghost_near_enemy_royal(actor.square, actor.color);
             else if (actor.type == PieceType::King || actor.type == PieceType::Jester)
                 reveal_ghosts_near(actor.square, actor.color);
+            else if (actor.type == PieceType::Penguin)
+                apply_penguin_freeze(id);
         }
         if (actor.type == PieceType::Sludge && board_[originalFrom] == NoPiece) {
             add_piece(PieceType::Goop, actor.color, originalFrom);
@@ -1257,7 +1597,25 @@ bool Position::make_move(const Move& move, Undo& undo) {
     }
 
     ++halfmove_;
-    rebuild_bitboards();
+    // Every branch above maintains board_, occupancy_, and byType_
+    // incrementally through erase/place/add/remove. Only off-board Angels
+    // need their serialized coordinate matched to a host after it moves.
+    for (int angel = 0; angel < pieceCount_; ++angel)
+        if (pieces_[angel].alive && pieces_[angel].type == PieceType::Angel &&
+            !pieces_[angel].onBoard && pieces_[angel].host != NoPiece &&
+            pieces_[angel].host < pieceCount_ && pieces_[pieces_[angel].host].alive)
+            pieces_[angel].square = pieces_[pieces_[angel].host].square;
+
+#ifndef NDEBUG
+    // The reference/test build keeps a differential invariant oracle. Release
+    // search avoids this full reconstruction entirely.
+    Position rebuilt = *this;
+    rebuilt.rebuild_bitboards();
+    assert(board_ == rebuilt.board_ && byType_ == rebuilt.byType_ &&
+           occupancy_ == rebuilt.occupancy_);
+    for (int id = 0; id < pieceCount_; ++id)
+        assert(pieces_[id].square == rebuilt.pieces_[id].square);
+#endif
 
     if (id < pieceCount_ && pieces_[id].alive &&
         (pieces_[id].type == PieceType::Checker || pieces_[id].type == PieceType::CheckerKing) &&
@@ -1287,7 +1645,9 @@ std::uint64_t Position::perft(int depth) const {
     std::uint64_t nodes = 0;
     for (const Move& move : legal_moves()) {
         Undo undo;
-        if (!child.make_move(move, undo))
+        // The perft frontier is the position's own legal list; revalidating
+        // each member would regenerate that complete list once per child.
+        if (!child.make_move_unchecked(move, undo))
             continue;
         nodes += child.perft(depth - 1);
         child.undo_move(undo);
@@ -1385,16 +1745,22 @@ bool Position::is_checkmate_possible() const {
 }
 
 bool Position::game_over() const {
-    return !has_real_king(Color::White) || !has_real_king(Color::Black) ||
-           !is_checkmate_possible();
+    if (!has_real_king(Color::White) || !has_real_king(Color::Black) ||
+        !is_checkmate_possible())
+        return true;
+    return legal_moves().empty();
 }
 
 std::optional<Color> Position::winner() const {
     const bool white = has_real_king(Color::White);
     const bool black = has_real_king(Color::Black);
-    if (white == black)
+    if (white != black)
+        return white ? Color::White : Color::Black;
+    if (!white || !is_checkmate_possible())
         return std::nullopt;
-    return white ? Color::White : Color::Black;
+    if (legal_moves().empty() && real_king_threatened(sideToMove_))
+        return ~sideToMove_;
+    return std::nullopt;
 }
 
 std::uint64_t Position::key() const {
@@ -1407,6 +1773,8 @@ std::uint64_t Position::key() const {
     mix(static_cast<std::uint8_t>(continuation_));
     mix(static_cast<std::uint64_t>(forcedPiece_ + 1));
     mix(static_cast<std::uint64_t>(enPassantSquare_ + 1));
+    mix(static_cast<std::uint64_t>(enPassantVictim_ + 1));
+    mix(nextAttachmentOrder_);
     for (int id = 0; id < pieceCount_; ++id) {
         const PieceState& piece = pieces_[id];
         if (!piece.alive)
@@ -1438,7 +1806,7 @@ int Position::evaluate() const {
             continue;
         int value = MaterialValue[index(piece.type)];
         if (piece.type == PieceType::Berserker)
-            value += 55 * piece.power;
+            value *= int(piece.power) + 1;
         if (piece.cooldown)
             value -= value / 4;
         if (piece.freezeCount)

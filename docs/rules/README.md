@@ -17,7 +17,7 @@ cases.
 
 The simulation classes are especially valuable because the shipping game uses
 them for bot move generation and undo. They expose the state model needed by a
-search engine: cooldowns, visibility, freezing, forced checker captures,
+search engine: cooldowns, visibility, freezing, forced Checker continuations,
 multi-moves, linked pieces, explosions, automatic minion movement, and board
 evaluation.
 
