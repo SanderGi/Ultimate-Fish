@@ -474,6 +474,24 @@ void test_ninja_and_mage() {
     expect(swap.piece(swap.piece_on(Position::square_from_name("c2"))).type == PieceType::Rook,
            "ally occupies mage square after swap");
 
+    Position pawnStateSwap;
+    pawnStateSwap.add_piece(PieceType::King, Color::White,
+                            Position::square_from_name("a1"));
+    pawnStateSwap.add_piece(PieceType::King, Color::Black,
+                            Position::square_from_name("h10"));
+    pawnStateSwap.add_piece(PieceType::Mage, Color::White,
+                            Position::square_from_name("h2"));
+    const int displacedPawn = pawnStateSwap.add_piece(
+        PieceType::Pawn, Color::White, Position::square_from_name("d4"));
+    Undo pawnStateUndo;
+    expect(pawnStateSwap.make_move(require_move(pawnStateSwap, "h2~d4"), pawnStateUndo),
+           "Mage can displace an unmoved Pawn");
+    expect(!pawnStateSwap.piece(displacedPawn).moved,
+           "Mage displacement preserves the target's first-move state");
+    pawnStateSwap.set_side_to_move(Color::White);
+    expect(pawnStateSwap.move_from_string("h2-h4").has_value(),
+           "Mage-displaced unmoved Pawn retains its native double step");
+
     Position promotionSwap;
     promotionSwap.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     promotionSwap.add_piece(PieceType::King, Color::Black, Position::square_from_name("h10"));

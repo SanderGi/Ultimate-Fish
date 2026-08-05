@@ -242,6 +242,9 @@ and remaps every relationship so captures cannot corrupt a round trip.
   when the translated Giant remains in bounds. The Mage lands on the selected
   tile; the Giant is forcibly translated to the Mage and knocks out either
   team's characters in its new footprint.
+- A Mage swap preserves the displaced target's movement-turn state. It does
+  not count as that piece taking a turn: an unmoved Pawn moved from `h9` to
+  `a3`, for example, can still double-step to `a1` and promote.
 - An unmoved pawn can double-step from any valid deployment rank when both
   forward squares are available. Promotion occurs on rank 10 for Ivory and
   rank 1 for Onyx. En-passant stores and removes the exact pawn victim.

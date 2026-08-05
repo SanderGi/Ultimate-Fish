@@ -1544,7 +1544,10 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
             actor.square = static_cast<std::uint8_t>(otherSquare);
             actor.moved = true;
             pieces_[other].square = static_cast<std::uint8_t>(originalFrom);
-            pieces_[other].moved = true;
+            // Native Mage relocation is forced displacement of the target,
+            // not that target taking a turn. Preserve its pieceMoved flag.
+            // In particular an unmoved Pawn swapped from h9 to a3 can still
+            // make the native two-step a3-a1 and promote.
             if (pieces_[other].type == PieceType::Pawn) {
                 const int promotionRank = pieces_[other].color == Color::White ? BoardRanks - 1 : 0;
                 if (rank_of(pieces_[other].square) == promotionRank)
