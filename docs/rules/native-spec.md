@@ -197,6 +197,13 @@ and remaps every relationship so captures cannot corrupt a round trip.
 - An unmoved pawn can double-step from any valid deployment rank when both
   forward squares are available. Promotion occurs on rank 10 for Ivory and
   rank 1 for Onyx. En-passant stores and removes the exact pawn victim.
+- King and Jester both use `SimulatedKing` castling. An unmoved royal scans
+  horizontally to the first occupied square; when it is an unmoved Rook at
+  least three files away, the royal may move two files toward it and the Rook
+  lands on the square beside the royal. The native generator does not require
+  the Rook to share the royal's team and does not test check on the starting or
+  crossed square. Ordinary post-move legality still rejects a real King that
+  remains threatened on its destination.
 - The native insufficient-material table is implemented, including its special
   minor/color-bound/support combinations. With both real kings present and
   neither team sufficient, the result is a draw.

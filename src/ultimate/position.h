@@ -67,6 +67,7 @@ enum class PieceClass : std::uint8_t { Melee, Ranged, Support };
 
 enum class MoveKind : std::uint8_t {
     Normal,
+    Castle,
     Swap,
     Spawn,
     Shoot,

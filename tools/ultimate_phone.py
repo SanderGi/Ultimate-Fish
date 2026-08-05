@@ -1942,6 +1942,20 @@ def move_matches(move: str, source: str, target: str) -> bool:
     return move_source == source and move_target == target
 
 
+def is_castling_move(position: str, move: str) -> bool:
+    """Recognize native King/Jester two-file castling notation."""
+    try:
+        source, target, separator = parse_engine_move(move)
+    except ValueError:
+        return False
+    if separator != "-" or int(source[1:]) != int(target[1:]):
+        return False
+    if abs(ord(source[0]) - ord(target[0])) != 2:
+        return False
+    actor = upn_piece_at(position, source)
+    return bool(actor and actor[0] in ("king", "jester"))
+
+
 def giant_footprint(anchor: str) -> set[str]:
     file_index = ord(anchor[0]) - ord("a")
     rank = int(anchor[1:])
@@ -2390,7 +2404,31 @@ def rewind_public_enemy_opening(
     ]]
 
     moves = [event for event in opening_events if event.kind == "move"]
-    for event in reversed(moves):
+    castle_companions: dict[int, tuple[int, str]] = {}
+    companion_rooks: set[int] = set()
+    for royal_index, royal in enumerate(moves):
+        if (royal.piece not in ("king", "jester") or not royal.source or
+                not royal.target or int(royal.source[1:]) != int(royal.target[1:]) or
+                abs(ord(royal.source[0]) - ord(royal.target[0])) != 2):
+            continue
+        direction = 1 if royal.target[0] > royal.source[0] else -1
+        rook_destination = (
+            f"{chr(ord(royal.target[0]) - direction)}{royal.target[1:]}"
+        )
+        for rook_index, rook in enumerate(moves):
+            if (rook_index == royal_index or rook.piece != "rook" or
+                    not rook.source or rook.target != rook_destination or
+                    int(rook.source[1:]) != int(royal.source[1:])):
+                continue
+            if ((ord(rook.source[0]) - ord(royal.source[0])) * direction > 2):
+                castle_companions[royal_index] = (rook_index, rook.source)
+                companion_rooks.add(rook_index)
+                break
+
+    for move_index in reversed(range(len(moves))):
+        if move_index in companion_rooks:
+            continue
+        event = moves[move_index]
         if not event.piece or not event.source or not event.target:
             continue
         piece, source, target = event.piece, event.source, event.target
@@ -2407,6 +2445,53 @@ def rewind_public_enemy_opening(
             continue
 
         if piece in ("devil", "fisherman", "sniper") and source == target:
+            continue
+
+        if (piece in ("king", "jester") and
+                int(source[1:]) == int(target[1:]) and
+                abs(ord(source[0]) - ord(target[0])) == 2):
+            direction = 1 if target[0] > source[0] else -1
+            rook_current = f"{chr(ord(target[0]) - direction)}{target[1:]}"
+            recorded = castle_companions.get(move_index)
+            rook_origins = (
+                [recorded[1]] if recorded else [
+                    f"{chr(ord(source[0]) + direction * distance)}{source[1:]}"
+                    for distance in range(3, 8)
+                    if 0 <= ord(source[0]) - ord("a") + direction * distance < 8
+                ]
+            )
+            restored_variants = []
+            for variant in variants:
+                royal_indices = [
+                    index for index, (candidate, square) in enumerate(variant)
+                    if candidate == "king" and square == target
+                ]
+                rook_indices = [
+                    index for index, (candidate, square) in enumerate(variant)
+                    if candidate == "rook" and square == rook_current
+                ]
+                if not royal_indices or not rook_indices:
+                    continue
+                for royal_index in royal_indices:
+                    for rook_index in rook_indices:
+                        if royal_index == rook_index:
+                            continue
+                        base = [
+                            item for index, item in enumerate(variant)
+                            if index not in (royal_index, rook_index)
+                        ]
+                        occupied = {square for _candidate, square in base}
+                        for rook_origin in rook_origins:
+                            if rook_origin in occupied:
+                                continue
+                            restored_variants.append(
+                                base + [("king", source), ("rook", rook_origin)]
+                            )
+            if not restored_variants:
+                raise RuntimeError(
+                    f"cannot rewind public castle {source}-{target}"
+                )
+            variants = restored_variants
             continue
 
         if piece == "angel":
@@ -5303,6 +5388,13 @@ class PhoneGame:
         pending_terminal = self.events.drain()
         if pending_terminal is not None:
             return pending_terminal
+        beliefs = getattr(self, "beliefs", None)
+        castling = bool(
+            beliefs and any(
+                is_castling_move(position, move)
+                for position in beliefs.positions
+            )
+        )
 
         if separator in ("~", "!"):
             # Mage swaps and Fisherman hooks are presented as legal dots like
@@ -5428,13 +5520,13 @@ class PhoneGame:
                     continue
                 if event.kind == "move":
                     action_observed = True
-                    if not expect_bomb_resolution:
+                    if not expect_bomb_resolution and not castling:
                         return event
                     deadline = time.monotonic() + 15.0
                     continue
                 if event.kind == "turn_end":
                     action_observed = True
-                    if not expect_bomb_resolution or saw_bomb_death:
+                    if castling or not expect_bomb_resolution or saw_bomb_death:
                         return completed(event)
                     # Network turn dispatch precedes Bomb movement/death by
                     # several seconds. It is not yet an input-ready barrier.

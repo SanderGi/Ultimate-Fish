@@ -286,6 +286,127 @@ void test_bomb_check_legality() {
            "quiet Copycat half with a capturing mirrored partner counts as check");
 }
 
+void test_native_castling() {
+    Position position;
+    const int king = position.add_piece(PieceType::King, Color::White,
+                                        Position::square_from_name("d2"));
+    const int rook = position.add_piece(PieceType::Rook, Color::White,
+                                        Position::square_from_name("h2"));
+    position.add_piece(PieceType::King, Color::Black,
+                       Position::square_from_name("a10"));
+    const std::string before = position.upn();
+    const Move castle = require_move(position, "d2-f2");
+    expect(castle.kind == MoveKind::Castle && castle.auxiliary == rook,
+           "King castle records the native Rook submove");
+    Undo undo;
+    expect(position.make_move(castle, undo) &&
+           position.piece(king).square == Position::square_from_name("f2") &&
+           position.piece(rook).square == Position::square_from_name("e2") &&
+           position.piece(king).moved && position.piece(rook).moved,
+           "King moves two files and Rook lands on the passed square");
+    position.undo_move(undo);
+    expect(position.upn() == before, "castling undo restores moved state and placement");
+
+    Position jesterCastle;
+    jesterCastle.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("h1"));
+    const int jester = jesterCastle.add_piece(PieceType::Jester, Color::White,
+                                              Position::square_from_name("d2"));
+    const int leftRook = jesterCastle.add_piece(PieceType::Rook, Color::White,
+                                                Position::square_from_name("a2"));
+    jesterCastle.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("h10"));
+    Undo jesterUndo;
+    expect(jesterCastle.make_move(require_move(jesterCastle, "d2-b2"), jesterUndo) &&
+           jesterCastle.piece(jester).square == Position::square_from_name("b2") &&
+           jesterCastle.piece(leftRook).square == Position::square_from_name("c2"),
+           "Jester uses SimulatedKing castling in either direction");
+
+    Position blocked;
+    blocked.add_piece(PieceType::King, Color::White, Position::square_from_name("d2"));
+    blocked.add_piece(PieceType::Pawn, Color::White, Position::square_from_name("f2"));
+    blocked.add_piece(PieceType::Rook, Color::White, Position::square_from_name("h2"));
+    blocked.add_piece(PieceType::King, Color::Black, Position::square_from_name("a10"));
+    expect(!blocked.move_from_string("d2-f2").has_value(),
+           "an occupied corridor blocks castling");
+
+    Position tooClose;
+    tooClose.add_piece(PieceType::King, Color::White, Position::square_from_name("d2"));
+    tooClose.add_piece(PieceType::Rook, Color::White, Position::square_from_name("f2"));
+    tooClose.add_piece(PieceType::King, Color::Black, Position::square_from_name("a10"));
+    expect(!tooClose.move_from_string("d2-f2").has_value(),
+           "a Rook only two files away is too close to castle");
+
+    Position movedKing;
+    const int usedKing = movedKing.add_piece(PieceType::King, Color::White,
+                                             Position::square_from_name("d2"));
+    movedKing.add_piece(PieceType::Rook, Color::White, Position::square_from_name("h2"));
+    movedKing.add_piece(PieceType::King, Color::Black, Position::square_from_name("a10"));
+    movedKing.piece(usedKing).moved = true;
+    expect(!movedKing.move_from_string("d2-f2").has_value(),
+           "a previously moved royal cannot castle");
+
+    Position movedRook;
+    movedRook.add_piece(PieceType::King, Color::White, Position::square_from_name("d2"));
+    const int usedRook = movedRook.add_piece(PieceType::Rook, Color::White,
+                                             Position::square_from_name("h2"));
+    movedRook.add_piece(PieceType::King, Color::Black, Position::square_from_name("a10"));
+    movedRook.piece(usedRook).moved = true;
+    expect(!movedRook.move_from_string("d2-f2").has_value(),
+           "a previously moved Rook cannot castle");
+
+    Position throughCheck;
+    throughCheck.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("d2"));
+    throughCheck.add_piece(PieceType::Rook, Color::White,
+                           Position::square_from_name("h2"));
+    throughCheck.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("a10"));
+    throughCheck.add_piece(PieceType::Rook, Color::Black,
+                           Position::square_from_name("e10"));
+    expect(throughCheck.move_from_string("d2-f2").has_value(),
+           "native castle may cross an attacked square");
+
+    Position outOfCheck;
+    outOfCheck.add_piece(PieceType::King, Color::White,
+                         Position::square_from_name("d2"));
+    outOfCheck.add_piece(PieceType::Rook, Color::White,
+                         Position::square_from_name("h2"));
+    outOfCheck.add_piece(PieceType::King, Color::Black,
+                         Position::square_from_name("a10"));
+    outOfCheck.add_piece(PieceType::Rook, Color::Black,
+                         Position::square_from_name("d10"));
+    expect(outOfCheck.move_from_string("d2-f2").has_value(),
+           "native castle may move a royal out of check");
+
+    Position intoCheck;
+    intoCheck.add_piece(PieceType::King, Color::White,
+                        Position::square_from_name("d2"));
+    intoCheck.add_piece(PieceType::Rook, Color::White,
+                        Position::square_from_name("h2"));
+    intoCheck.add_piece(PieceType::King, Color::Black,
+                        Position::square_from_name("a10"));
+    intoCheck.add_piece(PieceType::Rook, Color::Black,
+                        Position::square_from_name("f10"));
+    expect(!intoCheck.move_from_string("d2-f2").has_value(),
+           "the completed castle remains illegal when the real King is threatened");
+
+    Position enemyRook;
+    enemyRook.add_piece(PieceType::King, Color::White,
+                        Position::square_from_name("d2"));
+    const int foreignRook = enemyRook.add_piece(PieceType::Rook, Color::Black,
+                                                Position::square_from_name("h2"));
+    enemyRook.add_piece(PieceType::King, Color::Black,
+                        Position::square_from_name("a10"));
+    // Keep the foreign Rook from making the completed position check the
+    // King; castling itself ignores this cooldown and still drags the Rook.
+    enemyRook.piece(foreignRook).cooldown = 2;
+    const auto foreignCastle = enemyRook.move_from_string("d2-f2");
+    expect(foreignCastle && foreignCastle->kind == MoveKind::Castle &&
+           foreignCastle->auxiliary == foreignRook,
+           "native castle scan does not filter a Rook by team");
+}
+
 void test_ninja_and_mage() {
     Position position;
     position.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
@@ -1142,6 +1263,7 @@ int main() {
     test_roster_and_position_round_trip();
     test_bomb_and_undo();
     test_bomb_check_legality();
+    test_native_castling();
     test_ninja_and_mage();
     test_checker_chain_and_prince_turns();
     test_sludge_and_victory();

@@ -650,7 +650,36 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
     const PieceState& piece = pieces_[id];
     switch (piece.type) {
     case PieceType::King:
-    case PieceType::Jester:
+    case PieceType::Jester: {
+        add_step_moves(moves, id, Around, 8, 1, false, attacksOnly);
+        // The shipping game constructs both King and Jester as a
+        // SimulatedKing. Its castle scan is deliberately not orthodox: it
+        // walks to the first occupied square in either horizontal direction,
+        // requires only an unmoved Rook at least three files away, and never
+        // checks the Rook's team, cooldown, or freeze state. Check legality is
+        // evaluated only after the complete move, so starting and transit
+        // squares may be attacked.
+        if (!attacksOnly && !piece.moved) {
+            const int fromFile = file_of(piece.square);
+            const int rank = rank_of(piece.square);
+            for (const int direction : {-1, 1}) {
+                for (int file = fromFile + direction;
+                     file >= 0 && file < BoardFiles; file += direction) {
+                    const int rook = board_[make_square(file, rank)];
+                    if (rook == NoPiece)
+                        continue;
+                    if (std::abs(file - fromFile) > 2 &&
+                        pieces_[rook].type == PieceType::Rook && !pieces_[rook].moved) {
+                        const int target = make_square(fromFile + 2 * direction, rank);
+                        moves.push_back({piece.square, static_cast<std::uint8_t>(target),
+                                         static_cast<std::uint8_t>(rook), MoveKind::Castle});
+                    }
+                    break;
+                }
+            }
+        }
+        break;
+    }
     case PieceType::Ghost:
     case PieceType::Parasite:
         add_step_moves(moves, id, Around, 8, 1, false, attacksOnly);
@@ -1396,7 +1425,36 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
     if (actor.type == PieceType::Penguin)
         clear_penguin_freeze(id);
 
-    if (move.kind == MoveKind::Swap) {
+    if (move.kind == MoveKind::Castle) {
+        const int rook = move.auxiliary;
+        const int direction = file_of(move.to) > file_of(originalFrom) ? 1 : -1;
+        const int rookDestination = make_square(file_of(move.to) - direction,
+                                                rank_of(originalFrom));
+        if ((actor.type != PieceType::King && actor.type != PieceType::Jester) || actor.moved ||
+            rook < 0 || rook >= pieceCount_ || !pieces_[rook].alive ||
+            !pieces_[rook].onBoard || pieces_[rook].type != PieceType::Rook ||
+            pieces_[rook].moved || rank_of(move.to) != rank_of(originalFrom) ||
+            std::abs(file_of(move.to) - file_of(originalFrom)) != 2 ||
+            rank_of(pieces_[rook].square) != rank_of(originalFrom) ||
+            (file_of(pieces_[rook].square) - file_of(originalFrom)) * direction <= 2 ||
+            target != NoPiece)
+            return false;
+        for (int file = file_of(originalFrom) + direction;
+             file != file_of(pieces_[rook].square); file += direction)
+            if (board_[make_square(file, rank_of(originalFrom))] != NoPiece)
+                return false;
+
+        erase_from_board(id);
+        erase_from_board(rook);
+        actor.square = move.to;
+        actor.moved = true;
+        pieces_[rook].square = static_cast<std::uint8_t>(rookDestination);
+        pieces_[rook].moved = true;
+        place_on_board(rook);
+        place_on_board(id);
+        reveal_ghosts_near(actor.square, actor.color);
+    }
+    else if (move.kind == MoveKind::Swap) {
         const int other = move.auxiliary;
         const int otherSquare = pieces_[other].square;
         if (pieces_[other].type == PieceType::Giant) {
@@ -2082,6 +2140,7 @@ bool Position::set_upn(std::string_view text, std::string* error) {
 std::string Position::move_to_string(const Move& move) const {
     char separator = '-';
     switch (move.kind) {
+    case MoveKind::Castle: break;
     case MoveKind::Swap: separator = '~'; break;
     case MoveKind::Spawn: separator = '@'; break;
     case MoveKind::Shoot: separator = 'x'; break;
@@ -2115,7 +2174,8 @@ std::optional<Move> Position::move_from_string(std::string_view text) const {
     }
     const auto moves = legal_moves();
     const auto found = std::find_if(moves.begin(), moves.end(), [=](const Move& move) {
-        return move.from == from && move.to == to && move.kind == kind;
+        return move.from == from && move.to == to &&
+          (move.kind == kind || (kind == MoveKind::Normal && move.kind == MoveKind::Castle));
     });
     return found == moves.end() ? std::nullopt : std::optional<Move>(*found);
 }

@@ -1358,6 +1358,34 @@ class OpeningSynchronizationTests(unittest.TestCase):
             {(('king', 'a10'), ('mage', 'b10'), ('rook', 'c10'))},
         )
 
+    def test_rewind_castle_restores_both_royal_and_rook(self):
+        exact = MODULE.rewind_public_enemy_opening(
+            (("king", "f10"), ("rook", "e10")),
+            (
+                MODULE.AppEvent("move", "king", "d10", "f10"),
+                MODULE.AppEvent("move", "rook", "h10", "e10"),
+            ),
+        )
+        self.assertEqual(
+            {tuple(variant) for variant in exact},
+            {(('king', 'd10'), ('rook', 'h10'))},
+        )
+
+        # Some builds/replay paths omit the automatic Rook's animation
+        # callback. Retain both native deployment origins that can produce the
+        # observed castle instead of inventing one private coordinate.
+        inferred = MODULE.rewind_public_enemy_opening(
+            (("king", "f10"), ("rook", "e10")),
+            (MODULE.AppEvent("move", "jester", "d10", "f10"),),
+        )
+        self.assertEqual(
+            {tuple(variant) for variant in inferred},
+            {
+                (('king', 'd10'), ('rook', 'g10')),
+                (('king', 'd10'), ('rook', 'h10')),
+            },
+        )
+
 
 class ControllerActionTests(unittest.TestCase):
     def test_builder_pot_identity_swaps_mislabeled_equal_cost_slots(self):
@@ -1448,6 +1476,47 @@ class ControllerActionTests(unittest.TestCase):
         event = game.execute("a1-a2", expect_bomb_resolution=True)
         self.assertEqual((event.kind, event.source, event.target),
                          ("move", "a1", "a2"))
+        self.assertEqual(game.events.pending, [])
+
+    def test_castle_waits_through_the_companion_rook_animation(self):
+        class FakeAdb:
+            def tap_square(self, _geometry, _square):
+                pass
+
+        class FakeEvents:
+            def __init__(self):
+                self.pending = [
+                    MODULE.AppEvent("selected", "king"),
+                    MODULE.AppEvent("touch_end"),
+                    MODULE.AppEvent("move", "king", "d1", "f1"),
+                    MODULE.AppEvent("move", "rook", "h1", "e1"),
+                    MODULE.AppEvent("turn_end"),
+                ]
+
+            @staticmethod
+            def drain():
+                return None
+
+            def wait(self, kinds, _timeout, predicate=None):
+                accepted = {kinds} if isinstance(kinds, str) else set(kinds)
+                while self.pending:
+                    event = self.pending.pop(0)
+                    if (event.kind in accepted and
+                            (predicate is None or predicate(event))):
+                        return event
+                raise TimeoutError
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.adb = FakeAdb()
+        game.events = FakeEvents()
+        game.perspective_flipped = False
+        game.beliefs = type("Beliefs", (), {"positions": [
+            "w;king,w,d1;rook,w,h1;king,b,a10"
+        ]})()
+        event = game.execute("d1-f1")
+        self.assertEqual((event.kind, event.source, event.target),
+                         ("move", "d1", "f1"))
         self.assertEqual(game.events.pending, [])
 
     def test_mage_swap_uses_drag_and_turn_completion(self):
