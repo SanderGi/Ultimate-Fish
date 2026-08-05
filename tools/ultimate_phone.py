@@ -4236,7 +4236,46 @@ class PhoneGame:
         _pixels, x, y = max(candidates)
         return x, y
 
+    @staticmethod
+    def _fixed_ban_control(image) -> tuple[int, int] | None:
+        """Find the blue top-row Ban button used after a pot is selected."""
+        import numpy as np
+
+        rgb = np.asarray(image.convert("RGB"))
+        red, green, blue = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+        mask = (
+            (blue > 190) & (green > 125) & (red < 130)
+            & (blue > green * 1.25)
+        )
+        candidates: list[tuple[int, int, int]] = []
+        for component in _components(mask):
+            if len(component) < 1200:
+                continue
+            ys = [point[0] for point in component]
+            xs = [point[1] for point in component]
+            width = max(xs) - min(xs) + 1
+            height = max(ys) - min(ys) + 1
+            center = (
+                (min(xs) + max(xs)) // 2,
+                (min(ys) + max(ys)) // 2,
+            )
+            if (image.width * 0.07 < width < image.width * 0.20
+                    and image.height * 0.03 < height < image.height * 0.08
+                    and image.width * 0.45 < center[0] < image.width * 0.70
+                    and image.height * 0.045 < center[1] < image.height * 0.13):
+                candidates.append((len(component), center[0], center[1]))
+        if not candidates:
+            return None
+        _pixels, x, y = max(candidates)
+        return x, y
+
     def _pot_ban_control(self, image, piece: str) -> tuple[int, int] | None:
+        # Current Ranked uses one fixed blue confirmation button. Prefer it to
+        # the old pot-relative red bubble: lock chains on drafted/banned pots
+        # can satisfy the latter's color geometry and swallow every retry.
+        fixed = self._fixed_ban_control(image)
+        if fixed:
+            return fixed
         source = self.draft_pots[piece]
         visual = self._visual_ban_control(image, source)
         if visual:

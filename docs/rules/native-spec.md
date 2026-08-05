@@ -93,6 +93,11 @@ for wide colliders such as CopyCat, which can land one file inward and create
 its mirror there, or can be despawned when that measured footprint collides.
 The committed total must equal the engine's expected roster cost before the
 controller presses the icon-only green Lock checkmark.
+After selecting a Ban pot, the current Ranked UI uses a fixed blue top-row Ban
+button. Pot-relative saturated-red detection is not authoritative because lock
+chains on previously drafted or banned pieces have the same geometry. The
+controller therefore detects the fixed blue component and waits for the native
+named Ban callback before advancing.
 
 `OnStartGameResponse.model_Pieces` and replay `initState` share the authoritative
 `Model_Piece` schema: type, team, x/y, skin, action, cooldown, freeze count,

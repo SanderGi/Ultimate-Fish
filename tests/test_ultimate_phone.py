@@ -851,6 +851,28 @@ class VisionTests(unittest.TestCase):
             MODULE.PhoneGame._visual_ban_control(image, source), (850, 805)
         )
 
+    def test_ranked_fixed_ban_button_wins_over_pot_lock_chains(self):
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGB", (1080, 2400), (80, 130, 80))
+        draw = ImageDraw.Draw(image)
+        draw.rounded_rectangle(
+            (560, 140, 690, 275), radius=30, fill=(78, 167, 254)
+        )
+        # This red component reproduces the misleading chained pot selected by
+        # the old pot-relative detector in the captured phase-five failure.
+        draw.rounded_rectangle(
+            (770, 760, 930, 850), radius=35, fill=(235, 45, 25)
+        )
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.draft_pots = {"prince": (850, 930)}
+
+        point = game._pot_ban_control(image, "prince")
+
+        self.assertIsNotNone(point)
+        self.assertTrue(610 <= point[0] <= 640)
+        self.assertTrue(195 <= point[1] <= 220)
+
     def test_connected_main_requires_profile_and_play(self):
         from PIL import Image, ImageDraw
 
