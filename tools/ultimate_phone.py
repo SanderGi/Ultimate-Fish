@@ -2915,9 +2915,13 @@ def initial_beliefs(own_team: Sequence[tuple[str, str]],
         for ghosts in combinations:
             enemy = variant + [("ghost", square) for square in ghosts]
             upn = make_upn(own_team, enemy, side)
-            # Mark hidden enemy Ghosts invisible in the lossless piece state.
-            upn = re.sub(r";ghost,b,([a-h](?:10|[1-9]))(?=;|$)",
-                         r";ghost,b,\1,0,0,0,0,0,0,-1,1,-1,0", upn)
+            # ``visible`` is visibility to the Ghost's opponent, not to the
+            # local phone user. Both armies' newly deployed Ghosts begin
+            # hidden from the other side. Marking our own Ghost visible made
+            # engine attack maps treat it as a shield even though a native
+            # enemy Sniper shoots through it to the first visible target.
+            upn = re.sub(r";ghost,([wb]),([a-h](?:10|[1-9]))(?=;|$)",
+                         r";ghost,\1,\2,0,0,0,0,0,0,-1,1,-1,0", upn)
             if piece_states:
                 fields = upn.split(";")
                 for index, field in enumerate(fields[1:], 1):

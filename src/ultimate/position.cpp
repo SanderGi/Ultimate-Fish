@@ -949,9 +949,17 @@ std::vector<Move> Position::legal_moves() const {
         // King; the game ends only when the real King is actually removed.
         // Re-enable check immediately in a child where the Jester died (for
         // example in the moving side's own Bomb blast).
+        // A Prince's first quiet step and a Checker's intermediate jump do
+        // not end the turn, so check is judged after the forced sequence. Do
+        // not accept an intermediate action merely because a continuation
+        // exists: at least one recursively legal completion must actually
+        // resolve check. Live Ranked exposed this with a Prince h3-g4 while a
+        // Sniper on a8 shot through an unseen a3 Ghost to the King on a1.
+        const bool continuationCanFinish =
+          continuation && !child.legal_moves().empty();
         const bool legal = ownKingAlive &&
-          (continuation || opponentKingDead || jesterAlive ||
-           !child.real_king_threatened(mover));
+          (opponentKingDead || jesterAlive || continuationCanFinish ||
+           (!continuation && !child.real_king_threatened(mover)));
         child.undo_move(undo);
         return !legal;
     }), moves.end());

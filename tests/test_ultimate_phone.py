@@ -2330,6 +2330,19 @@ class BeliefConstructionTests(unittest.TestCase):
             self.assertEqual(upn.count(";ghost,b,"), 1)
             self.assertIn(",0,0,0,0,0,0,-1,1,-1,0", upn)
 
+    def test_own_deployed_ghost_is_hidden_from_enemy_attack_maps(self):
+        positions = MODULE.initial_beliefs(
+            (("king", "a1"), ("ghost", "a3")),
+            (("king", "h10"), ("sniper", "a8")),
+            17,
+            limit=4,
+        )
+        self.assertEqual(len(positions), 1)
+        self.assertIn(
+            ";ghost,w,a3,0,0,0,0,0,0,-1,1,-1,0",
+            positions[0],
+        )
+
     def test_ranked_spawn_journal_recovers_captured_onyx_public_group(self):
         spawns = (
             MODULE.AppEvent("draft_piece_spawn", "queen", "6:1"),

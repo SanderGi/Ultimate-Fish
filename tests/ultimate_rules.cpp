@@ -1256,6 +1256,21 @@ void test_sniper_berserker_and_dragon() {
     expect(hiddenShot.move_from_string("d2-e2").has_value(),
            "sniper can make a normal sideways attack on an enemy");
 
+    Position hiddenFriendlyGhost;
+    hiddenFriendlyGhost.add_piece(PieceType::King, Color::White,
+                                   Position::square_from_name("a1"));
+    const int friendlyGhost = hiddenFriendlyGhost.add_piece(
+        PieceType::Ghost, Color::White, Position::square_from_name("a3"));
+    hiddenFriendlyGhost.piece(friendlyGhost).visible = false;
+    hiddenFriendlyGhost.add_piece(PieceType::Prince, Color::White,
+                                   Position::square_from_name("h3"));
+    hiddenFriendlyGhost.add_piece(PieceType::King, Color::Black,
+                                   Position::square_from_name("h10"));
+    hiddenFriendlyGhost.add_piece(PieceType::Sniper, Color::Black,
+                                   Position::square_from_name("a8"));
+    expect(!hiddenFriendlyGhost.move_from_string("h3-g4").has_value(),
+           "an own Ghost hidden from the enemy does not shield the King from Sniper check");
+
     Position berserker;
     berserker.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     berserker.add_piece(PieceType::King, Color::Black, Position::square_from_name("h8"));

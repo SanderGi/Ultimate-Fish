@@ -282,6 +282,11 @@ conceals enemy Ghost rendering, inspector data, capture-ring styling, invisible
 Ghost move coordinates, and enemy Jester identity. Analysis mode deliberately
 shows that state with a dashed translucent treatment.
 
+The lossless `visible` flag is relative to each Ghost's opponent, not the local
+UI. A player's own deployed Ghost is visible on that player's screen but begins
+invisible in the engine state because enemy rays must pass through it. This is
+essential when an enemy Sniper has the real King as its first visible target.
+
 Engine play represents public state as an information set of those concrete
 positions. The native `belief clear` / `belief add <upn>` / `belief go` protocol
 intersects legal action notation across every retained belief. It audits every
@@ -309,7 +314,9 @@ AI draft completion, and deployment capacity. Address/Undefined sanitizers pass
 the same suite.
 
 Live Android differential play additionally confirmed unconditional quiet
-Prince first steps followed by quiet or capturing second steps, Bomb removal of
+Prince first steps followed by quiet or capturing second steps. A first step
+made while checked is legal only when at least one forced second step resolves
+that check. The same runs confirmed Bomb removal of
 both combatants before the radius-one blast, adjacent Giant footprint tiling,
 Mage stay-put swap diagnostics, cosmetic prefab aliases, concealed/revealed
 Ghost transitions, and King/Jester ambiguity. A duplicate-heavy six-Rook army
