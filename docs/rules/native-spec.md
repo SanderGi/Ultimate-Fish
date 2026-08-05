@@ -79,7 +79,7 @@ differencing. After pot calibration, a harmless local-pot touch logs the native
 `myBoard.turn != team` predicate. The controller binds it to the non-consuming
 count of Bans already completed, because a fast remote phase zero can finish
 during calibration; together they establish whether the player is Ivory or
-Onyx. The Ban bubble remains only a compatibility fallback. Repeated
+Onyx. Repeated
 `OnBanCharacter(Type)` method frames from the same callback are debounced as
 one transition before the next phase can advance. Both its unique callback
 count and named pot are journaled independently of queue consumers, so a remote
@@ -91,13 +91,22 @@ drag must produce the native `ArmyMove` coordinate and an increased cumulative
 `GetPoints` total before the cell is reserved in the engine draft. This matters
 for wide colliders such as CopyCat, which can land one file inward and create
 its mirror there, or can be despawned when that measured footprint collides.
-The committed total must equal the engine's expected roster cost before the
-controller presses the icon-only green Lock checkmark.
-After selecting a Ban pot, the current Ranked UI uses a fixed blue top-row Ban
-button. Pot-relative saturated-red detection is not authoritative because lock
-chains on previously drafted or banned pieces have the same geometry. The
-controller therefore detects the fixed blue component and waits for the native
-named Ban callback before advancing.
+Pending models are placed from lowest to highest cost and candidate cells are
+ranked by clearance from the already occupied deployment. This prevents a
+short model's pointer-up from being intercepted by a previously placed tall
+mesh. Every accepted placement must increase material by exactly that
+character's recovered static cost; a decrease or other delta is evidence that
+the drop despawned or replaced a different pending character and fails before
+the controller can compound the mutation. The committed total must equal the
+engine's expected roster cost before the controller presses the icon-only green
+Lock checkmark.
+
+After selecting a Ban pot, the current Ranked UI exposes the actionable large
+red Ban button in the lower-left character inspector. The blue top-row `BAN`
+element is only the phase label, while the selected-pot red speech bubble is
+also not a reliable pointer target. The controller waits for the native local
+turn predicate, detects only the fixed lower-left red control, and waits for
+the named native Ban callback before advancing.
 
 `OnStartGameResponse.model_Pieces` and replay `initState` share the authoritative
 `Model_Piece` schema: type, team, x/y, skin, action, cooldown, freeze count,

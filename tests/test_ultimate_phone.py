@@ -505,6 +505,67 @@ class RankedDraftControllerTests(unittest.TestCase):
         game._ban_ranked_piece("prince")
         self.assertEqual(game.adb.taps, [(941, 1105), (157, 1967)])
 
+    def test_ranked_pick_places_small_models_first_and_checks_exact_points(self):
+        class PickEvents:
+            @staticmethod
+            def drain():
+                return None
+
+            @staticmethod
+            def wait(_kinds, _timeout):
+                return MODULE.AppEvent("draft_pick_committed")
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.events = PickEvents()
+        game.ranked_local_points = 0
+        game.verbose = False
+        game.log = lambda _message: None
+        placed = []
+
+        def place(piece, square, _local_ivory):
+            placed.append((piece, square))
+            return square
+
+        game._place_ranked_piece = place
+        game._ranked_committed_points = Mock(side_effect=(
+            (3, 0), (8, 0), (23, 0), (40, 0),
+        ))
+        game._tap_draft_control = lambda _labels, _timeout: "LOCK"
+
+        game._commit_ranked_local_pick(
+            ("dragon", "queen", "copycat", "pawn"),
+            MODULE.DraftDeployment(), 6, True,
+        )
+
+        self.assertEqual(
+            [piece for piece, _square in placed],
+            ["pawn", "copycat", "dragon", "queen"],
+        )
+        self.assertEqual(game.ranked_local_points, 40)
+
+    def test_ranked_pick_rejects_intercepted_material_mutation(self):
+        class PickEvents:
+            @staticmethod
+            def drain():
+                return None
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.events = PickEvents()
+        game.ranked_local_points = 0
+        game.verbose = False
+        game.log = lambda _message: None
+        game._place_ranked_piece = (
+            lambda _piece, square, _local_ivory: square
+        )
+        # Pawn is accepted at +3. The following Queen should add 17, but the
+        # captured failure removed other pending material and returned only 6.
+        game._ranked_committed_points = Mock(side_effect=((3, 0), (6, 0)))
+
+        with self.assertRaisesRegex(RuntimeError, "intercepted drop"):
+            game._commit_ranked_local_pick(
+                ("queen", "pawn"), MODULE.DraftDeployment(), 6, True,
+            )
+
     def test_actual_ban_callbacks_drive_all_twelve_ranked_phases(self):
         ban = "I/Unity: NetworkManager:OnBanCharacter(Type)"
         pick = "I/Unity: OnSpawnPieceGroup MESSAGE"
@@ -2132,6 +2193,20 @@ class BeliefConstructionTests(unittest.TestCase):
         deployment.reserve("copycat", "g2")
         self.assertTrue({"b2", "g2"} <= deployment.occupied)
         self.assertEqual(deployment.team[-1], ("copycat", "g2"))
+
+    def test_ranked_deployment_can_maximize_live_drop_clearance(self):
+        deployment = MODULE.DraftDeployment()
+        deployment.reserve("pawn", "d3")
+
+        # The tactical fallback begins with e3, but that cell directly borders
+        # the existing Pawn mesh. The live controller chooses a clearer cell.
+        self.assertEqual(deployment.propose("pawn"), "e3")
+        clear = deployment.propose("pawn", maximize_clearance=True)
+        self.assertNotEqual(clear, "e3")
+        self.assertGreaterEqual(
+            max(abs(ord(clear[0]) - ord("d")), abs(int(clear[1:]) - 3)),
+            2,
+        )
 
     def test_ranked_reference_roster_has_no_overlap(self):
         deployment = MODULE.DraftDeployment()

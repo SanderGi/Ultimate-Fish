@@ -1375,13 +1375,35 @@ class DraftDeployment:
             cells.add(self._mirror(square))
         return cells
 
-    def propose(self, piece: str, excluded: Iterable[str] = ()) -> str:
+    def propose(
+        self, piece: str, excluded: Iterable[str] = (),
+        maximize_clearance: bool = False,
+    ) -> str:
         excluded = set(excluded)
         candidates = self.PREFERENCES.get(piece, ()) + self.FALLBACK
+        valid: list[tuple[str, set[str]]] = []
         for square in dict.fromkeys(candidates):
             cells = self.cells(piece, square)
             if square not in excluded and cells and not (cells & self.occupied):
-                return square
+                valid.append((square, cells))
+        if valid and maximize_clearance:
+            def distance(candidate: set[str]) -> int:
+                return min(
+                    max(abs(ord(left[0]) - ord(right[0])),
+                        abs(int(left[1:]) - int(right[1:])))
+                    for left in candidate for right in self.occupied
+                )
+
+            best = max(distance(cells) for _square, cells in valid)
+            # ``valid`` retains the tactical preference ordering for equally
+            # clear cells. During live drafting, clearance is more important:
+            # a neighbouring tall mesh can intercept the pointer-up and make
+            # Unity despawn or replace a different pending character.
+            return next(
+                square for square, cells in valid if distance(cells) == best
+            )
+        if valid:
+            return valid[0][0]
         raise RuntimeError(f"no legal deployment cells remain for {piece}")
 
     def reserve(self, piece: str, square: str) -> None:
@@ -4631,10 +4653,21 @@ class PhoneGame:
         placements = []
         self.events.drain()
         starting_points = self.ranked_local_points
-        for piece in choices:
+        # Place the smallest models first. A short Pawn dropped after a Queen
+        # or Dragon can have its pointer-up swallowed by the taller model's
+        # collider. The native draft roster is unordered, so physical ordering
+        # has no rules effect and avoids that destructive interaction.
+        ordered_choices = sorted(
+            enumerate(choices),
+            key=lambda item: (PIECE_COST[item[1]], item[0]),
+        )
+        for _choice_index, piece in ordered_choices:
             excluded: set[str] = set()
             while True:
-                requested = deployment.propose(piece, excluded)
+                requested = deployment.propose(
+                    piece, excluded, maximize_clearance=True,
+                )
+                before_points = self.ranked_local_points
                 try:
                     actual = self._place_ranked_piece(
                         piece, requested, local_ivory,
@@ -4649,13 +4682,21 @@ class PhoneGame:
                         "retrying another legal cell"
                     )
                     continue
-                if local_points <= self.ranked_local_points:
+                expected_points = before_points + PIECE_COST[piece]
+                if local_points == before_points:
                     excluded.add(requested)
                     self.log(
                         f"Ranked {piece}@{requested} did not increase material; "
                         "retrying another legal cell"
                     )
                     continue
+                if local_points != expected_points:
+                    raise RuntimeError(
+                        f"Ranked {piece}@{requested} changed local material "
+                        f"from {before_points} to {local_points}; expected "
+                        f"exactly {expected_points}. The pending board was "
+                        "mutated by an intercepted drop"
+                    )
                 deployment.reserve(piece, actual)
                 self.ranked_local_points = local_points
                 placements.append((piece, actual))
