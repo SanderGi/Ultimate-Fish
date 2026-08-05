@@ -58,6 +58,12 @@ SearchLimits parse_limits(std::istringstream& input, const Position* position = 
     SearchLimits limits;
     std::string token;
     while (input >> token) {
+        if (token == "drawmoves") {
+            std::string notation;
+            while (input >> notation)
+                limits.rootDrawMoveStrings.push_back(notation);
+            break;
+        }
         if (token == "searchmoves" && position) {
             std::string notation;
             while (input >> notation)

@@ -828,6 +828,17 @@ void test_native_information_set_search() {
     expect(robust.beliefs == 2 && robust.deepBeliefs == 2 && robust.commonMoves > 1,
            "native information-set result reports complete belief/root coverage");
 
+    const auto drawingCapture = safe.move_from_string("d4-e5");
+    SearchLimits repetitionLimits;
+    repetitionLimits.depth = 3;
+    repetitionLimits.rootMoves = {*drawingCapture};
+    repetitionLimits.rootDrawMoveStrings = {"d4-e5"};
+    Search repetitionSearch(2);
+    const SearchResult repetition = repetitionSearch.think(safe, repetitionLimits);
+    expect(repetition.bestMove && safe.move_to_string(*repetition.bestMove) == "d4-e5" &&
+             repetition.score == 0,
+           "a root completing public threefold repetition scores as a draw in native search");
+
     auto winningFixture = [](int ghostSquare) {
         Position position;
         position.add_piece(PieceType::King, Color::White,

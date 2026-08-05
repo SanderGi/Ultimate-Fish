@@ -77,8 +77,19 @@ LIVE_GIANT_ARMY: Army = (
     ("giant", "e1"), ("giant", "c1"),
 )
 
+# Recovered from a live 2026-08-05 Unranked match. Five long-range Snipers
+# punish exposed high-value formations immediately, while the off-corner King
+# proves that saved-army royal placement is not fixed to a1.
+SNIPER_ARMY: Army = (
+    ("king", "e2"),
+    ("sniper", "a3"), ("sniper", "b3"), ("sniper", "e3"),
+    ("sniper", "g3"), ("sniper", "h3"),
+    ("berserker", "b2"),
+)
+
 OPPONENTS = (
     CURRENT_ARMY, LIVE_GIANT_ARMY, PENGUIN_ARMY, BALANCED_ARMY, SPECIAL_ARMY,
+    SNIPER_ARMY,
 )
 
 
@@ -106,8 +117,8 @@ def army_cost(army: Sequence[tuple[str, str]]) -> int:
 
 
 def validate_army(army: Sequence[tuple[str, str]]) -> None:
-    if tuple(item for item in army if item[0] == "king") != (("king", "a1"),):
-        raise ValueError("an army must contain exactly the fixed king at a1")
+    if sum(piece == "king" for piece, _square in army) != 1:
+        raise ValueError("an army must contain exactly one king")
     if army_cost(army) != 100:
         raise ValueError(f"army costs {army_cost(army)}, not 100")
     occupied: set[str] = set()
@@ -248,7 +259,9 @@ def mutate_army(parent: Army, rng: random.Random) -> Army:
     # impossible to inherit across generations.
     if roll < 0.45:
         child = list(parent)
-        movable = list(range(1, len(child)))
+        # King placement is part of the setup and is not fixed to a1 in the
+        # shipping builder; live opponents use off-corner royal formations.
+        movable = list(range(len(child)))
         rng.shuffle(movable)
         for index in movable:
             occupied: set[str] = set()

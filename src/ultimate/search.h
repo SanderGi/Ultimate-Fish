@@ -21,6 +21,9 @@ struct SearchLimits {
     std::uint64_t nodes = 0;
     std::chrono::milliseconds moveTime{0};
     std::vector<Move> rootMoves;
+    // Roots which immediately complete a public threefold repetition. They
+    // remain legal candidates but must score as draws inside native search.
+    std::vector<std::string> rootDrawMoveStrings;
 };
 
 struct SearchResult {
@@ -92,6 +95,7 @@ class Search {
     std::uint8_t generation_ = 0;
     bool stop_ = false;
     std::vector<Move> rootMoves_;
+    std::vector<Move> rootDrawMoves_;
     std::array<std::array<int, Position::BoardSquares>, static_cast<std::size_t>(PieceType::Count)>
       history_{};
     std::array<std::array<Move, 2>, 128> killers_{};

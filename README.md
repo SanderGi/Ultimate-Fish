@@ -97,12 +97,16 @@ The reproducible 2026-08-05 league checkpoint is stored in
 [`docs/benchmarks/evolved-army-2026-08-05.json`](docs/benchmarks/evolved-army-2026-08-05.json),
 with deeper common-pool validation in
 [`docs/benchmarks/evolved-army-validation-2026-08-05.json`](docs/benchmarks/evolved-army-validation-2026-08-05.json).
-The selected consistency-first setup was undefeated in that deeper pool
-(12W-14D-0L) and then won three of three supervised Very Hard CPU games:
+An adversarial follow-up added a live five-Sniper/off-corner-King roster to the
+coevolution league; its full checkpoint is
+[`docs/benchmarks/evolved-army-adversarial-2026-08-05.json`](docs/benchmarks/evolved-army-adversarial-2026-08-05.json).
+The selected finalist scored 17W-10D-1L, then beat the earlier live setup in a
+deeper common pool (11W-3D-0L versus 9W-4D-1L). It subsequently won three of
+three newly supervised Very Hard CPU games by forced checkmate:
 
 ```text
-king,a1;queen,f3;queen,b3;queen,h1;queen,c3;queen,b2;pawn,a2;
-checker,g2;checker,b1;pawn,g1;pawn,h2;giant,e1;giant,c1
+king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;
+giant,e1;giant,c1;pawn,g2;pawn,h1;pawn,b1;dragon,g1
 ```
 
 ## Android conformance and live validation

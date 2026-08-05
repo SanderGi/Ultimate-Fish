@@ -231,9 +231,10 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
     const std::uint64_t key = position.key();
     Entry* entry = find_entry(key);
     const bool restrictedRoot = ply == 0 && !rootMoves_.empty();
+    const bool adjustedRoot = restrictedRoot || (ply == 0 && !rootDrawMoves_.empty());
     Move ttMove{};
     const Move* ttMovePtr = nullptr;
-    if (entry && !restrictedRoot) {
+    if (entry && !adjustedRoot) {
         ttMove = entry->move;
         ttMovePtr = &ttMove;
         if (entry->depth >= depth) {
@@ -276,32 +277,39 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
         // candidates; reducing those actions was a large tactical blind spot.
         const bool quiet = move.kind == MoveKind::Normal && !position.is_capture(move);
         const int attacker = position.piece_on(move.from);
-        Undo undo;
-        // Search only iterates the already validated legal list. Applying the
-        // trusted move directly avoids a quadratic duplicate legality pass.
-        if (!position.make_move_unchecked(move, undo))
-            continue;
-        const bool sameSide = position.side_to_move() == before;
-        const int nextDepth = depth - (sameSide ? 0 : 1);
         int score;
-        const int reduction = depth >= 3 && moveNumber >= 4 && quiet && !sameSide ? 1 : 0;
-        if (moveNumber == 0) {
-            score = sameSide ? negamax(position, nextDepth, alpha, beta, ply + 1, childPv)
-                             : -negamax(position, nextDepth, -beta, -alpha, ply + 1, childPv);
+        const bool rootDraw = ply == 0 &&
+          std::find(rootDrawMoves_.begin(), rootDrawMoves_.end(), move) != rootDrawMoves_.end();
+        if (rootDraw) {
+            score = 0;
+            childPv.clear();
+        } else {
+            Undo undo;
+            // Search only iterates the already validated legal list. Applying the
+            // trusted move directly avoids a quadratic duplicate legality pass.
+            if (!position.make_move_unchecked(move, undo))
+                continue;
+            const bool sameSide = position.side_to_move() == before;
+            const int nextDepth = depth - (sameSide ? 0 : 1);
+            const int reduction = depth >= 3 && moveNumber >= 4 && quiet && !sameSide ? 1 : 0;
+            if (moveNumber == 0) {
+                score = sameSide ? negamax(position, nextDepth, alpha, beta, ply + 1, childPv)
+                                 : -negamax(position, nextDepth, -beta, -alpha, ply + 1, childPv);
+            }
+            else if (sameSide) {
+                score = negamax(position, nextDepth, alpha, alpha + 1, ply + 1, childPv);
+                if (score > alpha && score < beta)
+                    score = negamax(position, nextDepth, alpha, beta, ply + 1, childPv);
+            }
+            else {
+                score = -negamax(position, nextDepth - reduction, -alpha - 1, -alpha, ply + 1, childPv);
+                if (reduction && score > alpha)
+                    score = -negamax(position, nextDepth, -alpha - 1, -alpha, ply + 1, childPv);
+                if (score > alpha && score < beta)
+                    score = -negamax(position, nextDepth, -beta, -alpha, ply + 1, childPv);
+            }
+            position.undo_move(undo);
         }
-        else if (sameSide) {
-            score = negamax(position, nextDepth, alpha, alpha + 1, ply + 1, childPv);
-            if (score > alpha && score < beta)
-                score = negamax(position, nextDepth, alpha, beta, ply + 1, childPv);
-        }
-        else {
-            score = -negamax(position, nextDepth - reduction, -alpha - 1, -alpha, ply + 1, childPv);
-            if (reduction && score > alpha)
-                score = -negamax(position, nextDepth, -alpha - 1, -alpha, ply + 1, childPv);
-            if (score > alpha && score < beta)
-                score = -negamax(position, nextDepth, -beta, -alpha, ply + 1, childPv);
-        }
-        position.undo_move(undo);
         ++moveNumber;
         if (stopped())
             break;
@@ -325,7 +333,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
         }
     }
 
-    if (!stop_ && !restrictedRoot && bestScore != -Infinity &&
+    if (!stop_ && !adjustedRoot && bestScore != -Infinity &&
         (!entry || depth >= entry->depth || entry->generation != generation_)) {
         Entry& replacement = replacement_entry(key);
         replacement.key = key;
@@ -344,6 +352,10 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
 SearchResult Search::think(Position& position, const SearchLimits& limits) {
     limits_ = limits;
     rootMoves_ = limits.rootMoves;
+    rootDrawMoves_.clear();
+    for (const std::string& notation : limits.rootDrawMoveStrings)
+        if (const auto move = position.move_from_string(notation))
+            rootDrawMoves_.push_back(*move);
     start_ = std::chrono::steady_clock::now();
     nodes_ = 0;
     stop_ = false;
@@ -432,10 +444,12 @@ BeliefSearchResult Search::think_beliefs(const std::vector<Position>& beliefs,
         return result;
     }
 
-    // First audit every common action in every retained world. Depth two is
-    // sufficient to see an immediate hidden-Ghost recapture and is cheap
-    // enough to cover the complete uncertainty set rather than a sample.
-    const int shallowDepth = std::min(2, std::max(1, limits.depth));
+    // First audit every common action in every retained world. A depth-one
+    // root search enters quiescence after our action, so hidden-Ghost
+    // recaptures and every other forcing reply are still resolved. Keeping
+    // this pass at one full turn leaves materially more of a phone clock for
+    // deep search while preserving complete uncertainty-set coverage.
+    const int shallowDepth = 1;
     std::vector<std::vector<int>> shallowScores(
       beliefs.size(), std::vector<int>(roots.size(), -Infinity));
     const std::size_t workerCount = std::min<std::size_t>(8, beliefs.size());
@@ -465,6 +479,9 @@ BeliefSearchResult Search::think_beliefs(const std::vector<Position>& beliefs,
     }
     for (auto& worker : shallowWorkers)
         result.nodes += worker.get();
+
+    const auto shallowElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - beliefStart);
 
     struct Summary {
         std::size_t root = 0;
@@ -502,6 +519,20 @@ BeliefSearchResult Search::think_beliefs(const std::vector<Position>& beliefs,
       std::max<std::size_t>(1, maximumCandidates), summaries.size());
     summaries.resize(candidateCount);
     result.candidates = candidateCount;
+
+    // The exhaustive public-information audit is part of the caller's move
+    // budget, not a surcharge on top of it.  If it used the whole budget, its
+    // complete-set result is still a safe move choice; return that instead of
+    // starting deep searches which are guaranteed to overrun the clock.
+    if (limits.moveTime.count() && shallowElapsed >= limits.moveTime) {
+        const Summary& best = summaries.front();
+        result.bestMove = roots[best.root];
+        result.score = result.worstScore = best.worst;
+        result.meanScore = best.mean;
+        result.completedDepth = shallowDepth;
+        result.elapsed = shallowElapsed;
+        return result;
+    }
 
     // Deep search evenly spaced representative worlds plus each candidate's
     // own worst shallow world. This preserves the complete-set Ghost safety
@@ -545,9 +576,11 @@ BeliefSearchResult Search::think_beliefs(const std::vector<Position>& beliefs,
                 deep.rootMoves.push_back(*move);
                 if (deep.nodes)
                     deep.nodes = std::max<std::uint64_t>(1, deep.nodes / deepCount);
-                if (deep.moveTime.count())
+                if (deep.moveTime.count()) {
+                    const auto remaining = deep.moveTime - shallowElapsed;
                     deep.moveTime = std::chrono::milliseconds(std::max<std::int64_t>(
-                      1, deep.moveTime.count() / static_cast<std::int64_t>(deepCount)));
+                      1, remaining.count() / static_cast<std::int64_t>(deepCount)));
+                }
                 SearchResult searched = local.think(position, deep);
                 std::vector<std::string> pv;
                 for (const Move& pvMove : searched.principalVariation)

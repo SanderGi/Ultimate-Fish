@@ -66,6 +66,22 @@ class CoordinateTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "cannot be negative"):
             MODULE.controller_movetime("unranked", -1)
 
+    def test_builder_drag_learning_never_targets_outside_edge_cells(self):
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.army_drag_offsets = {}
+        game.verbose = False
+        deployment = MODULE.DeploymentGeometry()
+        horizontal = game._learn_army_drag_offset(
+            "pawn", "h1", (6, 0), deployment
+        )
+        vertical = game._learn_army_drag_offset(
+            "dragon", "g1", (6, 1), deployment
+        )
+        h1 = deployment.point("h1")
+        g1 = deployment.point("g1")
+        self.assertLessEqual(h1[0] + horizontal[0], deployment.right - 4)
+        self.assertLessEqual(g1[1] + vertical[1], deployment.bottom - 4)
+
     def test_public_copycat_callbacks_rebuild_one_mirrored_pair(self):
         self.assertEqual(MODULE.public_probe_piece("copycat"), "copycatPair")
         self.assertEqual(MODULE.public_probe_piece("copycatClone"), "copycatPair")
@@ -88,6 +104,12 @@ class CoordinateTests(unittest.TestCase):
 
 
 class LogParserTests(unittest.TestCase):
+    def test_builder_army_move_reports_native_piece_identity(self):
+        dragon = MODULE.parse_unity_line("I/Unity: ArmyMove dragon")
+        giant = MODULE.parse_unity_line("I/Unity: ArmyMove")
+        self.assertEqual((dragon.kind, dragon.piece), ("army_piece", "dragon"))
+        self.assertEqual((giant.kind, giant.piece), ("army_piece", "giant"))
+
     def test_move_and_selection(self):
         move = MODULE.parse_unity_line("I/Unity: queen(Clone) moves 40 --> 49")
         self.assertEqual(move, MODULE.AppEvent("move", "queen", "e1", "e10",
@@ -534,6 +556,7 @@ class VisionTests(unittest.TestCase):
             (25, 900, 1055, 1500), fill=(245, 55, 35))
         self.assertEqual(MODULE.PhoneGame._maintenance_ack_point(image),
                          (540, 1416))
+        self.assertIsNone(MODULE.PhoneGame._reconnect_decline_point(image))
 
     def test_unlock_badges_include_scrolled_tail_and_crowned_prince(self):
         from PIL import Image, ImageDraw
@@ -868,6 +891,43 @@ class OpeningSynchronizationTests(unittest.TestCase):
         self.assertEqual(outcome, MODULE.OpeningTerminal("defeat", "game_over"))
 
     @patch.object(MODULE.time, "sleep", return_value=None)
+    def test_onyx_opening_timeout_without_opponent_action_is_a_win(self, _sleep):
+        class FakeEvents:
+            @staticmethod
+            def gameplay_snapshot():
+                return 1, (MODULE.AppEvent("game_over"),)
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.perspective_flipped = True
+        game.events = FakeEvents()
+        game.log = lambda _message: None
+        game.classify_game_over = (
+            lambda _timeout=4.0, _decisive_result=None: "unknown"
+        )
+        outcome = game.await_onyx_opening(timeout=0.01)
+        self.assertEqual(outcome, MODULE.OpeningTerminal("win", "game_over"))
+
+    @patch.object(MODULE.time, "sleep", return_value=None)
+    def test_onyx_opening_game_over_after_public_action_is_a_loss(self, _sleep):
+        class FakeEvents:
+            @staticmethod
+            def gameplay_snapshot():
+                return 1, (
+                    MODULE.AppEvent("move", "queen", "a10", "a1"),
+                    MODULE.AppEvent("game_over"),
+                )
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.perspective_flipped = True
+        game.events = FakeEvents()
+        game.log = lambda _message: None
+        game.classify_game_over = (
+            lambda _timeout=4.0, _decisive_result=None: "unknown"
+        )
+        outcome = game.await_onyx_opening(timeout=0.01)
+        self.assertEqual(outcome, MODULE.OpeningTerminal("loss", "game_over"))
+
+    @patch.object(MODULE.time, "sleep", return_value=None)
     def test_onyx_bomb_opening_ignores_early_network_turn(self, _sleep):
         class FakeEvents:
             @staticmethod
@@ -939,6 +999,18 @@ class OpeningSynchronizationTests(unittest.TestCase):
 
 
 class ControllerActionTests(unittest.TestCase):
+    def test_builder_pot_identity_swaps_mislabeled_equal_cost_slots(self):
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.army_pot_slots = {}
+        messages = []
+        game.log = messages.append
+
+        self.assertTrue(game._learn_army_pot_identity("dragon", "berserker"))
+        self.assertEqual(game.army_pot_slots["dragon"], "berserker")
+        self.assertEqual(game.army_pot_slots["berserker"], "dragon")
+        self.assertFalse(game._learn_army_pot_identity("dragon", "dragon"))
+        self.assertIn("learned native pot swap", messages[0])
+
     def test_cpu_army_misdrop_restarts_with_learned_calibration(self):
         game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
         attempts = []
@@ -1180,8 +1252,10 @@ class BeliefConstructionTests(unittest.TestCase):
                     "p2": ["a1-a2", "c1-c2"],
                 }[position]
 
-            def search_beliefs(self, positions, depth, nodes, movetime):
-                self.calls.append((tuple(positions), depth, nodes, movetime))
+            def search_beliefs(self, positions, depth, nodes, movetime, draw_moves=()):
+                self.calls.append(
+                    (tuple(positions), depth, nodes, movetime, tuple(draw_moves))
+                )
                 return "a1-a2", 40, (
                     "info depth 5 score cp 40 beliefs 2 beliefworst 40"
                 )
@@ -1192,9 +1266,28 @@ class BeliefConstructionTests(unittest.TestCase):
         self.assertEqual(move, "a1-a2")
         self.assertEqual(
             engine.calls,
-            [(("p1", "p2"), 5, 1000, 250)],
+            [(("p1", "p2"), 5, 1000, 250, ())],
         )
         self.assertIn("beliefworst 40", info)
+
+    def test_public_threefold_roots_are_scored_by_native_belief_search(self):
+        class LegalEngine:
+            calls = []
+
+            @staticmethod
+            def legal_moves(_position):
+                return ["a1-a2", "b1-b2"]
+
+            def search_beliefs(self, positions, depth, nodes, movetime, draw_moves=()):
+                del positions, depth, nodes, movetime
+                self.calls.append(tuple(draw_moves))
+                return "b1-b2", 0, "info depth 4 score cp 0"
+
+        engine = LegalEngine()
+        beliefs = MODULE.BeliefSet(engine, ("p1", "p2"))
+        move, _info = beliefs.choose(4, draw_moves=("b1-b2",))
+        self.assertEqual(move, "b1-b2")
+        self.assertEqual(engine.calls, [("b1-b2",)])
 
     def test_controller_rejects_native_move_not_common_to_all_beliefs(self):
         class LegalEngine:
@@ -1203,7 +1296,7 @@ class BeliefConstructionTests(unittest.TestCase):
                 return ["a1-a2", "b1-b2"] if position == "p1" else ["a1-a2"]
 
             @staticmethod
-            def search_beliefs(_positions, _depth, _nodes, _movetime):
+            def search_beliefs(_positions, _depth, _nodes, _movetime, _draw_moves=()):
                 return "b1-b2", 100, "info depth 5 score cp 100"
 
         beliefs = MODULE.BeliefSet(LegalEngine(), ("p1", "p2"))
@@ -1228,6 +1321,37 @@ class BeliefConstructionTests(unittest.TestCase):
             beliefs.positions, ["captured-jester", "captured-real-king"])
         beliefs.observe_continuation()
         self.assertEqual(beliefs.positions, ["captured-jester"])
+
+    def test_royal_move_prefab_does_not_reveal_king_jester_identity(self):
+        king_at_source = (
+            "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+            "king,w,a1;king,b,e9;jester,b,d10"
+        )
+        jester_at_source = (
+            "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+            "king,w,a1;jester,b,e9;king,b,d10"
+        )
+
+        class RoyalEngine:
+            @staticmethod
+            def legal_moves(_position):
+                return ["e9-e10"]
+
+            @staticmethod
+            def apply(position, _move):
+                return position.replace("b;", "w;", 1).replace(
+                    ",b,e9", ",b,e10"
+                )
+
+        beliefs = MODULE.BeliefSet(
+            RoyalEngine(), (king_at_source, jester_at_source)
+        )
+        beliefs.observe_move(
+            MODULE.AppEvent("move", "king", "e9", "e10"), False
+        )
+        self.assertEqual(len(beliefs.positions), 2)
+        self.assertTrue(any("king,b,e10" in upn for upn in beliefs.positions))
+        self.assertTrue(any("jester,b,e10" in upn for upn in beliefs.positions))
 
     def test_bomb_capture_survives_missing_attacker_move_callback(self):
         before = (

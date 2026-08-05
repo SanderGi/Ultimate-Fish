@@ -61,13 +61,14 @@ DRAFT_PIECES = tuple(
 
 # Native GameManager.LoadCharacters stably sorts selectable prefabs by the
 # Character.value table.  The order among equal-valued pieces is the serialized
-# prefab order recovered from the verified 5.731 APK and cross-checked against
-# the pre-unlock army-builder capture.
+# prefab order recovered from the verified 5.731 APK and live ArmyMove identity
+# feedback. Dragon and Berserker share a value but their serialized order is
+# the reverse of the earlier visual-only assumption.
 POT_SORT_ORDER = (
     "giant", "checker", "pawn", "turtle", "copycat", "knight", "mage",
     "bishop", "jester", "sludge", "fisherman", "rook", "angel",
-    "dragon", "bomb", "ghost", "penguin", "parasite", "devil",
-    "berserker", "queen", "sniper", "prince", "ninja",
+    "berserker", "bomb", "ghost", "penguin", "parasite", "devil",
+    "dragon", "queen", "sniper", "prince", "ninja",
 )
 
 # This is the saved 100-point local army used by the controller.  A future
@@ -95,6 +96,7 @@ BOT_CHARACTER_RE = re.compile(rf"\bCharacter {PREFAB_NAME}\s*$")
 DOT_RE = re.compile(r"SetUpMyDot was called with (\d+) (\d+)")
 ARMY_POINTS_RE = re.compile(r"GetPoints\(\) - player1 points : (\d+)")
 ARMY_DROP_RE = re.compile(r"(?:^|:\s)(\d+):(\d+)\s+-\s+(\d+):(\d+)\s*$")
+ARMY_MOVE_RE = re.compile(r"(?:^|:\s)ArmyMove(?:\s+([A-Za-z]+))?\s*$")
 ENGINE_MOVE_RE = re.compile(r"^([a-h](?:10|[1-9]))([-~@x!&])([a-h](?:10|[1-9]))$")
 
 
@@ -373,6 +375,12 @@ def parse_unity_line(line: str) -> AppEvent | None:
             target=f"{match.group(3)}:{match.group(4)}",
             raw=line,
         )
+    match = ARMY_MOVE_RE.search(line)
+    if match:
+        # Giant's override omits the prefab name; it is the only blank
+        # ArmyMove diagnostic in the recovered builder.
+        piece = canonical_piece_name(match.group(1) or "giant")
+        return AppEvent("army_piece", piece=piece, raw=line) if piece else None
     # Bot.RecordAiMove prints the authoritative public action as three adjacent
     # lines before the ordinary animation callback. This is especially useful
     # for stay-put actions: Devil/Mage/Fisherman later log source->source even
@@ -1604,7 +1612,8 @@ class EngineClient:
 
     def search_beliefs(self, positions: Sequence[str], depth: int,
                        nodes: int = 0,
-                       movetime_ms: int = 0) -> tuple[str | None, int, str]:
+                       movetime_ms: int = 0,
+                       draw_moves: Sequence[str] = ()) -> tuple[str | None, int, str]:
         """Let Ultimate Fish select one root for a public information set."""
         if not positions:
             raise ValueError("cannot search an empty belief set")
@@ -1621,6 +1630,8 @@ class EngineClient:
             limits += ["nodes", str(nodes)]
         if movetime_ms:
             limits += ["movetime", str(movetime_ms)]
+        if draw_moves:
+            limits += ["drawmoves", *draw_moves]
         self.send(" ".join(limits))
         info = self.until("info depth ")
         best = self.until("bestmove ").split(" ", 1)[1]
@@ -1921,7 +1932,8 @@ class BeliefSet:
             for move in candidates:
                 source, _target, _separator = parse_engine_move(move)
                 actor = upn_piece_at(position, source)
-                if actor and actor[0] == event.piece:
+                if (actor and public_probe_piece(actor[0]) ==
+                        public_probe_piece(event.piece)):
                     typed.append(move)
             if typed:
                 candidates = typed
@@ -2011,7 +2023,8 @@ class BeliefSet:
                 for move in candidates:
                     source, _, _ = parse_engine_move(move)
                     actor = upn_piece_at(position, source)
-                    if actor and actor[0] == event.piece:
+                    if (actor and public_probe_piece(actor[0]) ==
+                            public_probe_piece(event.piece)):
                         typed.append(move)
                 if typed:
                     candidates = typed
@@ -2147,7 +2160,8 @@ class BeliefSet:
         return identities
 
     def choose(self, depth: int, nodes: int = 0,
-               movetime_ms: int = 0) -> tuple[str, str]:
+               movetime_ms: int = 0,
+               draw_moves: Sequence[str] = ()) -> tuple[str, str]:
         # The controller supplies factual public hypotheses but never scores,
         # filters, or overwrites a move. Root selection belongs to the native
         # information-set search so tactical sacrifices and Ghost risk are
@@ -2157,7 +2171,7 @@ class BeliefSet:
         if not common:
             raise RuntimeError("there is no move legal in every public belief")
         choice, _score, info = self.engine.search_beliefs(
-            self.positions, depth, nodes, movetime_ms)
+            self.positions, depth, nodes, movetime_ms, draw_moves)
         if not choice:
             raise RuntimeError("Ultimate Fish returned no move for a nonterminal belief set")
         if choice not in common:
@@ -2564,6 +2578,7 @@ class PhoneGame:
         self.online_local_team: int | None = None
         self.draft_pots: dict[str, tuple[int, int]] = {}
         self.army_drag_offsets: dict[tuple[str, str], tuple[float, float]] = {}
+        self.army_pot_slots: dict[str, str] = {}
         self.army_verified_pre_ready = False
 
     def log(self, message: str) -> None:
@@ -2596,6 +2611,16 @@ class PhoneGame:
             image = self.adb.screenshot()
             if self._connected_main(image):
                 return image
+            maintenance = self._maintenance_ack_point(image)
+            if maintenance:
+                now = time.monotonic()
+                if now >= next_maintenance:
+                    self.log("server unavailable; dismissing maintenance notice")
+                    self.adb.tap(*maintenance)
+                    next_maintenance = now + 3.0
+                    next_reconnect = now + 1.0
+                time.sleep(0.25)
+                continue
             decline = self._reconnect_decline_point(image)
             if decline:
                 self.log("discarding stale reconnect prompt")
@@ -2607,16 +2632,6 @@ class PhoneGame:
                 self.log("dismissing unlock acknowledgement")
                 self.adb.tap(*acknowledgement)
                 time.sleep(0.5)
-                continue
-            maintenance = self._maintenance_ack_point(image)
-            if maintenance:
-                now = time.monotonic()
-                if now >= next_maintenance:
-                    self.log("server unavailable; dismissing maintenance notice")
-                    self.adb.tap(*maintenance)
-                    next_maintenance = now + 3.0
-                    next_reconnect = now + 1.0
-                time.sleep(0.25)
                 continue
             login = self._login_point(image)
             now = time.monotonic()
@@ -2682,6 +2697,8 @@ class PhoneGame:
         """Find the large red No button on the stale-game reconnect prompt."""
         import numpy as np
 
+        if PhoneGame._maintenance_ack_point(image) is not None:
+            return None
         rgb = np.asarray(image.convert("RGB"))
         red, green, blue = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
         mask = (red > 205) & (red > green * 1.35) & (red > blue * 1.15)
@@ -2979,30 +2996,49 @@ class PhoneGame:
         return self.wait_screen("settled game board", board_ready, timeout)
 
     def _army_drag_result(
-        self, timeout: float = 1.4
-    ) -> tuple[tuple[int, int] | None, list[int]]:
-        """Collect Unity's logical destination and all resulting point totals."""
+        self, timeout: float = 1.4, idle_timeout: float = 0.22
+    ) -> tuple[tuple[int, int] | None, list[int], str | None]:
+        """Collect native piece identity, destination, and point totals."""
         deadline = time.monotonic() + timeout
         coordinate = None
         points: list[int] = []
+        identity = None
         received = False
+        last_received = time.monotonic()
         while time.monotonic() < deadline:
             try:
                 event = self.events.wait(
-                    ("army_drop", "army_points"),
-                    min(0.22, deadline - time.monotonic()),
+                    ("army_drop", "army_points", "army_piece"),
+                    min(idle_timeout, deadline - time.monotonic()),
                 )
             except TimeoutError:
-                if received:
+                if received and time.monotonic() - last_received >= idle_timeout:
                     break
                 continue
             received = True
+            last_received = time.monotonic()
             if event.kind == "army_points":
                 points.append(int(event.source or "-1"))
+            elif event.kind == "army_piece":
+                identity = event.piece
             elif event.source:
                 x_text, y_text = event.source.split(":", 1)
                 coordinate = int(x_text), int(y_text)
-        return coordinate, points
+        return coordinate, points, identity
+
+    def _learn_army_pot_identity(self, expected: str, actual: str) -> bool:
+        """Swap mislabeled native pot slots using authoritative ArmyMove."""
+        if expected == actual:
+            return False
+        expected_slot = self.army_pot_slots.get(expected, expected)
+        actual_slot = self.army_pot_slots.get(actual, actual)
+        self.army_pot_slots[expected] = actual_slot
+        self.army_pot_slots[actual] = expected_slot
+        self.log(
+            f"learned native pot swap: {expected} slot spawned {actual}; "
+            "swapping assignments"
+        )
+        return True
 
     @staticmethod
     def _deployment_coordinate(square: str) -> tuple[int, int]:
@@ -3024,9 +3060,21 @@ class PhoneGame:
     ) -> tuple[int, int]:
         desired = self._deployment_coordinate(square)
         old_x, old_y = self.army_drag_offsets.get((piece, square), (0.0, 0.0))
-        learned = (
+        proposed = (
             old_x + (desired[0] - landed[0]) * deployment.cell_width,
             old_y + (landed[1] - desired[1]) * deployment.cell_height,
+        )
+        # A full-cell correction at an edge (h-file or rank one) points
+        # outside the deployment collider and makes every subsequent drop get
+        # rejected. Keep the learned bias inside the intended board while
+        # still moving as far away as possible from an overlapping model.
+        center_x, center_y = deployment.point(square)
+        margin = 4.0
+        learned = (
+            min(deployment.right - margin - center_x,
+                max(deployment.left + margin - center_x, proposed[0])),
+            min(deployment.bottom - margin - center_y,
+                max(deployment.top + margin - center_y, proposed[1])),
         )
         self.army_drag_offsets[(piece, square)] = learned
         if self.verbose:
@@ -3034,6 +3082,7 @@ class PhoneGame:
                 f"learned native drag offset for {piece}@{square}: "
                 f"{learned[0]:+.0f}px,{learned[1]:+.0f}px"
             )
+        return learned
 
     def _correct_army_drop(
         self,
@@ -3060,7 +3109,7 @@ class PhoneGame:
             )
             self.events.drain()
             self.adb.drag_sync(source, target, 260)
-            landed, point_events = self._army_drag_result()
+            landed, point_events, _identity = self._army_drag_result()
             final_points = point_events[-1] if point_events else expected_points
             if final_points != expected_points:
                 raise RuntimeError(
@@ -3199,8 +3248,14 @@ class PhoneGame:
                     round(base_target[0] + offset_x),
                     round(base_target[1] + offset_y),
                 )
-                self.adb.drag_sync(pots[piece], target, 220)
-                landed, point_events = self._army_drag_result()
+                pot_slot = self.army_pot_slots.get(piece, piece)
+                self.adb.drag_sync(pots[pot_slot], target, 220)
+                landed, point_events, actual_piece = self._army_drag_result()
+                if (actual_piece is not None
+                        and self._learn_army_pot_identity(piece, actual_piece)):
+                    raise ArmyPlacementRetry(
+                        f"native {piece} pot spawned {actual_piece}"
+                    )
                 observed = point_events[-1] if point_events else confirmed_points
                 if observed == expected:
                     desired = self._deployment_coordinate(square)
@@ -3263,6 +3318,111 @@ class PhoneGame:
         self.army_verified_pre_ready = True
         self.log(
             "pre-Ready placement verified: "
+            + " ".join(f"{piece}@{square}" for piece, square in self.own_team))
+
+    def _verify_saved_army_builder(self, image) -> None:
+        """Round-trip persisted models before queueing to prove identity/layout.
+
+        The builder's 100-point label cannot distinguish equal-cost pieces or
+        a full-cost misplacement. Moving each ordinary model to a known-empty
+        scratch cell and immediately back produces authoritative ``ArmyMove``
+        identity and coordinate diagnostics without changing the saved army.
+        Giant anchors are verified from their distinctive 2x2 footprints.
+        """
+        if sum(PIECE_COST.get(piece, 0) for piece, _ in self.own_team) != 100:
+            raise ValueError("a saved Unranked army must cost exactly 100 points")
+        self.engine.set_position(make_upn(
+            self.own_team, (("king", "a10"),), "w"))
+        if self._color_count(image, (0.27, 0.075, 0.58, 0.17), "green") <= 5000:
+            raise ArmyPlacementRetry("saved army does not show a complete 100-point total")
+
+        occupied: set[str] = set()
+        for piece, square in self.own_team:
+            if piece == "giant":
+                occupied.update(giant_footprint(square))
+            elif piece == "copycat":
+                occupied.add(square)
+                occupied.add(DraftDeployment._mirror(square))
+            else:
+                occupied.add(square)
+        scratch_cells = [
+            f"{file}{rank}" for rank in (3, 2, 1) for file in "abcdefgh"
+            if f"{file}{rank}" not in occupied
+        ]
+        if not scratch_cells:
+            raise ArmyPlacementRetry("saved army has no empty verification scratch cell")
+
+        deployment = DeploymentGeometry()
+        native_confirmed: Counter[tuple[str, str]] = Counter()
+        ordinary = [
+            item for item in self.own_team if item[0] not in ("king", "giant")
+        ]
+        for piece, square in ordinary:
+            scratch = next((candidate for candidate in scratch_cells
+                            if piece != "copycat" or
+                            DraftDeployment._mirror(candidate) not in occupied), None)
+            if scratch is None:
+                raise ArmyPlacementRetry(
+                    f"saved {piece}@{square} has no safe verification scratch pair")
+            desired_coordinate = self._deployment_coordinate(square)
+            scratch_coordinate = self._deployment_coordinate(scratch)
+            verified = False
+            for attempt in range(1, 5):
+                self.events.drain()
+                self.adb.drag_sync(
+                    deployment.point(square), deployment.point(scratch), 240)
+                landed, points, outward_piece = self._army_drag_result(1.4, 0.55)
+                if landed is None:
+                    if self.verbose:
+                        self.log(
+                            f"saved {piece}@{square} verification drag was swallowed; "
+                            f"retrying ({attempt}/4)")
+                    continue
+                landed_square = self._deployment_square(landed)
+                if landed_square is None:
+                    raise ArmyPlacementRetry(
+                        f"saved {piece}@{square} landed outside deployment at {landed}")
+                if outward_piece != piece:
+                    # Do not drag an unexpected model onto the still-occupied
+                    # expected source. The caller will clear and rebuild this
+                    # now-mutated saved army before it can queue.
+                    raise ArmyPlacementRetry(
+                        f"saved {piece}@{square} selected "
+                        f"{outward_piece or 'unknown'}")
+
+                # Restore first, even when identity/destination evidence is
+                # wrong, so a failed coordinate audit does not leave a moved
+                # copy of the correctly identified model.
+                self.events.drain()
+                self.adb.drag_sync(
+                    deployment.point(landed_square), deployment.point(square), 240)
+                restored, restored_points, inward_piece = self._army_drag_result(1.4, 0.55)
+                final_points = (restored_points or points)
+                if final_points and final_points[-1] != 100:
+                    raise ArmyPlacementRetry(
+                        f"saved {piece}@{square} round trip changed total to "
+                        f"{final_points[-1]}")
+                if (landed == scratch_coordinate and restored == desired_coordinate
+                        and outward_piece == piece and inward_piece == piece):
+                    native_confirmed[(piece, square)] += 1
+                    verified = True
+                    break
+                if self.verbose:
+                    self.log(
+                        f"saved {piece}@{square} round trip reported "
+                        f"{outward_piece}@{landed_square} -> "
+                        f"{inward_piece}@{self._deployment_square(restored) if restored else '?'}; "
+                        f"retrying ({attempt}/4)")
+                time.sleep(0.25)
+            if not verified:
+                raise ArmyPlacementRetry(
+                    f"saved {piece}@{square} identity/coordinate audit failed")
+
+        settled = self.adb.screenshot()
+        verify_builder_placement(settled, self.own_team, native_confirmed)
+        self.army_verified_pre_ready = True
+        self.log(
+            "pre-Ready saved army verified: "
             + " ".join(f"{piece}@{square}" for piece, square in self.own_team))
 
     def start_unranked(self) -> None:
@@ -3354,6 +3514,19 @@ class PhoneGame:
                     continue
                 except TimeoutError as exc:
                     self.log(f"army scene did not settle ({exc}); retrying navigation")
+                    continue
+            elif not self.army_verified_pre_ready:
+                try:
+                    self._verify_saved_army_builder(builder)
+                except (ArmyPlacementRetry, TimeoutError) as exc:
+                    # A persisted roster that cannot prove its exact identity
+                    # and coordinates must never reach matchmaking. Rebuild it
+                    # locally on the next navigation attempt.
+                    self.log(
+                        f"saved army verification failed ({exc}); "
+                        "rebuilding before queue"
+                    )
+                    self.configure_army = True
                     continue
             self.events.drain()
             self.adb.tap_sync(817, 2160)
@@ -3846,7 +4019,7 @@ class PhoneGame:
                         # by several seconds. Give the public menu time to say
                         # VICTORY/DEFEAT/DRAW; a still-unlabelled result with an
                         # opponent action in the journal is a local knockout.
-                        result = self.classify_game_over(4.5, "loss")
+                        result = self.classify_game_over(4.5)
                         if result == "unknown":
                             _latest_generation, latest = (
                                 self.events.gameplay_snapshot()
@@ -3858,7 +4031,11 @@ class PhoneGame:
                                 )
                                 for candidate in latest
                             )
-                            result = "loss" if opponent_acted else "unknown"
+                            # With no public opponent action, only Ivory's
+                            # opening clock could have expired. Conversely, an
+                            # action followed by GameOver before our reply is a
+                            # local timeout/knockout and therefore a loss.
+                            result = "loss" if opponent_acted else "win"
                     self.log(
                         f"result: {result} ({event.kind} before Onyx initialization)"
                     )
@@ -4685,8 +4862,13 @@ class PhoneGame:
                 result = "unknown"
             if result in ("checkmate", "knockout", "terminal"):
                 return decisive_result or "unknown"
-            if result != "unknown" or time.monotonic() >= deadline:
+            if result != "unknown":
                 return result
+            if time.monotonic() >= deadline:
+                # The native game-over event already establishes which side
+                # just ended the game in decisive call sites. Overlay text can
+                # animate too late for OCR, but must not erase that fact.
+                return decisive_result or "unknown"
             time.sleep(0.25)
 
     def play(self) -> str:
@@ -4722,13 +4904,23 @@ class PhoneGame:
         while True:
             record_repetition_state()
             if self.beliefs.side == "w":
+                repetition_draw_moves: list[str] = []
+                if repetition_counts and max(repetition_counts.values()) >= 2:
+                    legal_sets = [
+                        set(self.engine.legal_moves(position))
+                        for position in self.beliefs.positions
+                    ]
+                    for candidate in sorted(set.intersection(*legal_sets)):
+                        if move_completes_threefold(candidate):
+                            repetition_draw_moves.append(candidate)
                 started = time.monotonic()
                 move, info = self.beliefs.choose(
-                    self.depth, self.nodes, self.movetime_ms)
+                    self.depth, self.nodes, self.movetime_ms,
+                    repetition_draw_moves)
                 elapsed = time.monotonic() - started
                 self.log(f"Ultimate Fish {move} ({elapsed:.3f}s; {info})")
                 bomb_resolution = self.beliefs.move_causes_bomb_detonation(move)
-                repetition_draw = move_completes_threefold(move)
+                repetition_draw = move in repetition_draw_moves
                 event = self.execute(move, bomb_resolution)
                 if event.kind == "terminal_label":
                     result = "draw" if event.source == "draw" else "win"

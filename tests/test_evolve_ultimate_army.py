@@ -35,6 +35,7 @@ class ArmyEvolutionTests(unittest.TestCase):
         self.assertGreater(len(mutations), 20)
         for key in mutations:
             evolve.validate_army(key)
+        self.assertTrue(any(dict(army)["king"] != "a1" for army in mutations))
 
         for _attempt in range(50):
             child = evolve.crossover_armies(
@@ -57,6 +58,15 @@ class ArmyEvolutionTests(unittest.TestCase):
         self.assertEqual(evolve.mirror_square("giant", "c1"), "c9")
         self.assertEqual(evolve.mirror_square("giant", "c2"), "c8")
         self.assertEqual(evolve.mirror_square("queen", "c1"), "c10")
+
+    def test_live_sniper_adversary_preserves_off_corner_king(self) -> None:
+        evolve.validate_army(evolve.SNIPER_ARMY)
+        self.assertEqual(dict(evolve.SNIPER_ARMY)["king"], "e2")
+        black = evolve.position(
+            evolve.CURRENT_ARMY, evolve.SNIPER_ARMY, "w"
+        )
+        self.assertIn("king,b,e9", black)
+        self.assertIn("sniper,b,a8", black)
 
     def test_result_summary_keeps_capped_tiebreaks_as_draws(self) -> None:
         self.assertEqual(
