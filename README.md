@@ -29,6 +29,7 @@ From the repository root:
 make -C src ultimatefish
 make -C src ultimate-test
 python3 tests/test_ultimate_phone.py
+python3 tests/test_evolve_ultimate_army.py
 tools/benchmark_ultimate.sh
 ```
 
@@ -89,6 +90,20 @@ python3 tools/evolve_ultimate_army.py --population 32 --generations 20 \
 Use a fixed seed for reproducibility. `tools/selfplay_ultimate.py` compares two
 engine binaries on a color-balanced fixture suite, while
 `tools/benchmark_ultimate.sh` provides fixed performance and perft checks.
+Re-rank saved finalists at a larger budget with
+`python3 tools/validate_ultimate_armies.py RESULTS.json --nodes 10000`.
+
+The reproducible 2026-08-05 league checkpoint is stored in
+[`docs/benchmarks/evolved-army-2026-08-05.json`](docs/benchmarks/evolved-army-2026-08-05.json),
+with deeper common-pool validation in
+[`docs/benchmarks/evolved-army-validation-2026-08-05.json`](docs/benchmarks/evolved-army-validation-2026-08-05.json).
+The selected consistency-first setup was undefeated in that deeper pool
+(12W-14D-0L) and then won three of three supervised Very Hard CPU games:
+
+```text
+king,a1;queen,f3;queen,b3;queen,h1;queen,c3;queen,b2;pawn,a2;
+checker,g2;checker,b1;pawn,g1;pawn,h2;giant,e1;giant,c1
+```
 
 ## Android conformance and live validation
 

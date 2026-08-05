@@ -112,6 +112,10 @@ and remaps every relationship so captures cannot corrupt a round trip.
   exactly two coordinates orthogonally and knocks out every enemy character in
   the destination footprint; any friendly character in that footprint blocks
   the move.
+- A Mage selecting a Giant footprint tile translates the Giant so that tile
+  lands on the Mage's origin. Native forced-Giant resolution then knocks out
+  every other character in the translated footprint, including the Mage when
+  its selected destination overlaps that footprint.
 - Constructing a CopyCat creates its clone at `(7-x,y)`. Either half moves one
   square in any direction while the available partner applies `(-dx,dy)`.
   Both targets must be legal, both captures resolve, and either half's death

@@ -226,12 +226,13 @@ int Position::attached_angel(int host) const {
     return found;
 }
 
-void Position::relocate_giant(int id, int destination, bool markMoved) {
+void Position::relocate_giant(int id, int destination, bool markMoved, bool eraseOrigin) {
     if (id < 0 || id >= pieceCount_ || !pieces_[id].alive ||
         pieces_[id].type != PieceType::Giant || !footprint(id, destination))
         return;
 
-    erase_from_board(id);
+    if (eraseOrigin)
+        erase_from_board(id);
     // SimulatedGiant::MakeMoveTurnSkip invokes SimulateDeath on every
     // character in the translated footprint, regardless of team.  Repeat the
     // scan because an Angel save can relocate its host onto another one of
@@ -1410,14 +1411,13 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
             actor.moved = true;
             // SimulatedMage delegates this branch to Giant MakeMoveTurnSkip,
             // which removes every other character in the translated 2x2
-            // footprint, including allies.
-            relocate_giant(other, destination);
-            // Place the Mage only after relocate_giant has finished clearing
-            // the Giant's old 2x2 bitboard. The selected target is one of
-            // those old cells, so placing it first silently cleared the Mage
-            // from occupancy_ even though board_ still contained it.
+            // footprint, including the Mage itself when the old selected tile
+            // overlaps the Giant's translated footprint. The origin was
+            // already erased above, so relocation must not clear it a second
+            // time after the Mage has been placed there.
             if (actor.alive)
                 place_on_board(id);
+            relocate_giant(other, destination, true, false);
         }
         else {
             erase_from_board(id);

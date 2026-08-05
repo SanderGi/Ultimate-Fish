@@ -220,7 +220,8 @@ class Position {
     void erase_from_board(int id);
     void capture_piece(int victim, int attacker, const Move& move);
     void explode_at(int center, int attacker);
-    void relocate_giant(int id, int destination, bool markMoved = true);
+    void relocate_giant(int id, int destination, bool markMoved = true,
+                        bool eraseOrigin = true);
     [[nodiscard]] int attached_angel(int host) const;
     void sacrifice_angel(int angel, int host);
     void clear_penguin_freeze(int penguin);

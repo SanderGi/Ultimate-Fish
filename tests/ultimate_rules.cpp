@@ -344,6 +344,30 @@ void test_ninja_and_mage() {
     expect(!giantSwap.piece(ally).alive && !giantSwap.piece(enemy).alive,
            "a Mage-swapped Giant knocks out both teams in its destination footprint");
 
+    // Coevolution regression: when the Mage starts beside the selected Giant
+    // tile, the translated 2x2 footprint overlaps the Mage's destination.
+    // Native MakeMoveTurnSkip sees the already-placed Mage and knocks it out.
+    Position overlappingSwap;
+    overlappingSwap.add_piece(PieceType::King, Color::White,
+                               Position::square_from_name("a1"));
+    overlappingSwap.add_piece(PieceType::King, Color::Black,
+                               Position::square_from_name("h10"));
+    const int overlappingMage = overlappingSwap.add_piece(
+      PieceType::Mage, Color::White, Position::square_from_name("f1"));
+    const int overlappingGiant = overlappingSwap.add_piece(
+      PieceType::Giant, Color::White, Position::square_from_name("g1"));
+    Undo overlappingUndo;
+    expect(overlappingSwap.make_move(require_move(overlappingSwap, "f1~g1"), overlappingUndo) &&
+           !overlappingSwap.piece(overlappingMage).alive &&
+           overlappingSwap.piece(overlappingGiant).alive &&
+           overlappingSwap.piece(overlappingGiant).square == Position::square_from_name("f1"),
+           "Mage is knocked out when the translated Giant footprint overlaps its target tile");
+    Position overlappingRoundTrip;
+    std::string overlappingError;
+    expect(overlappingRoundTrip.set_upn(overlappingSwap.upn(), &overlappingError),
+           "overlapping Mage/Giant swap remains losslessly round-trippable: " +
+             overlappingError);
+
     Position savedGiant;
     savedGiant.add_piece(PieceType::King, Color::White,
                          Position::square_from_name("h1"));

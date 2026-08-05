@@ -463,6 +463,14 @@ class VisionTests(unittest.TestCase):
     def test_army_clear_confirmation_detector(self):
         from PIL import Image, ImageDraw
 
+        upper = Image.new("RGB", (1080, 2400), (40, 140, 210))
+        ImageDraw.Draw(upper).rounded_rectangle(
+            (264, 1085, 815, 1212), radius=50, fill=(235, 55, 30))
+        upper_point = MODULE.PhoneGame._army_clear_confirmation_point(upper)
+        self.assertIsNotNone(upper_point)
+        self.assertTrue(535 <= upper_point[0] <= 545)
+        self.assertTrue(1140 <= upper_point[1] <= 1155)
+
         image = Image.new("RGB", (1080, 2400), (40, 140, 210))
         ImageDraw.Draw(image).rounded_rectangle(
             (264, 1261, 815, 1417), radius=50, fill=(235, 55, 30))
@@ -764,10 +772,37 @@ class VisionTests(unittest.TestCase):
             round(mesh_center_y + geometry.cell_height * 0.55),
         ), fill=(220, 90, 180))
         team = (("king", "a1"), ("giant", "b1"), ("ghost", "d1"))
-        with self.assertRaisesRegex(MODULE.ArmyPlacementRetry, "expected b1, detected b2"):
+        with self.assertRaisesRegex(
+            MODULE.ArmyPlacementRetry, "expected b1, detected b2"
+        ):
             MODULE.verify_builder_placement(
                 image, team, MODULE.Counter({("ghost", "d1"): 1})
             )
+
+    @unittest.skipUnless(importlib.util.find_spec("PIL") and importlib.util.find_spec("numpy"),
+                         "Pillow/numpy not installed")
+    def test_pre_ready_verification_accepts_two_adjacent_giants(self):
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGB", (1080, 2400), (45, 90, 55))
+        draw = ImageDraw.Draw(image)
+        geometry = MODULE.DeploymentGeometry()
+        for square in ("c1", "e1"):
+            file_index = ord(square[0]) - ord("a")
+            center_x = geometry.left + (file_index + 1.0) * geometry.cell_width
+            logical_center_y = geometry.top + 2 * geometry.cell_height
+            mesh_center_y = logical_center_y - geometry.cell_height * 0.24
+            draw.rectangle((
+                round(center_x - geometry.cell_width * 0.82),
+                round(mesh_center_y - geometry.cell_height * 0.55),
+                round(center_x + geometry.cell_width * 0.82),
+                round(mesh_center_y + geometry.cell_height * 0.55),
+            ), fill=(220, 90, 180))
+        team = (("king", "a1"), ("giant", "c1"), ("giant", "e1"))
+        MODULE.verify_builder_placement(image, team, MODULE.Counter())
+        self.assertEqual(
+            MODULE.detect_builder_giant_anchors(image, 2), ["c1", "e1"]
+        )
 
 
 class OpeningSynchronizationTests(unittest.TestCase):
@@ -904,6 +939,25 @@ class OpeningSynchronizationTests(unittest.TestCase):
 
 
 class ControllerActionTests(unittest.TestCase):
+    def test_cpu_army_misdrop_restarts_with_learned_calibration(self):
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        attempts = []
+        messages = []
+
+        def start_once():
+            attempts.append(None)
+            if len(attempts) == 1:
+                raise MODULE.ArmyPlacementRetry("colliding drop")
+
+        game._start_very_hard_cpu_once = start_once
+        game.log = messages.append
+        game.configure_army = True
+        game.start_very_hard_cpu()
+
+        self.assertEqual(len(attempts), 2)
+        self.assertFalse(game.configure_army)
+        self.assertIn("restarting a clean corrected CPU build", messages[0])
+
     def test_terminal_event_during_search_prevents_board_tap(self):
         class FakeAdb:
             def __init__(self):
@@ -1231,6 +1285,37 @@ class BeliefConstructionTests(unittest.TestCase):
         self.assertEqual(len(beliefs.positions), 4)
         self.assertTrue(any(";ghost,b,d2," in upn for upn in beliefs.positions))
         self.assertTrue(any(";ghost,b,e2," in upn for upn in beliefs.positions))
+
+    def test_hidden_ghost_move_excludes_unreported_capture_worlds(self):
+        before = (
+            "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+            "king,w,a1;queen,w,d2;king,b,h10;"
+            "ghost,b,c3,0,0,0,0,0,0,-1,1,-1,0"
+        )
+        quiet = before.replace("ghost,b,c3", "ghost,b,b2").replace(
+            "b;", "w;", 1
+        )
+        capture = (
+            "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+            "king,w,a1;king,b,h10;"
+            "ghost,b,d2,0,0,0,0,1,1,-1,1,-1,0"
+        )
+
+        class FakeEngine:
+            @staticmethod
+            def legal_moves(_position):
+                return ["c3-b2", "c3-d2"]
+
+            @staticmethod
+            def apply(_position, move):
+                return quiet if move == "c3-b2" else capture
+
+        beliefs = MODULE.BeliefSet(FakeEngine(), (before,))
+        beliefs.observe_move(
+            MODULE.AppEvent("move", "ghost", "c3", "b2"), True
+        )
+        self.assertEqual(beliefs.positions, [quiet])
+        self.assertIn("queen,w,d2", beliefs.positions[0])
 
     def test_visible_ghost_uses_public_destination_not_private_origin(self):
         first = (

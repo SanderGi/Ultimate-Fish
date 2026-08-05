@@ -31,6 +31,8 @@ direct new features toward `variants.ini`.
 - `tools/ultimate_phone.py`: deterministic Android controller and state tracker.
 - `tools/evolve_ultimate_army.py`: roster plus placement evolution through
   engine-versus-engine games.
+- `tools/validate_ultimate_armies.py`: deeper common-pool re-ranking of evolved
+  finalists.
 - `ui/`: local Next.js development server and loopback-only engine bridge.
 
 The inherited Fairy-Stockfish sources remain as the licensed baseline and may
@@ -46,6 +48,7 @@ Run commands from the repository root unless noted otherwise:
 make -C src ultimatefish
 make -C src ultimate-test
 python3 tests/test_ultimate_phone.py
+python3 tests/test_evolve_ultimate_army.py
 python3 -m py_compile tools/ultimate_phone.py tools/evolve_ultimate_army.py
 tools/benchmark_ultimate.sh
 git diff --check

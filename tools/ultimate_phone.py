@@ -766,19 +766,20 @@ def map_ranked_pots(image) -> dict[str, tuple[int, int]]:
     return dict(zip(POT_SORT_ORDER, traversal))
 
 
-def detect_builder_giant_anchor(
-    image, geometry: DeploymentGeometry = DeploymentGeometry()
-) -> str | None:
-    """Locate the Giant's logical 2x2 anchor in the saved-army builder.
+def detect_builder_giant_anchors(
+    image, expected_count: int | None = None,
+    geometry: DeploymentGeometry = DeploymentGeometry(),
+) -> list[str] | None:
+    """Locate Giant logical 2x2 anchors in the saved-army builder.
 
     Unity does not emit the ordinary ``x:y`` placement record for Giant
-    drags.  Its large pink model is nevertheless a stable visual marker.  The
-    component centroid sits roughly a quarter-cell above the center of the
-    logical footprint, so compensate for that recovered model pivot before
-    mapping it back to the lower-left footprint square.
+    drags.  Its large pink model is nevertheless a stable visual marker. The
+    component centroid sits roughly a quarter-cell above the center of its
+    logical footprint. Adjacent meshes can touch, so when the caller knows the
+    expected count, deterministically split merged pink pixels with k-means.
 
-    Returning ``None`` is deliberately conservative: Ready must never be
-    clicked when the Giant cannot be distinguished from ordinary models.
+    ``None`` is deliberately conservative: Ready must never be clicked when
+    Giant models cannot be distinguished from ordinary models.
     """
     try:
         import numpy as np
@@ -812,20 +813,81 @@ def detect_builder_giant_anchor(
         if (width >= geometry.cell_width * 1.35
                 and height >= geometry.cell_height * 0.75):
             candidates.append((len(component), component))
-    if len(candidates) != 1:
-        return None
+    components = [component for _area, component in candidates]
+    if expected_count is not None and expected_count > 0:
+        if not components:
+            return None
+        if len(components) != expected_count:
+            pixels = np.asarray(
+                [point for component in components for point in component],
+                dtype=float,
+            )
+            if len(pixels) < expected_count * minimum_area * 0.45:
+                return None
+            normalized = pixels / np.asarray(
+                [geometry.cell_height, geometry.cell_width], dtype=float
+            )
+            global_center = normalized.mean(axis=0)
+            seeds = [normalized[np.argmax(
+                ((normalized - global_center) ** 2).sum(axis=1)
+            )]]
+            while len(seeds) < expected_count:
+                distances = np.min(np.stack([
+                    ((normalized - seed) ** 2).sum(axis=1) for seed in seeds
+                ]), axis=0)
+                seeds.append(normalized[np.argmax(distances)])
+            centers = np.asarray(seeds)
+            labels = np.zeros(len(normalized), dtype=int)
+            for _iteration in range(20):
+                distances = np.stack([
+                    ((normalized - center) ** 2).sum(axis=1)
+                    for center in centers
+                ], axis=1)
+                new_labels = distances.argmin(axis=1)
+                if np.array_equal(new_labels, labels) and _iteration:
+                    break
+                labels = new_labels
+                if any(not np.any(labels == index)
+                       for index in range(expected_count)):
+                    return None
+                centers = np.asarray([
+                    normalized[labels == index].mean(axis=0)
+                    for index in range(expected_count)
+                ])
+            components = [
+                [(int(y), int(x)) for y, x in pixels[labels == index]]
+                for index in range(expected_count)
+            ]
 
-    _area, component = candidates[0]
-    center_x = left + sum(point[1] for point in component) / len(component)
-    center_y = top + sum(point[0] for point in component) / len(component)
-    # The recovered Giant mesh centroid is 25-29 px above its logical
-    # footprint center at 1080x2400, or about 0.24 deployment-cell heights.
-    logical_center_y = center_y + geometry.cell_height * 0.24
-    file_index = round((center_x - geometry.left) / geometry.cell_width - 1.0)
-    rank = round(3.0 - (logical_center_y - geometry.top) / geometry.cell_height)
-    if not (0 <= file_index <= 6 and 1 <= rank <= 2):
+    anchors = []
+    for component in components:
+        if len(component) < minimum_area * 0.45:
+            return None
+        center_x = left + sum(point[1] for point in component) / len(component)
+        center_y = top + sum(point[0] for point in component) / len(component)
+        # The recovered Giant mesh centroid is 25-29 px above its logical
+        # footprint center at 1080x2400, or 0.24 deployment-cell heights.
+        logical_center_y = center_y + geometry.cell_height * 0.24
+        file_index = round(
+            (center_x - geometry.left) / geometry.cell_width - 1.0
+        )
+        rank = round(
+            3.0 - (logical_center_y - geometry.top) / geometry.cell_height
+        )
+        if not (0 <= file_index <= 6 and 1 <= rank <= 2):
+            return None
+        anchors.append(f"{chr(ord('a') + file_index)}{rank}")
+    if len(set(anchors)) != len(anchors):
         return None
-    return f"{chr(ord('a') + file_index)}{rank}"
+    return sorted(anchors, key=square_sort_key)
+
+
+def detect_builder_giant_anchor(
+    image, geometry: DeploymentGeometry = DeploymentGeometry()
+) -> str | None:
+    """Backward-compatible single-Giant detector."""
+    anchors = detect_builder_giant_anchors(image, 1, geometry)
+    return anchors[0] if anchors and len(anchors) == 1 else None
 
 
 def verify_builder_placement(
@@ -858,20 +920,21 @@ def verify_builder_placement(
     expected_giants = [
         square for piece, square in expected_team if piece == "giant"
     ]
-    if len(expected_giants) > 1:
-        raise ArmyPlacementRetry(
-            "pre-Ready Giant verification currently requires at most one Giant"
-        )
-    detected_giant = detect_builder_giant_anchor(image)
+    detected_giants = detect_builder_giant_anchors(
+        image, len(expected_giants) if expected_giants else None
+    )
     if expected_giants:
-        if detected_giant != expected_giants[0]:
+        expected_giants = sorted(expected_giants, key=square_sort_key)
+        if detected_giants != expected_giants:
             raise ArmyPlacementRetry(
-                "pre-Ready Giant footprint mismatch: expected "
-                f"{expected_giants[0]}, detected {detected_giant or 'none'}"
+                "pre-Ready Giant footprints mismatch: expected "
+                f"{' '.join(expected_giants)}, detected "
+                f"{' '.join(detected_giants) if detected_giants else 'none'}"
             )
-    elif detected_giant is not None:
+    elif detected_giants:
         raise ArmyPlacementRetry(
-            f"pre-Ready found unexpected Giant footprint at {detected_giant}"
+            "pre-Ready found unexpected Giant footprints at "
+            + " ".join(detected_giants)
         )
 
 
@@ -1924,7 +1987,7 @@ class BeliefSet:
                 for move in legal:
                     if move == "pass":
                         continue
-                    source, _, _ = parse_engine_move(move)
+                    source, target, _ = parse_engine_move(move)
                     actor = upn_piece_at(position, source)
                     if not actor or actor[0] != "ghost" or actor[1] != "b":
                         continue
@@ -1933,7 +1996,12 @@ class BeliefSet:
                     # publicly known source and only the destination becomes
                     # hidden.  Release diagnostics leak both coordinates, but
                     # use only what the opponent could see on the board.
-                    if not actor[2] or source == event.source:
+                    # No public attack/reveal accompanied this callback, so
+                    # the Ghost must have made a quiet move to an empty cell.
+                    # Retaining captures here silently removed our material in
+                    # impossible worlds and manufactured phantom mate threats.
+                    if ((not actor[2] or source == event.source)
+                            and upn_piece_covering(position, target) is None):
                         candidates.append(move)
             else:
                 assert event.source and event.target
@@ -2742,7 +2810,10 @@ class PhoneGame:
         # tall saved-army outline below it. Label only the modal band so those
         # unrelated pixels cannot merge into one implausibly tall component.
         crop_left = round(image.width * 0.18)
-        crop_top = round(image.height * 0.50)
+        # The confirmation shifts upward on taller/unlocked builder layouts.
+        # Keep both observed layouts inside the crop while still excluding the
+        # character grid below the modal.
+        crop_top = round(image.height * 0.42)
         crop = rgb[
             crop_top:round(image.height * 0.60),
             crop_left:round(image.width * 0.82),
@@ -2762,7 +2833,7 @@ class PhoneGame:
             if (image.width * 0.42 < width < image.width * 0.62
                     and image.height * 0.045 < height < image.height * 0.085
                     and image.width * 0.40 < center_x < image.width * 0.60
-                    and image.height * 0.50 < center_y < image.height * 0.59):
+                    and image.height * 0.44 < center_y < image.height * 0.59):
                 candidates.append((len(component), center_x, center_y))
         if not candidates:
             return None
@@ -2826,6 +2897,34 @@ class PhoneGame:
 
     def start_very_hard_cpu(self) -> None:
         """Navigate from a cold launch to a settled Very Hard CPU board."""
+        for build_attempt in itertools.count(1):
+            try:
+                was_configuring = self.configure_army
+                self._start_very_hard_cpu_once()
+                # The builder saves the verified army. Reuse it for later CPU
+                # games in this run instead of clearing/rebuilding each time.
+                if was_configuring:
+                    self.configure_army = False
+                return
+            except ArmyPlacementRetry as exc:
+                # A miscalibrated drop can replace a cheaper occupied piece.
+                # The material delta then proves the saved army is corrupt,
+                # but its reported destination also teaches the exact drag
+                # correction. Restart the scene and reuse that correction.
+                self.log(
+                    f"{exc}; restarting a clean corrected CPU build "
+                    f"(attempt {build_attempt + 1})"
+                )
+            except TimeoutError as exc:
+                # Unity occasionally exposes artwork one animation frame
+                # before the corresponding CPU-menu raycaster is live.
+                self.log(
+                    f"CPU navigation did not settle ({exc}); restarting "
+                    f"(attempt {build_attempt + 1})"
+                )
+
+    def _start_very_hard_cpu_once(self) -> None:
+        """Perform one CPU navigation/build attempt."""
         self.log("starting Very Hard CPU game")
         self.adb.restart_app("com.JesseLugassy.ChessUltimate")
         self.wait_connected_main()
@@ -3012,12 +3111,28 @@ class PhoneGame:
             and self._color_count(image, points_box, "yellow") < 1000
         )
         if not points_are_zero:
-            self.adb.tap_sync(150, 165)  # Open Clear confirmation
-            confirmation = self.wait_screen(
-                "army clear confirmation",
-                self._army_clear_confirmation_point,
-                4.0,
-            )
+            confirmation = None
+            for clear_attempt in range(1, 5):
+                # The Clear artwork becomes visible before its Unity
+                # raycaster finishes sliding into place. Retry the same safe
+                # control rather than restarting an otherwise settled scene.
+                self.adb.tap_sync(150, 165)
+                try:
+                    confirmation = self.wait_screen(
+                        "army clear confirmation",
+                        self._army_clear_confirmation_point,
+                        2.5,
+                    )
+                    break
+                except TimeoutError:
+                    if self.verbose:
+                        self.log(
+                            "builder Clear tap was swallowed; retrying "
+                            f"({clear_attempt}/4)"
+                        )
+                    time.sleep(0.75)
+            if confirmation is None:
+                raise TimeoutError("timed out waiting for army clear confirmation")
             clear = self._army_clear_confirmation_point(confirmation)
             if clear is None:  # Defensive: wait_screen already required this.
                 raise TimeoutError("army clear confirmation disappeared")
@@ -3059,6 +3174,10 @@ class PhoneGame:
         # Giants' oversized 3D raycasters extend over neighbouring logical
         # cells in the standalone builder.  Place single-cell characters first
         # and the already-validated non-overlapping Giant footprints last.
+        # Multiple adjacent Giants are logically legal, but their oversized
+        # builder raycasters make placement order observable. Approach from
+        # left to right so an existing model cannot cover a later drop target.
+        wide.sort(key=lambda item: square_sort_key(item[1]))
         pieces = interleaved + wide
         confirmed_points = 0
         native_confirmed: Counter[tuple[str, str]] = Counter()
@@ -4647,8 +4766,21 @@ class PhoneGame:
                         self.log("result: loss (Ultimate Fish out of time)")
                         return "loss"
                     except TimeoutError:
+                        # CPU resignation/checkmate overlays can finish after
+                        # OpenGameOverMenu's diagnostic has already gone by.
+                        # Read the public overlay before abandoning a proven
+                        # terminal engine state as an unknown result.
+                        result = self.classify_game_over(
+                            timeout=10.0, decisive_result="win"
+                        )
+                        if result != "unknown":
+                            self.log(
+                                f"result: {result} "
+                                "(late terminal engine overlay)"
+                            )
+                            return result
                         self.log("game stopped: terminal engine position")
-                    return "unknown"
+                        return "unknown"
                 enemy_attack_target = None
                 continue
 

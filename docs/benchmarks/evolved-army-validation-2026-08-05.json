@@ -1,0 +1,23 @@
+{
+  "source": "docs/benchmarks/evolved-army-2026-08-05.json",
+  "depth": 20,
+  "nodes": 8000,
+  "plies": 140,
+  "opponents": 12,
+  "standings": [
+    {
+      "fitness": 0.694891,
+      "score": 0.774864,
+      "lower_quartile": 0.375,
+      "record": "17W-6D-3L",
+      "team": "king,a1;bishop,h3;queen,f2;bishop,b2;queen,c1;queen,g3;queen,c2;checker,b1;giant,d1;pawn,d3;checker,a3;pawn,a2;giant,g1;checker,f1"
+    },
+    {
+      "fitness": 0.684615,
+      "score": 0.730769,
+      "lower_quartile": 0.5,
+      "record": "12W-14D-0L",
+      "team": "king,a1;queen,f3;queen,b3;queen,h1;queen,c3;queen,b2;pawn,a2;checker,g2;checker,b1;pawn,g1;pawn,h2;giant,e1;giant,c1"
+    }
+  ]
+}
