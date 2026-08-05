@@ -636,6 +636,29 @@ void test_parasite_goop_and_angel_interactions() {
            parasiteAttack.piece(rook).color == Color::White,
            "attacking parasite possesses instead of killing its target");
 
+    Position copycatPossession;
+    copycatPossession.add_piece(PieceType::King, Color::White,
+                                Position::square_from_name("a1"));
+    copycatPossession.add_piece(PieceType::King, Color::Black,
+                                Position::square_from_name("h10"));
+    const int copycat = copycatPossession.add_piece(
+        PieceType::Copycat, Color::White, Position::square_from_name("e4"));
+    const int copycatClone = copycatPossession.piece(copycat).link;
+    const int blackParasite = copycatPossession.add_piece(
+        PieceType::Parasite, Color::Black, Position::square_from_name("d5"));
+    copycatPossession.set_side_to_move(Color::Black);
+    Undo possessClone;
+    expect(copycatPossession.make_move(
+               require_move(copycatPossession, "d5-d4"), possessClone),
+           "parasite possession of CopyCat clone applies");
+    expect(!copycatPossession.piece(blackParasite).alive &&
+               copycatPossession.piece(copycat).color == Color::Black &&
+               copycatPossession.piece(copycatClone).color == Color::Black,
+           "possessing either CopyCat half transfers the linked pair");
+    expect(copycatPossession.material_points(Color::White) == 0 &&
+               copycatPossession.material_points(Color::Black) == 5,
+           "CopyCat possession transfers all five native material points");
+
     Position retaliation;
     retaliation.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     retaliation.add_piece(PieceType::King, Color::Black, Position::square_from_name("h8"));

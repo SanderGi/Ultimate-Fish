@@ -2209,6 +2209,28 @@ class BeliefSet:
         self.positions = self._bounded(next_positions)
         return sorted(notations)
 
+    def observe_unlogged_parasite_possession(self, action: AppEvent) -> None:
+        """Apply a public Parasite attack whose attacker never moves.
+
+        Native Parasite possession destroys the attacking Parasite and changes
+        the target's team in place.  Consequently Character.Move emits no
+        ordinary ``parasite moves X --> Y`` record.  The online release
+        diagnostic still publicly reports the visible source, destination and
+        actor, which is sufficient to select the exact engine transition.
+        """
+        if (action.kind != "bot_action" or action.piece != "parasite" or
+                not action.source or not action.target or
+                action.source == action.target):
+            raise ValueError(
+                "unlogged Parasite possession requires a visible bot action"
+            )
+        self.observe_move(
+            AppEvent(
+                "move", "parasite", action.source, action.target, action.raw
+            ),
+            False,
+        )
+
     def observe_continuation(self) -> None:
         """Condition ambiguous royal identities on a public continuing game."""
         ongoing = [
@@ -5999,6 +6021,25 @@ class PhoneGame:
                         + " ".join(inferred)
                     )
                     self.beliefs.observe_continuation()
+                    enemy_attack_target = None
+                    enemy_bomb_died_without_move = False
+                    ghost_became_visible = False
+                    continue
+                if (enemy_bot_action is not None and
+                        enemy_bot_action.piece == "parasite"):
+                    # Parasite possession leaves the victim on its square with
+                    # a new team and kills the Parasite before Character.Move
+                    # can print a coordinate-bearing callback.  The public
+                    # release diagnostic is therefore the authoritative move.
+                    self.beliefs.observe_unlogged_parasite_possession(
+                        enemy_bot_action
+                    )
+                    self.log(
+                        "opponent Parasite possession: "
+                        f"{enemy_bot_action.source}-{enemy_bot_action.target}"
+                    )
+                    self.beliefs.observe_continuation()
+                    enemy_bot_action = None
                     enemy_attack_target = None
                     enemy_bomb_died_without_move = False
                     ghost_became_visible = False

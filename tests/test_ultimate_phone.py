@@ -2003,6 +2003,37 @@ class BeliefConstructionTests(unittest.TestCase):
         self.assertEqual(beliefs.observe_unlogged_bomb_capture(), ["g8-g1"])
         self.assertEqual(beliefs.positions, [after_capture])
 
+    def test_parasite_possession_uses_public_release_when_move_log_is_absent(self):
+        before = (
+            "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+            "king,w,a1;copycatClone,w,d4;king,b,h10;parasite,b,d5"
+        )
+        after = (
+            "w;hm=0;fm=2;ep=-;cont=0;forced=-1;epv=-1;"
+            "king,w,a1;copycatClone,b,d4;king,b,h10"
+        )
+
+        class ParasiteEngine:
+            @staticmethod
+            def legal_moves(position):
+                if position == before:
+                    return ["d5-d4"]
+                if position == after:
+                    return ["a1-a2"]
+                return []
+
+            @staticmethod
+            def apply(position, move):
+                self.assertEqual((position, move), (before, "d5-d4"))
+                return after
+
+        beliefs = MODULE.BeliefSet(ParasiteEngine(), (before,))
+        beliefs.observe_unlogged_parasite_possession(
+            MODULE.AppEvent("bot_action", "parasite", "d5", "d4")
+        )
+        beliefs.observe_continuation()
+        self.assertEqual(beliefs.positions, [after])
+
     def test_hidden_ghost_move_ignores_private_release_coordinates(self):
         first = (
             "b;king,w,a1;king,b,h10;"

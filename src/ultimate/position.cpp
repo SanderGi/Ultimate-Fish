@@ -1181,6 +1181,39 @@ void Position::capture_piece(int victim, int attacker, const Move& move) {
     const PieceType attackerType = pieces_[attacker].type;
     const PieceType victimType = pieces_[victim].type;
 
+    auto possess = [this](int id, Color color) {
+        // CopyCat is one deployable character represented by two linked board
+        // models.  The native material trace transfers the full five-point
+        // pair even when Parasite strikes only the clone half, so ownership
+        // must change atomically for both halves.
+        std::array<int, 2> ids = {id, NoPiece};
+        if ((pieces_[id].type == PieceType::Copycat ||
+             pieces_[id].type == PieceType::CopycatClone) &&
+            pieces_[id].link != NoPiece && pieces_[id].link < pieceCount_ &&
+            pieces_[pieces_[id].link].alive)
+            ids[1] = pieces_[id].link;
+
+        std::array<bool, 2> wasPlaced = {false, false};
+        for (std::size_t index = 0; index < ids.size(); ++index) {
+            const int possessed = ids[index];
+            if (possessed == NoPiece || !pieces_[possessed].alive)
+                continue;
+            wasPlaced[index] = pieces_[possessed].onBoard &&
+                               valid_square(pieces_[possessed].square) &&
+                               board_[pieces_[possessed].square] == possessed;
+            if (wasPlaced[index])
+                erase_from_board(possessed);
+        }
+        for (std::size_t index = 0; index < ids.size(); ++index) {
+            const int possessed = ids[index];
+            if (possessed == NoPiece || !pieces_[possessed].alive)
+                continue;
+            pieces_[possessed].color = color;
+            if (wasPlaced[index])
+                place_on_board(possessed);
+        }
+    };
+
     // SimulatedBerserker::MakeMove grows on any attack recorded in Move.target,
     // including an Angel save or a possession interaction.
     if (attackerType == PieceType::Berserker)
@@ -1232,16 +1265,14 @@ void Position::capture_piece(int victim, int attacker, const Move& move) {
     if (attackerType == PieceType::Parasite) {
         const Color parasiteColor = pieces_[attacker].color;
         remove_piece(attacker);
-        erase_from_board(victim);
-        pieces_[victim].color = parasiteColor;
-        place_on_board(victim);
+        possess(victim, parasiteColor);
         return;
     }
     if (victimType == PieceType::Parasite && is_melee(attackerType) &&
         attackerType != PieceType::Bomb && pieces_[attacker].color != pieces_[victim].color) {
         const Color parasiteColor = pieces_[victim].color;
         remove_piece(victim);
-        pieces_[attacker].color = parasiteColor;
+        possess(attacker, parasiteColor);
         return;
     }
 
