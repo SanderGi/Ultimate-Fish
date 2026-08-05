@@ -907,6 +907,22 @@ class VisionTests(unittest.TestCase):
         self.assertTrue(150 <= point[0] <= 165)
         self.assertTrue(1960 <= point[1] <= 1975)
 
+    def test_ranked_pot_bubble_is_not_a_confirmation_target(self):
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGB", (1080, 2400), (80, 130, 80))
+        draw = ImageDraw.Draw(image)
+        draw.rounded_rectangle(
+            (560, 140, 690, 275), radius=30, fill=(78, 167, 254)
+        )
+        draw.rounded_rectangle(
+            (770, 760, 930, 850), radius=35, fill=(235, 45, 25)
+        )
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.draft_pots = {"prince": (850, 930)}
+
+        self.assertIsNone(game._pot_ban_control(image, "prince"))
+
     def test_connected_main_requires_profile_and_play(self):
         from PIL import Image, ImageDraw
 

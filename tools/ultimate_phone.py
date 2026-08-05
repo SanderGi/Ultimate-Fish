@@ -4359,28 +4359,11 @@ class PhoneGame:
         return x, y
 
     def _pot_ban_control(self, image, piece: str) -> tuple[int, int] | None:
-        # Current Ranked uses one fixed red inspector confirmation button.
-        # Prefer it to pot speech bubbles and lock chains, both of which can
-        # satisfy the old pot-relative color geometry without accepting input.
-        fixed = self._fixed_ban_control(image)
-        if fixed:
-            return fixed
-        source = self.draft_pots[piece]
-        visual = self._visual_ban_control(image, source)
-        if visual:
-            return visual
-        candidates = find_text_centers(image, "BAN", exact=True)
-        nearby = [
-            point for point in candidates
-            if (point[0] - source[0]) ** 2 + (point[1] - source[1]) ** 2
-            < (image.width * 0.30) ** 2
-        ]
-        return min(
-            nearby,
-            key=lambda point: ((point[0] - source[0]) ** 2
-                               + (point[1] - source[1]) ** 2),
-            default=None,
-        )
+        # The selected-pot speech bubble and the top phase label are both
+        # visual-only in the shipping build. Waiting a frame for the fixed
+        # inspector control is cheaper and safer than tapping either decoy.
+        del piece
+        return self._fixed_ban_control(image)
 
     def _ban_ranked_piece(self, piece: str, timeout: float = 3.0) -> None:
         # A fixed Ban button can remain visible for the pot touched during
