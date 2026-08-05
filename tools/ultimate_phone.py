@@ -1349,6 +1349,13 @@ class EventStream:
         "out_of_time",
     })
 
+    def _accept_ban_callback(self, now: float) -> bool:
+        """Collapse repeated stack frames emitted by one Ban callback."""
+        if now - self.last_ban_callback_at < 0.25:
+            return False
+        self.last_ban_callback_at = now
+        return True
+
     def __init__(self, adb: str, device: str):
         self.process = subprocess.Popen(
             # ``-T 1`` tails only the newest record before following.  Without
@@ -1367,6 +1374,7 @@ class EventStream:
         self.draft_spawn_generation = 0
         self.draft_spawn_complete = False
         self.draft_spawns: list[AppEvent] = []
+        self.last_ban_callback_at = float("-inf")
         # Keep a second, non-consuming public gameplay journal for the short
         # interval between Board.LoadBoard and search initialization. Queue
         # consumers intentionally discard unrelated log records while waiting
@@ -1385,6 +1393,14 @@ class EventStream:
         for line in self.process.stdout:
             event = parse_unity_line(line.rstrip())
             if event is not None:
+                if event.kind == "draft_ban_committed":
+                    # One OnBanCharacter callback prints its method frame under
+                    # several Unity diagnostics (dot teardown, then texture
+                    # assignment). It is one phase transition, not multiple
+                    # public bans. A real following phase cannot complete in
+                    # this sub-frame interval.
+                    if not self._accept_ban_callback(time.monotonic()):
+                        continue
                 if event.kind == "bot_from":
                     self.bot_source = event.source
                     self.bot_target = None
@@ -1466,6 +1482,7 @@ class EventStream:
             self.draft_spawn_generation = 0
             self.draft_spawn_complete = False
             self.draft_spawns.clear()
+        self.last_ban_callback_at = float("-inf")
 
     def start_state(self) -> OnlineStartState | None:
         with self.network_lock:

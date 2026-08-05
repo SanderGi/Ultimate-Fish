@@ -67,7 +67,9 @@ before journaling; only their count is inferred from public material.
 so the controller applies that public ban without overlapping-pot image
 differencing. Before phase zero, a harmless local-pot touch logs the native
 `myBoard.turn != team` predicate and establishes whether the player is Ivory or
-Onyx; the Ban bubble remains only a compatibility fallback.
+Onyx; the Ban bubble remains only a compatibility fallback. Repeated
+`OnBanCharacter(Type)` method frames from the same callback are debounced as
+one transition before the next phase can advance.
 
 `OnStartGameResponse.model_Pieces` and replay `initState` share the authoritative
 `Model_Piece` schema: type, team, x/y, skin, action, cooldown, freeze count,

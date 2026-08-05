@@ -552,6 +552,14 @@ class RankedDraftControllerTests(unittest.TestCase):
             self.assertEqual(game._ranked_is_ivory(), expected)
             self.assertEqual(game.adb.taps, [(123, 456)])
 
+    def test_one_native_ban_callback_cannot_advance_two_phases(self):
+        stream = MODULE.EventStream.__new__(MODULE.EventStream)
+        stream.last_ban_callback_at = float("-inf")
+        self.assertTrue(stream._accept_ban_callback(10.0))
+        self.assertFalse(stream._accept_ban_callback(10.01))
+        self.assertFalse(stream._accept_ban_callback(10.20))
+        self.assertTrue(stream._accept_ban_callback(10.30))
+
 
 class VisionTests(unittest.TestCase):
     def test_opening_emote_detector_does_not_sum_white_piece_skins(self):
