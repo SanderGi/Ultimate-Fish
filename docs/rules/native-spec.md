@@ -230,6 +230,11 @@ and remaps every relationship so captures cannot corrupt a round trip.
 - A Sniper's forward shot also passes through invisible Ghosts to the first
   visible character. Its one-square sideways action can attack an enemy; only
   a forward shot starts the reload cooldown.
+- When a Sniper shoots a Bomb, the Bomb death path can invoke the Sniper's
+  stay-put movement callback again just after `ChangeTurn End`. That delayed
+  duplicate has no new `Bot.RecordAiMove` diagnostic and no legal shot target
+  on the opponent turn; the phone controller discards only this exact stale
+  combination so it cannot be mistaken for the opponent's action.
 - A Mage can choose any of a Giant's four footprint tiles as its swap target
   when the translated Giant remains in bounds. The Mage lands on the selected
   tile; the Giant is forcibly translated to the Mage and knocks out either

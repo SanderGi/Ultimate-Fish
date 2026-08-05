@@ -57,6 +57,19 @@ class CoordinateTests(unittest.TestCase):
         self.assertEqual(MODULE.parse_engine_move("a2@c4"), ("a2", "c4", "@"))
         self.assertEqual(MODULE.parse_engine_move("pass"), ("pass", "pass", "pass"))
 
+    def test_only_undiagnosed_targetless_sniper_callback_is_stale(self):
+        callback = MODULE.AppEvent("move", "sniper", "c3", "c3")
+        action = MODULE.AppEvent("bot_action", "sniper", "c3", "c6")
+        self.assertTrue(MODULE.is_delayed_local_sniper_callback(
+            callback, (), None
+        ))
+        self.assertFalse(MODULE.is_delayed_local_sniper_callback(
+            callback, ("c6",), None
+        ))
+        self.assertFalse(MODULE.is_delayed_local_sniper_callback(
+            callback, (), action
+        ))
+
     def test_move_time_is_adjustable_and_defaults_to_unlimited(self):
         self.assertEqual(MODULE.controller_movetime("unranked", None), 0)
         self.assertEqual(MODULE.controller_movetime("ranked", None), 0)

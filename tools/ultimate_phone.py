@@ -205,6 +205,19 @@ def parse_engine_move(move: str) -> tuple[str, str, str]:
     return match.group(1), match.group(3), match.group(2)
 
 
+def is_delayed_local_sniper_callback(
+    event: AppEvent,
+    targets: Sequence[str],
+    bot_action: AppEvent | None,
+) -> bool:
+    """Identify the duplicate stay-put callback emitted after a Bomb shot."""
+    return (
+        event.kind == "move" and event.piece == "sniper" and
+        event.source is not None and event.source == event.target and
+        not targets and bot_action is None
+    )
+
+
 @dataclass(frozen=True)
 class AppEvent:
     kind: str
@@ -6407,6 +6420,20 @@ class PhoneGame:
                 targets = self.beliefs.special_targets(
                     "sniper", event.source, "x")
                 if len(targets) != 1:
+                    if is_delayed_local_sniper_callback(
+                            event, targets, enemy_bot_action):
+                        # Bomb death can invoke Sniper.HasMovedHandler a second
+                        # time just after our completed turn barrier. The
+                        # duplicate has no preceding remote Bot.RecordAiMove
+                        # diagnostic and no legal target on the opponent turn.
+                        # Ignore only that proven-stale combination; an actual
+                        # opponent Sniper action always supplies its public
+                        # release diagnostic before the stay-put callback.
+                        if self.verbose:
+                            self.log(
+                                "ignored delayed local Sniper stay-put callback"
+                            )
+                        continue
                     raise RuntimeError(
                         f"stay-put Sniper shot has ambiguous targets: {targets}")
                 event = AppEvent(
