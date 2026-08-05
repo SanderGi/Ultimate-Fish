@@ -87,7 +87,8 @@ test("bridge exposes state, mate scores, results, continuations, and the complet
   const history = [];
   for (let phase = 0; phase < 12; phase += 1) {
     const result = await post("/draft-ai", { history });
-    assert.ok(result.choices.length >= 1 || phase >= 10);
+    if ([0, 1, 4, 5, 8, 9].includes(phase)) assert.equal(result.choices.length, 1);
+    else assert.ok(Array.isArray(result.choices));
     history.push(...result.choices.map((piece) => `draft choose ${piece}`), "draft commit");
     assert.match(result.status, new RegExp(`^draft phase ${phase + 1}\\b`));
   }

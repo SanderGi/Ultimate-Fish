@@ -12,13 +12,18 @@ DraftWindow DraftState::window() const {
     const Color player = (phase_ & 1) ? Color::Black : Color::White;
     if (phase_ == 0 || phase_ == 1 || phase_ == 4 || phase_ == 5 || phase_ == 8 || phase_ == 9)
         return {phase_, player, DraftAction::Ban, 0, 0, false};
+    // Ranked pick windows are cumulative material *floors*, not ceilings.
+    // The shipping UI names the remaining value ``minpts`` and permits a
+    // player to protect more than the current milestone before the next ban.
+    // The live 5.731 client, for example, accepted a 27-point opening group in
+    // the 15-point window.  Only the army's global 100-point budget is a cap.
     if (phase_ == 2 || phase_ == 3)
-        return {phase_, player, DraftAction::Pick, 15, 15, false};
+        return {phase_, player, DraftAction::Pick, 15, TotalPoints, false};
     if (phase_ == 6)
-        return {phase_, player, DraftAction::Pick, 15, 30, false};
+        return {phase_, player, DraftAction::Pick, 30, TotalPoints, false};
     if (phase_ == 7)
-        return {phase_, player, DraftAction::Pick, 15, 40, false};
-    return {phase_, player, DraftAction::Pick, 0, TotalPoints, true};
+        return {phase_, player, DraftAction::Pick, 40, TotalPoints, false};
+    return {phase_, player, DraftAction::Pick, TotalPoints, TotalPoints, true};
 }
 
 const std::vector<PieceType>& DraftState::team(Color color) const { return teams_[index(color)]; }
@@ -187,9 +192,16 @@ bool DraftState::autoplay(std::vector<PieceType>& choices, std::string* error) {
         return commit(error);
     }
 
-    // Fill toward the cumulative ceiling. The legal-choice filter also
-    // enforces the native 8x3 deployment capacity, including multi-cell pairs.
-    while (points(current.player) < current.maximumPoints) {
+    // Early picks may intentionally exceed the current floor so valuable
+    // types are locked before the next ban.  Protect a strong 15-point piece
+    // plus the Jester in the opening group, then satisfy the later cumulative
+    // milestones without prematurely exhausting the full roster budget.
+    const int target = current.lastPick ? current.maximumPoints
+                     : current.phase <= 3 ? current.minimumPoints + 10
+                                          : current.minimumPoints;
+    // The legal-choice filter enforces the native 100-point budget and finite
+    // 8x3 deployment capacity, including multi-cell pairs.
+    while (points(current.player) < target) {
         const auto choice = suggest();
         if (!choice || !choose(*choice, error))
             break;

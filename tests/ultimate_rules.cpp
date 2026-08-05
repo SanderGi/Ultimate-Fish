@@ -1071,36 +1071,43 @@ void test_native_draft_windows_and_costs() {
     std::string error;
     expect(draft.choose(PieceType::Queen, &error) && draft.commit(&error), "first ban commits");
     expect(draft.choose(PieceType::Ninja, &error) && draft.commit(&error), "second ban commits");
-    expect(draft.window().action == DraftAction::Pick && draft.window().maximumPoints == 15,
-           "first pick window has the native 15 point ceiling");
+    expect(draft.window().action == DraftAction::Pick &&
+           draft.window().minimumPoints == 15 && draft.window().maximumPoints == 100,
+           "first pick window has a 15 point floor and global 100 point cap");
     expect(!draft.choose(PieceType::Queen, &error), "banned character cannot be picked");
-    expect(draft.choose(PieceType::Jester, &error) && draft.choose(PieceType::Giant, &error) &&
-           draft.choose(PieceType::Checker, &error) && draft.choose(PieceType::Checker, &error),
-           "draft accepts a legal 15 point team");
-    expect(draft.points(Color::White) == 15 && draft.commit(&error),
-           "15 point first pick window commits exactly");
+    expect(draft.choose(PieceType::Jester, &error) &&
+           draft.choose(PieceType::Sniper, &error) &&
+           draft.points(Color::White) == 27 && draft.commit(&error),
+           "opening pick may lock 27 points before the next ban");
 
-    expect(draft.choose(PieceType::Jester, &error) && draft.choose(PieceType::Turtle, &error) &&
-           draft.choose(PieceType::Giant, &error) && draft.commit(&error),
-           "onyx completes its 15 point opening pick");
+    expect(draft.choose(PieceType::Jester, &error) &&
+           draft.choose(PieceType::Dragon, &error) && draft.commit(&error),
+           "onyx protects a 25 point opening group above the same floor");
     expect(draft.choose(PieceType::Bomb, &error) && draft.commit(&error) &&
            draft.choose(PieceType::Parasite, &error) && draft.commit(&error),
            "second alternating ban pair commits");
-    expect(draft.window().phase == 6 && draft.window().maximumPoints == 30 &&
-           draft.choose(PieceType::Dragon, &error) && draft.commit(&error) &&
+    expect(draft.window().phase == 6 && draft.window().minimumPoints == 30 &&
+           draft.window().maximumPoints == 100 &&
+           draft.choose(PieceType::Pawn, &error) && draft.commit(&error) &&
            draft.points(Color::White) == 30,
-           "ivory cumulative ceiling advances to 30");
-    expect(draft.window().phase == 7 && draft.window().maximumPoints == 40 &&
-           draft.choose(PieceType::Dragon, &error) && draft.choose(PieceType::Turtle, &error) &&
-           draft.choose(PieceType::Knight, &error) && draft.commit(&error) &&
+           "ivory cumulative floor advances to 30");
+    expect(draft.window().phase == 7 && draft.window().minimumPoints == 40 &&
+           draft.window().maximumPoints == 100 &&
+           draft.choose(PieceType::Dragon, &error) && draft.commit(&error) &&
            draft.points(Color::Black) == 40,
-           "onyx asymmetric middle ceiling advances to 40");
+           "onyx asymmetric middle floor advances to 40");
     expect(draft.choose(PieceType::Sniper, &error) && draft.commit(&error) &&
            draft.choose(PieceType::Prince, &error) && draft.commit(&error),
            "final alternating ban pair commits");
-    expect(draft.window().lastPick && draft.window().maximumPoints == 100 && draft.commit(&error) &&
-           draft.window().lastPick && draft.commit(&error) && draft.complete(),
-           "both final-pick windows accept teams within the 100 point ceiling");
+    for (int copy = 0; copy < 5; ++copy)
+        expect(draft.choose(PieceType::Rook, &error), "ivory final Rook locks");
+    expect(draft.choose(PieceType::Turtle, &error) &&
+           draft.choose(PieceType::Giant, &error) && draft.commit(&error),
+           "ivory final pick reaches exactly 100 points");
+    for (int copy = 0; copy < 4; ++copy)
+        expect(draft.choose(PieceType::Dragon, &error), "onyx final Dragon locks");
+    expect(draft.commit(&error) && draft.complete(),
+           "both final-pick windows require the full 100 point team");
 
     DraftState automatic;
     std::vector<PieceType> automaticChoices;
@@ -1111,11 +1118,13 @@ void test_native_draft_windows_and_costs() {
                automatic.deployment_slots(Color::Black) <= 24,
                "draft AI never exceeds either three-rank deployment zone");
         if (phase == 2)
-            expect(automatic.points(Color::White) == 15,
-                   "draft AI satisfies Ivory's exact opening budget");
+            expect(automatic.points(Color::White) >= 25 &&
+                   automatic.points(Color::White) < 100,
+                   "draft AI protects an Ivory opening group without filling early");
         if (phase == 3)
-            expect(automatic.points(Color::Black) == 15,
-                   "draft AI satisfies Onyx's exact opening budget");
+            expect(automatic.points(Color::Black) >= 25 &&
+                   automatic.points(Color::Black) < 100,
+                   "draft AI protects an Onyx opening group without filling early");
     }
     expect(automatic.complete() && automatic.points(Color::White) == 100 &&
            automatic.points(Color::Black) == 100,
@@ -1126,8 +1135,8 @@ void test_native_draft_windows_and_costs() {
             count += type == PieceType::Penguin;
         return count;
     };
-    expect(countPenguins(Color::White) == 4 && countPenguins(Color::Black) == 4,
-           "measured final-window Penguin stack is used by both draft sides");
+    expect(countPenguins(Color::White) > 0 && countPenguins(Color::Black) > 0,
+           "measured final-window Penguin stacking remains available to both sides");
 }
 
 }  // namespace

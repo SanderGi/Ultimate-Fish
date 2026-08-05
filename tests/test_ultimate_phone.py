@@ -4,7 +4,7 @@ import importlib.util
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 
 ROOT = Path(__file__).parents[1]
@@ -199,7 +199,10 @@ class LogParserTests(unittest.TestCase):
                          "queue_joined")
         points = MODULE.parse_unity_line(
             "GetPoints() - player1 points : 98 - player2 points : 0")
-        self.assertEqual((points.kind, points.source), ("army_points", "98"))
+        self.assertEqual(
+            (points.kind, points.source, points.target),
+            ("army_points", "98", "0"),
+        )
         self.assertEqual(MODULE.parse_unity_line("ShopItem:OnPointerClick(x)").kind,
                          "shop_item")
         self.assertEqual(
@@ -234,6 +237,13 @@ class LogParserTests(unittest.TestCase):
             self.assertIsNone(event.piece)
             self.assertIsNone(event.source)
             self.assertIsNone(event.target)
+
+        self.assertEqual(
+            MODULE.parse_unity_line(
+                "I/Unity: NetworkManager:OnBanCharacter(Type)"
+            ).kind,
+            "draft_ban_committed",
+        )
 
     def test_structured_start_payload_is_validated_and_ignores_skin(self):
         line = (
@@ -339,6 +349,146 @@ class EngineDraftProtocolTests(unittest.TestCase):
         self.assertEqual(commands, [
             "draft auto", "draft choose queen", "draft commit",
         ])
+
+
+class RankedDraftControllerTests(unittest.TestCase):
+    class FakeImage:
+        width = 1080
+        height = 2400
+
+    class FakeAdb:
+        def screenshot(self):
+            return RankedDraftControllerTests.FakeImage()
+
+    class FakeEvents:
+        def __init__(self, responses):
+            self.responses = iter(responses)
+
+        def drain(self):
+            return None
+
+        def wait(self, kinds, _timeout, predicate=None):
+            response = next(self.responses)
+            if response is TimeoutError:
+                raise TimeoutError("scripted quiet period")
+            accepted = {kinds} if isinstance(kinds, str) else set(kinds)
+            if response.kind not in accepted:
+                raise AssertionError(
+                    f"scripted {response.kind} not accepted by {sorted(accepted)}"
+                )
+            if predicate is not None and not predicate(response):
+                raise AssertionError("scripted event failed predicate")
+            return response
+
+    class FakeEngine:
+        ACTIONS = (
+            "ban", "ban", "pick", "pick", "ban", "ban",
+            "pick", "pick", "ban", "ban", "pick", "pick",
+        )
+        LOCAL_CHOICES = {
+            1: ["ghost"],
+            3: ["jester", "dragon"],
+            5: ["parasite"],
+            7: ["penguin"],
+            9: ["sniper"],
+            11: ["rook"],
+        }
+
+        def __init__(self):
+            self.phase = 0
+            self.pending = []
+
+        def draft_new(self):
+            self.phase = 0
+            self.pending = []
+
+        def draft_status(self):
+            if self.phase >= 12:
+                return {"phase": 12, "action": "complete"}
+            return {"phase": self.phase, "action": self.ACTIONS[self.phase]}
+
+        def draft_auto(self):
+            choices = list(self.LOCAL_CHOICES[self.phase])
+            self.phase += 1
+            return choices
+
+        def draft_choose(self, piece):
+            self.pending.append(piece)
+
+        def draft_commit(self):
+            self.pending.clear()
+            self.phase += 1
+
+    @staticmethod
+    def _event(line):
+        event = MODULE.parse_unity_line(line)
+        assert event is not None
+        return event
+
+    def test_actual_ban_callbacks_drive_all_twelve_ranked_phases(self):
+        ban = "I/Unity: NetworkManager:OnBanCharacter(Type)"
+        pick = "I/Unity: OnSpawnPieceGroup MESSAGE"
+        point_lines = (
+            "GetPoints() - player1 points : 27 - player2 points : 0",
+            "GetPoints() - player1 points : 30 - player2 points : 25",
+            "GetPoints() - player1 points : 100 - player2 points : 40",
+        )
+        responses = [
+            self._event(ban), self._event(ban),
+            self._event(pick), self._event(point_lines[0]), TimeoutError,
+            self._event(pick),
+            self._event(ban), self._event(ban),
+            self._event(pick), self._event(point_lines[1]), TimeoutError,
+            self._event(pick),
+            self._event(ban), self._event(ban),
+            self._event(pick), self._event(point_lines[2]), TimeoutError,
+            self._event(pick), MODULE.AppEvent("board_loaded"),
+        ]
+        first = [
+            ("king", "a10"), ("queen", "b10"), ("king", "c10"),
+        ]
+        middle = first + [("pawn", "d10")]
+        final = middle + [
+            ("rook", "e10"), ("rook", "f10"), ("rook", "g10"),
+            ("rook", "h10"), ("rook", "a9"), ("turtle", "b9"),
+            ("giant", "c8"), ("giant", "d8"),
+            ("giant", "c9"), ("giant", "d9"),
+        ]
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.adb = self.FakeAdb()
+        game.events = self.FakeEvents(responses)
+        game.engine = self.FakeEngine()
+        game.geometry = MODULE.BoardGeometry()
+        game.draft_pots = {piece: (index, index) for index, piece in enumerate(
+            MODULE.POT_SORT_ORDER
+        )}
+        game.ranked_enemy_roster = MODULE.Counter()
+        game.ranked_enemy_king_candidates = None
+        game.ranked_enemy_snapshots = []
+        game.online_local_team = None
+        game.own_team = []
+        game.verbose = False
+        game.log = lambda _message: None
+        game._ranked_is_ivory = lambda: False
+        game._ban_ranked_piece = lambda _piece, _timeout=3.0: None
+        game._tap_draft_control = lambda _labels, _timeout=4.0: "LOCK"
+        game._place_ranked_piece = lambda _piece, _square: None
+        game.probe_enemy = Mock(side_effect=(first, middle, final))
+
+        with patch.object(MODULE, "changed_pot", side_effect=(
+            ("giant", {}), ("bomb", {}), ("ninja", {}),
+        )), patch.object(MODULE.time, "sleep", return_value=None):
+            team = game.run_ranked_draft()
+
+        self.assertEqual(game.engine.phase, 12)
+        self.assertEqual(game.online_local_team, 1)
+        self.assertTrue(team)
+        self.assertEqual(game.ranked_enemy_roster["queen"], 1)
+        self.assertEqual(game.ranked_enemy_roster["jester"], 1)
+        self.assertEqual(game.ranked_enemy_roster["rook"], 5)
+        self.assertEqual(game.ranked_enemy_roster["giant"], 1)
+        self.assertEqual(game.ranked_enemy_king_candidates, {"a10", "c10"})
 
 
 class VisionTests(unittest.TestCase):
@@ -536,6 +686,18 @@ class VisionTests(unittest.TestCase):
         draw.rounded_rectangle((700, 90, 980, 210), radius=35,
                                fill=(235, 55, 30))
         self.assertFalse(MODULE.PhoneGame._connected_main(image))
+
+    def test_ranked_queue_requires_top_banner_and_cancel_control(self):
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGB", (1080, 2400), (55, 135, 225))
+        draw = ImageDraw.Draw(image)
+        draw.rounded_rectangle((130, 115, 950, 320), radius=45,
+                               fill=(80, 190, 235))
+        self.assertFalse(MODULE.PhoneGame._ranked_queue_visible(image))
+        draw.rounded_rectangle((410, 270, 670, 345), radius=30,
+                               fill=(235, 55, 30))
+        self.assertTrue(MODULE.PhoneGame._ranked_queue_visible(image))
 
     def test_opening_emote_obscuration_detector(self):
         from PIL import Image, ImageDraw
@@ -1498,6 +1660,33 @@ class BeliefConstructionTests(unittest.TestCase):
             self.assertEqual(upn.count(";jester,b,"), 1)
             self.assertEqual(upn.count(";ghost,b,"), 1)
             self.assertIn(",0,0,0,0,0,0,-1,1,-1,0", upn)
+
+    def test_ranked_public_roster_uses_material_only_for_hidden_ghost_count(self):
+        public = (
+            ("king", "a10"), ("queen", "b10"), ("king", "c10"),
+            ("copycat", "d9"), ("copycatClone", "e9"),
+            ("giant", "f8"), ("giant", "g8"),
+            ("giant", "f9"), ("giant", "g9"),
+        )
+        # Queen 17 + Jester 10 + CopyCat 5 + Giant 1 + hidden Ghost 15.
+        roster = MODULE.ranked_public_roster(public, 48)
+        self.assertEqual(roster, MODULE.Counter({
+            "queen": 1, "jester": 1, "copycat": 1,
+            "giant": 1, "ghost": 1,
+        }))
+
+    def test_ranked_first_pick_chronology_excludes_late_jester_from_king(self):
+        positions = MODULE.initial_beliefs(
+            (("king", "a1"),),
+            (("king", "a10"), ("king", "b10")),
+            10,
+            limit=8,
+            enemy_king_candidates={"a10"},
+        )
+        self.assertTrue(positions)
+        self.assertTrue(all(";king,b,a10" in position for position in positions))
+        self.assertTrue(all(";jester,b,b10" in position for position in positions))
+        self.assertTrue(all(";king,b,b10" not in position for position in positions))
 
     def test_material_mismatch_is_rejected(self):
         with self.assertRaises(RuntimeError):

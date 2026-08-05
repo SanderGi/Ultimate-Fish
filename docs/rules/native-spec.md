@@ -9,7 +9,7 @@ requiring differential fixtures against the app.
 `ArmyBuilder` initializes a 100-point total, a 15-point initial/minimum window,
 and a 15-point increment. `GameManager.GetDraftPhase` exposes twelve windows:
 
-| Window | Side | Action | Cumulative ceiling |
+| Window | Side | Action | Cumulative floor |
 | ---: | --- | --- | ---: |
 | 0 | Ivory | Ban | — |
 | 1 | Onyx | Ban | — |
@@ -36,18 +36,29 @@ Picks are deployed during each pick window, not in a separate post-draft
 step. Native `GameMenu.LockinPicks` scans the live board for newly placed
 characters, validates their cumulative point spend, clears their temporary
 pick markers, and only then advances `GameManager.ChangeTurnDraft`. The local
-UI mirrors that sequence and keeps the computer's home-zone arrangement
-private until the completed armies are transferred to Play.
+UI mirrors that sequence. The values 15, 30/40, and 100 are minimum cumulative
+milestones, not per-window ceilings: a player may protect additional pieces
+before the following ban, subject only to the global 100-point budget. This is
+confirmed both by the ARMv7/ARM64 `GetDraftPhase` and `minpts` UI paths and by a
+live first group accepted at 27 points during the 15-point window.
+
+Every committed group is immutable and becomes public before the other player
+acts. The partial opponent deployment is therefore updated after each pick
+window rather than hidden until the end. Royal chronology is public evidence:
+only silhouettes present in the first revealed group can be the original King;
+a royal silhouette first added by a later locked group is certainly a Jester.
+Invisible Ghost coordinates remain private even though their count follows
+from the public cumulative material total.
 
 The shipping Ranked scene constructs all selectable pots from character
 prefabs, stably sorts them by the native `Character.value` table, and traverses
 a live 8x3 top/middle/bottom layout. The verified equal-cost order is
 Dragon, Ghost, Bomb, Penguin, Parasite, Devil, Berserker for the seven 15-point
 pots. `OnSpawnPieceGroup` delivers each newly committed group to the app and
-then advances the phase. Phone automation may buffer these records, but it does
-not inspect or apply them until the public board reveal. At that boundary,
-enemy Ghost coordinates are erased and concrete King/Jester identities are
-converted to royal hypotheses before any UPN reaches Ultimate Fish.
+then advances the phase. The stock release exposes only the callback marker,
+so phone automation scans the newly public locked board, reconciles exact
+roster additions against the public material log, and records first-group
+royal candidates. Enemy Ghost coordinates are never inspected or copied.
 `OnBanCharacter` is public, so the controller identifies the new rendered pot
 lock and applies that exact ban to its draft state.
 

@@ -113,16 +113,16 @@ const draftCosts: Record<PieceId, number> = {
 const draftWindows: Array<{ player: Color; action: DraftAction; min: number; max: number }> = [
   { player: "white", action: "ban", min: 0, max: 0 },
   { player: "black", action: "ban", min: 0, max: 0 },
-  { player: "white", action: "pick", min: 15, max: 15 },
-  { player: "black", action: "pick", min: 15, max: 15 },
+  { player: "white", action: "pick", min: 15, max: 100 },
+  { player: "black", action: "pick", min: 15, max: 100 },
   { player: "white", action: "ban", min: 0, max: 0 },
   { player: "black", action: "ban", min: 0, max: 0 },
-  { player: "white", action: "pick", min: 15, max: 30 },
-  { player: "black", action: "pick", min: 15, max: 40 },
+  { player: "white", action: "pick", min: 30, max: 100 },
+  { player: "black", action: "pick", min: 40, max: 100 },
   { player: "white", action: "ban", min: 0, max: 0 },
   { player: "black", action: "ban", min: 0, max: 0 },
-  { player: "white", action: "pick", min: 0, max: 100 },
-  { player: "black", action: "pick", min: 0, max: 100 },
+  { player: "white", action: "pick", min: 100, max: 100 },
+  { player: "black", action: "pick", min: 100, max: 100 },
 ];
 
 const generatedDraftPieces = new Set<PieceId>([
@@ -263,8 +263,8 @@ function PieceToken({ piece, view, playerSide, large = false }: {
   piece: PositionPiece; view: View; playerSide: Color; large?: boolean;
 }) {
   const enemy = piece.color !== playerSide;
-  if (view === "play" && enemy && piece.id === "ghost" && !piece.visible) return null;
-  const disguised = view === "play" && enemy && piece.id === "jester";
+  if ((view === "play" || view === "draft") && enemy && piece.id === "ghost" && !piece.visible) return null;
+  const disguised = (view === "play" || view === "draft") && enemy && piece.id === "jester";
   const shown = pieceById.get(disguised ? "king" : piece.id);
   const concealedAnalysis = view === "analysis" && enemy && piece.id === "ghost" && !piece.visible;
   return (
@@ -307,6 +307,50 @@ function autoDeploy(team: PieceId[], color: Color): PositionPiece[] {
         (id !== "giant" || (color === "white" ? rank <= 2 : rank <= 9));
     });
     if (anchor === undefined) continue;
+    const piece = basePiece(id, color, anchor);
+    placed.push(piece);
+    footprintSquares(piece).forEach((square) => occupied.add(square));
+  }
+  return placed;
+}
+
+function deployLockedAdditions(
+  existing: PositionPiece[], additions: PieceId[], color: Color,
+): PositionPiece[] {
+  const placed = [...existing];
+  const occupied = new Set<number>();
+  existing.filter((piece) => piece.onBoard).forEach((piece) => {
+    footprintSquares(piece).forEach((square) => occupied.add(square));
+  });
+  const ranks = color === "white" ? [1, 2, 3] : [10, 9, 8];
+  const filesByPriority = [3, 4, 2, 5, 1, 6, 0, 7];
+  const candidates = ranks.flatMap((rank) => filesByPriority.map((file) => (10 - rank) * 8 + file));
+  const ordered = [...additions].sort((a, b) =>
+    (a === "giant" ? -2 : a === "copycat" ? -1 : 0) -
+    (b === "giant" ? -2 : b === "copycat" ? -1 : 0));
+
+  for (const id of ordered) {
+    if (id === "copycat") {
+      const anchor = candidates.find((square) => {
+        const mirror = Math.floor(square / 8) * 8 + 7 - square % 8;
+        return !occupied.has(square) && !occupied.has(mirror);
+      });
+      if (anchor === undefined) throw new Error("No locked deployment cells remain for CopyCat.");
+      const mirror = Math.floor(anchor / 8) * 8 + 7 - anchor % 8;
+      const host = basePiece("copycat", color, anchor);
+      const clone = basePiece("copycatClone", color, mirror);
+      host.link = clone.uid; clone.link = host.uid;
+      placed.push(host, clone); occupied.add(anchor); occupied.add(mirror);
+      continue;
+    }
+    const anchor = candidates.find((square) => {
+      const probe = basePiece(id, color, square, "probe");
+      const footprint = footprintSquares(probe);
+      const rank = Number(squareName(square).slice(1));
+      return footprint.length && footprint.every((cell) => !occupied.has(cell)) &&
+        (id !== "giant" || (color === "white" ? rank <= 2 : rank <= 9));
+    });
+    if (anchor === undefined) throw new Error(`No locked deployment cells remain for ${id}.`);
     const piece = basePiece(id, color, anchor);
     placed.push(piece);
     footprintSquares(piece).forEach((square) => occupied.add(square));
@@ -505,8 +549,18 @@ export function UltimateWorkbench() {
       if (draftWindow.action === "ban") setBanned((items) => [...items, ...choices]);
       else {
         const nextTeam = [...draftTeams[draftWindow.player], ...choices];
+        const nextOpponentPieces = deployLockedAdditions(
+          draftOpponentPieces, choices, draftWindow.player,
+        );
         setDraftTeams((teams) => ({ ...teams, [draftWindow.player]: nextTeam }));
-        setDraftOpponentPieces(autoDeploy(nextTeam, draftWindow.player));
+        setDraftOpponentPieces(nextOpponentPieces);
+        // Ranked reveals each completed opponent group immediately. Earlier
+        // groups retain their exact cells; invisible Ghosts remain concealed
+        // and later royal silhouettes are still rendered as public royals.
+        setPieces((current) => [
+          ...current.filter((piece) => piece.color === playerSide),
+          ...nextOpponentPieces,
+        ]);
       }
       setDraftHistory((history) => [...history, ...choices.map((id) => `draft choose ${id}`), "draft commit"]);
       setDraftPhase((phase) => phase + 1); setDraftPending([]); setDraftAiBusy(false);
@@ -515,7 +569,7 @@ export function UltimateWorkbench() {
       if (!cancelled) { setDraftAiBusy(false); setEngineStatus("error"); setEngineMessage(error instanceof Error ? error.message : "Draft AI failed."); }
     });
     return () => { cancelled = true; controller.abort(); draftAiRequest.current = null; };
-  }, [draftHistory, draftPhase, draftTeams, draftWindow, engineRequest, playerSide, view]);
+  }, [draftHistory, draftOpponentPieces, draftPhase, draftTeams, draftWindow, engineRequest, playerSide, view]);
 
   function resetTransient() {
     setMeta(emptyMeta()); setAnalysis(null); setLegalMoves([]); setSelected(null);
@@ -552,7 +606,10 @@ export function UltimateWorkbench() {
   }
 
   function replaceDraftBoard(next: PositionPiece[]) {
-    setPieces(next); setDraftPlayerPieces(next); setSelected(null);
+    const local = next.filter((piece) => piece.color === playerSide);
+    setPieces([...local, ...draftOpponentPieces]);
+    setDraftPlayerPieces(local);
+    setSelected(null);
   }
 
   function placeTool(index: number) {
@@ -567,7 +624,7 @@ export function UltimateWorkbench() {
         const hostUid = occupant.id === "copycatClone" ? occupant.link : occupant.uid;
         const host = pieces.find((piece) => piece.uid === hostUid);
         if (!host || !draftPlacedUids.includes(host.uid)) {
-          setDraftMessage("Committed picks can be moved, but only this window's picks can be removed."); return;
+          setDraftMessage("Earlier pick groups are locked; only this window's picks can be removed."); return;
         }
         replaceDraftBoard(pieces.filter((piece) => piece.uid !== host.uid && piece.uid !== host.link));
         setDraftPlacementPool((pool) => [...pool, host.id]);
@@ -623,6 +680,9 @@ export function UltimateWorkbench() {
       if (moving.color !== playerSide) return;
       const host = moving.id === "copycatClone" ? pieces.find((piece) => piece.uid === moving.link) : moving;
       if (!host) return;
+      if (!draftPlacedUids.includes(host.uid)) {
+        setDraftMessage("Earlier pick groups are locked and cannot be moved."); return;
+      }
       const pair = new Set([host.uid, host.link].filter(Boolean));
       const rank = Number(squareName(to).slice(1));
       const inZone = playerSide === "white" ? rank <= 3 : rank >= 8;
@@ -738,9 +798,11 @@ export function UltimateWorkbench() {
   function changeView(next: View) {
     if (next !== "analysis") { setAnalysisRunning(false); analysisAbort.current?.abort(); }
     if (next === "draft" && gameActive) stopGame();
-    if (view === "draft" && next !== "draft") setDraftPlayerPieces(pieces);
+    if (view === "draft" && next !== "draft") {
+      setDraftPlayerPieces(pieces.filter((piece) => piece.color === playerSide));
+    }
     if (next === "draft") {
-      setPieces(draftPlayerPieces); setTurn("white"); setMeta(emptyMeta()); setAnalysis(null); setLegalMoves([]);
+      setPieces([...draftPlayerPieces, ...draftOpponentPieces]); setTurn("white"); setMeta(emptyMeta()); setAnalysis(null); setLegalMoves([]);
       setFlipped(playerSide === "black"); setEditing(draftWindow?.player === playerSide && draftWindow.action === "pick");
     } else {
       if (next === "play" && gameActive && liveGameUpn.current) loadHistoryPosition(liveGameUpn.current);
@@ -757,7 +819,10 @@ export function UltimateWorkbench() {
     setDraftTeams({ white: ["king"], black: ["king"] }); setDraftPending([]); setBanned([]); setDraftHistory([]);
     setDraftPlacementPool([]); setDraftPlacedUids([]); setDraftPlayerPieces(playerBase);
     setDraftOpponentPieces(autoDeploy(["king"], opponent));
-    if (view === "draft") { setPieces(playerBase); setTurn("white"); setMeta(emptyMeta()); }
+    if (view === "draft") {
+      setPieces([...playerBase, ...autoDeploy(["king"], opponent)]);
+      setTurn("white"); setMeta(emptyMeta());
+    }
   }
 
   function chooseDraft(id: PieceId) {
@@ -809,7 +874,8 @@ export function UltimateWorkbench() {
     setDraftPhase(0); setDraftTeams({ white: ["king"], black: ["king"] }); setDraftPending([]);
     setBanned([]); setDraftHistory([]); setDraftPlacementPool([]); setDraftPlacedUids([]);
     setDraftPlayerPieces(playerBase); setDraftOpponentPieces(autoDeploy(["king"], opponent));
-    setPieces(playerBase); setTurn("white"); setMeta(emptyMeta()); setDraftMessage(""); setEditing(false);
+    setPieces([...playerBase, ...autoDeploy(["king"], opponent)]);
+    setTurn("white"); setMeta(emptyMeta()); setDraftMessage(""); setEditing(false);
   }
 
   function beginDraftGame() {
@@ -941,7 +1007,7 @@ export function UltimateWorkbench() {
                     {col === 0 && <span className="rank-label">{flipped ? row + 1 : 10 - row}</span>}
                     {row === 9 && <span className="file-label">{flipped ? files[7 - col] : files[col]}</span>}
                     {legalTargets.has(index) && <span className={mapped && !concealedTarget ? "capture-ring" : "move-dot"} />}
-                    {showPiece && <span draggable={!gameActive && (view === "analysis" || (draftPlacementActive && piece.color === playerSide))} onDragStart={() => setDraggedUid(piece.uid)}><PieceToken piece={piece} view={view} playerSide={playerSide} /></span>}
+                    {showPiece && <span draggable={!gameActive && (view === "analysis" || (draftPlacementActive && piece.color === playerSide && draftPlacedUids.includes(piece.id === "copycatClone" && piece.link ? piece.link : piece.uid)))} onDragStart={() => setDraggedUid(piece.uid)}><PieceToken piece={piece} view={view} playerSide={playerSide} /></span>}
                   </button>
                 );
               })}
@@ -952,7 +1018,7 @@ export function UltimateWorkbench() {
                 return (
                   <div key={piece.uid} className={`giant-piece ${piece.color} ${view === "analysis" && piece.color !== playerSide ? "analysis-enemy" : ""}`}
                     style={{ top: `${Math.min(...rows) * 10}%`, left: `${Math.min(...cols) * 12.5}%`, width: "25%", height: "20%" }}>
-                    <button type="button" className="giant-drag-handle" draggable={!gameActive && (view === "analysis" || (draftPlacementActive && piece.color === playerSide))}
+                    <button type="button" className="giant-drag-handle" draggable={!gameActive && (view === "analysis" || (draftPlacementActive && piece.color === playerSide && draftPlacedUids.includes(piece.uid)))}
                       onDragStart={() => setDraggedUid(piece.uid)} onClick={() => handleSquare(piece.square)}>
                       <PieceToken piece={piece} view={view} playerSide={playerSide} large />
                     </button>
@@ -969,7 +1035,7 @@ export function UltimateWorkbench() {
           {view === "draft" ? (
             <section className="panel draft-panel">
               <div className="panel-heading"><div><p className="eyebrow">RANKED 12-WINDOW DRAFT</p><h2>{draftWindow ? `${draftWindow.player === "white" ? "Ivory" : "Onyx"} ${draftWindow.action}${draftWindow.action === "pick" ? " & place" : ""}` : "Draft complete"}</h2></div><span className="phase-pill">{Math.min(draftPhase + 1, 12)}/12</span></div>
-              <div className="recovery-callout"><span>i</span><p>{draftAiBusy ? "Ultimate Fish is choosing and privately arranging its picks…" : draftWindow ? draftWindow.player !== playerSide ? "Ultimate Fish controls this window; its deployment remains hidden." : draftWindow.action === "ban" ? "Choose exactly one character to ban." : `Choose up to the ${draftWindow.max}-point cumulative ceiling, then place every new pick in your home zone. You may rearrange earlier picks.` : "Draft complete. The private armies are ready to reveal when you enter Play."}</p></div>
+              <div className="recovery-callout"><span>i</span><p>{draftAiBusy ? "Ultimate Fish is choosing and placing this group…" : draftWindow ? draftWindow.player !== playerSide ? "Ultimate Fish controls this window; its new group appears when committed." : draftWindow.action === "ban" ? "Choose exactly one character to ban." : `Reach at least the ${draftWindow.min}-point cumulative floor without exceeding 100, then place every new pick. Earlier groups are locked.` : "Draft complete. Both locked armies are ready to enter Play."}</p></div>
               <div className="draft-summary"><div><small>IVORY</small><strong>{pointsFor(draftTeams.white)}</strong></div><div><small>ONYX</small><strong>{pointsFor(draftTeams.black)}</strong></div><div><small>BANNED</small><strong>{banned.length}/6</strong></div></div>
               <div className="modal-actions"><button onClick={resetDraft}>Reset draft</button><button className="primary-button" onClick={draftWindow ? commitDraftWindow : beginDraftGame} disabled={draftAiBusy || Boolean(draftWindow && (draftWindow.player !== playerSide || (draftWindow.action === "ban" ? draftPending.length !== 1 : draftPoints < draftWindow.min || draftPoints > draftWindow.max || draftPlacementPool.length > 0)))}>{draftWindow ? `Commit ${draftWindow.action}` : "Start drafted game"}</button></div>
               <div className="draft-list">

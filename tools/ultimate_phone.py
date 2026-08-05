@@ -94,7 +94,9 @@ BOT_FROM_RE = re.compile(r"\bfrom ([a-h](?:10|[1-9]))\s*$")
 BOT_TO_RE = re.compile(r"\bto ([a-h](?:10|[1-9]))\s*$")
 BOT_CHARACTER_RE = re.compile(rf"\bCharacter {PREFAB_NAME}\s*$")
 DOT_RE = re.compile(r"SetUpMyDot was called with (\d+) (\d+)")
-ARMY_POINTS_RE = re.compile(r"GetPoints\(\) - player1 points : (\d+)")
+ARMY_POINTS_RE = re.compile(
+    r"GetPoints\(\) - player1 points : (\d+) - player2 points : (\d+)"
+)
 ARMY_DROP_RE = re.compile(r"(?:^|:\s)(\d+):(\d+)\s+-\s+(\d+):(\d+)\s*$")
 ARMY_MOVE_RE = re.compile(r"(?:^|:\s)ArmyMove(?:\s+([A-Za-z]+))?\s*$")
 ENGINE_MOVE_RE = re.compile(r"^([a-h](?:10|[1-9]))([-~@x!&])([a-h](?:10|[1-9]))$")
@@ -443,7 +445,9 @@ def parse_unity_line(line: str) -> AppEvent | None:
         return AppEvent("dot_ready", source=scene_index_to_square(index), raw=line)
     match = ARMY_POINTS_RE.search(line)
     if match:
-        return AppEvent("army_points", source=match.group(1), raw=line)
+        return AppEvent(
+            "army_points", source=match.group(1), target=match.group(2), raw=line
+        )
     if "Character:SetUpMyDot" in line:
         return AppEvent("dot_ready", raw=line)
     if "!!!CompareDragDisplacement" in line:
@@ -480,7 +484,8 @@ def parse_unity_line(line: str) -> AppEvent | None:
         return AppEvent("start_game", raw=line)
     if "OnSpawnPieceGroup MESSAGE" in line:
         return AppEvent("draft_pick_committed", raw=line)
-    if "OnBanCharacter MESSAGE" in line:
+    if ("OnBanCharacter MESSAGE" in line or
+            "NetworkManager:OnBanCharacter(Type)" in line):
         return AppEvent("draft_ban_committed", raw=line)
     if "ShopItem:OnPointerClick" in line:
         return AppEvent("shop_item", raw=line)
@@ -2355,13 +2360,54 @@ def rewind_public_enemy_opening(
     return list(unique.values())
 
 
+def ranked_public_roster(
+    probed_enemy: Sequence[tuple[str, str]], material: int,
+) -> Counter[str]:
+    """Recover a Ranked roster from a public locked deployment and counter.
+
+    The first royal silhouette is the zero-point native King and every
+    additional silhouette is a ten-point Jester. Invisible Ghosts are the only
+    drafted pieces absent from the public board, so their exact count follows
+    from the public material total without exposing any coordinate.
+    """
+    roster: Counter[str] = Counter()
+    royal_count = 0
+    giant_cells = {
+        square for piece, square in probed_enemy if piece == "giant"
+    }
+    roster["giant"] += len(giant_anchors(giant_cells))
+    for piece, _square in probed_enemy:
+        if piece in ("king", "jester"):
+            royal_count += 1
+        elif piece == "giant":
+            continue
+        elif piece == "copycatClone":
+            # One selectable CopyCat creates both public board models.
+            continue
+        else:
+            roster[piece] += 1
+    if royal_count < 1:
+        raise RuntimeError("Ranked public deployment has no royal silhouette")
+    roster["jester"] += royal_count - 1
+    visible = sum(PIECE_COST[piece] * count for piece, count in roster.items())
+    hidden = material - visible
+    if hidden < 0 or hidden % PIECE_COST["ghost"]:
+        raise RuntimeError(
+            f"Ranked material {material} is inconsistent with visible cost {visible}"
+        )
+    roster["ghost"] += hidden // PIECE_COST["ghost"]
+    return +roster
+
+
 def initial_beliefs(own_team: Sequence[tuple[str, str]],
                     probed_enemy: Sequence[tuple[str, str]],
                     enemy_material: int | None, limit: int = 64,
                     side: str = "w",
                     piece_states: dict[
                         tuple[str, str], tuple[int, int, int]
-                    ] | None = None) -> list[str]:
+                    ] | None = None,
+                    enemy_king_candidates: Iterable[str] | None = None,
+                    ) -> list[str]:
     """Build public-information hypotheses for royals and hidden Ghosts."""
     collapsed: list[tuple[str, str]] = []
     giant_squares = {square for piece, square in probed_enemy if piece == "giant"}
@@ -2370,15 +2416,27 @@ def initial_beliefs(own_team: Sequence[tuple[str, str]],
 
     royal_indices = [i for i, (piece, _) in enumerate(collapsed)
                      if piece in ("king", "jester")]
+    allowed_king_squares = (
+        None if enemy_king_candidates is None else set(enemy_king_candidates)
+    )
+    candidate_indices = [
+        index for index in royal_indices
+        if allowed_king_squares is None
+        or collapsed[index][1] in allowed_king_squares
+    ]
     royal_variants: list[list[tuple[str, str]]] = []
-    if royal_indices:
-        for king_index in royal_indices:
+    if candidate_indices:
+        for king_index in candidate_indices:
             variant = list(collapsed)
             for index in royal_indices:
                 variant[index] = ("king" if index == king_index else "jester", variant[index][1])
             royal_variants.append(variant)
     else:
-        raise RuntimeError("no visible enemy royal was found")
+        if allowed_king_squares is None:
+            raise RuntimeError("no visible enemy royal was found")
+        raise RuntimeError(
+            "no visible enemy royal matches the public first-pick chronology"
+        )
 
     # Every additional royal silhouette is a Jester even though its concrete
     # identity is masked above.  Jesters still contribute ten public material
@@ -2577,6 +2635,9 @@ class PhoneGame:
         self.perspective_flipped = False
         self.online_local_team: int | None = None
         self.draft_pots: dict[str, tuple[int, int]] = {}
+        self.ranked_enemy_roster: Counter[str] = Counter()
+        self.ranked_enemy_king_candidates: set[str] | None = None
+        self.ranked_enemy_snapshots: list[tuple[tuple[str, str], ...]] = []
         self.army_drag_offsets: dict[tuple[str, str], tuple[float, float]] = {}
         self.army_pot_slots: dict[str, str] = {}
         self.army_verified_pre_ready = False
@@ -3146,8 +3207,10 @@ class PhoneGame:
             return
         if sum(PIECE_COST.get(piece, 0) for piece, _square in self.own_team) != 100:
             raise ValueError("a configured Unranked/CPU army must cost exactly 100 points")
-        if [item for item in self.own_team if item[0] == "king"] != [("king", "a1")]:
-            raise ValueError("the configured army must contain the fixed King at a1")
+        kings = [item for item in self.own_team if item[0] == "king"]
+        if len(kings) != 1 or not re.fullmatch(r"[a-h][1-3]", kings[0][1]):
+            raise ValueError(
+                "the configured army must contain one King in the deployment zone")
         # The engine parser is the single source of truth for Giant/Copycat
         # footprints and all deployment overlaps.
         self.engine.set_position(make_upn(
@@ -3205,6 +3268,34 @@ class PhoneGame:
         pots = map_ranked_pots(rebuilt)
         time.sleep(1.0)
         deployment = DeploymentGeometry()
+        king_square = kings[0][1]
+        if king_square != "a1":
+            # Clear leaves the required zero-cost King at a1. It is the only
+            # deployment model at this point, so its source identity is exact
+            # even on app builds which omit ArmyMove identity for board-to-
+            # board drags.
+            self.events.drain()
+            self.adb.drag_sync(
+                deployment.point("a1"), deployment.point(king_square), 260)
+            landed, point_events, actual_piece = self._army_drag_result()
+            if actual_piece not in (None, "king"):
+                raise ArmyPlacementRetry(
+                    f"native King relocation selected {actual_piece}")
+            final_points = point_events[-1] if point_events else 0
+            if final_points != 0:
+                raise ArmyPlacementRetry(
+                    f"native King relocation changed total to {final_points}")
+            desired = self._deployment_coordinate(king_square)
+            if landed != desired:
+                if landed is None or self._deployment_square(landed) is None:
+                    raise ArmyPlacementRetry(
+                        f"native King did not relocate to {king_square}")
+                landed = self._correct_army_drop(
+                    "king", landed, king_square, 0, deployment)
+            if landed != desired:
+                raise ArmyPlacementRetry(
+                    f"native King relocation missed {king_square}")
+            self.log(f"relocated native King a1->{king_square}")
         pieces = [item for item in self.own_team if item[0] != "king"]
         # Place wide footprints first so later single-cell models cannot block
         # a Giant or the mirrored Copycat clone.
@@ -3705,54 +3796,77 @@ class PhoneGame:
         """Enter the explicitly authorized Ranked draft queue."""
         self.log("starting Ranked game")
         self.events.reset_network_state()
+        self.ranked_enemy_roster.clear()
+        self.ranked_enemy_king_candidates = None
+        self.ranked_enemy_snapshots.clear()
         cached_accept = None
         match_found = False
         for attempt in itertools.count(1):
             self.adb.restart_app("com.JesseLugassy.ChessUltimate")
             self.wait_connected_main(900.0)
             time.sleep(3.0)
-            self.adb.tap_sync(540, 1090)  # Play exactly once
-            try:
-                self.wait_screen("mode menu", self._mode_menu_visible)
-            except TimeoutError:
-                self.log(f"Play navigation was swallowed; retrying (attempt {attempt})")
-                continue
-            # Artwork becomes visible before Unity finishes sliding the mode
-            # buttons and their raycasters into place.  The same three-second
-            # barrier is required by the proven Unranked navigation path.
-            time.sleep(3.0)
-            self.events.drain()
-            # The purple Ranked-info collider incorrectly overlaps the visual
-            # center of the yellow button in app 5.73.  Its lower-left interior
-            # is the measured queue hitbox and avoids that oversized collider.
-            self.adb.tap_sync(350, 1060)  # Ranked queue, not Ranked info
-            try:
-                state = self.events.wait(("queue_joined", "match_found"), 8.0)
-                match_found = state.kind == "match_found"
+            image = self.adb.screenshot()
+            if self._ranked_queue_visible(image):
+                self.log("resuming the visibly joined Ranked queue")
+            else:
+                self.adb.tap_sync(540, 1090)  # Play exactly once
+                try:
+                    self.wait_screen("mode menu", self._mode_menu_visible)
+                except TimeoutError:
+                    self.log(
+                        f"Play navigation was swallowed; retrying (attempt {attempt})")
+                    continue
+                # Artwork becomes visible before Unity finishes sliding the
+                # mode buttons and their raycasters into place.
+                time.sleep(3.0)
+                self.events.drain()
+                # The purple Ranked-info collider overlaps the visual center
+                # of the yellow button. Its lower-left interior is the proven
+                # queue hitbox and avoids that collider.
+                self.adb.tap_sync(350, 1060)
+                try:
+                    state = self.events.wait(("queue_joined", "match_found"), 8.0)
+                    match_found = state.kind == "match_found"
+                except TimeoutError:
+                    image = self.adb.screenshot()
+                    cached_accept = self._accept_point(image)
+                    match_found = cached_accept is not None
+                    if (not match_found and
+                            not self._ranked_queue_visible(image)):
+                        if find_text_center(image, "CHARACTERS"):
+                            raise RuntimeError(
+                                "Ranked rejected the verified full character roster")
+                        self.log(
+                            f"Ranked queue did not acknowledge; retrying "
+                            f"(attempt {attempt})")
+                        continue
+            if match_found:
                 break
-            except TimeoutError:
-                image = self.adb.screenshot()
-                cached_accept = self._accept_point(image)
-                if cached_accept:
+
+            missing_queue_checks = 0
+            while not match_found:
+                try:
+                    self.events.wait("match_found", 3.0)
                     match_found = True
                     break
-                if find_text_center(image, "QUEUE"):
+                except TimeoutError:
+                    image = self.adb.screenshot()
+                    cached_accept = self._accept_point(image)
+                    if cached_accept:
+                        match_found = True
+                        break
+                    if self._ranked_queue_visible(image):
+                        missing_queue_checks = 0
+                        self.log("still waiting in the visibly joined Ranked queue")
+                        continue
+                    missing_queue_checks += 1
+                    if missing_queue_checks < 3:
+                        self.log("Ranked queue banner unsettled; confirming state")
+                        continue
+                    self.log("Ranked queue ended without a match; rejoining")
                     break
-                # A missing-character error is a hard invariant violation now
-                # that the owned roster was verified complete.
-                if find_text_center(image, "CHARACTERS"):
-                    raise RuntimeError("Ranked rejected the verified full character roster")
-                self.log(f"Ranked queue did not acknowledge; retrying (attempt {attempt})")
-        while not match_found:
-            try:
-                self.events.wait("match_found", 3.0)
+            if match_found:
                 break
-            except TimeoutError:
-                image = self.adb.screenshot()
-                cached_accept = self._accept_point(image)
-                if cached_accept:
-                    break
-                self.log("still waiting in the Ranked queue")
         self._wait_for_accepted_match(
             cached_accept, ("start_game", "draft_board_loaded"), "Ranked draft")
 
@@ -3780,6 +3894,14 @@ class PhoneGame:
                 return True
             time.sleep(0.12)
         return False
+
+    @classmethod
+    def _ranked_queue_visible(cls, image) -> bool:
+        """Detect the persistent top Ranked queue banner without comic OCR."""
+        return (
+            cls._color_count(image, (0.12, 0.045, 0.88, 0.14), "cyan") > 40_000
+            and cls._color_count(image, (0.35, 0.105, 0.65, 0.15), "red") > 2_000
+        )
 
     @staticmethod
     def _visual_ban_control(
@@ -3872,6 +3994,188 @@ class PhoneGame:
         self.adb.drag_sync(source, target, 180)
         time.sleep(0.10)
 
+    def _ranked_committed_points(self, local_ivory: bool) -> tuple[int, int]:
+        """Read the final cumulative totals emitted after a committed group."""
+        latest: AppEvent | None = None
+        deadline = time.monotonic() + 1.5
+        while latest is None:
+            event = self.events.wait(
+                ("army_points", "game_over", "out_of_time"),
+                max(0.01, deadline - time.monotonic()),
+            )
+            if event.kind != "army_points":
+                raise RuntimeError(
+                    f"Ranked game ended while reading draft material: {event.kind}"
+                )
+            latest = event
+        # GetPoints logs once after each model in a received group. Keep the
+        # last value after a short quiet period, not the first partial sum.
+        while True:
+            try:
+                event = self.events.wait(
+                    ("army_points", "game_over", "out_of_time"), 0.08
+                )
+            except TimeoutError:
+                break
+            if event.kind != "army_points":
+                raise RuntimeError(
+                    f"Ranked game ended while reading draft material: {event.kind}"
+                )
+            latest = event
+        assert latest.source is not None and latest.target is not None
+        player1, player2 = int(latest.source), int(latest.target)
+        local = player1 if local_ivory else player2
+        opponent = player2 if local_ivory else player1
+        return local, opponent
+
+    def _observe_ranked_opponent_pick(self, local_ivory: bool) -> list[str]:
+        """Apply the newly public, locked opponent group to draft knowledge."""
+        _local_points, opponent_points = self._ranked_committed_points(local_ivory)
+        last_error: RuntimeError | None = None
+        public: list[tuple[str, str]] | None = None
+        for attempt in range(3):
+            try:
+                public = self.probe_enemy(fast=True)
+                break
+            except RuntimeError as exc:
+                last_error = exc
+                self.log(
+                    f"public Ranked group scan unsettled; retrying ({attempt + 1}/3)"
+                )
+                time.sleep(0.18)
+        if public is None:
+            raise RuntimeError(
+                "could not verify the newly revealed Ranked group"
+            ) from last_error
+
+        snapshot = tuple(sorted(public, key=lambda item: square_sort_key(item[1])))
+        current_cells = Counter(snapshot)
+        if self.ranked_enemy_snapshots:
+            previous_cells = Counter(self.ranked_enemy_snapshots[-1])
+            removed = previous_cells - current_cells
+            if removed:
+                raise RuntimeError(
+                    "a previously locked Ranked opponent piece moved or vanished: "
+                    + ", ".join(
+                        f"{piece}@{square}" for (piece, square) in removed
+                    )
+                )
+
+        royal_squares = {
+            square for piece, square in public if piece in ("king", "jester")
+        }
+        if self.ranked_enemy_king_candidates is None:
+            if not royal_squares:
+                raise RuntimeError(
+                    "the first public Ranked group contains no royal silhouette"
+                )
+            # Any royal in the first revealed group may be the fixed King.
+            # Royals first appearing in later immutable groups are known
+            # Jesters and must never expand this candidate set.
+            self.ranked_enemy_king_candidates = set(royal_squares)
+        elif not self.ranked_enemy_king_candidates <= royal_squares:
+            raise RuntimeError(
+                "a first-group royal candidate vanished from a locked Ranked setup"
+            )
+
+        roster = ranked_public_roster(public, opponent_points)
+        removed_types = self.ranked_enemy_roster - roster
+        if removed_types:
+            raise RuntimeError(
+                "the public Ranked roster lost locked character types: "
+                + ", ".join(removed_types.elements())
+            )
+        additions = roster - self.ranked_enemy_roster
+        order = {piece: index for index, piece in enumerate(POT_SORT_ORDER)}
+        choices = sorted(additions.elements(), key=lambda piece: order[piece])
+        for piece in choices:
+            self.engine.draft_choose(piece)
+        self.engine.draft_commit()
+        self.ranked_enemy_roster = roster
+        self.ranked_enemy_snapshots.append(snapshot)
+        self.log(
+            f"public opponent group: {opponent_points} points; "
+            + (" ".join(choices) if choices else "no new visible-cost pieces")
+        )
+        return choices
+
+    def _commit_ranked_local_ban(self, piece: str, phase: int) -> None:
+        """Submit and positively acknowledge a local ban before its clock."""
+        deadline = time.monotonic() + 50.0
+        self.events.drain()
+        for attempt in itertools.count(1):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(
+                    f"Ranked ban phase {phase} never acknowledged {piece}"
+                )
+            try:
+                self._ban_ranked_piece(piece, min(3.0, remaining))
+            except TimeoutError:
+                self.log(
+                    f"Ranked ban control for {piece} was not ready; retrying"
+                )
+            try:
+                committed = self.events.wait(
+                    ("draft_ban_committed", "game_over", "out_of_time"),
+                    min(3.0, max(0.01, deadline - time.monotonic())),
+                )
+            except TimeoutError:
+                self.log(
+                    f"Ranked ban {piece} lacked native acknowledgement; "
+                    f"retrying tap {attempt + 1}"
+                )
+                continue
+            if committed.kind != "draft_ban_committed":
+                raise RuntimeError(
+                    f"Ranked draft stopped during local phase {phase}: "
+                    f"{committed.kind}"
+                )
+            return
+
+    def _commit_ranked_local_pick(
+        self, choices: Sequence[str], deployment: DraftDeployment, phase: int,
+    ) -> None:
+        """Place one immutable group and retry only its idempotent Lock action."""
+        placements = []
+        self.events.drain()
+        for piece in choices:
+            square = deployment.place(piece)
+            self._place_ranked_piece(piece, square)
+            placements.append((piece, square))
+        deadline = time.monotonic() + 45.0
+        for attempt in itertools.count(1):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError(
+                    f"Ranked pick phase {phase} never locked its group"
+                )
+            try:
+                self._tap_draft_control(("LOCK",), min(4.0, remaining))
+            except TimeoutError:
+                self.log("Ranked Lock control was not ready; retrying")
+            try:
+                committed = self.events.wait(
+                    ("draft_pick_committed", "game_over", "out_of_time"),
+                    min(4.0, max(0.01, deadline - time.monotonic())),
+                )
+            except TimeoutError:
+                self.log(
+                    f"Ranked group lacked native acknowledgement; retrying "
+                    f"Lock tap {attempt + 1}"
+                )
+                continue
+            if committed.kind != "draft_pick_committed":
+                raise RuntimeError(
+                    f"Ranked draft stopped during local phase {phase}: "
+                    f"{committed.kind}"
+                )
+            self.log(
+                "locked local Ranked group: "
+                + " ".join(f"{piece}@{square}" for piece, square in placements)
+            )
+            return
+
     def run_ranked_draft(self) -> list[tuple[str, str]]:
         """Play all twelve public Ranked draft windows without private leaks."""
         if len(self.draft_pots) != len(POT_SORT_ORDER):
@@ -3899,21 +4203,12 @@ class PhoneGame:
                 self.log(
                     f"draft phase {phase}: {action} "
                     + (" ".join(choices) if choices else "(none)"))
-                self.events.drain()
                 if action == "ban":
                     piece = choices[0]
-                    self._ban_ranked_piece(piece)
+                    self._commit_ranked_local_ban(piece, phase)
                     banned.add(piece)
                 else:
-                    for piece in choices:
-                        square = deployment.place(piece)
-                        self._place_ranked_piece(piece, square)
-                    self._tap_draft_control(("LOCK",))
-                committed = self.events.wait(
-                    (event_kind, "game_over", "out_of_time"), 10.0)
-                if committed.kind != event_kind:
-                    raise RuntimeError(
-                        f"Ranked draft stopped during local phase {phase}: {committed.kind}")
+                    self._commit_ranked_local_pick(choices, deployment, phase)
             else:
                 self.log(f"draft phase {phase}: waiting for opponent {action}")
                 committed = self.events.wait(
@@ -3922,10 +4217,11 @@ class PhoneGame:
                     raise RuntimeError(
                         f"Ranked draft stopped during opponent phase {phase}: {committed.kind}")
                 if action == "pick":
-                    # The private group payload is deliberately ignored.  A
-                    # dummy legal opponent roster advances only the engine's
-                    # public phase/cost constraints.
-                    self.engine.draft_auto()
+                    # The opponent's just-committed group is now public and
+                    # immutable. Scan that public board, infer only the count
+                    # of coordinate-hidden Ghosts from material, and apply the
+                    # exact roster additions to the native draft state.
+                    self._observe_ranked_opponent_pick(local_ivory)
                 else:
                     time.sleep(0.25)
                     current = self.adb.screenshot()
@@ -3956,19 +4252,24 @@ class PhoneGame:
         return list(self.own_team)
 
     def calibrate_perspective(self) -> bool:
-        """Use our public bottom-left King to detect a rotated Onyx board."""
+        """Use our known local King square to detect a rotated Onyx board."""
+        king_squares = [square for piece, square in self.own_team if piece == "king"]
+        if len(king_squares) != 1:
+            raise RuntimeError("perspective calibration requires one known local King")
+        king_square = king_squares[0]
+        rotated_king = rotate_square(king_square)
         deadline = time.monotonic() + 4.0
         selected = None
         dot = None
         while time.monotonic() < deadline:
             self.events.drain()
-            self.adb.tap_square(self.geometry, "a1")
+            self.adb.tap_square(self.geometry, king_square)
             try:
                 candidate = self.events.wait("selected", 0.35)
             except TimeoutError:
                 continue
             if candidate.piece != "king":
-                # During the intro easing, the eventual a1 pixel can still
+                # During the intro easing, the eventual King pixel can still
                 # overlap a neighbouring pawn.  Only a King acknowledgement
                 # is calibration evidence; other selections are transient.
                 continue
@@ -3980,9 +4281,9 @@ class PhoneGame:
             break
         if selected is None or dot is None:
             raise TimeoutError("board camera did not settle for perspective probe")
-        if dot.source not in ("a1", "h10"):
+        if dot.source not in (king_square, rotated_king):
             raise RuntimeError(f"unexpected raw King square during perspective probe: {dot.source}")
-        self.perspective_flipped = dot.source == "h10"
+        self.perspective_flipped = dot.source == rotated_king
         try:
             self.events.wait("touch_end", 0.5)
         except TimeoutError:
@@ -4305,7 +4606,7 @@ class PhoneGame:
         expected: list[tuple[str, str, tuple[str, ...]]] = []
         for piece, square in self.own_team:
             if piece == "king":
-                # Perspective calibration has already selected the fixed King.
+                # Perspective calibration has already selected the known King.
                 continue
             if piece == "giant":
                 # The native deployment validator guarantees the other three
@@ -4484,6 +4785,7 @@ class PhoneGame:
                 positions.extend(initial_beliefs(
                     self.own_team, initial_enemy, observed_material,
                     self.belief_limit, side,
+                    enemy_king_candidates=self.ranked_enemy_king_candidates,
                 ))
             except RuntimeError as exc:
                 initial_error = exc
