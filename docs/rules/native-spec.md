@@ -143,6 +143,11 @@ perspective calibration with a 15-second Ranked reveal allowance. Its separate
 gameplay journal remains non-consuming during that wait, so a quick Ivory
 opening is replayed into an Onyx engine position rather than discarded while
 waiting for a nonexistent load callback.
+Local post-draft verification accepts either two exact native selection
+acknowledgements or one exact acknowledgement corroborated by that cell's blue
+ownership outline. The latter is required for duplicate Jesters observed live;
+one correct callback was emitted for each occupied cell before the turn state
+suppressed further selection, even though both placements were valid.
 
 ## Board, deployment, and analysis state
 

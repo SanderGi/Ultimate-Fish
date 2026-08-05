@@ -5468,10 +5468,18 @@ class PhoneGame:
                     )
                 if event.piece:
                     observations.append(event.piece)
-                if sum(observed in accepted for observed in observations) >= 2:
+                accepted_hits = sum(
+                    observed in accepted for observed in observations
+                )
+                if (accepted_hits >= 2 or
+                        (accepted_hits >= 1 and square in outlined)):
                     break
             accepted_hits = sum(observed in accepted for observed in observations)
-            if accepted_hits < 2:
+            corroborated = (
+                accepted_hits >= 2 or
+                (accepted_hits >= 1 and square in outlined)
+            )
+            if not corroborated:
                 if observations or square not in outlined:
                     failures.append(
                         f"{piece}@{square} selected "

@@ -699,6 +699,49 @@ class RankedDraftControllerTests(unittest.TestCase):
         )
         game.classify_game_over.assert_called_once_with(decisive_result="win")
 
+    def test_own_verifier_accepts_one_exact_hit_with_local_outline(self):
+        class VerifyAdb:
+            @staticmethod
+            def screenshot():
+                return object()
+
+            @staticmethod
+            def tap(_x, _y):
+                return None
+
+        class VerifyEvents:
+            def __init__(self):
+                self.responses = [
+                    MODULE.AppEvent("selected", "jester"),
+                    MODULE.AppEvent("selected", "jester"),
+                ]
+
+            @staticmethod
+            def drain():
+                return None
+
+            def wait(self, _kinds, _timeout):
+                if not self.responses:
+                    raise TimeoutError
+                return self.responses.pop(0)
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.adb = VerifyAdb()
+        game.events = VerifyEvents()
+        game.geometry = MODULE.BoardGeometry()
+        game.own_team = [
+            ("king", "a1"), ("jester", "b1"), ("jester", "g1"),
+        ]
+        game.verbose = False
+        game.log = lambda _message: None
+
+        with patch.object(
+            MODULE, "detect_outline_squares", return_value={"b1", "g1"}
+        ):
+            game.verify_own_team()
+
+        self.assertEqual(game.events.responses, [])
+
     def test_native_turn_probe_identifies_phase_zero_owner(self):
         class ProbeAdb:
             def __init__(self):
