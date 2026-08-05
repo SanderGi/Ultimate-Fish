@@ -677,6 +677,28 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertEqual(game.ranked_enemy_king_candidates, {"a10", "c10"})
         game.probe_enemy.assert_not_called()
 
+    def test_opponent_ranked_draft_forfeit_is_a_completed_win(self):
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.adb = self.FakeAdb()
+        game.events = self.FakeEvents((MODULE.AppEvent("game_over"),))
+        game.engine = self.FakeEngine()
+        game.draft_pots = {
+            piece: (index, index)
+            for index, piece in enumerate(MODULE.POT_SORT_ORDER)
+        }
+        game.online_local_team = None
+        game.verbose = False
+        game.log = lambda _message: None
+        game._ranked_is_ivory = lambda: False
+        game.classify_game_over = Mock(return_value="win")
+
+        terminal = game.run_ranked_draft()
+
+        self.assertEqual(
+            terminal, MODULE.OpeningTerminal("win", "game_over")
+        )
+        game.classify_game_over.assert_called_once_with(decisive_result="win")
+
     def test_native_turn_probe_identifies_phase_zero_owner(self):
         class ProbeAdb:
             def __init__(self):

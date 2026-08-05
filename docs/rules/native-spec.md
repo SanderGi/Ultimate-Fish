@@ -89,6 +89,12 @@ count and named pot are journaled independently of queue consumers, so a remote
 phase-zero Ban completed during pot calibration is replayed into the engine
 before the twelve-window loop continues.
 
+An opponent timeout or forfeit can end the game during any of their six draft
+windows, before a playable board exists. The result overlay is classified at
+that terminal callback and returned as a completed game, allowing a multi-game
+Ranked run to retain the win and requeue instead of treating it as controller
+failure. A live opponent phase-six forfeit awarded +15 rating.
+
 Local Ranked placement is likewise acknowledged rather than assumed. Each pot
 drag collects the native landing coordinate, `ArmyMove` identity, and complete
 cumulative `GetPoints` transition before the cell is reserved in the engine

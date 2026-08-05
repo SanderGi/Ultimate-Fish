@@ -4942,7 +4942,9 @@ class PhoneGame:
             )
             return
 
-    def run_ranked_draft(self) -> list[tuple[str, str]]:
+    def run_ranked_draft(
+        self,
+    ) -> list[tuple[str, str]] | OpeningTerminal:
         """Play all twelve public Ranked draft windows without private leaks."""
         if len(self.draft_pots) != len(POT_SORT_ORDER):
             raise RuntimeError("call start_ranked before drafting")
@@ -5006,8 +5008,20 @@ class PhoneGame:
                 committed = self.events.wait(
                     (event_kind, "game_over", "out_of_time"), 75.0)
                 if committed.kind != event_kind:
-                    raise RuntimeError(
-                        f"Ranked draft stopped during opponent phase {phase}: {committed.kind}")
+                    # Before board reveal, a terminal event during the remote
+                    # player's clock is necessarily their timeout/forfeit. Do
+                    # not abort a multi-game climb after earning the result;
+                    # classify the visible overlay and let the outer loop
+                    # requeue normally.
+                    result = (
+                        "win" if committed.kind == "out_of_time" else
+                        self.classify_game_over(decisive_result="win")
+                    )
+                    self.log(
+                        f"result: {result} ({committed.kind} during opponent "
+                        f"Ranked draft phase {phase})"
+                    )
+                    return OpeningTerminal(result, committed.kind)
                 if action == "pick":
                     # The opponent's just-committed group is now public and
                     # immutable. Scan that public board, infer only the count
@@ -6560,7 +6574,9 @@ def main() -> None:
                 if args.games > 1:
                     print(f"ranked game {number + 1}/{args.games}", flush=True)
                 game.start_ranked()
-                game.run_ranked_draft()
+                draft_result = game.run_ranked_draft()
+                if isinstance(draft_result, OpeningTerminal):
+                    continue
                 structured = game.events.ranked_state() if args.structured_state else None
                 if structured is not None:
                     if game.online_local_team is None:
