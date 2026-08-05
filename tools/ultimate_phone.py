@@ -4832,22 +4832,24 @@ class PhoneGame:
         self.log(
             "completed Ranked deployment: "
             + " ".join(f"{piece}@{square}" for piece, square in self.own_team))
-        ready = self.events.wait(
-            ("board_loaded", "game_over", "out_of_time"), 30.0)
-        if ready.kind != "board_loaded":
-            raise RuntimeError(f"Ranked game ended before reveal: {ready.kind}")
-        time.sleep(0.45)
-        self.events.drain()
+        # Unlike Unranked, the shipping Ranked transition does not invoke
+        # Board.LoadBoard again after the twelfth phase. The final
+        # OnSpawnPieceGroup acknowledgement above is the reveal barrier, then
+        # the existing board spends about ten seconds in its intro before it
+        # becomes interactive. Perspective calibration below waits through
+        # that intro. Do not drain here: a quick Ivory opening is retained by
+        # the independent gameplay journal and replayed after Onyx initializes.
+        self.log("final Ranked group acknowledged; awaiting interactive reveal")
         return list(self.own_team)
 
-    def calibrate_perspective(self) -> bool:
+    def calibrate_perspective(self, timeout: float = 4.0) -> bool:
         """Use our known local King square to detect a rotated Onyx board."""
         king_squares = [square for piece, square in self.own_team if piece == "king"]
         if len(king_squares) != 1:
             raise RuntimeError("perspective calibration requires one known local King")
         king_square = king_squares[0]
         rotated_king = rotate_square(king_square)
-        deadline = time.monotonic() + 4.0
+        deadline = time.monotonic() + timeout
         selected = None
         dot = None
         while time.monotonic() < deadline:
@@ -6305,15 +6307,16 @@ def main() -> None:
                     if game.online_local_team is None:
                         raise RuntimeError("Ranked draft side was not recorded")
                     structured = complete_ranked_start(structured)
-                    # Buffered groups are first inspected after Board.LoadBoard
-                    # publicly reveals both armies. Enemy private identities
-                    # and Ghost coordinates are sanitized before engine UPN.
+                    # Buffered groups are first inspected after the final
+                    # Ranked spawn acknowledgement publicly reveals both
+                    # armies. Enemy private identities and Ghost coordinates
+                    # are sanitized before engine UPN.
                     side = "w" if game.online_local_team == 0 else "b"
                     game.initialize_online(
                         structured, game.online_local_team, side
                     )
                 else:
-                    game.calibrate_perspective()
+                    game.calibrate_perspective(15.0)
                     # The local army is public to its owner on both sides.
                     # Verify it before trusting drafted/saved identities; the
                     # gameplay journal remains non-consuming if Ivory moves

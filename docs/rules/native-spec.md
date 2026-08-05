@@ -124,6 +124,15 @@ The tap-free parser
 is dormant unless an operator explicitly supplies `--structured-state` with a
 compatible diagnostic/replay source.
 
+Ranked reuses the draft board for gameplay and does **not** call
+`Board.LoadBoard` after phase eleven. The final `OnSpawnPieceGroup` is the
+public reveal barrier; the existing board then runs its roughly ten-second
+intro before accepting gameplay input. Phone automation returns directly to
+perspective calibration with a 15-second Ranked reveal allowance. Its separate
+gameplay journal remains non-consuming during that wait, so a quick Ivory
+opening is replayed into an Onyx engine position rather than discarded while
+waiting for a nonexistent load callback.
+
 ## Board, deployment, and analysis state
 
 `SimulatedBoard` stores an 8x10 array. Native army save/load traverses an 8x3

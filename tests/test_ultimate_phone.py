@@ -580,7 +580,7 @@ class RankedDraftControllerTests(unittest.TestCase):
             self._event(ban), MODULE.AppEvent("draft_ban_piece", piece="ninja"),
             self._event(ban),
             self._event(pick),
-            self._event(pick), MODULE.AppEvent("board_loaded"),
+            self._event(pick),
         ]
         first = [
             ("king", "a10"), ("queen", "b10"), ("king", "c10"),
