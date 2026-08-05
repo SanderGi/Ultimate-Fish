@@ -1434,6 +1434,21 @@ class VisionTests(unittest.TestCase):
 
 
 class OpeningSynchronizationTests(unittest.TestCase):
+    def test_ranked_board_load_starts_a_new_gameplay_generation(self):
+        import threading
+
+        stream = MODULE.EventStream.__new__(MODULE.EventStream)
+        stream.gameplay_lock = threading.Lock()
+        stream.gameplay_generation = 7
+        stream.gameplay_events = [MODULE.AppEvent("game_over")]
+        stream._record_gameplay_event(MODULE.AppEvent("draft_board_loaded"))
+        self.assertEqual(stream.gameplay_generation, 8)
+        self.assertEqual(stream.gameplay_events, [])
+        stream._record_gameplay_event(
+            MODULE.AppEvent("move", "queen", "a10", "a1")
+        )
+        self.assertEqual(len(stream.gameplay_events), 1)
+
     def test_gameplay_journal_survives_queue_drains_and_replays(self):
         import queue
         import threading

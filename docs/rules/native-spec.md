@@ -142,7 +142,10 @@ intro before accepting gameplay input. Phone automation returns directly to
 perspective calibration with a 15-second Ranked reveal allowance. Its separate
 gameplay journal remains non-consuming during that wait, so a quick Ivory
 opening is replayed into an Onyx engine position rather than discarded while
-waiting for a nonexistent load callback.
+waiting for a nonexistent load callback. `Board.LoadBoardDraft` starts a new
+journal generation just like ordinary `Board.LoadBoard`; otherwise a duplicate
+terminal event from the preceding Ranked result can make a new Onyx game appear
+finished and cause the following app restart to forfeit its still-live board.
 Local post-draft verification accepts either two exact native selection
 acknowledgements or one exact acknowledgement corroborated by that cell's blue
 ownership outline. The latter is required for duplicate Jesters observed live;

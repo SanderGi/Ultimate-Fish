@@ -1517,6 +1517,20 @@ class EventStream:
         self.thread = threading.Thread(target=self._read, daemon=True)
         self.thread.start()
 
+    def _record_gameplay_event(self, event: AppEvent) -> None:
+        """Journal one public event within the current loaded-board generation."""
+        with self.gameplay_lock:
+            # Ranked creates its interactive board with LoadBoardDraft and
+            # reuses that object after the final reveal. Treat it as the same
+            # hard generation boundary as ordinary Board.LoadBoard; otherwise
+            # a prior match's terminal event survives into await_onyx_opening
+            # and the next startup forfeits a still-live game.
+            if event.kind in ("board_loaded", "draft_board_loaded"):
+                self.gameplay_generation += 1
+                self.gameplay_events.clear()
+            elif event.kind in self.GAMEPLAY_KINDS:
+                self.gameplay_events.append(event)
+
     def _read(self) -> None:
         assert self.process.stdout is not None
         for line in self.process.stdout:
@@ -1560,12 +1574,7 @@ class EventStream:
                         continue
                     self.bot_source = None
                     self.bot_target = None
-                with self.gameplay_lock:
-                    if event.kind == "board_loaded":
-                        self.gameplay_generation += 1
-                        self.gameplay_events.clear()
-                    elif event.kind in self.GAMEPLAY_KINDS:
-                        self.gameplay_events.append(event)
+                self._record_gameplay_event(event)
                 if event.kind == "start_game" and isinstance(
                         event.payload, OnlineStartState):
                     with self.network_lock:
