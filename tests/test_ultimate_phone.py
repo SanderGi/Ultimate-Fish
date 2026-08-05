@@ -476,6 +476,35 @@ class RankedDraftControllerTests(unittest.TestCase):
         assert event is not None
         return event
 
+    def test_local_ban_selects_requested_pot_before_fixed_control(self):
+        class BanAdb:
+            def __init__(self):
+                self.taps = []
+
+            @staticmethod
+            def screenshot():
+                return object()
+
+            def tap_sync(self, x, y):
+                self.taps.append((x, y))
+
+        class BanEvents:
+            @staticmethod
+            def drain():
+                return None
+
+            @staticmethod
+            def wait(_kinds, _timeout):
+                return MODULE.AppEvent("draft_turn_probe", source="local")
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.adb = BanAdb()
+        game.events = BanEvents()
+        game.draft_pots = {"prince": (941, 1105)}
+        game._pot_ban_control = lambda _image, _piece: (622, 208)
+        game._ban_ranked_piece("prince")
+        self.assertEqual(game.adb.taps, [(941, 1105), (622, 208)])
+
     def test_actual_ban_callbacks_drive_all_twelve_ranked_phases(self):
         ban = "I/Unity: NetworkManager:OnBanCharacter(Type)"
         pick = "I/Unity: OnSpawnPieceGroup MESSAGE"

@@ -4379,11 +4379,30 @@ class PhoneGame:
         )
 
     def _ban_ranked_piece(self, piece: str, timeout: float = 3.0) -> None:
-        point = self._pot_ban_control(self.adb.screenshot(), piece)
-        if point:
-            self.adb.tap_sync(*point)
-            return
+        # A fixed Ban button can remain visible for the pot touched during
+        # side detection. Never click that stale control before selecting the
+        # engine's actual choice. Wait for IsCharacterUsable's native turn
+        # predicate so Unity has processed the new pot before confirming it.
+        self.events.drain()
         self.adb.tap_sync(*self.draft_pots[piece])
+        try:
+            selected = self.events.wait(
+                ("draft_turn_probe", "game_over", "out_of_time"),
+                min(1.0, timeout),
+            )
+            if selected.kind != "draft_turn_probe":
+                raise RuntimeError(
+                    f"Ranked game ended while selecting {piece}: {selected.kind}"
+                )
+            if selected.source != "local":
+                raise RuntimeError(
+                    f"Ranked {piece} pot was processed outside the local Ban turn"
+                )
+        except TimeoutError:
+            # Compatibility fallback for builds without the predicate log.
+            # A short UI frame still prevents confirming the previously
+            # selected calibration pot.
+            time.sleep(0.20)
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             point = self._pot_ban_control(self.adb.screenshot(), piece)
