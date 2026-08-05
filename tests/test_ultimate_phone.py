@@ -120,6 +120,17 @@ class LogParserTests(unittest.TestCase):
         self.assertEqual(selected.kind, "selected")
         self.assertEqual(selected.piece, "checkerKing")
 
+    def test_pointer_square_reports_intercepted_logical_source(self):
+        pointer = MODULE.parse_unity_line("I/Unity: 7:1")
+        self.assertEqual(
+            (pointer.kind, pointer.source), ("pointer_square", "h2")
+        )
+        drag = MODULE.parse_unity_line("I/Unity: 7:2 - 7:1")
+        self.assertEqual(
+            (drag.kind, drag.source, drag.target),
+            ("army_drop", "7:2", "7:1"),
+        )
+
     def test_public_bot_action_diagnostics_parse_without_guessing_target(self):
         source = MODULE.parse_unity_line("I/Unity: from c8")
         target = MODULE.parse_unity_line("I/Unity: to b9")
@@ -1568,6 +1579,59 @@ class ControllerActionTests(unittest.TestCase):
         event = game.execute("b5-e8")
         self.assertEqual(event.kind, "game_over")
         self.assertEqual(game.adb.taps, [])
+
+    @patch.object(MODULE.time, "sleep", return_value=None)
+    def test_intercepted_copycat_selection_retries_before_destination(
+            self, _sleep):
+        class FakeAdb:
+            def __init__(self):
+                self.actions = []
+
+            def tap_square(self, _geometry, square):
+                self.actions.append(("square", square))
+
+            def tap(self, x, y):
+                self.actions.append(("offset", x, y))
+
+        class FakeEvents:
+            def __init__(self):
+                self.pending = [
+                    # The e6 center is intercepted by a different linked pair.
+                    MODULE.AppEvent("pointer_square", source="h2"),
+                    MODULE.AppEvent("selected", "copycat"),
+                    MODULE.AppEvent("touch_end"),
+                    # An in-cell offset reaches the intended logical actor.
+                    MODULE.AppEvent("pointer_square", source="e6"),
+                    MODULE.AppEvent("selected", "copycatClone"),
+                    MODULE.AppEvent("touch_end"),
+                    MODULE.AppEvent("move", "copycatClone", "e6", "f6"),
+                ]
+
+            @staticmethod
+            def drain():
+                return None
+
+            def wait(self, kinds, _timeout, predicate=None):
+                accepted = {kinds} if isinstance(kinds, str) else set(kinds)
+                while self.pending:
+                    event = self.pending.pop(0)
+                    if (event.kind in accepted and
+                            (predicate is None or predicate(event))):
+                        return event
+                raise TimeoutError
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.adb = FakeAdb()
+        game.events = FakeEvents()
+        game.perspective_flipped = False
+        game.verbose = False
+        event = game.execute("e6-f6")
+        self.assertEqual((event.kind, event.source, event.target),
+                         ("move", "e6", "f6"))
+        self.assertEqual(game.adb.actions[0], ("square", "e6"))
+        self.assertEqual(game.adb.actions[-1], ("square", "f6"))
+        self.assertEqual(game.adb.actions[1][0], "offset")
 
     def test_bomb_action_waits_past_early_network_turn(self):
         class FakeAdb:

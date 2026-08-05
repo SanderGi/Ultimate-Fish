@@ -85,6 +85,11 @@ PREFAB_NAME = r"([A-Za-z][A-Za-z0-9_ -]*?)"
 MOVE_RE = re.compile(rf"\b{PREFAB_NAME}(?:\(Clone\))? moves (\d+) --> (\d+)")
 SELECT_RE = re.compile(
     rf"\b{PREFAB_NAME}(?:\(Clone\))?GetAvailableMoves was called")
+# Square.OnPointerDown prints the logical board coordinate before Character's
+# selection callback.  This is stronger than piece identity in formations with
+# several CopyCats: an oversized linked model can intercept a tap many cells
+# away while still reporting the same piece type as the intended actor.
+POINTER_SQUARE_RE = re.compile(r"(?:^|:\s)([0-7]):([0-9])\s*$")
 DEAD_RE = re.compile(rf"\b{PREFAB_NAME}(?:\(Clone\))? DEAD")
 DIE_RE = re.compile(rf"\b{PREFAB_NAME}(?:\(Clone\))?:Die\(\)")
 ATTACK_RE = re.compile(
@@ -431,6 +436,15 @@ def parse_unity_line(line: str) -> AppEvent | None:
         return AppEvent("move", piece,
                         scene_index_to_square(int(match.group(2))),
                         scene_index_to_square(int(match.group(3))), line)
+    match = POINTER_SQUARE_RE.search(line)
+    if match:
+        return AppEvent(
+            "pointer_square",
+            source=scene_index_to_square(
+                int(match.group(1)) * 10 + int(match.group(2))
+            ),
+            raw=line,
+        )
     match = SELECT_RE.search(line)
     if match:
         piece = canonical_piece_name(match.group(1))
@@ -5504,18 +5518,59 @@ class PhoneGame:
         # Online scenes occasionally retain an opponent-move animation or
         # latency veil for a few frames after ChangeTurn End.  Retry selection
         # for a bounded interval instead of turning one swallowed tap into a
-        # controller failure.
+        # controller failure.  Wide CopyCat/Giant renderers can also intercept
+        # the center of a distant logical square.  Require Unity's preceding
+        # Square.OnPointerDown coordinate to match the engine source, then try
+        # bounded offsets wholly inside the source cell.
         selection_deadline = time.monotonic() + 5.0
+        center_x, center_y = self.geometry.point(source)
+        offsets = (
+            (0.0, 0.0),
+            (-0.24, 0.0), (0.24, 0.0),
+            (0.0, -0.24), (0.0, 0.24),
+            (-0.24, -0.24), (0.24, -0.24),
+            (-0.24, 0.24), (0.24, 0.24),
+        )
+        attempt = 0
         while time.monotonic() < selection_deadline:
-            self.adb.tap_square(self.geometry, source)
-            try:
-                selected = self.events.wait(
-                    ("selected", "terminal_label", "game_over", "out_of_time"), 0.45)
-            except TimeoutError:
-                continue
-            if selected.kind != "selected":
-                return selected
-            break
+            x_offset, y_offset = offsets[attempt % len(offsets)]
+            attempt += 1
+            if x_offset == 0.0 and y_offset == 0.0:
+                # Preserve the simple fake-device interface used by unit tests
+                # and the normal fast path used by unobstructed pieces.
+                self.adb.tap_square(self.geometry, source)
+            else:
+                self.adb.tap(
+                    round(center_x + x_offset * self.geometry.cell_width),
+                    round(center_y + y_offset * self.geometry.cell_height),
+                )
+            pointer_source = None
+            attempt_deadline = min(selection_deadline, time.monotonic() + 0.45)
+            while time.monotonic() < attempt_deadline:
+                try:
+                    event = self.events.wait(
+                        ("pointer_square", "selected", "terminal_label",
+                         "game_over", "out_of_time"),
+                        attempt_deadline - time.monotonic(),
+                    )
+                except TimeoutError:
+                    break
+                if event.kind == "pointer_square":
+                    pointer_source = self.canonical_event(event).source
+                    continue
+                if event.kind != "selected":
+                    return event
+                if pointer_source is not None and pointer_source != source:
+                    if self.verbose:
+                        self.log(
+                            f"selection for {source} intercepted by "
+                            f"{pointer_source}; retrying inside source cell"
+                        )
+                    break
+                selected = event
+                break
+            if selected is not None:
+                break
         if selected is None:
             raise TimeoutError(f"could not select {source} within five seconds")
         try:
