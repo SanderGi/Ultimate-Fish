@@ -100,6 +100,12 @@ ARMY_POINTS_RE = re.compile(
 DRAFT_SPAWN_RE = re.compile(
     rf"(?:^|:\s){PREFAB_NAME}(?:\(Clone\))?\s+([0-7]):([0-9])\s*$"
 )
+BAN_TEXTURE_RE = re.compile(
+    rf"\bTEXT?URE ASSIGNED TO {PREFAB_NAME}\s*$", re.IGNORECASE
+)
+DRAFT_TURN_RE = re.compile(
+    r"\bmyBoard\.turn != team:\s*(True|False)\s*$", re.IGNORECASE
+)
 ARMY_DROP_RE = re.compile(r"(?:^|:\s)(\d+):(\d+)\s+-\s+(\d+):(\d+)\s*$")
 ARMY_MOVE_RE = re.compile(r"(?:^|:\s)ArmyMove(?:\s+([A-Za-z]+))?\s*$")
 ENGINE_MOVE_RE = re.compile(r"^([a-h](?:10|[1-9]))([-~@x!&])([a-h](?:10|[1-9]))$")
@@ -386,6 +392,13 @@ def parse_unity_line(line: str) -> AppEvent | None:
         # ArmyMove diagnostic in the recovered builder.
         piece = canonical_piece_name(match.group(1) or "giant")
         return AppEvent("army_piece", piece=piece, raw=line) if piece else None
+    match = DRAFT_TURN_RE.search(line)
+    if match:
+        return AppEvent(
+            "draft_turn_probe",
+            source="opponent" if match.group(1).lower() == "true" else "local",
+            raw=line,
+        )
     # After a Ranked group becomes public, Square.Spawn logs the full rendered
     # board as ``prefab x:y`` records. Royals are already masked to ``king`` by
     # the app. Discard a Ghost coordinate at parse time so private information
@@ -492,6 +505,13 @@ def parse_unity_line(line: str) -> AppEvent | None:
         return AppEvent("queue_joined", raw=line)
     if "OnSanityCheck MESSAGE" in line:
         return AppEvent("sanity_check", raw=line)
+    # OnBanCharacter applies the newly public lock texture and names the exact
+    # character pot. The shipping build misspells this as TEXURE; accept the
+    # corrected TEXTURE form too. This avoids overlapping-pot image diffs.
+    match = BAN_TEXTURE_RE.search(line)
+    if match:
+        piece = canonical_piece_name(match.group(1))
+        return AppEvent("draft_ban_piece", piece=piece, raw=line) if piece else None
     # Marker-only stock logs still synchronize Ranked phases. A structured
     # payload, when supplied by a diagnostic/replay source, was parsed above
     # and buffered behind the post-reveal sanitizer instead.
@@ -3974,11 +3994,31 @@ class PhoneGame:
 
     def _ranked_is_ivory(self) -> bool:
         """Determine whether phase zero belongs to the local player."""
-        # Local ban phases intentionally hide the ordinary bottom lock-in
-        # control.  Selecting a pot instead spawns an exact ``Ban`` action near
-        # that pot; an opponent phase leaves the same touch inert.
+        # IsCharacterUsable logs the exact native turn predicate for a touched
+        # local pot. False means this is our phase-zero turn; True means the
+        # opponent owns phase zero. This is more reliable than the overlapping
+        # comic pot art and the short-lived Ban speech bubble.
         probe = "ninja"
+        self.events.drain()
         self.adb.tap_sync(*self.draft_pots[probe])
+        try:
+            event = self.events.wait(
+                ("draft_turn_probe", "game_over", "out_of_time"), 1.5
+            )
+        except TimeoutError:
+            event = None
+        if event is not None:
+            if event.kind != "draft_turn_probe":
+                raise RuntimeError(
+                    f"Ranked game ended during side detection: {event.kind}"
+                )
+            if event.source == "local":
+                return True
+            if event.source == "opponent":
+                return False
+            raise RuntimeError("native Ranked turn probe had no side")
+
+        # Compatibility fallback for a release without the predicate log.
         deadline = time.monotonic() + 3.0
         while time.monotonic() < deadline:
             if self._pot_ban_control(self.adb.screenshot(), probe):
@@ -4211,6 +4251,32 @@ class PhoneGame:
         )
         return choices
 
+    def _observe_ranked_opponent_ban(
+        self,
+        previous,
+        banned: set[str],
+    ) -> str:
+        """Recover the exact newly public ban from its native texture event."""
+        try:
+            event = self.events.wait(
+                ("draft_ban_piece", "game_over", "out_of_time"), 1.5
+            )
+        except TimeoutError:
+            # Compatibility fallback only. The public texture event is exact;
+            # whole-pot differencing can be ambiguous where pots overlap.
+            current = self.adb.screenshot()
+            available = {
+                piece: point for piece, point in self.draft_pots.items()
+                if piece not in banned
+            }
+            piece, _scores = changed_pot(previous, current, available)
+            return piece
+        if event.kind != "draft_ban_piece" or not event.piece:
+            raise RuntimeError(
+                f"Ranked draft stopped while reading opponent ban: {event.kind}"
+            )
+        return event.piece
+
     def _commit_ranked_local_ban(self, piece: str, phase: int) -> None:
         """Submit and positively acknowledge a local ban before its clock."""
         deadline = time.monotonic() + 50.0
@@ -4335,13 +4401,7 @@ class PhoneGame:
                     # exact roster additions to the native draft state.
                     self._observe_ranked_opponent_pick(local_ivory)
                 else:
-                    time.sleep(0.25)
-                    current = self.adb.screenshot()
-                    available = {
-                        piece: point for piece, point in self.draft_pots.items()
-                        if piece not in banned
-                    }
-                    piece, _scores = changed_pot(previous, current, available)
+                    piece = self._observe_ranked_opponent_ban(previous, banned)
                     self.log(f"public opponent ban: {piece}")
                     self.engine.draft_choose(piece)
                     self.engine.draft_commit()

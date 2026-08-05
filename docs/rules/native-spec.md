@@ -62,8 +62,12 @@ model as `prefab x:y` records. Phone automation consumes that journal,
 reconciles roster additions against the public material log, and records
 first-group royal candidates. The parser discards enemy Ghost coordinates
 before journaling; only their count is inferred from public material.
-`OnBanCharacter` is public, so the controller identifies the new rendered pot
-lock and applies that exact ban to its draft state.
+`OnBanCharacter` is public. Its subsequent native
+`TEXURE ASSIGNED TO <piece>` diagnostic identifies the exact newly locked pot,
+so the controller applies that public ban without overlapping-pot image
+differencing. Before phase zero, a harmless local-pot touch logs the native
+`myBoard.turn != team` predicate and establishes whether the player is Ivory or
+Onyx; the Ban bubble remains only a compatibility fallback.
 
 `OnStartGameResponse.model_Pieces` and replay `initState` share the authoritative
 `Model_Piece` schema: type, team, x/y, skin, action, cooldown, freeze count,

@@ -258,6 +258,23 @@ class LogParserTests(unittest.TestCase):
             MODULE.parse_unity_line("OnSanityCheck MESSAGE").kind,
             "sanity_check",
         )
+        turn = MODULE.parse_unity_line("myBoard.turn != team: False")
+        self.assertEqual(
+            (turn.kind, turn.source),
+            ("draft_turn_probe", "local"),
+        )
+        opponent_turn = MODULE.parse_unity_line("myBoard.turn != team: True")
+        self.assertEqual(opponent_turn.source, "opponent")
+        ban = MODULE.parse_unity_line("TEXURE ASSIGNED TO Giant")
+        self.assertEqual(
+            (ban.kind, ban.piece),
+            ("draft_ban_piece", "giant"),
+        )
+        compatible = MODULE.parse_unity_line("TEXTURE ASSIGNED TO Queen")
+        self.assertEqual(
+            (compatible.kind, compatible.piece),
+            ("draft_ban_piece", "queen"),
+        )
 
     def test_structured_start_payload_is_validated_and_ignores_skin(self):
         line = (
@@ -347,10 +364,10 @@ class EngineDraftProtocolTests(unittest.TestCase):
 
     def test_status_parser(self):
         client, commands = self.client_with_lines(
-            "draft phase 7 player black action pick min 15 max 40 white 30 black 15")
+            "draft phase 7 player black action pick min 65 max 90 white 40 black 25")
         self.assertEqual(client.draft_status(), {
             "phase": 7, "player": "black", "action": "pick",
-            "min": 15, "max": 40, "white": 30, "black": 15,
+            "min": 65, "max": 90, "white": 40, "black": 25,
         })
         self.assertEqual(commands, ["draft status"])
 
@@ -458,13 +475,16 @@ class RankedDraftControllerTests(unittest.TestCase):
             "GetPoints() - player1 points : 100 - player2 points : 40",
         )
         responses = [
-            self._event(ban), self._event(ban),
+            self._event(ban), MODULE.AppEvent("draft_ban_piece", piece="giant"),
+            self._event(ban),
             self._event(pick), self._event(point_lines[0]), TimeoutError,
             self._event(pick),
-            self._event(ban), self._event(ban),
+            self._event(ban), MODULE.AppEvent("draft_ban_piece", piece="bomb"),
+            self._event(ban),
             self._event(pick), self._event(point_lines[1]), TimeoutError,
             self._event(pick),
-            self._event(ban), self._event(ban),
+            self._event(ban), MODULE.AppEvent("draft_ban_piece", piece="ninja"),
+            self._event(ban),
             self._event(pick), self._event(point_lines[2]), TimeoutError,
             self._event(pick), MODULE.AppEvent("board_loaded"),
         ]
@@ -500,9 +520,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         game._place_ranked_piece = lambda _piece, _square: None
         game.probe_enemy = Mock()
 
-        with patch.object(MODULE, "changed_pot", side_effect=(
-            ("giant", {}), ("bomb", {}), ("ninja", {}),
-        )), patch.object(MODULE, "ranked_spawn_public", side_effect=(
+        with patch.object(MODULE, "ranked_spawn_public", side_effect=(
             first, middle, final,
         )), patch.object(MODULE.time, "sleep", return_value=None):
             team = game.run_ranked_draft()
@@ -515,6 +533,24 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertEqual(game.ranked_enemy_roster["rook"], 5)
         self.assertEqual(game.ranked_enemy_roster["giant"], 1)
         self.assertEqual(game.ranked_enemy_king_candidates, {"a10", "c10"})
+
+    def test_native_turn_probe_identifies_phase_zero_owner(self):
+        class ProbeAdb:
+            def __init__(self):
+                self.taps = []
+
+            def tap_sync(self, x, y):
+                self.taps.append((x, y))
+
+        for source, expected in (("local", True), ("opponent", False)):
+            game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+            game.adb = ProbeAdb()
+            game.events = self.FakeEvents((
+                MODULE.AppEvent("draft_turn_probe", source=source),
+            ))
+            game.draft_pots = {"ninja": (123, 456)}
+            self.assertEqual(game._ranked_is_ivory(), expected)
+            self.assertEqual(game.adb.taps, [(123, 456)])
 
 
 class VisionTests(unittest.TestCase):
