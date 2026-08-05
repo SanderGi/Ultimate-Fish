@@ -27,7 +27,8 @@ class DraftState {
    public:
     static constexpr int PhaseCount = 12;
     static constexpr int TotalPoints = 100;
-    static constexpr int PointsPerWindow = 15;
+    static constexpr int InitialMinimum = 15;
+    static constexpr int DraftIncrement = 40;
 
     [[nodiscard]] int phase() const { return phase_; }
     [[nodiscard]] bool complete() const { return phase_ >= PhaseCount; }
@@ -50,6 +51,8 @@ class DraftState {
 
     int phase_ = 0;
     std::array<std::vector<PieceType>, 2> teams_{{{PieceType::King}, {PieceType::King}}};
+    std::array<std::size_t, 2> lockedSizes_{{1, 1}};
+    std::array<int, 2> lockedPoints_{{0, 0}};
     std::array<bool, static_cast<std::size_t>(PieceType::Count)> banned_{};
     std::optional<PieceType> pendingBan_;
 };

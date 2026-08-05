@@ -3,6 +3,7 @@
 #include "draft.h"
 
 #include <algorithm>
+#include <iterator>
 #include <limits>
 
 namespace Stockfish::Ultimate {
@@ -12,18 +13,20 @@ DraftWindow DraftState::window() const {
     const Color player = (phase_ & 1) ? Color::Black : Color::White;
     if (phase_ == 0 || phase_ == 1 || phase_ == 4 || phase_ == 5 || phase_ == 8 || phase_ == 9)
         return {phase_, player, DraftAction::Ban, 0, 0, false};
-    // Ranked pick windows are cumulative material *floors*, not ceilings.
-    // The shipping UI names the remaining value ``minpts`` and permits a
-    // player to protect more than the current milestone before the next ban.
-    // The live 5.731 client, for example, accepted a 27-point opening group in
-    // the 15-point window.  Only the army's global 100-point budget is a cap.
+    // The native constraints apply to each newly placed, immutable group while
+    // the upper bound is cumulative. SetTotalMaxPoints(100, draft=true)
+    // recovers INIT_MIN=15 and AMT_TO_ADD_PER_DRAFT=40. Consequently both
+    // opening groups add at least 15 under a 40-point cap; Ivory's middle group
+    // adds 15 under 80, while Onyx's adds 40 under 90. The final group has no
+    // required addition and only the global 100-point ceiling.
+    const int locked = lockedPoints_[index(player)];
     if (phase_ == 2 || phase_ == 3)
-        return {phase_, player, DraftAction::Pick, 15, TotalPoints, false};
+        return {phase_, player, DraftAction::Pick, locked + InitialMinimum, 40, false};
     if (phase_ == 6)
-        return {phase_, player, DraftAction::Pick, 30, TotalPoints, false};
+        return {phase_, player, DraftAction::Pick, locked + InitialMinimum, 80, false};
     if (phase_ == 7)
-        return {phase_, player, DraftAction::Pick, 40, TotalPoints, false};
-    return {phase_, player, DraftAction::Pick, TotalPoints, TotalPoints, true};
+        return {phase_, player, DraftAction::Pick, locked + DraftIncrement, 90, false};
+    return {phase_, player, DraftAction::Pick, locked, TotalPoints, true};
 }
 
 const std::vector<PieceType>& DraftState::team(Color color) const { return teams_[index(color)]; }
@@ -95,8 +98,10 @@ bool DraftState::unchoose(PieceType type) {
         return false;
     }
     auto& pieces = teams_[index(current.player)];
-    const auto found = std::find(pieces.rbegin(), pieces.rend(), type);
-    if (found == pieces.rend() || type == PieceType::King)
+    const auto firstPending = pieces.begin() + static_cast<std::ptrdiff_t>(lockedSizes_[index(current.player)]);
+    const auto found = std::find(std::make_reverse_iterator(pieces.end()),
+                                 std::make_reverse_iterator(firstPending), type);
+    if (found == std::make_reverse_iterator(firstPending) || type == PieceType::King)
         return false;
     pieces.erase(std::next(found).base());
     return true;
@@ -118,9 +123,15 @@ bool DraftState::commit(std::string* error) {
             *error = "draft window has not satisfied its native point/selection constraint";
         return false;
     }
+    const DraftWindow current = window();
     if (pendingBan_) {
         banned_[static_cast<std::size_t>(*pendingBan_)] = true;
         pendingBan_.reset();
+    }
+    else {
+        const Color player = current.player;
+        lockedSizes_[index(player)] = teams_[index(player)].size();
+        lockedPoints_[index(player)] = points(player);
     }
     ++phase_;
     return true;
@@ -192,13 +203,10 @@ bool DraftState::autoplay(std::vector<PieceType>& choices, std::string* error) {
         return commit(error);
     }
 
-    // Early picks may intentionally exceed the current floor so valuable
-    // types are locked before the next ban.  Protect a strong 15-point piece
-    // plus the Jester in the opening group, then satisfy the later cumulative
-    // milestones without prematurely exhausting the full roster budget.
-    const int target = current.lastPick ? current.maximumPoints
-                     : current.phase <= 3 ? current.minimumPoints + 10
-                                          : current.minimumPoints;
+    // Lock as much legal playing strength as the current native cap permits
+    // before the following ban. A choice that cannot fill the final remainder
+    // is skipped naturally when legal_choices() excludes it.
+    const int target = current.maximumPoints;
     // The legal-choice filter enforces the native 100-point budget and finite
     // 8x3 deployment capacity, including multi-cell pairs.
     while (points(current.player) < target) {

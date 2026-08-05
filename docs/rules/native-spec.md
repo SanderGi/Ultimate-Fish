@@ -6,23 +6,24 @@ requiring differential fixtures against the app.
 
 ## Draft
 
-`ArmyBuilder` initializes a 100-point total, a 15-point initial/minimum window,
-and a 15-point increment. `GameManager.GetDraftPhase` exposes twelve windows:
+`ArmyBuilder.SetTotalMaxPoints(100, draft=true)` initializes a 100-point total,
+a 15-point initial group minimum, and a 40-point draft increment.
+`GameManager.GetDraftPhase` exposes twelve windows:
 
-| Window | Side | Action | Cumulative floor |
-| ---: | --- | --- | ---: |
-| 0 | Ivory | Ban | — |
-| 1 | Onyx | Ban | — |
-| 2 | Ivory | Pick | 15 |
-| 3 | Onyx | Pick | 15 |
-| 4 | Ivory | Ban | — |
-| 5 | Onyx | Ban | — |
-| 6 | Ivory | Pick | 30 |
-| 7 | Onyx | Pick | 40 |
-| 8 | Ivory | Ban | — |
-| 9 | Onyx | Ban | — |
-| 10 | Ivory | Final pick | 100 |
-| 11 | Onyx | Final pick | 100 |
+| Window | Side | Action | Minimum new group | Cumulative maximum |
+| ---: | --- | --- | ---: | ---: |
+| 0 | Ivory | Ban | — | — |
+| 1 | Onyx | Ban | — | — |
+| 2 | Ivory | Pick | 15 | 40 |
+| 3 | Onyx | Pick | 15 | 40 |
+| 4 | Ivory | Ban | — | — |
+| 5 | Onyx | Ban | — | — |
+| 6 | Ivory | Pick | 15 | 80 |
+| 7 | Onyx | Pick | 40 | 90 |
+| 8 | Ivory | Ban | — | — |
+| 9 | Onyx | Ban | — | — |
+| 10 | Ivory | Final pick | 0 | 100 |
+| 11 | Onyx | Final pick | 0 | 100 |
 
 The `Character.value` initializer is a 30-element integer array, in exact
 `Character.Type` order:
@@ -36,11 +37,11 @@ Picks are deployed during each pick window, not in a separate post-draft
 step. Native `GameMenu.LockinPicks` scans the live board for newly placed
 characters, validates their cumulative point spend, clears their temporary
 pick markers, and only then advances `GameManager.ChangeTurnDraft`. The local
-UI mirrors that sequence. The values 15, 30/40, and 100 are minimum cumulative
-milestones, not per-window ceilings: a player may protect additional pieces
-before the following ban, subject only to the global 100-point budget. This is
-confirmed both by the ARMv7/ARM64 `GetDraftPhase` and `minpts` UI paths and by a
-live first group accepted at 27 points during the 15-point window.
+UI mirrors that sequence. `LockinPicks` checks the new group's spend against
+`CUR_MIN_POINTS` and the cumulative spend against the phase cap. This is
+confirmed by the ARMv7/ARM64 `SetTotalMaxPoints`, `GetDraftPhase`, and
+`LockinPicks` paths and by a live 27-point opening group; the following Onyx UI
+displayed the corresponding "more than 15 and less than 40" range.
 
 Every committed group is immutable and becomes public before the other player
 acts. The partial opponent deployment is therefore updated after each pick
@@ -56,9 +57,11 @@ a live 8x3 top/middle/bottom layout. The verified equal-cost order is
 Dragon, Ghost, Bomb, Penguin, Parasite, Devil, Berserker for the seven 15-point
 pots. `OnSpawnPieceGroup` delivers each newly committed group to the app and
 then advances the phase. The stock release exposes only the callback marker,
-so phone automation scans the newly public locked board, reconciles exact
-roster additions against the public material log, and records first-group
-royal candidates. Enemy Ghost coordinates are never inspected or copied.
+but its subsequent public `Square.Spawn` journal redraws every locked board
+model as `prefab x:y` records. Phone automation consumes that journal,
+reconciles roster additions against the public material log, and records
+first-group royal candidates. The parser discards enemy Ghost coordinates
+before journaling; only their count is inferred from public material.
 `OnBanCharacter` is public, so the controller identifies the new rendered pot
 lock and applies that exact ban to its draft state.
 
@@ -68,11 +71,13 @@ movement-turn state, and army flag. The phone controller validates that schema,
 ignores cosmetic skins, retains exact local records, and reconstructs hidden
 enemy beliefs behind a dedicated sanitizer. The stock Android 5.73 build's
 logcat currently emits only `OnStartGame MESSAGE`, not the serialized response;
-therefore normal CPU, Unranked, and Ranked automation uses the public tap probe.
-That probe requires unanimous occupancy across three unobscured frames, requires
-one consistent native piece identity across an adaptive 3×3 hit probe, rejects
-stable outline spill only after all nine points select nothing, and fails before
-moving on singular or conflicting evidence. The tap-free parser
+therefore normal CPU and Unranked automation uses the public tap probe. Ranked
+uses the public post-commit spawn journal recovered above, including its final
+pre-move position. The tap probe requires unanimous occupancy across three
+unobscured frames, requires one consistent native piece identity across an
+adaptive 3×3 hit probe, rejects stable outline spill only after all nine points
+select nothing, and fails before moving on singular or conflicting evidence.
+The tap-free parser
 is dormant unless an operator explicitly supplies `--structured-state` with a
 compatible diagnostic/replay source.
 

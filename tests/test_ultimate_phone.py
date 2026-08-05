@@ -244,6 +244,20 @@ class LogParserTests(unittest.TestCase):
             ).kind,
             "draft_ban_committed",
         )
+        spawn = MODULE.parse_unity_line("I/Unity (15933): queen 6:1")
+        self.assertEqual(
+            (spawn.kind, spawn.piece, spawn.source),
+            ("draft_piece_spawn", "queen", "6:1"),
+        )
+        hidden = MODULE.parse_unity_line("ghost 4:2")
+        self.assertEqual(
+            (hidden.kind, hidden.piece, hidden.source, hidden.raw),
+            ("draft_piece_spawn", "ghost", None, ""),
+        )
+        self.assertEqual(
+            MODULE.parse_unity_line("OnSanityCheck MESSAGE").kind,
+            "sanity_check",
+        )
 
     def test_structured_start_payload_is_validated_and_ignores_skin(self):
         line = (
@@ -363,6 +377,7 @@ class RankedDraftControllerTests(unittest.TestCase):
     class FakeEvents:
         def __init__(self, responses):
             self.responses = iter(responses)
+            self.draft_generation = 0
 
         def drain(self):
             return None
@@ -378,7 +393,16 @@ class RankedDraftControllerTests(unittest.TestCase):
                 )
             if predicate is not None and not predicate(response):
                 raise AssertionError("scripted event failed predicate")
+            if response.kind == "draft_pick_committed":
+                self.draft_generation += 1
             return response
+
+        def ranked_spawn_snapshot(self):
+            return (
+                self.draft_generation,
+                True,
+                (MODULE.AppEvent("draft_piece_spawn", "king", "0:0"),),
+            )
 
     class FakeEngine:
         ACTIONS = (
@@ -474,10 +498,12 @@ class RankedDraftControllerTests(unittest.TestCase):
         game._ban_ranked_piece = lambda _piece, _timeout=3.0: None
         game._tap_draft_control = lambda _labels, _timeout=4.0: "LOCK"
         game._place_ranked_piece = lambda _piece, _square: None
-        game.probe_enemy = Mock(side_effect=(first, middle, final))
+        game.probe_enemy = Mock()
 
         with patch.object(MODULE, "changed_pot", side_effect=(
             ("giant", {}), ("bomb", {}), ("ninja", {}),
+        )), patch.object(MODULE, "ranked_spawn_public", side_effect=(
+            first, middle, final,
         )), patch.object(MODULE.time, "sleep", return_value=None):
             team = game.run_ranked_draft()
 
@@ -1661,6 +1687,38 @@ class BeliefConstructionTests(unittest.TestCase):
             self.assertEqual(upn.count(";ghost,b,"), 1)
             self.assertIn(",0,0,0,0,0,0,-1,1,-1,0", upn)
 
+    def test_ranked_spawn_journal_recovers_captured_onyx_public_group(self):
+        spawns = (
+            MODULE.AppEvent("draft_piece_spawn", "queen", "6:1"),
+            MODULE.AppEvent("draft_piece_spawn", "king", "0:0"),
+            MODULE.AppEvent("draft_piece_spawn", "king", "7:0"),
+            # Local Onyx's fixed King rotates to a1 and is filtered out.
+            MODULE.AppEvent("draft_piece_spawn", "king", "7:9"),
+            # The hidden coordinate was discarded at parse time.
+            MODULE.AppEvent("draft_piece_spawn", "ghost", None),
+        )
+        public = MODULE.ranked_spawn_public(spawns, local_ivory=False)
+        self.assertEqual(
+            public,
+            [("queen", "b9"), ("king", "a10"), ("king", "h10")],
+        )
+        self.assertEqual(
+            MODULE.ranked_public_roster(public, 27),
+            MODULE.Counter({"queen": 1, "jester": 1}),
+        )
+
+    def test_ranked_spawn_journal_filters_local_ivory_without_rotation(self):
+        spawns = (
+            # Local Ivory's fixed King is outside the opponent home ranks.
+            MODULE.AppEvent("draft_piece_spawn", "king", "0:0"),
+            MODULE.AppEvent("draft_piece_spawn", "queen", "6:8"),
+            MODULE.AppEvent("draft_piece_spawn", "king", "7:9"),
+        )
+        self.assertEqual(
+            MODULE.ranked_spawn_public(spawns, local_ivory=True),
+            [("queen", "g9"), ("king", "h10")],
+        )
+
     def test_ranked_public_roster_uses_material_only_for_hidden_ghost_count(self):
         public = (
             ("king", "a10"), ("queen", "b10"), ("king", "c10"),
@@ -1674,6 +1732,8 @@ class BeliefConstructionTests(unittest.TestCase):
             "queen": 1, "jester": 1, "copycat": 1,
             "giant": 1, "ghost": 1,
         }))
+        adjusted = MODULE.ranked_public_roster(public, 47)
+        self.assertEqual(adjusted["ghost"], 1)
 
     def test_ranked_first_pick_chronology_excludes_late_jester_from_king(self):
         positions = MODULE.initial_beliefs(

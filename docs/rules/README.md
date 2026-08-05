@@ -72,10 +72,11 @@ These summaries are not yet substitutes for native conformance cases:
 - Dragon combines diagonal sliding with knight leaps; only the leap jumps over
   characters. Fisherman pulls characters toward itself.
 - Ranked draft uses three sequential ban/pick phases and a 100-point team
-  budget. The native cumulative floors are 15, then 30 for Ivory/40 for Onyx,
-  then 100; a group may exceed an early floor to lock pieces before the next
-  ban. Drafted armies are placed within their three-rank home zones, and every
-  committed group is locked and publicly revealed before the next window.
+  budget. Opening groups add at least 15 points under a cumulative 40-point
+  cap; the middle Ivory/Onyx groups add at least 15/40 under cumulative 80/90
+  caps; final groups add zero or more under 100. Drafted armies are placed
+  within their three-rank home zones, and every committed group is locked and
+  publicly revealed before the next window.
 
 ## Required conformance layers
 

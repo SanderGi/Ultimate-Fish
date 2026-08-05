@@ -97,6 +97,9 @@ DOT_RE = re.compile(r"SetUpMyDot was called with (\d+) (\d+)")
 ARMY_POINTS_RE = re.compile(
     r"GetPoints\(\) - player1 points : (\d+) - player2 points : (\d+)"
 )
+DRAFT_SPAWN_RE = re.compile(
+    rf"(?:^|:\s){PREFAB_NAME}(?:\(Clone\))?\s+([0-7]):([0-9])\s*$"
+)
 ARMY_DROP_RE = re.compile(r"(?:^|:\s)(\d+):(\d+)\s+-\s+(\d+):(\d+)\s*$")
 ARMY_MOVE_RE = re.compile(r"(?:^|:\s)ArmyMove(?:\s+([A-Za-z]+))?\s*$")
 ENGINE_MOVE_RE = re.compile(r"^([a-h](?:10|[1-9]))([-~@x!&])([a-h](?:10|[1-9]))$")
@@ -383,6 +386,16 @@ def parse_unity_line(line: str) -> AppEvent | None:
         # ArmyMove diagnostic in the recovered builder.
         piece = canonical_piece_name(match.group(1) or "giant")
         return AppEvent("army_piece", piece=piece, raw=line) if piece else None
+    # After a Ranked group becomes public, Square.Spawn logs the full rendered
+    # board as ``prefab x:y`` records. Royals are already masked to ``king`` by
+    # the app. Discard a Ghost coordinate at parse time so private information
+    # cannot enter any controller journal or engine position.
+    match = DRAFT_SPAWN_RE.search(line)
+    if match:
+        piece = canonical_piece_name(match.group(1))
+        if piece:
+            source = None if piece == "ghost" else f"{match.group(2)}:{match.group(3)}"
+            return AppEvent("draft_piece_spawn", piece=piece, source=source)
     # Bot.RecordAiMove prints the authoritative public action as three adjacent
     # lines before the ordinary animation callback. This is especially useful
     # for stay-put actions: Devil/Mage/Fisherman later log source->source even
@@ -477,6 +490,8 @@ def parse_unity_line(line: str) -> AppEvent | None:
         return AppEvent("match_found", raw=line)
     if "OnJoinQueue MESSAGE" in line:
         return AppEvent("queue_joined", raw=line)
+    if "OnSanityCheck MESSAGE" in line:
+        return AppEvent("sanity_check", raw=line)
     # Marker-only stock logs still synchronize Ranked phases. A structured
     # payload, when supplied by a diagnostic/replay source, was parsed above
     # and buffered behind the post-reveal sanitizer instead.
@@ -1328,6 +1343,10 @@ class EventStream:
         self.network_lock = threading.Lock()
         self.online_start: OnlineStartState | None = None
         self.ranked_groups: list[tuple[ModelPieceRecord, ...]] = []
+        self.draft_spawn_lock = threading.Lock()
+        self.draft_spawn_generation = 0
+        self.draft_spawn_complete = False
+        self.draft_spawns: list[AppEvent] = []
         # Keep a second, non-consuming public gameplay journal for the short
         # interval between Board.LoadBoard and search initialization. Queue
         # consumers intentionally discard unrelated log records while waiting
@@ -1379,6 +1398,19 @@ class EventStream:
                         event.payload, tuple):
                     with self.network_lock:
                         self.ranked_groups.append(event.payload)
+                if event.kind == "draft_pick_committed":
+                    with self.draft_spawn_lock:
+                        self.draft_spawn_generation += 1
+                        self.draft_spawn_complete = False
+                        self.draft_spawns.clear()
+                elif event.kind == "draft_piece_spawn":
+                    with self.draft_spawn_lock:
+                        if self.draft_spawn_generation:
+                            self.draft_spawns.append(event)
+                elif event.kind == "sanity_check":
+                    with self.draft_spawn_lock:
+                        if self.draft_spawn_generation:
+                            self.draft_spawn_complete = True
                 self.events.put(event)
 
     def gameplay_snapshot(self) -> tuple[int, tuple[AppEvent, ...]]:
@@ -1410,6 +1442,10 @@ class EventStream:
         with self.network_lock:
             self.online_start = None
             self.ranked_groups.clear()
+        with self.draft_spawn_lock:
+            self.draft_spawn_generation = 0
+            self.draft_spawn_complete = False
+            self.draft_spawns.clear()
 
     def start_state(self) -> OnlineStartState | None:
         with self.network_lock:
@@ -1424,6 +1460,15 @@ class EventStream:
             groups = tuple(piece for group in self.ranked_groups for piece in group)
             maximum = self.online_start.max_points if self.online_start else 100
             return OnlineStartState(initial + groups, maximum)
+
+    def ranked_spawn_snapshot(self) -> tuple[int, bool, tuple[AppEvent, ...]]:
+        """Return the non-consuming public spawn journal for the latest group."""
+        with self.draft_spawn_lock:
+            return (
+                self.draft_spawn_generation,
+                self.draft_spawn_complete,
+                tuple(self.draft_spawns),
+            )
 
     def drain(self) -> AppEvent | None:
         """Discard queued noise while returning any terminal game event.
@@ -2360,6 +2405,42 @@ def rewind_public_enemy_opening(
     return list(unique.values())
 
 
+def ranked_spawn_public(
+    spawns: Sequence[AppEvent], local_ivory: bool,
+) -> list[tuple[str, str]]:
+    """Sanitize the app's public post-pick spawn journal into local coordinates.
+
+    The journal redraws both fixed Kings and every locked group. Onyx sees the
+    native coordinates rotated 180 degrees. Ghost coordinates were discarded by
+    the parser and are therefore absent here; their count is recovered later
+    from public material only.
+    """
+    public: list[tuple[str, str]] = []
+    for event in spawns:
+        if event.kind != "draft_piece_spawn" or not event.piece:
+            continue
+        if event.piece == "ghost" or event.source is None:
+            continue
+        x_text, y_text = event.source.split(":", 1)
+        x, y = int(x_text), int(y_text)
+        record = ModelPieceRecord(event.piece, 1, x, y)
+        square = _online_square(record, not local_ivory)
+        if int(square[1:]) < 8:
+            continue
+        if event.piece == "giant":
+            public.extend(
+                ("giant", cell)
+                for cell in sorted(giant_footprint(square), key=square_sort_key)
+            )
+        else:
+            public.append((public_probe_piece(event.piece), square))
+    if not public:
+        raise RuntimeError("Ranked public spawn journal contains no opponent pieces")
+    return normalize_copycat_probes(
+        sorted(public, key=lambda item: square_sort_key(item[1]))
+    )
+
+
 def ranked_public_roster(
     probed_enemy: Sequence[tuple[str, str]], material: int,
 ) -> Counter[str]:
@@ -2391,11 +2472,21 @@ def ranked_public_roster(
     roster["jester"] += royal_count - 1
     visible = sum(PIECE_COST[piece] * count for piece, count in roster.items())
     hidden = material - visible
-    if hidden < 0 or hidden % PIECE_COST["ghost"]:
-        raise RuntimeError(
-            f"Ranked material {material} is inconsistent with visible cost {visible}"
-        )
-    roster["ghost"] += hidden // PIECE_COST["ghost"]
+    if hidden >= 0 and hidden % PIECE_COST["ghost"] == 0:
+        ghost_count = hidden // PIECE_COST["ghost"]
+    else:
+        # Duplicate-heavy live armies can adjust the displayed total by at most
+        # two points. Accept only a unique Ghost count in that measured bound.
+        candidates = [
+            count for count in range(8)
+            if abs(visible + count * PIECE_COST["ghost"] - material) <= 2
+        ]
+        if len(candidates) != 1:
+            raise RuntimeError(
+                f"Ranked material {material} is inconsistent with visible cost {visible}"
+            )
+        ghost_count = candidates[0]
+    roster["ghost"] += ghost_count
     return +roster
 
 
@@ -4030,12 +4121,33 @@ class PhoneGame:
 
     def _observe_ranked_opponent_pick(self, local_ivory: bool) -> list[str]:
         """Apply the newly public, locked opponent group to draft knowledge."""
+        generation, _complete, _spawns = self.events.ranked_spawn_snapshot()
         _local_points, opponent_points = self._ranked_committed_points(local_ivory)
         last_error: RuntimeError | None = None
         public: list[tuple[str, str]] | None = None
-        for attempt in range(3):
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            current_generation, complete, spawns = self.events.ranked_spawn_snapshot()
+            if current_generation != generation:
+                raise RuntimeError("Ranked spawn journal advanced across pick phases")
+            if complete:
+                try:
+                    public = ranked_spawn_public(spawns, local_ivory)
+                except RuntimeError as exc:
+                    last_error = exc
+                break
+            time.sleep(0.02)
+
+        # The stock 5.73 app emits the public Square.Spawn journal. Retain the
+        # older tap verifier only as a bounded compatibility fallback for a
+        # release that omits it; pots can overlap the shallow board visually.
+        if public is None:
+            self.log("public Ranked spawn journal unavailable; using tap fallback")
+        for attempt in range(3 if public is None else 0):
             try:
-                public = self.probe_enemy(fast=True)
+                public = self.probe_enemy(
+                    fast=True, minimum_confirmations=1,
+                )
                 break
             except RuntimeError as exc:
                 last_error = exc
@@ -4045,7 +4157,7 @@ class PhoneGame:
                 time.sleep(0.18)
         if public is None:
             raise RuntimeError(
-                "could not verify the newly revealed Ranked group"
+                "could not recover the newly revealed Ranked group"
             ) from last_error
 
         snapshot = tuple(sorted(public, key=lambda item: square_sort_key(item[1])))
@@ -4493,7 +4605,8 @@ class PhoneGame:
 
     def probe_enemy(self, image=None,
                     outlined: Iterable[str] | None = None,
-                    fast: bool = False) -> list[tuple[str, str]]:
+                    fast: bool = False,
+                    minimum_confirmations: int = 2) -> list[tuple[str, str]]:
         started_at = time.monotonic()
         image = image or self.adb.screenshot()
         outlined = set(outlined or detect_outline_squares(
@@ -4544,14 +4657,15 @@ class PhoneGame:
                 # Two matching samples are enough to avoid spending
                 # the online action clock on the four diagonal fallbacks. Sparse
                 # or empty candidates still receive the full 3x3 probe.
-                if ((fast or attempt >= 3) and len(observations) >= 2
+                if ((fast or attempt >= 3)
+                        and len(observations) >= minimum_confirmations
                         and len(set(observations)) == 1):
                     break
             if not observations:
                 if self.verbose:
                     self.log(f"probe {square}: stable outline spill ignored")
                 continue
-            if len(observations) < 2:
+            if len(observations) < minimum_confirmations:
                 # A stable outline plus only one collider remains ambiguous.
                 # Accepting it creates a plausible but wrong
                 # engine position, so abort before the first move.
@@ -4819,6 +4933,21 @@ class PhoneGame:
         self.events.drain()
         self.beliefs = BeliefSet(self.engine, valid, self.belief_limit)
         self.log(f"resumed {len(valid)} public-information belief(s)")
+
+    def initialize_ranked_public(self, side: str) -> None:
+        """Initialize from the final public locked-group journal without taps."""
+        if not self.ranked_enemy_snapshots:
+            raise RuntimeError("Ranked draft has no public opponent snapshot")
+        positions = initial_beliefs(
+            self.own_team,
+            self.ranked_enemy_snapshots[-1],
+            100,
+            self.belief_limit,
+            side,
+            enemy_king_candidates=self.ranked_enemy_king_candidates,
+        )
+        self.initialize_position(positions)
+        self.log("initialized from the public Ranked spawn journal")
 
     def execute(self, move: str, expect_bomb_resolution: bool = False) -> AppEvent:
         source, target, separator = parse_engine_move(move)
@@ -5706,23 +5835,22 @@ def main() -> None:
                     # gameplay journal remains non-consuming if Ivory moves
                     # during this short Onyx scan.
                     game.verify_own_team()
-                    # Stock 5.73 logs only callback markers. The public tap
-                    # verifier is therefore the authoritative default path.
+                    # Each committed group supplied a public Square.Spawn
+                    # snapshot. Use the final one directly; draft pots overlap
+                    # the shallow board and make tap reconstruction needlessly
+                    # ambiguous.
                     if game.online_local_team is None:
                         raise RuntimeError("Ranked draft side was not recorded")
                     if game.perspective_flipped:
-                        # Let the public first turn settle, scan the current
-                        # board, rewind its public effects, then replay the
-                        # journal through the lossless native rules.
+                        # Let the public first turn settle, initialize the
+                        # pre-move locked snapshot, then replay that action.
                         opening = game.await_onyx_opening()
                         if isinstance(opening, OpeningTerminal):
                             continue
-                        game.initialize(
-                            100, "b", opening_events=opening
-                        )
+                        game.initialize_ranked_public("b")
                         game.events.replay_gameplay_journal()
                     else:
-                        game.initialize(100, "w")
+                        game.initialize_ranked_public("w")
                 game.play()
         elif args.command in ("unranked", "queued", "farm"):
             games = args.games if args.command in ("unranked", "farm") else 1

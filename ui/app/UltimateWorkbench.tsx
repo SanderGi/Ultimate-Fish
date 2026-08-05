@@ -110,19 +110,19 @@ const draftCosts: Record<PieceId, number> = {
   angel: 13, halo: 0, fisherman: 12, dragon: 15,
 };
 
-const draftWindows: Array<{ player: Color; action: DraftAction; min: number; max: number }> = [
-  { player: "white", action: "ban", min: 0, max: 0 },
-  { player: "black", action: "ban", min: 0, max: 0 },
-  { player: "white", action: "pick", min: 15, max: 100 },
-  { player: "black", action: "pick", min: 15, max: 100 },
-  { player: "white", action: "ban", min: 0, max: 0 },
-  { player: "black", action: "ban", min: 0, max: 0 },
-  { player: "white", action: "pick", min: 30, max: 100 },
-  { player: "black", action: "pick", min: 40, max: 100 },
-  { player: "white", action: "ban", min: 0, max: 0 },
-  { player: "black", action: "ban", min: 0, max: 0 },
-  { player: "white", action: "pick", min: 100, max: 100 },
-  { player: "black", action: "pick", min: 100, max: 100 },
+const draftWindows: Array<{ player: Color; action: DraftAction; addMin: number; max: number }> = [
+  { player: "white", action: "ban", addMin: 0, max: 0 },
+  { player: "black", action: "ban", addMin: 0, max: 0 },
+  { player: "white", action: "pick", addMin: 15, max: 40 },
+  { player: "black", action: "pick", addMin: 15, max: 40 },
+  { player: "white", action: "ban", addMin: 0, max: 0 },
+  { player: "black", action: "ban", addMin: 0, max: 0 },
+  { player: "white", action: "pick", addMin: 15, max: 80 },
+  { player: "black", action: "pick", addMin: 40, max: 90 },
+  { player: "white", action: "ban", addMin: 0, max: 0 },
+  { player: "black", action: "ban", addMin: 0, max: 0 },
+  { player: "white", action: "pick", addMin: 0, max: 100 },
+  { player: "black", action: "pick", addMin: 0, max: 100 },
 ];
 
 const generatedDraftPieces = new Set<PieceId>([
@@ -413,6 +413,7 @@ export function UltimateWorkbench() {
   const draftWindow = draftWindows[draftPhase] ?? null;
   const draftTeam = draftWindow ? draftTeams[draftWindow.player] : draftTeams.white;
   const draftPoints = pointsFor(draftTeam);
+  const draftAddedPoints = pointsFor(draftPending);
   const draftPlacementActive = Boolean(view === "draft" && draftWindow?.player === playerSide && draftWindow.action === "pick");
   const rawSelectedPiece = selected === null ? null : boardMap[selected]?.piece ?? null;
   const selectedPiece = rawSelectedPiece && view === "play" && rawSelectedPiece.color !== playerSide &&
@@ -858,7 +859,7 @@ export function UltimateWorkbench() {
   function commitDraftWindow() {
     if (!draftWindow || draftWindow.player !== playerSide) return;
     if (draftWindow.action === "ban" && draftPending.length !== 1) return;
-    if (draftWindow.action === "pick" && (draftPoints < draftWindow.min || draftPoints > draftWindow.max)) return;
+    if (draftWindow.action === "pick" && (draftAddedPoints < draftWindow.addMin || draftPoints > draftWindow.max)) return;
     if (draftWindow.action === "pick" && draftPlacementPool.length) {
       setDraftMessage(`Place all ${draftPlacementPool.length} pending character${draftPlacementPool.length === 1 ? "" : "s"} before committing.`); return;
     }
@@ -1035,9 +1036,9 @@ export function UltimateWorkbench() {
           {view === "draft" ? (
             <section className="panel draft-panel">
               <div className="panel-heading"><div><p className="eyebrow">RANKED 12-WINDOW DRAFT</p><h2>{draftWindow ? `${draftWindow.player === "white" ? "Ivory" : "Onyx"} ${draftWindow.action}${draftWindow.action === "pick" ? " & place" : ""}` : "Draft complete"}</h2></div><span className="phase-pill">{Math.min(draftPhase + 1, 12)}/12</span></div>
-              <div className="recovery-callout"><span>i</span><p>{draftAiBusy ? "Ultimate Fish is choosing and placing this group…" : draftWindow ? draftWindow.player !== playerSide ? "Ultimate Fish controls this window; its new group appears when committed." : draftWindow.action === "ban" ? "Choose exactly one character to ban." : `Reach at least the ${draftWindow.min}-point cumulative floor without exceeding 100, then place every new pick. Earlier groups are locked.` : "Draft complete. Both locked armies are ready to enter Play."}</p></div>
+              <div className="recovery-callout"><span>i</span><p>{draftAiBusy ? "Ultimate Fish is choosing and placing this group…" : draftWindow ? draftWindow.player !== playerSide ? "Ultimate Fish controls this window; its new group appears when committed." : draftWindow.action === "ban" ? "Choose exactly one character to ban." : `Add at least ${draftWindow.addMin} points without taking the cumulative team above ${draftWindow.max}. Earlier groups are locked.` : "Draft complete. Both locked armies are ready to enter Play."}</p></div>
               <div className="draft-summary"><div><small>IVORY</small><strong>{pointsFor(draftTeams.white)}</strong></div><div><small>ONYX</small><strong>{pointsFor(draftTeams.black)}</strong></div><div><small>BANNED</small><strong>{banned.length}/6</strong></div></div>
-              <div className="modal-actions"><button onClick={resetDraft}>Reset draft</button><button className="primary-button" onClick={draftWindow ? commitDraftWindow : beginDraftGame} disabled={draftAiBusy || Boolean(draftWindow && (draftWindow.player !== playerSide || (draftWindow.action === "ban" ? draftPending.length !== 1 : draftPoints < draftWindow.min || draftPoints > draftWindow.max || draftPlacementPool.length > 0)))}>{draftWindow ? `Commit ${draftWindow.action}` : "Start drafted game"}</button></div>
+              <div className="modal-actions"><button onClick={resetDraft}>Reset draft</button><button className="primary-button" onClick={draftWindow ? commitDraftWindow : beginDraftGame} disabled={draftAiBusy || Boolean(draftWindow && (draftWindow.player !== playerSide || (draftWindow.action === "ban" ? draftPending.length !== 1 : draftAddedPoints < draftWindow.addMin || draftPoints > draftWindow.max || draftPlacementPool.length > 0)))}>{draftWindow ? `Commit ${draftWindow.action}` : "Start drafted game"}</button></div>
               <div className="draft-list">
                 {roster.filter((piece) => !generatedDraftPieces.has(piece.id)).map((piece) => {
                   const pendingCount = draftPending.filter((id) => id === piece.id).length;
