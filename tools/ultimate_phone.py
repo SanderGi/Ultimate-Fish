@@ -4323,18 +4323,22 @@ class PhoneGame:
 
     @staticmethod
     def _fixed_ban_control(image) -> tuple[int, int] | None:
-        """Find the blue top-row Ban button used after a pot is selected."""
+        """Find the actionable red Ban button in the lower-left inspector.
+
+        The blue top-row ``BAN`` is only the current phase label. Selected
+        pots also render a red speech bubble, but that bubble is not the
+        reliable pointer target in the shipping Android layout.
+        """
         import numpy as np
 
         rgb = np.asarray(image.convert("RGB"))
         red, green, blue = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
         mask = (
-            (blue > 190) & (green > 125) & (red < 130)
-            & (blue > green * 1.25)
+            (red > 180) & (red > green * 1.35) & (red > blue * 1.15)
         )
         candidates: list[tuple[int, int, int]] = []
         for component in _components(mask):
-            if len(component) < 1200:
+            if len(component) < 6000:
                 continue
             ys = [point[0] for point in component]
             xs = [point[1] for point in component]
@@ -4344,10 +4348,10 @@ class PhoneGame:
                 (min(xs) + max(xs)) // 2,
                 (min(ys) + max(ys)) // 2,
             )
-            if (image.width * 0.07 < width < image.width * 0.20
-                    and image.height * 0.03 < height < image.height * 0.08
-                    and image.width * 0.45 < center[0] < image.width * 0.70
-                    and image.height * 0.045 < center[1] < image.height * 0.13):
+            if (image.width * 0.18 < width < image.width * 0.32
+                    and image.height * 0.025 < height < image.height * 0.055
+                    and image.width * 0.05 < center[0] < image.width * 0.25
+                    and image.height * 0.77 < center[1] < image.height * 0.86):
                 candidates.append((len(component), center[0], center[1]))
         if not candidates:
             return None
@@ -4355,9 +4359,9 @@ class PhoneGame:
         return x, y
 
     def _pot_ban_control(self, image, piece: str) -> tuple[int, int] | None:
-        # Current Ranked uses one fixed blue confirmation button. Prefer it to
-        # the old pot-relative red bubble: lock chains on drafted/banned pots
-        # can satisfy the latter's color geometry and swallow every retry.
+        # Current Ranked uses one fixed red inspector confirmation button.
+        # Prefer it to pot speech bubbles and lock chains, both of which can
+        # satisfy the old pot-relative color geometry without accepting input.
         fixed = self._fixed_ban_control(image)
         if fixed:
             return fixed

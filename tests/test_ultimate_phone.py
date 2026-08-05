@@ -501,9 +501,9 @@ class RankedDraftControllerTests(unittest.TestCase):
         game.adb = BanAdb()
         game.events = BanEvents()
         game.draft_pots = {"prince": (941, 1105)}
-        game._pot_ban_control = lambda _image, _piece: (622, 208)
+        game._pot_ban_control = lambda _image, _piece: (157, 1967)
         game._ban_ranked_piece("prince")
-        self.assertEqual(game.adb.taps, [(941, 1105), (622, 208)])
+        self.assertEqual(game.adb.taps, [(941, 1105), (157, 1967)])
 
     def test_actual_ban_callbacks_drive_all_twelve_ranked_phases(self):
         ban = "I/Unity: NetworkManager:OnBanCharacter(Type)"
@@ -885,8 +885,13 @@ class VisionTests(unittest.TestCase):
 
         image = Image.new("RGB", (1080, 2400), (80, 130, 80))
         draw = ImageDraw.Draw(image)
+        # Blue top BAN is only a phase label and must never win detection.
         draw.rounded_rectangle(
             (560, 140, 690, 275), radius=30, fill=(78, 167, 254)
+        )
+        # The actual lower-left inspector control from the captured frame.
+        draw.rounded_rectangle(
+            (23, 1922, 292, 2012), radius=35, fill=(235, 45, 25)
         )
         # This red component reproduces the misleading chained pot selected by
         # the old pot-relative detector in the captured phase-five failure.
@@ -899,8 +904,8 @@ class VisionTests(unittest.TestCase):
         point = game._pot_ban_control(image, "prince")
 
         self.assertIsNotNone(point)
-        self.assertTrue(610 <= point[0] <= 640)
-        self.assertTrue(195 <= point[1] <= 220)
+        self.assertTrue(150 <= point[0] <= 165)
+        self.assertTrue(1960 <= point[1] <= 1975)
 
     def test_connected_main_requires_profile_and_play(self):
         from PIL import Image, ImageDraw
