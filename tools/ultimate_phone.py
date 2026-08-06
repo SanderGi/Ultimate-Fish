@@ -1428,6 +1428,10 @@ class DraftDeployment:
     # resulting board after reveal, so this policy can be replaced by measured
     # self-play placements without changing the phone protocol.
     PREFERENCES = {
+        # Wide models must be placed contiguously from an open edge. Maximum-
+        # clearance order (a,g,e,c) leaves the final c-file target between two
+        # Giant colliders even though the logical 2x2 packing is legal.
+        "giant": ("a2", "c2", "e2", "g2", "c1", "e1", "g1"),
         "jester": ("b1", "h1", "g1"),
         "ghost": ("d2", "e2", "c2", "f2"),
         "dragon": ("d1", "e1", "c1", "f1"),
@@ -1567,7 +1571,7 @@ class DraftDeployment:
                 key=lambda item: (
                     0 if piece in self.NON_BLOCKING_SHIELDS else
                     len(item[1] & (self.KING_SHIELD - blocked)),
-                    distance(item[1]),
+                    0 if piece == "giant" else distance(item[1]),
                     -candidates.index(item[0]),
                 ),
                 reverse=True,

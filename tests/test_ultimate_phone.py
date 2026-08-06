@@ -726,6 +726,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         deployment = MODULE.DraftDeployment()
         pieces = ("giant", "giant", "giant", "giant", "prince", "prince")
         squares = deployment.plan(pieces)
+        self.assertEqual(squares[:4], ["a2", "c2", "e2", "g2"])
         occupied = deployment.occupied.copy()
         for piece, square in zip(pieces, squares):
             cells = deployment.cells(piece, square)

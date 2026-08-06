@@ -136,7 +136,10 @@ that raycastable anchor cell. A live attempt to drop directly on the computed
 intersection was rejected for every Giant because grid seams have no Square
 collider. The fixed King model visually overlaps the center of `a2`, so Giant
 drops use a point 28% toward the top of the requested cell. This remains within
-the same Square collider while avoiding character-model interception.
+the same Square collider while avoiding character-model interception. Multiple
+Giants are dragged contiguously from the open left edge (`a,c,e,g`) rather than
+maximum-clearance order (`a,g,e,c`); the latter left its final target between
+two oversized 3D colliders and was rejected despite a legal logical packing.
 
 After selecting a Ban pot, the current Ranked UI exposes the actionable large
 red Ban button in the lower-left character inspector. The blue top-row `BAN`
