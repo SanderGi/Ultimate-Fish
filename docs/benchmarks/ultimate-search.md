@@ -67,10 +67,14 @@ of search depth.
 
 The optimization suggestions were measured rather than accepted wholesale:
 
-- An incremental selection-style move picker was slower on the fixed Ultimate
-  tree and increased the searched tree by 21% after changing equal-score move
-  order. Full stable ordering remains in negamax, but every ordering score is
-  now computed once instead of repeatedly inside the comparator.
+- An incremental selection-style move picker was rejected twice. The first
+  version changed equal-score order, grew the fixed tree by 21%, and was
+  slower. A later stable picker preserved the `-0.44` score and identical PV;
+  three alternating deterministic depth-7 runs measured a 440 ms median versus
+  434 ms for full sorting. Ultimate's searched tails are large enough that its
+  repeated scans and stable rotations still lose here. Full stable ordering
+  remains in negamax, with every ordering score computed once rather than in
+  the comparator.
 - Lambda captures do not allocate by themselves. The measurable costs were
   repeated capture classification, vector element movement, and transient
   hash/vector storage in Penguin, Minion, and blast resolution. Capture flags
