@@ -953,6 +953,61 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertEqual((result.square, result.piece, result.local_points),
                          ("f1", "prince", 18))
 
+    def test_ranked_correction_intercept_retains_successful_native_landing(self):
+        class Events:
+            def __init__(self):
+                self.pending = []
+
+            def drain(self):
+                self.pending.clear()
+
+            def wait(self, _kinds, timeout):
+                if self.pending:
+                    return self.pending.pop(0)
+                MODULE.time.sleep(timeout)
+                raise TimeoutError
+
+        class Adb:
+            def __init__(self, events):
+                self.events = events
+                self.drags = []
+
+            def drag_sync(self, source, target, duration):
+                self.drags.append((source, target, duration))
+                if len(self.drags) == 1:
+                    # CopyCat materialized at g3 instead of requested h3.
+                    self.events.pending.extend((
+                        MODULE.AppEvent("army_drop", source="6:2"),
+                        MODULE.AppEvent("army_piece", piece="copycat"),
+                        MODULE.AppEvent("army_points", source="5", target="0"),
+                    ))
+                else:
+                    # A locked Giant collider covers the attempted pickup.
+                    self.events.pending.extend((
+                        MODULE.AppEvent("army_drop", source="5:1"),
+                        MODULE.AppEvent("army_piece", piece="giant"),
+                        MODULE.AppEvent("army_points", source="5", target="0"),
+                    ))
+
+        events = Events()
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.events = events
+        game.adb = Adb(events)
+        game.draft_pots = {"copycat": (835, 1245)}
+        game.ranked_local_points = 0
+        game.verbose = False
+        messages = []
+        game.log = messages.append
+
+        result = game._place_ranked_piece("copycat", "h3", True)
+
+        self.assertEqual(len(game.adb.drags), 2)
+        self.assertEqual((result.square, result.piece, result.local_points),
+                         ("g3", "copycat", 5))
+        self.assertTrue(any("retaining native landing g3" in message
+                            for message in messages))
+
     def test_rejected_ranked_pot_drag_sweeps_cell_without_moving_existing_piece(self):
         class Events:
             def __init__(self):

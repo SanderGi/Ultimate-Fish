@@ -5570,9 +5570,25 @@ class PhoneGame:
                 corrected, corrected_piece, corrected_points = collect_drag_events()
                 point_history.extend(corrected_points)
                 if corrected_piece not in (None, piece):
+                    # The newly placed model is already a valid, public part
+                    # of the pending group.  A tall locked Giant can cover the
+                    # raycast point used to pick it back up for an optional
+                    # physical correction.  If that interception leaves the
+                    # material total unchanged, retain the exact native
+                    # landing and let the group planner recompute around it.
+                    # Retrying the same covered source cannot help, while
+                    # aborting here donates the remainder of the Ranked clock.
+                    if (not corrected_points
+                            or corrected_points[-1] == final_points):
+                        self.log(
+                            f"Ranked {piece}@{square} correction was "
+                            f"intercepted by locked {corrected_piece}; "
+                            f"retaining native landing {actual_square}"
+                        )
+                        break
                     raise RuntimeError(
                         f"correcting Ranked {piece}@{square} selected "
-                        f"{corrected_piece}"
+                        f"{corrected_piece} and changed material"
                     )
                 if corrected_points and corrected_points[-1] != final_points:
                     raise RuntimeError(
