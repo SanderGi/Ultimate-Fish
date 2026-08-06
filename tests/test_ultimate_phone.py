@@ -1618,6 +1618,47 @@ class VisionTests(unittest.TestCase):
         game.log = lambda _message: None
         self.assertEqual(game.probe_enemy(image, ("a8",)), [("pawn", "a8")])
 
+    def test_exact_enemy_grid_scan_requires_matching_native_square(self):
+        class FakeAdb:
+            def __init__(self):
+                self.taps = 0
+
+            def tap(self, _x, _y):
+                self.taps += 1
+
+        class FakeEvents:
+            def __init__(self, adb):
+                self.adb = adb
+                self.next_selected = False
+
+            def drain(self):
+                self.next_selected = False
+
+            def wait(self, _kinds, _timeout):
+                # The first two taps hit a real King on a8. The next tap is
+                # intercepted by that same tall model while scanning b8; its
+                # authoritative pointer coordinate must prevent a duplicate.
+                if self.adb.taps <= 2:
+                    source, piece = "a8", "king"
+                elif self.adb.taps == 3:
+                    source, piece = "a8", "king"
+                else:
+                    raise TimeoutError
+                if not self.next_selected:
+                    self.next_selected = True
+                    return MODULE.AppEvent("pointer_square", source=source)
+                return MODULE.AppEvent("selected", piece=piece)
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.adb = FakeAdb()
+        game.events = FakeEvents(game.adb)
+        game.perspective_flipped = False
+        game.verbose = False
+        game.log = lambda _message: None
+
+        self.assertEqual(game.probe_enemy_grid(fast=True), [("king", "a8")])
+
     @unittest.skipUnless(importlib.util.find_spec("PIL") and importlib.util.find_spec("numpy"),
                          "Pillow/numpy not installed")
     def test_enemy_probe_rejects_stable_outline_with_zero_native_hits(self):
@@ -2088,6 +2129,33 @@ class ControllerActionTests(unittest.TestCase):
         self.assertEqual(len(attempts), 2)
         self.assertFalse(game.configure_army)
         self.assertIn("restarting a clean corrected CPU build", messages[0])
+
+    def test_automatic_cpu_army_verification_requests_rebuild_on_mismatch(self):
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.configure_army = None
+        game.army_verified_pre_ready = False
+        game._verify_saved_army_builder = Mock(
+            side_effect=MODULE.ArmyPlacementRetry("wrong saved roster")
+        )
+        game._configure_army_builder = Mock()
+
+        with self.assertRaisesRegex(MODULE.ArmyPlacementRetry, "wrong saved roster"):
+            game._prepare_army_builder(object())
+
+        self.assertTrue(game.configure_army)
+        game._configure_army_builder.assert_not_called()
+
+    def test_verified_cpu_army_skips_rebuild_and_second_verification(self):
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.configure_army = False
+        game.army_verified_pre_ready = True
+        game._verify_saved_army_builder = Mock()
+        game._configure_army_builder = Mock()
+
+        game._prepare_army_builder(object())
+
+        game._verify_saved_army_builder.assert_not_called()
+        game._configure_army_builder.assert_not_called()
 
     def test_terminal_event_during_search_prevents_board_tap(self):
         class FakeAdb:
@@ -3134,6 +3202,16 @@ class BeliefConstructionTests(unittest.TestCase):
         roster = MODULE.ranked_public_roster(public, 25)
         self.assertEqual(roster, MODULE.Counter({"queen": 1, "mage": 1}))
         self.assertNotIn("ghost", roster)
+
+    def test_initial_beliefs_preserve_exact_underbudget_material(self):
+        positions = MODULE.initial_beliefs(
+            (("king", "a1"),),
+            (("king", "a10"), ("queen", "b10"), ("mage", "c10")),
+            25,
+            limit=8,
+        )
+        self.assertTrue(positions)
+        self.assertTrue(all(";ghost,b," not in position for position in positions))
 
     def test_ranked_first_pick_chronology_excludes_late_jester_from_king(self):
         positions = MODULE.initial_beliefs(

@@ -4002,7 +4002,7 @@ class PhoneGame:
             "army builder",
             lambda image: self._color_count(image, (0.45, 0.80, 0.98, 0.96), "yellow") > 20000,
         )
-        if self.configure_army:
+        if self.configure_army or not self.army_verified_pre_ready:
             builder = self.wait_screen(
                 "settled unlocked army builder",
                 lambda image: image if len(detect_pot_centers(image)) == len(POT_SORT_ORDER)
@@ -4010,7 +4010,7 @@ class PhoneGame:
                 8.0,
             )
             time.sleep(1.0)
-            self._configure_army_builder(builder)
+            self._prepare_army_builder(builder)
         else:
             time.sleep(0.35)
         self.adb.tap_sync(820, 2120)  # Ready
@@ -4678,6 +4678,25 @@ class PhoneGame:
             "pre-Ready saved army verified: "
             + " ".join(f"{piece}@{square}" for piece, square in self.own_team))
 
+    def _prepare_army_builder(self, image) -> None:
+        """Verify an automatic saved roster or rebuild the requested roster.
+
+        ``configure_army is None`` means automatic selection, not permission to
+        trust any complete 100-point save. Local conformance can legitimately
+        replace that save between CPU/online runs, so verify identities while
+        the builder is still editable and request a clean rebuild on failure.
+        """
+        if self.configure_army:
+            self._configure_army_builder(image)
+            return
+        if self.army_verified_pre_ready:
+            return
+        try:
+            self._verify_saved_army_builder(image)
+        except (ArmyPlacementRetry, TimeoutError):
+            self.configure_army = True
+            raise
+
     def start_unranked(self) -> None:
         """Enter the explicitly authorized blind-pick Unranked queue."""
         self.log("starting Unranked game")
@@ -4757,7 +4776,7 @@ class PhoneGame:
             time.sleep(3.0)
             if self.configure_army:
                 try:
-                    self._configure_army_builder(builder)
+                    self._prepare_army_builder(builder)
                     # The native builder persists this exact roster. Queue
                     # retries and subsequent games in the same run must reuse
                     # it instead of clearing and rebuilding it again.
@@ -4770,7 +4789,7 @@ class PhoneGame:
                     continue
             elif not self.army_verified_pre_ready:
                 try:
-                    self._verify_saved_army_builder(builder)
+                    self._prepare_army_builder(builder)
                 except (ArmyPlacementRetry, TimeoutError) as exc:
                     # A persisted roster that cannot prove its exact identity
                     # and coordinates must never reach matchmaking. Rebuild it
@@ -4779,7 +4798,6 @@ class PhoneGame:
                         f"saved army verification failed ({exc}); "
                         "rebuilding before queue"
                     )
-                    self.configure_army = True
                     continue
             self.events.drain()
             self.adb.tap_sync(817, 2160)
@@ -6259,6 +6277,82 @@ class PhoneGame:
                  f"{time.monotonic() - started_at:.2f}s")
         return normalized
 
+    def probe_enemy_grid(self, fast: bool = False) -> list[tuple[str, str]]:
+        """Recover every selectable public enemy directly from board logs.
+
+        This is the fail-closed fallback for a public material mismatch.  It
+        does not guess that an opponent spent the 100-point maximum: the exact
+        native counter may describe any legal under-budget army.  Instead, it
+        touches every enemy home-zone cell and accepts a piece only when the
+        native Square.OnPointerDown coordinate agrees with the cell being
+        tested.  That coordinate prevents a tall neighbouring mesh from being
+        assigned to an empty square.  Invisible Ghost callbacks are masked in
+        exactly the same way as the outline-led fast path.
+        """
+        started_at = time.monotonic()
+        probed: list[tuple[str, str]] = []
+        offsets = ((0.0, 0.0), (0.0, 0.18)) if fast else (
+            (0.0, 0.0), (0.0, 0.22), (0.0, -0.22),
+            (-0.18, 0.0), (0.18, 0.0),
+        )
+        for square in (
+            f"{file_name}{rank}"
+            for rank in (8, 9, 10) for file_name in "abcdefgh"
+        ):
+            observations: list[str] = []
+            center_x, center_y = self.geometry.point(square)
+            for x_offset, y_offset in offsets:
+                self.events.drain()
+                self.adb.tap(
+                    round(center_x + x_offset * self.geometry.cell_width),
+                    round(center_y + y_offset * self.geometry.cell_height),
+                )
+                pointer_source = None
+                deadline = time.monotonic() + (0.10 if fast else 0.14)
+                while time.monotonic() < deadline:
+                    try:
+                        event = self.events.wait(
+                            ("pointer_square", "selected", "game_over",
+                             "out_of_time"),
+                            deadline - time.monotonic(),
+                        )
+                    except TimeoutError:
+                        break
+                    if event.kind == "pointer_square":
+                        pointer_source = self.canonical_event(event).source
+                        continue
+                    if event.kind != "selected":
+                        raise RuntimeError(
+                            f"game ended during exact enemy scan: {event.kind}"
+                        )
+                    if pointer_source != square:
+                        # No pointer means this build did not prove the public
+                        # coordinate; a different pointer proves collider spill.
+                        break
+                    assert event.piece
+                    observations.append(public_probe_piece(event.piece))
+                    break
+                if len(observations) >= 2 and len(set(observations)) == 1:
+                    break
+            if not observations:
+                continue
+            if len(observations) < 2 or len(set(observations)) != 1:
+                raise RuntimeError(
+                    f"exact enemy scan could not confirm {square}: "
+                    + ", ".join(observations or ("no matching native hit",))
+                )
+            piece = observations[0]
+            if piece != "ghost":
+                probed.append((piece, square))
+                if self.verbose:
+                    self.log(f"exact probe {square}: {piece}")
+        normalized = normalize_copycat_probes(probed)
+        self.log(
+            f"exactly scanned {len(normalized)} public enemy cells in "
+            f"{time.monotonic() - started_at:.2f}s"
+        )
+        return normalized
+
     def verify_own_team(self) -> None:
         """Verify local identities, with outline fallback for disabled pieces.
 
@@ -6484,17 +6578,39 @@ class PhoneGame:
             rewind_public_enemy_opening(probed, opening_events)
             if opening_events else [probed]
         )
-        positions = []
-        initial_error: RuntimeError | None = None
-        for initial_enemy in probed_variants:
-            try:
-                positions.extend(initial_beliefs(
-                    self.own_team, initial_enemy, observed_material,
-                    self.belief_limit, side,
-                    enemy_king_candidates=self.ranked_enemy_king_candidates,
-                ))
-            except RuntimeError as exc:
-                initial_error = exc
+        def build_positions(
+            variants: Sequence[Sequence[tuple[str, str]]],
+        ) -> tuple[list[str], RuntimeError | None]:
+            built: list[str] = []
+            error: RuntimeError | None = None
+            for initial_enemy in variants:
+                try:
+                    built.extend(initial_beliefs(
+                        self.own_team, initial_enemy, observed_material,
+                        self.belief_limit, side,
+                        enemy_king_candidates=self.ranked_enemy_king_candidates,
+                    ))
+                except RuntimeError as exc:
+                    error = exc
+            return built, error
+
+        positions, initial_error = build_positions(probed_variants)
+        if not positions and initial_error is not None:
+            # A native total that does not equal visible public cost plus an
+            # integral number of hidden Ghosts means vision missed public
+            # knowledge. Never turn that discrepancy into a belief or fill an
+            # under-budget roster toward 100. Recover the exact public cells
+            # from pointer/selection logs and reconcile against the same total.
+            self.log(
+                f"public deployment did not reconcile ({initial_error}); "
+                "running exact native grid scan"
+            )
+            exact_probed = self.probe_enemy_grid(fast)
+            probed_variants = (
+                rewind_public_enemy_opening(exact_probed, opening_events)
+                if opening_events else [exact_probed]
+            )
+            positions, initial_error = build_positions(probed_variants)
         if not positions and initial_error is not None:
             raise initial_error
         # Parsing in the engine catches outline false positives immediately.

@@ -197,8 +197,8 @@ established that Giant does average four Square transforms, but only after
 ArmyMove raycasts an ordinary anchor cell; direct grid-seam drops were all
 rejected in a live match. The controller now uses the measured gray-cell edges
 `(60,1344)` through `(1032,1668)`, targets raycastable cell centers, and
-backtracks the remaining mutable group. Offline
-tests pack four Giants plus two Princes without overlap and assert all four
+backtracks the remaining mutable group. Offline tests pack four Giants plus two
+Princes without overlap and assert all four
 corrected centers. A shipping-app Local profile then built and visually
 verified `a2,c2,e2,g2` for both players, launched the position, and accepted a
 Giant move in differential play. Ranked accepted three corrected placements;
@@ -206,6 +206,15 @@ the remaining center was occluded by the earlier maximum-clearance order, so
 the controller now uses the Local-proven contiguous left-to-right order. A
 successful live four-Giant Ranked lock remains an explicit validation gate
 rather than a claimed result.
+
+The 2026-08-06 CPU startup regression also established that an opponent army
+need not spend the full 100-point allowance. A live Very Hard opponent reported
+98 native points; the controller retained that exact total, reconciled nine
+public deployment cells plus only the arithmetically possible hidden Ghost
+hypotheses, and Ultimate Fish won by checkmate at a 10-second move budget.
+Material mismatches now trigger a coordinate-confirmed native grid scan rather
+than filling the opponent roster toward 100 or treating missed public pieces as
+uncertainty.
 
 The strengthened Local profile exactly matches the difficult opening group:
 two Princes at `f1,g1` followed by Giants at `a2,c2,e2,g2`. Both native builders
