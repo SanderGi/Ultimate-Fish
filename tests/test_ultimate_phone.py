@@ -1504,6 +1504,18 @@ class VisionTests(unittest.TestCase):
                 "unknown",
             )
 
+    def test_game_over_classifier_consumes_late_native_stalemate_label(self):
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.adb = Mock()
+        game.events = Mock()
+        game.events.wait.return_value = MODULE.AppEvent(
+            "terminal_label", source="draw"
+        )
+        self.assertEqual(
+            game.classify_game_over(decisive_result="loss"), "draw"
+        )
+        game.adb.screenshot.assert_not_called()
+
     def test_ranked_lock_checkmark_detector_uses_full_screen_coordinates(self):
         from PIL import Image, ImageDraw
 

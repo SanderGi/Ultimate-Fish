@@ -6147,7 +6147,7 @@ class PhoneGame:
             upn = draft_evaluation_position(local, opponent, local_color)
             if upn not in self.draft_evaluation_cache:
                 _move, score, _info = self.draft_evaluator.search(
-                    upn, depth=24, nodes=20_000,
+                    upn, depth=24, nodes=10_000,
                 )
                 self.draft_evaluation_cache[upn] = float(
                     score if local_color == "w" else -score
@@ -6156,7 +6156,7 @@ class PhoneGame:
 
         result = search_public_draft(
             public_state, local_color, evaluate,
-            action_width=6, reply_width=4, rollout_width=4,
+            action_width=5, reply_width=3, rollout_width=3,
             feasible=feasible,
         )
         self.ranked_future_reservations = ()
@@ -7796,11 +7796,21 @@ class PhoneGame:
                 return event
 
     def classify_game_over(
-        self, timeout: float = 4.0, decisive_result: str | None = None
+        self, timeout: float = 10.0, decisive_result: str | None = None
     ) -> str:
         """Classify a menu, resolving condition-only text from move context."""
         deadline = time.monotonic() + timeout
         while True:
+            events = getattr(self, "events", None)
+            if events is not None:
+                try:
+                    terminal = events.wait("terminal_label", 0.05)
+                    if terminal.source == "draw":
+                        return "draw"
+                    if terminal.source in ("checkmate", "knockout"):
+                        return decisive_result or "unknown"
+                except (TimeoutError, AttributeError, StopIteration):
+                    pass
             try:
                 result = read_game_over_result(self.adb.screenshot())
             except (RuntimeError, subprocess.SubprocessError):

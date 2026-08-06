@@ -547,6 +547,7 @@ def complete_public_draft(
     white_policy: DraftPolicy = BASE_POLICY,
     black_policy: DraftPolicy = BASE_POLICY,
     width: int = 8,
+    terminal_filter=None,
 ) -> DraftOutcome:
     """Policy-ordered backtracking rollout from a searched public state."""
     policies = {"w": white_policy, "b": black_policy}
@@ -554,10 +555,14 @@ def complete_public_draft(
     def finish(current: PublicDraftState) -> DraftOutcome | None:
         if current.phase == 12:
             try:
-                return DraftOutcome(
+                outcome = DraftOutcome(
                     deploy_groups(current.white_groups),
                     deploy_groups(current.black_groups),
                     current.white_groups, current.black_groups, current.bans,
+                )
+                return (
+                    outcome if terminal_filter is None
+                    or terminal_filter(outcome) else None
                 )
             except RuntimeError:
                 return None
@@ -629,10 +634,13 @@ def search_public_draft(
             try:
                 outcome = complete_public_draft(
                     replied, white_policy, black_policy, rollout_width,
+                    terminal_filter=(
+                        None if feasible is None else
+                        lambda candidate, selected=action:
+                            feasible(candidate, selected)
+                    ),
                 )
             except RuntimeError:
-                continue
-            if feasible is not None and not feasible(outcome, action):
                 continue
             score = float(evaluator(outcome))
             leaves += 1
