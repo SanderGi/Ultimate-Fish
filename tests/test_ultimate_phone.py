@@ -688,7 +688,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         game.ranked_opponent_points = None
         self.assertEqual(game._ranked_committed_points(True), (40, 27))
 
-    def test_local_ban_selects_requested_pot_before_fixed_control(self):
+    def test_local_ban_selects_requested_pot_then_relative_control(self):
         class BanAdb:
             def __init__(self):
                 self.taps = []
@@ -713,9 +713,12 @@ class RankedDraftControllerTests(unittest.TestCase):
         game.adb = BanAdb()
         game.events = BanEvents()
         game.geometry = MODULE.BoardGeometry()
-        game.draft_pots = {"prince": (941, 1105)}
+        game.draft_pots = {
+            "giant": (115, 964), "checker": (152, 1103),
+            "pawn": (98, 1248), "prince": (934, 1101),
+        }
         game._ban_ranked_piece("prince")
-        self.assertEqual(game.adb.taps, [(941, 1105), (250, 1714)])
+        self.assertEqual(game.adb.taps, [(934, 1101), (934, 959)])
 
     def test_local_ban_recovers_auto_ban_from_non_consuming_journals(self):
         class Events:
@@ -1444,7 +1447,7 @@ class RankedDraftControllerTests(unittest.TestCase):
                     "draft_turn_probe", source=source, payload=completed_bans,
                 ),
             ))
-            game.draft_pots = {"ninja": (123, 456)}
+            game.draft_pots = {"giant": (123, 456)}
             self.assertEqual(game._ranked_is_ivory(), expected)
             self.assertEqual(game.adb.taps, [(123, 456)])
 

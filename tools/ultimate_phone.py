@@ -5254,7 +5254,12 @@ class PhoneGame:
         # completed: addressable/pot calibration can outlast a fast remote
         # phase zero. This is more reliable than overlapping comic pot art and
         # the short-lived Ban speech bubble.
-        probe = "ninja"
+        # A selected bottom-row Ninja renders its wide BanButton one row above
+        # itself, directly over the Prince pot. Probing Ninja therefore leaves
+        # a stale actionable overlay which turns the subsequent intended
+        # Prince selection into ``BanSelection(Ninja)``. A top-row probe puts
+        # that overlay above every pot and cannot intercept the real choice.
+        probe = "giant"
         self.events.drain()
         self.adb.tap_sync(*self.draft_pots[probe])
         try:
@@ -5414,19 +5419,26 @@ class PhoneGame:
             # A short UI frame still prevents confirming the previously
             # selected calibration pot.
             time.sleep(0.20)
-        # The actionable inspector button is fixed in the shipping layout.
-        # APK asset hierarchy:
-        # CharacterDetails/largerScale (100.1, 161.2; scale 1.21)
-        #   /border/BanButton (0, 93.5)
-        # on Unity's 432x960 reference canvas. That resolves to (250, 1714)
-        # on 1080x2400. The previous (157, 1967) point lies inside the
-        # character card and can never submit a Ban. The native predicate
-        # above is the safe selection barrier; TEXURE ASSIGNED and
-        # OnBanCharacter remain the authoritative result checks below.
-        point = (
-            round(self.geometry.width * 250 / 1080),
-            round(self.geometry.height * 1714 / 2400),
+        # BanButton is serialized above the selected pot, not at a fixed
+        # screen coordinate. Its vertical offset in the live layout is one
+        # calibrated pot-row gap. For Prince this is approximately
+        # (934, 1101 - 139) = (934, 962). Tapping the old character-card point
+        # was a no-op; tapping Prince while Ninja's stale overlay was active
+        # confirmed Ninja. The top-row side probe above prevents that overlap.
+        rows: list[list[int]] = []
+        for y in sorted(y for _x, y in self.draft_pots.values()):
+            if (not rows or
+                    y - sum(rows[-1]) / len(rows[-1])
+                    > self.geometry.height * 0.035):
+                rows.append([y])
+            else:
+                rows[-1].append(y)
+        row_centers = [sum(row) / len(row) for row in rows]
+        gaps = [right - left for left, right in zip(row_centers, row_centers[1:])]
+        row_gap = round(sum(gaps) / len(gaps)) if gaps else round(
+            self.geometry.height * 0.058
         )
+        point = (self.draft_pots[piece][0], self.draft_pots[piece][1] - row_gap)
         self.adb.tap_sync(*point)
 
     def _place_ranked_piece(
