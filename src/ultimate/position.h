@@ -135,6 +135,8 @@ struct Move {
 // Undo record. It is slower than the production search state, but provides a
 // simple differential oracle for special-effect and undo conformance tests.
 struct Undo;
+class TablebaseGenerator;
+class TablebaseProbe;
 
 class Position {
    public:
@@ -208,6 +210,8 @@ class Position {
    private:
     friend struct Undo;
     friend class Search;
+    friend class TablebaseGenerator;
+    friend class TablebaseProbe;
 
     static constexpr std::size_t index(Color color) { return static_cast<std::size_t>(color); }
     static constexpr std::size_t index(PieceType type) { return static_cast<std::size_t>(type); }

@@ -98,6 +98,19 @@ searched policy-ordered action instead of risking a native auto-pick/ban.
 Re-rank saved finalists at a larger budget with
 `python3 tools/validate_ultimate_armies.py RESULTS.json --nodes 10000`.
 
+Exact moved-piece three-character endgames can be generated locally with:
+
+```bash
+tools/generate_ultimate_tablebases.sh
+```
+
+The generator performs complete retrograde WDL/DTW propagation and then
+Bellman-verifies every state. Ultimate Fish automatically probes files in
+`tablebases/`; set colon-separated `ULTIMATE_TABLEBASE_PATH` to load them from
+another location. Only closed stateless classes are accepted: stateful pieces
+are intentionally rejected until their cooldown/power/attachment transitions
+are represented exactly.
+
 Ranked needs a separate coevolution because each opponent changes the available
 roster through six interleaved bans and publicly revealed locked groups. The
 draft-policy league executes those twelve native windows before every game and

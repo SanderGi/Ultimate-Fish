@@ -50,3 +50,5 @@ src/*.txt
 *.xapk
 reverse-engineering/input/
 reverse-engineering/output/
+tablebases/*.checkpoint
+tablebases/*.tmp

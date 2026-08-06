@@ -4,6 +4,7 @@
 */
 
 #include "search.h"
+#include "tablebase_probe.h"
 
 #include <algorithm>
 #include <cmath>
@@ -158,6 +159,14 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
     // stack; the ordinary stand-pat cap below cannot apply while in check.
     if (ply >= MaxPly - 1)
         return position.static_evaluate();
+    if (ply > 0)
+        if (const auto tablebase = TablebaseProbe::probe(position)) {
+            if (tablebase->wdl == TablebaseWdl::Draw)
+                return 0;
+            const int distance = std::min<int>(tablebase->dtw, MateThreshold - 1);
+            return tablebase->wdl == TablebaseWdl::Win
+                 ? Mate - ply - distance : -Mate + ply + distance;
+        }
 
     // A Checker jump or Prince follow-up is not optional. Likewise, when any
     // Checker has a capture the native rules suppress every quiet action. Do
@@ -231,6 +240,14 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
         return 0;
     if (ply >= MaxPly - 1)
         return position.static_evaluate();
+    if (ply > 0)
+        if (const auto tablebase = TablebaseProbe::probe(position)) {
+            if (tablebase->wdl == TablebaseWdl::Draw)
+                return 0;
+            const int distance = std::min<int>(tablebase->dtw, MateThreshold - 1);
+            return tablebase->wdl == TablebaseWdl::Win
+                 ? Mate - ply - distance : -Mate + ply + distance;
+        }
     if (depth <= 0)
         return quiescence(position, alpha, beta, ply);
 

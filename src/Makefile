@@ -53,15 +53,21 @@ OBJS = $(notdir $(SRCS:.cpp=.o))
 # and drafting state that cannot be represented by variants.ini. Keep its
 # specialized state machine in this Fairy-Stockfish tree and expose a separate
 # protocol binary while sharing the project's build/tooling conventions.
-ULTIMATE_SRCS = ultimate/main.cpp ultimate/position.cpp ultimate/search.cpp ultimate/draft.cpp
+ULTIMATE_SRCS = ultimate/main.cpp ultimate/position.cpp ultimate/search.cpp ultimate/draft.cpp \
+	ultimate/tablebase_probe.cpp
 
-.PHONY: ultimatefish ultimate-test
+.PHONY: ultimatefish ultimate-test ultimate-tablebase
 ultimatefish:
 	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic $(ULTIMATE_SRCS) -o ultimatefish
 
+ultimate-tablebase:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic \
+		ultimate/tablebase.cpp ultimate/position.cpp -o ultimate_tablebase
+
 ultimate-test:
 	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror ../tests/ultimate_rules.cpp \
-		ultimate/position.cpp ultimate/search.cpp ultimate/draft.cpp -o ultimate_rules_test
+		ultimate/position.cpp ultimate/search.cpp ultimate/draft.cpp \
+		ultimate/tablebase_probe.cpp -o ultimate_rules_test
 	./ultimate_rules_test
 
 VPATH = syzygy:nnue:nnue/features

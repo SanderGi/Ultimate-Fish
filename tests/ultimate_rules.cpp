@@ -1,6 +1,7 @@
 #include "../src/ultimate/position.h"
 #include "../src/ultimate/draft.h"
 #include "../src/ultimate/search.h"
+#include "../src/ultimate/tablebase_probe.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -1868,6 +1869,35 @@ void test_search_and_perft_regressions() {
            "forcing quiescence cycles respect the hard ply/node bounds");
 }
 
+void test_exact_tablebase_probing() {
+    const auto moved = [](Position& position, PieceType type, Color color,
+                          const char* square) {
+        const int id = position.add_piece(type, color, Position::square_from_name(square));
+        position.piece(id).moved = true;
+        return id;
+    };
+    Position queen;
+    moved(queen, PieceType::King, Color::White, "a1");
+    moved(queen, PieceType::Queen, Color::White, "b1");
+    moved(queen, PieceType::King, Color::Black, "h10");
+    const auto white = TablebaseProbe::probe(queen);
+    expect(white && white->wdl == TablebaseWdl::Win && white->dtw > 0,
+           "bundled KQK tablebase returns an exact moved-state win");
+
+    Position mirroredColors;
+    moved(mirroredColors, PieceType::King, Color::Black, "a1");
+    moved(mirroredColors, PieceType::Queen, Color::Black, "b1");
+    moved(mirroredColors, PieceType::King, Color::White, "h10");
+    mirroredColors.set_side_to_move(Color::Black);
+    const auto black = TablebaseProbe::probe(mirroredColors);
+    expect(white && black && black->wdl == white->wdl && black->dtw == white->dtw,
+           "tablebase color canonicalization preserves exact WDL and DTW");
+
+    queen.piece(1).moved = false;
+    expect(!TablebaseProbe::probe(queen),
+           "tablebase declines an unmoved state whose castling class is absent");
+}
+
 void test_native_information_set_search() {
     auto ghostFixture = [](int ghostSquare) {
         Position position;
@@ -2743,6 +2773,7 @@ int main() {
     test_native_fisherman_rays();
     test_ghost_visibility_transitions();
     test_search_and_perft_regressions();
+    test_exact_tablebase_probing();
     test_native_information_set_search();
     test_native_insufficient_material();
     test_pawn_en_passant_lifetime();

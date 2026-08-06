@@ -157,6 +157,26 @@ Ban deliberately stops at its 1.5-second analysis slice and reserves the rest
 of the native clock for pot selection and log-confirmed commit. Pick finished
 its complete configured frontier well inside the six-second search slice.
 
+## Exact Ultimate tablebases
+
+`src/ultimate/tablebase.cpp` performs complete retrograde analysis over closed
+three-character state classes and checkpoints its frontier to disk. It then
+reconstructs every legal successor and Bellman-verifies WDL and distance to
+win before writing a packed database. Four useful moved-state classes are
+bundled: Queen, Rook, Ninja, and Dragon versus a bare King. Together they cover
+3,943,680 exact states and 52,230,152 in-class edges. Generation plus complete
+verification took between 8.1 and 10.2 seconds per decisive class on the
+development machine.
+
+Search probes exact child states before quiescence, maps either attacker color
+into the canonical database, returns draws as zero, and maps WDL/DTW to
+mate-distance scores. In the bundled `a1` King, `b1` attacker versus `h10`
+King fixture, heuristic depth-two Rook search reported `+4.89`; exact probing
+reports mate in 12 at depth one. Replacing the Rook with a Queen reports mate
+in 9, demonstrating that DTW selects the shorter conversion. Unmoved pieces,
+special state, and unrepresented material decline the probe rather than
+silently using an inexact result.
+
 Run `tools/benchmark_ultimate.sh` for fixed perft/search measurements, or set
 `ULTIMATE_LONG_BENCHMARK=1` to include the cold ten-second horizon check. Run
 `tools/selfplay_ultimate.py CANDIDATE BASELINE` to alternate colors between two
