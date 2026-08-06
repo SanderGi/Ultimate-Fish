@@ -110,6 +110,16 @@ The optimization suggestions were measured rather than accepted wholesale:
   Across sixteen alternating identical-tree depth-7 runs, median time fell
   from 472 ms to 447 ms (5.4%). The ten-second fixture rose to 6,530,816 nodes
   with the same best move and principal variation.
+- Incremental selection-style move picking was measured against the retained
+  stable full ordering on the recovered Unranked loss fixture. Five depth-7
+  runs increased the median from 457 ms to 476 ms and expanded the tree from
+  271,325 to 290,422 nodes with the same score and PV. The altered equal-score
+  tie order cost more alpha-beta work than it saved in sorting, so the candidate
+  was rejected. Capture flags, pseudo-legal child validation, and progressively
+  stronger LMR were already present; orthodox null-move pruning remains unsafe
+  without a proven variant-specific pass transition because cooldowns, forced
+  continuations, compulsory captures, Jester check rules, and timeout wins all
+  invalidate the usual null-move assumptions.
 
 Run `tools/benchmark_ultimate.sh` for fixed perft/search measurements, or set
 `ULTIMATE_LONG_BENCHMARK=1` to include the cold ten-second horizon check. Run
