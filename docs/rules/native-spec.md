@@ -116,20 +116,27 @@ exact pending roster must both equal the engine's desired pick before the
 controller presses the icon-only green Lock checkmark.
 
 Although `LoadBoardDraft` retains the full live Board object, the pick camera
-renders the local home zone as a compact 8x3 grid. It does not share the later
-settled 8x10 gameplay coordinates. On the reference 1080x2400 portrait layout
-the stable deployment edges are `(8,1145)` through `(912,1465)`, scaled with
-the device resolution. Group placement backtracks all still-mutable pieces so
+renders the local home zone as an 8x3 grid below three rows of character pots.
+It does not share the later settled 8x10 gameplay coordinates. On the reference
+1080x2400 portrait layout the playable gray-cell edges are `(60,1344)` through
+`(1032,1668)`, scaled with the device resolution. The cyan aura begins near
+x=8, while y=1145 through 1343 still contains pots; neither region is
+raycastable board space. Using that decorative/pot rectangle caused the
+leftmost drop to miss, shifted files, and placed every target above the actual
+board. Group placement backtracks all still-mutable pieces so
 four 2x2 Giants can be packed alongside ordinary models; a failed target is
 excluded only for that duplicate instance and never terminates the controller
 during an active Ranked clock. Giants are a special native placement case:
 `Giant.getClosestIntersection` snaps their 2x2 footprint around a grid
 intersection. Recovered ARM code at `0x168d290` loads the world positions of
 the four squares `(x,y)`, `(x+1,y)`, `(x+1,y+1)`, and `(x,y+1)`, sums their
-three coordinates, and multiplies each by `0.25`. The controller therefore
-drops at that exact center intersection. Dropping at an ordinary anchor-cell
-center is ambiguous and was observed to shift `c2/e2/g2` down to `c1/e1/g1`,
-where the fixed King prevents a fourth Giant from fitting.
+three coordinates, and multiplies each by `0.25`. This happens after ArmyMove
+has resolved the logical anchor: the pointer-up itself must be at the center of
+that raycastable anchor cell. A live attempt to drop directly on the computed
+intersection was rejected for every Giant because grid seams have no Square
+collider. The fixed King model visually overlaps the center of `a2`, so Giant
+drops use a point 28% toward the top of the requested cell. This remains within
+the same Square collider while avoiding character-model interception.
 
 After selecting a Ban pot, the current Ranked UI exposes the actionable large
 red Ban button in the lower-left character inspector. The blue top-row `BAN`

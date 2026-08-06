@@ -676,23 +676,16 @@ class DeploymentGeometry:
             round(self.top + (3 - rank + 0.5) * self.cell_height),
         )
 
-    def giant_point(self, anchor: str) -> tuple[int, int]:
-        """Return the native intersection for a Giant's 2x2 anchor.
+    def giant_drop_point(self, anchor: str) -> tuple[int, int]:
+        """Choose a clear in-cell raycast point for a Giant anchor.
 
-        Giant.getClosestIntersection snaps the model around a grid
-        intersection rather than a cell center.  Dropping on the anchor's
-        ordinary center leaves that snap equidistant between intersections
-        and can shift the footprint one file, making an otherwise legal row
-        of four Giants impossible to place.
+        The fixed King's tall model covers the center of a2 even though that
+        square is logically empty. The upper quarter remains inside the same
+        Square collider, after which Giant.getClosestIntersection performs its
+        own four-square visual centering.
         """
-        file_index = ord(anchor[0]) - ord("a")
-        rank = int(anchor[1:])
-        if not (0 <= file_index < 7 and 1 <= rank < 3):
-            raise ValueError(f"invalid Giant deployment anchor: {anchor}")
-        return (
-            round(self.left + (file_index + 1.0) * self.cell_width),
-            round(self.top + (3 - rank) * self.cell_height),
-        )
+        x, y = self.point(anchor)
+        return x, round(y - self.cell_height * 0.28)
 
     def scaled(self, width: int, height: int) -> "DeploymentGeometry":
         return DeploymentGeometry(
@@ -708,11 +701,12 @@ class DeploymentGeometry:
 # builder on the reference 1080x2400 phone.  Native ArmyMove coordinates are
 # the calibration oracle; the visible row boundaries are y=1415/1526/1637/1749.
 LOCAL_DEPLOYMENT_GEOMETRY = DeploymentGeometry(top=1415.0, bottom=1749.0)
-# Ranked keeps the full Board object but frames the local three-rank deployment
-# zone as a compact board during pick windows. These bounds are the stable cell
-# edges on the reference 1080x2400 portrait layout; scale them for other devices.
+# Ranked keeps the full Board object while showing three rows of character pots
+# directly above the local deployment zone. These are the measured gray-cell
+# edges on the reference 1080x2400 portrait layout; the earlier cyan-aura/pot
+# rectangle is not raycastable board space.
 RANKED_DEPLOYMENT_GEOMETRY = DeploymentGeometry(
-    left=8.0, top=1145.0, right=912.0, bottom=1465.0,
+    left=60.0, top=1344.0, right=1032.0, bottom=1668.0,
 )
 
 
@@ -5250,7 +5244,7 @@ class PhoneGame:
             self.geometry.width, self.geometry.height,
         )
         target = (
-            deployment_geometry.giant_point(square)
+            deployment_geometry.giant_drop_point(square)
             if piece == "giant" else deployment_geometry.point(square)
         )
         source = self.draft_pots[piece]
@@ -5294,10 +5288,9 @@ class PhoneGame:
         if landed_coordinate is None:
             if piece == "giant" and point_history:
                 # Giant's recovered override logs no coordinate pair. Its 2x2
-                # footprint is confirmed by the point transition. The drag
-                # targets its exact native grid intersection, so unlike the
-                # old ambiguous cell-center drop the requested anchor is the
-                # snapped anchor.
+                # footprint is confirmed by the point transition. ArmyMove
+                # first needs a raycastable anchor cell; Giant then centers its
+                # model by averaging that cell and its three neighbors.
                 actual_square = square
             elif not point_history or point_history[-1] == self.ranked_local_points:
                 raise TimeoutError(

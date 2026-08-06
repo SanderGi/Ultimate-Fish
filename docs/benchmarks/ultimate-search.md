@@ -190,15 +190,17 @@ fixture when those rosters outrank filler under the native 100-point ceiling.
 The promoted roster's four-Giant opening exposed that Ranked's pick camera
 projects the local deployment zone into a compact 8x3 grid rather than the
 settled gameplay geometry. A subsequent live run placed only three of four
-Giants and exposed a second distinction: the native Giant snaps to grid
-intersections, so a cell-center drop shifted the requested second-rank anchors
-down one rank. The controller now targets the exact center of each intended
-2x2 footprint and backtracks the entire remaining mutable group, with failed
-landing targets tracked per duplicate instance. Offline tests pack four Giants
-plus two Princes without overlap and assert the four distinct native
-intersection targets. Chess Ultimate's service was unavailable during the
-post-fix validation attempt, so a successful live four-Giant lock remains an
-explicit validation gate rather than a claimed result.
+Giants and exposed that the cyan aura and bottom pot rows were mistaken for the
+playable grid: the leftmost target missed, files were shifted, and y targets sat
+above the actual board. A later native-confirmed intersection experiment
+established that Giant does average four Square transforms, but only after
+ArmyMove raycasts an ordinary anchor cell; direct grid-seam drops were all
+rejected in a live match. The controller now uses the measured gray-cell edges
+`(60,1344)` through `(1032,1668)`, targets raycastable cell centers, and
+backtracks the remaining mutable group. Offline
+tests pack four Giants plus two Princes without overlap and assert all four
+corrected centers. A successful live four-Giant lock remains an explicit
+validation gate rather than a claimed result.
 
 The same checkpoint won a fresh Very Hard CPU game after searching 64 public
 beliefs and finding a forced mate, then won a fresh Unranked game against a

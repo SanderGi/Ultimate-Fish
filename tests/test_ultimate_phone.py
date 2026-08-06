@@ -747,24 +747,24 @@ class RankedDraftControllerTests(unittest.TestCase):
     def test_ranked_pick_uses_compact_visible_deployment_geometry(self):
         self.assertEqual(
             MODULE.RANKED_DEPLOYMENT_GEOMETRY.point("g1"),
-            (742, 1412),
+            (850, 1614),
         )
         self.assertNotEqual(
             MODULE.RANKED_DEPLOYMENT_GEOMETRY.point("g1"),
             MODULE.BoardGeometry().point("g1"),
         )
 
-    def test_ranked_giants_target_exact_footprint_intersections(self):
+    def test_ranked_geometry_targets_gray_cell_centers_not_cyan_aura(self):
         geometry = MODULE.RANKED_DEPLOYMENT_GEOMETRY
-        self.assertEqual(geometry.giant_point("a2"), (121, 1252))
-        self.assertEqual(geometry.giant_point("c2"), (347, 1252))
-        self.assertEqual(geometry.giant_point("e2"), (573, 1252))
-        self.assertEqual(geometry.giant_point("g2"), (799, 1252))
-        self.assertNotEqual(geometry.giant_point("a2"), geometry.point("a2"))
-        with self.assertRaisesRegex(ValueError, "Giant deployment anchor"):
-            geometry.giant_point("h2")
+        self.assertEqual(geometry.point("a2"), (121, 1506))
+        self.assertEqual(geometry.point("c2"), (364, 1506))
+        self.assertEqual(geometry.point("e2"), (607, 1506))
+        self.assertEqual(geometry.point("g2"), (850, 1506))
+        self.assertEqual(geometry.giant_drop_point("a2"), (121, 1476))
+        self.assertGreater(geometry.giant_drop_point("a2")[1], geometry.top)
+        self.assertGreater(geometry.left, 8)
 
-    def test_ranked_giant_drag_uses_intersection_not_anchor_cell_center(self):
+    def test_ranked_giant_drag_uses_raycastable_anchor_cell_center(self):
         class GiantAdb:
             def __init__(self):
                 self.drags = []
@@ -793,12 +793,11 @@ class RankedDraftControllerTests(unittest.TestCase):
 
         result = game._place_ranked_piece("giant", "c2", True)
 
-        expected = MODULE.RANKED_DEPLOYMENT_GEOMETRY.giant_point("c2")
+        expected = MODULE.RANKED_DEPLOYMENT_GEOMETRY.giant_drop_point("c2")
         self.assertEqual(game.adb.drags, [((110, 840), expected, 180)])
-        self.assertNotEqual(
-            game.adb.drags[0][1],
-            MODULE.RANKED_DEPLOYMENT_GEOMETRY.point("c2"),
-        )
+        center = MODULE.RANKED_DEPLOYMENT_GEOMETRY.point("c2")
+        self.assertEqual(expected[0], center[0])
+        self.assertLess(expected[1], center[1])
         self.assertEqual((result.square, result.local_points), ("c2", 1))
 
     def test_ranked_pick_repairs_intercepted_material_before_locking(self):
