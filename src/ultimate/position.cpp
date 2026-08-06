@@ -14,7 +14,6 @@
 #include <cctype>
 #include <cmath>
 #include <sstream>
-#include <unordered_set>
 
 namespace Stockfish::Ultimate {
 namespace {
@@ -107,6 +106,17 @@ int pop_lsb(Bitboard& mask) {
     return square;
 }
 
+int popcount(Bitboard mask) {
+    return __builtin_popcountll(static_cast<std::uint64_t>(mask)) +
+           __builtin_popcountll(static_cast<std::uint64_t>(mask >> 64));
+}
+
+int lsb_square(Bitboard mask) {
+    const std::uint64_t low = static_cast<std::uint64_t>(mask);
+    return low ? __builtin_ctzll(low)
+               : 64 + __builtin_ctzll(static_cast<std::uint64_t>(mask >> 64));
+}
+
 bool starts_with(std::string_view text, std::string_view prefix) {
     return text.size() >= prefix.size() && text.substr(0, prefix.size()) == prefix;
 }
@@ -145,6 +155,7 @@ void Position::clear() {
     enPassantVictim_ = NoPiece;
     forcedPiece_ = NoPiece;
     continuation_ = Continuation::None;
+    forcedTimeoutWinner_ = -1;
     halfmove_ = 0;
     fullmove_ = 1;
     nextAttachmentOrder_ = 1;
@@ -706,11 +717,12 @@ void Position::add_fisherman_moves(std::vector<Move>& moves, int id, bool attack
     }
 }
 
-std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
-    std::vector<Move> moves;
+void Position::append_moves_for(std::vector<Move>& moves, int id,
+                                bool attacksOnly) const {
     if (id < 0 || id >= pieceCount_ || !pieces_[id].alive || frozen(id) || pieces_[id].cooldown)
-        return moves;
+        return;
 
+    const std::size_t first = moves.size();
     const PieceState& piece = pieces_[id];
     switch (piece.type) {
     case PieceType::King:
@@ -720,9 +732,10 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
         // SimulatedKing. Its castle scan is deliberately not orthodox: it
         // walks to the first occupied square in either horizontal direction,
         // requires only an unmoved Rook at least three files away, and never
-        // checks the Rook's team, cooldown, or freeze state. Check legality is
-        // evaluated only after the complete move, so starting and transit
-        // squares may be attacked.
+        // checks the Rook's team, cooldown, or freeze state. An enemy-owned
+        // Rook is the native forced-timeout edge case described in
+        // make_move_unchecked. Check legality is evaluated only after the
+        // complete move, so starting and transit squares may be attacked.
         if (!attacksOnly && !piece.moved) {
             const int fromFile = file_of(piece.square);
             const int rank = rank_of(piece.square);
@@ -891,7 +904,7 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
         // live h1-h2 attempt against an enemy Dragon on h2.
         if (!attacksOnly) {
             add_step_moves(moves, id, Around, 8, 1, false, false);
-            moves.erase(std::remove_if(moves.begin(), moves.end(), [this](const Move& move) {
+            moves.erase(std::remove_if(moves.begin() + first, moves.end(), [this](const Move& move) {
                             return board_[move.to] != NoPiece;
                         }), moves.end());
         }
@@ -935,7 +948,7 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
                 break;
             }
         }
-        moves.erase(std::remove_if(moves.begin(), moves.end(), [this](const Move& move) {
+        moves.erase(std::remove_if(moves.begin() + first, moves.end(), [this](const Move& move) {
                         const int target = board_[move.to];
                         return target != NoPiece &&
                           !(pieces_[target].type == PieceType::Ghost &&
@@ -1018,6 +1031,11 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
     case PieceType::Count:
         break;
     }
+}
+
+std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
+    std::vector<Move> moves;
+    append_moves_for(moves, id, attacksOnly);
     return moves;
 }
 
@@ -1035,24 +1053,34 @@ bool Position::has_forced_action() const {
 }
 
 std::vector<Move> Position::legal_moves() const {
-    if (!has_real_king(Color::White) || !has_real_king(Color::Black) ||
+    if (forcedTimeoutWinner_ >= 0 ||
+        !has_real_king(Color::White) || !has_real_king(Color::Black) ||
         !is_checkmate_possible())
         return {};
 
-    auto moves = pseudo_legal_moves();
-    // Reuse one mutable child across the complete frontier. make_move_unchecked
-    // already snapshots every field in Undo, so constructing another full
-    // Position for each sibling only duplicated the hottest copy in search.
-    Position child = *this;
+    return filter_legal_moves(pseudo_legal_moves());
+}
+
+std::vector<Move> Position::filter_legal_moves(std::vector<Move> moves) const {
+    annotate_captures(moves);
     const Color mover = sideToMove_;
     moves.erase(std::remove_if(moves.begin(), moves.end(), [&](const Move& move) {
-        Undo undo;
-        if (!child.make_move_unchecked(move, undo))
+        // A disposable child needs one Position copy. The former full-state
+        // Undo path copied the same ~2 KiB state both into Undo and back into
+        // the reused child for every candidate.
+        Position child = *this;
+        if (!child.apply_move_unchecked(move))
             return true;
-        const bool ownKingAlive = child.has_real_king(mover);
-        const bool jesterAlive = child.pieces(mover, PieceType::Jester) != 0;
-        const bool continuation = child.sideToMove_ == mover && child.has_forced_action();
-        const bool opponentKingDead = !child.has_real_king(~mover);
+        return !child.legal_after_unchecked_move(mover);
+    }), moves.end());
+    return moves;
+}
+
+bool Position::legal_after_unchecked_move(Color mover) const {
+    const bool ownKingAlive = has_real_king(mover);
+    const bool jesterAlive = pieces(mover, PieceType::Jester) != 0;
+    const bool continuation = sideToMove_ == mover && has_forced_action();
+    const bool opponentKingDead = !has_real_king(~mover);
         // Native hidden-royal semantics suspend ordinary check legality while
         // the moving side still owns a Jester. Either royal silhouette may be
         // attacked because the opponent has not proved which one is the real
@@ -1065,28 +1093,80 @@ std::vector<Move> Position::legal_moves() const {
         // exists: at least one recursively legal completion must actually
         // resolve check. Live Ranked exposed this with a Prince h3-g4 while a
         // Sniper on a8 shot through an unseen a3 Ghost to the King on a1.
-        const bool continuationCanFinish =
-          continuation && !child.legal_moves().empty();
-        const bool legal = ownKingAlive &&
-          (opponentKingDead || jesterAlive || continuationCanFinish ||
-           (!continuation && !child.real_king_threatened(mover)));
-        child.undo_move(undo);
-        return !legal;
-    }), moves.end());
+    const bool continuationCanFinish = continuation && !legal_moves().empty();
+    return ownKingAlive &&
+      (opponentKingDead || jesterAlive || continuationCanFinish ||
+       (!continuation && !real_king_threatened(mover)));
+}
+
+bool Position::is_forcing_action(const Move& move) const {
+    if (is_capture(move))
+        return true;
+    if (move.kind == MoveKind::Pull) {
+        const int target = piece_on(move.to);
+        const int actor = piece_on(move.from);
+        return target != NoPiece && actor != NoPiece &&
+               pieces_[target].color != pieces_[actor].color;
+    }
+    // A Mage swap with a Giant delegates to Giant relocation and may knock
+    // out multiple characters even though neither selected piece is hostile.
+    return move.kind == MoveKind::Swap && move.auxiliary < pieceCount_ &&
+           pieces_[move.auxiliary].type == PieceType::Giant;
+}
+
+std::vector<Move> Position::legal_forcing_moves() const {
+    if (forcedTimeoutWinner_ >= 0 ||
+        !has_real_king(Color::White) || !has_real_king(Color::Black) ||
+        !is_checkmate_possible())
+        return {};
+    if (has_forced_action())
+        return legal_moves();
+
+    return filter_legal_moves(pseudo_forcing_moves());
+}
+
+std::vector<Move> Position::pseudo_forcing_moves() const {
+    if (has_forced_action()) {
+        auto moves = pseudo_legal_moves();
+        annotate_captures(moves);
+        return moves;
+    }
+
+    std::vector<Move> moves;
+    moves.reserve(64);
+    for (int id = 0; id < pieceCount_; ++id) {
+        if (!pieces_[id].alive || !pieces_[id].onBoard ||
+            pieces_[id].color != sideToMove_)
+            continue;
+        const PieceType type = pieces_[id].type;
+        // These pieces have indirect forcing actions which their native
+        // attack-only generators omit: a mirrored CopyCat capture, a
+        // Mage/Fisherman Giant relocation, or a blind Sludge/Ghost collision.
+        const bool needsFullList =
+          type == PieceType::Mage || type == PieceType::Fisherman ||
+          type == PieceType::Copycat || type == PieceType::CopycatClone ||
+          type == PieceType::Sludge;
+        append_moves_for(moves, id, !needsFullList);
+    }
+    annotate_captures(moves);
+    moves.erase(std::remove_if(moves.begin(), moves.end(),
+      [this](const Move& move) { return !is_forcing_action(move); }), moves.end());
     return moves;
 }
 
 std::vector<Move> Position::pseudo_legal_moves() const {
-    if (forcedPiece_ != NoPiece)
-        return moves_for(
-            forcedPiece_, continuation_ == Continuation::CheckerJump);
-
     std::vector<Move> moves;
+    moves.reserve(128);
+    if (forcedPiece_ != NoPiece) {
+        append_moves_for(
+            moves, forcedPiece_, continuation_ == Continuation::CheckerJump);
+        return moves;
+    }
+
     for (int id = 0; id < pieceCount_; ++id) {
         if (!pieces_[id].alive || !pieces_[id].onBoard || pieces_[id].color != sideToMove_)
             continue;
-        auto generated = moves_for(id);
-        moves.insert(moves.end(), generated.begin(), generated.end());
+        append_moves_for(moves, id);
     }
     return moves;
 }
@@ -1095,13 +1175,7 @@ bool Position::real_king_threatened(Color color) const {
     if (!has_real_king(color))
         return true;
 
-    int kingSquare = NoSquare;
-    for (int id = 0; id < pieceCount_; ++id)
-        if (pieces_[id].alive && pieces_[id].color == color &&
-            pieces_[id].type == PieceType::King) {
-            kingSquare = pieces_[id].square;
-            break;
-        }
+    const int kingSquare = lsb_square(byType_[index(color)][index(PieceType::King)]);
 
     const auto adjacent = [](int lhs, int rhs) {
         return std::abs(file_of(lhs) - file_of(rhs)) <= 1 &&
@@ -1160,6 +1234,8 @@ bool Position::real_king_threatened(Color color) const {
     attacker.sideToMove_ = ~color;
     attacker.forcedPiece_ = NoPiece;
     attacker.continuation_ = Continuation::None;
+    std::vector<Move> replies;
+    replies.reserve(128);
     for (int actor = 0; actor < attacker.pieceCount_; ++actor) {
         if (!attacker.pieces_[actor].alive || !attacker.pieces_[actor].onBoard ||
             attacker.pieces_[actor].color != attacker.sideToMove_)
@@ -1178,7 +1254,8 @@ bool Position::real_king_threatened(Color color) const {
         // attack list. The four exceptions need their full list: Mage and
         // Fisherman can forcibly translate a Giant, while either CopyCat half
         // may move quietly as its mirrored partner captures the King.
-        const auto replies = attacker.moves_for(actor, !needsQuietCompanion);
+        replies.clear();
+        attacker.append_moves_for(replies, actor, !needsQuietCompanion);
         for (const Move& reply : replies) {
             // Simulate only actions whose affected square set intersects the
             // King or a Bomb chain leading to it. This retains native death,
@@ -1237,11 +1314,10 @@ bool Position::real_king_threatened(Color color) const {
             }
             if (!canKnockOut)
                 continue;
-            Undo undo;
-            if (!attacker.make_move_unchecked(reply, undo))
+            Position child = attacker;
+            if (!child.apply_move_unchecked(reply))
                 continue;
-            const bool killed = !attacker.has_real_king(color);
-            attacker.undo_move(undo);
+            const bool killed = !child.has_real_king(color);
             if (killed)
                 return true;
         }
@@ -1250,6 +1326,8 @@ bool Position::real_king_threatened(Color color) const {
 }
 
 bool Position::is_capture(const Move& move) const {
+    if (move.flags & Move::CaptureKnown)
+        return move.flags & Move::Capture;
     if (move.kind == MoveKind::Shoot)
         return true;
     if (move.kind != MoveKind::Normal)
@@ -1277,6 +1355,16 @@ bool Position::is_capture(const Move& move) const {
     return false;
 }
 
+void Position::annotate_captures(std::vector<Move>& moves) const {
+    for (Move& move : moves) {
+        if (move.flags & Move::CaptureKnown)
+            continue;
+        const bool capture = is_capture(move);
+        move.flags = static_cast<std::uint8_t>(
+          Move::CaptureKnown | (capture ? Move::Capture : 0));
+    }
+}
+
 bool Position::is_legal(const Move& move) const {
     const auto moves = legal_moves();
     return std::find(moves.begin(), moves.end(), move) != moves.end();
@@ -1284,12 +1372,15 @@ bool Position::is_legal(const Move& move) const {
 
 std::vector<int> Position::victims_on(Bitboard mask, int exceptId) const {
     std::vector<int> victims;
-    std::unordered_set<int> seen;
+    victims.reserve(9);
+    std::array<bool, MaxPieces> seen{};
     while (mask) {
         const int square = pop_lsb(mask);
         const int id = board_[square];
-        if (id != NoPiece && id != exceptId && seen.insert(id).second)
+        if (id != NoPiece && id != exceptId && !seen[id]) {
+            seen[id] = true;
             victims.push_back(id);
+        }
     }
     return victims;
 }
@@ -1456,7 +1547,7 @@ void Position::clear_penguin_freeze(int penguin) {
         return;
     const int file = file_of(pieces_[penguin].square);
     const int rank = rank_of(pieces_[penguin].square);
-    std::unordered_set<int> thawed;
+    std::array<bool, MaxPieces> thawed{};
     for (const auto& direction : Around) {
         const std::uint8_t bit = penguin_direction_bit(direction[0], direction[1]);
         if (!(pieces_[penguin].action & bit))
@@ -1468,13 +1559,13 @@ void Position::clear_penguin_freeze(int penguin) {
             continue;
         const int target = board_[make_square(targetFile, targetRank)];
         if (target != NoPiece && pieces_[target].type != PieceType::Penguin)
-            thawed.insert(target);
+            thawed[target] = true;
     }
     // currentFrozenPieces is a HashSet in the shipping simulator. A Giant may
     // occupy several adjacent cells, but one Penguin contributes exactly one
     // freeze layer to that character.
-    for (const int target : thawed)
-        if (pieces_[target].freezeCount)
+    for (int target = 0; target < pieceCount_; ++target)
+        if (thawed[target] && pieces_[target].freezeCount)
             --pieces_[target].freezeCount;
     pieces_[penguin].action = 0;
 }
@@ -1486,7 +1577,7 @@ void Position::apply_penguin_freeze(int penguin) {
     pieces_[penguin].action = 0;
     const int file = file_of(pieces_[penguin].square);
     const int rank = rank_of(pieces_[penguin].square);
-    std::unordered_set<int> frozen;
+    std::array<bool, MaxPieces> frozen{};
     for (const auto& direction : Around) {
         const int targetFile = file + direction[0];
         const int targetRank = rank + direction[1];
@@ -1496,8 +1587,10 @@ void Position::apply_penguin_freeze(int penguin) {
         const int target = board_[make_square(targetFile, targetRank)];
         if (target == NoPiece || pieces_[target].type == PieceType::Penguin)
             continue;
-        if (frozen.insert(target).second)
+        if (!frozen[target]) {
+            frozen[target] = true;
             ++pieces_[target].freezeCount;
+        }
         pieces_[penguin].action |= penguin_direction_bit(direction[0], direction[1]);
     }
 }
@@ -1586,12 +1679,13 @@ void Position::reveal_ghosts_near(int square, Color royalColor) {
 }
 
 void Position::advance_minions(Color color) {
-    std::vector<int> minions;
+    std::array<int, MaxPieces> minions{};
+    int minionCount = 0;
     std::array<bool, MaxPieces> automatic{};
     for (int id = 0; id < pieceCount_; ++id)
         if (pieces_[id].alive && pieces_[id].color == color &&
             pieces_[id].type == PieceType::Minion) {
-            minions.push_back(id);
+            minions[minionCount++] = id;
             // ChangeTurn snapshots the Minions that are eligible after the
             // global cooldown decrement. A later collision does not add a
             // newly thawed/possessed Minion to this automatic pass.
@@ -1648,8 +1742,8 @@ void Position::advance_minions(Color color) {
         state[id] = 2;
     };
 
-    for (const int id : minions)
-        advance(advance, id);
+    for (int index = 0; index < minionCount; ++index)
+        advance(advance, minions[index]);
 }
 
 void Position::finish_turn() {
@@ -1672,8 +1766,13 @@ bool Position::make_move(const Move& move, Undo& undo) {
 
 bool Position::make_move_unchecked(const Move& move, Undo& undo) {
     undo = {board_, pieces_, byType_, occupancy_, pieceCount_, sideToMove_, enPassantSquare_,
-            enPassantVictim_, forcedPiece_, continuation_, halfmove_, fullmove_,
+            enPassantVictim_, forcedPiece_, continuation_, forcedTimeoutWinner_, halfmove_, fullmove_,
             nextAttachmentOrder_};
+
+    return apply_move_unchecked(move);
+}
+
+bool Position::apply_move_unchecked(const Move& move) {
 
     const int id = board_[move.from];
     if (id == NoPiece)
@@ -1723,6 +1822,14 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
         place_on_board(rook);
         place_on_board(id);
         reveal_ghosts_near(actor.square, actor.color);
+        if (pieces_[rook].color != actor.color) {
+            // SimulatedKing advertises an enemy-owned Rook castle and the live
+            // Character path visibly relocates both models. It then changes
+            // board.turn to the Rook's side without changing Local/online
+            // playerTeam, so that opponent can never select a character and
+            // deterministically loses when their action clock expires.
+            forcedTimeoutWinner_ = static_cast<std::int8_t>(actor.color);
+        }
     }
     else if (move.kind == MoveKind::Swap) {
         const int other = move.auxiliary;
@@ -2034,16 +2141,14 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
 std::uint64_t Position::perft(int depth) const {
     if (depth <= 0)
         return 1;
-    Position child = *this;
     std::uint64_t nodes = 0;
     for (const Move& move : legal_moves()) {
-        Undo undo;
+        Position child = *this;
         // The perft frontier is the position's own legal list; revalidating
         // each member would regenerate that complete list once per child.
-        if (!child.make_move_unchecked(move, undo))
+        if (!child.apply_move_unchecked(move))
             continue;
         nodes += child.perft(depth - 1);
-        child.undo_move(undo);
     }
     return nodes;
 }
@@ -2059,72 +2164,53 @@ void Position::undo_move(const Undo& undo) {
     enPassantVictim_ = undo.enPassantVictim;
     forcedPiece_ = undo.forcedPiece;
     continuation_ = undo.continuation;
+    forcedTimeoutWinner_ = undo.forcedTimeoutWinner;
     halfmove_ = undo.halfmove;
     fullmove_ = undo.fullmove;
     nextAttachmentOrder_ = undo.nextAttachmentOrder;
 }
 
 bool Position::has_real_king(Color color) const {
-    for (int id = 0; id < pieceCount_; ++id)
-        if (pieces_[id].alive && pieces_[id].color == color && pieces_[id].type == PieceType::King)
-            return true;
-    return false;
+    return byType_[index(color)][index(PieceType::King)] != 0;
 }
 
 bool Position::team_has_sufficient_material(Color color) const {
-    int minorCount = 0;
+    const auto& types = byType_[index(color)];
+    const Bitboard decisive =
+      types[index(PieceType::Jester)] |
+      types[index(PieceType::Pawn)] |
+      types[index(PieceType::Queen)] |
+      types[index(PieceType::Rook)] |
+      types[index(PieceType::Berserker)] |
+      types[index(PieceType::Bomb)] |
+      types[index(PieceType::Ninja)] |
+      types[index(PieceType::Ghost)] |
+      types[index(PieceType::Penguin)] |
+      types[index(PieceType::Parasite)] |
+      types[index(PieceType::Sniper)] |
+      types[index(PieceType::Prince)] |
+      types[index(PieceType::Giant)] |
+      types[index(PieceType::Copycat)] |
+      types[index(PieceType::Dragon)];
+    if (decisive)
+        return true;
+
+    const int minorCount = popcount(
+      types[index(PieceType::Knight)] | types[index(PieceType::Turtle)]);
     bool evenColorBound = false;
     bool oddColorBound = false;
-    bool support = false;
-    for (int id = 0; id < pieceCount_; ++id) {
-        const PieceState& item = pieces_[id];
-        if (!item.alive || item.color != color)
-            continue;
-        switch (item.type) {
-        case PieceType::Jester:
-        case PieceType::Pawn:
-        case PieceType::Queen:
-        case PieceType::Rook:
-        case PieceType::Berserker:
-        case PieceType::Bomb:
-        case PieceType::Ninja:
-        case PieceType::Ghost:
-        case PieceType::Penguin:
-        case PieceType::Parasite:
-        case PieceType::Sniper:
-        case PieceType::Prince:
-        case PieceType::Giant:
-        case PieceType::Copycat:
-        case PieceType::Dragon:
-            return true;
-        case PieceType::Knight:
-        case PieceType::Turtle:
-            ++minorCount;
-            break;
-        case PieceType::Bishop:
-        case PieceType::Checker:
-        case PieceType::CheckerKing:
-            if ((file_of(item.square) + rank_of(item.square)) & 1)
-                oddColorBound = true;
-            else
-                evenColorBound = true;
-            break;
-        case PieceType::Mage:
-        case PieceType::Fisherman:
-            support = true;
-            break;
-        case PieceType::King:
-        case PieceType::Goop:
-        case PieceType::Devil:
-        case PieceType::Minion:
-        case PieceType::Sludge:
-        case PieceType::CopycatClone:
-        case PieceType::Angel:
-        case PieceType::Halo:
-        case PieceType::Count:
-            break;
-        }
+    Bitboard colorBound = types[index(PieceType::Bishop)] |
+                          types[index(PieceType::Checker)] |
+                          types[index(PieceType::CheckerKing)];
+    while (colorBound) {
+        const int square = pop_lsb(colorBound);
+        if ((file_of(square) + rank_of(square)) & 1)
+            oddColorBound = true;
+        else
+            evenColorBound = true;
     }
+    const bool support = types[index(PieceType::Mage)] |
+                         types[index(PieceType::Fisherman)];
     if (minorCount > 1 || (evenColorBound && oddColorBound))
         return true;
     if (support && (evenColorBound || oddColorBound))
@@ -2138,13 +2224,16 @@ bool Position::is_checkmate_possible() const {
 }
 
 bool Position::game_over() const {
-    if (!has_real_king(Color::White) || !has_real_king(Color::Black) ||
+    if (forcedTimeoutWinner_ >= 0 ||
+        !has_real_king(Color::White) || !has_real_king(Color::Black) ||
         !is_checkmate_possible())
         return true;
     return legal_moves().empty();
 }
 
 std::optional<Color> Position::winner() const {
+    if (forcedTimeoutWinner_ >= 0)
+        return static_cast<Color>(forcedTimeoutWinner_);
     const bool white = has_real_king(Color::White);
     const bool black = has_real_king(Color::Black);
     if (white != black)
@@ -2164,6 +2253,7 @@ std::uint64_t Position::key() const {
     };
     mix(static_cast<std::uint8_t>(sideToMove_));
     mix(static_cast<std::uint8_t>(continuation_));
+    mix(static_cast<std::uint64_t>(forcedTimeoutWinner_ + 1));
     mix(static_cast<std::uint64_t>(forcedPiece_ + 1));
     mix(static_cast<std::uint64_t>(enPassantSquare_ + 1));
     mix(static_cast<std::uint64_t>(enPassantVictim_ + 1));
@@ -2185,13 +2275,13 @@ std::uint64_t Position::key() const {
     return hash;
 }
 
-int Position::evaluate() const {
+int Position::static_evaluate() const {
     int score = 0;
     int kingSquare[2] = {NoSquare, NoSquare};
-    for (int id = 0; id < pieceCount_; ++id) {
-        const PieceState& piece = pieces_[id];
-        if (piece.alive && piece.onBoard && piece.type == PieceType::King)
-            kingSquare[index(piece.color)] = piece.square;
+    for (Color color : {Color::White, Color::Black}) {
+        const Bitboard king = byType_[index(color)][index(PieceType::King)];
+        if (king)
+            kingSquare[index(color)] = lsb_square(king);
     }
     for (int id = 0; id < pieceCount_; ++id) {
         const PieceState& piece = pieces_[id];
@@ -2238,12 +2328,17 @@ int Position::evaluate() const {
         }
         score += piece.color == Color::White ? value : -value;
     }
+    return sideToMove_ == Color::White ? score : -score;
+}
+
+int Position::evaluate() const {
+    int score = static_evaluate();
     if (game_over()) {
         const auto winning = winner();
         if (winning)
-            score = *winning == Color::White ? 30000 : -30000;
+            score = *winning == sideToMove_ ? 30000 : -30000;
     }
-    return sideToMove_ == Color::White ? score : -score;
+    return score;
 }
 
 std::string Position::upn() const {
@@ -2263,7 +2358,10 @@ std::string Position::upn() const {
     std::ostringstream out;
     out << (sideToMove_ == Color::White ? 'w' : 'b') << ";hm=" << halfmove_ << ";fm=" << fullmove_
         << ";ep=" << square_name(enPassantSquare_) << ";cont=" << static_cast<int>(continuation_)
-        << ";forced=" << remap(forcedPiece_) << ";epv=" << remap(enPassantVictim_);
+        << ";forced=" << remap(forcedPiece_) << ";epv=" << remap(enPassantVictim_)
+        << ";win="
+        << (forcedTimeoutWinner_ < 0 ? '-' :
+            forcedTimeoutWinner_ == static_cast<std::int8_t>(Color::White) ? 'w' : 'b');
     for (int id = 0; id < pieceCount_; ++id) {
         const PieceState& item = pieces_[id];
         if (!item.alive)
@@ -2331,6 +2429,18 @@ bool Position::set_upn(std::string_view text, std::string* error) {
             if (!parse_int(item.substr(4), parsed.enPassantVictim_) ||
                 parsed.enPassantVictim_ < NoPiece)
                 return fail("invalid en-passant victim id");
+            continue;
+        }
+        if (starts_with(item, "win=")) {
+            const std::string_view value = item.substr(4);
+            if (value == "-")
+                parsed.forcedTimeoutWinner_ = -1;
+            else if (value == "w")
+                parsed.forcedTimeoutWinner_ = static_cast<std::int8_t>(Color::White);
+            else if (value == "b")
+                parsed.forcedTimeoutWinner_ = static_cast<std::int8_t>(Color::Black);
+            else
+                return fail("invalid forced-timeout winner");
             continue;
         }
         const auto values = split(item, ',');

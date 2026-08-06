@@ -17,3 +17,9 @@ printf '%s\n' "position upn $ultimate" 'perft 1' 'perft 2' 'perft 3' 'go depth 5
 
 printf '\nRecovered Unranked loss opening\n'
 printf '%s\n' "position upn $unranked_loss" 'go depth 4' 'go depth 7' quit | "$engine"
+
+if [ "${ULTIMATE_LONG_BENCHMARK:-0}" = 1 ]; then
+    printf '\nRecovered Unranked loss opening (10-second horizon)\n'
+    printf '%s\n' "position upn $unranked_loss" \
+        'go movetime 10000 depth 20' quit | "$engine"
+fi

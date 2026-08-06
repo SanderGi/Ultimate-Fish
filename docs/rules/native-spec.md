@@ -261,9 +261,12 @@ and remaps every relationship so captures cannot corrupt a round trip.
 - King and Jester both use `SimulatedKing` castling. An unmoved royal scans
   horizontally to the first occupied square; when it is an unmoved Rook at
   least three files away, the royal may move two files toward it and the Rook
-  lands on the square beside the royal. The native generator does not require
-  the Rook to share the royal's team and does not test check on the starting or
-  crossed square.
+  lands on the square beside the royal. The Rook need not share the royal's
+  team. With an enemy-owned Rook, the live Character path visibly relocates
+  both pieces and advances `board.turn`, but never hands `playerTeam` to the
+  opponent. That opponent cannot act and deterministically loses when their
+  action clock expires, so Ultimate Fish scores the move as a terminal forced-
+  timeout win. Castling does not test check on the starting or crossed square.
 - While a side still owns a Jester, either royal silhouette may remain in
   check. The opponent has not proved which silhouette is the real King, so
   ordinary real-King check filtering is suspended until that Jester is gone;

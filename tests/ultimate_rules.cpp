@@ -2,6 +2,7 @@
 #include "../src/ultimate/draft.h"
 #include "../src/ultimate/search.h"
 
+#include <algorithm>
 #include <cstdlib>
 #include <iostream>
 #include <string>
@@ -446,12 +447,37 @@ void test_native_castling() {
     enemyRook.add_piece(PieceType::King, Color::Black,
                         Position::square_from_name("a10"));
     // Keep the foreign Rook from making the completed position check the
-    // King; castling itself ignores this cooldown and still drags the Rook.
+    // King so this assertion isolates ownership. Committing the native dot
+    // advances board.turn without handing control to Player 2, forcing that
+    // player to lose on their action clock.
     enemyRook.piece(foreignRook).cooldown = 2;
     const auto foreignCastle = enemyRook.move_from_string("d2-f2");
     expect(foreignCastle && foreignCastle->kind == MoveKind::Castle &&
            foreignCastle->auxiliary == foreignRook,
-           "native castle scan does not filter a Rook by team");
+           "native castle scan exposes an enemy-owned Rook");
+    const std::string foreignBefore = enemyRook.upn();
+    Undo foreignUndo;
+    expect(enemyRook.make_move(*foreignCastle, foreignUndo) &&
+           enemyRook.game_over() && enemyRook.winner() == Color::White &&
+           enemyRook.legal_moves().empty(),
+           "enemy-Rook castle is a terminal forced-timeout win for its mover");
+    Position serializedForeign;
+    std::string foreignError;
+    expect(serializedForeign.set_upn(enemyRook.upn(), &foreignError) &&
+           serializedForeign.game_over() &&
+           serializedForeign.winner() == Color::White,
+           "forced-timeout winner survives lossless UPN serialization");
+    enemyRook.undo_move(foreignUndo);
+    expect(enemyRook.upn() == foreignBefore,
+           "enemy-Rook castle undo restores the nonterminal position");
+    Search timeoutSearch(1);
+    SearchLimits timeoutLimits;
+    timeoutLimits.depth = 2;
+    const SearchResult timeoutResult = timeoutSearch.think(enemyRook, timeoutLimits);
+    expect(timeoutResult.bestMove &&
+           enemyRook.move_to_string(*timeoutResult.bestMove) == "d2-f2" &&
+           timeoutResult.score > 29000,
+           "search recognizes the enemy-Rook castle as a forced win");
 }
 
 void test_ninja_and_mage() {
@@ -1632,6 +1658,69 @@ void test_search_and_perft_regressions() {
     expect(fixture.set_upn(upn, &error), "perft fixture parses: " + error);
     expect(fixture.perft(1) == 44 && fixture.perft(2) == 1936 && fixture.perft(3) == 74045,
            "mixed-roster perft remains stable at depths one through three");
+
+    const auto legal = fixture.legal_moves();
+    const auto forcing = fixture.legal_forcing_moves();
+    const auto expectedForcing = [&fixture](const Move& move) {
+        if (fixture.is_capture(move))
+            return true;
+        if (move.kind == MoveKind::Pull) {
+            const int actor = fixture.piece_on(move.from);
+            const int target = fixture.piece_on(move.to);
+            return actor != Position::NoPiece && target != Position::NoPiece &&
+                   fixture.piece(actor).color != fixture.piece(target).color;
+        }
+        return move.kind == MoveKind::Swap &&
+               move.auxiliary < fixture.piece_count() &&
+               fixture.piece(move.auxiliary).type == PieceType::Giant;
+    };
+    for (const Move& move : legal)
+        expect((std::find(forcing.begin(), forcing.end(), move) != forcing.end()) ==
+                 expectedForcing(move),
+               "forcing frontier exactly matches the former full-frontier filter");
+    expect(std::all_of(forcing.begin(), forcing.end(), [&legal](const Move& move) {
+               return std::find(legal.begin(), legal.end(), move) != legal.end();
+           }),
+           "every forcing-frontier action remains fully legal");
+
+    // A live relocation self-play exposed a reversible Fisherman/check line
+    // whose quiescence search could recurse until the process stack overflowed.
+    // Prime the same persistent history over the preceding position sequence,
+    // then require the formerly crashing search to stop at its node budget.
+    Position cycle;
+    expect(cycle.set_upn(
+      "w;hm=0;fm=1;ep=-;cont=0;forced=-1;king,w,e1;mage,w,c2;giant,w,f2;"
+      "fisherman,w,a2;rook,w,d3;king,b,e10;mage,b,c9;giant,b,f8;"
+      "fisherman,b,a9;rook,b,d8", &error),
+      "relocation quiescence-cycle fixture parses: " + error);
+    Search cycleSearch(1);
+    SearchLimits cycleLimits;
+    cycleLimits.depth = 20;
+    cycleLimits.nodes = 50'000;
+    const std::array<std::pair<const char*, const char*>, 7> prelude = {{
+      {"a2-d5", "d8-e8"}, {"e1-f1", "c9~f9"},
+      {"c2~d5", "a9-a2"}, {"d5~g2", "c8-c6"},
+      {"d3-d6", "e8-e3"}, {"c2-c6", "a2-c2"},
+      {"c6!f9", "c2!c6"},
+    }};
+    auto apply = [](Position& position, const char* notation) {
+        Undo undo;
+        const auto move = position.move_from_string(notation);
+        return move && position.make_move(*move, undo);
+    };
+    for (const auto& [whiteMove, blackMove] : prelude) {
+        expect(apply(cycle, whiteMove),
+               std::string("cycle prelude accepts ") + whiteMove);
+        const SearchResult priming = cycleSearch.think(cycle, cycleLimits);
+        expect(priming.bestMove.has_value(),
+               "persistent cycle search returns a move while priming history");
+        expect(apply(cycle, blackMove),
+               std::string("cycle prelude accepts ") + blackMove);
+    }
+    expect(apply(cycle, "c3-c7"), "cycle trigger position accepts c3-c7");
+    const SearchResult boundedCycle = cycleSearch.think(cycle, cycleLimits);
+    expect(boundedCycle.bestMove.has_value() && boundedCycle.nodes <= cycleLimits.nodes,
+           "forcing quiescence cycles respect the hard ply/node bounds");
 }
 
 void test_native_information_set_search() {

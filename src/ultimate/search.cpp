@@ -39,21 +39,6 @@ int score_from_tt(int score, int ply) {
     return score;
 }
 
-bool is_forcing_move(const Position& position, const Move& move) {
-    if (position.is_capture(move))
-        return true;
-    if (move.kind == MoveKind::Pull) {
-        const int target = position.piece_on(move.to);
-        const int actor = position.piece_on(move.from);
-        return target != Position::NoPiece && actor != Position::NoPiece &&
-               position.piece(target).color != position.piece(actor).color;
-    }
-    // A Mage swap with a Giant delegates to the Giant's forced relocation
-    // routine and can knock out several characters on either team.
-    return move.kind == MoveKind::Swap && move.auxiliary < position.piece_count() &&
-           position.piece(move.auxiliary).type == PieceType::Giant;
-}
-
 }  // namespace
 
 Search::Search(std::size_t hashMegabytes) {
@@ -108,11 +93,13 @@ bool Search::stopped() {
     return false;
 }
 
-int Search::move_score(const Position& position, const Move& move, const Move* ttMove, int ply) const {
+int Search::move_score(const Position& position, const Move& move,
+                       const Move* ttMove, int ply) const {
     if (ttMove && move == *ttMove)
         return 1'000'000;
     int score = 0;
-    if (position.is_capture(move)) {
+    const bool capture = position.is_capture(move);
+    if (capture) {
         const int victim = position.piece_on(move.to);
         const int attacker = position.piece_on(move.from);
         if (victim != Position::NoPiece)
@@ -143,7 +130,7 @@ int Search::move_score(const Position& position, const Move& move, const Move* t
     if (move.kind == MoveKind::Link || move.kind == MoveKind::Spawn)
         score += 2'000;
     const int attacker = position.piece_on(move.from);
-    if (attacker != Position::NoPiece && !position.is_capture(move)) {
+    if (attacker != Position::NoPiece && !capture) {
         if (ply < static_cast<int>(killers_.size()) && move == killers_[ply][0])
             score += 70'000;
         else if (ply < static_cast<int>(killers_.size()) && move == killers_[ply][1])
@@ -156,21 +143,30 @@ int Search::move_score(const Position& position, const Move& move, const Move* t
 int Search::quiescence(Position& position, int alpha, int beta, int ply) {
     ++nodes_;
     if (stopped())
-        return position.evaluate();
+        return position.static_evaluate();
     const Color side = position.side_to_move();
+    if (const auto winner = position.forced_timeout_winner())
+        return *winner == side ? Mate - ply : -Mate + ply;
     const bool ownKing = position.has_real_king(side);
     const bool enemyKing = position.has_real_king(~side);
     if (!ownKing || !enemyKing)
         return ownKing == enemyKing ? 0 : ownKing ? Mate - ply : -Mate + ply;
     if (!position.is_checkmate_possible())
         return 0;
+    // Repeated checks, pulls, or other forcing actions can form a reversible
+    // quiescence cycle. Never let such a line consume the native thread's
+    // stack; the ordinary stand-pat cap below cannot apply while in check.
+    if (ply >= MaxPly - 1)
+        return position.static_evaluate();
 
     // A Checker jump or Prince follow-up is not optional. Likewise, when any
     // Checker has a capture the native rules suppress every quiet action. Do
     // not apply the usual quiescence "stand pat" assumption in those states.
-    const bool forced = position.has_forced_action();
+    const bool inCheck = !position.pieces(side, PieceType::Jester) &&
+                         position.real_king_threatened(side);
+    const bool forced = position.has_forced_action() || inCheck;
     if (!forced) {
-        const int standPat = position.evaluate();
+        const int standPat = position.static_evaluate();
         if (standPat >= beta)
             return beta;
         alpha = std::max(alpha, standPat);
@@ -178,36 +174,44 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
             return alpha;
     }
 
-    auto moves = position.legal_moves();
+    // Search orders pseudo-legal actions and validates each action on the
+    // child it will actually search. The public legal_moves() path remains the
+    // reference API, but using it here simulated every legal move twice and
+    // every move beyond an early alpha-beta cutoff unnecessarily.
+    auto moves = forced ? position.pseudo_legal_moves()
+                        : position.pseudo_forcing_moves();
+    position.annotate_captures(moves);
     if (moves.empty())
-        return position.real_king_threatened(side) ? -Mate + ply : 0;
-    if (!forced)
-        moves.erase(std::remove_if(moves.begin(), moves.end(), [&position](const Move& move) {
-                        return !is_forcing_move(position, move);
-                    }), moves.end());
-    if (moves.empty())
-        return forced ? position.evaluate() : alpha;
-    std::sort(moves.begin(), moves.end(), [this, &position, ply](const Move& lhs, const Move& rhs) {
-        return move_score(position, lhs, nullptr, ply) > move_score(position, rhs, nullptr, ply);
+        return inCheck ? -Mate + ply : forced ? 0 : alpha;
+    for (Move& move : moves)
+        move.orderScore = move_score(position, move, nullptr, ply);
+    std::sort(moves.begin(), moves.end(), [](const Move& lhs, const Move& rhs) {
+        return lhs.orderScore > rhs.orderScore;
     });
 
+    bool foundLegal = false;
     for (const Move& move : moves) {
         const Color before = position.side_to_move();
-        Undo undo;
-        // `moves` came from legal_moves(), so validating it again would
-        // regenerate and royal-check the complete sibling list at every node.
-        if (!position.make_move_unchecked(move, undo))
+        // Search a disposable child. This copies Position once; mutating and
+        // restoring the parent through the reference Undo path copied the
+        // complete board/piece/bitboard state twice per searched edge.
+        Position child = position;
+        if (!child.apply_move_unchecked(move))
             continue;
-        const bool sameSide = position.side_to_move() == before;
-        const int score = sameSide ? quiescence(position, alpha, beta, ply + 1)
-                                   : -quiescence(position, -beta, -alpha, ply + 1);
-        position.undo_move(undo);
+        if (!child.legal_after_unchecked_move(side))
+            continue;
+        foundLegal = true;
+        const bool sameSide = child.side_to_move() == before;
+        const int score = sameSide ? quiescence(child, alpha, beta, ply + 1)
+                                   : -quiescence(child, -beta, -alpha, ply + 1);
         if (stopped())
             return alpha;
         if (score >= beta)
             return beta;
         alpha = std::max(alpha, score);
     }
+    if (!foundLegal)
+        return inCheck ? -Mate + ply : forced ? 0 : alpha;
     return alpha;
 }
 
@@ -215,14 +219,18 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
                     std::vector<Move>& pv) {
     pv.clear();
     if (stopped())
-        return position.evaluate();
+        return position.static_evaluate();
     const Color side = position.side_to_move();
+    if (const auto winner = position.forced_timeout_winner())
+        return *winner == side ? Mate - ply : -Mate + ply;
     const bool ownKing = position.has_real_king(side);
     const bool enemyKing = position.has_real_king(~side);
     if (!ownKing || !enemyKing)
         return ownKing == enemyKing ? 0 : ownKing ? Mate - ply : -Mate + ply;
     if (!position.is_checkmate_possible())
         return 0;
+    if (ply >= MaxPly - 1)
+        return position.static_evaluate();
     if (depth <= 0)
         return quiescence(position, alpha, beta, ply);
 
@@ -235,35 +243,37 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
     Move ttMove{};
     const Move* ttMovePtr = nullptr;
     if (entry && !adjustedRoot) {
-        ttMove = entry->move;
+        ttMove = entry->move.unpack();
         ttMovePtr = &ttMove;
         if (entry->depth >= depth) {
             const int ttScore = score_from_tt(entry->score, ply);
             if (entry->bound == Bound::Exact) {
-                pv.push_back(entry->move);
+                pv.push_back(ttMove);
                 return ttScore;
             }
             if (entry->bound == Bound::Lower && ttScore >= beta) {
-                pv.push_back(entry->move);
+                pv.push_back(ttMove);
                 return ttScore;
             }
             if (entry->bound == Bound::Upper && ttScore <= alpha) {
-                pv.push_back(entry->move);
+                pv.push_back(ttMove);
                 return ttScore;
             }
         }
     }
 
-    auto moves = position.legal_moves();
+    auto moves = position.pseudo_legal_moves();
+    position.annotate_captures(moves);
     if (restrictedRoot)
         moves.erase(std::remove_if(moves.begin(), moves.end(), [this](const Move& move) {
             return std::find(rootMoves_.begin(), rootMoves_.end(), move) == rootMoves_.end();
         }), moves.end());
     if (moves.empty())
         return position.real_king_threatened(side) ? -Mate + ply : 0;
-    std::stable_sort(moves.begin(), moves.end(), [this, &position, ttMovePtr, ply](const Move& lhs,
-                                                                             const Move& rhs) {
-        return move_score(position, lhs, ttMovePtr, ply) > move_score(position, rhs, ttMovePtr, ply);
+    for (Move& move : moves)
+        move.orderScore = move_score(position, move, ttMovePtr, ply);
+    std::stable_sort(moves.begin(), moves.end(), [](const Move& lhs, const Move& rhs) {
+        return lhs.orderScore > rhs.orderScore;
     });
 
     int bestScore = -Infinity;
@@ -284,31 +294,48 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
             score = 0;
             childPv.clear();
         } else {
-            Undo undo;
-            // Search only iterates the already validated legal list. Applying the
-            // trusted move directly avoids a quadratic duplicate legality pass.
-            if (!position.make_move_unchecked(move, undo))
+            Position child = position;
+            // Apply once, validate the resulting child, and search that same
+            // child. This replaces the former legal-frontier pass plus a
+            // duplicate application of every action actually searched.
+            if (!child.apply_move_unchecked(move))
                 continue;
-            const bool sameSide = position.side_to_move() == before;
+            if (!child.legal_after_unchecked_move(side))
+                continue;
+            const bool sameSide = child.side_to_move() == before;
             const int nextDepth = depth - (sameSide ? 0 : 1);
-            const int reduction = depth >= 3 && moveNumber >= 4 && quiet && !sameSide ? 1 : 0;
+            int reduction = 0;
+            if (depth >= 3 && moveNumber >= 4 && quiet && !sameSide) {
+                reduction = 1;
+                // A one-ply reduction leaves the very broad late quiet tail
+                // almost unpruned at Ultimate depths. Increase it only after
+                // several ordered alternatives have failed, and always
+                // re-search a move which raises alpha below. Special actions,
+                // captures, and same-side continuations remain unreduced.
+#ifndef ULTIMATE_CONSERVATIVE_LMR
+                if (depth >= 6 && moveNumber >= 8)
+                    ++reduction;
+                if (depth >= 9 && moveNumber >= 16)
+                    ++reduction;
+#endif
+                reduction = std::min(reduction, std::max(0, nextDepth - 1));
+            }
             if (moveNumber == 0) {
-                score = sameSide ? negamax(position, nextDepth, alpha, beta, ply + 1, childPv)
-                                 : -negamax(position, nextDepth, -beta, -alpha, ply + 1, childPv);
+                score = sameSide ? negamax(child, nextDepth, alpha, beta, ply + 1, childPv)
+                                 : -negamax(child, nextDepth, -beta, -alpha, ply + 1, childPv);
             }
             else if (sameSide) {
-                score = negamax(position, nextDepth, alpha, alpha + 1, ply + 1, childPv);
+                score = negamax(child, nextDepth, alpha, alpha + 1, ply + 1, childPv);
                 if (score > alpha && score < beta)
-                    score = negamax(position, nextDepth, alpha, beta, ply + 1, childPv);
+                    score = negamax(child, nextDepth, alpha, beta, ply + 1, childPv);
             }
             else {
-                score = -negamax(position, nextDepth - reduction, -alpha - 1, -alpha, ply + 1, childPv);
+                score = -negamax(child, nextDepth - reduction, -alpha - 1, -alpha, ply + 1, childPv);
                 if (reduction && score > alpha)
-                    score = -negamax(position, nextDepth, -alpha - 1, -alpha, ply + 1, childPv);
+                    score = -negamax(child, nextDepth, -alpha - 1, -alpha, ply + 1, childPv);
                 if (score > alpha && score < beta)
-                    score = -negamax(position, nextDepth, -beta, -alpha, ply + 1, childPv);
+                    score = -negamax(child, nextDepth, -beta, -alpha, ply + 1, childPv);
             }
-            position.undo_move(undo);
         }
         ++moveNumber;
         if (stopped())
@@ -333,7 +360,11 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
         }
     }
 
-    if (!stop_ && !adjustedRoot && bestScore != -Infinity &&
+    if (bestScore == -Infinity)
+        return stop_ ? position.static_evaluate()
+                     : position.real_king_threatened(side) ? -Mate + ply : 0;
+
+    if (!stop_ && !adjustedRoot &&
         (!entry || depth >= entry->depth || entry->generation != generation_)) {
         Entry& replacement = replacement_entry(key);
         replacement.key = key;
@@ -346,7 +377,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
                                                        : Bound::Exact;
         replacement.generation = generation_;
     }
-    return bestScore == -Infinity ? position.evaluate() : bestScore;
+    return bestScore;
 }
 
 SearchResult Search::think(Position& position, const SearchLimits& limits) {
@@ -365,12 +396,17 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
             value /= 2;
 
     SearchResult result;
-    const int maxDepth = std::max(1, limits.depth);
+    const int maxDepth = std::clamp(limits.depth, 1, MaxPly - 2);
     int previousScore = 0;
     for (int depth = 1; depth <= maxDepth; ++depth) {
         std::vector<Move> pv;
-        int alpha = depth >= 3 ? std::max(-Infinity, previousScore - 60) : -Infinity;
-        int beta = depth >= 3 ? std::min(Infinity, previousScore + 60) : Infinity;
+        // At deeper Ultimate plies, whole-character swings make the narrow
+        // probe fail often enough that its work is a net loss before the
+        // mandatory full-window re-search. Keep aspiration where it is stable
+        // and start directly with the exact window from depth eight onward.
+        const bool aspirate = depth >= 3 && depth < 8;
+        int alpha = aspirate ? std::max(-Infinity, previousScore - 60) : -Infinity;
+        int beta = aspirate ? std::min(Infinity, previousScore + 60) : Infinity;
         int score = negamax(position, depth, alpha, beta, 0, pv);
         if (!stop_ && (score <= alpha || score >= beta)) {
             pv.clear();

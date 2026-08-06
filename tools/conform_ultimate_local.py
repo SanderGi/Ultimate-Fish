@@ -124,13 +124,36 @@ def load_manifest(path: Path) -> dict:
                     f"{fixture['id']}.steps[{index}] must be an object"
                 )
             operations = set(step) & {
-                "move", "reject", "piece", "native_moves", "native_deaths"
+                "move", "reject", "terminal_move", "piece",
+                "native_moves", "native_deaths"
             }
+            if "reconcile_unlogged_deaths" in step:
+                if ("move" not in step or
+                        step["reconcile_unlogged_deaths"] is not True):
+                    raise ValueError(
+                        f"{fixture['id']}.steps[{index}] death reconciliation "
+                        "must be true on a move step"
+                    )
             if len(operations) != 1:
                 raise ValueError(
                     f"{fixture['id']}.steps[{index}] must have exactly one "
-                    "move, reject, piece, native_moves, or native_deaths assertion"
+                    "move, reject, terminal_move, piece, native_moves, or "
+                    "native_deaths assertion"
                 )
+            if "terminal_move" in step:
+                assertion = step["terminal_move"]
+                if (not isinstance(assertion, dict) or
+                        set(assertion) != {"move", "label"} or
+                        assertion.get("label") not in
+                        {"checkmate", "knockout", "draw", "forced-timeout"} or
+                        not isinstance(assertion.get("move"), str)):
+                    raise ValueError(
+                        f"{fixture['id']}.steps[{index}].terminal_move needs "
+                        "a move and checkmate, knockout, draw, or "
+                        "forced-timeout label"
+                    )
+                parse_engine_move(assertion["move"])
+                continue
             if "native_deaths" in step:
                 deaths = step["native_deaths"]
                 if (not isinstance(deaths, list) or not deaths or
@@ -199,7 +222,9 @@ def _piece_counts(upn: str) -> Counter[tuple[str, str]]:
                    in parse_upn_pieces(upn))
 
 
-def automatic_minion_transition(before: str, after: str) -> bool:
+def automatic_minion_transition(
+    before: str, after: str, move: str | None = None
+) -> bool:
     """Whether advancing the turn changed any generated Minion state.
 
     Unity emits an early ``ChangeTurn End`` before it animates a Minion's
@@ -216,7 +241,21 @@ def automatic_minion_transition(before: str, after: str) -> bool:
             if piece == "minion" and color == next_side
         )
 
-    return signature(before) != signature(after)
+    before_signature = signature(before)
+    if move is not None:
+        _source, target, _separator = parse_engine_move(move)
+        victim = upn_piece_covering(before, target)
+        if victim is not None and victim[:2] == ("minion", next_side):
+            # A player action can remove the Minion whose side is about to
+            # move. That death happens before the actor's HasMoved callback
+            # and needs no second ChangeTurn barrier. Discount only that
+            # directly targeted instance; another Minion moving automatically
+            # still changes the remaining signature and keeps the extra wait.
+            before_signature[target] -= 1
+            if before_signature[target] <= 0:
+                del before_signature[target]
+
+    return before_signature != signature(after)
 
 
 def wait_for_native_turn_barriers(
@@ -484,7 +523,12 @@ def run_fixture(
                         f"fixture rejection {move} is engine-legal"
                     )
                 try:
-                    event = game.execute(move)
+                    # One authoritative centered attempt is sufficient to
+                    # prove a native rejection. Exhausting all nine
+                    # destination offsets is appropriate for a move expected
+                    # to succeed, but can consume the entire Local clock while
+                    # confirming an intentionally frozen/illegal action.
+                    event = game.execute(move, _retry_destination=False)
                 except TimeoutError:
                     observations.append(
                         {"step": index, "reject": move, "accepted": False}
@@ -494,6 +538,120 @@ def run_fixture(
                 raise AssertionError(
                     f"native accepted engine-illegal {move} ({event.kind})"
                 )
+
+            if "terminal_move" in step:
+                assertion = step["terminal_move"]
+                move = assertion["move"]
+                expected_label = assertion["label"]
+                position = game.beliefs.positions[0]
+                if move not in game.engine.legal_moves(position):
+                    raise AssertionError(
+                        f"fixture terminal move {move} is engine-illegal"
+                    )
+                predicted = game.engine.apply(position, move)
+                if expected_label == "knockout":
+                    before_kings = sum(
+                        piece == "king"
+                        for piece, _color, _square, _state
+                        in parse_upn_pieces(position)
+                    )
+                    after_kings = sum(
+                        piece == "king"
+                        for piece, _color, _square, _state
+                        in parse_upn_pieces(predicted)
+                    )
+                    if after_kings != before_kings - 1:
+                        raise AssertionError(
+                            f"engine move {move} does not knock out one King"
+                        )
+                if expected_label == "forced-timeout":
+                    winner = position.split(";", 1)[0]
+                    if f";win={winner}" not in predicted:
+                        raise AssertionError(
+                            f"engine move {move} does not preserve its "
+                            "forced-timeout winner"
+                        )
+                event_generation, event_prefix = game.events.gameplay_snapshot()
+                event = game.execute(
+                    move, game.beliefs.move_causes_bomb_detonation(move)
+                )
+                if expected_label == "forced-timeout":
+                    if event.kind != "forced_timeout":
+                        raise AssertionError(
+                            f"native forced-timeout move {move} ended with "
+                            f"{event.kind}"
+                        )
+                    game.beliefs.positions = [predicted]
+                    observations.append({
+                        "step": index,
+                        "terminal_move": move,
+                        "label": expected_label,
+                        "native_event": "board.turn/playerTeam mismatch",
+                    })
+                    print(
+                        f"{fixture['id']} terminal {move}: forced timeout "
+                        "confirmed by native turn/player mismatch",
+                        flush=True,
+                    )
+                    continue
+                deadline = time.monotonic() + 10.0
+                observed_label = (
+                    event.source if event.kind == "terminal_label" else None
+                )
+                observed_game_over = event.kind == "game_over"
+                observed_king_death = False
+                while time.monotonic() < deadline:
+                    generation, journal = game.events.gameplay_snapshot()
+                    recent = (
+                        journal[len(event_prefix):]
+                        if generation == event_generation else journal
+                    )
+                    labels = [
+                        item.source for item in recent
+                        if item.kind == "terminal_label" and item.source
+                    ]
+                    if labels:
+                        observed_label = labels[-1]
+                        break
+                    observed_game_over = observed_game_over or any(
+                        item.kind == "game_over" for item in recent
+                    )
+                    observed_king_death = observed_king_death or any(
+                        item.kind == "dead" and item.piece == "king"
+                        for item in recent
+                    )
+                    if (expected_label == "knockout" and
+                            observed_game_over and observed_king_death):
+                        break
+                    time.sleep(0.04)
+                native_proof = (
+                    observed_label == expected_label or
+                    (expected_label == "knockout" and observed_game_over and
+                     observed_king_death)
+                )
+                if not native_proof:
+                    raise AssertionError(
+                        f"native terminal label after {move} was "
+                        f"{observed_label or ('game_over' if observed_game_over else event.kind)}, expected "
+                        f"{expected_label}"
+                    )
+                game.beliefs.positions = [predicted]
+                observations.append({
+                    "step": index,
+                    "terminal_move": move,
+                    "label": expected_label,
+                    "native_event": (
+                        "terminal_label" if observed_label else "game_over"
+                    ),
+                    "king_death": observed_king_death,
+                })
+                print(
+                    f"{fixture['id']} terminal {move}: "
+                    f"{expected_label} confirmed by "
+                    f"{('terminal label' if observed_label else 'King death and game over')}",
+                    flush=True,
+                )
+                continue
 
             move = step["move"]
             position = game.beliefs.positions[0]
@@ -512,17 +670,38 @@ def run_fixture(
             game.beliefs.apply_known(move)
             if game.beliefs.side != previous_side:
                 barriers = 2 if automatic_minion_transition(
-                    position, predicted
+                    position, predicted, move
                 ) else 1
                 wait_for_native_turn_barriers(
                     game, event_generation, len(event_prefix), barriers
                 )
+            reconciled = None
+            if step.get("reconcile_unlogged_deaths"):
+                generation, journal = game.events.gameplay_snapshot()
+                recent = (
+                    journal[len(event_prefix):]
+                    if generation == event_generation else journal
+                )
+                deaths = {
+                    event.piece for event in recent
+                    if event.kind == "dead" and event.piece
+                }
+                shadow = BeliefSet(game.engine, [position], 64)
+                reconciled = shadow.observe_unlogged_death_action(deaths)
+                if predicted not in shadow.positions:
+                    raise AssertionError(
+                        f"public deaths reconcile {reconciled}, but omit the "
+                        f"known native action {move}"
+                    )
             # Local Play rotates only the rendered camera. Unity diagnostics
             # remain in the global Player-1-bottom board frame, unlike online
             # Onyx where the controller also normalizes logged coordinates.
             game.perspective_flipped = False
             game.rotate_taps = game.beliefs.side == "b"
-            observations.append({"step": index, "move": move, "accepted": True})
+            observation = {"step": index, "move": move, "accepted": True}
+            if reconciled is not None:
+                observation["death_reconciliation"] = reconciled
+            observations.append(observation)
             print(f"{fixture['id']} move {move}: accepted", flush=True)
             time.sleep(0.08)
     finally:
@@ -621,13 +800,23 @@ def run_selfplay(
             visited.add(upn_repetition_key(candidate.position))
             game.beliefs.positions = [candidate.position]
             ended = event.kind in (
-                "terminal_label", "game_over", "out_of_time"
+                "terminal_label", "game_over", "out_of_time",
+                "forced_timeout",
             )
+            engine_terminal = not game.engine.legal_moves(candidate.position)
+            if engine_terminal and not ended:
+                native_terminal = game.events.wait(
+                    ("terminal_label", "game_over", "out_of_time"), 15.0
+                )
+                trace_entry["native_terminal"] = native_terminal.kind
+                terminal = native_terminal.kind
+                ended = True
             if ended:
-                terminal = event.kind
+                if terminal is None:
+                    terminal = event.kind
             elif game.beliefs.side != previous_side:
                 barriers = 2 if automatic_minion_transition(
-                    current, candidate.position
+                    current, candidate.position, candidate.move
                 ) else 1
                 wait_for_native_turn_barriers(
                     game, event_generation, len(event_prefix), barriers

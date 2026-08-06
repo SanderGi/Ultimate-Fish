@@ -84,7 +84,15 @@ class Engine:
     def bestmove(self, upn: str, depth: int, nodes: int) -> str | None:
         self.set_position(upn)
         self.send(f"go depth {depth} nodes {nodes}")
-        move = self.until_any(("bestmove ",)).split(" ", 1)[1]
+        try:
+            line = self.until_any(("bestmove ",))
+        except RuntimeError as error:
+            assert self.process.stderr is not None
+            diagnostics = self.process.stderr.read().strip()
+            raise RuntimeError(
+                f"{error}\nposition: {upn}\nstderr: {diagnostics or '(empty)'}"
+            ) from error
+        move = line.split(" ", 1)[1]
         return None if move == "(none)" else move
 
     def apply(self, upn: str, move: str) -> str:

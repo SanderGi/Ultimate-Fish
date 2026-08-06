@@ -31,6 +31,18 @@ class FakeEngine:
 
 
 class LocalConformanceTests(unittest.TestCase):
+    def test_manifest_contains_native_terminal_assertion(self) -> None:
+        document = conform.load_manifest(conform.DEFAULT_MANIFEST)
+        terminal_steps = [
+            step["terminal_move"]
+            for fixture in document["fixtures"]
+            for step in fixture["steps"]
+            if "terminal_move" in step
+        ]
+        self.assertIn(
+            {"move": "b1-b10", "label": "knockout"}, terminal_steps
+        )
+
     def test_manifest_selfplay_profiles_cover_every_deployable_piece(self) -> None:
         document = conform.load_manifest(conform.DEFAULT_MANIFEST)
         present = {
@@ -94,6 +106,21 @@ class LocalConformanceTests(unittest.TestCase):
         quiet = after.replace("minion,b,a4", "minion,b,a5")
         self.assertTrue(conform.automatic_minion_transition(before, after))
         self.assertFalse(conform.automatic_minion_transition(before, quiet))
+
+        captured = after.replace(";minion,b,a4", "")
+        self.assertFalse(
+            conform.automatic_minion_transition(
+                before, captured, "b4-a5"
+            )
+        )
+
+        second_before = before + ";minion,b,c5"
+        second_after = captured + ";minion,b,c4"
+        self.assertTrue(
+            conform.automatic_minion_transition(
+                second_before, second_after, "b4-a5"
+            )
+        )
 
         devil_before = (
             "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1"

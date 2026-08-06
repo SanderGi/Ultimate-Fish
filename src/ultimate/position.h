@@ -109,11 +109,21 @@ struct PieceState {
 };
 
 struct Move {
+    static constexpr std::uint8_t CaptureKnown = 1;
+    static constexpr std::uint8_t Capture = 2;
+
     std::uint8_t from = 0;
     std::uint8_t to = 0;
     std::uint8_t auxiliary = 0;
     MoveKind kind = MoveKind::Normal;
     PieceType promotion = PieceType::Count;
+    // Generated legal frontiers cache capture classification. Flags are
+    // deliberately excluded from move identity and protocol notation.
+    std::uint8_t flags = 0;
+    // Search ordering is position-local scratch state. Caching it here avoids
+    // recomputing board lookups and history values O(N log N) times inside a
+    // sort comparator; it is likewise excluded from move identity/notation.
+    std::int32_t orderScore = 0;
 
     friend bool operator==(const Move& lhs, const Move& rhs) {
         return lhs.from == rhs.from && lhs.to == rhs.to && lhs.auxiliary == rhs.auxiliary
@@ -158,6 +168,7 @@ class Position {
     [[nodiscard]] int en_passant_square() const { return enPassantSquare_; }
 
     [[nodiscard]] std::vector<Move> legal_moves() const;
+    [[nodiscard]] std::vector<Move> legal_forcing_moves() const;
     [[nodiscard]] bool is_legal(const Move& move) const;
     [[nodiscard]] bool is_capture(const Move& move) const;
     bool make_move(const Move& move, Undo& undo);
@@ -168,7 +179,15 @@ class Position {
     [[nodiscard]] bool is_checkmate_possible() const;
     [[nodiscard]] bool game_over() const;
     [[nodiscard]] std::optional<Color> winner() const;
+    [[nodiscard]] std::optional<Color> forced_timeout_winner() const {
+        if (forcedTimeoutWinner_ < 0)
+            return std::nullopt;
+        return static_cast<Color>(forcedTimeoutWinner_);
+    }
     [[nodiscard]] std::uint64_t key() const;
+    // Material/placement evaluation only. Search performs its own terminal
+    // checks and must not regenerate a complete legal frontier at every leaf.
+    [[nodiscard]] int static_evaluate() const;
     [[nodiscard]] int evaluate() const;
     [[nodiscard]] std::uint64_t perft(int depth) const;
 
@@ -194,9 +213,18 @@ class Position {
     static constexpr std::size_t index(PieceType type) { return static_cast<std::size_t>(type); }
 
     [[nodiscard]] std::vector<Move> moves_for(int id, bool attacksOnly = false) const;
+    void append_moves_for(std::vector<Move>& moves, int id,
+                          bool attacksOnly = false) const;
     [[nodiscard]] std::vector<Move> pseudo_legal_moves() const;
+    [[nodiscard]] std::vector<Move> pseudo_forcing_moves() const;
+    [[nodiscard]] std::vector<Move> filter_legal_moves(
+      std::vector<Move> moves) const;
+    [[nodiscard]] bool legal_after_unchecked_move(Color mover) const;
+    void annotate_captures(std::vector<Move>& moves) const;
+    [[nodiscard]] bool is_forcing_action(const Move& move) const;
     [[nodiscard]] bool real_king_threatened(Color color) const;
     bool make_move_unchecked(const Move& move, Undo& undo);
+    bool apply_move_unchecked(const Move& move);
     int add_piece_internal(PieceType type, Color color, int square, bool generateCompanions,
                            bool onBoard = true);
     void add_step_moves(std::vector<Move>& moves, int id, const int (*directions)[2], int count,
@@ -249,6 +277,7 @@ class Position {
     int enPassantVictim_ = NoPiece;
     int forcedPiece_ = NoPiece;
     Continuation continuation_ = Continuation::None;
+    std::int8_t forcedTimeoutWinner_ = -1;
     std::uint32_t halfmove_ = 0;
     std::uint32_t fullmove_ = 1;
     std::uint16_t nextAttachmentOrder_ = 1;
@@ -265,6 +294,7 @@ struct Undo {
     int enPassantVictim;
     int forcedPiece;
     Continuation continuation;
+    std::int8_t forcedTimeoutWinner;
     std::uint32_t halfmove;
     std::uint32_t fullmove;
     std::uint16_t nextAttachmentOrder;

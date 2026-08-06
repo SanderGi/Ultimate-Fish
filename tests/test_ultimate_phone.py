@@ -98,6 +98,8 @@ class CoordinateTests(unittest.TestCase):
     def test_public_copycat_callbacks_rebuild_one_mirrored_pair(self):
         self.assertEqual(MODULE.public_probe_piece("copycat"), "copycatPair")
         self.assertEqual(MODULE.public_probe_piece("copycatClone"), "copycatPair")
+        self.assertEqual(MODULE.public_probe_piece("checker"), "checker")
+        self.assertEqual(MODULE.public_probe_piece("checkerKing"), "checker")
         self.assertEqual(
             MODULE.normalize_copycat_probes((
                 ("pawn", "a8"),
@@ -289,6 +291,13 @@ class LogParserTests(unittest.TestCase):
         )
         opponent_turn = MODULE.parse_unity_line("myBoard.turn != team: True")
         self.assertEqual(opponent_turn.source, "opponent")
+        player_team = MODULE.parse_unity_line(
+            "GameManager.Instance.playerTeam != team: True"
+        )
+        self.assertEqual(
+            (player_team.kind, player_team.source),
+            ("player_team_probe", "opponent"),
+        )
         ban = MODULE.parse_unity_line("TEXURE ASSIGNED TO Giant")
         self.assertEqual(
             (ban.kind, ban.piece),
@@ -1686,6 +1695,59 @@ class OpeningSynchronizationTests(unittest.TestCase):
 
 
 class ControllerActionTests(unittest.TestCase):
+    def test_enemy_rook_castle_probe_finds_silent_rook_landing(self):
+        position = "w;king,w,d1;jester,w,a1;rook,b,h1;king,b,a10"
+        self.assertEqual(
+            MODULE.enemy_rook_castle_probe_square(position, "d1-f1"),
+            "e1",
+        )
+        allied = "w;king,w,d1;rook,w,h1;king,b,a10"
+        self.assertIsNone(
+            MODULE.enemy_rook_castle_probe_square(allied, "d1-f1")
+        )
+
+    @patch.object(MODULE.time, "sleep", return_value=None)
+    def test_silent_enemy_rook_castle_confirms_turn_player_mismatch(
+            self, _sleep):
+        class FakeAdb:
+            def __init__(self):
+                self.taps = []
+
+            def tap_square(self, _geometry, square):
+                self.taps.append(square)
+
+        class FakeEvents:
+            def __init__(self):
+                self.pending = [
+                    MODULE.AppEvent("draft_turn_probe", source="local"),
+                    MODULE.AppEvent("player_team_probe", source="opponent"),
+                ]
+
+            @staticmethod
+            def drain():
+                return None
+
+            def wait(self, kinds, _timeout, predicate=None):
+                accepted = {kinds} if isinstance(kinds, str) else set(kinds)
+                while self.pending:
+                    event = self.pending.pop(0)
+                    if (event.kind in accepted and
+                            (predicate is None or predicate(event))):
+                        return event
+                raise TimeoutError
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.adb = FakeAdb()
+        game.events = FakeEvents()
+        game.rotate_taps = False
+        event = game.confirm_forced_timeout_castle("e1", "d1", "f1")
+        self.assertEqual(
+            (event.kind, event.source, event.target),
+            ("forced_timeout", "d1", "f1"),
+        )
+        self.assertEqual(game.adb.taps, ["e1"])
+
     def test_copycat_blank_army_move_is_resolved_by_material_delta(self):
         self.assertEqual(
             MODULE.resolve_army_drag_identity("copycat", "giant", 40, [35, 40]),
@@ -1805,6 +1867,74 @@ class ControllerActionTests(unittest.TestCase):
         self.assertEqual(game.adb.actions[-1], ("square", "f6"))
         self.assertEqual(game.adb.actions[1][0], "offset")
 
+    @patch.object(MODULE.time, "sleep", return_value=None)
+    def test_copycat_selection_requires_requested_native_dot(self, _sleep):
+        class FakeAdb:
+            def __init__(self):
+                self.actions = []
+
+            def tap_square(self, _geometry, square):
+                self.actions.append(("square", square))
+
+            def tap(self, x, y):
+                self.actions.append(("offset", x, y))
+
+        class FakeEvents:
+            def __init__(self):
+                self.pending = [
+                    # One center tap raycasts the unrelated white CopyCat and
+                    # leaves two stale selected/dot sequences in the queue.
+                    MODULE.AppEvent("pointer_square", source="d1"),
+                    MODULE.AppEvent("selected", "copycat"),
+                    MODULE.AppEvent("dot_ready", source="d1"),
+                    MODULE.AppEvent("dot_ready", source="e1"),
+                    MODULE.AppEvent("touch_end"),
+                    MODULE.AppEvent("selected", "copycatClone"),
+                    MODULE.AppEvent("dot_ready", source="d1"),
+                    MODULE.AppEvent("dot_ready", source="e1"),
+                    MODULE.AppEvent("touch_end"),
+                    # A later in-cell tap reaches the requested black clone.
+                    MODULE.AppEvent("pointer_square", source="b10"),
+                    MODULE.AppEvent("selected", "copycatClone"),
+                    MODULE.AppEvent("dot_ready", source="b10"),
+                    MODULE.AppEvent("dot_ready", source="g10"),
+                    MODULE.AppEvent("touch_end"),
+                    MODULE.AppEvent("move", "copycatClone", "b10", "c9"),
+                    MODULE.AppEvent("turn_end"),
+                ]
+
+            @staticmethod
+            def drain():
+                return None
+
+            def wait(self, kinds, _timeout, predicate=None):
+                accepted = {kinds} if isinstance(kinds, str) else set(kinds)
+                while self.pending:
+                    event = self.pending.pop(0)
+                    if (event.kind in accepted and
+                            (predicate is None or predicate(event))):
+                        return event
+                raise TimeoutError
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.adb = FakeAdb()
+        game.events = FakeEvents()
+        game.perspective_flipped = False
+        game.verbose = False
+        game.beliefs = type("Beliefs", (), {"positions": [
+            "b;king,w,a1;king,b,h10;copycat,b,g10"
+        ]})()
+
+        event = game.execute("b10-c9")
+
+        self.assertEqual((event.kind, event.source, event.target),
+                         ("move", "b10", "c9"))
+        self.assertGreaterEqual(
+            sum(action[0] == "offset" for action in game.adb.actions), 2
+        )
+        self.assertEqual(game.adb.actions[-1], ("square", "c9"))
+
     def test_bomb_action_waits_past_early_network_turn(self):
         class FakeAdb:
             def tap_square(self, _geometry, _square):
@@ -1893,6 +2023,8 @@ class ControllerActionTests(unittest.TestCase):
             def __init__(self):
                 self.pending = [
                     MODULE.AppEvent("selected", "copycatClone"),
+                    MODULE.AppEvent("dot_ready", source="b2"),
+                    MODULE.AppEvent("dot_ready", source="g2"),
                     MODULE.AppEvent("touch_end"),
                     MODULE.AppEvent("move", "copycatClone", "b2", "a2"),
                     MODULE.AppEvent("move", "copycat", "g2", "h2"),
@@ -1924,6 +2056,59 @@ class ControllerActionTests(unittest.TestCase):
         self.assertEqual((event.kind, event.source, event.target),
                          ("move", "b2", "a2"))
         self.assertEqual(game.events.pending, [])
+
+    def test_destination_retry_reselects_before_using_an_in_cell_offset(self):
+        class FakeEvents:
+            def __init__(self):
+                self.pending = []
+
+            @staticmethod
+            def drain():
+                return None
+
+            def wait(self, kinds, _timeout, predicate=None):
+                accepted = {kinds} if isinstance(kinds, str) else set(kinds)
+                while self.pending:
+                    event = self.pending.pop(0)
+                    if (event.kind in accepted and
+                            (predicate is None or predicate(event))):
+                        return event
+                raise TimeoutError
+
+        class FakeAdb:
+            def __init__(self, events):
+                self.events = events
+                self.actions = []
+
+            def tap_square(self, _geometry, square):
+                self.actions.append(("square", square))
+                if square == "a1":
+                    self.events.pending.extend((
+                        MODULE.AppEvent("selected", "rook"),
+                        MODULE.AppEvent("touch_end"),
+                    ))
+
+            def tap(self, x, y):
+                self.actions.append(("offset", x, y))
+                self.events.pending.append(
+                    MODULE.AppEvent("move", "rook", "a1", "a2")
+                )
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.events = FakeEvents()
+        game.adb = FakeAdb(game.events)
+        game.perspective_flipped = False
+        game.verbose = False
+
+        event = game.execute("a1-a2")
+
+        self.assertEqual((event.kind, event.source, event.target),
+                         ("move", "a1", "a2"))
+        self.assertEqual(game.adb.actions[0:3], [
+            ("square", "a1"), ("square", "a2"), ("square", "a1")
+        ])
+        self.assertEqual(game.adb.actions[3][0], "offset")
 
     def test_mage_swap_uses_drag_and_turn_completion(self):
         class FakeAdb:
@@ -1963,8 +2148,18 @@ class ControllerActionTests(unittest.TestCase):
         self.assertEqual(
             game.adb.drags,
             [(game.geometry.point("b1"),
-              game.geometry.drag_destination("b1", "a1"), 320)],
+              game.geometry.drag_destination("b1", "a1"), 800)],
         )
+
+    def test_long_special_drag_prefers_deep_target_sample(self):
+        overshoots = MODULE.special_drag_overshoots("f1", "b3")
+        self.assertEqual(overshoots, (0.40, 0.24, 0.08))
+        geometry = MODULE.BoardGeometry()
+        deep = geometry.drag_destination("f1", "b3", overshoots[0])
+        target = geometry.point("b3")
+        centered = geometry.drag_destination("f1", "b3", 0.08)
+        self.assertGreater(abs(deep[0] - target[0]), abs(centered[0] - target[0]))
+        self.assertGreater(abs(deep[1] - target[1]), abs(centered[1] - target[1]))
 
     def test_fisherman_hook_uses_the_same_guarded_drag_path(self):
         class FakeAdb:
@@ -2054,8 +2249,8 @@ class ControllerActionTests(unittest.TestCase):
                 self.pending = [
                     MODULE.AppEvent("selected", piece="fisherman"),
                     MODULE.AppEvent("touch_end"),
-                    MODULE.AppEvent("army_drop", source="2:7", target="2:7"),
-                    MODULE.AppEvent("army_drop", source="2:7", target="2:9"),
+                    MODULE.AppEvent("army_drop", source="5:2", target="5:2"),
+                    MODULE.AppEvent("army_drop", source="5:0", target="5:2"),
                     MODULE.AppEvent("turn_end"),
                 ]
 
@@ -2075,6 +2270,40 @@ class ControllerActionTests(unittest.TestCase):
         self.assertEqual(event.kind, "move")
         self.assertEqual(len(game.adb.drags), 2)
         self.assertNotEqual(game.adb.drags[0][1], game.geometry.point("f1"))
+
+    def test_special_drag_rejects_wrong_ordinary_landing(self):
+        class FakeAdb:
+            @staticmethod
+            def tap_square(_geometry, _square):
+                pass
+
+            @staticmethod
+            def drag_sync(_source, _target, _duration):
+                pass
+
+        class FakeEvents:
+            def __init__(self):
+                self.pending = [
+                    MODULE.AppEvent("selected", piece="fisherman"),
+                    MODULE.AppEvent("touch_end"),
+                    # Requested f3!f1, but Unity sampled/committed f2.
+                    MODULE.AppEvent("army_drop", source="5:1", target="5:2"),
+                ]
+
+            @staticmethod
+            def drain():
+                pass
+
+            def wait(self, _kinds, _timeout):
+                return self.pending.pop(0)
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.adb = FakeAdb()
+        game.events = FakeEvents()
+        game.verbose = False
+        with self.assertRaisesRegex(RuntimeError, "landed on f2"):
+            game.execute("f3!f1")
 
 
 class BeliefConstructionTests(unittest.TestCase):
@@ -2339,6 +2568,48 @@ class BeliefConstructionTests(unittest.TestCase):
             beliefs.observe_unlogged_public_action(
                 MODULE.AppEvent("bot_action", "ghost", "d6", "d5")
             )
+
+    def test_unlogged_sludge_collision_is_inferred_from_public_deaths(self):
+        first = (
+            "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+            "king,w,a1;ghost,w,c4;king,b,h10;sludge,b,c5"
+        )
+        second = first.replace("ghost,w,c4", "ghost,w,d5")
+        first_after = (
+            "w;hm=0;fm=2;ep=-;cont=0;forced=-1;epv=-1;"
+            "king,w,a1;king,b,h10;goop,b,c5"
+        )
+        second_after = (
+            "w;hm=0;fm=2;ep=-;cont=0;forced=-1;epv=-1;"
+            "king,w,a1;king,b,h10;goop,b,c5"
+        )
+
+        class CollisionEngine:
+            @staticmethod
+            def legal_moves(position):
+                return (["c5-c4", "c5-d5"] if position == first else
+                        ["c5-d5", "c5-c4"])
+
+            @staticmethod
+            def apply(position, move):
+                if position == first and move == "c5-c4":
+                    return first_after
+                if position == second and move == "c5-d5":
+                    return second_after
+                # Quiet alternatives do not match the death signature.
+                return position.replace("b;", "w;", 1).replace(
+                    "sludge,b,c5", "sludge,b,d5"
+                )
+
+        # Give the second belief its actual blind-collision action while the
+        # first retains a quiet alternative. Both exact worlds survive only if
+        # their own Sludge/Ghost deaths match the public callbacks.
+        beliefs = MODULE.BeliefSet(CollisionEngine(), (first, second))
+        # The shipping app omits the hidden Ghost's death callback on this
+        # path; the visible Sludge death is the public lower bound.
+        moves = beliefs.observe_unlogged_death_action(("sludge",))
+        self.assertEqual(moves, ["c5-c4", "c5-d5"])
+        self.assertEqual(beliefs.positions, [first_after])
 
     def test_hidden_ghost_move_ignores_private_release_coordinates(self):
         first = (

@@ -111,6 +111,10 @@ BAN_TEXTURE_RE = re.compile(
 DRAFT_TURN_RE = re.compile(
     r"\bmyBoard\.turn != team:\s*(True|False)\s*$", re.IGNORECASE
 )
+PLAYER_TEAM_RE = re.compile(
+    r"\bGameManager\.Instance\.playerTeam != team:\s*(True|False)\s*$",
+    re.IGNORECASE,
+)
 ARMY_DROP_RE = re.compile(r"(?:^|:\s)(\d+):(\d+)\s+-\s+(\d+):(\d+)\s*$")
 ARMY_MOVE_RE = re.compile(r"(?:^|:\s)ArmyMove(?:\s+([A-Za-z]+))?\s*$")
 ENGINE_MOVE_RE = re.compile(r"^([a-h](?:10|[1-9]))([-~@x!&])([a-h](?:10|[1-9]))$")
@@ -172,6 +176,10 @@ def public_probe_piece(piece: str) -> str:
         # Selecting either half can invoke GetAvailableMoves on both linked
         # prefabs. Their squares, not callback order, identify the pair.
         return "copycatPair"
+    if piece in ("checker", "checkerKing"):
+        # Promotion is stored in Checker's action byte; the live GameObject
+        # and GetAvailableMoves diagnostic retain the ``checker`` prefab name.
+        return "checker"
     return piece
 
 
@@ -424,6 +432,13 @@ def parse_unity_line(line: str) -> AppEvent | None:
     if match:
         return AppEvent(
             "draft_turn_probe",
+            source="opponent" if match.group(1).lower() == "true" else "local",
+            raw=line,
+        )
+    match = PLAYER_TEAM_RE.search(line)
+    if match:
+        return AppEvent(
+            "player_team_probe",
             source="opponent" if match.group(1).lower() == "true" else "local",
             raw=line,
         )
@@ -1830,6 +1845,32 @@ class AdbDevice:
             f"monkey -p {package} -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1"
         )
 
+    def is_package_running(self, package: str) -> bool:
+        """Return whether Android still has a process for ``package``."""
+        result = subprocess.run(
+            [self.adb, "-s", self.device, "shell", "pidof", package],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True,
+            check=False,
+        )
+        return result.returncode == 0 and bool(result.stdout.strip())
+
+    def wait_for_package_exit(self, package: str, timeout: float) -> bool:
+        """Return true if ``package`` exits during a short failure grace period.
+
+        Android's low-memory killer can race the controller's final event
+        timeout by a few hundred milliseconds.  Keeping this polling helper in
+        the failure path prevents an OS kill from being reported as a native
+        rules rejection without slowing successful moves.
+        """
+        deadline = time.monotonic() + timeout
+        while True:
+            if not self.is_package_running(package):
+                return True
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return False
+            time.sleep(min(0.10, remaining))
+
     def screenshot(self):
         try:
             from PIL import Image
@@ -2076,6 +2117,50 @@ def is_castling_move(position: str, move: str) -> bool:
         return False
     actor = upn_piece_at(position, source)
     return bool(actor and actor[0] in ("king", "jester"))
+
+
+def enemy_rook_castle_probe_square(position: str, move: str) -> str | None:
+    """Return the native Rook landing for a forced-timeout castle.
+
+    SimulatedKing accepts the first unmoved Rook on its horizontal scan even
+    when that Rook belongs to the opponent. The live models relocate, then
+    board.turn and playerTeam disagree forever. The landing Rook is the clean
+    native probe for confirming that silent terminal transition.
+    """
+    if not is_castling_move(position, move):
+        return None
+    source, target, _separator = parse_engine_move(move)
+    actor = upn_piece_at(position, source)
+    if actor is None:
+        return None
+    direction = 1 if ord(target[0]) > ord(source[0]) else -1
+    file_index = ord(source[0]) - ord("a") + direction
+    rank = source[1:]
+    while 0 <= file_index < 8:
+        square = f"{chr(ord('a') + file_index)}{rank}"
+        occupant = upn_piece_covering(position, square)
+        if occupant is not None:
+            if occupant[0] != "rook" or occupant[1] == actor[1]:
+                return None
+            rook_file = ord(target[0]) - ord("a") - direction
+            return f"{chr(ord('a') + rook_file)}{rank}"
+        file_index += direction
+    return None
+
+
+def special_drag_overshoots(source: str, target: str) -> tuple[float, ...]:
+    """Try special-action endpoints in an order suited to their distance.
+
+    Synthetic swipes need a deep endpoint so Android emits a motion sample
+    inside the destination boundary after the dragged 3D model catches up.
+    The endpoint remains within the target cell; progressively shallower
+    samples are retained only for unusually large target colliders.
+    """
+    file_distance = abs(ord(source[0]) - ord(target[0]))
+    rank_distance = abs(int(source[1:]) - int(target[1:]))
+    if max(file_distance, rank_distance) > 2:
+        return (0.40, 0.24, 0.08)
+    return (0.40, 0.24, 0.08)
 
 
 def is_copycat_square(position: str, square: str) -> bool:
@@ -2343,6 +2428,71 @@ class BeliefSet:
             ),
             False,
         )
+
+    def observe_unlogged_death_action(
+        self,
+        dead_pieces: Iterable[str],
+        attack_target: str | None = None,
+    ) -> list[str]:
+        """Infer an action represented only by public death callbacks.
+
+        Some native interactions destroy the moving model before
+        ``HasMovedHandler`` can print coordinates. Online play still exposes
+        one or more dying prefabs and the final turn barrier. Hidden collision
+        victims do not always emit their own callback, so the observed types
+        are a lower bound. Filter *all* legal transitions by that public
+        signature and retain every matching belief; ambiguity remains an
+        information set rather than becoming a controller guess.
+        """
+        observed = {
+            public_probe_piece(piece)
+            for piece in dead_pieces
+            if piece
+        }
+        if not observed:
+            raise ValueError("unlogged death inference needs a death signature")
+        public_target = (
+            public_probe_piece(attack_target) if attack_target else None
+        )
+        next_positions = []
+        notations = set()
+        for position in self.positions:
+            before = Counter(
+                public_probe_piece(piece)
+                for piece, _color, _square, _state
+                in parse_upn_pieces(position)
+            )
+            for move in self.engine.legal_moves(position):
+                if move == "pass":
+                    continue
+                _source, target, _separator = parse_engine_move(move)
+                victim = upn_piece_covering(position, target)
+                if (public_target is not None and
+                        (victim is None or
+                         public_probe_piece(victim[0]) != public_target)):
+                    continue
+                applied = self.engine.apply(position, move)
+                if upn_side(applied) == upn_side(position):
+                    # A native ChangeTurn barrier cannot describe the first
+                    # half of a Prince move or a continuing Checker jump.
+                    continue
+                after = Counter(
+                    public_probe_piece(piece)
+                    for piece, _color, _square, _state
+                    in parse_upn_pieces(applied)
+                )
+                removed = set((before - after).elements())
+                if not observed <= removed:
+                    continue
+                next_positions.append(applied)
+                notations.add(move)
+        if not next_positions:
+            raise RuntimeError(
+                "public death callbacks have no legal transition in any "
+                "retained belief: " + ", ".join(sorted(observed))
+            )
+        self.positions = self._bounded(next_positions)
+        return sorted(notations)
 
     def observe_continuation(self) -> None:
         """Condition ambiguous royal identities on a public continuing game."""
@@ -3177,6 +3327,9 @@ class PhoneGame:
             tuple[tuple[str, str], ...],
             dict[tuple[str, str], tuple[float, float]],
         ] = {}
+        self.local_army_pot_slots: dict[
+            tuple[int, tuple[tuple[str, str], ...]], dict[str, str]
+        ] = {}
         self.army_pot_slots: dict[str, str] = {}
         self.army_verified_pre_ready = False
 
@@ -3738,6 +3891,15 @@ class PhoneGame:
             self.army_drag_offsets = dict(
                 self.local_army_drag_offsets.get(team_key, {})
             )
+            # Local's second builder presents the same pot artwork through a
+            # different pass-and-play camera/layout.  Keep authoritative
+            # ArmyMove identity corrections separate by player and formation;
+            # a Player-2 Copycat/Giant pot swap must survive a full retry but
+            # must never contaminate Player 1's freshly detected pot map.
+            pot_key = (number, team_key)
+            self.army_pot_slots = dict(
+                self.local_army_pot_slots.get(pot_key, {})
+            )
             try:
                 self._configure_army_builder(
                     builder, force_clear=True, clear_point=(165, 315),
@@ -3747,6 +3909,9 @@ class PhoneGame:
             finally:
                 self.local_army_drag_offsets[team_key] = dict(
                     self.army_drag_offsets
+                )
+                self.local_army_pot_slots[pot_key] = dict(
+                    self.army_pot_slots
                 )
             if number == 1:
                 confirmation = None
@@ -3794,7 +3959,7 @@ class PhoneGame:
                 for ready_attempt in range(1, 5):
                     self.adb.tap_sync(820, 2120)  # Ready
                     try:
-                        board = self.wait_for_board(6.0)
+                        board = self.wait_for_board(6.0, local=True)
                         break
                     except TimeoutError:
                         current = self.adb.screenshot()
@@ -3802,7 +3967,7 @@ class PhoneGame:
                             # A tornado/load animation can outlast the short
                             # probe. Once the builder is gone, wait without
                             # risking a tap on the live board.
-                            board = self.wait_for_board(24.0)
+                            board = self.wait_for_board(24.0, local=True)
                             break
                         if self.verbose:
                             self.log(
@@ -3821,8 +3986,24 @@ class PhoneGame:
         self.own_team = list(player1)
         self.configure_army = False
 
-    def wait_for_board(self, timeout: float = 180.0):
+    def wait_for_board(self, timeout: float = 180.0, local: bool = False):
         def board_ready(image) -> bool:
+            home_ranks = (1, 2, 3, 8, 9, 10)
+            red = detect_outline_squares(
+                image, self.geometry, "red", home_ranks
+            )
+            blue = detect_outline_squares(
+                image, self.geometry, "blue", home_ranks
+            )
+            if local:
+                # Pass-and-play rotates its three material digit tiles with
+                # the camera; the generic upright OCR can therefore miss a
+                # fully live board. Both teams' outlines plus disappearance
+                # of the 24-pot builder are a stronger Local-only boundary.
+                return bool(
+                    red and blue and
+                    len(detect_pot_centers(image)) != len(POT_SORT_ORDER)
+                )
             try:
                 # Requiring both the board outlines and its public three-tile
                 # material counter avoids false positives from red menu tags
@@ -3830,15 +4011,7 @@ class PhoneGame:
                 # pass-and-play can settle with either player's camera/color
                 # on either home zone, so do not hard-code red at the top.
                 read_material_counter(image)
-                home_ranks = (1, 2, 3, 8, 9, 10)
-                return bool(
-                    detect_outline_squares(
-                        image, self.geometry, "red", home_ranks
-                    )
-                    or detect_outline_squares(
-                        image, self.geometry, "blue", home_ranks
-                    )
-                )
+                return bool(red or blue)
             except RuntimeError:
                 return False
         return self.wait_screen("settled game board", board_ready, timeout)
@@ -3925,7 +4098,7 @@ class PhoneGame:
                 max(deployment.top + margin - center_y, proposed[1])),
         )
         self.army_drag_offsets[(piece, square)] = learned
-        if self.verbose:
+        if getattr(self, "verbose", False):
             self.log(
                 f"learned native drag offset for {piece}@{square}: "
                 f"{learned[0]:+.0f}px,{learned[1]:+.0f}px"
@@ -4989,7 +5162,7 @@ class PhoneGame:
                     ("army_points", "game_over", "out_of_time"), 0.08
                 )
             except TimeoutError:
-                break
+                continue
             if event.kind != "army_points":
                 raise RuntimeError(
                     f"Ranked game ended while reading draft material: {event.kind}"
@@ -6102,8 +6275,91 @@ class PhoneGame:
             time.sleep(0.08)
         raise TimeoutError(f"special-action source {source} never became selectable")
 
-    def execute(self, move: str, expect_bomb_resolution: bool = False) -> AppEvent:
+    def confirm_forced_timeout_castle(
+        self, probe: str, source: str, target: str, timeout: float = 20.0
+    ) -> AppEvent | None:
+        """Confirm the silent terminal state after an enemy-Rook castle.
+
+        That native path emits no ordinary move or ChangeTurn barrier. Both
+        models visibly relocate, board.turn changes to the Rook's team, and
+        playerTeam remains the castling side. Touching the relocated Rook logs
+        both predicates without making another action, giving an authoritative
+        confirmation that the opponent can only time out.
+        """
+        pending = self.events.drain()
+        if pending is not None:
+            return AppEvent(
+                "forced_timeout", source=source, target=target,
+                raw=f"completed:{pending.kind}",
+            )
+        if getattr(self, "verbose", False):
+            self.log(
+                f"probing silent enemy-Rook castle at {probe} for "
+                "board.turn/playerTeam mismatch"
+            )
+        board_matches = False
+        player_mismatches = False
+        last_probe_state = None
+        deadline = time.monotonic() + timeout
+        next_probe = 0.0
+        while time.monotonic() < deadline:
+            now = time.monotonic()
+            if now >= next_probe:
+                self.adb.tap_square(self.geometry, self.device_square(probe))
+                next_probe = now + 0.65
+            try:
+                event = self.events.wait(
+                    ("draft_turn_probe", "player_team_probe",
+                     "terminal_label", "game_over", "out_of_time"),
+                    min(deadline, next_probe) - time.monotonic(),
+                )
+            except TimeoutError:
+                continue
+            if event.kind in ("terminal_label", "game_over", "out_of_time"):
+                return AppEvent(
+                    "forced_timeout", source=source, target=target,
+                    raw=f"completed:{event.kind}",
+                )
+            if event.kind == "draft_turn_probe":
+                board_matches = event.source == "local"
+            elif event.kind == "player_team_probe":
+                player_mismatches = event.source == "opponent"
+            probe_state = (board_matches, player_mismatches)
+            if getattr(self, "verbose", False) and probe_state != last_probe_state:
+                self.log(
+                    f"forced-timeout probe {event.kind}={event.source}; "
+                    f"board={board_matches} player-mismatch={player_mismatches}"
+                )
+                last_probe_state = probe_state
+            if board_matches and player_mismatches:
+                return AppEvent(
+                    "forced_timeout", source=source, target=target,
+                    raw="enemy-owned Rook castle advanced board.turn without playerTeam",
+                )
+        return None
+
+    def execute(
+        self,
+        move: str,
+        expect_bomb_resolution: bool = False,
+        _destination_attempt: int = 0,
+        _retry_destination: bool = True,
+    ) -> AppEvent:
         source, target, separator = parse_engine_move(move)
+        verbose = getattr(self, "verbose", False)
+
+        def raise_if_native_app_exited() -> None:
+            package = "com.JesseLugassy.ChessUltimate"
+            wait_for_exit = getattr(self.adb, "wait_for_package_exit", None)
+            if callable(wait_for_exit):
+                exited = wait_for_exit(package, 1.0)
+            else:
+                running = getattr(self.adb, "is_package_running", None)
+                exited = callable(running) and not running(package)
+            if exited:
+                raise RuntimeError(
+                    "Chess Ultimate process exited while executing " + move
+                )
         if source == "pass":
             raise RuntimeError("the phone location of the pass/end-turn control is not calibrated")
         # The opponent may resign or flag while Ultimate Fish is searching.
@@ -6118,14 +6374,40 @@ class PhoneGame:
                 for position in beliefs.positions
             )
         )
+        forced_timeout_probe = None
+        if beliefs:
+            probes = [
+                enemy_rook_castle_probe_square(position, move)
+                for position in beliefs.positions
+            ]
+            if probes and all(probe is not None for probe in probes):
+                unique_probes = set(probes)
+                if len(unique_probes) == 1:
+                    forced_timeout_probe = next(iter(unique_probes))
+                    if verbose:
+                        self.log(
+                            "enemy-owned Rook castle requires silent terminal "
+                            f"probe at {forced_timeout_probe}"
+                        )
         linked_copycat = bool(
             beliefs and any(
                 is_copycat_square(position, source)
                 for position in beliefs.positions
             )
         )
+        copycat_selection_markers = {
+            source,
+            f"{chr(ord('h') - (ord(source[0]) - ord('a')))}{source[1:]}",
+        }
         display_source = self.device_square(source)
         display_target = self.device_square(target)
+        destination_offsets = (
+            (0.0, 0.0),
+            (-0.24, 0.0), (0.24, 0.0),
+            (0.0, -0.24), (0.0, 0.24),
+            (-0.24, -0.24), (0.24, -0.24),
+            (-0.24, 0.24), (0.24, 0.24),
+        )
 
         if separator in ("~", "!", "&"):
             # Mage swaps, Fisherman hooks, and Angel links are presented as
@@ -6138,27 +6420,75 @@ class PhoneGame:
             terminal = self.await_special_source_ready(source, display_source)
             if terminal is not None:
                 return terminal
-            for attempt, overshoot in enumerate((0.40, 0.47), 1):
+            # The source readiness probe is a complete tap.  Give Unity one
+            # rendered frame after its pointer-up/DestroyDots path before a
+            # new synthetic ACTION_DOWN; otherwise Android can merge the two
+            # gestures and the subsequent swipe produces no pointer event.
+            time.sleep(0.12)
+            pending = self.events.drain()
+            if pending is not None:
+                return pending
+            overshoots = special_drag_overshoots(display_source, display_target)
+
+            def canonical_drag_square(raw: str | None) -> str | None:
+                if raw is None:
+                    return None
+                match = re.fullmatch(r"(\d+):(\d+)", raw)
+                if match is None:
+                    return None
+                square = scene_index_to_square(
+                    int(match.group(1)) * 10 + int(match.group(2))
+                )
+                return (rotate_square(square)
+                        if getattr(self, "perspective_flipped", False)
+                        else square)
+
+            for attempt, overshoot in enumerate(overshoots, 1):
                 self.adb.drag_sync(
                     self.geometry.point(display_source),
                     self.geometry.drag_destination(
                         display_source, display_target, overshoot
                     ),
-                    320,
+                    # The dragged 3D model trails Android's pointer.  On a
+                    # seven-rank Fisherman gesture, 320 ms left Unity's final
+                    # hover one full cell short and committed an ordinary move
+                    # instead.  Special actions are rare; an 800 ms gesture is
+                    # cheap insurance that the requested Dot/collider wins.
+                    800,
                 )
                 deadline = time.monotonic() + 8.0
                 while True:
                     remaining = deadline - time.monotonic()
                     if remaining <= 0:
                         break
-                    terminal = self.events.wait(
-                        ("army_drop", "move", "attack", "dead", "turn_end",
-                         "terminal_label", "game_over", "out_of_time"),
-                        remaining,
-                    )
+                    try:
+                        terminal = self.events.wait(
+                            ("army_drop", "move", "attack", "dead", "turn_end",
+                             "terminal_label", "game_over", "out_of_time"),
+                            remaining,
+                        )
+                    except TimeoutError:
+                        break
                     if terminal.kind == "army_drop":
-                        if terminal.source == terminal.target:
+                        # CompareDragDisplacement logs ``hover - origin``.
+                        # Do not accept an arbitrary nonzero displacement: a
+                        # short swipe can legally commit a different ordinary
+                        # move and its later ChangeTurn used to masquerade as
+                        # success for the requested special action.
+                        native_hover = canonical_drag_square(terminal.source)
+                        native_origin = canonical_drag_square(terminal.target)
+                        if native_origin is not None and native_origin != source:
+                            raise RuntimeError(
+                                f"special drag selected {native_origin}, expected "
+                                f"{source}"
+                            )
+                        if native_hover == source:
                             break
+                        if native_hover is not None and native_hover != target:
+                            raise RuntimeError(
+                                f"special drag {source}{separator}{target} landed "
+                                f"on {native_hover}"
+                            )
                         # A nonzero native displacement means the special Dot
                         # was reached. Allow its grapple/swap animation time to
                         # finish before considering a retry.
@@ -6173,16 +6503,17 @@ class PhoneGame:
                             raw="turn-end confirmed special drag",
                         )
                     return terminal
-                if self.verbose:
+                if verbose:
                     self.log(
                         f"special drag {source}{separator}{target} was not "
-                        f"accepted; retrying ({attempt}/2)"
+                        f"accepted; retrying ({attempt}/{len(overshoots)})"
                     )
             raise TimeoutError(
                 f"special drag {source}{separator}{target} was not accepted"
             )
 
         selected = None
+        release_consumed = False
         # Online scenes occasionally retain an opponent-move animation or
         # latency veil for a few frames after ChangeTurn End.  Retry selection
         # for a bounded interval instead of turning one swallowed tap into a
@@ -6229,27 +6560,74 @@ class PhoneGame:
                 if event.kind != "selected":
                     return event
                 if pointer_source is not None and pointer_source != source:
-                    if self.verbose:
+                    if verbose:
                         self.log(
                             f"selection for {source} intercepted by "
                             f"{pointer_source}; retrying inside source cell"
                         )
                     break
                 selected = event
+                if linked_copycat:
+                    # Both wide CopyCat pairs can receive one physical tap and
+                    # emit several indistinguishable ``selected`` callbacks.
+                    # SetUpMyDot logs each linked half's current source square,
+                    # not its destination. Bind selection to both expected
+                    # pair markers rather than a prefab name or stale callback.
+                    observed_markers = set()
+                    dot_deadline = min(selection_deadline, time.monotonic() + 0.55)
+                    while time.monotonic() < dot_deadline:
+                        try:
+                            detail = self.events.wait(
+                                ("dot_ready", "touch_end", "terminal_label",
+                                 "game_over", "out_of_time"),
+                                dot_deadline - time.monotonic(),
+                            )
+                        except TimeoutError:
+                            break
+                        if detail.kind not in ("dot_ready", "touch_end"):
+                            return detail
+                        if detail.kind == "dot_ready" and detail.source:
+                            dot = self.canonical_event(detail).source
+                            observed_markers.add(dot)
+                        elif detail.kind == "touch_end":
+                            release_consumed = True
+                            break
+                    if not copycat_selection_markers <= observed_markers:
+                        if verbose:
+                            self.log(
+                                f"CopyCat selection for {source} did not "
+                                "advertise both linked halves; retrying inside "
+                                "source cell"
+                            )
+                        selected = None
+                        release_consumed = False
+                        break
                 break
             if selected is not None:
                 break
         if selected is None:
+            raise_if_native_app_exited()
             raise TimeoutError(f"could not select {source} within five seconds")
-        try:
-            release = self.events.wait(
-                ("touch_end", "terminal_label", "game_over", "out_of_time"), 0.50)
-            if release.kind != "touch_end":
-                return release
-        except TimeoutError:
-            # Some special-action controls do not use Character pointer-up.
-            time.sleep(0.10)
-        self.adb.tap_square(self.geometry, display_target)
+        if not release_consumed:
+            try:
+                release = self.events.wait(
+                    ("touch_end", "terminal_label", "game_over", "out_of_time"), 0.50)
+                if release.kind != "touch_end":
+                    return release
+            except TimeoutError:
+                # Some special-action controls do not use Character pointer-up.
+                time.sleep(0.10)
+        target_x_offset, target_y_offset = destination_offsets[
+            min(_destination_attempt, len(destination_offsets) - 1)
+        ]
+        if target_x_offset == 0.0 and target_y_offset == 0.0:
+            self.adb.tap_square(self.geometry, display_target)
+        else:
+            target_x, target_y = self.geometry.point(display_target)
+            self.adb.tap(
+                round(target_x + target_x_offset * self.geometry.cell_width),
+                round(target_y + target_y_offset * self.geometry.cell_height),
+            )
         expected = lambda event: (
             event.kind != "move" or
             (self.canonical_event(event).source == source and
@@ -6312,24 +6690,53 @@ class PhoneGame:
                     deadline = time.monotonic() + 15.0
 
         try:
-            return wait_for_completion(2.0)
+            # Native movement is not acknowledged until MoveTowards finishes.
+            # Penguin's freeze update (and some crowded-board animations) can
+            # take more than two seconds even though the destination tap was
+            # accepted immediately.  Retrying before that callback changes
+            # the Local perspective and then taps the next player's board.
+            # This is only a maximum: ordinary move callbacks still return as
+            # soon as they arrive.
+            # Both CopyCat halves animate serially and the primary half's
+            # coordinate callback can arrive after the ordinary five-second
+            # action window.  Retrying at that point taps the next player's
+            # board even though Unity already committed both relocations.
+            return wait_for_completion(15.0 if linked_copycat else 5.0)
         except TimeoutError:
             if action_observed:
                 raise
-            destination_deadline = time.monotonic() + 4.0
-            while time.monotonic() < destination_deadline:
-                self.adb.tap_square(self.geometry, display_target)
-                try:
-                    return wait_for_completion(0.75)
-                except TimeoutError:
-                    if action_observed:
-                        raise
-                    continue
+            raise_if_native_app_exited()
+            if forced_timeout_probe is not None:
+                confirmed = self.confirm_forced_timeout_castle(
+                    forced_timeout_probe, source, target
+                )
+                if confirmed is not None:
+                    return confirmed
+            next_attempt = _destination_attempt + 1
+            if _retry_destination and next_attempt < len(destination_offsets):
+                if verbose:
+                    self.log(
+                        f"destination {target} did not commit; reselecting "
+                        f"{source} with in-cell target retry "
+                        f"({next_attempt + 1}/{len(destination_offsets)})"
+                    )
+                return self.execute(
+                    move, expect_bomb_resolution,
+                    _destination_attempt=next_attempt,
+                    _retry_destination=True,
+                )
             raise TimeoutError(f"move destination {target} was not accepted")
 
     def locate_public_piece(self, piece: str,
                             candidates: Sequence[str]) -> str:
-        """Locate a newly visible generated piece among public candidates."""
+        """Locate an engine-predicted visible piece by native selection identity.
+
+        Unlike broad opening discovery, callers have already checked the
+        predicted type and candidate squares against the lossless engine
+        position.  One matching GetAvailableMoves callback is authoritative.
+        Requiring two taps is incorrect because Unity leaves the character
+        selected and intentionally emits no second selection callback.
+        """
         self.events.drain()
         time.sleep(0.12)
         for square in candidates:
@@ -6353,9 +6760,11 @@ class PhoneGame:
                 if selected.kind != "selected":
                     raise RuntimeError(
                         f"game ended while locating {piece}: {selected.kind}")
-                if selected.piece == piece:
+                if (selected.piece and
+                        public_probe_piece(selected.piece) ==
+                        public_probe_piece(piece)):
                     hits += 1
-                    if hits >= 2:
+                    if hits >= 1:
                         return square
         raise RuntimeError(
             f"could not locate visible {piece} on candidate squares: "
@@ -6526,6 +6935,7 @@ class PhoneGame:
         enemy_bomb_died_without_move = False
         ghost_became_visible = False
         enemy_bot_action: AppEvent | None = None
+        enemy_deaths: set[str] = set()
         repetition_counts: Counter[str] = Counter()
         last_repetition_state: frozenset[str] | None = None
 
@@ -6584,10 +6994,33 @@ class PhoneGame:
                 if event.kind == "out_of_time":
                     self.log("result: loss (Ultimate Fish out of time)")
                     return "loss"
+                if event.kind == "forced_timeout":
+                    self.beliefs.apply_known(move)
+                    if event.raw.startswith("completed:"):
+                        self.log("result: win (forced opponent timeout)")
+                        return "win"
+                    self.log(
+                        "enemy-owned Rook castle committed; waiting for the "
+                        "trapped opponent clock"
+                    )
+                    terminal = self.events.wait(
+                        ("out_of_time", "game_over", "terminal_label"), 90.0
+                    )
+                    if terminal.kind == "out_of_time":
+                        self.log("result: win (forced opponent timeout)")
+                        return "win"
+                    if terminal.kind == "terminal_label":
+                        result = "draw" if terminal.source == "draw" else "win"
+                        self.log(f"result: {result} ({terminal.source})")
+                        return result
+                    result = self.classify_game_over(decisive_result="win")
+                    self.log(f"result: {result} (forced-timeout game over)")
+                    return result
                 if event.kind != "move":
                     self.log(f"game stopped: {event.kind}")
                     return "unknown"
                 self.beliefs.apply_known(move)
+                enemy_deaths.clear()
                 if not any(self.engine.legal_moves(position)
                            for position in self.beliefs.positions):
                     try:
@@ -6670,6 +7103,7 @@ class PhoneGame:
                         + " ".join(inferred)
                     )
                     self.beliefs.observe_continuation()
+                    enemy_deaths.clear()
                     enemy_attack_target = None
                     enemy_bomb_died_without_move = False
                     ghost_became_visible = False
@@ -6688,6 +7122,7 @@ class PhoneGame:
                         f"{enemy_bot_action.source}-{enemy_bot_action.target}"
                     )
                     self.beliefs.observe_continuation()
+                    enemy_deaths.clear()
                     enemy_bot_action = None
                     enemy_attack_target = None
                     enemy_bomb_died_without_move = False
@@ -6710,6 +7145,23 @@ class PhoneGame:
                         f"{enemy_bot_action.source}-{enemy_bot_action.target}"
                     )
                     self.beliefs.observe_continuation()
+                    enemy_deaths.clear()
+                    enemy_bot_action = None
+                    enemy_attack_target = None
+                    enemy_bomb_died_without_move = False
+                    ghost_became_visible = False
+                    continue
+                if enemy_deaths:
+                    inferred = self.beliefs.observe_unlogged_death_action(
+                        enemy_deaths, enemy_attack_target
+                    )
+                    self.log(
+                        "opponent action inferred from public deaths "
+                        f"{','.join(sorted(enemy_deaths))}: "
+                        + " ".join(inferred)
+                    )
+                    self.beliefs.observe_continuation()
+                    enemy_deaths.clear()
                     enemy_bot_action = None
                     enemy_attack_target = None
                     enemy_bomb_died_without_move = False
@@ -6727,6 +7179,8 @@ class PhoneGame:
                 enemy_attack_target = event.piece
                 continue
             if event.kind == "dead":
+                if event.piece:
+                    enemy_deaths.add(public_probe_piece(event.piece))
                 if enemy_attack_target == "bomb" and event.piece == "bomb":
                     enemy_bomb_died_without_move = True
                 continue
@@ -6773,6 +7227,7 @@ class PhoneGame:
                     False,
                 )
                 self.beliefs.observe_continuation()
+                enemy_deaths.clear()
                 enemy_attack_target = None
                 enemy_bot_action = None
                 ghost_became_visible = False
@@ -6815,6 +7270,7 @@ class PhoneGame:
                     False,
                 )
                 self.beliefs.observe_continuation()
+                enemy_deaths.clear()
                 enemy_attack_target = None
                 enemy_bot_action = None
                 ghost_became_visible = False
@@ -6850,6 +7306,7 @@ class PhoneGame:
                     False,
                 )
                 self.beliefs.observe_continuation()
+                enemy_deaths.clear()
                 enemy_attack_target = None
                 enemy_bot_action = None
                 ghost_became_visible = False
@@ -6932,6 +7389,7 @@ class PhoneGame:
             else:
                 self.beliefs.observe_move(event, conceal)
             enemy_bot_action = None
+            enemy_deaths.clear()
             enemy_attack_target = None
             enemy_bomb_died_without_move = False
             ghost_became_visible = False

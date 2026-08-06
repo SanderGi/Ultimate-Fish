@@ -3,6 +3,444 @@
   "app_version": "5.731",
   "fixtures": [
     {
+      "id": "king-capture-declares-knockout",
+      "covers": [
+        "terminal.real-king-capture",
+        "terminal.native-knockout-label"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["rook", "h1"],
+        ["ninja", "a3"],
+        ["prince", "c3"],
+        ["sniper", "d3"],
+        ["bomb", "f3"]
+      ],
+      "player2": [
+        ["king", "g1"],
+        ["queen", "a1"],
+        ["rook", "h1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "d3"],
+        ["bomb", "f3"]
+      ],
+      "steps": [
+        {"terminal_move": {"move": "b1-b10", "label": "knockout"}}
+      ]
+    },
+    {
+      "id": "castle-with-enemy-rook-while-jester-lives",
+      "covers": [
+        "castling.enemy-team-rook-forced-timeout",
+        "castling.out-of-check-with-jester",
+        "jester.suspends-real-king-check-filter"
+      ],
+      "player1": [
+        ["king", "d1"],
+        ["jester", "a1"],
+        ["jester", "b1"],
+        ["rook", "h1"],
+        ["fisherman", "g1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["queen", "c3"]
+      ],
+      "player2": [
+        ["king", "h1"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["rook", "f1"],
+        ["parasite", "b3"]
+      ],
+      "steps": [
+        {"move": "g1!g8"},
+        {"move": "g2-h1"},
+        {"move": "g1-g2"},
+        {"move": "a10-a9"},
+        {"terminal_move": {"move": "d1-f1", "label": "forced-timeout"}}
+      ]
+    },
+    {
+      "id": "castle-into-attacked-destination-while-jester-lives",
+      "covers": [
+        "castling.destination-check-with-jester",
+        "jester.suspends-real-king-check-filter"
+      ],
+      "player1": [
+        ["king", "d1"],
+        ["rook", "h1"],
+        ["jester", "a1"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["pawn", "d3"],
+        ["checker", "e3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["sniper", "c3"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["rook", "e1"],
+        ["bomb", "f1"]
+      ],
+      "steps": [
+        {"move": "d1-f1"}
+      ]
+    },
+    {
+      "id": "long-mage-swap-reaches-native-target",
+      "covers": [
+        "mage.allied-swap",
+        "controller.long-special-drag-targeting"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["rook", "h1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "d3"],
+        ["bomb", "f3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["mage", "f1"],
+        ["dragon", "b3"],
+        ["queen", "b1"],
+        ["rook", "h1"],
+        ["ninja", "a3"],
+        ["prince", "d3"],
+        ["pawn", "h3"],
+        ["knight", "f3"]
+      ],
+      "steps": [
+        {"move": "h1-h2"},
+        {"move": "c10~g8"},
+        {"piece": {"type": "mage", "square": "g8"}}
+      ]
+    },
+    {
+      "id": "copycat-clone-move-survives-overlapping-pair",
+      "covers": [
+        "copycat.move-from-clone-half",
+        "controller.copycat-selection-bound-to-native-dot"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["copycat", "c1"],
+        ["ghost", "a3"],
+        ["bomb", "c3"],
+        ["penguin", "e3"],
+        ["devil", "g3"],
+        ["sludge", "b2"],
+        ["prince", "d2"],
+        ["checker", "h1"],
+        ["pawn", "h2"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["copycat", "b1"],
+        ["ghost", "a3"],
+        ["bomb", "c3"],
+        ["penguin", "e3"],
+        ["devil", "g3"],
+        ["sludge", "b2"],
+        ["prince", "d2"],
+        ["checker", "h1"],
+        ["pawn", "h2"]
+      ],
+      "steps": [
+        {"move": "c1-d1"},
+        {"move": "b10-c9"},
+        {"piece": {"type": "copycat", "square": "c9"}},
+        {"piece": {"type": "copycat", "square": "f9"}}
+      ]
+    },
+    {
+      "id": "parasite-possession-preserves-target-moved-state",
+      "covers": [
+        "parasite.target-piece-moved-state",
+        "pawn.double-step-after-possession"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["fisherman", "f1"],
+        ["queen", "b1"],
+        ["prince", "c1"],
+        ["sniper", "d1"],
+        ["rook", "h1"],
+        ["pawn", "e3"],
+        ["ninja", "h3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["parasite", "c3"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["rook", "f1"]
+      ],
+      "steps": [
+        {"move": "f1!f8"},
+        {"move": "f2-e3"},
+        {"move": "h3-h4"},
+        {"move": "e3-e1"},
+        {"piece": {"type": "queen", "square": "e1"}}
+      ]
+    },
+    {
+      "id": "castle-with-twice-possessed-original-team-rook",
+      "covers": [
+        "castling.rook-moved-state-after-possession",
+        "parasite.rook-specific-possession-hook"
+      ],
+      "player1": [
+        ["king", "f1"],
+        ["fisherman", "a1"],
+        ["rook", "b1"],
+        ["parasite", "b2"],
+        ["jester", "h1"],
+        ["queen", "c3"],
+        ["ninja", "d3"],
+        ["rook", "g3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["parasite", "h3"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["rook", "f1"]
+      ],
+      "steps": [
+        {"move": "a1!a8"},
+        {"move": "a2-b1"},
+        {"move": "b2-b1"},
+        {"move": "h10-h9"},
+        {"move": "f1-d1"}
+      ]
+    },
+    {
+      "id": "berserker-power-nine-reaches-rank-ten",
+      "covers": [
+        "berserker.power-grows-after-each-capture",
+        "berserker.radius-is-not-eight-file-clamped",
+        "berserker.nine-rank-leap"
+      ],
+      "player1": [
+        ["king", "g1"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["rook", "f1"],
+        ["berserker", "a3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["jester", "b1"],
+        ["queen", "g2"],
+        ["rook", "f2"],
+        ["prince", "e2"],
+        ["bomb", "d2"],
+        ["pawn", "h2"],
+        ["pawn", "h3"],
+        ["pawn", "g3"],
+        ["pawn", "f3"],
+        ["pawn", "e3"],
+        ["pawn", "d3"],
+        ["pawn", "c3"],
+        ["pawn", "b3"],
+        ["pawn", "a3"]
+      ],
+      "steps": [
+        {"move": "a3-a4"},
+        {"move": "a8-a7"},
+        {"move": "a4-a5"},
+        {"move": "b8-b7"},
+        {"move": "a5-a6"},
+        {"move": "c8-c7"},
+        {"move": "a6-a7"},
+        {"move": "d8-d7"},
+        {"move": "a7-b7"},
+        {"move": "e8-e7"},
+        {"move": "b7-c7"},
+        {"move": "f8-f7"},
+        {"move": "c7-d7"},
+        {"move": "g8-g7"},
+        {"move": "d7-e7"},
+        {"move": "h8-h7"},
+        {"move": "e7-f7"},
+        {"move": "a9-a8"},
+        {"move": "f7-g7"},
+        {"move": "a8-a7"},
+        {"move": "g7-h7"},
+        {"move": "b9-a10"},
+        {"move": "h7-a7"},
+        {"move": "c9-c8"},
+        {"move": "a7-a1"},
+        {"move": "e9-e8"},
+        {"move": "a1-a10"},
+        {"piece": {"type": "berserker", "square": "a10"}}
+      ]
+    },
+    {
+      "id": "parasite-possesses-bomb-without-explosion",
+      "covers": [
+        "parasite.attack-possession",
+        "parasite.bomb-does-not-explode",
+        "parasite.attacker-dies-in-place"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["rook", "f1"],
+        ["parasite", "d3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["rook", "f1"],
+        ["bomb", "e3"]
+      ],
+      "steps": [
+        {"move": "d3-d4"},
+        {"move": "d8-d6"},
+        {"move": "d4-d5"},
+        {"move": "h10-h9"},
+        {"move": "d5-d6"},
+        {"move": "h9-h8"},
+        {"piece": {"type": "bomb", "square": "d6"}},
+        {"move": "d6-d5"}
+      ]
+    },
+    {
+      "id": "checker-forced-chain-promotes",
+      "covers": [
+        "checker.forced-multi-jump",
+        "checker.captures-jumped-piece",
+        "checker.far-rank-promotion"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["queen", "c1"],
+        ["queen", "d1"],
+        ["queen", "e1"],
+        ["queen", "f1"],
+        ["rook", "h1"],
+        ["checker", "b3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "c1"],
+        ["queen", "d1"],
+        ["queen", "e1"],
+        ["queen", "f1"],
+        ["pawn", "c2"],
+        ["ninja", "a3"],
+        ["knight", "b3"],
+        ["pawn", "e3"]
+      ],
+      "steps": [
+        {"move": "b3-c4"},
+        {"move": "d8-d7"},
+        {"move": "c4-b5"},
+        {"move": "g8-e7"},
+        {"move": "b5-c6"},
+        {"move": "e7-g8"},
+        {"move": "c6-e8"},
+        {"move": "e8-g10"},
+        {"move": "g8-e7"},
+        {"piece": {"type": "checkerKing", "square": "g10"}}
+      ]
+    },
+    {
+      "id": "penguin-freeze-layers-stack-and-thaw",
+      "covers": [
+        "penguin.deployment-has-no-aura",
+        "penguin.freeze-layers-stack",
+        "penguin.moving-removes-own-layer"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["penguin", "d1"],
+        ["penguin", "f1"],
+        ["rook", "e2"],
+        ["ninja", "a3"],
+        ["ninja", "b3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["penguin", "d1"],
+        ["penguin", "f1"],
+        ["rook", "e2"],
+        ["ninja", "a3"],
+        ["ninja", "b3"]
+      ],
+      "steps": [
+        {"move": "d1-d2"},
+        {"move": "d9-d8"},
+        {"move": "f1-f2"},
+        {"move": "d8-d9"},
+        {"reject": "e2-e3"},
+        {"move": "d2-c2"},
+        {"move": "h8-f6"},
+        {"reject": "e2-e3"},
+        {"move": "f2-g2"},
+        {"move": "f6-h8"},
+        {"move": "e2-e3"}
+      ]
+    },
+    {
+      "id": "castle-through-attacked-crossing-square",
+      "covers": [
+        "castling.king-rook-submove",
+        "castling.no-through-check-test",
+        "castling.moved-state"
+      ],
+      "player1": [
+        ["king", "d1"],
+        ["rook", "h1"],
+        ["queen", "a1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["bomb", "f3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["rook", "h1"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "d3"],
+        ["bomb", "f3"]
+      ],
+      "steps": [
+        {"move": "d1-f1"},
+        {"piece": {"type": "king", "square": "f1"}},
+        {"piece": {"type": "rook", "square": "e1"}}
+      ]
+    },
+    {
       "id": "sniper-lateral-enemy-is-blocked",
       "covers": [
         "sniper.quiet-lateral",
@@ -68,7 +506,7 @@
         {"move": "c8-c7"},
         {"move": "a3-a4"},
         {"move": "h8-h7"},
-        {"move": "c5-c7"},
+        {"move": "c5-c7", "reconcile_unlogged_deaths": true},
         {"reject": "c7-c6"}
       ]
     },

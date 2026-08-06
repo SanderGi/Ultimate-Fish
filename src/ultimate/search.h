@@ -66,10 +66,34 @@ class Search {
     void clear();
 
    private:
+    static constexpr int MaxPly = 128;
     enum class Bound : std::uint8_t { None, Upper, Lower, Exact };
+    // Keep the transposition table's move payload compact even though the
+    // search-local Move carries a cached ordering score.
+    struct StoredMove {
+        std::uint8_t from = 0;
+        std::uint8_t to = 0;
+        std::uint8_t auxiliary = 0;
+        MoveKind kind = MoveKind::Normal;
+        PieceType promotion = PieceType::Count;
+
+        StoredMove& operator=(const Move& move) {
+            from = move.from;
+            to = move.to;
+            auxiliary = move.auxiliary;
+            kind = move.kind;
+            promotion = move.promotion;
+            return *this;
+        }
+        [[nodiscard]] Move unpack() const {
+            return {from, to, auxiliary, kind, promotion};
+        }
+    };
+    static_assert(sizeof(StoredMove) == 5,
+                  "TT move storage must remain compact");
     struct Entry {
         std::uint64_t key = 0;
-        Move move{};
+        StoredMove move{};
         std::int16_t score = 0;
         std::int8_t depth = -1;
         Bound bound = Bound::None;
@@ -83,7 +107,8 @@ class Search {
     int negamax(Position& position, int depth, int alpha, int beta, int ply,
                 std::vector<Move>& pv);
     int quiescence(Position& position, int alpha, int beta, int ply);
-    int move_score(const Position& position, const Move& move, const Move* ttMove, int ply) const;
+    int move_score(const Position& position, const Move& move,
+                   const Move* ttMove, int ply) const;
     bool stopped();
     Entry* find_entry(std::uint64_t key);
     Entry& replacement_entry(std::uint64_t key);
@@ -98,7 +123,7 @@ class Search {
     std::vector<Move> rootDrawMoves_;
     std::array<std::array<int, Position::BoardSquares>, static_cast<std::size_t>(PieceType::Count)>
       history_{};
-    std::array<std::array<Move, 2>, 128> killers_{};
+    std::array<std::array<Move, 2>, MaxPly> killers_{};
 };
 
 }  // namespace Stockfish::Ultimate
