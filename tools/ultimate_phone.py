@@ -5315,19 +5315,19 @@ class PhoneGame:
             return event.source or "opponent", completed_bans, None
 
         # The shipping build logs pointerDown/start and the exact turn
-        # predicate, but no character identity. The selected pot's serialized
-        # red BanButton is public UI state and moves with that pot, so its
-        # detected anchor is the exact observable selection proof. In
-        # particular, Ninja's stale button appears above Ninja rather than the
-        # requested Prince/Penguin source and therefore cannot pass this test.
+        # predicate, but no character identity. The lower-left inspector is
+        # public UI state and prints the exact selected character name above a
+        # fixed red Ban button. Require both; a stale Ninja/Giant selection can
+        # no longer be confirmed as the requested Prince/Penguin.
         while time.monotonic() < deadline:
-            control = self._visual_ban_control(self.adb.screenshot(),
-                                               self.draft_pots[piece])
-            if control is not None:
+            frame = self.adb.screenshot()
+            control = self._fixed_ban_control(frame)
+            if (control is not None and
+                    self._ranked_inspector_piece_selected(frame, piece)):
                 return "local", completed_bans, control
             time.sleep(0.06)
         raise TimeoutError(
-            f"Ranked {piece} selection never displayed its anchored Ban control"
+            f"Ranked inspector never confirmed selected {piece} with Ban control"
         )
 
     @classmethod
@@ -5383,12 +5383,74 @@ class PhoneGame:
         _pixels, x, y = max(candidates)
         return x, y
 
+    @staticmethod
+    def _ranked_inspector_piece_selected(
+        image, piece: str, tesseract: str = "tesseract"
+    ) -> bool:
+        """OCR the dedicated selected-character name in Ranked's inspector."""
+        import io
+
+        # Measured from the 1080x2400 shipping Android layout. Restricting OCR
+        # to the name strip avoids MESSAGES matching Mage and other surrounding
+        # controls. Three-times scaling reads the outlined comic font reliably
+        # (the live Prince capture returns PRINCE or RINCE).
+        crop = image.crop((
+            0,
+            round(image.height * 0.900),
+            round(image.width * 0.296),
+            round(image.height * 0.963),
+        ))
+        crop = crop.resize((crop.width * 3, crop.height * 3))
+        encoded = io.BytesIO()
+        crop.save(encoded, format="PNG")
+        result = subprocess.run(
+            [tesseract, "stdin", "stdout", "--psm", "7"],
+            input=encoded.getvalue(), stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        observed = re.sub(
+            r"[^A-Z]", "", result.stdout.decode(errors="replace").upper()
+        )
+        expected = re.sub(r"[^A-Z]", "", piece.upper())
+        return (
+            bool(expected) and
+            (expected in observed or
+             (len(expected) >= 5 and expected[1:] in observed))
+        )
+
+    @staticmethod
+    def _fixed_ban_control(image) -> tuple[int, int] | None:
+        """Find the actionable fixed red Ban button in the lower-left inspector."""
+        import numpy as np
+
+        rgb = np.asarray(image.convert("RGB"))
+        red, green, blue = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+        mask = (red > 180) & (red > green * 1.35) & (red > blue * 1.15)
+        candidates: list[tuple[int, int, int]] = []
+        for component in _components(mask):
+            if len(component) < 6000:
+                continue
+            ys = [point[0] for point in component]
+            xs = [point[1] for point in component]
+            width = max(xs) - min(xs) + 1
+            height = max(ys) - min(ys) + 1
+            center = (
+                (min(xs) + max(xs)) // 2,
+                (min(ys) + max(ys)) // 2,
+            )
+            if (image.width * 0.18 < width < image.width * 0.32
+                    and image.height * 0.025 < height < image.height * 0.055
+                    and image.width * 0.05 < center[0] < image.width * 0.25
+                    and image.height * 0.77 < center[1] < image.height * 0.86):
+                candidates.append((len(component), center[0], center[1]))
+        if not candidates:
+            return None
+        _pixels, x, y = max(candidates)
+        return x, y
+
     def _pot_ban_control(self, image, piece: str) -> tuple[int, int] | None:
-        # The actionable serialized BanButton moves with the selected pot.
-        # Resolve it relative to the requested source so the fixed top phase
-        # label and another character's stale control cannot be mistaken for
-        # the selection.
-        return self._visual_ban_control(image, self.draft_pots[piece])
+        del piece
+        return self._fixed_ban_control(image)
 
     def _ban_ranked_piece(self, piece: str, timeout: float = 3.0) -> None:
         # A Ban button can remain visible for the pot touched during side
@@ -5400,8 +5462,8 @@ class PhoneGame:
         # acknowledgement failed, Unity correctly auto-banned that still-
         # selected Giant. Side detection already uses a safe top-row probe, so
         # introducing any unrelated selection here is both unnecessary and
-        # unsafe. Require the red BanButton to be visually anchored above this
-        # exact requested pot before pressing it.
+        # unsafe. Require the inspector OCR to name this exact requested piece
+        # before pressing the fixed lower-left red Ban button.
         source, _, control = self._select_ranked_pot_verified(
             piece, min(1.0, timeout)
         )

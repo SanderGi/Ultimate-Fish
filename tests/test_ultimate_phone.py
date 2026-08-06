@@ -728,13 +728,14 @@ class RankedDraftControllerTests(unittest.TestCase):
             "pawn": (98, 1248), "prince": (934, 1101),
         }
 
-        game._visual_ban_control = (
-            lambda _image, source: (source[0], source[1] - 142)
+        game._fixed_ban_control = lambda _image: (157, 1967)
+        game._ranked_inspector_piece_selected = (
+            lambda _image, piece: piece == "prince"
         )
         game._ban_ranked_piece("prince")
         self.assertEqual(
             game.adb.taps,
-            [(934, 1101), (934, 959)],
+            [(934, 1101), (157, 1967)],
         )
 
     def test_local_ban_refuses_to_confirm_unanchored_selection(self):
@@ -1484,7 +1485,10 @@ class RankedDraftControllerTests(unittest.TestCase):
                 ),
             ))
             game.draft_pots = {"giant": (123, 456)}
-            game._visual_ban_control = lambda _image, _source: (123, 314)
+            game._fixed_ban_control = lambda _image: (157, 1967)
+            game._ranked_inspector_piece_selected = (
+                lambda _image, _piece: True
+            )
             self.assertEqual(game._ranked_is_ivory(), expected)
             self.assertEqual(game.adb.taps, [(123, 456)])
 
@@ -1908,7 +1912,7 @@ class VisionTests(unittest.TestCase):
                 MODULE.PhoneGame._visual_ban_control(image, source)
             )
 
-    def test_ranked_requested_pot_control_wins_over_fixed_decoy(self):
+    def test_ranked_fixed_ban_button_wins_over_pot_decoy(self):
         from PIL import Image, ImageDraw
 
         image = Image.new("RGB", (1080, 2400), (80, 130, 80))
@@ -1932,9 +1936,10 @@ class VisionTests(unittest.TestCase):
         point = game._pot_ban_control(image, "prince")
 
         self.assertIsNotNone(point)
-        self.assertEqual(point, (850, 805))
+        self.assertTrue(150 <= point[0] <= 165)
+        self.assertTrue(1960 <= point[1] <= 1975)
 
-    def test_ranked_pot_bubble_is_the_anchored_confirmation_target(self):
+    def test_ranked_pot_bubble_is_not_the_fixed_confirmation_target(self):
         from PIL import Image, ImageDraw
 
         image = Image.new("RGB", (1080, 2400), (80, 130, 80))
@@ -1948,7 +1953,24 @@ class VisionTests(unittest.TestCase):
         game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
         game.draft_pots = {"prince": (850, 930)}
 
-        self.assertEqual(game._pot_ban_control(image, "prince"), (850, 805))
+        self.assertIsNone(game._pot_ban_control(image, "prince"))
+
+    def test_ranked_inspector_ocr_requires_requested_piece(self):
+        from PIL import Image
+
+        image = Image.new("RGB", (1080, 2400), (80, 130, 80))
+        response = Mock(stdout=b"'PRINCE\n")
+        with patch.object(MODULE.subprocess, "run", return_value=response):
+            self.assertTrue(
+                MODULE.PhoneGame._ranked_inspector_piece_selected(
+                    image, "prince"
+                )
+            )
+            self.assertFalse(
+                MODULE.PhoneGame._ranked_inspector_piece_selected(
+                    image, "ninja"
+                )
+            )
 
     def test_connected_main_requires_profile_and_play(self):
         from PIL import Image, ImageDraw
