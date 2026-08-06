@@ -48,8 +48,8 @@ The final optimization pass used the now-corrected 13,724-node frontier and the
 | One computed ordering score per move | 7 | 259,422 | 1.210 s |
 | Ordered pseudo-legal actions, validated on the searched child | 7 | 259,421 | 0.505 s |
 
-A cold ten-second release search now completes **depth 10**, visits about 5.99
-million nodes, and selects `f2!f8` with the PV
+A cold ten-second release search now completes **depth 10**, visits about
+6.0–6.2 million nodes, and selects `f2!f8` with the PV
 `f2!f8 f3@h2 h1-g2 a8-b7 g2-h3 a10xa2 f1-f3 g9-d6 f2-a7 a10xa7`.
 The previous corrected native build required 8.019 seconds merely to complete
 depth seven. This is a position-specific performance result, not an Elo
@@ -91,6 +91,14 @@ The optimization suggestions were measured rather than accepted wholesale:
   Fisherman/check quiescence cycle. AddressSanitizer identified a stack overflow;
   search now has a hard ply ceiling and the exact persistent-history sequence is
   a regression test.
+- A sampled 30-second search showed that native royal-threat validation, not
+  move-vector allocation, was the largest avoidable legality cost. Guaranteed
+  attacks on an unprotected real King now return before copying and replaying
+  the full child. Angel-protected Kings and indirect Bomb/Giant attacks retain
+  the complete simulator path. Across nine alternating identical-tree depth-7
+  runs, median time fell from 488 ms to 469 ms (3.9%); a ten-second run visited
+  6,228,864 nodes while preserving the same score and PV. A reusable per-ply
+  vector experiment measured 500 ms versus 499 ms and was rejected as noise.
 
 Run `tools/benchmark_ultimate.sh` for fixed perft/search measurements, or set
 `ULTIMATE_LONG_BENCHMARK=1` to include the cold ten-second horizon check. Run

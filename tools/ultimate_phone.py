@@ -1575,6 +1575,14 @@ class EventStream:
         self.gameplay_lock = threading.Lock()
         self.gameplay_generation = 0
         self.gameplay_events: list[AppEvent] = []
+        # GetPoints is public, exact native state. Keep the maximum total seen
+        # for each player since Board.LoadBoard: board spawning can emit
+        # partial increasing totals, while an Onyx opening capture can reduce
+        # the later value before we finish probing. The per-generation maximum
+        # therefore preserves the exact starting material without OCR.
+        self.points_lock = threading.Lock()
+        self.initial_points: list[int | None] = [None, None]
+        self.points_frozen = False
         self.bot_source: str | None = None
         self.bot_target: str | None = None
         self.thread = threading.Thread(target=self._read, daemon=True)
@@ -1591,8 +1599,29 @@ class EventStream:
             if event.kind in ("board_loaded", "draft_board_loaded"):
                 self.gameplay_generation += 1
                 self.gameplay_events.clear()
+                with self.points_lock:
+                    self.initial_points = [None, None]
+                    self.points_frozen = False
             elif event.kind in self.GAMEPLAY_KINDS:
                 self.gameplay_events.append(event)
+                if event.kind in ("move", "attack", "dead"):
+                    with self.points_lock:
+                        self.points_frozen = True
+        if event.kind == "army_points":
+            assert event.source is not None and event.target is not None
+            values = (int(event.source), int(event.target))
+            with self.points_lock:
+                for index, value in enumerate(values):
+                    previous = self.initial_points[index]
+                    if previous is None or (not self.points_frozen and value > previous):
+                        self.initial_points[index] = value
+
+    def initial_points_snapshot(self) -> tuple[int, int] | None:
+        """Return exact native starting totals for the current loaded board."""
+        with self.points_lock:
+            if any(value is None for value in self.initial_points):
+                return None
+            return int(self.initial_points[0]), int(self.initial_points[1])
 
     def _read(self) -> None:
         assert self.process.stdout is not None
@@ -1881,11 +1910,32 @@ class AdbDevice:
             import io
         except ImportError as exc:  # pragma: no cover - environment guidance
             raise RuntimeError("initial board discovery requires Pillow") from exc
-        result = subprocess.run(
-            [self.adb, "-s", self.device, "exec-out", "screencap", "-p"],
-            stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+        command = [
+            self.adb, "-s", self.device, "exec-out", "screencap", "-p",
+        ]
+        last_detail = "no screenshot attempt completed"
+        for attempt in range(4):
+            result = subprocess.run(
+                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                check=False,
+            )
+            if result.returncode:
+                stderr = result.stderr.decode("utf-8", errors="replace").strip()
+                last_detail = stderr or f"adb exited {result.returncode}"
+            else:
+                try:
+                    with Image.open(io.BytesIO(result.stdout)) as captured:
+                        captured.load()
+                        return captured.convert("RGB")
+                except (OSError, ValueError) as exc:
+                    last_detail = (
+                        f"invalid image payload ({len(result.stdout)} bytes): {exc}"
+                    )
+            if attempt < 3:
+                time.sleep(0.08 * (attempt + 1))
+        raise RuntimeError(
+            "adb screencap failed after 4 attempts: " + last_detail
         )
-        return Image.open(io.BytesIO(result.stdout)).convert("RGB")
 
     def close(self) -> None:
         if self.shell.poll() is None:
@@ -6144,6 +6194,15 @@ class PhoneGame:
         )
         observed_material = enemy_material
         material_reads: list[int] = []
+        used_native_material = False
+
+        def native_enemy_material() -> int | None:
+            snapshotter = getattr(self.events, "initial_points_snapshot", None)
+            points = snapshotter() if snapshotter is not None else None
+            if points is None:
+                return None
+            return points[1 if side == "w" else 0]
+
         opening_frames = []
         opening_outlines: list[set[str]] = []
         opening_error: Exception | None = None
@@ -6158,8 +6217,13 @@ class PhoneGame:
                 opening_frames.append(opening)
                 opening_outlines.append(set(frame_outlines))
                 if enemy_material is None:
-                    candidate = read_material_counter(opening)
-                    material_reads.append(candidate)
+                    native_material = native_enemy_material()
+                    if native_material is not None:
+                        observed_material = native_material
+                        used_native_material = True
+                    else:
+                        candidate = read_material_counter(opening)
+                        material_reads.append(candidate)
                 if len(opening_frames) < 3:
                     raise RuntimeError("opening video consensus is incomplete")
                 outlined = consensus_square_sets(opening_outlines[-3:])
@@ -6172,11 +6236,18 @@ class PhoneGame:
                     # cell agrees across all three frames or fail closed.
                     raise RuntimeError("enemy outline cells have not stabilized")
                 if enemy_material is None:
-                    # Require three consecutive fully rendered counter reads.
-                    # This rejects transient 011/099 values during digit easing.
-                    if len(material_reads) < 3 or len(set(material_reads[-3:])) != 1:
-                        raise RuntimeError("material counter has not stabilized")
-                    observed_material = material_reads[-1]
+                    native_material = native_enemy_material()
+                    if native_material is not None:
+                        observed_material = native_material
+                        used_native_material = True
+                    else:
+                        # Require three consecutive fully rendered counter
+                        # reads only when the exact native ledger is absent.
+                        # This rejects transient 011/099 digit easing.
+                        if (len(material_reads) < 3
+                                or len(set(material_reads[-3:])) != 1):
+                            raise RuntimeError("material counter has not stabilized")
+                        observed_material = material_reads[-1]
                 break
             except RuntimeError as exc:
                 opening_error = exc
@@ -6188,7 +6259,8 @@ class PhoneGame:
             raise RuntimeError("opening board did not settle") from opening_error
         if enemy_material is None:
             assert observed_material is not None
-            self.log(f"public enemy material: {observed_material}")
+            source = "native" if used_native_material else "counter OCR"
+            self.log(f"public enemy material: {observed_material} ({source})")
         if require_pristine and self.events.opening_action_started():
             raise RuntimeError(
                 "opponent opening action began during outline consensus"
@@ -6198,6 +6270,14 @@ class PhoneGame:
             raise RuntimeError(
                 "opponent opening action began during initial public scan"
             )
+        native_material = native_enemy_material()
+        if native_material is not None:
+            if observed_material != native_material:
+                self.log(
+                    f"native enemy material {native_material} overrides "
+                    f"counter OCR {observed_material}"
+                )
+            observed_material = native_material
         probed_variants = (
             rewind_public_enemy_opening(probed, opening_events)
             if opening_events else [probed]

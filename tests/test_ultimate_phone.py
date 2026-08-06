@@ -340,6 +340,50 @@ class LogParserTests(unittest.TestCase):
         )
 
 
+class EventPointLedgerTests(unittest.TestCase):
+    def make_stream(self):
+        stream = MODULE.EventStream.__new__(MODULE.EventStream)
+        stream.gameplay_lock = MODULE.threading.Lock()
+        stream.gameplay_generation = 0
+        stream.gameplay_events = []
+        stream.points_lock = MODULE.threading.Lock()
+        stream.initial_points = [None, None]
+        stream.points_frozen = False
+        return stream
+
+    def test_native_points_keep_complete_pre_capture_maximum(self):
+        stream = self.make_stream()
+        stream._record_gameplay_event(MODULE.AppEvent("board_loaded"))
+        # Board construction may publish partial totals before the complete
+        # roster, then a capture lowers one side before an Onyx scan finishes.
+        stream._record_gameplay_event(
+            MODULE.AppEvent("army_points", source="51", target="50")
+        )
+        stream._record_gameplay_event(
+            MODULE.AppEvent("army_points", source="96", target="100")
+        )
+        stream._record_gameplay_event(
+            MODULE.AppEvent("move", "berserker", "a8", "a2")
+        )
+        # A Berserker capture can increase its dynamic points. Once public
+        # action starts, that must not replace the pre-action roster total.
+        stream._record_gameplay_event(
+            MODULE.AppEvent("army_points", source="111", target="50")
+        )
+        stream._record_gameplay_event(
+            MODULE.AppEvent("army_points", source="76", target="50")
+        )
+        self.assertEqual(stream.initial_points_snapshot(), (96, 100))
+
+    def test_new_board_discards_previous_native_points(self):
+        stream = self.make_stream()
+        stream._record_gameplay_event(
+            MODULE.AppEvent("army_points", source="96", target="100")
+        )
+        stream._record_gameplay_event(MODULE.AppEvent("board_loaded"))
+        self.assertIsNone(stream.initial_points_snapshot())
+
+
 class OnlineStateSanitizerTests(unittest.TestCase):
     def test_infers_rotated_local_team_and_giant_anchor(self):
         state = MODULE.OnlineStartState((
@@ -439,6 +483,47 @@ class EngineDraftProtocolTests(unittest.TestCase):
         self.assertEqual(commands, [
             "draft auto", "draft choose queen", "draft commit",
         ])
+
+
+class AdbDeviceTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("PIL"), "Pillow not installed")
+    def test_screenshot_retries_a_transient_non_image_payload(self):
+        import io
+        from PIL import Image
+
+        encoded = io.BytesIO()
+        Image.new("RGB", (3, 2), (10, 20, 30)).save(encoded, format="PNG")
+        device = MODULE.AdbDevice.__new__(MODULE.AdbDevice)
+        device.adb = "adb"
+        device.device = "serial"
+        responses = (
+            Mock(returncode=0, stdout=b"", stderr=b""),
+            Mock(returncode=0, stdout=encoded.getvalue(), stderr=b""),
+        )
+        with (
+            patch.object(MODULE.subprocess, "run", side_effect=responses) as run,
+            patch.object(MODULE.time, "sleep") as sleep,
+        ):
+            image = device.screenshot()
+        self.assertEqual(image.size, (3, 2))
+        self.assertEqual(run.call_count, 2)
+        sleep.assert_called_once_with(0.08)
+
+    @unittest.skipUnless(importlib.util.find_spec("PIL"), "Pillow not installed")
+    def test_screenshot_reports_persistent_adb_failure(self):
+        device = MODULE.AdbDevice.__new__(MODULE.AdbDevice)
+        device.adb = "adb"
+        device.device = "serial"
+        failed = Mock(returncode=1, stdout=b"", stderr=b"device offline")
+        with (
+            patch.object(MODULE.subprocess, "run", return_value=failed) as run,
+            patch.object(MODULE.time, "sleep"),
+        ):
+            with self.assertRaisesRegex(
+                RuntimeError, "failed after 4 attempts: device offline"
+            ):
+                device.screenshot()
+        self.assertEqual(run.call_count, 4)
 
 
 class RankedDraftControllerTests(unittest.TestCase):
@@ -1521,9 +1606,13 @@ class OpeningSynchronizationTests(unittest.TestCase):
         stream.gameplay_lock = threading.Lock()
         stream.gameplay_generation = 7
         stream.gameplay_events = [MODULE.AppEvent("game_over")]
+        stream.points_lock = threading.Lock()
+        stream.initial_points = [96, 100]
+        stream.points_frozen = False
         stream._record_gameplay_event(MODULE.AppEvent("draft_board_loaded"))
         self.assertEqual(stream.gameplay_generation, 8)
         self.assertEqual(stream.gameplay_events, [])
+        self.assertIsNone(stream.initial_points_snapshot())
         stream._record_gameplay_event(
             MODULE.AppEvent("move", "queen", "a10", "a1")
         )

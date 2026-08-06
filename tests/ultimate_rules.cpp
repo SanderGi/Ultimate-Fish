@@ -317,6 +317,25 @@ void test_bomb_check_legality() {
     expect(!revealedRoyal.move_from_string("c2-d3").has_value(),
            "ordinary check legality resumes when the Jester is absent");
 
+    Position protectedRoyal;
+    protectedRoyal.add_piece(PieceType::King, Color::White,
+                             Position::square_from_name("e5"));
+    protectedRoyal.add_piece(PieceType::Angel, Color::White,
+                             Position::square_from_name("b2"));
+    protectedRoyal.add_piece(PieceType::Pawn, Color::White,
+                             Position::square_from_name("a2"));
+    protectedRoyal.add_piece(PieceType::King, Color::Black,
+                             Position::square_from_name("h10"));
+    protectedRoyal.add_piece(PieceType::Rook, Color::Black,
+                             Position::square_from_name("e10"));
+    Undo royalProtection;
+    expect(protectedRoyal.make_move(
+               require_move(protectedRoyal, "b2&e5"), royalProtection),
+           "Angel attachment can resolve an otherwise direct royal threat");
+    protectedRoyal.set_side_to_move(Color::White);
+    expect(protectedRoyal.move_from_string("a2-a3").has_value(),
+           "direct-threat fast path still simulates an Angel-protected King");
+
     Position disappearingDecoy;
     disappearingDecoy.add_piece(PieceType::King, Color::White,
                                  Position::square_from_name("e1"));

@@ -352,6 +352,14 @@ static visible-plus-Ghost values total 102 while the public counter reads 100.
 The phone controller reconciles only the uniquely determined Ghost count within
 that observed two-point adjustment and rejects larger mismatches.
 
+For live CPU and Unranked initialization, the app's public `GetPoints()`
+diagnostic is authoritative over the animated three-tile counter. The
+controller retains the maximum player totals observed after the current
+`Board.LoadBoard` and freezes them when the first action begins, so partial
+spawn totals, later captures, and Berserker growth do not replace the starting
+roster value. Pixel OCR is used only when that native public record is
+unavailable.
+
 No source-level divergence is currently known in the recovered 5.731 ledger,
 but conformance remains open until the pending matrix fixtures and broader
 interaction campaigns are complete.

@@ -1209,6 +1209,11 @@ bool Position::real_king_threatened(Color color) const {
     }
 
     const Bitboard royalDanger = square_bb(kingSquare) | dangerousBombs;
+    const int kingId = board_[kingSquare];
+    const bool kingProtected = attached_angel(kingId) != NoPiece;
+    const auto isKingVictim = [&](int id) {
+        return id == kingId;
+    };
     const auto dangerousVictim = [&](int id) {
         return id != NoPiece && id < pieceCount_ && pieces_[id].alive &&
           ((pieces_[id].type == PieceType::King && pieces_[id].color == color) ||
@@ -1262,11 +1267,15 @@ bool Position::real_king_threatened(Color color) const {
             // Angel, Parasite, and blast semantics without applying unrelated
             // captures merely to discover that the King survived.
             bool canKnockOut = false;
+            bool directlyHitsKing = false;
             if (actorType == PieceType::Bomb) {
                 canKnockOut = dangerousBlast(reply.to);
+                directlyHitsKing = adjacent(reply.to, kingSquare);
             }
             else if (actorType == PieceType::Giant) {
-                canKnockOut = bool(attacker.footprint(actor, reply.to) & royalDanger);
+                const Bitboard destination = attacker.footprint(actor, reply.to);
+                canKnockOut = bool(destination & royalDanger);
+                directlyHitsKing = bool(destination & square_bb(kingSquare));
             }
             else if (reply.kind == MoveKind::Swap &&
                      reply.auxiliary < attacker.pieceCount_ &&
@@ -1277,9 +1286,12 @@ bool Position::real_king_threatened(Color color) const {
                 const int destinationRank = rank_of(reply.from) +
                   rank_of(attacker.pieces_[giant].square) - rank_of(reply.to);
                 if (destinationFile >= 0 && destinationFile < BoardFiles &&
-                    destinationRank >= 0 && destinationRank < BoardRanks)
-                    canKnockOut = bool(attacker.footprint(
-                      giant, make_square(destinationFile, destinationRank)) & royalDanger);
+                    destinationRank >= 0 && destinationRank < BoardRanks) {
+                    const Bitboard destination = attacker.footprint(
+                      giant, make_square(destinationFile, destinationRank));
+                    canKnockOut = bool(destination & royalDanger);
+                    directlyHitsKing = bool(destination & square_bb(kingSquare));
+                }
             }
             else if (reply.kind == MoveKind::Pull) {
                 const int pulled = valid_square(reply.to) ? attacker.board_[reply.to] : NoPiece;
@@ -1289,9 +1301,12 @@ bool Position::real_king_threatened(Color color) const {
                     const int destinationRank = rank_of(attacker.pieces_[pulled].square) +
                                                 rank_of(reply.auxiliary) - rank_of(reply.to);
                     if (destinationFile >= 0 && destinationFile < BoardFiles &&
-                        destinationRank >= 0 && destinationRank < BoardRanks)
-                        canKnockOut = bool(attacker.footprint(
-                          pulled, make_square(destinationFile, destinationRank)) & royalDanger);
+                        destinationRank >= 0 && destinationRank < BoardRanks) {
+                        const Bitboard destination = attacker.footprint(
+                          pulled, make_square(destinationFile, destinationRank));
+                        canKnockOut = bool(destination & royalDanger);
+                        directlyHitsKing = bool(destination & square_bb(kingSquare));
+                    }
                 }
             }
             else if (actorType == PieceType::Copycat ||
@@ -1300,20 +1315,30 @@ bool Position::real_king_threatened(Color color) const {
                 const int mirrored = valid_square(reply.auxiliary)
                                    ? attacker.board_[reply.auxiliary] : NoPiece;
                 canKnockOut = dangerousVictim(primary) || dangerousVictim(mirrored);
+                directlyHitsKing = isKingVictim(primary) || isKingVictim(mirrored);
             }
             else if (reply.kind == MoveKind::Shoot) {
                 canKnockOut = dangerousVictim(reply.auxiliary);
+                directlyHitsKing = isKingVictim(reply.auxiliary);
             }
             else if ((actorType == PieceType::Checker ||
                       actorType == PieceType::CheckerKing) &&
                      valid_square(reply.auxiliary)) {
                 canKnockOut = dangerousVictim(attacker.board_[reply.auxiliary]);
+                directlyHitsKing = isKingVictim(attacker.board_[reply.auxiliary]);
             }
             else if (valid_square(reply.to)) {
                 canKnockOut = dangerousVictim(attacker.board_[reply.to]);
+                directlyHitsKing = isKingVictim(attacker.board_[reply.to]);
             }
             if (!canKnockOut)
                 continue;
+            // SimulateDeath can save a King only through an attached Angel.
+            // With no protector, every native attack class above necessarily
+            // removes or possesses the real King. Avoid copying and replaying
+            // the complete position merely to observe that guaranteed result.
+            if (directlyHitsKing && !kingProtected)
+                return true;
             Position child = attacker;
             if (!child.apply_move_unchecked(reply))
                 continue;
