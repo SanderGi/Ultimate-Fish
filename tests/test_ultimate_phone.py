@@ -1581,6 +1581,35 @@ class VisionTests(unittest.TestCase):
         self.assertTrue(680 <= point[0] <= 695)
         self.assertTrue(1425 <= point[1] <= 1435)
 
+    def test_submenu_back_detector_only_accepts_large_top_right_red_control(self):
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGB", (1080, 2400), (40, 140, 210))
+        draw = ImageDraw.Draw(image)
+        draw.rounded_rectangle(
+            (790, 110, 1050, 210), radius=35, fill=(240, 65, 30))
+        point = MODULE.PhoneGame._submenu_back_point(image)
+        self.assertIsNotNone(point)
+        self.assertTrue(915 <= point[0] <= 925)
+        self.assertTrue(155 <= point[1] <= 165)
+
+        main = Image.new("RGB", (1080, 2400), (40, 140, 210))
+        ImageDraw.Draw(main).rounded_rectangle(
+            (650, 1200, 850, 1280), radius=30, fill=(240, 65, 30))
+        self.assertIsNone(MODULE.PhoneGame._submenu_back_point(main))
+
+    def test_unranked_retries_after_post_offer_navigation(self):
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.log = Mock()
+        with patch.object(
+            game, "_start_unranked_once",
+            side_effect=(MODULE.MatchmakingNavigationRetry("promotion"), None),
+        ) as start_once:
+            game.start_unranked()
+        self.assertEqual(start_once.call_count, 2)
+        game.log.assert_called_once_with(
+            "promotion; rejoining Unranked (attempt 2)")
+
     def test_army_clear_confirmation_detector(self):
         from PIL import Image, ImageDraw
 

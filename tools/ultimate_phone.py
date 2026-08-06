@@ -267,6 +267,10 @@ class OnlineAuthenticationRequired(RuntimeError):
     """The restored account was rejected and needs an interactive sign-in."""
 
 
+class MatchmakingNavigationRetry(RuntimeError):
+    """A failed match offer returned to a menu instead of the live queue."""
+
+
 @dataclass(frozen=True)
 class OpeningTerminal:
     """A public result reached before an Onyx position could be initialized."""
@@ -3738,6 +3742,38 @@ class PhoneGame:
             image, (0.20, 0.31, 0.80, 0.40), "light_cyan") > 10000
 
     @staticmethod
+    def _submenu_back_point(image) -> tuple[int, int] | None:
+        """Find the safe top-right red Back control on non-game menus."""
+        import numpy as np
+
+        rgb = np.asarray(image.convert("RGB"))
+        height, width = rgb.shape[:2]
+        left = round(width * 0.62)
+        bottom = round(height * 0.22)
+        crop = rgb[:bottom, left:]
+        red, green, blue = crop[:, :, 0], crop[:, :, 1], crop[:, :, 2]
+        mask = (red > 205) & (red > green * 1.35) & (red > blue * 1.15)
+        candidates = []
+        for component in _components(mask):
+            if not component:
+                continue
+            ys = [point[0] for point in component]
+            xs = [point[1] for point in component]
+            component_width = max(xs) - min(xs) + 1
+            component_height = max(ys) - min(ys) + 1
+            if (component_width > width * 0.18 and
+                    component_height > height * 0.025):
+                candidates.append((
+                    len(component),
+                    left + (min(xs) + max(xs)) // 2,
+                    (min(ys) + max(ys)) // 2,
+                ))
+        if not candidates:
+            return None
+        _area, x, y = max(candidates)
+        return x, y
+
+    @staticmethod
     def _maintenance_ack_point(image) -> tuple[int, int] | None:
         """Return the harmless Okay control on the server-unavailable modal."""
         if PhoneGame._color_count(
@@ -4773,6 +4809,15 @@ class PhoneGame:
             raise
 
     def start_unranked(self) -> None:
+        """Enter Unranked, recovering if an expired offer opens a promotion."""
+        for attempt in itertools.count(1):
+            try:
+                self._start_unranked_once()
+                return
+            except MatchmakingNavigationRetry as exc:
+                self.log(f"{exc}; rejoining Unranked (attempt {attempt + 1})")
+
+    def _start_unranked_once(self) -> None:
         """Enter the explicitly authorized blind-pick Unranked queue."""
         self.log("starting Unranked game")
         self.events.reset_network_state()
@@ -5046,11 +5091,26 @@ class PhoneGame:
                 event = self.events.wait(awaited, 3.0)
             except TimeoutError:
                 now = time.monotonic()
+                screen = self.adb.screenshot()
+                if self._connected_main(screen):
+                    raise MatchmakingNavigationRetry(
+                        "expired match offer returned to the main menu"
+                    )
+                submenu_back = self._submenu_back_point(screen)
+                if submenu_back:
+                    # The app can show a promotional Bundle menu immediately
+                    # after an offer expires. Never leave the matchmaking loop
+                    # tapping a stale Accept coordinate over shop content.
+                    self.log("closing post-offer promotional submenu")
+                    self.adb.tap_sync(*submenu_back)
+                    raise MatchmakingNavigationRetry(
+                        "expired match offer opened a promotional submenu"
+                    )
                 # The timed modal lives for ten seconds.  Before then a visible
                 # Accept can still be the just-accepted offer's closing UI;
                 # after then it must be a new offer (or a missed first tap).
                 if now - accepted_at >= 10.0:
-                    point = self._accept_point(self.adb.screenshot())
+                    point = self._accept_point(screen)
                     if point:
                         self.log("new visible match offer; accepting")
                         self._accept_match_prompt(point)
