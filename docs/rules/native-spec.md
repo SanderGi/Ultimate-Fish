@@ -72,10 +72,12 @@ public cells and inferred Ghosts reconcile exactly with the announced material;
 the opening candidate must also contain a royal. Ranked automation fails closed
 if that public journal is absent and never falls back to tapping cells obscured
 by character pots.
-The final group may legally stop below 100. A live autonomous Onyx draft was
-accepted at 90 points and played to completion. Ranked initialization therefore
-uses the last public cumulative opponent total from `GetPoints`, not the global
-100-point ceiling, when reconstructing hidden Ghost count and royal hypotheses.
+Either player's final group may legally stop below 100; an opponent is not
+required to spend the full budget. A live autonomous Onyx draft was accepted at
+90 points and played to completion. Ranked initialization therefore uses each
+side's last public cumulative total from `GetPoints`, not the global 100-point
+ceiling, when reconstructing the exact public roster (including hidden Ghost
+count) and royal hypotheses.
 `OnBanCharacter` is public. Its subsequent native
 `TEXURE ASSIGNED TO <piece>` diagnostic identifies the exact newly locked pot,
 so the controller applies that public ban without overlapping-pot image
@@ -120,7 +122,12 @@ the stable deployment edges are `(8,1145)` through `(912,1465)`, scaled with
 the device resolution. Group placement backtracks all still-mutable pieces so
 four 2x2 Giants can be packed alongside ordinary models; a failed target is
 excluded only for that duplicate instance and never terminates the controller
-during an active Ranked clock.
+during an active Ranked clock. Giants are a special native placement case:
+`Giant.getClosestIntersection` snaps their 2x2 footprint around a grid
+intersection. The controller therefore drops at the exact center intersection
+of the requested four cells. Dropping at an ordinary anchor-cell center is
+ambiguous and was observed to shift `c2/e2/g2` down to `c1/e1/g1`, where the
+fixed King prevents a fourth Giant from fitting.
 
 After selecting a Ban pot, the current Ranked UI exposes the actionable large
 red Ban button in the lower-left character inspector. The blue top-row `BAN`

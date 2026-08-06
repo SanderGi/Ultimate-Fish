@@ -676,6 +676,24 @@ class DeploymentGeometry:
             round(self.top + (3 - rank + 0.5) * self.cell_height),
         )
 
+    def giant_point(self, anchor: str) -> tuple[int, int]:
+        """Return the native intersection for a Giant's 2x2 anchor.
+
+        Giant.getClosestIntersection snaps the model around a grid
+        intersection rather than a cell center.  Dropping on the anchor's
+        ordinary center leaves that snap equidistant between intersections
+        and can shift the footprint one file, making an otherwise legal row
+        of four Giants impossible to place.
+        """
+        file_index = ord(anchor[0]) - ord("a")
+        rank = int(anchor[1:])
+        if not (0 <= file_index < 7 and 1 <= rank < 3):
+            raise ValueError(f"invalid Giant deployment anchor: {anchor}")
+        return (
+            round(self.left + (file_index + 1.0) * self.cell_width),
+            round(self.top + (3 - rank) * self.cell_height),
+        )
+
     def scaled(self, width: int, height: int) -> "DeploymentGeometry":
         return DeploymentGeometry(
             width, height,
@@ -5228,9 +5246,13 @@ class PhoneGame:
         # that visible grid rather than the later settled-gameplay geometry;
         # relying on Giant.getClosestIntersection to rescue off-board drops is
         # both slow and dependent on whichever model collider is nearest.
-        target = RANKED_DEPLOYMENT_GEOMETRY.scaled(
+        deployment_geometry = RANKED_DEPLOYMENT_GEOMETRY.scaled(
             self.geometry.width, self.geometry.height,
-        ).point(square)
+        )
+        target = (
+            deployment_geometry.giant_point(square)
+            if piece == "giant" else deployment_geometry.point(square)
+        )
         source = self.draft_pots[piece]
         # PointerDown grabs the pot model and PointerUp on the square performs
         # the native placement.  A moderately short gesture is fast while still
@@ -5272,7 +5294,10 @@ class PhoneGame:
         if landed_coordinate is None:
             if piece == "giant" and point_history:
                 # Giant's recovered override logs no coordinate pair. Its 2x2
-                # footprint is still confirmed by the point transition.
+                # footprint is confirmed by the point transition. The drag
+                # targets its exact native grid intersection, so unlike the
+                # old ambiguous cell-center drop the requested anchor is the
+                # snapped anchor.
                 actual_square = square
             elif not point_history or point_history[-1] == self.ranked_local_points:
                 raise TimeoutError(

@@ -754,6 +754,16 @@ class RankedDraftControllerTests(unittest.TestCase):
             MODULE.BoardGeometry().point("g1"),
         )
 
+    def test_ranked_giants_target_exact_footprint_intersections(self):
+        geometry = MODULE.RANKED_DEPLOYMENT_GEOMETRY
+        self.assertEqual(geometry.giant_point("a2"), (121, 1252))
+        self.assertEqual(geometry.giant_point("c2"), (347, 1252))
+        self.assertEqual(geometry.giant_point("e2"), (573, 1252))
+        self.assertEqual(geometry.giant_point("g2"), (799, 1252))
+        self.assertNotEqual(geometry.giant_point("a2"), geometry.point("a2"))
+        with self.assertRaisesRegex(ValueError, "Giant deployment anchor"):
+            geometry.giant_point("h2")
+
     def test_ranked_pick_repairs_intercepted_material_before_locking(self):
         class PickEvents:
             @staticmethod
@@ -3022,6 +3032,12 @@ class BeliefConstructionTests(unittest.TestCase):
         }))
         adjusted = MODULE.ranked_public_roster(public, 47)
         self.assertEqual(adjusted["ghost"], 1)
+
+    def test_ranked_public_roster_does_not_fill_underbudget_opponent_to_100(self):
+        public = (("king", "a10"), ("queen", "b10"), ("mage", "c10"))
+        roster = MODULE.ranked_public_roster(public, 25)
+        self.assertEqual(roster, MODULE.Counter({"queen": 1, "mage": 1}))
+        self.assertNotIn("ghost", roster)
 
     def test_ranked_first_pick_chronology_excludes_late_jester_from_king(self):
         positions = MODULE.initial_beliefs(
