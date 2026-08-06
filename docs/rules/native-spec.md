@@ -124,10 +124,12 @@ four 2x2 Giants can be packed alongside ordinary models; a failed target is
 excluded only for that duplicate instance and never terminates the controller
 during an active Ranked clock. Giants are a special native placement case:
 `Giant.getClosestIntersection` snaps their 2x2 footprint around a grid
-intersection. The controller therefore drops at the exact center intersection
-of the requested four cells. Dropping at an ordinary anchor-cell center is
-ambiguous and was observed to shift `c2/e2/g2` down to `c1/e1/g1`, where the
-fixed King prevents a fourth Giant from fitting.
+intersection. Recovered ARM code at `0x168d290` loads the world positions of
+the four squares `(x,y)`, `(x+1,y)`, `(x+1,y+1)`, and `(x,y+1)`, sums their
+three coordinates, and multiplies each by `0.25`. The controller therefore
+drops at that exact center intersection. Dropping at an ordinary anchor-cell
+center is ambiguous and was observed to shift `c2/e2/g2` down to `c1/e1/g1`,
+where the fixed King prevents a fourth Giant from fitting.
 
 After selecting a Ban pot, the current Ranked UI exposes the actionable large
 red Ban button in the lower-left character inspector. The blue top-row `BAN`

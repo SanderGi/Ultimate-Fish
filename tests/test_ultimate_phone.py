@@ -764,6 +764,43 @@ class RankedDraftControllerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Giant deployment anchor"):
             geometry.giant_point("h2")
 
+    def test_ranked_giant_drag_uses_intersection_not_anchor_cell_center(self):
+        class GiantAdb:
+            def __init__(self):
+                self.drags = []
+
+            def drag_sync(self, source, target, duration):
+                self.drags.append((source, target, duration))
+
+        class GiantEvents:
+            def __init__(self):
+                self.pending = [MODULE.AppEvent(
+                    "army_points", source="1", target="0"
+                )]
+
+            def wait(self, _kinds, timeout):
+                if self.pending:
+                    return self.pending.pop(0)
+                MODULE.time.sleep(timeout)
+                raise TimeoutError
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.adb = GiantAdb()
+        game.events = GiantEvents()
+        game.draft_pots = {"giant": (110, 840)}
+        game.ranked_local_points = 0
+
+        result = game._place_ranked_piece("giant", "c2", True)
+
+        expected = MODULE.RANKED_DEPLOYMENT_GEOMETRY.giant_point("c2")
+        self.assertEqual(game.adb.drags, [((110, 840), expected, 180)])
+        self.assertNotEqual(
+            game.adb.drags[0][1],
+            MODULE.RANKED_DEPLOYMENT_GEOMETRY.point("c2"),
+        )
+        self.assertEqual((result.square, result.local_points), ("c2", 1))
+
     def test_ranked_pick_repairs_intercepted_material_before_locking(self):
         class PickEvents:
             @staticmethod
