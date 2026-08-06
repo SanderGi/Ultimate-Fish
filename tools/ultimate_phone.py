@@ -3142,6 +3142,39 @@ def ranked_spawn_public(
     )
 
 
+def ranked_spawn_local(
+    spawns: Sequence[AppEvent], local_ivory: bool,
+) -> list[tuple[str, str]]:
+    """Recover the local player's exact newly locked Ranked group.
+
+    Unlike the opponent sanitizer, local Ghost coordinates would be public to
+    their owner (although the current release parser conservatively masks all
+    Ghost spawn coordinates). Giant records are returned as their one native
+    anchor rather than expanded footprint cells so DraftDeployment can reserve
+    them directly.
+    """
+    local: list[tuple[str, str]] = []
+    saw_spawn = False
+    for event in spawns:
+        if event.kind != "draft_piece_spawn" or not event.piece:
+            continue
+        saw_spawn = True
+        if event.source is None:
+            continue
+        x_text, y_text = event.source.split(":", 1)
+        record = ModelPieceRecord(event.piece, 0, int(x_text), int(y_text))
+        square = _online_square(record, not local_ivory)
+        if int(square[1:]) > 3:
+            continue
+        if event.piece == "copycatClone":
+            continue
+        piece = "checker" if event.piece == "checkerKing" else event.piece
+        local.append((piece, square))
+    if not saw_spawn:
+        raise RuntimeError("Ranked local spawn journal contains no piece records")
+    return sorted(local, key=lambda item: square_sort_key(item[1]))
+
+
 def ranked_public_roster(
     probed_enemy: Sequence[tuple[str, str]], material: int,
 ) -> Counter[str]:
@@ -5365,6 +5398,7 @@ class PhoneGame:
         # This preserves the intended complete packing and prevents a stray
         # Prince/Queen from making a later Giant group appear impossible.
         if (landed_coordinate is not None and actual_piece == piece
+                and final_points != self.ranked_local_points
                 and piece != "giant" and actual_square != square):
             desired = self._deployment_coordinate(square)
             current_square = actual_square
@@ -5441,6 +5475,63 @@ class PhoneGame:
                     return local, opponent
             time.sleep(0.01)
         raise TimeoutError("Ranked committed group produced no new native points")
+
+    def _observe_ranked_local_pick(
+        self,
+        local_ivory: bool,
+        choices: Sequence[str],
+        previous_generation: int,
+        locked_team: Sequence[tuple[str, str]],
+        assumed_group: Sequence[tuple[str, str]],
+    ) -> list[tuple[str, str]]:
+        """Read back one immutable local group from its public spawn journal.
+
+        Giant's ArmyMove override does not report a landing coordinate, so a
+        successful point transition alone cannot prove its anchor. Once Lock
+        commits, OnSpawnPieceGroup publishes the exact local coordinates. Use
+        that record before planning the next window instead of carrying an
+        assumed Giant footprint forward.
+        """
+        deadline = time.monotonic() + 2.5
+        last_error: RuntimeError | None = None
+        while time.monotonic() < deadline:
+            generation, complete, spawns = self.events.ranked_spawn_snapshot()
+            if generation <= previous_generation or not complete:
+                time.sleep(0.02)
+                continue
+            try:
+                public = ranked_spawn_local(spawns, local_ivory)
+                # The opening callback redraws the fixed King; later callbacks
+                # normally contain only the newly committed group. Remove any
+                # already locked records by exact multiplicity in either case.
+                additions = Counter(public)
+                additions.subtract(Counter(locked_team))
+                additions = +additions
+                group = sorted(additions.elements(), key=lambda item: square_sort_key(item[1]))
+                # The parser masks every Ghost coordinate before knowing which
+                # side owns it. A local Ghost is genuinely known to us, so
+                # retain only that already-verified assumed anchor while every
+                # unmasked model comes from the authoritative spawn journal.
+                missing_ghosts = (Counter(choices)["ghost"]
+                                  - Counter(piece for piece, _square in group)["ghost"])
+                if missing_ghosts > 0:
+                    group.extend(
+                        item for item in assumed_group
+                        if item[0] == "ghost"
+                    )
+                    group = sorted(group, key=lambda item: square_sort_key(item[1]))
+                if Counter(piece for piece, _square in group) != Counter(choices):
+                    raise RuntimeError(
+                        "local Ranked spawn roster differs from locked choices: "
+                        + " ".join(f"{piece}@{square}" for piece, square in group)
+                    )
+                return group
+            except RuntimeError as exc:
+                last_error = exc
+            time.sleep(0.02)
+        raise RuntimeError(
+            "local Ranked spawn journal did not reconcile the locked group"
+        ) from last_error
 
     def _observe_ranked_opponent_pick(self, local_ivory: bool) -> list[str]:
         """Apply the newly public, locked opponent group to draft knowledge."""
@@ -5613,6 +5704,8 @@ class PhoneGame:
     ) -> None:
         """Place and verify one immutable group, then acknowledge its Lock."""
         placements = []
+        locked_team = tuple(deployment.team)
+        spawn_generation = self.events.ranked_spawn_snapshot()[0]
         self.events.drain()
         starting_points = self.ranked_local_points
         # The native Local builder proved that ordinary models must be placed
@@ -5814,6 +5907,14 @@ class PhoneGame:
                     f"Ranked draft stopped during local phase {phase}: "
                     f"{committed.kind}"
                 )
+            exact_placements = self._observe_ranked_local_pick(
+                local_ivory, choices, spawn_generation, locked_team, placements,
+            )
+            for placed_piece, placed_square in reversed(placements):
+                deployment.release(placed_piece, placed_square)
+            for placed_piece, placed_square in exact_placements:
+                deployment.reserve(placed_piece, placed_square)
+            placements = exact_placements
             self.log(
                 "locked local Ranked group: "
                 + " ".join(f"{piece}@{square}" for piece, square in placements)

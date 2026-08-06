@@ -162,6 +162,15 @@ transient landings and locked `Prince@d1,e1; Pawn@c1`, then
 or manual input. The resulting game remained synchronized and ended in an
 Ultimate Fish forced-mate win.
 
+A later draft exposed why Giant's point-only acknowledgement is insufficient:
+one locked Giant footprint differed from the controller's assumed anchor, so a
+later group repeatedly targeted cells that were not actually free. The local
+`OnSpawnPieceGroup` callback is now consumed after every Lock, not only for the
+opponent. Its exact public coordinates replace all assumed placements before
+the next window is planned. A rejected pot drag which merely selects an
+existing same-type model is also left untouched when the native material total
+does not increase; it is never mistaken for a new misdrop to be corrected.
+
 After selecting a Ban pot, the current Ranked UI exposes the actionable large
 red Ban button in the lower-left character inspector. The blue top-row `BAN`
 element is only the phase label, while the selected-pot red speech bubble is

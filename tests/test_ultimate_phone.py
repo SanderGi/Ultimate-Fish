@@ -689,6 +689,10 @@ class RankedDraftControllerTests(unittest.TestCase):
     def test_ranked_pick_places_ordinary_models_before_wide_colliders(self):
         class PickEvents:
             @staticmethod
+            def ranked_spawn_snapshot():
+                return 0, False, ()
+
+            @staticmethod
             def drain():
                 return None
 
@@ -710,6 +714,9 @@ class RankedDraftControllerTests(unittest.TestCase):
 
         game._place_ranked_piece = place
         game._tap_draft_control = lambda _labels, _timeout: "LOCK"
+        game._observe_ranked_local_pick = (
+            lambda _ivory, _choices, _generation, _locked, assumed: list(assumed)
+        )
 
         game._commit_ranked_local_pick(
             ("dragon", "queen", "copycat", "pawn"),
@@ -860,8 +867,56 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertEqual((result.square, result.piece, result.local_points),
                          ("f1", "prince", 18))
 
+    def test_rejected_ranked_pot_drag_does_not_move_existing_same_type(self):
+        class Events:
+            def __init__(self):
+                self.pending = []
+
+            def drain(self):
+                self.pending.clear()
+
+            def wait(self, _kinds, timeout):
+                if self.pending:
+                    return self.pending.pop(0)
+                MODULE.time.sleep(timeout)
+                raise TimeoutError
+
+        class Adb:
+            def __init__(self, events):
+                self.events = events
+                self.drags = []
+
+            def drag_sync(self, source, target, duration):
+                self.drags.append((source, target, duration))
+                # A tall existing Prince intercepted the pot drag. Native
+                # reports its square/identity but material remains unchanged.
+                self.events.pending.extend((
+                    MODULE.AppEvent("army_drop", source="6:1"),
+                    MODULE.AppEvent("army_piece", piece="prince"),
+                    MODULE.AppEvent("army_points", source="18", target="0"),
+                ))
+
+        events = Events()
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.events = events
+        game.adb = Adb(events)
+        game.draft_pots = {"prince": (941, 1115)}
+        game.ranked_local_points = 18
+        game.verbose = False
+        game.log = lambda _message: None
+
+        result = game._place_ranked_piece("prince", "f1", True)
+
+        self.assertEqual(len(game.adb.drags), 1)
+        self.assertEqual((result.square, result.local_points), ("g2", 18))
+
     def test_ranked_pick_repairs_intercepted_material_before_locking(self):
         class PickEvents:
+            @staticmethod
+            def ranked_spawn_snapshot():
+                return 0, False, ()
+
             @staticmethod
             def drain():
                 return None
@@ -876,6 +931,9 @@ class RankedDraftControllerTests(unittest.TestCase):
         game.verbose = False
         game.log = lambda _message: None
         game._tap_draft_control = lambda _labels, _timeout: "LOCK"
+        game._observe_ranked_local_pick = (
+            lambda _ivory, _choices, _generation, _locked, assumed: list(assumed)
+        )
         calls = []
 
         def place(piece, square, _local_ivory):
@@ -963,6 +1021,9 @@ class RankedDraftControllerTests(unittest.TestCase):
             return MODULE.RankedPlacementResult(square, piece, points, (points,))
 
         game._place_ranked_piece = place
+        game._observe_ranked_local_pick = (
+            lambda _ivory, _choices, _generation, _locked, assumed: list(assumed)
+        )
         game._ranked_committed_points = Mock(side_effect=(
             (0, 27),       # remote opening group
             (25, 30),      # remote middle group
@@ -3138,6 +3199,43 @@ class BeliefConstructionTests(unittest.TestCase):
             MODULE.ranked_spawn_public(spawns, local_ivory=True),
             [("queen", "g9"), ("king", "h10")],
         )
+
+    def test_ranked_local_spawn_preserves_exact_giant_anchor(self):
+        spawns = (
+            MODULE.AppEvent("draft_piece_spawn", "king", "0:0"),
+            MODULE.AppEvent("draft_piece_spawn", "prince", "5:0"),
+            # The Giant landed one file away from the controller's intended
+            # c2 anchor; the committed public group is authoritative.
+            MODULE.AppEvent("draft_piece_spawn", "giant", "3:1"),
+            MODULE.AppEvent("draft_piece_spawn", "queen", "6:8"),
+        )
+        self.assertEqual(
+            MODULE.ranked_spawn_local(spawns, local_ivory=True),
+            [("king", "a1"), ("prince", "f1"), ("giant", "d2")],
+        )
+
+    def test_local_ranked_group_reconciles_assumed_giant_from_spawn(self):
+        spawns = (
+            MODULE.AppEvent("draft_piece_spawn", "king", "0:0"),
+            MODULE.AppEvent("draft_piece_spawn", "prince", "5:0"),
+            MODULE.AppEvent("draft_piece_spawn", "giant", "3:1"),
+        )
+
+        class SpawnEvents:
+            @staticmethod
+            def ranked_spawn_snapshot():
+                return 4, True, spawns
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.events = SpawnEvents()
+        group = game._observe_ranked_local_pick(
+            True,
+            ("prince", "giant"),
+            3,
+            (("king", "a1"),),
+            (("prince", "f1"), ("giant", "c2")),
+        )
+        self.assertEqual(group, [("prince", "f1"), ("giant", "d2")])
 
     def test_captured_winning_ranked_trace_accumulates_group_deltas(self):
         def group(*records):
