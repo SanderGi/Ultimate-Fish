@@ -6276,32 +6276,68 @@ class PhoneGame:
 
     def run_ranked_draft(
         self,
+        public_draft: PublicDraftState | None = None,
+        deployment: DraftDeployment | None = None,
+        local_ivory: bool | None = None,
     ) -> list[tuple[str, str]] | OpeningTerminal:
         """Play all twelve public Ranked draft windows without private leaks."""
         if len(self.draft_pots) != len(POT_SORT_ORDER):
             raise RuntimeError("call start_ranked before drafting")
         self.engine.draft_new()
-        public_draft = PublicDraftState()
-        deployment = DraftDeployment()
-        # Preserve the pristine phase-zero locks before spending time on side
-        # detection; a very fast Ivory opponent can otherwise finish its ban
-        # while that detection is running.
-        local_ivory = self._ranked_is_ivory()
+        resuming = public_draft is not None
+        public_draft = public_draft or PublicDraftState()
+        deployment = deployment or DraftDeployment()
+        if resuming:
+            if local_ivory is None:
+                raise ValueError("resuming a Ranked draft requires its known side")
+            # Replay only public, already-committed macro actions into the
+            # native engine. This is also a safe recovery point after a phone
+            # controller restart: no hidden placement or identity enters it.
+            ban_index = white_index = black_index = 0
+            for replay_phase in range(public_draft.phase):
+                if replay_phase in (0, 1, 4, 5, 8, 9):
+                    action = (public_draft.bans[ban_index],)
+                    ban_index += 1
+                elif replay_phase % 2 == 0:
+                    action = public_draft.white_groups[white_index]
+                    white_index += 1
+                else:
+                    action = public_draft.black_groups[black_index]
+                    black_index += 1
+                for piece in action:
+                    self.engine.draft_choose(piece)
+                self.engine.draft_commit()
+            self.ranked_local_points = sum(
+                PIECE_COST[piece] for piece, _square in deployment.team
+            )
+            self.ranked_opponent_points = sum(
+                PIECE_COST[piece]
+                for piece in (public_draft.black
+                              if local_ivory else public_draft.white)
+            )
+            precompleted_count = 0
+            precompleted_bans: tuple[str, ...] = ()
+        else:
+            # Preserve the pristine phase-zero locks before spending time on
+            # side detection; a very fast Ivory opponent can otherwise finish
+            # its ban while that detection is running.
+            local_ivory = self._ranked_is_ivory()
+            precompleted_count = self.events.ranked_bans_completed()
+            deadline = time.monotonic() + 1.5
+            precompleted_bans = self.events.ranked_ban_snapshot()
+            while (len(precompleted_bans) < precompleted_count
+                   and time.monotonic() < deadline):
+                time.sleep(0.02)
+                precompleted_bans = self.events.ranked_ban_snapshot()
+            if len(precompleted_bans) != precompleted_count:
+                raise RuntimeError(
+                    "Ranked calibration saw a Ban callback without its public piece name"
+                )
+        assert local_ivory is not None
         self.online_local_team = 0 if local_ivory else 1
         self.log("Ranked draft side: " + ("Ivory" if local_ivory else "Onyx"))
-        precompleted_count = self.events.ranked_bans_completed()
-        deadline = time.monotonic() + 1.5
-        precompleted_bans = self.events.ranked_ban_snapshot()
-        while (len(precompleted_bans) < precompleted_count
-               and time.monotonic() < deadline):
-            time.sleep(0.02)
-            precompleted_bans = self.events.ranked_ban_snapshot()
-        if len(precompleted_bans) != precompleted_count:
-            raise RuntimeError(
-                "Ranked calibration saw a Ban callback without its public piece name"
-            )
 
-        for phase in range(12):
+        for phase in range(public_draft.phase, 12):
             status = self.engine.draft_status()
             if status["phase"] != phase:
                 raise RuntimeError(f"engine draft desynchronized at phase {phase}: {status}")
@@ -6309,12 +6345,12 @@ class PhoneGame:
             local = (phase % 2 == 0) == local_ivory
             event_kind = "draft_ban_committed" if action == "ban" else "draft_pick_committed"
             if action == "ban" and phase < precompleted_count:
-                if local:
-                    raise RuntimeError(
-                        "a local Ranked Ban completed before controller input"
-                    )
                 piece = precompleted_bans[phase]
-                self.log(f"recovered pre-calibration opponent ban: {piece}")
+                self.log(
+                    "recovered pre-calibration "
+                    + ("local auto-ban: " if local else "opponent ban: ")
+                    + piece
+                )
                 self.engine.draft_choose(piece)
                 self.engine.draft_commit()
                 public_draft = public_draft.apply((piece,))
@@ -6322,7 +6358,14 @@ class PhoneGame:
                 continue
             if local:
                 searched: tuple[str, ...] | None = None
-                if isinstance(self.engine, EngineClient):
+                # Ban clocks are substantially shorter than Pick clocks. A
+                # phase-zero adversarial rollout can consume most of that
+                # native window after pot calibration and cause Unity to
+                # auto-ban before the first tap. Use the evolved native draft
+                # policy for the time-critical one-piece Ban action; retain
+                # full engine-evaluated adversarial search for roster Picks,
+                # whose long clocks accommodate it.
+                if action == "pick" and isinstance(self.engine, EngineClient):
                     try:
                         searched = self._search_ranked_action(
                             public_draft, deployment,

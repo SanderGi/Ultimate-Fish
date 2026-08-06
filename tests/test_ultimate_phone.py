@@ -1271,6 +1271,39 @@ class RankedDraftControllerTests(unittest.TestCase):
         )
         game.classify_game_over.assert_called_once_with(decisive_result="win")
 
+    def test_ranked_draft_can_resume_from_committed_public_macros(self):
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.engine = self.FakeEngine()
+        game.events = self.FakeEvents(())
+        game.draft_pots = {
+            piece: (index, index)
+            for index, piece in enumerate(MODULE.POT_SORT_ORDER)
+        }
+        game.online_local_team = None
+        game.ranked_local_points = 0
+        game.ranked_opponent_points = None
+        game.verbose = False
+        game.log = lambda _message: None
+
+        state = MODULE.PublicDraftState(
+            phase=12,
+            white_groups=(("queen",), ("rook",), ("pawn",)),
+            black_groups=(("mage",), ("penguin",), ("checker",)),
+            bans=("ninja", "prince", "giant", "sniper", "ghost", "devil"),
+        )
+        deployment = MODULE.DraftDeployment()
+        deployment.reserve("queen", "d1")
+
+        team = game.run_ranked_draft(state, deployment, True)
+
+        self.assertEqual(game.engine.phase, 12)
+        self.assertEqual(game.online_local_team, 0)
+        self.assertEqual(game.ranked_local_points, MODULE.PIECE_COST["queen"])
+        self.assertEqual(game.ranked_opponent_points, sum(
+            MODULE.PIECE_COST[piece] for piece in state.black
+        ))
+        self.assertEqual(team, deployment.team)
+
     def test_opponent_ranked_phase_wait_does_not_expire_before_native_clock(self):
         class DelayedEvents:
             def __init__(self):
