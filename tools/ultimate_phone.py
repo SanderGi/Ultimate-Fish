@@ -5353,13 +5353,45 @@ class PhoneGame:
             record = ModelPieceRecord(piece, 1, coordinate[0], coordinate[1])
             return _online_square(record, not local_ivory)
 
-        target = deployment_geometry.drop_point(piece, square)
         source = self.draft_pots[piece]
         # PointerDown grabs the pot model and PointerUp on the square performs
-        # the native placement.  A moderately short gesture is fast while still
-        # producing the pointer-enter callback on dense deployment cells.
-        self.adb.drag_sync(source, target, 180)
-        landed_coordinate, actual_piece, point_history = collect_drag_events()
+        # the native placement. Giant and other tall models can cover one
+        # pixel of an otherwise legal target cell. Sweep several points inside
+        # that same Square collider before rejecting the logical cell: a human
+        # drag succeeds for exactly the same reason, and repeatedly using one
+        # intercepted pixel can otherwise consume the whole Ranked clock.
+        base_target = deployment_geometry.drop_point(piece, square)
+        center = deployment_geometry.point(square)
+        offsets = (
+            (0.0, 0.0),
+            (0.0, -0.30),
+            (-0.28, -0.12),
+            (0.28, -0.12),
+            (0.0, 0.28),
+        )
+        landed_coordinate = None
+        actual_piece = None
+        point_history: list[int] = []
+        for target_attempt, (x_offset, y_offset) in enumerate(offsets, 1):
+            target = base_target if target_attempt == 1 else (
+                round(center[0] + x_offset * deployment_geometry.cell_width),
+                round(center[1] + y_offset * deployment_geometry.cell_height),
+            )
+            if target_attempt > 1:
+                self.events.drain()
+            self.adb.drag_sync(source, target, 180)
+            attempt_landed, attempt_piece, attempt_points = collect_drag_events()
+            landed_coordinate = attempt_landed
+            actual_piece = attempt_piece
+            point_history.extend(attempt_points)
+            if (attempt_points
+                    and attempt_points[-1] != self.ranked_local_points):
+                break
+            if self.verbose and target_attempt < len(offsets):
+                self.log(
+                    f"Ranked {piece}@{square} target pixel was intercepted; "
+                    f"trying in-cell point {target_attempt + 1}/{len(offsets)}"
+                )
 
         if landed_coordinate is None:
             if piece == "giant" and point_history:
@@ -5663,6 +5695,25 @@ class PhoneGame:
                 f"Ranked draft stopped while reading opponent ban: {event.kind}"
             )
         return event.piece
+
+    def _wait_ranked_opponent_phase(
+        self, event_kind: str, action: str, phase: int,
+    ) -> AppEvent:
+        """Wait for native remote completion without inventing a shorter clock."""
+        last_status = time.monotonic()
+        while True:
+            try:
+                return self.events.wait(
+                    (event_kind, "game_over", "out_of_time"), 5.0,
+                )
+            except TimeoutError:
+                now = time.monotonic()
+                if now - last_status >= 15.0:
+                    self.log(
+                        f"still waiting for opponent Ranked {action} "
+                        f"phase {phase}"
+                    )
+                    last_status = now
 
     def _commit_ranked_local_ban(self, piece: str, phase: int) -> None:
         """Submit and positively acknowledge a local ban before its clock."""
@@ -5984,8 +6035,9 @@ class PhoneGame:
                     )
             else:
                 self.log(f"draft phase {phase}: waiting for opponent {action}")
-                committed = self.events.wait(
-                    (event_kind, "game_over", "out_of_time"), 75.0)
+                committed = self._wait_ranked_opponent_phase(
+                    event_kind, action, phase,
+                )
                 if committed.kind != event_kind:
                     # Before board reveal, a terminal event during the remote
                     # player's clock is necessarily their timeout/forfeit. Do

@@ -867,7 +867,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertEqual((result.square, result.piece, result.local_points),
                          ("f1", "prince", 18))
 
-    def test_rejected_ranked_pot_drag_does_not_move_existing_same_type(self):
+    def test_rejected_ranked_pot_drag_sweeps_cell_without_moving_existing_piece(self):
         class Events:
             def __init__(self):
                 self.pending = []
@@ -908,8 +908,65 @@ class RankedDraftControllerTests(unittest.TestCase):
 
         result = game._place_ranked_piece("prince", "f1", True)
 
-        self.assertEqual(len(game.adb.drags), 1)
+        self.assertEqual(len(game.adb.drags), 5)
+        geometry = MODULE.RANKED_DEPLOYMENT_GEOMETRY
+        self.assertEqual(game.adb.drags[0][1],
+                         geometry.drop_point("prince", "f1"))
+        self.assertEqual(len({target for _source, target, _duration
+                              in game.adb.drags}), 5)
         self.assertEqual((result.square, result.local_points), ("g2", 18))
+
+    def test_ranked_pot_drag_uses_alternate_in_cell_point_past_giant_collider(self):
+        class Events:
+            def __init__(self):
+                self.pending = []
+
+            def drain(self):
+                self.pending.clear()
+
+            def wait(self, _kinds, timeout):
+                if self.pending:
+                    return self.pending.pop(0)
+                MODULE.time.sleep(timeout)
+                raise TimeoutError
+
+        class Adb:
+            def __init__(self, events):
+                self.events = events
+                self.drags = []
+
+            def drag_sync(self, source, target, duration):
+                self.drags.append((source, target, duration))
+                # A misplaced Giant intercepts the default Prince point. The
+                # same legal cell succeeds at the next in-cell raycast point.
+                if len(self.drags) == 1:
+                    self.events.pending.extend((
+                        MODULE.AppEvent("army_drop", source="2:1"),
+                        MODULE.AppEvent("army_piece", piece="giant"),
+                        MODULE.AppEvent("army_points", source="1", target="0"),
+                    ))
+                else:
+                    self.events.pending.extend((
+                        MODULE.AppEvent("army_drop", source="5:0"),
+                        MODULE.AppEvent("army_piece", piece="prince"),
+                        MODULE.AppEvent("army_points", source="19", target="0"),
+                    ))
+
+        events = Events()
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.events = events
+        game.adb = Adb(events)
+        game.draft_pots = {"prince": (941, 1115)}
+        game.ranked_local_points = 1
+        game.verbose = False
+        game.log = lambda _message: None
+
+        result = game._place_ranked_piece("prince", "f1", True)
+
+        self.assertEqual(len(game.adb.drags), 2)
+        self.assertEqual((result.square, result.piece, result.local_points),
+                         ("f1", "prince", 19))
 
     def test_ranked_pick_repairs_intercepted_material_before_locking(self):
         class PickEvents:
@@ -1067,6 +1124,29 @@ class RankedDraftControllerTests(unittest.TestCase):
             terminal, MODULE.OpeningTerminal("win", "game_over")
         )
         game.classify_game_over.assert_called_once_with(decisive_result="win")
+
+    def test_opponent_ranked_phase_wait_does_not_expire_before_native_clock(self):
+        class DelayedEvents:
+            def __init__(self):
+                self.calls = 0
+
+            def wait(self, _kinds, _timeout):
+                self.calls += 1
+                if self.calls <= 16:
+                    raise TimeoutError
+                return MODULE.AppEvent("draft_pick_committed")
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.events = DelayedEvents()
+        game.log = lambda _message: None
+
+        with patch.object(MODULE.time, "monotonic", side_effect=range(100)):
+            committed = game._wait_ranked_opponent_phase(
+                "draft_pick_committed", "pick", 6,
+            )
+
+        self.assertEqual(committed.kind, "draft_pick_committed")
+        self.assertEqual(game.events.calls, 17)
 
     def test_own_verifier_accepts_one_exact_hit_with_local_outline(self):
         class VerifyAdb:

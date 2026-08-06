@@ -250,3 +250,14 @@ The same checkpoint won a fresh Very Hard CPU game after searching 64 public
 beliefs and finding a forced mate, then won a fresh Unranked game against a
 100-point Giant/Rook/Mage army. Both used iterative depth up to 20 with a
 10-second move cap and the evolved Queen/Giant/Dragon saved setup.
+
+A subsequent Onyx Ranked repeat confirmed that the post-Lock local spawn
+journal corrected the exact opening group (`Prince@f1,g1` and Giants at
+`a2,c2,e2,g2`). The controller then stopped on its obsolete 75-second
+opponent-pick timeout even though the native clock still showed 72 seconds.
+The opponent later forfeited and the account received +15 ranking, but no
+engine move was searched, so this is recorded as a controller/protocol result
+rather than additional strength evidence. Remote draft waits now follow the
+native commit/terminal events without a shorter local deadline. The same trace
+also motivated a five-point in-cell drop sweep so a locked Giant collider
+cannot indefinitely intercept a legal later Prince placement.

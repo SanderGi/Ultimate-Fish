@@ -170,6 +170,20 @@ opponent. Its exact public coordinates replace all assumed placements before
 the next window is planned. A rejected pot drag which merely selects an
 existing same-type model is also left untouched when the native material total
 does not increase; it is never mistaken for a new misdrop to be corrected.
+The pot retry must also vary its physical pointer-up point. A live missing
+Prince remained legal but the default point in each attempted cell intersected
+a locked Giant's oversized model collider; a manual drag to a clear part of
+the cell succeeded. Ranked now sweeps five bounded points inside the same
+logical cell before excluding it, while still requiring a native material
+increase and landing record. This is geometric input recovery, not an engine
+position assumption.
+
+Remote Ranked pick clocks are authoritative. One opponent took longer than the
+controller's former 75-second guard while the native display still showed 72
+seconds remaining. Opponent Ban/Pick waits therefore have no synthetic
+deadline: they poll until the matching commit callback or native terminal
+event and periodically report liveness. The captured match ultimately ended
+in a native opponent-forfeit victory worth +15 ranking.
 
 After selecting a Ban pot, the current Ranked UI exposes the actionable large
 red Ban button in the lower-left character inspector. The blue top-row `BAN`
