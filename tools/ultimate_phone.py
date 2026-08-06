@@ -665,6 +665,12 @@ class DeploymentGeometry:
         )
 
 
+# Local Play's two pass-and-play builders sit 81 px below the online/CPU
+# builder on the reference 1080x2400 phone.  Native ArmyMove coordinates are
+# the calibration oracle; the visible row boundaries are y=1415/1526/1637/1749.
+LOCAL_DEPLOYMENT_GEOMETRY = DeploymentGeometry(top=1415.0, bottom=1749.0)
+
+
 def detect_outline_squares(image, geometry: BoardGeometry, color: str = "red",
                            ranks: Iterable[int] = (8, 9, 10)) -> list[str]:
     """Find occupied public squares from team-colored character outlines.
@@ -851,6 +857,27 @@ def map_ranked_pots(image) -> dict[str, tuple[int, int]]:
     return dict(zip(POT_SORT_ORDER, traversal))
 
 
+def resolve_army_drag_identity(
+    requested: str,
+    reported: str | None,
+    starting_points: int,
+    point_history: Sequence[int],
+) -> str | None:
+    """Resolve the one known ambiguous native ``ArmyMove`` diagnostic.
+
+    CopyCat's placement override can emit the same blank ``ArmyMove`` line as
+    Giant. The parser conservatively names a blank line Giant, but the exact
+    material transition distinguishes the five-point CopyCat from the
+    one-point Giant. No other identity mismatch is rewritten here.
+    """
+    final_points = point_history[-1] if point_history else starting_points
+    added = final_points - min((starting_points, *point_history))
+    if (requested == "copycat" and reported == "giant" and
+            added == PIECE_COST["copycat"]):
+        return "copycat"
+    return reported
+
+
 def detect_builder_giant_anchors(
     image, expected_count: int | None = None,
     geometry: DeploymentGeometry = DeploymentGeometry(),
@@ -979,6 +1006,7 @@ def verify_builder_placement(
     image,
     expected_team: Sequence[tuple[str, str]],
     native_confirmed: Counter[tuple[str, str]],
+    geometry: DeploymentGeometry = DeploymentGeometry(),
 ) -> None:
     """Require exact native/visual placement evidence before clicking Ready."""
     expected_ordinary = Counter(
@@ -1006,7 +1034,7 @@ def verify_builder_placement(
         square for piece, square in expected_team if piece == "giant"
     ]
     detected_giants = detect_builder_giant_anchors(
-        image, len(expected_giants) if expected_giants else None
+        image, len(expected_giants) if expected_giants else None, geometry
     )
     if expected_giants:
         expected_giants = sorted(expected_giants, key=square_sort_key)
@@ -2858,7 +2886,7 @@ def initial_beliefs(own_team: Sequence[tuple[str, str]],
                     enemy_material: int | None, limit: int = 64,
                     side: str = "w",
                     piece_states: dict[
-                        tuple[str, str], tuple[int, int, int]
+                        tuple[str, str], ModelPieceRecord
                     ] | None = None,
                     enemy_king_candidates: Iterable[str] | None = None,
                     ) -> list[str]:
@@ -2953,13 +2981,16 @@ def initial_beliefs(own_team: Sequence[tuple[str, str]],
                     values = field.split(",")
                     if len(values) != 3:
                         continue
-                    state = piece_states.get((values[1], values[2]))
-                    if state is None:
+                    record = piece_states.get((values[1], values[2]))
+                    if record is None:
                         continue
-                    action, cooldown, freeze_count = state
+                    piece, action, power, moved, visible = model_piece_upn_state(
+                        values[0], record.action
+                    )
                     fields[index] = (
-                        field
-                        + f",{action},{cooldown},{freeze_count},0,0,1,-1,1,-1,0"
+                        f"{piece},{values[1]},{values[2]}"
+                        f",{action},{record.cooldown},{record.freeze_count}"
+                        f",{power},{int(moved)},{int(visible)},-1,1,-1,0"
                     )
                 upn = ";".join(fields)
             positions.append(upn)
@@ -2970,6 +3001,48 @@ def initial_beliefs(own_team: Sequence[tuple[str, str]],
         # itertools iterators are exhausted; rebuild for the next royal branch.
         combinations = itertools.combinations(ghost_squares, ghost_count)
     return positions
+
+
+def model_piece_upn_state(
+    public_piece: str, native_action: int,
+) -> tuple[str, int, int, bool, bool]:
+    """Decode the polymorphic native ``Model_Piece.action`` byte.
+
+    ``SimulatedPiece.SetAction`` treats one as ``pieceMoved``, but several
+    subclasses replace that meaning entirely.  UPN deliberately stores those
+    concepts in separate fields, so copying the byte into ``PieceState.action``
+    corrupts ordinary castling/Pawn state and loses Berserker power.
+    """
+    if not 0 <= native_action <= 255:
+        raise ValueError("Model_Piece action must fit in one byte")
+    if public_piece == "berserker":
+        # Native construction normalizes action 0/1 to powerLevel 1. UPN power
+        # counts captures beyond the base 15-point level.
+        return public_piece, 0, max(1, native_action) - 1, False, True
+    if public_piece == "penguin":
+        # SimulatedFreeze serializes its eight currently frozen directions.
+        return public_piece, native_action, 0, False, True
+    if public_piece == "ghost":
+        return public_piece, 0, 0, False, native_action == 1
+    if public_piece == "pawn":
+        if native_action == 2:
+            # Native SimulatedPawn retains an upgraded flag and delegates to
+            # Queen movement. Ultimate Fish represents the same live piece as
+            # a Queen after promotion.
+            return "queen", 0, 0, True, True
+        return public_piece, 0, 0, native_action == 1, True
+    if public_piece == "checker":
+        return (
+            "checkerKing" if native_action == 1 else "checker",
+            0, 0, False, True,
+        )
+    if public_piece in ("angel", "halo", "copycat", "copycatClone", "prince"):
+        # These actions encode a linked square or an in-progress continuation,
+        # not generic moved state. Initial OnStartGame/replay.initState records
+        # have no such continuation; relationships are rebuilt from their
+        # explicit companion records by Position::set_upn.
+        return public_piece, 0, 0, False, True
+    return public_piece, 0, 0, native_action == 1, True
 
 
 def _online_square(record: ModelPieceRecord, flipped: bool) -> str:
@@ -3022,23 +3095,19 @@ def sanitize_online_start(
     flipped = local_team == 1
     own: list[tuple[str, str]] = []
     public_enemy: list[tuple[str, str]] = []
-    public_states: dict[tuple[str, str], tuple[int, int, int]] = {}
+    public_states: dict[tuple[str, str], ModelPieceRecord] = {}
     for record in state.pieces:
         square = _online_square(record, flipped)
         if record.team == local_team:
             own.append((record.piece, square))
-            public_states[("w", square)] = (
-                record.action, record.cooldown, record.freeze_count
-            )
+            public_states[("w", square)] = record
             continue
         if record.piece == "ghost":
             continue
         public_piece = (
             "king" if record.piece in ("king", "jester") else record.piece
         )
-        public_states[("b", square)] = (
-            record.action, record.cooldown, record.freeze_count
-        )
+        public_states[("b", square)] = record
         if public_piece == "giant":
             public_enemy.extend(
                 ("giant", cell)
@@ -3091,6 +3160,11 @@ class PhoneGame:
         self.engine = EngineClient(engine_path)
         self.beliefs: BeliefSet | None = None
         self.perspective_flipped = False
+        # Online positions are normalized to the local player's fixed camera,
+        # so their tap coordinates never rotate. Local pass-and-play instead
+        # flips the camera after every completed turn; its fixture runner sets
+        # this independent input transform alongside event canonicalization.
+        self.rotate_taps = False
         self.online_local_team: int | None = None
         self.draft_pots: dict[str, tuple[int, int]] = {}
         self.ranked_enemy_roster: Counter[str] = Counter()
@@ -3099,6 +3173,10 @@ class PhoneGame:
         self.ranked_local_points = 0
         self.ranked_opponent_points: int | None = None
         self.army_drag_offsets: dict[tuple[str, str], tuple[float, float]] = {}
+        self.local_army_drag_offsets: dict[
+            tuple[tuple[str, str], ...],
+            dict[tuple[str, str], tuple[float, float]],
+        ] = {}
         self.army_pot_slots: dict[str, str] = {}
         self.army_verified_pre_ready = False
 
@@ -3142,6 +3220,12 @@ class PhoneGame:
                     next_reconnect = now + 1.0
                 time.sleep(0.25)
                 continue
+            login_failure = self._login_failure_ack_point(image)
+            if login_failure:
+                self.log("dismissing failed Google login notice")
+                self.adb.tap(*login_failure)
+                time.sleep(0.5)
+                continue
             decline = self._reconnect_decline_point(image)
             if decline:
                 self.log("discarding stale reconnect prompt")
@@ -3183,6 +3267,45 @@ class PhoneGame:
             time.sleep(0.20)
         raise TimeoutError("timed out waiting for connected main menu")
 
+    def wait_local_main(self, timeout: float = 30.0):
+        """Reach the main menu without requiring an online account session."""
+        deadline = time.monotonic() + timeout
+        next_foreground = time.monotonic() + 10.0
+        while time.monotonic() < deadline:
+            image = self.adb.screenshot()
+            if self._local_main(image):
+                return image
+            acknowledgement = (
+                self._maintenance_ack_point(image)
+                or self._login_failure_ack_point(image)
+                or self._unlock_ack_point(image)
+            )
+            if acknowledgement:
+                self.log("dismissing offline startup notice")
+                self.adb.tap(*acknowledgement)
+                time.sleep(0.5)
+                continue
+            play_offline = self._login_point(image)
+            if play_offline:
+                # The largest light-cyan component on this screen is the
+                # bordered Play Offline control, immediately below Log In.
+                self.log("entering Play Offline")
+                self.adb.tap(*play_offline)
+                time.sleep(0.7)
+                continue
+            back = find_text_center(image, "BACK")
+            if (back and back[0] > image.width * 0.65 and
+                    back[1] < image.height * 0.20):
+                self.adb.tap(*back)
+                time.sleep(0.5)
+                continue
+            now = time.monotonic()
+            if now >= next_foreground:
+                self.adb.launch_app("com.JesseLugassy.ChessUltimate")
+                next_foreground = now + 10.0
+            time.sleep(0.20)
+        raise TimeoutError("timed out waiting for offline-capable main menu")
+
     @staticmethod
     def _connected_main(image) -> bool:
         """Recognize the online main menu after account data has populated."""
@@ -3197,6 +3320,18 @@ class PhoneGame:
             # connected main menu does not.
             and PhoneGame._color_count(
                 image, (0.66, 0.02, 0.99, 0.11), "red") < 3000
+        )
+
+    @staticmethod
+    def _local_main(image) -> bool:
+        """Recognize the main Play control even while the account is offline."""
+        return (
+            PhoneGame._color_count(
+                image, (0.20, 0.35, 0.80, 0.48), "yellow"
+            ) > 20_000
+            and PhoneGame._color_count(
+                image, (0.66, 0.02, 0.99, 0.11), "red"
+            ) < 3_000
         )
 
     @staticmethod
@@ -3234,6 +3369,45 @@ class PhoneGame:
             if (width > image.width * 0.40 and height > image.height * 0.04
                     and image.height * 0.48 < center_y < image.height * 0.68):
                 return (min(xs) + max(xs)) // 2, center_y
+        return None
+
+    @staticmethod
+    def _login_failure_ack_point(image) -> tuple[int, int] | None:
+        """Find Okay on the login-error modal before generic red dialogs.
+
+        The wide red error panel resembles the stale-game reconnect dialog,
+        but tapping that component's center misses its inset pink Okay control
+        and loops forever. The inset control has a unique settled size/color
+        in the login screen; use that actual hit target instead of its label,
+        whose outlined shipping font is unreliable under full-screen OCR.
+        """
+        import numpy as np
+
+        rgb = np.asarray(image.convert("RGB"))
+        red, green, blue = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
+        pink = (
+            (red > 235) & (green > 90) & (green < 180)
+            & (blue > 90) & (blue < 180)
+            & (np.abs(green.astype(int) - blue.astype(int)) < 30)
+        )
+        candidates = []
+        for component in _components(pink):
+            if not component:
+                continue
+            ys = [point[0] for point in component]
+            xs = [point[1] for point in component]
+            width = max(xs) - min(xs) + 1
+            height = max(ys) - min(ys) + 1
+            center_x = (min(xs) + max(xs)) // 2
+            center_y = (min(ys) + max(ys)) // 2
+            if (image.width * 0.18 < width < image.width * 0.30
+                    and image.height * 0.02 < height < image.height * 0.05
+                    and image.width * 0.38 < center_x < image.width * 0.62
+                    and image.height * 0.50 < center_y < image.height * 0.60):
+                candidates.append((len(component), center_x, center_y))
+        if candidates:
+            _area, center_x, center_y = max(candidates)
+            return center_x, center_y
         return None
 
     @staticmethod
@@ -3503,15 +3677,168 @@ class PhoneGame:
         self.wait_for_board(20.0)
         self.events.drain()
 
+    def start_local(
+        self,
+        player1: Sequence[tuple[str, str]],
+        player2: Sequence[tuple[str, str]],
+    ) -> None:
+        """Build two exact armies and launch an offline pass-and-play game.
+
+        Local Play is the native conformance laboratory: both turns are under
+        controller control, no matchmaking state is touched, and each army is
+        independently rebuilt and verified before the board loads.
+        """
+        teams = (list(player1), list(player2))
+        for number, team in enumerate(teams, 1):
+            if sum(PIECE_COST.get(piece, -1000) for piece, _ in team) != 100:
+                raise ValueError(f"Local player {number} army must cost exactly 100 points")
+            kings = [square for piece, square in team if piece == "king"]
+            if len(kings) != 1 or not re.fullmatch(r"[a-h][1-3]", kings[0]):
+                raise ValueError(
+                    f"Local player {number} army must have one King in its home zone"
+                )
+
+        self.log("starting offline Local conformance game")
+        self.events.reset_network_state()
+        self.perspective_flipped = False
+        self.adb.restart_app("com.JesseLugassy.ChessUltimate")
+        self.wait_local_main()
+        time.sleep(3.0)
+        self.adb.tap_sync(540, 1090)  # Play
+        self.wait_screen("mode menu", self._mode_menu_visible)
+        time.sleep(0.45)
+        self.adb.tap_sync(540, 1348)  # Local Play
+        self.wait_screen(
+            "Local game options",
+            lambda image: self._color_count(
+                image, (0.30, 0.86, 0.70, 0.98), "green"
+            ) > 8000,
+            20.0,
+        )
+        self.adb.tap_sync(540, 2225)  # Continue, default 100 / one minute per turn
+
+        for number, team in enumerate(teams, 1):
+            builder = self.wait_screen(
+                f"Local player {number} army builder",
+                lambda image: image
+                if len(detect_pot_centers(image)) == len(POT_SORT_ORDER)
+                else False,
+                20.0,
+            )
+            time.sleep(0.7)
+            self.own_team = list(team)
+            self.configure_army = True
+            self.army_verified_pre_ready = False
+            # Drop bias is formation-specific: an oversized neighbour can
+            # shift the safe in-cell point for the same piece/square between
+            # Player 1 and Player 2. Cache it by exact formation so a clean
+            # full-Local retry retains proven corrections without leaking
+            # them into the independently configured opposing army.
+            team_key = tuple(team)
+            self.army_drag_offsets = dict(
+                self.local_army_drag_offsets.get(team_key, {})
+            )
+            try:
+                self._configure_army_builder(
+                    builder, force_clear=True, clear_point=(165, 315),
+                    deployment=LOCAL_DEPLOYMENT_GEOMETRY,
+                    points_box=(0.30, 0.15, 0.58, 0.22),
+                )
+            finally:
+                self.local_army_drag_offsets[team_key] = dict(
+                    self.army_drag_offsets
+                )
+            if number == 1:
+                confirmation = None
+                for ready_attempt in range(1, 5):
+                    self.adb.tap_sync(820, 2120)  # Ready
+                    try:
+                        confirmation = self.wait_screen(
+                            "Local player 1 confirmation",
+                            lambda image: self._color_count(
+                                image, (0.10, 0.50, 0.90, 0.61), "light_cyan"
+                            ) > 50000,
+                            3.0,
+                        )
+                        break
+                    except TimeoutError:
+                        current = self.adb.screenshot()
+                        if len(detect_pot_centers(current)) != len(POT_SORT_ORDER):
+                            # The builder has begun transitioning; do not tap
+                            # the old Ready coordinate on the next screen.
+                            confirmation = self.wait_screen(
+                                "Local player 1 confirmation",
+                                lambda image: self._color_count(
+                                    image, (0.10, 0.50, 0.90, 0.61),
+                                    "light_cyan",
+                                ) > 50000,
+                                7.0,
+                            )
+                            break
+                        if self.verbose:
+                            self.log(
+                                "Local player 1 Ready tap was swallowed; "
+                                f"retrying ({ready_attempt}/4)"
+                            )
+                        time.sleep(0.65)
+                if confirmation is None:
+                    raise TimeoutError(
+                        "Local player 1 Ready did not open its confirmation"
+                    )
+                # The centered Okay hitbox is stable after the modal's cyan
+                # panel has reached full size.
+                del confirmation
+                self.adb.tap_sync(540, 1365)
+            else:
+                board = None
+                for ready_attempt in range(1, 5):
+                    self.adb.tap_sync(820, 2120)  # Ready
+                    try:
+                        board = self.wait_for_board(6.0)
+                        break
+                    except TimeoutError:
+                        current = self.adb.screenshot()
+                        if len(detect_pot_centers(current)) != len(POT_SORT_ORDER):
+                            # A tornado/load animation can outlast the short
+                            # probe. Once the builder is gone, wait without
+                            # risking a tap on the live board.
+                            board = self.wait_for_board(24.0)
+                            break
+                        if self.verbose:
+                            self.log(
+                                "Local player 2 Ready tap was swallowed; "
+                                f"retrying ({ready_attempt}/4)"
+                            )
+                        time.sleep(0.65)
+                if board is None:
+                    raise TimeoutError(
+                        "Local player 2 Ready did not launch the game"
+                    )
+
+        self.events.drain()
+        # Controller-side ownership remains Player 1; Player 2's deployment is
+        # transformed by the fixture runner into the board's top orientation.
+        self.own_team = list(player1)
+        self.configure_army = False
+
     def wait_for_board(self, timeout: float = 180.0):
         def board_ready(image) -> bool:
             try:
                 # Requiring both the board outlines and its public three-tile
                 # material counter avoids false positives from red menu tags
-                # crossing the board-coordinate sampling region.
+                # crossing the board-coordinate sampling region. Local
+                # pass-and-play can settle with either player's camera/color
+                # on either home zone, so do not hard-code red at the top.
                 read_material_counter(image)
-                return bool(detect_outline_squares(
-                    image, self.geometry, "red", (8, 9, 10)))
+                home_ranks = (1, 2, 3, 8, 9, 10)
+                return bool(
+                    detect_outline_squares(
+                        image, self.geometry, "red", home_ranks
+                    )
+                    or detect_outline_squares(
+                        image, self.geometry, "blue", home_ranks
+                    )
+                )
             except RuntimeError:
                 return False
         return self.wait_screen("settled game board", board_ready, timeout)
@@ -3661,7 +3988,14 @@ class PhoneGame:
             f"could not correct native {piece} placement to {desired_square}"
         )
 
-    def _configure_army_builder(self, image) -> None:
+    def _configure_army_builder(
+        self,
+        image,
+        force_clear: bool = False,
+        clear_point: tuple[int, int] = (150, 165),
+        deployment: DeploymentGeometry = DeploymentGeometry(),
+        points_box: tuple[float, float, float, float] = (0.27, 0.075, 0.58, 0.17),
+    ) -> None:
         """Install ``--own-team`` into the native 8x3 saved-army builder."""
         if not self.configure_army:
             return
@@ -3677,18 +4011,17 @@ class PhoneGame:
             self.own_team, (("king", "a10"),), "w"))
 
         self.log("installing optimized 100-point army")
-        points_box = (0.27, 0.075, 0.58, 0.17)
         points_are_zero = (
             self._color_count(image, points_box, "green") < 1000
             and self._color_count(image, points_box, "yellow") < 1000
         )
-        if not points_are_zero:
+        if force_clear or not points_are_zero:
             confirmation = None
             for clear_attempt in range(1, 5):
                 # The Clear artwork becomes visible before its Unity
                 # raycaster finishes sliding into place. Retry the same safe
                 # control rather than restarting an otherwise settled scene.
-                self.adb.tap_sync(150, 165)
+                self.adb.tap_sync(*clear_point)
                 try:
                     confirmation = self.wait_screen(
                         "army clear confirmation",
@@ -3727,7 +4060,6 @@ class PhoneGame:
         )
         pots = map_ranked_pots(rebuilt)
         time.sleep(1.0)
-        deployment = DeploymentGeometry()
         king_square = kings[0][1]
         if king_square != "a1":
             # Clear leaves the required zero-cost King at a1. It is the only
@@ -3802,6 +4134,9 @@ class PhoneGame:
                 pot_slot = self.army_pot_slots.get(piece, piece)
                 self.adb.drag_sync(pots[pot_slot], target, 220)
                 landed, point_events, actual_piece = self._army_drag_result()
+                actual_piece = resolve_army_drag_identity(
+                    piece, actual_piece, confirmed_points, point_events
+                )
                 if (actual_piece is not None
                         and self._learn_army_pot_identity(piece, actual_piece)):
                     raise ArmyPlacementRetry(
@@ -3858,14 +4193,16 @@ class PhoneGame:
         complete = self.wait_screen(
             "complete optimized army",
             lambda frame: self._color_count(
-                frame, (0.27, 0.075, 0.58, 0.17), "green") > 5000,
+                frame, points_box, "green") > 5000,
             8.0,
         )
         # The point counter alone cannot distinguish a correctly placed army
         # from a full-cost misplacement. Ordinary models must have emitted
         # their exact native coordinates, and Giant's otherwise-unlogged 2x2
         # anchor must agree with the settled screenshot.
-        verify_builder_placement(complete, self.own_team, native_confirmed)
+        verify_builder_placement(
+            complete, self.own_team, native_confirmed, deployment
+        )
         self.army_verified_pre_ready = True
         self.log(
             "pre-Ready placement verified: "
@@ -4617,17 +4954,14 @@ class PhoneGame:
         final_points = (
             point_history[-1] if point_history else self.ranked_local_points
         )
-        observed_added_cost = final_points - min(
-            (self.ranked_local_points, *point_history)
-        )
         # CopyCat's override can share Giant's blank ArmyMove diagnostic. Use
         # the transient removal/addition point sequence to retain the requested
         # identity in that one ambiguous case. Comparing only the net increase
         # is insufficient when a Giant replaces another pending model.
-        if actual_piece is None or (
-                actual_piece == "giant" and piece == "copycat" and
-                observed_added_cost == PIECE_COST[piece]
-        ):
+        actual_piece = resolve_army_drag_identity(
+            piece, actual_piece, self.ranked_local_points, point_history
+        )
+        if actual_piece is None:
             actual_piece = piece
         return RankedPlacementResult(
             actual_square, actual_piece, final_points, tuple(point_history)
@@ -5258,6 +5592,10 @@ class PhoneGame:
                         rotate_square(event.target) if event.target else None,
                         event.raw)
 
+    def device_square(self, square: str) -> str:
+        """Map a canonical square to the current rendered input coordinate."""
+        return rotate_square(square) if getattr(self, "rotate_taps", False) else square
+
     @staticmethod
     def _unlock_badges(image) -> list[tuple[int, int]]:
         """Return visible golden one-key badge centers in the character grid."""
@@ -5718,6 +6056,52 @@ class PhoneGame:
         self.initialize_position(positions)
         self.log("initialized from the public Ranked spawn journal")
 
+    def await_special_source_ready(
+        self, source: str, display_source: str, timeout: float = 8.0
+    ) -> AppEvent | None:
+        """Wait until a drag-only special actor can receive board input.
+
+        Local's opening royal/Ghost reveal can continue after the preceding
+        turn callback. A drag delivered during that animation is swallowed
+        without a Character diagnostic, which looks exactly like a native
+        rules rejection. A harmless source selection is the authoritative
+        input-ready probe.
+        """
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            self.adb.tap_square(self.geometry, display_source)
+            pointer_source = None
+            attempt_deadline = min(deadline, time.monotonic() + 0.50)
+            while time.monotonic() < attempt_deadline:
+                try:
+                    event = self.events.wait(
+                        ("pointer_square", "selected", "terminal_label",
+                         "game_over", "out_of_time"),
+                        attempt_deadline - time.monotonic(),
+                    )
+                except TimeoutError:
+                    break
+                if event.kind == "pointer_square":
+                    pointer_source = self.canonical_event(event).source
+                    continue
+                if event.kind != "selected":
+                    return event
+                if pointer_source is None or pointer_source == source:
+                    try:
+                        release = self.events.wait(
+                            ("touch_end", "terminal_label", "game_over",
+                             "out_of_time"),
+                            0.60,
+                        )
+                        if release.kind != "touch_end":
+                            return release
+                    except TimeoutError:
+                        pass
+                    return None
+                break
+            time.sleep(0.08)
+        raise TimeoutError(f"special-action source {source} never became selectable")
+
     def execute(self, move: str, expect_bomb_resolution: bool = False) -> AppEvent:
         source, target, separator = parse_engine_move(move)
         if source == "pass":
@@ -5740,19 +6124,26 @@ class PhoneGame:
                 for position in beliefs.positions
             )
         )
+        display_source = self.device_square(source)
+        display_target = self.device_square(target)
 
-        if separator in ("~", "!"):
-            # Mage swaps and Fisherman hooks are presented as legal dots like
-            # ordinary moves, but their live handlers commit only from one
-            # continuous pointer drag. A source tap followed by a destination
-            # tap leaves the actor selected and performs no action.
+        if separator in ("~", "!", "&"):
+            # Mage swaps, Fisherman hooks, and Angel links are presented as
+            # legal dots like ordinary moves, but their live handlers commit
+            # only from one continuous pointer drag. A source tap followed by
+            # a destination tap selects the allied target instead of acting.
             # CompareDragDisplacement logs its native source/hover cells.  If
             # Unity sampled no displacement, retry once with a slightly deeper
             # endpoint instead of waiting for a turn event that cannot arrive.
+            terminal = self.await_special_source_ready(source, display_source)
+            if terminal is not None:
+                return terminal
             for attempt, overshoot in enumerate((0.40, 0.47), 1):
                 self.adb.drag_sync(
-                    self.geometry.point(source),
-                    self.geometry.drag_destination(source, target, overshoot),
+                    self.geometry.point(display_source),
+                    self.geometry.drag_destination(
+                        display_source, display_target, overshoot
+                    ),
                     320,
                 )
                 deadline = time.monotonic() + 8.0
@@ -5800,7 +6191,7 @@ class PhoneGame:
         # Square.OnPointerDown coordinate to match the engine source, then try
         # bounded offsets wholly inside the source cell.
         selection_deadline = time.monotonic() + 5.0
-        center_x, center_y = self.geometry.point(source)
+        center_x, center_y = self.geometry.point(display_source)
         offsets = (
             (0.0, 0.0),
             (-0.24, 0.0), (0.24, 0.0),
@@ -5815,7 +6206,7 @@ class PhoneGame:
             if x_offset == 0.0 and y_offset == 0.0:
                 # Preserve the simple fake-device interface used by unit tests
                 # and the normal fast path used by unobstructed pieces.
-                self.adb.tap_square(self.geometry, source)
+                self.adb.tap_square(self.geometry, display_source)
             else:
                 self.adb.tap(
                     round(center_x + x_offset * self.geometry.cell_width),
@@ -5858,7 +6249,7 @@ class PhoneGame:
         except TimeoutError:
             # Some special-action controls do not use Character pointer-up.
             time.sleep(0.10)
-        self.adb.tap_square(self.geometry, target)
+        self.adb.tap_square(self.geometry, display_target)
         expected = lambda event: (
             event.kind != "move" or
             (self.canonical_event(event).source == source and
@@ -5927,7 +6318,7 @@ class PhoneGame:
                 raise
             destination_deadline = time.monotonic() + 4.0
             while time.monotonic() < destination_deadline:
-                self.adb.tap_square(self.geometry, target)
+                self.adb.tap_square(self.geometry, display_target)
                 try:
                     return wait_for_completion(0.75)
                 except TimeoutError:
@@ -5942,7 +6333,8 @@ class PhoneGame:
         self.events.drain()
         time.sleep(0.12)
         for square in candidates:
-            center_x, center_y = self.geometry.point(square)
+            display_square = self.device_square(square)
+            center_x, center_y = self.geometry.point(display_square)
             hits = 0
             for x_offset, y_offset in (
                 (0.0, 0.0), (0.0, -0.20), (0.0, 0.20),

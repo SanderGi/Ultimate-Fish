@@ -614,6 +614,49 @@ void test_checker_chain_and_prince_turns() {
     expect(checker.make_move(require_move(checker, "d4-f6"), second), "second checker jump applies");
     expect(checker.side_to_move() == Color::Black, "checker chain ends the turn");
 
+    Position hiddenCheckerCollision;
+    hiddenCheckerCollision.add_piece(PieceType::King, Color::White,
+                                     Position::square_from_name("a1"));
+    hiddenCheckerCollision.add_piece(PieceType::King, Color::Black,
+                                     Position::square_from_name("h10"));
+    const int blindChecker = hiddenCheckerCollision.add_piece(
+      PieceType::Checker, Color::White, Position::square_from_name("b2"));
+    const int adjacentHiddenGhost = hiddenCheckerCollision.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("c3"));
+    hiddenCheckerCollision.piece(adjacentHiddenGhost).visible = false;
+    expect(hiddenCheckerCollision.move_from_string("b2-c3").has_value() &&
+             !hiddenCheckerCollision.move_from_string("b2-d4").has_value(),
+           "Checker collides with an adjacent hidden Ghost instead of jumping it");
+    Undo checkerGhostCollision;
+    expect(hiddenCheckerCollision.make_move(
+             require_move(hiddenCheckerCollision, "b2-c3"),
+             checkerGhostCollision) &&
+             !hiddenCheckerCollision.piece(blindChecker).alive &&
+             !hiddenCheckerCollision.piece(adjacentHiddenGhost).alive,
+           "adjacent Checker/Ghost blind collision knocks out both characters");
+
+    Position hiddenCheckerLanding;
+    hiddenCheckerLanding.add_piece(PieceType::King, Color::White,
+                                   Position::square_from_name("a1"));
+    hiddenCheckerLanding.add_piece(PieceType::King, Color::Black,
+                                   Position::square_from_name("h10"));
+    const int landingChecker = hiddenCheckerLanding.add_piece(
+      PieceType::Checker, Color::White, Position::square_from_name("b2"));
+    const int jumpedPawn = hiddenCheckerLanding.add_piece(
+      PieceType::Pawn, Color::Black, Position::square_from_name("c3"));
+    const int landingGhost = hiddenCheckerLanding.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("d4"));
+    hiddenCheckerLanding.piece(landingGhost).visible = false;
+    Undo checkerLandsOnGhost;
+    expect(hiddenCheckerLanding.make_move(
+             require_move(hiddenCheckerLanding, "b2-d4"),
+             checkerLandsOnGhost),
+           "Checker jump may land blindly on an invisible enemy Ghost");
+    expect(!hiddenCheckerLanding.piece(landingChecker).alive &&
+             !hiddenCheckerLanding.piece(jumpedPawn).alive &&
+             !hiddenCheckerLanding.piece(landingGhost).alive,
+           "Checker captures the jumped piece before the hidden landing collision kills both");
+
     Position optionalChecker;
     std::string checkerError;
     expect(optionalChecker.set_upn(
@@ -676,6 +719,34 @@ void test_sludge_and_victory() {
     expect(position.piece(position.piece_on(Position::square_from_name("c3"))).type == PieceType::Goop,
            "two-square sludge move also leaves goop on the intervening square");
 
+    Position trailCollision;
+    trailCollision.add_piece(PieceType::King, Color::White,
+                             Position::square_from_name("a1"));
+    trailCollision.add_piece(PieceType::King, Color::Black,
+                             Position::square_from_name("h10"));
+    const int passingSludge = trailCollision.add_piece(
+        PieceType::Sludge, Color::White, Position::square_from_name("c2"));
+    const int trailGhost = trailCollision.add_piece(
+        PieceType::Ghost, Color::Black, Position::square_from_name("c3"));
+    trailCollision.piece(trailGhost).visible = false;
+    Undo trailUndo;
+    expect(trailCollision.make_move(
+               require_move(trailCollision, "c2-c4"), trailUndo),
+           "Sludge can move through an unseen Ghost on its intermediate cell");
+    expect(trailCollision.piece(passingSludge).alive &&
+               trailCollision.piece(passingSludge).square ==
+                   Position::square_from_name("c4") &&
+               !trailCollision.piece(trailGhost).alive,
+           "intermediate trail Goop knocks out the hidden Ghost while Sludge continues");
+    expect(trailCollision.piece_on(Position::square_from_name("c3")) ==
+               Position::NoPiece &&
+               trailCollision.piece_on(Position::square_from_name("c2")) !=
+                   Position::NoPiece &&
+               trailCollision.piece(
+                   trailCollision.piece_on(Position::square_from_name("c2"))).type ==
+                   PieceType::Goop,
+           "exploding intermediate Goop disappears while origin Goop remains");
+
     Position blindCollision;
     blindCollision.add_piece(PieceType::King, Color::White,
                              Position::square_from_name("a1"));
@@ -724,6 +795,103 @@ void test_parasite_goop_and_angel_interactions() {
            parasiteAttack.piece(rook).color == Color::White,
            "attacking parasite possesses instead of killing its target");
 
+    Position specialTarget;
+    specialTarget.add_piece(PieceType::King, Color::White,
+                            Position::square_from_name("a1"));
+    const int attackingParasite = specialTarget.add_piece(
+        PieceType::Parasite, Color::White, Position::square_from_name("d4"));
+    const int possessedBomb = specialTarget.add_piece(
+        PieceType::Bomb, Color::Black, Position::square_from_name("e5"));
+    specialTarget.add_piece(PieceType::King, Color::Black,
+                            Position::square_from_name("h10"));
+    specialTarget.add_piece(PieceType::Pawn, Color::Black,
+                            Position::square_from_name("f5"));
+    Undo possessBomb;
+    expect(specialTarget.make_move(
+               require_move(specialTarget, "d4-e5"), possessBomb),
+           "Parasite attack on a Bomb applies");
+    expect(!specialTarget.piece(attackingParasite).alive &&
+               specialTarget.piece(possessedBomb).alive &&
+               specialTarget.piece(possessedBomb).color == Color::White &&
+               specialTarget.piece_on(Position::square_from_name("f5")) !=
+                   Position::NoPiece,
+           "Parasite possesses a Bomb without invoking its explosion");
+
+    Position possessedGoop;
+    possessedGoop.add_piece(PieceType::King, Color::White,
+                            Position::square_from_name("a1"));
+    const int goopParasite = possessedGoop.add_piece(
+        PieceType::Parasite, Color::White, Position::square_from_name("d4"));
+    const int goopTarget = possessedGoop.add_piece(
+        PieceType::Goop, Color::Black, Position::square_from_name("e5"));
+    possessedGoop.add_piece(PieceType::King, Color::Black,
+                            Position::square_from_name("h10"));
+    Undo possessGoop;
+    expect(possessedGoop.make_move(
+               require_move(possessedGoop, "d4-e5"), possessGoop),
+           "Parasite attack on Goop applies");
+    expect(!possessedGoop.piece(goopParasite).alive &&
+               possessedGoop.piece(goopTarget).alive &&
+               possessedGoop.piece(goopTarget).color == Color::White,
+           "Parasite possesses Goop without invoking melee retaliation");
+
+    Position attachedAttacker;
+    attachedAttacker.add_piece(PieceType::King, Color::White,
+                               Position::square_from_name("a1"));
+    const int attackerAngel = attachedAttacker.add_piece(
+        PieceType::Angel, Color::White, Position::square_from_name("b2"));
+    const int protectedParasite = attachedAttacker.add_piece(
+        PieceType::Parasite, Color::White, Position::square_from_name("d4"));
+    const int takeoverTarget = attachedAttacker.add_piece(
+        PieceType::Rook, Color::Black, Position::square_from_name("e5"));
+    attachedAttacker.add_piece(PieceType::King, Color::Black,
+                               Position::square_from_name("h10"));
+    attachedAttacker.add_piece(PieceType::Pawn, Color::Black,
+                               Position::square_from_name("h9"));
+    Undo attachToParasite;
+    expect(attachedAttacker.make_move(
+               require_move(attachedAttacker, "b2&d4"), attachToParasite),
+           "Angel can attach to an attacking Parasite");
+    Undo waitForParasite;
+    expect(attachedAttacker.make_move(
+               require_move(attachedAttacker, "h9-h8"), waitForParasite),
+           "opponent wait returns the turn to the attached Parasite");
+    Undo attachedPossession;
+    expect(attachedAttacker.make_move(
+               require_move(attachedAttacker, "d4-e5"), attachedPossession),
+           "Angel-attached Parasite possession applies");
+    expect(!attachedAttacker.piece(protectedParasite).alive &&
+               attachedAttacker.piece(attackerAngel).alive &&
+               attachedAttacker.piece(attackerAngel).host == takeoverTarget &&
+               attachedAttacker.piece(takeoverTarget).color == Color::White,
+           "attacking Parasite bypasses rescue and transfers its Angel to the possessed host");
+
+    Position attachedVictim;
+    attachedVictim.add_piece(PieceType::King, Color::White,
+                             Position::square_from_name("a1"));
+    const int victimAngel = attachedVictim.add_piece(
+        PieceType::Angel, Color::White, Position::square_from_name("b2"));
+    const int defendedParasite = attachedVictim.add_piece(
+        PieceType::Parasite, Color::White, Position::square_from_name("d4"));
+    const int possessedKnight = attachedVictim.add_piece(
+        PieceType::Knight, Color::Black, Position::square_from_name("c6"));
+    attachedVictim.add_piece(PieceType::King, Color::Black,
+                             Position::square_from_name("h10"));
+    Undo attachToVictim;
+    expect(attachedVictim.make_move(
+               require_move(attachedVictim, "b2&d4"), attachToVictim),
+           "Angel can attach to a defending Parasite");
+    Undo attackAttachedParasite;
+    expect(attachedVictim.make_move(
+               require_move(attachedVictim, "c6-d4"), attackAttachedParasite),
+           "melee attack on an Angel-attached Parasite applies");
+    expect(!attachedVictim.piece(defendedParasite).alive &&
+               attachedVictim.piece(possessedKnight).alive &&
+               attachedVictim.piece(possessedKnight).color == Color::White &&
+               attachedVictim.piece(victimAngel).alive &&
+               attachedVictim.piece(victimAngel).host == possessedKnight,
+           "defending Parasite bypasses rescue and transfers its Angel to the possessed attacker");
+
     Position copycatPossession;
     copycatPossession.add_piece(PieceType::King, Color::White,
                                 Position::square_from_name("a1"));
@@ -760,6 +928,41 @@ void test_parasite_goop_and_angel_interactions() {
     expect(!retaliation.piece(knight).alive && !retaliation.piece(goop).alive,
            "goop and its melee attacker both die");
 
+    Position rescuedAttacker;
+    rescuedAttacker.add_piece(PieceType::King, Color::White,
+                              Position::square_from_name("h1"));
+    rescuedAttacker.add_piece(PieceType::King, Color::Black,
+                              Position::square_from_name("h10"));
+    const int rescueAngel = rescuedAttacker.add_piece(
+        PieceType::Angel, Color::White, Position::square_from_name("a2"));
+    const int rescuedKnight = rescuedAttacker.add_piece(
+        PieceType::Knight, Color::White, Position::square_from_name("b2"));
+    const int rescueGoop = rescuedAttacker.add_piece(
+        PieceType::Goop, Color::Black, Position::square_from_name("c4"));
+    rescuedAttacker.add_piece(PieceType::Pawn, Color::Black,
+                              Position::square_from_name("h9"));
+    Undo rescueLink;
+    expect(rescuedAttacker.make_move(
+               require_move(rescuedAttacker, "a2&b2"), rescueLink),
+           "angel can attach to a future melee attacker");
+    Undo rescueWaitingMove;
+    expect(rescuedAttacker.make_move(
+               require_move(rescuedAttacker, "h9-h8"), rescueWaitingMove),
+           "opponent waiting move returns the turn to the protected attacker");
+    Undo rescuedAttack;
+    expect(rescuedAttacker.make_move(
+               require_move(rescuedAttacker, "b2-c4"), rescuedAttack),
+           "angel-protected melee attack on Goop applies");
+    expect(rescuedAttacker.piece(rescuedKnight).alive &&
+               rescuedAttacker.piece(rescuedKnight).square ==
+                   Position::square_from_name("a2") &&
+               !rescuedAttacker.piece(rescueAngel).alive &&
+               !rescuedAttacker.piece(rescueGoop).alive,
+           "Goop kills the attacker, then Angel rescue leaves it on the halo");
+    expect(rescuedAttacker.piece_on(Position::square_from_name("c4")) ==
+               Position::NoPiece,
+           "generic move placement does not overwrite an Angel rescue");
+
     Position angel;
     angel.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     angel.add_piece(PieceType::King, Color::Black, Position::square_from_name("h10"));
@@ -788,6 +991,89 @@ void test_parasite_goop_and_angel_interactions() {
     expect(angel.piece(host).alive && angel.piece(host).square == Position::square_from_name("b2") &&
            !angel.piece(angelId).alive && angel.piece(attacker).square == Position::square_from_name("c3"),
            "angel is consumed and returns its surviving host to the halo");
+
+    Position onyxGiantRescue;
+    onyxGiantRescue.add_piece(PieceType::King, Color::White,
+                              Position::square_from_name("a1"));
+    onyxGiantRescue.add_piece(PieceType::King, Color::Black,
+                              Position::square_from_name("a10"));
+    onyxGiantRescue.add_piece(PieceType::Sniper, Color::White,
+                              Position::square_from_name("f3"));
+    const int onyxAngel = onyxGiantRescue.add_piece(
+      PieceType::Angel, Color::Black, Position::square_from_name("d8"));
+    const int onyxGiant = onyxGiantRescue.add_piece(
+      PieceType::Giant, Color::Black, Position::square_from_name("e9"));
+    onyxGiantRescue.set_side_to_move(Color::Black);
+    Undo onyxLink;
+    expect(onyxGiantRescue.make_move(
+             require_move(onyxGiantRescue, "d8&e9"), onyxLink),
+           "Onyx Angel can attach to a Giant");
+    expect(onyxGiantRescue.move_from_string("f3xf9").has_value() &&
+             !onyxGiantRescue.move_from_string("f3xe9").has_value(),
+           "Sniper targets the Giant footprint cell on its file, not the off-axis anchor");
+    Undo onyxShot;
+    expect(onyxGiantRescue.make_move(
+             require_move(onyxGiantRescue, "f3xf9"), onyxShot),
+           "Sniper can trigger an Onyx Giant's Angel rescue");
+    expect(onyxGiantRescue.piece(onyxGiant).alive &&
+             onyxGiantRescue.piece(onyxGiant).square ==
+               Position::square_from_name("c7") &&
+             !onyxGiantRescue.piece(onyxAngel).alive,
+           "Onyx Giant rescue converts the Halo's upper-right corner to the canonical anchor");
+
+    Position nestedAngels;
+    nestedAngels.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("a1"));
+    nestedAngels.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("h10"));
+    const int firstAngel = nestedAngels.add_piece(
+      PieceType::Angel, Color::White, Position::square_from_name("b2"));
+    const int dependentAngel = nestedAngels.add_piece(
+      PieceType::Angel, Color::White, Position::square_from_name("c2"));
+    const int layeredHost = nestedAngels.add_piece(
+      PieceType::Rook, Color::White, Position::square_from_name("d3"));
+    nestedAngels.add_piece(PieceType::Rook, Color::Black,
+                           Position::square_from_name("d8"));
+    nestedAngels.add_piece(PieceType::Rook, Color::Black,
+                           Position::square_from_name("b8"));
+    Undo nestAngel;
+    expect(nestedAngels.make_move(
+             require_move(nestedAngels, "c2&b2"), nestAngel),
+           "an Angel can protect another unlinked Angel");
+    Undo blackWait;
+    expect(nestedAngels.make_move(
+             require_move(nestedAngels, "h10-h9"), blackWait),
+           "opponent wait preserves the nested Angel graph");
+    Undo reparentAngels;
+    expect(nestedAngels.make_move(
+             require_move(nestedAngels, "b2&d3"), reparentAngels),
+           "a protected Angel can attach to a final host");
+    expect(nestedAngels.piece(firstAngel).host == layeredHost &&
+             nestedAngels.piece(dependentAngel).host == layeredHost,
+           "attaching an Angel reparents its dependent Angels to the host");
+    Undo firstLayer;
+    expect(nestedAngels.make_move(
+             require_move(nestedAngels, "d8-d3"), firstLayer),
+           "the first attack consumes the front Angel layer");
+    expect(nestedAngels.piece(layeredHost).alive &&
+             nestedAngels.piece(layeredHost).square ==
+               Position::square_from_name("b2") &&
+             !nestedAngels.piece(firstAngel).alive &&
+             nestedAngels.piece(dependentAngel).alive,
+           "nested Angel order returns the host to the front Halo first");
+    Undo whiteWait;
+    expect(nestedAngels.make_move(
+             require_move(nestedAngels, "a1-a2"), whiteWait),
+           "waiting move exposes the remaining Angel layer");
+    Undo secondLayer;
+    expect(nestedAngels.make_move(
+             require_move(nestedAngels, "b8-b2"), secondLayer),
+           "the second attack consumes the dependent Angel layer");
+    expect(nestedAngels.piece(layeredHost).alive &&
+             nestedAngels.piece(layeredHost).square ==
+               Position::square_from_name("c2") &&
+             !nestedAngels.piece(dependentAngel).alive,
+           "the second nested Angel returns the host to its own Halo");
 }
 
 void test_native_giant_and_copycat_footprints() {
@@ -812,6 +1098,39 @@ void test_native_giant_and_copycat_footprints() {
            giant.piece_on(Position::square_from_name("d6")) == giantId,
            "giant occupies all four destination squares");
 
+    Position hiddenGiantTarget;
+    hiddenGiantTarget.add_piece(PieceType::King, Color::White,
+                                Position::square_from_name("a1"));
+    const int ghostCrusher = hiddenGiantTarget.add_piece(
+        PieceType::Giant, Color::White, Position::square_from_name("c3"));
+    const int crushedGhost = hiddenGiantTarget.add_piece(
+        PieceType::Ghost, Color::Black, Position::square_from_name("d5"));
+    hiddenGiantTarget.piece(crushedGhost).visible = false;
+    hiddenGiantTarget.add_piece(PieceType::King, Color::Black,
+                                Position::square_from_name("h10"));
+    Undo crushHiddenGhost;
+    expect(hiddenGiantTarget.make_move(
+               require_move(hiddenGiantTarget, "c3-c5"), crushHiddenGhost),
+           "Giant can translate onto a hidden enemy Ghost footprint");
+    expect(hiddenGiantTarget.piece(ghostCrusher).alive &&
+               !hiddenGiantTarget.piece(crushedGhost).alive &&
+               hiddenGiantTarget.piece_on(Position::square_from_name("d5")) ==
+                   ghostCrusher,
+           "Giant captures a hidden enemy Ghost as ordinary footprint occupancy");
+
+    Position hiddenGiantAlly;
+    hiddenGiantAlly.add_piece(PieceType::King, Color::White,
+                              Position::square_from_name("a1"));
+    hiddenGiantAlly.add_piece(PieceType::Giant, Color::White,
+                              Position::square_from_name("c3"));
+    const int alliedGiantGhost = hiddenGiantAlly.add_piece(
+        PieceType::Ghost, Color::White, Position::square_from_name("d5"));
+    hiddenGiantAlly.piece(alliedGiantGhost).visible = false;
+    hiddenGiantAlly.add_piece(PieceType::King, Color::Black,
+                              Position::square_from_name("h10"));
+    expect(!hiddenGiantAlly.move_from_string("c3-c5").has_value(),
+           "an allied hidden Ghost blocks an ordinary Giant translation");
+
     Position copycat;
     copycat.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     copycat.add_piece(PieceType::King, Color::Black, Position::square_from_name("h8"));
@@ -833,6 +1152,186 @@ void test_native_giant_and_copycat_footprints() {
     expect(copycat.piece(original).square == Position::square_from_name("d4") &&
            copycat.piece(clone).square == Position::square_from_name("e4"),
            "copycat clone follows the horizontally mirrored displacement");
+
+    Position dyingCopycat;
+    dyingCopycat.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("a1"));
+    const int doomedHost = dyingCopycat.add_piece(
+        PieceType::Copycat, Color::White, Position::square_from_name("c3"));
+    const int doomedClone = dyingCopycat.piece(doomedHost).link;
+    const int lethalGoop = dyingCopycat.add_piece(
+        PieceType::Goop, Color::Black, Position::square_from_name("d4"));
+    const int queuedVictim = dyingCopycat.add_piece(
+        PieceType::Rook, Color::Black, Position::square_from_name("e4"));
+    dyingCopycat.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("h10"));
+    Undo dyingPairMove;
+    expect(dyingCopycat.make_move(
+               require_move(dyingCopycat, "c3-d4"), dyingPairMove),
+           "CopyCat paired attack with a lethal first target applies");
+    expect(!dyingCopycat.piece(lethalGoop).alive &&
+               !dyingCopycat.piece(doomedHost).alive &&
+               !dyingCopycat.piece(doomedClone).alive &&
+               !dyingCopycat.piece(queuedVictim).alive,
+           "queued CopyCat half resolves its target after linked Goop death");
+
+    Position rescuedCopycat;
+    rescuedCopycat.add_piece(PieceType::King, Color::White,
+                             Position::square_from_name("a1"));
+    const int copycatAngel = rescuedCopycat.add_piece(
+        PieceType::Angel, Color::White, Position::square_from_name("b2"));
+    const int rescuedHost = rescuedCopycat.add_piece(
+        PieceType::Copycat, Color::White, Position::square_from_name("c3"));
+    const int movingClone = rescuedCopycat.piece(rescuedHost).link;
+    const int copycatGoop = rescuedCopycat.add_piece(
+        PieceType::Goop, Color::Black, Position::square_from_name("d4"));
+    rescuedCopycat.add_piece(PieceType::King, Color::Black,
+                             Position::square_from_name("h10"));
+    rescuedCopycat.add_piece(PieceType::Pawn, Color::Black,
+                             Position::square_from_name("h9"));
+    Undo protectCopycat;
+    expect(rescuedCopycat.make_move(
+               require_move(rescuedCopycat, "b2&c3"), protectCopycat),
+           "Angel can attach to one CopyCat half");
+    Undo waitForCopycat;
+    expect(rescuedCopycat.make_move(
+               require_move(rescuedCopycat, "h9-h8"), waitForCopycat),
+           "opponent wait returns the turn to the protected CopyCat");
+    Undo rescuedPairMove;
+    expect(rescuedCopycat.make_move(
+               require_move(rescuedCopycat, "c3-d4"), rescuedPairMove),
+           "Angel-protected CopyCat attack on Goop applies");
+    expect(rescuedCopycat.piece(rescuedHost).alive &&
+               rescuedCopycat.piece(rescuedHost).square ==
+                   Position::square_from_name("b2") &&
+               rescuedCopycat.piece_on(Position::square_from_name("b2")) ==
+                   rescuedHost &&
+               rescuedCopycat.piece_on(Position::square_from_name("d4")) ==
+                   Position::NoPiece &&
+               !rescuedCopycat.piece(copycatAngel).alive &&
+               !rescuedCopycat.piece(copycatGoop).alive &&
+               rescuedCopycat.piece(movingClone).square ==
+                   Position::square_from_name("e4"),
+           "CopyCat retains its Angel relocation while the paired half completes");
+
+    Position hiddenPrimary;
+    hiddenPrimary.add_piece(PieceType::King, Color::White,
+                            Position::square_from_name("a1"));
+    hiddenPrimary.add_piece(PieceType::King, Color::Black,
+                            Position::square_from_name("h10"));
+    const int hiddenHost = hiddenPrimary.add_piece(
+      PieceType::Copycat, Color::White, Position::square_from_name("c3"));
+    const int hiddenClone = hiddenPrimary.piece(hiddenHost).link;
+    const int primaryGhost = hiddenPrimary.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("d4"));
+    hiddenPrimary.piece(primaryGhost).visible = false;
+    Undo hiddenPrimaryMove;
+    expect(hiddenPrimary.make_move(
+             require_move(hiddenPrimary, "c3-d4"), hiddenPrimaryMove),
+           "CopyCat can target a hidden enemy Ghost");
+    expect(!hiddenPrimary.piece(primaryGhost).alive &&
+             hiddenPrimary.piece(hiddenHost).alive &&
+             hiddenPrimary.piece(hiddenHost).square ==
+               Position::square_from_name("d4") &&
+             hiddenPrimary.piece(hiddenClone).square ==
+               Position::square_from_name("e4"),
+           "CopyCat captures a hidden Ghost while both halves complete their move");
+
+    Position hiddenMirror;
+    hiddenMirror.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("a1"));
+    hiddenMirror.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("h10"));
+    const int mirrorHost = hiddenMirror.add_piece(
+      PieceType::Copycat, Color::White, Position::square_from_name("c3"));
+    const int mirrorClone = hiddenMirror.piece(mirrorHost).link;
+    const int mirrorGhost = hiddenMirror.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("e4"));
+    hiddenMirror.piece(mirrorGhost).visible = false;
+    Undo hiddenMirrorMove;
+    expect(hiddenMirror.make_move(
+             require_move(hiddenMirror, "c3-d4"), hiddenMirrorMove),
+           "CopyCat move can send its clone onto a hidden enemy Ghost");
+    expect(!hiddenMirror.piece(mirrorGhost).alive &&
+             hiddenMirror.piece(mirrorHost).square ==
+               Position::square_from_name("d4") &&
+             hiddenMirror.piece(mirrorClone).alive &&
+             hiddenMirror.piece(mirrorClone).square ==
+               Position::square_from_name("e4"),
+           "the mirrored CopyCat half captures its hidden Ghost normally");
+
+    Position hiddenAlly;
+    hiddenAlly.add_piece(PieceType::King, Color::White,
+                         Position::square_from_name("a1"));
+    hiddenAlly.add_piece(PieceType::King, Color::Black,
+                         Position::square_from_name("h10"));
+    hiddenAlly.add_piece(PieceType::Copycat, Color::White,
+                         Position::square_from_name("c3"));
+    const int alliedCopycatGhost = hiddenAlly.add_piece(
+      PieceType::Ghost, Color::White, Position::square_from_name("d4"));
+    hiddenAlly.piece(alliedCopycatGhost).visible = false;
+    expect(!hiddenAlly.move_from_string("c3-d4").has_value(),
+           "an allied hidden Ghost blocks its CopyCat half as friendly occupancy");
+
+    Position hiddenPrince;
+    hiddenPrince.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("a1"));
+    hiddenPrince.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("h10"));
+    const int prince = hiddenPrince.add_piece(
+      PieceType::Prince, Color::White, Position::square_from_name("d4"));
+    const int princeGhost = hiddenPrince.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("e5"));
+    hiddenPrince.piece(princeGhost).visible = false;
+    Undo princeCapture;
+    expect(hiddenPrince.make_move(
+             require_move(hiddenPrince, "d4-e5"), princeCapture),
+           "Prince can target a hidden enemy Ghost");
+    expect(hiddenPrince.piece(prince).alive &&
+             hiddenPrince.piece(prince).square ==
+               Position::square_from_name("e5") &&
+             !hiddenPrince.piece(princeGhost).alive &&
+             hiddenPrince.side_to_move() == Color::Black,
+           "Prince captures a hidden Ghost normally and receives no quiet second step");
+
+    Position hiddenBerserker;
+    hiddenBerserker.add_piece(PieceType::King, Color::White,
+                              Position::square_from_name("a1"));
+    hiddenBerserker.add_piece(PieceType::King, Color::Black,
+                              Position::square_from_name("h10"));
+    const int berserker = hiddenBerserker.add_piece(
+      PieceType::Berserker, Color::White, Position::square_from_name("d4"));
+    const int berserkerGhost = hiddenBerserker.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("e5"));
+    hiddenBerserker.piece(berserkerGhost).visible = false;
+    Undo berserkerCapture;
+    expect(hiddenBerserker.make_move(
+             require_move(hiddenBerserker, "d4-e5"), berserkerCapture),
+           "Berserker can target a hidden enemy Ghost");
+    expect(hiddenBerserker.piece(berserker).alive &&
+             hiddenBerserker.piece(berserker).square ==
+               Position::square_from_name("e5") &&
+             hiddenBerserker.piece(berserker).power == 1 &&
+             !hiddenBerserker.piece(berserkerGhost).alive,
+           "Berserker captures a hidden Ghost normally and gains power");
+
+    Position hiddenSniper;
+    hiddenSniper.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("a1"));
+    hiddenSniper.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("h10"));
+    const int sniper = hiddenSniper.add_piece(
+      PieceType::Sniper, Color::White, Position::square_from_name("d4"));
+    const int sniperGhost = hiddenSniper.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("e4"));
+    hiddenSniper.piece(sniperGhost).visible = false;
+    Undo sniperCollision;
+    expect(hiddenSniper.make_move(
+             require_move(hiddenSniper, "d4-e4"), sniperCollision),
+           "Sniper may side-step into a hidden enemy Ghost");
+    expect(!hiddenSniper.piece(sniper).alive &&
+             !hiddenSniper.piece(sniperGhost).alive,
+           "Sniper and hidden Ghost mutually knock out on a blind lateral collision");
 }
 
 void test_native_fisherman_rays() {
@@ -863,6 +1362,52 @@ void test_native_fisherman_rays() {
     expect(!adjacent.move_from_string("d4!e5").has_value() &&
            !adjacent.move_from_string("d4-e5").has_value(),
            "fisherman cannot hook or capture an adjacent visible character");
+
+    Position blindGhost;
+    blindGhost.add_piece(PieceType::King, Color::White,
+                         Position::square_from_name("a1"));
+    blindGhost.add_piece(PieceType::King, Color::Black,
+                         Position::square_from_name("h10"));
+    const int blindFisherman = blindGhost.add_piece(
+      PieceType::Fisherman, Color::White, Position::square_from_name("d2"));
+    const int unseenGhost = blindGhost.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("d5"));
+    blindGhost.piece(unseenGhost).visible = false;
+    Undo blindCollision;
+    expect(blindGhost.make_move(
+             require_move(blindGhost, "d2-d5"), blindCollision),
+           "Fisherman may blindly enter an invisible enemy Ghost square");
+    expect(!blindGhost.piece(blindFisherman).alive &&
+             !blindGhost.piece(unseenGhost).alive,
+           "native Fisherman/Ghost blind collision knocks out both characters");
+
+    Position ghostRay;
+    ghostRay.add_piece(PieceType::King, Color::White,
+                       Position::square_from_name("a1"));
+    ghostRay.add_piece(PieceType::King, Color::Black,
+                       Position::square_from_name("h10"));
+    const int rayFisherman = ghostRay.add_piece(
+      PieceType::Fisherman, Color::White, Position::square_from_name("d2"));
+    const int rayGhost = ghostRay.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("d5"));
+    ghostRay.piece(rayGhost).visible = false;
+    const int rayRook = ghostRay.add_piece(
+      PieceType::Rook, Color::Black, Position::square_from_name("d8"));
+    expect(ghostRay.move_from_string("d2-d6").has_value() &&
+             ghostRay.move_from_string("d2!d8").has_value(),
+           "Fisherman ray continues through a hidden Ghost to empty and hook cells");
+    Undo throughGhost;
+    expect(ghostRay.make_move(
+             require_move(ghostRay, "d2!d8"), throughGhost),
+           "Fisherman hooks the first visible target beyond a hidden Ghost");
+    expect(ghostRay.piece(rayFisherman).square ==
+             Position::square_from_name("d2") &&
+             ghostRay.piece(rayRook).square ==
+             Position::square_from_name("d3") &&
+             ghostRay.piece(rayGhost).alive &&
+             ghostRay.piece(rayGhost).square ==
+             Position::square_from_name("d5"),
+           "Fisherman pull through a hidden Ghost leaves that Ghost untouched");
 
     Position giantPull;
     giantPull.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
@@ -952,6 +1497,69 @@ void test_ghost_visibility_transitions() {
     expect(!blindPawn.piece(pawn).alive && !blindPawn.piece(blockingGhost).alive,
            "pawn and unseen ghost knock each other out on a blind forward collision");
 
+    Position pawnThroughEnemy;
+    pawnThroughEnemy.add_piece(PieceType::King, Color::White,
+                               Position::square_from_name("a1"));
+    pawnThroughEnemy.add_piece(PieceType::King, Color::Black,
+                               Position::square_from_name("h10"));
+    const int passingPawn = pawnThroughEnemy.add_piece(
+      PieceType::Pawn, Color::White, Position::square_from_name("d2"));
+    const int passedGhost = pawnThroughEnemy.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("d3"));
+    pawnThroughEnemy.piece(passedGhost).visible = false;
+    expect(pawnThroughEnemy.move_from_string("d2-d3").has_value() &&
+             pawnThroughEnemy.move_from_string("d2-d4").has_value(),
+           "an unmoved Pawn can stop on or double-step through a hidden enemy Ghost");
+    Undo passThrough;
+    expect(pawnThroughEnemy.make_move(
+             require_move(pawnThroughEnemy, "d2-d4"), passThrough),
+           "Pawn double-step through a hidden enemy Ghost applies");
+    expect(pawnThroughEnemy.piece(passingPawn).alive &&
+             pawnThroughEnemy.piece(passingPawn).square ==
+               Position::square_from_name("d4") &&
+             pawnThroughEnemy.piece(passedGhost).alive &&
+             pawnThroughEnemy.piece(passedGhost).square ==
+               Position::square_from_name("d3"),
+           "a passed hidden Ghost remains on its intermediate square");
+    pawnThroughEnemy.undo_move(passThrough);
+    expect(pawnThroughEnemy.piece(passingPawn).square ==
+             Position::square_from_name("d2") &&
+             pawnThroughEnemy.piece(passedGhost).square ==
+               Position::square_from_name("d3"),
+           "undo restores a Pawn double-step through a hidden Ghost");
+
+    Position pawnThroughAlly;
+    pawnThroughAlly.add_piece(PieceType::King, Color::White,
+                              Position::square_from_name("a1"));
+    pawnThroughAlly.add_piece(PieceType::King, Color::Black,
+                              Position::square_from_name("h10"));
+    pawnThroughAlly.add_piece(PieceType::Pawn, Color::White,
+                              Position::square_from_name("d2"));
+    const int alliedGhost = pawnThroughAlly.add_piece(
+      PieceType::Ghost, Color::White, Position::square_from_name("d3"));
+    pawnThroughAlly.piece(alliedGhost).visible = false;
+    expect(!pawnThroughAlly.move_from_string("d2-d3").has_value() &&
+             pawnThroughAlly.move_from_string("d2-d4").has_value(),
+           "a Pawn cannot stop on but can double-step through an allied hidden Ghost");
+
+    Position pawnDoubleCollision;
+    pawnDoubleCollision.add_piece(PieceType::King, Color::White,
+                                  Position::square_from_name("a1"));
+    pawnDoubleCollision.add_piece(PieceType::King, Color::Black,
+                                  Position::square_from_name("h10"));
+    const int collidingPawn = pawnDoubleCollision.add_piece(
+      PieceType::Pawn, Color::White, Position::square_from_name("d2"));
+    const int landingGhost = pawnDoubleCollision.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("d4"));
+    pawnDoubleCollision.piece(landingGhost).visible = false;
+    Undo doubleCollision;
+    expect(pawnDoubleCollision.make_move(
+             require_move(pawnDoubleCollision, "d2-d4"), doubleCollision),
+           "Pawn may double-step onto a hidden enemy Ghost");
+    expect(!pawnDoubleCollision.piece(collidingPawn).alive &&
+             !pawnDoubleCollision.piece(landingGhost).alive,
+           "Pawn and hidden Ghost mutually knock out on a double-step landing");
+
     Position hiddenRay;
     hiddenRay.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     hiddenRay.add_piece(PieceType::King, Color::Black, Position::square_from_name("h10"));
@@ -1022,7 +1630,7 @@ void test_search_and_perft_regressions() {
       "jester,b,d10;ninja,b,b9;penguin,b,c9;devil,b,f9;sniper,b,g9;checker,b,h9;"
       "sludge,b,a9";
     expect(fixture.set_upn(upn, &error), "perft fixture parses: " + error);
-    expect(fixture.perft(1) == 44 && fixture.perft(2) == 1936 && fixture.perft(3) == 74088,
+    expect(fixture.perft(1) == 44 && fixture.perft(2) == 1936 && fixture.perft(3) == 74045,
            "mixed-roster perft remains stable at depths one through three");
 }
 
@@ -1147,9 +1755,120 @@ void test_pawn_en_passant_lifetime() {
     deployed.add_piece(PieceType::Pawn, Color::White, Position::square_from_name("c3"));
     expect(deployed.move_from_string("c3-c5").has_value(),
            "an unmoved pawn deployed on the third home rank retains its native double step");
+
+    auto hiddenEnPassantFixture = [](Color ghostColor) {
+        Position fixture;
+        fixture.add_piece(PieceType::King, Color::White,
+                          Position::square_from_name("a1"));
+        fixture.add_piece(PieceType::King, Color::Black,
+                          Position::square_from_name("h10"));
+        fixture.add_piece(PieceType::Pawn, Color::White,
+                          Position::square_from_name("e2"));
+        fixture.add_piece(PieceType::Pawn, Color::Black,
+                          Position::square_from_name("d4"));
+        const int ghost = fixture.add_piece(
+          PieceType::Ghost, ghostColor, Position::square_from_name("e3"));
+        fixture.piece(ghost).visible = false;
+        return fixture;
+    };
+    for (const Color ghostColor : {Color::White, Color::Black}) {
+        Position collision = hiddenEnPassantFixture(ghostColor);
+        const int bypassingPawn = collision.piece_on(Position::square_from_name("e2"));
+        const int capturingPawn = collision.piece_on(Position::square_from_name("d4"));
+        const int destinationGhost = collision.piece_on(Position::square_from_name("e3"));
+        Undo hiddenPush;
+        expect(collision.make_move(require_move(collision, "e2-e4"), hiddenPush),
+               "double-step through an en-passant square's hidden Ghost applies");
+        expect(collision.piece(destinationGhost).alive &&
+                 collision.move_from_string("d4-e3").has_value(),
+               "en-passant remains available when its destination contains a hidden Ghost");
+        Undo hiddenCapture;
+        expect(collision.make_move(require_move(collision, "d4-e3"), hiddenCapture),
+               "en-passant onto a hidden Ghost applies");
+        expect(collision.piece(bypassingPawn).alive &&
+                 collision.piece(bypassingPawn).square ==
+                   Position::square_from_name("e4") &&
+                 !collision.piece(capturingPawn).alive &&
+                 !collision.piece(destinationGhost).alive,
+               "hidden Ghost and en-passant attacker mutually knock out while bypassing Pawn survives");
+    }
 }
 
 void test_cooldowns_minions_and_freeze_stacking() {
+    Position hiddenEnemyMinionCollision;
+    hiddenEnemyMinionCollision.add_piece(PieceType::King, Color::White,
+                                         Position::square_from_name("a1"));
+    const int blindMinion = hiddenEnemyMinionCollision.add_piece(
+        PieceType::Minion, Color::White, Position::square_from_name("d4"));
+    const int hiddenEnemyGhost = hiddenEnemyMinionCollision.add_piece(
+        PieceType::Ghost, Color::Black, Position::square_from_name("d5"));
+    hiddenEnemyMinionCollision.piece(hiddenEnemyGhost).visible = false;
+    hiddenEnemyMinionCollision.add_piece(PieceType::King, Color::Black,
+                                         Position::square_from_name("h10"));
+    hiddenEnemyMinionCollision.add_piece(PieceType::Rook, Color::Black,
+                                         Position::square_from_name("g9"));
+    hiddenEnemyMinionCollision.set_side_to_move(Color::Black);
+    Undo triggerEnemyCollision;
+    expect(hiddenEnemyMinionCollision.make_move(
+               require_move(hiddenEnemyMinionCollision, "g9-g8"),
+               triggerEnemyCollision),
+           "opponent waiting move triggers a Minion hidden-Ghost collision");
+    expect(hiddenEnemyMinionCollision.piece(blindMinion).alive &&
+               hiddenEnemyMinionCollision.piece(blindMinion).square ==
+                   Position::square_from_name("d5") &&
+               !hiddenEnemyMinionCollision.piece(hiddenEnemyGhost).alive,
+           "automatic Minion captures an enemy hidden Ghost normally");
+
+    Position hiddenAlliedMinionCollision;
+    hiddenAlliedMinionCollision.add_piece(PieceType::King, Color::White,
+                                          Position::square_from_name("a1"));
+    const int alliedBlindMinion = hiddenAlliedMinionCollision.add_piece(
+        PieceType::Minion, Color::White, Position::square_from_name("d4"));
+    const int hiddenAlliedGhost = hiddenAlliedMinionCollision.add_piece(
+        PieceType::Ghost, Color::White, Position::square_from_name("d5"));
+    hiddenAlliedMinionCollision.piece(hiddenAlliedGhost).visible = false;
+    hiddenAlliedMinionCollision.add_piece(PieceType::King, Color::Black,
+                                          Position::square_from_name("h10"));
+    hiddenAlliedMinionCollision.add_piece(PieceType::Rook, Color::Black,
+                                          Position::square_from_name("g9"));
+    hiddenAlliedMinionCollision.set_side_to_move(Color::Black);
+    Undo triggerAlliedCollision;
+    expect(hiddenAlliedMinionCollision.make_move(
+               require_move(hiddenAlliedMinionCollision, "g9-g8"),
+               triggerAlliedCollision),
+           "opponent waiting move triggers an allied Minion collision");
+    expect(hiddenAlliedMinionCollision.piece(alliedBlindMinion).alive &&
+               hiddenAlliedMinionCollision.piece(alliedBlindMinion).square ==
+                   Position::square_from_name("d5") &&
+               !hiddenAlliedMinionCollision.piece(hiddenAlliedGhost).alive,
+           "automatic Minion knocks out an allied hidden non-Minion");
+
+    Position blindDevil;
+    blindDevil.add_piece(PieceType::King, Color::White,
+                         Position::square_from_name("a1"));
+    blindDevil.add_piece(PieceType::King, Color::Black,
+                         Position::square_from_name("h10"));
+    const int blindDevilId = blindDevil.add_piece(
+      PieceType::Devil, Color::White, Position::square_from_name("d2"));
+    const int devilGhost = blindDevil.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("e4"));
+    blindDevil.piece(devilGhost).visible = false;
+    const int friendlyGhost = blindDevil.add_piece(
+      PieceType::Ghost, Color::White, Position::square_from_name("c4"));
+    blindDevil.piece(friendlyGhost).visible = false;
+    expect(blindDevil.move_from_string("d2@e4").has_value() &&
+             !blindDevil.move_from_string("d2@c4").has_value(),
+           "Devil may blindly target an enemy hidden Ghost but not an allied one");
+    Undo blindSpawn;
+    expect(blindDevil.make_move(
+             require_move(blindDevil, "d2@e4"), blindSpawn),
+           "Devil blind hidden-Ghost spawn applies");
+    expect(!blindDevil.piece(devilGhost).alive &&
+             blindDevil.piece_on(Position::square_from_name("e4")) ==
+               Position::NoPiece &&
+             blindDevil.piece(blindDevilId).cooldown == 2,
+           "blind Devil spawn kills the Ghost, creates no Minion, and starts cooldown");
+
     Position devil;
     devil.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     devil.add_piece(PieceType::King, Color::Black, Position::square_from_name("h8"));
@@ -1167,6 +1886,136 @@ void test_cooldowns_minions_and_freeze_stacking() {
     expect(devil.piece(minion).square == Position::square_from_name("d5") &&
            devil.piece(devilId).cooldown == 1,
            "minion advances automatically at its side's turn start");
+
+    Position frozenMinion;
+    frozenMinion.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("a1"));
+    frozenMinion.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("h10"));
+    frozenMinion.add_piece(PieceType::Devil, Color::White,
+                           Position::square_from_name("d2"));
+    frozenMinion.add_piece(PieceType::Penguin, Color::Black,
+                           Position::square_from_name("c5"));
+    Undo spawnFrozenMinion;
+    expect(frozenMinion.make_move(
+             require_move(frozenMinion, "d2@d4"), spawnFrozenMinion),
+           "Devil spawns the future frozen Minion");
+    const int stoppedMinion = frozenMinion.piece_on(
+      Position::square_from_name("d4"));
+    Undo freezeMinion;
+    expect(frozenMinion.make_move(
+             require_move(frozenMinion, "c5-c4"), freezeMinion),
+           "Penguin moves beside a Minion before its automatic phase");
+    expect(frozenMinion.piece(stoppedMinion).alive &&
+             frozenMinion.piece(stoppedMinion).square ==
+               Position::square_from_name("d4") &&
+             frozenMinion.piece(stoppedMinion).freezeCount == 1,
+           "a frozen Minion skips its native turn-start automatic advance");
+
+    Position angelAtEdge;
+    angelAtEdge.add_piece(PieceType::King, Color::White,
+                          Position::square_from_name("h1"));
+    angelAtEdge.add_piece(PieceType::King, Color::Black,
+                          Position::square_from_name("h10"));
+    const int edgeAngel = angelAtEdge.add_piece(
+      PieceType::Angel, Color::White, Position::square_from_name("b2"));
+    const int edgeMinion = angelAtEdge.add_piece(
+      PieceType::Minion, Color::White, Position::square_from_name("a10"));
+    angelAtEdge.add_piece(PieceType::Pawn, Color::Black,
+                          Position::square_from_name("g9"));
+    Undo attachEdgeAngel;
+    expect(angelAtEdge.make_move(
+             require_move(angelAtEdge, "b2&a10"), attachEdgeAngel),
+           "Angel can protect a Minion already at the far edge");
+    const int survivingHalo = angelAtEdge.piece_on(
+      Position::square_from_name("b2"));
+    Undo triggerEdgeMinion;
+    expect(angelAtEdge.make_move(
+             require_move(angelAtEdge, "g9-g8"), triggerEdgeMinion),
+           "opponent move starts the protected Minion's automatic phase");
+    expect(!angelAtEdge.piece(edgeMinion).alive &&
+             angelAtEdge.piece(edgeAngel).alive &&
+             !angelAtEdge.piece(edgeAngel).onBoard &&
+             survivingHalo != Position::NoPiece &&
+             angelAtEdge.piece(survivingHalo).alive,
+           "far-edge Minion death bypasses Angel rescue but preserves Angel and Halo");
+    Position edgeAngelRoundTrip;
+    std::string edgeAngelError;
+    expect(edgeAngelRoundTrip.set_upn(angelAtEdge.upn(), &edgeAngelError),
+           "orphaned edge Angel/Halo state remains losslessly parseable: " +
+             edgeAngelError);
+
+    Position minionTrain;
+    minionTrain.add_piece(PieceType::King, Color::White,
+                          Position::square_from_name("h1"));
+    minionTrain.add_piece(PieceType::King, Color::Black,
+                          Position::square_from_name("h10"));
+    // Add the rear Minion first so ID iteration alone would try to overwrite
+    // the front one. Native same-team Undead suppression must still advance
+    // the pair as a train.
+    const int rearMinion = minionTrain.add_piece(
+      PieceType::Minion, Color::White, Position::square_from_name("d4"));
+    const int frontMinion = minionTrain.add_piece(
+      PieceType::Minion, Color::White, Position::square_from_name("d5"));
+    minionTrain.add_piece(PieceType::Pawn, Color::Black,
+                          Position::square_from_name("g9"));
+    minionTrain.set_side_to_move(Color::Black);
+    Undo startTrain;
+    expect(minionTrain.make_move(
+             require_move(minionTrain, "g9-g8"), startTrain),
+           "opponent move starts a two-Minion train");
+    expect(minionTrain.piece(rearMinion).alive &&
+             minionTrain.piece(rearMinion).square ==
+               Position::square_from_name("d5") &&
+             minionTrain.piece(frontMinion).alive &&
+             minionTrain.piece(frontMinion).square ==
+               Position::square_from_name("d6"),
+           "unstunned allied Minions advance as an order-independent train");
+
+    Position alliedCollision;
+    alliedCollision.add_piece(PieceType::King, Color::White,
+                              Position::square_from_name("h1"));
+    alliedCollision.add_piece(PieceType::King, Color::Black,
+                              Position::square_from_name("h10"));
+    const int alliedMinion = alliedCollision.add_piece(
+      PieceType::Minion, Color::White, Position::square_from_name("d4"));
+    const int alliedRook = alliedCollision.add_piece(
+      PieceType::Rook, Color::White, Position::square_from_name("d5"));
+    alliedCollision.add_piece(PieceType::Pawn, Color::Black,
+                              Position::square_from_name("g9"));
+    alliedCollision.set_side_to_move(Color::Black);
+    Undo collideWithAlly;
+    expect(alliedCollision.make_move(
+             require_move(alliedCollision, "g9-g8"), collideWithAlly),
+           "opponent move starts an allied Minion collision");
+    expect(alliedCollision.piece(alliedMinion).alive &&
+             alliedCollision.piece(alliedMinion).square ==
+               Position::square_from_name("d5") &&
+             !alliedCollision.piece(alliedRook).alive,
+           "automatic Minion knocks out a non-Minion ally in its path");
+
+    Position stunnedTrain;
+    stunnedTrain.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("h1"));
+    stunnedTrain.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("h10"));
+    const int movingRear = stunnedTrain.add_piece(
+      PieceType::Minion, Color::White, Position::square_from_name("d4"));
+    const int stunnedFront = stunnedTrain.add_piece(
+      PieceType::Minion, Color::White, Position::square_from_name("d5"));
+    stunnedTrain.piece(stunnedFront).cooldown = 2;
+    stunnedTrain.add_piece(PieceType::Pawn, Color::Black,
+                           Position::square_from_name("g9"));
+    stunnedTrain.set_side_to_move(Color::Black);
+    Undo hitStunnedMinion;
+    expect(stunnedTrain.make_move(
+             require_move(stunnedTrain, "g9-g8"), hitStunnedMinion),
+           "opponent move starts a train behind a stunned Minion");
+    expect(stunnedTrain.piece(movingRear).alive &&
+             stunnedTrain.piece(movingRear).square ==
+               Position::square_from_name("d5") &&
+             !stunnedTrain.piece(stunnedFront).alive,
+           "automatic Minion knocks out a stunned allied Minion instead of forming a train");
 
     Position freeze;
     freeze.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
@@ -1192,6 +2041,214 @@ void test_cooldowns_minions_and_freeze_stacking() {
     expect(freeze.piece(rook).freezeCount == 1, "removing one Penguin removes only its freeze layer");
     freeze.remove_piece(second);
     expect(freeze.piece(rook).freezeCount == 0, "removing the final Penguin fully unfreezes its neighbor");
+
+    Position giantFreeze;
+    giantFreeze.add_piece(PieceType::King, Color::White,
+                          Position::square_from_name("a1"));
+    giantFreeze.add_piece(PieceType::King, Color::Black,
+                          Position::square_from_name("h10"));
+    const int giantPenguin = giantFreeze.add_piece(
+      PieceType::Penguin, Color::White, Position::square_from_name("c2"));
+    const int frozenGiant = giantFreeze.add_piece(
+      PieceType::Giant, Color::Black, Position::square_from_name("d3"));
+    const std::string giantFreezeBefore = giantFreeze.upn();
+    Undo giantFreezeMove;
+    expect(giantFreeze.make_move(require_move(giantFreeze, "c2-c3"), giantFreezeMove),
+           "Penguin can move beside two tiles of one Giant");
+    expect(giantFreeze.piece(frozenGiant).freezeCount == 1,
+           "one Penguin contributes one HashSet freeze layer to a multi-tile Giant");
+    giantFreeze.remove_piece(giantPenguin);
+    expect(giantFreeze.piece(frozenGiant).freezeCount == 0,
+           "removing that Penguin thaws a multi-tile Giant exactly once");
+    Position giantFreezeUndo;
+    std::string giantFreezeError;
+    expect(giantFreezeUndo.set_upn(giantFreezeBefore, &giantFreezeError),
+           "multi-tile freeze setup round trips");
+    Undo giantFreezeUndoMove;
+    expect(giantFreezeUndo.make_move(
+             require_move(giantFreezeUndo, "c2-c3"), giantFreezeUndoMove),
+           "multi-tile freeze applies before undo");
+    giantFreezeUndo.undo_move(giantFreezeUndoMove);
+    expect(giantFreezeUndo.upn() == giantFreezeBefore,
+           "multi-tile Penguin freeze undo restores every set-derived field");
+
+    Position mageThaw;
+    mageThaw.add_piece(PieceType::King, Color::White,
+                       Position::square_from_name("a1"));
+    mageThaw.add_piece(PieceType::King, Color::Black,
+                       Position::square_from_name("h10"));
+    mageThaw.add_piece(PieceType::Mage, Color::White,
+                       Position::square_from_name("a2"));
+    const int swappedRook = mageThaw.add_piece(
+      PieceType::Rook, Color::White, Position::square_from_name("d3"));
+    const int freezingPenguin = mageThaw.add_piece(
+      PieceType::Penguin, Color::Black, Position::square_from_name("c4"));
+    mageThaw.set_side_to_move(Color::Black);
+    Undo establishMageFreeze;
+    expect(mageThaw.make_move(
+             require_move(mageThaw, "c4-c3"), establishMageFreeze),
+           "enemy Penguin establishes a Mage-target freeze");
+    expect(mageThaw.piece(swappedRook).freezeCount == 1,
+           "Mage swap target starts frozen");
+    const std::string frozenMageState = mageThaw.upn();
+    Undo mageSwapThaw;
+    expect(mageThaw.make_move(require_move(mageThaw, "a2~d3"), mageSwapThaw),
+           "Mage may forcibly swap a frozen ally");
+    expect(mageThaw.piece(swappedRook).square == Position::square_from_name("a2") &&
+             mageThaw.piece(swappedRook).freezeCount == 0 &&
+             mageThaw.piece(freezingPenguin).action == 0,
+           "Mage displacement removes the target from native Penguin freeze sets");
+    mageThaw.undo_move(mageSwapThaw);
+    expect(mageThaw.upn() == frozenMageState,
+           "undoing a Mage thaw restores Penguin membership and freeze count");
+
+    Position fishermanThaw;
+    fishermanThaw.add_piece(PieceType::King, Color::White,
+                            Position::square_from_name("a1"));
+    fishermanThaw.add_piece(PieceType::King, Color::Black,
+                            Position::square_from_name("h10"));
+    fishermanThaw.add_piece(PieceType::Fisherman, Color::White,
+                            Position::square_from_name("d1"));
+    const int pulledPenguin = fishermanThaw.add_piece(
+      PieceType::Penguin, Color::Black, Position::square_from_name("d5"));
+    const int auraVictim = fishermanThaw.add_piece(
+      PieceType::Rook, Color::White, Position::square_from_name("e4"));
+    fishermanThaw.set_side_to_move(Color::Black);
+    Undo establishFishermanFreeze;
+    expect(fishermanThaw.make_move(
+             require_move(fishermanThaw, "d5-d4"), establishFishermanFreeze),
+           "Penguin establishes an aura before being hooked");
+    expect(fishermanThaw.piece(auraVictim).freezeCount == 1,
+           "hook target Penguin owns one active freeze layer");
+    const std::string activePenguinState = fishermanThaw.upn();
+    Undo fishermanPullThaw;
+    expect(fishermanThaw.make_move(
+             require_move(fishermanThaw, "d1!d4"), fishermanPullThaw),
+           "Fisherman can hook an active enemy Penguin");
+    expect(fishermanThaw.piece(pulledPenguin).square ==
+             Position::square_from_name("d2") &&
+             fishermanThaw.piece(pulledPenguin).action == 0 &&
+             fishermanThaw.piece(auraVictim).freezeCount == 0,
+           "hooking a Penguin extinguishes its old aura without creating a new one");
+    fishermanThaw.undo_move(fishermanPullThaw);
+    expect(fishermanThaw.upn() == activePenguinState,
+           "undoing a Penguin hook restores its old aura exactly");
+
+    Position fishermanPromotion;
+    fishermanPromotion.add_piece(PieceType::King, Color::White,
+                                  Position::square_from_name("a1"));
+    fishermanPromotion.add_piece(PieceType::King, Color::Black,
+                                  Position::square_from_name("h1"));
+    fishermanPromotion.add_piece(PieceType::Fisherman, Color::White,
+                                  Position::square_from_name("a10"));
+    const int hookedPawn = fishermanPromotion.add_piece(
+      PieceType::Pawn, Color::White, Position::square_from_name("c10"));
+    Undo fishermanPromotes;
+    expect(fishermanPromotion.make_move(
+             require_move(fishermanPromotion, "a10!c10"), fishermanPromotes),
+           "Fisherman can hook an allied Pawn along the promotion rank");
+    expect(fishermanPromotion.piece(hookedPawn).square ==
+             Position::square_from_name("b10") &&
+             fishermanPromotion.piece(hookedPawn).type == PieceType::Queen,
+           "Fisherman forced relocation invokes the Pawn promotion hook");
+
+    Position angelThaw;
+    angelThaw.add_piece(PieceType::King, Color::White,
+                        Position::square_from_name("a1"));
+    angelThaw.add_piece(PieceType::King, Color::Black,
+                        Position::square_from_name("h10"));
+    angelThaw.add_piece(PieceType::Angel, Color::White,
+                        Position::square_from_name("a2"));
+    const int rescuedRook = angelThaw.add_piece(
+      PieceType::Rook, Color::White, Position::square_from_name("d3"));
+    const int rescuePenguin = angelThaw.add_piece(
+      PieceType::Penguin, Color::Black, Position::square_from_name("c4"));
+    angelThaw.add_piece(PieceType::Queen, Color::Black,
+                        Position::square_from_name("d5"));
+    angelThaw.add_piece(PieceType::Pawn, Color::White,
+                        Position::square_from_name("h2"));
+    Undo attachAngel;
+    expect(angelThaw.make_move(require_move(angelThaw, "a2&d3"), attachAngel),
+           "Angel attaches before forced-relocation freeze test");
+    Undo freezeAngelHost;
+    expect(angelThaw.make_move(require_move(angelThaw, "c4-c3"), freezeAngelHost),
+           "Penguin freezes an Angel-protected host");
+    expect(angelThaw.piece(rescuedRook).freezeCount == 1,
+           "protected host is frozen before rescue");
+    Undo whiteWaitingMove;
+    expect(angelThaw.make_move(require_move(angelThaw, "h2-h3"), whiteWaitingMove),
+           "white waiting move exposes the protected host to capture");
+    Undo rescueThaw;
+    expect(angelThaw.make_move(require_move(angelThaw, "d5-d3"), rescueThaw),
+           "capturing a protected frozen host triggers Angel rescue");
+    expect(angelThaw.piece(rescuedRook).alive &&
+             angelThaw.piece(rescuedRook).square == Position::square_from_name("a2") &&
+             angelThaw.piece(rescuedRook).freezeCount == 0 &&
+             angelThaw.piece(rescuePenguin).action == 0,
+           "Angel rescue detaches the host from its old Penguin freeze set");
+
+    Position angelPromotion;
+    angelPromotion.add_piece(PieceType::King, Color::White,
+                             Position::square_from_name("a1"));
+    angelPromotion.add_piece(PieceType::King, Color::Black,
+                             Position::square_from_name("h8"));
+    angelPromotion.add_piece(PieceType::Angel, Color::White,
+                             Position::square_from_name("a10"));
+    const int rescuedPawn = angelPromotion.add_piece(
+      PieceType::Pawn, Color::White, Position::square_from_name("d3"));
+    angelPromotion.add_piece(PieceType::Rook, Color::Black,
+                             Position::square_from_name("d5"));
+    Undo attachPromotionAngel;
+    expect(angelPromotion.make_move(
+             require_move(angelPromotion, "a10&d3"), attachPromotionAngel),
+           "Angel links a Pawn to a promotion-rank Halo");
+    Undo promoteOnRescue;
+    expect(angelPromotion.make_move(
+             require_move(angelPromotion, "d5-d3"), promoteOnRescue),
+           "capturing the protected Pawn triggers promotion-rank rescue");
+    expect(angelPromotion.piece(rescuedPawn).alive &&
+             angelPromotion.piece(rescuedPawn).square ==
+               Position::square_from_name("a10") &&
+             angelPromotion.piece(rescuedPawn).type == PieceType::Queen,
+           "Angel rescue invokes the protected Pawn's promotion hook");
+
+    Position forcedGhostVisibility;
+    forcedGhostVisibility.add_piece(PieceType::King, Color::White,
+                                     Position::square_from_name("h1"));
+    forcedGhostVisibility.add_piece(PieceType::King, Color::Black,
+                                     Position::square_from_name("b2"));
+    forcedGhostVisibility.add_piece(PieceType::Mage, Color::White,
+                                     Position::square_from_name("a2"));
+    const int displacedGhost = forcedGhostVisibility.add_piece(
+      PieceType::Ghost, Color::White, Position::square_from_name("d3"));
+    forcedGhostVisibility.piece(displacedGhost).visible = false;
+    Undo forceGhostBesideRoyal;
+    expect(forcedGhostVisibility.make_move(
+             require_move(forcedGhostVisibility, "a2~d3"),
+             forceGhostBesideRoyal),
+           "Mage can displace a hidden allied Ghost beside an enemy royal");
+    expect(forcedGhostVisibility.piece(displacedGhost).square ==
+             Position::square_from_name("a2") &&
+             !forcedGhostVisibility.piece(displacedGhost).visible,
+           "forced Mage displacement does not invoke the Ghost move-reveal hook");
+
+    Position forcedRoyalVisibility;
+    forcedRoyalVisibility.add_piece(PieceType::Mage, Color::White,
+                                     Position::square_from_name("a2"));
+    forcedRoyalVisibility.add_piece(PieceType::King, Color::White,
+                                     Position::square_from_name("d3"));
+    forcedRoyalVisibility.add_piece(PieceType::King, Color::Black,
+                                     Position::square_from_name("h10"));
+    const int unrevealedGhost = forcedRoyalVisibility.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("b2"));
+    forcedRoyalVisibility.piece(unrevealedGhost).visible = false;
+    Undo forceRoyalBesideGhost;
+    expect(forcedRoyalVisibility.make_move(
+             require_move(forcedRoyalVisibility, "a2~d3"),
+             forceRoyalBesideGhost),
+           "Mage can displace its allied King beside a hidden enemy Ghost");
+    expect(!forcedRoyalVisibility.piece(unrevealedGhost).visible,
+           "forced royal displacement does not invoke the normal royal reveal hook");
 
     Position penguinMovement;
     penguinMovement.add_piece(PieceType::King, Color::White,
@@ -1288,6 +2345,38 @@ void test_sniper_berserker_and_dragon() {
     berserker.set_side_to_move(Color::White);
     expect(berserker.move_from_string("e5-g6").has_value(),
            "powered berserker reaches every square in its Chebyshev-radius box");
+
+    Position veteranBerserker;
+    veteranBerserker.add_piece(PieceType::King, Color::White,
+                               Position::square_from_name("a1"));
+    veteranBerserker.add_piece(PieceType::King, Color::Black,
+                               Position::square_from_name("h10"));
+    const int veteran = veteranBerserker.add_piece(
+      PieceType::Berserker, Color::White, Position::square_from_name("d4"));
+    veteranBerserker.piece(veteran).power = 7;
+    veteranBerserker.add_piece(PieceType::Pawn, Color::Black,
+                               Position::square_from_name("h8"));
+    Undo eighthAttack;
+    expect(veteranBerserker.make_move(
+             require_move(veteranBerserker, "d4-h8"), eighthAttack),
+           "Berserker can attack after its useful radius reaches the board limit");
+    expect(veteranBerserker.piece(veteran).power == 8 &&
+             veteranBerserker.material_points(veteran) == 135,
+           "native Berserker power and dynamic material continue beyond level eight");
+
+    Position verticalVeteran;
+    verticalVeteran.add_piece(PieceType::King, Color::White,
+                               Position::square_from_name("h1"));
+    verticalVeteran.add_piece(PieceType::King, Color::Black,
+                               Position::square_from_name("h10"));
+    const int vertical = verticalVeteran.add_piece(
+      PieceType::Berserker, Color::White, Position::square_from_name("a1"));
+    verticalVeteran.piece(vertical).power = 7;
+    expect(!verticalVeteran.move_from_string("a1-a10").has_value(),
+           "level-eight Berserker cannot yet span all ten ranks");
+    verticalVeteran.piece(vertical).power = 8;
+    expect(verticalVeteran.move_from_string("a1-a10").has_value(),
+           "level-nine Berserker reaches rank ten without an eight-file clamp");
 
     Position hiddenLeap;
     hiddenLeap.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));

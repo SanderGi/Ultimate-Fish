@@ -209,7 +209,8 @@ class Position {
     void add_copycat_moves(std::vector<Move>& moves, int id, bool attacksOnly) const;
     void add_fisherman_moves(std::vector<Move>& moves, int id, bool attacksOnly) const;
 
-    [[nodiscard]] bool can_land(int id, int square, bool attacksOnly) const;
+    [[nodiscard]] bool can_land(int id, int square, bool attacksOnly,
+                                bool hiddenEnemyTargetable = false) const;
     [[nodiscard]] bool frozen(int id) const { return pieces_[id].freezeCount != 0; }
     [[nodiscard]] bool is_melee(PieceType type) const;
     [[nodiscard]] Bitboard footprint(int id, int anchor) const;
@@ -219,6 +220,8 @@ class Position {
     void rebuild_bitboards();
     void place_on_board(int id);
     void erase_from_board(int id);
+    bool remove_piece_internal(int id, bool allowAngel);
+    void transfer_attached_angels(int fromHost, int toHost);
     void capture_piece(int victim, int attacker, const Move& move);
     void explode_at(int center, int attacker);
     void relocate_giant(int id, int destination, bool markMoved = true,
@@ -228,6 +231,8 @@ class Position {
     void clear_penguin_freeze(int penguin);
     void apply_penguin_freeze(int penguin);
     void detach_from_penguin_freezes(int target);
+    void prepare_for_forced_relocation(int target);
+    void apply_forced_promotion(int target);
     void reveal_ghosts_near(int square, Color royalColor);
     [[nodiscard]] bool ghost_near_enemy_royal(int square, Color ghostColor) const;
     void advance_minions(Color color);

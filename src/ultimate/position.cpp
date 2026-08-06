@@ -277,29 +277,47 @@ void Position::sacrifice_angel(int angel, int host) {
     if (pieces_[angel].alive || !pieces_[host].alive || returnSquare == NoSquare)
         return;
 
+    // Native Angel rescue is a forced relocation. It removes the host from
+    // every Penguin's currentFrozenPieces set; a rescued Penguin also drops
+    // the aura it created at its old square.
+    prepare_for_forced_relocation(host);
     erase_from_board(host);
     int destination = returnSquare;
     if (pieces_[host].type == PieceType::Giant) {
-        // The native Giant branch clamps the halo-derived anchor so its 2x2
-        // footprint remains inside the 8x10 board, then delegates to
-        // SimulatedGiant::MakeMoveTurnSkip so every collision is resolved.
-        destination = make_square(std::clamp(file_of(returnSquare), 0, BoardFiles - 2),
-                                  std::clamp(rank_of(returnSquare), 0, BoardRanks - 2));
+        // A Halo is the near home-side corner of a rescued Giant. Ivory's
+        // footprint extends up/right from it, whereas Onyx's extends
+        // down/left. SimulatedAngel::SimulateDeath explicitly subtracts one
+        // from both Onyx coordinates before clamping and dispatching
+        // SimulatedGiant::MakeMoveTurnSkip. Internally every Giant uses the
+        // canonical lower-left anchor, so retain that team conversion here.
+        int destinationFile = file_of(returnSquare);
+        int destinationRank = rank_of(returnSquare);
+        if (pieces_[host].color == Color::Black) {
+            --destinationFile;
+            --destinationRank;
+        }
+        destination = make_square(std::clamp(destinationFile, 0, BoardFiles - 2),
+                                  std::clamp(destinationRank, 0, BoardRanks - 2));
         relocate_giant(host, destination);
         return;
     }
     pieces_[host].square = static_cast<std::uint8_t>(destination);
+    apply_forced_promotion(host);
     place_on_board(host);
 }
 
-bool Position::remove_piece(int id) {
+bool Position::remove_piece(int id) { return remove_piece_internal(id, true); }
+
+bool Position::remove_piece_internal(int id, bool allowAngel) {
     if (id < 0 || id >= pieceCount_ || !pieces_[id].alive)
         return false;
 
-    const int protector = attached_angel(id);
-    if (protector != NoPiece) {
-        sacrifice_angel(protector, id);
-        return true;
+    if (allowAngel) {
+        const int protector = attached_angel(id);
+        if (protector != NoPiece) {
+            sacrifice_angel(protector, id);
+            return true;
+        }
     }
 
     const PieceType type = pieces_[id].type;
@@ -320,6 +338,20 @@ bool Position::remove_piece(int id) {
         linked < pieceCount_ && pieces_[linked].alive)
         remove_piece(linked);
     return true;
+}
+
+void Position::transfer_attached_angels(int fromHost, int toHost) {
+    if (fromHost < 0 || fromHost >= pieceCount_ || toHost < 0 ||
+        toHost >= pieceCount_ || fromHost == toHost)
+        return;
+    // Parasite.TakeOver moves every Angel attached to the Parasite onto the
+    // possessed character.  It does not invoke AngelFunction, so no Angel or
+    // Halo is consumed during possession.  Existing attachmentOrder values
+    // retain the native UniqueAngelList order when the two lists are merged.
+    for (int id = 0; id < pieceCount_; ++id)
+        if (pieces_[id].alive && pieces_[id].type == PieceType::Angel &&
+            pieces_[id].host == fromHost)
+            pieces_[id].host = static_cast<std::int8_t>(toHost);
 }
 
 int Position::piece_on(int square) const {
@@ -446,7 +478,8 @@ void Position::rebuild_bitboards() {
             place_on_board(id);
 }
 
-bool Position::can_land(int id, int square, bool attacksOnly) const {
+bool Position::can_land(int id, int square, bool attacksOnly,
+                        bool hiddenEnemyTargetable) const {
     if (!valid_square(square))
         return false;
     const int target = board_[square];
@@ -455,7 +488,8 @@ bool Position::can_land(int id, int square, bool attacksOnly) const {
     // SimulatedPiece::GetPieceSimulations marks an unrevealed Ghost square as
     // unavailable for both leapers and steppers. Slider, Pawn, Sniper, and
     // Fisherman have their own native blind-interaction branches.
-    if (pieces_[target].type == PieceType::Ghost && !pieces_[target].visible)
+    if (pieces_[target].type == PieceType::Ghost && !pieces_[target].visible &&
+        !hiddenEnemyTargetable)
         return false;
     return pieces_[target].color != pieces_[id].color;
 }
@@ -516,6 +550,7 @@ void Position::add_checker_moves(std::vector<Move>& moves, int id, bool attacksO
     const int direction = piece.color == Color::White ? 1 : -1;
     const bool king = piece.type == PieceType::CheckerKing;
     bool foundCapture = false;
+    std::vector<Move> blindCollisions;
     for (const int vertical : {direction, -direction}) {
         if (vertical == -direction && !king)
             continue;
@@ -524,13 +559,34 @@ void Position::add_checker_moves(std::vector<Move>& moves, int id, bool attacksO
             const int middleRank = rank_of(piece.square) + vertical;
             const int targetFile = file_of(piece.square) + 2 * horizontal;
             const int targetRank = rank_of(piece.square) + 2 * vertical;
-            if (targetFile < 0 || targetFile >= BoardFiles || targetRank < 0 ||
-                targetRank >= BoardRanks || middleFile < 0 || middleFile >= BoardFiles ||
+            if (middleFile < 0 || middleFile >= BoardFiles ||
                 middleRank < 0 || middleRank >= BoardRanks)
                 continue;
             const int jumped = board_[make_square(middleFile, middleRank)];
+            if (jumped != NoPiece && pieces_[jumped].color != piece.color &&
+                pieces_[jumped].type == PieceType::Ghost &&
+                !pieces_[jumped].visible) {
+                // A hidden enemy Ghost is not exposed as a public jump. The
+                // native Checker instead offers the adjacent cell as a blind
+                // collision unless a visible capture elsewhere is mandatory.
+                if (!attacksOnly)
+                    blindCollisions.push_back({
+                      piece.square,
+                      static_cast<std::uint8_t>(make_square(middleFile, middleRank))});
+                continue;
+            }
+            if (targetFile < 0 || targetFile >= BoardFiles || targetRank < 0 ||
+                targetRank >= BoardRanks)
+                continue;
             const int target = make_square(targetFile, targetRank);
-            if (jumped != NoPiece && pieces_[jumped].color != piece.color && board_[target] == NoPiece) {
+            const int landing = board_[target];
+            const bool emptyOrHiddenEnemy =
+              landing == NoPiece ||
+              (pieces_[landing].color != piece.color &&
+               pieces_[landing].type == PieceType::Ghost &&
+               !pieces_[landing].visible);
+            if (jumped != NoPiece && pieces_[jumped].color != piece.color &&
+                pieces_[jumped].visible && emptyOrHiddenEnemy) {
                 foundCapture = true;
                 moves.push_back({piece.square, static_cast<std::uint8_t>(target),
                                  static_cast<std::uint8_t>(make_square(middleFile, middleRank))});
@@ -539,6 +595,7 @@ void Position::add_checker_moves(std::vector<Move>& moves, int id, bool attacksO
     }
     if (foundCapture || attacksOnly)
         return;
+    moves.insert(moves.end(), blindCollisions.begin(), blindCollisions.end());
     for (const int vertical : {direction, -direction}) {
         if (vertical == -direction && !king)
             continue;
@@ -578,14 +635,16 @@ void Position::add_copycat_moves(std::vector<Move>& moves, int id, bool attacksO
                         pieces_[partner].onBoard && !frozen(partner) && !pieces_[partner].cooldown &&
                         (pieces_[partner].type == PieceType::Copycat ||
                          pieces_[partner].type == PieceType::CopycatClone);
-
     for (const auto& direction : Around) {
         const int toFile = file_of(actor.square) + direction[0];
         const int toRank = rank_of(actor.square) + direction[1];
         if (toFile < 0 || toFile >= BoardFiles || toRank < 0 || toRank >= BoardRanks)
             continue;
         const int to = make_square(toFile, toRank);
-        if (!can_land(id, to, attacksOnly))
+        // Unlike the generic stepper helper, CopyCat.Check does not mark an
+        // unrevealed enemy Ghost unavailable. Either half can capture one as
+        // its part of the paired move; a hidden allied Ghost still blocks.
+        if (!can_land(id, to, attacksOnly, true))
             continue;
 
         int partnerTo = 0xff;
@@ -597,7 +656,8 @@ void Position::add_copycat_moves(std::vector<Move>& moves, int id, bool attacksO
                 otherRank >= BoardRanks)
                 continue;
             partnerTo = make_square(otherFile, otherRank);
-            if (partnerTo == to || !can_land(partner, partnerTo, attacksOnly))
+            if (partnerTo == to ||
+                !can_land(partner, partnerTo, attacksOnly, true))
                 continue;
         }
         moves.push_back({actor.square, static_cast<std::uint8_t>(to),
@@ -625,11 +685,15 @@ void Position::add_fisherman_moves(std::vector<Move>& moves, int id, bool attack
             // Native Fisherman ray generation hooks the first visible piece
             // (friend or foe) only when it is at least two squares away. The
             // target is pulled to the first square on the ray while the
-            // Fisherman stays put. An invisible enemy Ghost is instead a
-            // normal capturable endpoint.
+            // Fisherman stays put. An invisible enemy Ghost is also a blind
+            // movement endpoint; MakeMove knocks out both characters.
             if (!pieces_[target].visible) {
                 if (pieces_[target].color != fisherman.color)
                     moves.push_back({fisherman.square, static_cast<std::uint8_t>(square)});
+                // Unlike a visible target, a hidden Ghost does not terminate
+                // the ray. Native generation continues to empty cells and to
+                // the first later visible hook target.
+                continue;
             }
             else if (distance > 1) {
                 const int landing = make_square(file_of(fisherman.square) + direction[0],
@@ -685,7 +749,18 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
         add_step_moves(moves, id, Around, 8, 1, false, attacksOnly);
         break;
     case PieceType::Prince:
-        add_step_moves(moves, id, Around, 8, 1, false, attacksOnly);
+        for (const auto& direction : Around) {
+            const int file = file_of(piece.square) + direction[0];
+            const int rank = rank_of(piece.square) + direction[1];
+            if (file < 0 || file >= BoardFiles || rank < 0 || rank >= BoardRanks)
+                continue;
+            const int to = make_square(file, rank);
+            // SimulatedPrince's custom generator omits the generic Ghost
+            // visibility gate and treats a hidden enemy as an ordinary first-
+            // step capture, which ends the action without a second move.
+            if (can_land(id, to, attacksOnly, true))
+                moves.push_back({piece.square, static_cast<std::uint8_t>(to)});
+        }
         break;
     case PieceType::Knight:
         add_knight_moves(moves, id, attacksOnly);
@@ -697,21 +772,31 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
         const int one = make_square(file, rank + direction);
         if (!attacksOnly && valid_square(one)) {
             const int forwardTarget = board_[one];
-            if (forwardTarget == NoPiece) {
-                moves.push_back({piece.square, static_cast<std::uint8_t>(one)});
+            const bool hiddenForward =
+              forwardTarget != NoPiece &&
+              pieces_[forwardTarget].type == PieceType::Ghost &&
+              !pieces_[forwardTarget].visible;
+            if (forwardTarget == NoPiece || hiddenForward) {
+                if (forwardTarget == NoPiece ||
+                    pieces_[forwardTarget].color != piece.color)
+                    moves.push_back({piece.square, static_cast<std::uint8_t>(one)});
+
+                // Native unmoved-Pawn generation scans both forward squares.
+                // A hidden Ghost at the intermediate square is unavailable as
+                // a friendly landing but does not block the double step. The
+                // privilege is tied to the Pawn's moved flag, not its rank.
                 const int two = make_square(file, rank + 2 * direction);
-                // Native SimulatedPawn gates the double step only on
-                // pieceMoved; deployment may put an unmoved pawn on any of
-                // the three home ranks.
-                if (!piece.moved && valid_square(two) && board_[two] == NoPiece)
-                    moves.push_back({piece.square, static_cast<std::uint8_t>(two)});
-            }
-            else if (pieces_[forwardTarget].type == PieceType::Ghost &&
-                     !pieces_[forwardTarget].visible &&
-                     pieces_[forwardTarget].color != piece.color) {
-                // SimulatedPawn has a dedicated blind-collision path: walking
-                // forward into an unseen enemy Ghost knocks out both pieces.
-                moves.push_back({piece.square, static_cast<std::uint8_t>(one)});
+                if (!piece.moved && valid_square(two)) {
+                    const int doubleTarget = board_[two];
+                    const bool hiddenEnemyAtDouble =
+                      doubleTarget != NoPiece &&
+                      pieces_[doubleTarget].color != piece.color &&
+                      pieces_[doubleTarget].type == PieceType::Ghost &&
+                      !pieces_[doubleTarget].visible;
+                    if (doubleTarget == NoPiece || hiddenEnemyAtDouble)
+                        moves.push_back({piece.square,
+                                         static_cast<std::uint8_t>(two)});
+                }
             }
         }
         for (const int horizontal : {-1, 1}) {
@@ -740,13 +825,20 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
     case PieceType::Berserker: {
         // Native SimulatedBerserker iterates every coordinate in its growing
         // Chebyshev-radius box and does not trace rays between them.
-        const int radius = std::min(7, 1 + int(piece.power));
+        // Do not clamp to the eight-file width: the board is ten ranks high,
+        // and native powerLevel continues growing. A level-nine Berserker on
+        // rank 1 can therefore reach rank 10 even though horizontal reach had
+        // already saturated two captures earlier.
+        const int radius = 1 + int(piece.power);
         for (int file = std::max(0, file_of(piece.square) - radius);
              file <= std::min(BoardFiles - 1, file_of(piece.square) + radius); ++file)
             for (int rank = std::max(0, rank_of(piece.square) - radius);
                  rank <= std::min(BoardRanks - 1, rank_of(piece.square) + radius); ++rank) {
                 const int to = make_square(file, rank);
-                if (to != piece.square && can_land(id, to, attacksOnly))
+                // The Berserker's box generator, like Prince and CopyCat,
+                // compares occupancy/team directly without testing Ghost
+                // visibility.
+                if (to != piece.square && can_land(id, to, attacksOnly, true))
                     moves.push_back({piece.square, static_cast<std::uint8_t>(to)});
             }
         break;
@@ -811,7 +903,13 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
                 for (int rank = std::max(0, rank_of(piece.square) - 2);
                      rank <= std::min(BoardRanks - 1, rank_of(piece.square) + 2); ++rank) {
                     const int to = make_square(file, rank);
-                    if (to != piece.square && board_[to] == NoPiece)
+                    const int target = board_[to];
+                    const bool blindEnemyGhost =
+                      target != NoPiece && pieces_[target].color != piece.color &&
+                      pieces_[target].type == PieceType::Ghost &&
+                      !pieces_[target].visible;
+                    if (to != piece.square &&
+                        (target == NoPiece || blindEnemyGhost))
                         moves.push_back({piece.square, static_cast<std::uint8_t>(to), 0,
                                          MoveKind::Spawn});
                 }
@@ -854,10 +952,15 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
                     continue;
                 const int to = make_square(targetFile, rank);
                 const int target = board_[to];
-                // Native Sniper side-steps are quiet-only. An occupied lateral
-                // square produces no Dot; the only attack is the forward shot
-                // to the first visible character on its file.
-                if (target == NoPiece)
+                // Visible occupancy blocks a lateral step, but the native
+                // generator treats a hidden enemy Ghost as an apparently
+                // empty destination. Sniper.MakeMove then resolves a blind
+                // mutual knockout on that square.
+                const bool hiddenEnemyGhost =
+                  target != NoPiece && pieces_[target].color != piece.color &&
+                  pieces_[target].type == PieceType::Ghost &&
+                  !pieces_[target].visible;
+                if (target == NoPiece || hiddenEnemyGhost)
                     moves.push_back({piece.square, static_cast<std::uint8_t>(to)});
             }
         }
@@ -865,13 +968,18 @@ std::vector<Move> Position::moves_for(int id, bool attacksOnly) const {
             const int direction = piece.color == Color::White ? 1 : -1;
             for (int rank = rank_of(piece.square) + direction;
                  rank >= 0 && rank < BoardRanks; rank += direction) {
-                const int target = board_[make_square(file_of(piece.square), rank)];
+                const int targetSquare = make_square(file_of(piece.square), rank);
+                const int target = board_[targetSquare];
                 if (target == NoPiece)
                     continue;
                 if (pieces_[target].type == PieceType::Ghost && !pieces_[target].visible)
                     continue;
                 if (pieces_[target].color != piece.color)
-                    moves.push_back({piece.square, pieces_[target].square,
+                    // A Giant's stored anchor need not lie on the Sniper's
+                    // file. Native Shoot targets the actual footprint cell
+                    // encountered by the ray, while auxiliary retains the
+                    // shared Giant model that receives the hit.
+                    moves.push_back({piece.square, static_cast<std::uint8_t>(targetSquare),
                                      static_cast<std::uint8_t>(target), MoveKind::Shoot});
                 break;
             }
@@ -1257,7 +1365,22 @@ void Position::capture_piece(int victim, int attacker, const Move& move) {
     // SimulatedBerserker::MakeMove grows on any attack recorded in Move.target,
     // including an Angel save or a possession interaction.
     if (attackerType == PieceType::Berserker)
-        pieces_[attacker].power = std::min<std::uint8_t>(7, pieces_[attacker].power + 1);
+        // The native byte is not capped. Its useful move radius saturates at
+        // the board edge, but dynamic material keeps gaining 15 per attack.
+        pieces_[attacker].power = static_cast<std::uint8_t>(
+          pieces_[attacker].power + 1);
+
+    // Parasite.AttackHandler takes over every target type directly, including
+    // Bomb, Goop, Halo, and another Parasite.  The target's death callback is
+    // never invoked, while the attacking Parasite disappears without calling
+    // AngelFunction and transfers its attached Angels to the new host.
+    if (attackerType == PieceType::Parasite) {
+        const Color parasiteColor = pieces_[attacker].color;
+        transfer_attached_angels(attacker, victim);
+        remove_piece_internal(attacker, false);
+        possess(victim, parasiteColor);
+        return;
+    }
 
     // Native Bomb death always creates a radius-one blast. Ordinary attackers
     // land inside it and die, while a genuinely ranged Sniper remains on its
@@ -1302,16 +1425,14 @@ void Position::capture_piece(int victim, int attacker, const Move& move) {
     // opposing melee character, it possesses that attacker instead. Ranged,
     // support, friendly, and bomb attacks kill it normally (native
     // SimulatedParasite::SimulateDeath).
-    if (attackerType == PieceType::Parasite) {
-        const Color parasiteColor = pieces_[attacker].color;
-        remove_piece(attacker);
-        possess(victim, parasiteColor);
-        return;
-    }
     if (victimType == PieceType::Parasite && is_melee(attackerType) &&
         attackerType != PieceType::Bomb && pieces_[attacker].color != pieces_[victim].color) {
         const Color parasiteColor = pieces_[victim].color;
-        remove_piece(victim);
+        // Parasite.Die possesses a melee attacker before the generic death
+        // path.  Its own AngelFunction is bypassed and its attached Angels
+        // follow the possessed attacker.
+        transfer_attached_angels(victim, attacker);
+        remove_piece_internal(victim, false);
         possess(attacker, parasiteColor);
         return;
     }
@@ -1335,6 +1456,7 @@ void Position::clear_penguin_freeze(int penguin) {
         return;
     const int file = file_of(pieces_[penguin].square);
     const int rank = rank_of(pieces_[penguin].square);
+    std::unordered_set<int> thawed;
     for (const auto& direction : Around) {
         const std::uint8_t bit = penguin_direction_bit(direction[0], direction[1]);
         if (!(pieces_[penguin].action & bit))
@@ -1345,10 +1467,15 @@ void Position::clear_penguin_freeze(int penguin) {
             targetRank >= BoardRanks)
             continue;
         const int target = board_[make_square(targetFile, targetRank)];
-        if (target != NoPiece && pieces_[target].type != PieceType::Penguin &&
-            pieces_[target].freezeCount)
-            --pieces_[target].freezeCount;
+        if (target != NoPiece && pieces_[target].type != PieceType::Penguin)
+            thawed.insert(target);
     }
+    // currentFrozenPieces is a HashSet in the shipping simulator. A Giant may
+    // occupy several adjacent cells, but one Penguin contributes exactly one
+    // freeze layer to that character.
+    for (const int target : thawed)
+        if (pieces_[target].freezeCount)
+            --pieces_[target].freezeCount;
     pieces_[penguin].action = 0;
 }
 
@@ -1359,6 +1486,7 @@ void Position::apply_penguin_freeze(int penguin) {
     pieces_[penguin].action = 0;
     const int file = file_of(pieces_[penguin].square);
     const int rank = rank_of(pieces_[penguin].square);
+    std::unordered_set<int> frozen;
     for (const auto& direction : Around) {
         const int targetFile = file + direction[0];
         const int targetRank = rank + direction[1];
@@ -1368,7 +1496,8 @@ void Position::apply_penguin_freeze(int penguin) {
         const int target = board_[make_square(targetFile, targetRank)];
         if (target == NoPiece || pieces_[target].type == PieceType::Penguin)
             continue;
-        ++pieces_[target].freezeCount;
+        if (frozen.insert(target).second)
+            ++pieces_[target].freezeCount;
         pieces_[penguin].action |= penguin_direction_bit(direction[0], direction[1]);
     }
 }
@@ -1376,18 +1505,51 @@ void Position::apply_penguin_freeze(int penguin) {
 void Position::detach_from_penguin_freezes(int target) {
     if (target < 0 || target >= pieceCount_ || !pieces_[target].alive)
         return;
-    const int targetFile = file_of(pieces_[target].square);
-    const int targetRank = rank_of(pieces_[target].square);
     for (int penguin = 0; penguin < pieceCount_; ++penguin) {
         if (penguin == target || !pieces_[penguin].alive ||
             pieces_[penguin].type != PieceType::Penguin)
             continue;
-        const int deltaFile = targetFile - file_of(pieces_[penguin].square);
-        const int deltaRank = targetRank - rank_of(pieces_[penguin].square);
-        const std::uint8_t bit = penguin_direction_bit(deltaFile, deltaRank);
-        if (bit && (pieces_[penguin].action & bit))
-            pieces_[penguin].action &= static_cast<std::uint8_t>(~bit);
+        bool detached = false;
+        for (const auto& direction : Around) {
+            const std::uint8_t bit = penguin_direction_bit(direction[0], direction[1]);
+            if (!(pieces_[penguin].action & bit))
+                continue;
+            const int file = file_of(pieces_[penguin].square) + direction[0];
+            const int rank = rank_of(pieces_[penguin].square) + direction[1];
+            if (file < 0 || file >= BoardFiles || rank < 0 || rank >= BoardRanks)
+                continue;
+            if (board_[make_square(file, rank)] == target) {
+                pieces_[penguin].action &= static_cast<std::uint8_t>(~bit);
+                detached = true;
+            }
+        }
+        if (detached && pieces_[target].freezeCount)
+            --pieces_[target].freezeCount;
     }
+}
+
+void Position::prepare_for_forced_relocation(int target) {
+    if (target < 0 || target >= pieceCount_ || !pieces_[target].alive)
+        return;
+    if (pieces_[target].type == PieceType::Penguin)
+        clear_penguin_freeze(target);
+    detach_from_penguin_freezes(target);
+    // Native Mage/Fisherman/Angel paths explicitly zero the displaced model's
+    // freezeCount after removing it from currentFrozenPieces sets.
+    pieces_[target].freezeCount = 0;
+}
+
+void Position::apply_forced_promotion(int target) {
+    if (target < 0 || target >= pieceCount_ || !pieces_[target].alive)
+        return;
+    const int promotionRank = pieces_[target].color == Color::White
+                            ? BoardRanks - 1 : 0;
+    if (rank_of(pieces_[target].square) != promotionRank)
+        return;
+    if (pieces_[target].type == PieceType::Pawn)
+        pieces_[target].type = PieceType::Queen;
+    else if (pieces_[target].type == PieceType::Checker)
+        pieces_[target].type = PieceType::CheckerKing;
 }
 
 bool Position::ghost_near_enemy_royal(int square, Color ghostColor) const {
@@ -1425,32 +1587,69 @@ void Position::reveal_ghosts_near(int square, Color royalColor) {
 
 void Position::advance_minions(Color color) {
     std::vector<int> minions;
+    std::array<bool, MaxPieces> automatic{};
     for (int id = 0; id < pieceCount_; ++id)
-        if (pieces_[id].alive && pieces_[id].color == color && pieces_[id].type == PieceType::Minion)
+        if (pieces_[id].alive && pieces_[id].color == color &&
+            pieces_[id].type == PieceType::Minion) {
             minions.push_back(id);
+            // ChangeTurn snapshots the Minions that are eligible after the
+            // global cooldown decrement. A later collision does not add a
+            // newly thawed/possessed Minion to this automatic pass.
+            automatic[id] = !frozen(id) && !pieces_[id].cooldown;
+        }
 
     const int direction = color == Color::White ? 1 : -1;
-    for (const int id : minions) {
-        if (!pieces_[id].alive)
-            continue;
+    std::array<std::uint8_t, MaxPieces> state{};
+    auto advance = [&](auto&& self, int id) -> void {
+        if (!automatic[id] || state[id] == 2 || !pieces_[id].alive)
+            return;
+        if (state[id] == 1)
+            return;  // Forward-only movement cannot form a cycle.
+        state[id] = 1;
+
         const int from = pieces_[id].square;
         const int targetRank = rank_of(from) + direction;
         if (targetRank < 0 || targetRank >= BoardRanks) {
+            // SimulatedUndead::EndOfBoard temporarily replaces its attached
+            // Angel list before invoking death. Reaching the far edge is
+            // therefore not a lethal hit the Angel can rescue: the Minion
+            // disappears while its off-board Angel and Halo remain.
+            for (int angel = 0; angel < pieceCount_; ++angel)
+                if (pieces_[angel].alive && pieces_[angel].type == PieceType::Angel &&
+                    pieces_[angel].host == id)
+                    pieces_[angel].host = NoPiece;
             remove_piece(id);
-            continue;
+            state[id] = 2;
+            return;
         }
         const int to = make_square(file_of(from), targetRank);
-        const int victim = board_[to];
-        if (victim != NoPiece && pieces_[victim].color == color)
-            continue;
+        int victim = board_[to];
+        // SimulatedUndead::MakeMove clears deadPiece when the destination is
+        // an unstunned allied Undead. If it has not taken its snapshotted
+        // automatic action yet, advancing it first produces the same train
+        // result without relying on HashSet iteration order.
+        if (victim != NoPiece && pieces_[victim].alive &&
+            pieces_[victim].color == color &&
+            pieces_[victim].type == PieceType::Minion && automatic[victim]) {
+            self(self, victim);
+            victim = board_[to];
+        }
+
         erase_from_board(id);
         if (victim != NoPiece)
             capture_piece(victim, id, {static_cast<std::uint8_t>(from), static_cast<std::uint8_t>(to)});
         if (pieces_[id].alive) {
-            pieces_[id].square = static_cast<std::uint8_t>(to);
+            // Bomb/Goop retaliation may have consumed an attached Angel and
+            // already relocated this Minion to its Halo.
+            if (pieces_[id].square == from)
+                pieces_[id].square = static_cast<std::uint8_t>(to);
             place_on_board(id);
         }
-    }
+        state[id] = 2;
+    };
+
+    for (const int id : minions)
+        advance(advance, id);
 }
 
 void Position::finish_turn() {
@@ -1528,6 +1727,10 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
     else if (move.kind == MoveKind::Swap) {
         const int other = move.auxiliary;
         const int otherSquare = pieces_[other].square;
+        // SimulatedMage removes the displaced ally from every Penguin freeze
+        // set before swapping it. A displaced Penguin drops its old aura and
+        // does not create one at the Mage's origin.
+        prepare_for_forced_relocation(other);
         if (pieces_[other].type == PieceType::Giant) {
             const int destinationFile = file_of(originalFrom) + file_of(otherSquare) -
                                         file_of(move.to);
@@ -1558,28 +1761,24 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
             // not that target taking a turn. Preserve its pieceMoved flag.
             // In particular an unmoved Pawn swapped from h9 to a3 can still
             // make the native two-step a3-a1 and promote.
-            if (pieces_[other].type == PieceType::Pawn) {
-                const int promotionRank = pieces_[other].color == Color::White ? BoardRanks - 1 : 0;
-                if (rank_of(pieces_[other].square) == promotionRank)
-                    pieces_[other].type = PieceType::Queen;
-            }
-            else if (pieces_[other].type == PieceType::Checker) {
-                const int promotionRank = pieces_[other].color == Color::White ? BoardRanks - 1 : 0;
-                if (rank_of(pieces_[other].square) == promotionRank)
-                    pieces_[other].type = PieceType::CheckerKing;
-            }
+            apply_forced_promotion(other);
             place_on_board(id);
             place_on_board(other);
-            if (pieces_[other].type == PieceType::Ghost)
-                pieces_[other].visible = ghost_near_enemy_royal(pieces_[other].square,
-                                                                 pieces_[other].color);
-            else if (pieces_[other].type == PieceType::King ||
-                     pieces_[other].type == PieceType::Jester)
-                reveal_ghosts_near(pieces_[other].square, pieces_[other].color);
+            // Forced displacement preserves Ghost visibility and does not run
+            // a displaced royal's normal-move reveal handler. Native Mage
+            // invokes only the target's promotion hook before ChangeTurn.
         }
     }
     else if (move.kind == MoveKind::Spawn) {
-        add_piece(PieceType::Minion, actor.color, move.to);
+        if (target != NoPiece) {
+            // SimulatedDevil exposes an invisible enemy Ghost's square as a
+            // blind spawn endpoint. MakeMove kills that Ghost but does not
+            // construct an Undead on the now-empty target.
+            remove_piece(target);
+        }
+        else {
+            add_piece(PieceType::Minion, actor.color, move.to);
+        }
         actor.cooldown = info(PieceType::Devil).baseCooldown;
     }
     else if (move.kind == MoveKind::Shoot) {
@@ -1590,6 +1789,9 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
     else if (move.kind == MoveKind::Pull) {
         const int victim = board_[move.to];
         if (victim != NoPiece) {
+            // Fisherman uses the same native penguinsForMage bookkeeping for
+            // the character it forcibly displaces.
+            prepare_for_forced_relocation(victim);
             erase_from_board(victim);
             if (pieces_[victim].alive) {
                 int destination = move.auxiliary;
@@ -1611,6 +1813,7 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
                 }
                 if (pieces_[victim].alive && pieces_[victim].type != PieceType::Giant) {
                     pieces_[victim].square = static_cast<std::uint8_t>(destination);
+                    apply_forced_promotion(victim);
                     place_on_board(victim);
                 }
             }
@@ -1648,36 +1851,59 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
              actor.link != NoPiece && valid_square(move.auxiliary) &&
              pieces_[actor.link].alive && pieces_[actor.link].onBoard) {
         const int partner = actor.link;
+        const int partnerFrom = pieces_[partner].square;
         const int partnerTarget = board_[move.auxiliary];
         erase_from_board(id);
         erase_from_board(partner);
         if (target != NoPiece)
             capture_piece(target, id, move);
-        if (partnerTarget != NoPiece && pieces_[partner].alive)
+        // Native CopyCat.MakeMove always dispatches the queued clone submove.
+        // If the first half dies to Goop/Bomb, linked death marks both halves
+        // dying, but CopyCatClone.MakeMove still invokes the second target's
+        // death callback before clearing its temporary destination square.
+        if (partnerTarget != NoPiece)
             capture_piece(partnerTarget, partner, {pieces_[partner].square, move.auxiliary});
         if (pieces_[id].alive) {
-            pieces_[id].square = move.to;
             pieces_[id].moved = true;
-            place_on_board(id);
+            // A Goop/Bomb callback can consume an Angel and relocate this
+            // half to its Halo while the paired move is resolving.
+            if (pieces_[id].square == originalFrom) {
+                pieces_[id].square = move.to;
+                place_on_board(id);
+            }
         }
         if (pieces_[partner].alive) {
-            pieces_[partner].square = move.auxiliary;
             pieces_[partner].moved = true;
-            place_on_board(partner);
+            if (pieces_[partner].square == partnerFrom) {
+                pieces_[partner].square = move.auxiliary;
+                place_on_board(partner);
+            }
         }
     }
     else {
         erase_from_board(id);
         int victim = target;
         const bool blindGhostCollision =
-          (actor.type == PieceType::Pawn || actor.type == PieceType::Sludge) &&
+          (actor.type == PieceType::Pawn || actor.type == PieceType::Sludge ||
+           actor.type == PieceType::Sniper ||
+           actor.type == PieceType::Fisherman || actor.type == PieceType::Checker ||
+           actor.type == PieceType::CheckerKing) &&
                                        victim != NoPiece &&
                                        pieces_[victim].type == PieceType::Ghost &&
                                        !pieces_[victim].visible &&
                                        pieces_[victim].color != actor.color &&
                                        (actor.type == PieceType::Sludge ||
+                                        actor.type == PieceType::Sniper ||
+                                        actor.type == PieceType::Fisherman ||
+                                        actor.type == PieceType::Checker ||
+                                        actor.type == PieceType::CheckerKing ||
                                         file_of(move.to) == file_of(originalFrom));
-        if (actor.type == PieceType::Pawn && move.to == enPassantSquare_)
+        const bool enPassantGhostCollision =
+          actor.type == PieceType::Pawn && move.to == enPassantSquare_ &&
+          target != NoPiece && pieces_[target].type == PieceType::Ghost &&
+          !pieces_[target].visible;
+        if (actor.type == PieceType::Pawn && move.to == enPassantSquare_ &&
+            !enPassantGhostCollision)
             victim = enPassantVictim_;
         if (checkerCapture)
             victim = board_[move.auxiliary];
@@ -1688,16 +1914,38 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
                 if (pieces_[occupant].alive && pieces_[occupant].color != actor.color)
                     capture_piece(occupant, id, move);
         }
-        else if (blindGhostCollision) {
+        else if (checkerCapture) {
+            // Checker resolves the jumped character first. A hidden enemy
+            // Ghost on the landing cell is a queued blind-collision sub-move;
+            // it runs only if that first capture did not already kill the
+            // Checker (for example by detonating a Bomb).
+            capture_piece(victim, id, move);
+            if (pieces_[id].alive && blindGhostCollision) {
+                remove_piece(target);
+                remove_piece(id);
+            }
+        }
+        else if (blindGhostCollision || enPassantGhostCollision) {
+            // Pawn.MakeMove resolves a hidden Ghost already occupying the
+            // en-passant destination as a blind mutual knockout—even when it
+            // is allied to the capturing Pawn. In that branch the bypassing
+            // Pawn stored as the nominal en-passant victim is not removed.
             remove_piece(victim);
             remove_piece(id);
         }
         else if (victim != NoPiece)
             capture_piece(victim, id, move);
         if (actor.alive) {
-            actor.square = move.to;
+            // Most native characters occupy the destination before resolving
+            // its death effect. If that effect kills an Angel-protected
+            // attacker (notably Bomb or Goop), AngelFunction has already
+            // relocated it to the Halo. Preserve that rescue instead of
+            // overwriting it with the nominal move destination.
+            const bool relocatedByEffect = actor.square != originalFrom;
+            if (!relocatedByEffect)
+                actor.square = move.to;
             actor.moved = true;
-            if (actor.type == PieceType::Pawn) {
+            if (!relocatedByEffect && actor.type == PieceType::Pawn) {
                 const int promotionRank = actor.color == Color::White ? BoardRanks - 1 : 0;
                 if (rank_of(actor.square) == promotionRank)
                     actor.type = move.promotion == PieceType::Count ? PieceType::Queen : move.promotion;
@@ -1707,7 +1955,7 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
                     createdEnPassant = true;
                 }
             }
-            if (actor.type == PieceType::Checker) {
+            if (!relocatedByEffect && actor.type == PieceType::Checker) {
                 const int promotionRank = actor.color == Color::White ? BoardRanks - 1 : 0;
                 if (rank_of(actor.square) == promotionRank)
                     actor.type = PieceType::CheckerKing;
@@ -1725,8 +1973,18 @@ bool Position::make_move_unchecked(const Move& move, Undo& undo) {
             if (std::abs(file_of(move.to) - file_of(originalFrom)) > 1 ||
                 std::abs(rank_of(move.to) - rank_of(originalFrom)) > 1) {
                 const int middle = (originalFrom + move.to) / 2;
-                if (board_[middle] == NoPiece)
+                const int trailVictim = board_[middle];
+                if (trailVictim == NoPiece) {
                     add_piece(PieceType::Goop, actor.color, middle);
+                }
+                else {
+                    // A hidden Ghost does not block the Sludge ray. The
+                    // SimulatedGoop constructor's ExplodeOnStart branch kills
+                    // that occupant but returns before installing the new
+                    // Goop, so the Sludge continues and the middle cell stays
+                    // empty (or the Ghost is Angel-rescued elsewhere).
+                    remove_piece(trailVictim);
+                }
             }
         }
     }

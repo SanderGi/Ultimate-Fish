@@ -70,6 +70,24 @@ class DraftEvolutionTests(unittest.TestCase):
             policy.ban_score("rook", ["king"], ["king", "queen"]),
         )
 
+    def test_giant_biased_policy_preserves_each_material_minimum(self) -> None:
+        giant = draft.INDEX["giant"]
+        pick = list(draft.BASE_POLICY.pick)
+        pick[giant] = 10_000
+        policy = draft.DraftPolicy(
+            tuple(pick), draft.BASE_POLICY.repeat, draft.BASE_POLICY.ban,
+        )
+        outcome = draft.simulate_draft(policy, draft.BASE_POLICY)
+        cumulative = 0
+        minimum_additions = (15, 15, 0)
+        maxima = (40, 80, 100)
+        for group, added_minimum, maximum in zip(
+                outcome.white_groups, minimum_additions, maxima):
+            before = cumulative
+            cumulative += sum(draft.PIECE_COST[piece] for piece in group)
+            self.assertGreaterEqual(cumulative, before + added_minimum)
+            self.assertLessEqual(cumulative, maximum)
+
 
 if __name__ == "__main__":
     unittest.main()

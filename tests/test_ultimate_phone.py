@@ -344,7 +344,7 @@ class OnlineStateSanitizerTests(unittest.TestCase):
     def test_sanitizer_masks_enemy_ghost_and_royal_identity(self):
         state = MODULE.OnlineStartState((
             MODULE.ModelPieceRecord("king", 0, 0, 0),
-            MODULE.ModelPieceRecord("queen", 0, 1, 0, 2, 3, 1, 7),
+            MODULE.ModelPieceRecord("queen", 0, 1, 0, 1, 3, 1, 7),
             MODULE.ModelPieceRecord("king", 1, 7, 9),
             MODULE.ModelPieceRecord("jester", 1, 6, 9),
             MODULE.ModelPieceRecord("rook", 1, 5, 9, 1, 2, 3, 4),
@@ -363,8 +363,8 @@ class OnlineStateSanitizerTests(unittest.TestCase):
                 "queen", "w", "b1"))
             rook = next(item for item in parsed if item[0:3] == (
                 "rook", "b", "f10"))
-            self.assertEqual(queen[3][0:3], ["2", "3", "1"])
-            self.assertEqual(rook[3][0:3], ["1", "2", "3"])
+            self.assertEqual(queen[3][0:6], ["0", "3", "1", "0", "1", "1"])
+            self.assertEqual(rook[3][0:6], ["0", "2", "3", "0", "1", "1"])
             ghosts = [item for item in parsed if item[0:2] == ("ghost", "b")]
             self.assertEqual(len(ghosts), 1)
             self.assertEqual(ghosts[0][3][5], "0")
@@ -375,6 +375,32 @@ class OnlineStateSanitizerTests(unittest.TestCase):
             ))
         self.assertGreater(len(ghost_squares), 1)
         self.assertEqual(len(royal_assignments), 2)
+
+    def test_native_action_byte_is_decoded_by_piece_type(self):
+        self.assertEqual(
+            MODULE.model_piece_upn_state("rook", 1),
+            ("rook", 0, 0, True, True),
+        )
+        self.assertEqual(
+            MODULE.model_piece_upn_state("pawn", 2),
+            ("queen", 0, 0, True, True),
+        )
+        self.assertEqual(
+            MODULE.model_piece_upn_state("checker", 1),
+            ("checkerKing", 0, 0, False, True),
+        )
+        self.assertEqual(
+            MODULE.model_piece_upn_state("berserker", 8),
+            ("berserker", 0, 7, False, True),
+        )
+        self.assertEqual(
+            MODULE.model_piece_upn_state("penguin", 0x81),
+            ("penguin", 0x81, 0, False, True),
+        )
+        self.assertEqual(
+            MODULE.model_piece_upn_state("ghost", 0),
+            ("ghost", 0, 0, False, False),
+        )
 
 
 class EngineDraftProtocolTests(unittest.TestCase):
@@ -987,6 +1013,19 @@ class VisionTests(unittest.TestCase):
         self.assertIsNotNone(point)
         self.assertTrue(520 <= point[0] <= 550)
         self.assertTrue(1360 <= point[1] <= 1390)
+
+    def test_login_failure_ack_uses_inset_pink_button_not_red_panel(self):
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGB", (1080, 2400), (40, 140, 210))
+        draw = ImageDraw.Draw(image)
+        draw.rounded_rectangle(
+            (180, 1120, 900, 1400), radius=45, fill=(240, 65, 30))
+        draw.rounded_rectangle(
+            (410, 1265, 670, 1350), radius=35, fill=(254, 127, 128))
+        self.assertEqual(
+            MODULE.PhoneGame._login_failure_ack_point(image), (540, 1307)
+        )
 
     def test_unlock_ack_detector(self):
         from PIL import Image, ImageDraw
@@ -1647,6 +1686,20 @@ class OpeningSynchronizationTests(unittest.TestCase):
 
 
 class ControllerActionTests(unittest.TestCase):
+    def test_copycat_blank_army_move_is_resolved_by_material_delta(self):
+        self.assertEqual(
+            MODULE.resolve_army_drag_identity("copycat", "giant", 40, [35, 40]),
+            "copycat",
+        )
+        self.assertEqual(
+            MODULE.resolve_army_drag_identity("copycat", "giant", 40, [41]),
+            "giant",
+        )
+        self.assertEqual(
+            MODULE.resolve_army_drag_identity("dragon", "giant", 40, [55]),
+            "giant",
+        )
+
     def test_builder_pot_identity_swaps_mislabeled_equal_cost_slots(self):
         game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
         game.army_pot_slots = {}
@@ -1876,20 +1929,29 @@ class ControllerActionTests(unittest.TestCase):
         class FakeAdb:
             def __init__(self):
                 self.drags = []
+                self.taps = []
+
+            def tap_square(self, geometry, square):
+                self.taps.append(geometry.point(square))
 
             def drag_sync(self, source, target, duration):
                 self.drags.append((source, target, duration))
 
         class FakeEvents:
+            def __init__(self):
+                self.pending = [
+                    MODULE.AppEvent("selected", piece="mage"),
+                    MODULE.AppEvent("touch_end"),
+                    MODULE.AppEvent("turn_end"),
+                ]
+
             def drain(self):
                 pass
 
-            @staticmethod
-            def wait(kinds, timeout):
-                self.assertIn("turn_end", kinds)
+            def wait(stream, kinds, timeout):
                 self.assertGreater(timeout, 0.0)
                 self.assertLessEqual(timeout, 8.0)
-                return MODULE.AppEvent("turn_end")
+                return stream.pending.pop(0)
 
         game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
         game.geometry = MODULE.BoardGeometry()
@@ -1909,16 +1971,26 @@ class ControllerActionTests(unittest.TestCase):
             def __init__(self):
                 self.drags = []
 
+            @staticmethod
+            def tap_square(_geometry, _square):
+                pass
+
             def drag_sync(self, source, target, duration):
                 self.drags.append((source, target, duration))
 
         class FakeEvents:
+            def __init__(self):
+                self.pending = [
+                    MODULE.AppEvent("selected", piece="fisherman"),
+                    MODULE.AppEvent("touch_end"),
+                    MODULE.AppEvent("turn_end"),
+                ]
+
             def drain(self):
                 pass
 
-            @staticmethod
-            def wait(_kinds, _timeout):
-                return MODULE.AppEvent("turn_end")
+            def wait(self, _kinds, _timeout):
+                return self.pending.pop(0)
 
         game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
         game.geometry = MODULE.BoardGeometry()
@@ -1929,10 +2001,14 @@ class ControllerActionTests(unittest.TestCase):
                          ("move", "f8", "f1"))
         self.assertEqual(len(game.adb.drags), 1)
 
-    def test_fisherman_retries_native_source_to_source_drag(self):
+    def test_angel_link_uses_drag_instead_of_selecting_the_host(self):
         class FakeAdb:
             def __init__(self):
                 self.drags = []
+
+            @staticmethod
+            def tap_square(_geometry, _square):
+                pass
 
             def drag_sync(self, source, target, duration):
                 self.drags.append((source, target, duration))
@@ -1940,6 +2016,44 @@ class ControllerActionTests(unittest.TestCase):
         class FakeEvents:
             def __init__(self):
                 self.pending = [
+                    MODULE.AppEvent("selected", piece="angel"),
+                    MODULE.AppEvent("touch_end"),
+                    MODULE.AppEvent("turn_end"),
+                ]
+
+            @staticmethod
+            def drain():
+                pass
+
+            def wait(self, _kinds, _timeout):
+                return self.pending.pop(0)
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.adb = FakeAdb()
+        game.events = FakeEvents()
+        event = game.execute("c3&h2")
+        self.assertEqual((event.kind, event.source, event.target),
+                         ("move", "c3", "h2"))
+        self.assertEqual(len(game.adb.drags), 1)
+
+    def test_fisherman_retries_native_source_to_source_drag(self):
+        class FakeAdb:
+            def __init__(self):
+                self.drags = []
+
+            @staticmethod
+            def tap_square(_geometry, _square):
+                pass
+
+            def drag_sync(self, source, target, duration):
+                self.drags.append((source, target, duration))
+
+        class FakeEvents:
+            def __init__(self):
+                self.pending = [
+                    MODULE.AppEvent("selected", piece="fisherman"),
+                    MODULE.AppEvent("touch_end"),
                     MODULE.AppEvent("army_drop", source="2:7", target="2:7"),
                     MODULE.AppEvent("army_drop", source="2:7", target="2:9"),
                     MODULE.AppEvent("turn_end"),

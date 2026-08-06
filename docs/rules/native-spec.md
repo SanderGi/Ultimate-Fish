@@ -192,7 +192,11 @@ and remaps every relationship so captures cannot corrupt a round trip.
 - Angel attachment removes the angel from board occupancy, creates a halo at
   its origin, and links the host/angel/halo state. A lethal host hit consumes
   the angel and returns the host to the halo. Halo death also removes the
-  angel.
+  angel. An Angel may protect another Angel; when that protected Angel later
+  attaches to a host, its dependent Angel is reparented to the same host and
+  the rescue layers are consumed in attachment order. For an Onyx Giant, the
+  native rescue path subtracts one file and rank from the Halo coordinate
+  before clamping the canonical lower-left 2x2 anchor.
 - Cooldowns decrement on every side change. Setting the native base value of
   three therefore produces one skipped owner turn.
 - A Giant occupies `(x,y)`, `(x+1,y)`, `(x,y+1)`, and `(x+1,y+1)`. It moves
@@ -233,7 +237,9 @@ and remaps every relationship so captures cannot corrupt a round trip.
 - A Sniper's forward shot also passes through invisible Ghosts to the first
   visible character. Its one-square sideways action is quiet-only; an occupied
   lateral square produces no legal Dot. Only a forward shot starts the reload
-  cooldown.
+  cooldown. When the first target is a Giant, the shot targets the actual
+  footprint cell encountered on the Sniper's file, not the Giant model's
+  potentially off-file stored anchor.
 - When a Sniper shoots a Bomb, the Bomb death path can invoke the Sniper's
   stay-put movement callback again just after `ChangeTurn End`. That delayed
   duplicate has no new `Bot.RecordAiMove` diagnostic and no legal shot target
@@ -271,12 +277,21 @@ and remaps every relationship so captures cannot corrupt a round trip.
 
 ## Conformance status
 
-Every rule branch recovered from the 5.731 simulation classes is now represented
-in the engine and reference suite. The final gap pass added the native
-Berserker Chebyshev leap/growth behavior, ordinary-move exclusion for invisible
-Ghost squares, Mage-triggered pawn/checker promotion, Fisherman relocation of
-Angel-protected hosts, dynamic Berserker material, and the 24-cell deployment
-limit with correct Giant/CopyCat footprints.
+Conformance is an active release gate, not a completeness claim. The current
+engine has a native-code ledger, focused C++ regressions, deterministic Android
+Local fixtures, and coverage-guided Local self-play, but the interaction matrix
+is not yet exhausted. [conformance-matrix.md](conformance-matrix.md) records
+which mechanics have all three kinds of evidence and which still require a
+targeted native fixture.
+
+The latest gap pass added the native Berserker Chebyshev leap/growth behavior,
+ordinary-move exclusion for invisible Ghost squares, Mage-triggered
+pawn/checker promotion, Fisherman relocation of Angel-protected hosts, dynamic
+Berserker material, the 24-cell deployment limit with correct Giant/CopyCat
+footprints, Onyx's color-relative Giant/Halo rescue anchor, and Sniper targeting
+of the actual Giant footprint cell rather than its off-file stored anchor.
+Both Giant/Sniper/Onyx-Angel rescue and nested ordered Angel rescues now have
+deterministic shipping-app Local fixtures in addition to C++ regressions.
 
 Hidden information follows the shipping simulator rather than a chess-style
 determinization: the position retains an invisible Ghost's coordinate, while
@@ -329,5 +344,6 @@ static visible-plus-Ghost values total 102 while the public counter reads 100.
 The phone controller reconciles only the uniquely determined Ghost count within
 that observed two-point adjustment and rejects larger mismatches.
 
-There is no known source-level or live differential rules gap in the recovered
-5.731 ledger.
+No source-level divergence is currently known in the recovered 5.731 ledger,
+but conformance remains open until the pending matrix fixtures and broader
+interaction campaigns are complete.

@@ -29,6 +29,8 @@ direct new features toward `variants.ini`.
 - `src/ultimate/main.cpp`: the local text protocol used by tools and the UI.
 - `tests/ultimate_rules.cpp`: native conformance, perft, undo, and search tests.
 - `tools/ultimate_phone.py`: deterministic Android controller and state tracker.
+- `tools/conform_ultimate_local.py`: manifest-driven shipping-app Local
+  fixtures and coverage-guided pass-and-play differential testing.
 - `tools/evolve_ultimate_army.py`: roster plus placement evolution through
   engine-versus-engine games.
 - `tools/validate_ultimate_armies.py`: deeper common-pool re-ranking of evolved
@@ -48,8 +50,9 @@ Run commands from the repository root unless noted otherwise:
 make -C src ultimatefish
 make -C src ultimate-test
 python3 tests/test_ultimate_phone.py
+python3 tests/test_conform_ultimate_local.py
 python3 tests/test_evolve_ultimate_army.py
-python3 -m py_compile tools/ultimate_phone.py tools/evolve_ultimate_army.py
+python3 -m py_compile tools/ultimate_phone.py tools/conform_ultimate_local.py tools/evolve_ultimate_army.py
 tools/benchmark_ultimate.sh
 git diff --check
 ```

@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import functools
 import itertools
 import json
 import math
@@ -114,6 +115,33 @@ def draft_window(phase: int, team: Sequence[str]) -> tuple[int, int, bool]:
     raise ValueError(f"phase {phase} is not a pick window")
 
 
+@functools.lru_cache(maxsize=None)
+def can_add_at_least(
+    available: tuple[str, ...], slots: int, cap: int, needed: int,
+) -> bool:
+    """Fast unbounded footprint/material feasibility via integer bitsets."""
+    if needed <= 0:
+        return True
+    if slots <= 0 or cap < needed:
+        return False
+    reachable = [0] * (slots + 1)
+    reachable[0] = 1  # bit N means exactly N additional points
+    mask = (1 << (cap + 1)) - 1
+    for used in range(slots + 1):
+        if not reachable[used]:
+            continue
+        for piece in available:
+            next_slots = used + footprint_size(piece)
+            if next_slots <= slots:
+                reachable[next_slots] |= (
+                    reachable[used] << PIECE_COST[piece]
+                ) & mask
+    achievable = 0
+    for values in reachable:
+        achievable |= values
+    return bool(achievable >> needed)
+
+
 PREFERENCES = {
     "jester": ("b1", "h1", "g1"),
     "ghost": ("d2", "e2", "c2", "f2"),
@@ -162,8 +190,12 @@ def deploy_groups(groups: Sequence[Sequence[str]]) -> Army:
             for left in cells for right in occupied
         )
 
+    require_shield = True
+
     def place(depth: int) -> bool:
         if depth == len(indexed):
+            if not require_shield:
+                return True
             solid = {"a1"}
             for index, square in assignments.items():
                 if roster[index] not in ("ghost", "bomb"):
@@ -195,7 +227,12 @@ def deploy_groups(groups: Sequence[Sequence[str]]) -> Army:
         return False
 
     if not place(0):
-        raise RuntimeError("drafted roster has no safe legal deployment")
+        # A legal mutation made entirely from hidden/explosive pieces may have
+        # no three-ray shield. Keep it in the league so actual engine play can
+        # punish that weakness rather than treating it as a protocol failure.
+        require_shield = False
+        if not place(0):
+            raise RuntimeError("drafted roster has no legal deployment")
     return (("king", "a1"), *(
         (piece, assignments[index]) for index, piece in enumerate(roster)
     ))
@@ -227,12 +264,40 @@ def simulate_draft(white: DraftPolicy, black: DraftPolicy) -> DraftOutcome:
 
         minimum, maximum, final = draft_window(phase, own)
         selected: list[str] = []
+
+        def preserves_minimum(candidate: str) -> bool:
+            """Whether cells left can reach this and the next required floor."""
+            next_points = team_points(own) + PIECE_COST[candidate]
+            slots_left = 24 - team_slots(own) - footprint_size(candidate)
+
+            def can_reach(target: int, cap: int) -> bool:
+                if next_points >= target:
+                    return True
+                points_left = cap - next_points
+                return can_add_at_least(
+                    tuple(piece for piece in PIECES if piece not in banned),
+                    slots_left, points_left, target - next_points,
+                )
+
+            if not can_reach(minimum, maximum):
+                return False
+            # Cheap pieces in the opening group must not consume every board
+            # cell needed by the following required-addition window.
+            future = 55 if phase == 2 else 80 if phase == 3 else minimum
+            future_cap = 80 if phase == 2 else 90 if phase == 3 else maximum
+            return can_reach(future, future_cap)
+
         while team_points(own) < maximum:
             legal = [
                 piece for piece in PIECES
                 if piece not in banned
                 and team_points(own) + PIECE_COST[piece] <= maximum
                 and team_slots(own) + footprint_size(piece) <= 24
+                # Five disjoint 2x2 models cannot be packed into the 8x3 home
+                # zone with its pre-placed corner King, despite summing to the
+                # coarse 24-cell cap used by the native draft UI.
+                and (piece != "giant" or own.count("giant") < 4)
+                and preserves_minimum(piece)
             ]
             if not legal:
                 break
