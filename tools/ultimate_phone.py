@@ -75,10 +75,12 @@ POT_SORT_ORDER = (
 # army can be supplied with --own-team without changing any phone logic.
 DEFAULT_OWN_TEAM = (
     ("king", "a1"),
-    ("queen", "b1"), ("queen", "c1"), ("queen", "d1"),
-    ("queen", "e1"), ("queen", "f1"),
-    ("pawn", "g1"), ("pawn", "h1"), ("pawn", "a3"),
-    ("pawn", "b3"), ("pawn", "c3"),
+    ("queen", "h3"), ("queen", "b3"), ("queen", "c3"),
+    ("queen", "b2"),
+    ("pawn", "a2"), ("pawn", "h2"),
+    ("giant", "e1"), ("giant", "c1"),
+    ("pawn", "g2"), ("pawn", "e3"), ("pawn", "a3"),
+    ("dragon", "g1"),
 )
 
 PREFAB_NAME = r"([A-Za-z][A-Za-z0-9_ -]*?)"
@@ -688,6 +690,12 @@ class DeploymentGeometry:
 # builder on the reference 1080x2400 phone.  Native ArmyMove coordinates are
 # the calibration oracle; the visible row boundaries are y=1415/1526/1637/1749.
 LOCAL_DEPLOYMENT_GEOMETRY = DeploymentGeometry(top=1415.0, bottom=1749.0)
+# Ranked keeps the full Board object but frames the local three-rank deployment
+# zone as a compact board during pick windows. These bounds are the stable cell
+# edges on the reference 1080x2400 portrait layout; scale them for other devices.
+RANKED_DEPLOYMENT_GEOMETRY = DeploymentGeometry(
+    left=8.0, top=1145.0, right=912.0, bottom=1465.0,
+)
 
 
 def detect_outline_squares(image, geometry: BoardGeometry, color: str = "red",
@@ -1505,6 +1513,68 @@ class DraftDeployment:
         if valid:
             return valid[0][0]
         raise RuntimeError(f"no legal deployment cells remain for {piece}")
+
+    def plan(
+        self,
+        pieces: Sequence[str],
+        excluded: Sequence[set[str]] | None = None,
+    ) -> list[str]:
+        """Backtrack a complete landing plan for one still-mutable group.
+
+        Greedy maximum-clearance placement can strand a later wide model even
+        when the 8x3 zone has a legal packing (four opening Giants are the
+        smallest live-relevant example).  Ranked reveals all local choices for
+        the current group before any are dragged, so plan the remaining group
+        as a unit and recompute after every native landing correction.
+        """
+        blocked = self.occupied.copy()
+        excluded = excluded or tuple(set() for _piece in pieces)
+        if len(excluded) != len(pieces):
+            raise ValueError("deployment exclusions must align with pieces")
+        answer: list[str] = []
+
+        def distance(cells: set[str]) -> int:
+            return min(
+                max(abs(ord(left[0]) - ord(right[0])),
+                    abs(int(left[1:]) - int(right[1:])))
+                for left in cells for right in blocked
+            )
+
+        def place(index: int) -> bool:
+            if index == len(pieces):
+                return True
+            piece = pieces[index]
+            candidates = self.PREFERENCES.get(piece, ()) + self.FALLBACK
+            valid: list[tuple[str, set[str]]] = []
+            for square in dict.fromkeys(candidates):
+                cells = self.cells(piece, square)
+                if (square not in excluded[index] and cells
+                        and not cells & blocked):
+                    valid.append((square, cells))
+            valid.sort(
+                key=lambda item: (
+                    0 if piece in self.NON_BLOCKING_SHIELDS else
+                    len(item[1] & (self.KING_SHIELD - blocked)),
+                    distance(item[1]),
+                    -candidates.index(item[0]),
+                ),
+                reverse=True,
+            )
+            for square, cells in valid:
+                blocked.update(cells)
+                answer.append(square)
+                if place(index + 1):
+                    return True
+                answer.pop()
+                blocked.difference_update(cells)
+            return False
+
+        if not place(0):
+            raise RuntimeError(
+                "remaining Ranked group has no legal deployment packing: "
+                + " ".join(pieces)
+            )
+        return answer
 
     def reserve(self, piece: str, square: str) -> None:
         cells = self.cells(piece, square)
@@ -5153,10 +5223,14 @@ class PhoneGame:
     ) -> RankedPlacementResult:
         if piece not in self.draft_pots:
             raise RuntimeError(f"no calibrated Ranked pot for {piece}")
-        # Ranked calls Board.LoadBoardDraft on the live 8x10 board (unlike the
-        # standalone army builder's cropped 8x3 board), so local ranks 1-3 use
-        # ordinary gameplay geometry.
-        target = self.geometry.point(square)
+        # LoadBoardDraft retains the live Board model, but the pick camera
+        # projects the local home zone into a compact 8x3 rectangle. Drag to
+        # that visible grid rather than the later settled-gameplay geometry;
+        # relying on Giant.getClosestIntersection to rescue off-board drops is
+        # both slow and dependent on whichever model collider is nearest.
+        target = RANKED_DEPLOYMENT_GEOMETRY.scaled(
+            self.geometry.width, self.geometry.height,
+        ).point(square)
         source = self.draft_pots[piece]
         # PointerDown grabs the pot model and PointerUp on the square performs
         # the native placement.  A moderately short gesture is fast while still
@@ -5441,8 +5515,9 @@ class PhoneGame:
         )
         desired = Counter(choices)
         ordered_piece_names = [piece for _index, piece in ordered_choices]
-        excluded: dict[str, set[str]] = {
-            piece: set() for piece in desired
+        excluded: dict[tuple[str, int], set[str]] = {
+            (piece, ordinal): set()
+            for piece, count in desired.items() for ordinal in range(count)
         }
         placement_deadline = time.monotonic() + 45.0
 
@@ -5485,10 +5560,16 @@ class PhoneGame:
                 self.log("Ranked placement recovery is continuing past its soft deadline")
 
             roster = current_roster()
-            piece = next(
-                candidate for candidate in ordered_piece_names
-                if roster[candidate] < desired[candidate]
-            )
+            remaining = []
+            remaining_keys: list[tuple[str, int]] = []
+            remaining_counts = Counter(roster)
+            for candidate in ordered_piece_names:
+                if remaining_counts[candidate] < desired[candidate]:
+                    remaining_keys.append((candidate, remaining_counts[candidate]))
+                    remaining.append(candidate)
+                    remaining_counts[candidate] += 1
+            piece = remaining[0]
+            piece_key = remaining_keys[0]
             extras = Counter(roster)
             extras.subtract(desired)
             replace = next(
@@ -5500,9 +5581,21 @@ class PhoneGame:
                 requested = replace[1]
                 extras[replace[0]] -= 1
             else:
-                requested = deployment.propose(
-                    piece, excluded[piece], maximize_clearance=True,
-                )
+                try:
+                    requested = deployment.plan(
+                        remaining, [excluded[key] for key in remaining_keys],
+                    )[0]
+                except RuntimeError:
+                    # A native miss is target-instance evidence, not proof that
+                    # the group itself is unpackable. Reset this occurrence's
+                    # retry cycle and remain in-phase rather than donating a
+                    # Ranked timeout by terminating the controller.
+                    excluded[piece_key].clear()
+                    self.log(
+                        f"Ranked {piece} packing exhausted transient targets; "
+                        "restarting its in-phase placement cycle"
+                    )
+                    continue
             before_points = self.ranked_local_points
             try:
                 result = self._place_ranked_piece(
@@ -5510,7 +5603,7 @@ class PhoneGame:
                 )
             except TimeoutError:
                 if replace is None:
-                    excluded[piece].add(requested)
+                    excluded[piece_key].add(requested)
                 self.log(
                     f"Ranked {piece}@{requested} did not materialize; "
                     "retrying in-phase"
@@ -5520,7 +5613,7 @@ class PhoneGame:
             local_points = result.local_points
             if local_points == before_points:
                 if replace is None:
-                    excluded[piece].add(requested)
+                    excluded[piece_key].add(requested)
                 self.log(
                     f"Ranked {piece}@{requested} did not increase material; "
                     "retrying in-phase"

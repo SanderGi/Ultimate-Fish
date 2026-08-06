@@ -722,6 +722,38 @@ class RankedDraftControllerTests(unittest.TestCase):
         )
         self.assertEqual(game.ranked_local_points, 40)
 
+    def test_ranked_group_planner_packs_four_opening_giants(self):
+        deployment = MODULE.DraftDeployment()
+        pieces = ("giant", "giant", "giant", "giant", "prince", "prince")
+        squares = deployment.plan(pieces)
+        occupied = deployment.occupied.copy()
+        for piece, square in zip(pieces, squares):
+            cells = deployment.cells(piece, square)
+            self.assertTrue(cells)
+            self.assertFalse(cells & occupied)
+            occupied.update(cells)
+        self.assertEqual(len(occupied), 19)
+        self.assertTrue(MODULE.DraftDeployment.KING_SHIELD <= occupied)
+
+        # A miss belongs to one attempted model. Another identical Giant may
+        # still use that anchor in the same legal packing.
+        retry = MODULE.DraftDeployment().plan(
+            ("giant", "giant", "giant", "giant"),
+            ({"a2"}, set(), set(), set()),
+        )
+        self.assertNotEqual(retry[0], "a2")
+        self.assertIn("a2", retry[1:])
+
+    def test_ranked_pick_uses_compact_visible_deployment_geometry(self):
+        self.assertEqual(
+            MODULE.RANKED_DEPLOYMENT_GEOMETRY.point("g1"),
+            (742, 1412),
+        )
+        self.assertNotEqual(
+            MODULE.RANKED_DEPLOYMENT_GEOMETRY.point("g1"),
+            MODULE.BoardGeometry().point("g1"),
+        )
+
     def test_ranked_pick_repairs_intercepted_material_before_locking(self):
         class PickEvents:
             @staticmethod

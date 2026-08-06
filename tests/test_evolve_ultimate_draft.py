@@ -29,7 +29,9 @@ class DraftEvolutionTests(unittest.TestCase):
         self.assertEqual(len(outcome.white_groups), 3)
         self.assertEqual(len(outcome.black_groups), 3)
         for army in (outcome.white, outcome.black):
-            self.assertEqual(draft.team_points(piece for piece, _square in army), 100)
+            points = draft.team_points(piece for piece, _square in army)
+            self.assertGreaterEqual(points, 80)
+            self.assertLessEqual(points, 100)
             self.assertLessEqual(
                 sum(draft.footprint_size(piece) for piece, _square in army), 24
             )

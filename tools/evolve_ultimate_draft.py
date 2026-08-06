@@ -37,14 +37,32 @@ from evolve_ultimate_army import (
 PIECES = tuple(PIECE_COST)
 INDEX = {piece: index for index, piece in enumerate(PIECES)}
 
-# Current native DraftStrength, expressed in the selectable-piece order above.
+# Current native evolved policy, expressed in selectable-piece order. Keep this
+# synchronized with src/ultimate/draft.cpp so continuation leagues challenge
+# the policy that actually ships rather than the superseded heuristic.
 BASE_PICK = {
-    "jester": 680, "knight": 430, "pawn": 300, "queen": 880,
-    "rook": 700, "bishop": 540, "berserker": 820, "bomb": 860,
-    "ninja": 980, "turtle": 310, "ghost": 900, "mage": 470,
-    "penguin": 790, "parasite": 800, "devil": 760, "sludge": 560,
-    "sniper": 920, "prince": 940, "checker": 190, "giant": 220,
-    "copycat": 120, "angel": 720, "fisherman": 700, "dragon": 900,
+    "jester": 1168, "knight": 460, "pawn": 184, "queen": 817,
+    "rook": 762, "bishop": 564, "berserker": 798, "bomb": 1149,
+    "ninja": 388, "turtle": -1134, "ghost": 502, "mage": 1076,
+    "penguin": 1211, "parasite": 798, "devil": 244, "sludge": 385,
+    "sniper": 383, "prince": 1797, "checker": -28, "giant": 219,
+    "copycat": 1057, "angel": 864, "fisherman": 290, "dragon": -104,
+}
+BASE_REPEAT = {
+    "jester": -104, "knight": -96, "pawn": -276, "queen": 281,
+    "rook": 186, "bishop": -174, "berserker": -12, "bomb": -133,
+    "ninja": -201, "turtle": 335, "ghost": 343, "mage": -161,
+    "penguin": 216, "parasite": -135, "devil": -16, "sludge": 177,
+    "sniper": 110, "prince": -161, "checker": 52, "giant": -16,
+    "copycat": -112, "angel": 289, "fisherman": -300, "dragon": 169,
+}
+BASE_BAN = {
+    "jester": 1472, "knight": -187, "pawn": -370, "queen": 686,
+    "rook": 1749, "bishop": 1538, "berserker": -419, "bomb": 248,
+    "ninja": 208, "turtle": -1290, "ghost": 1326, "mage": 1251,
+    "penguin": 1131, "parasite": 643, "devil": 316, "sludge": 845,
+    "sniper": 891, "prince": 1020, "checker": 76, "giant": -1512,
+    "copycat": 32, "angel": -693, "fisherman": 1141, "dragon": 317,
 }
 
 
@@ -80,8 +98,9 @@ class DraftPolicy:
 
 BASE_POLICY = DraftPolicy(
     tuple(BASE_PICK[piece] for piece in PIECES),
-    tuple(-90 for _piece in PIECES),
-    tuple(BASE_PICK[piece] for piece in PIECES),
+    tuple(BASE_REPEAT[piece] for piece in PIECES),
+    tuple(BASE_BAN[piece] for piece in PIECES),
+    opponent_deny=168, self_preserve=327, final_penguin=-164,
 )
 
 

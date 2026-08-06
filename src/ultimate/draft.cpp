@@ -142,43 +142,44 @@ std::optional<PieceType> DraftState::suggest() const {
     if (choices.empty())
         return std::nullopt;
     const DraftWindow current = window();
-    // Search-derived draft priors. They deliberately are not a cost table:
-    // native costs already constrain the choice and these values express
-    // tactical reach, forced-action potential, king pressure, and synergy.
-    static constexpr std::array<int, static_cast<std::size_t>(PieceType::Count)> DraftStrength = {{
-      0, 680, 430, 300, 880, 700, 540, 820, 860, 980,
-      310, 900, 470, 0, 790, 800, 760, 0, 560, 920,
-      940, 190, 220, 120, 720, 0, 700, 0, 610, 900,
+    // The 2026-08-06 continuation league evolved independent pick, repeat,
+    // and ban weights. Its strongest finalist scored 7W-5D-0L in a fresh
+    // 30k-node seven-policy validation pool; the previous shipping policy
+    // scored 0W-10D-2L. Native costs remain the legality constraint, while
+    // these values express playing strength and roster interaction.
+    static constexpr std::array<int, static_cast<std::size_t>(PieceType::Count)> Pick = {{
+      0, 1168, 460, 184, 817, 762, 564, 798, 1149, 388,
+      -1134, 502, 1076, 0, 1211, 798, 244, 0, 385, 383,
+      1797, -28, 0, 219, 1057, 0, 864, 0, 290, -104,
     }};
+    static constexpr std::array<int, static_cast<std::size_t>(PieceType::Count)> Repeat = {{
+      0, -104, -96, -276, 281, 186, -174, -12, -133, -201,
+      335, 343, -161, 0, 216, -135, -16, 0, 177, 110,
+      -161, 52, 0, -16, -112, 0, 289, 0, -300, 169,
+    }};
+    static constexpr std::array<int, static_cast<std::size_t>(PieceType::Count)> Ban = {{
+      0, 1472, -187, -370, 686, 1749, 1538, -419, 248, 208,
+      -1290, 1326, 1251, 0, 1131, 643, 316, 0, 845, 891,
+      1020, 76, 0, -1512, 32, 0, -693, 0, 1141, 317,
+    }};
+    constexpr int OpponentDeny = 168;
+    constexpr int SelfPreserve = 327;
+    constexpr int FinalPenguin = -164;
     int bestScore = std::numeric_limits<int>::min();
     PieceType best = choices.front();
     for (const PieceType type : choices) {
-        const int strength = DraftStrength[static_cast<std::size_t>(type)];
+        const std::size_t typeIndex = static_cast<std::size_t>(type);
         const int copies = static_cast<int>(std::count(team(current.player).begin(),
                                                         team(current.player).end(), type));
-        // The draft window already constrains cost. Ranking raw playing
-        // strength avoids exhausting the 24-cell deployment zone with cheap
-        // Giants before a required point minimum can be reached.
-        int score = strength;
-        if (current.action == DraftAction::Pick) {
-            // Deterministic draft-roster matches showed a large late-window
-            // edge for a Penguin wall: it swept the former mixed final four
-            // as both colors at 10k and 30k nodes per move.  Preserve early
-            // tactical diversity, but exploit that measured stacking synergy
-            // in the unrestricted final window.
-            if (current.lastPick && type == PieceType::Penguin)
-                score += 500;
-            else
-                score -= copies * 90;
-            if (type == PieceType::Jester && copies == 0)
-                score += 180;
-            if (type == PieceType::Angel && team(current.player).size() > 2)
-                score += 90;
-            if (type == PieceType::Mage &&
-                std::find(team(current.player).begin(), team(current.player).end(), PieceType::Giant)
-                  != team(current.player).end())
-                score += 80;
+        int score = Pick[typeIndex] + Repeat[typeIndex] * copies;
+        if (current.action == DraftAction::Ban) {
+            const Color opponent = current.player == Color::White ? Color::Black : Color::White;
+            const int opponentCopies = static_cast<int>(std::count(
+              team(opponent).begin(), team(opponent).end(), type));
+            score = Ban[typeIndex] + OpponentDeny * opponentCopies - SelfPreserve * copies;
         }
+        else if (current.lastPick && type == PieceType::Penguin)
+            score += FinalPenguin;
         if (score > bestScore) {
             bestScore = score;
             best = type;

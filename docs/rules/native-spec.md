@@ -113,6 +113,15 @@ cells. Earlier committed groups are never touched. The cumulative total and
 exact pending roster must both equal the engine's desired pick before the
 controller presses the icon-only green Lock checkmark.
 
+Although `LoadBoardDraft` retains the full live Board object, the pick camera
+renders the local home zone as a compact 8x3 grid. It does not share the later
+settled 8x10 gameplay coordinates. On the reference 1080x2400 portrait layout
+the stable deployment edges are `(8,1145)` through `(912,1465)`, scaled with
+the device resolution. Group placement backtracks all still-mutable pieces so
+four 2x2 Giants can be packed alongside ordinary models; a failed target is
+excluded only for that duplicate instance and never terminates the controller
+during an active Ranked clock.
+
 After selecting a Ban pot, the current Ranked UI exposes the actionable large
 red Ban button in the lower-left character inspector. The blue top-row `BAN`
 element is only the phase label, while the selected-pot red speech bubble is

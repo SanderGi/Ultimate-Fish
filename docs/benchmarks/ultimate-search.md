@@ -171,3 +171,29 @@ across the six alternating ban turns. A direct 30,000-node color pair against
 the existing production draft policy was also 1.0/2.0, so the artifact is
 retained as an experimental result rather than promoted on a false Elo claim:
 [`evolved-draft-optimized-2026-08-06.json`](evolved-draft-optimized-2026-08-06.json).
+
+A four-generation continuation then used that finalist as the production
+baseline and re-evaluated twelve policies at 5,000 nodes per move. Its leading
+finalist scored 4W-4D-0L in the 30,000-node final. A separate seven-policy
+30,000-node pool against the previous six finalists produced 7W-5D-0L (79.2%);
+the prior shipping policy scored 0W-10D-2L (41.7%). The promoted policy uses
+adaptive pick, repeat, opponent-denial, and self-preservation weights and is
+stored in
+[`evolved-draft-continuation-2026-08-06.json`](evolved-draft-continuation-2026-08-06.json).
+It intentionally stops at 99 and 89 points in its symmetric deterministic
+fixture when those rosters outrank filler under the native 100-point ceiling.
+
+The promoted roster's four-Giant opening exposed that Ranked's pick camera
+projects the local deployment zone into a compact 8x3 grid rather than the
+settled gameplay geometry. The phone controller now targets the measured grid
+and backtracks the entire remaining mutable group, with failed landing targets
+tracked per duplicate instance. Offline tests pack four Giants plus two Princes
+without overlap. A live match that exposed the old off-board targeting timed
+out before the correction; the following Ranked queue had no opponent during
+the extended validation window, so a successful live four-Giant lock remains
+an explicit validation gate rather than a claimed result.
+
+The same checkpoint won a fresh Very Hard CPU game after searching 64 public
+beliefs and finding a forced mate, then won a fresh Unranked game against a
+100-point Giant/Rook/Mage army. Both used iterative depth up to 20 with a
+10-second move cap and the evolved Queen/Giant/Dragon saved setup.
