@@ -199,8 +199,13 @@ rejected in a live match. The controller now uses the measured gray-cell edges
 `(60,1344)` through `(1032,1668)`, targets raycastable cell centers, and
 backtracks the remaining mutable group. Offline
 tests pack four Giants plus two Princes without overlap and assert all four
-corrected centers. A successful live four-Giant lock remains an explicit
-validation gate rather than a claimed result.
+corrected centers. A shipping-app Local profile then built and visually
+verified `a2,c2,e2,g2` for both players, launched the position, and accepted a
+Giant move in differential play. Ranked accepted three corrected placements;
+the remaining center was occluded by the earlier maximum-clearance order, so
+the controller now uses the Local-proven contiguous left-to-right order. A
+successful live four-Giant Ranked lock remains an explicit validation gate
+rather than a claimed result.
 
 The same checkpoint won a fresh Very Hard CPU game after searching 64 public
 beliefs and finding a forced mate, then won a fresh Unranked game against a
