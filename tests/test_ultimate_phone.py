@@ -2202,6 +2202,19 @@ class OpeningSynchronizationTests(unittest.TestCase):
               ('copycat', 'b10'))},
         )
 
+    def test_rewind_copycat_pair_that_moved_below_probe_zone(self):
+        rewound = MODULE.rewind_public_enemy_opening(
+            (("king", "d10"),),
+            (
+                MODULE.AppEvent("move", "copycat", "h8", "g7"),
+                MODULE.AppEvent("move", "copycatClone", "a8", "b7"),
+            ),
+        )
+        self.assertEqual(
+            {tuple(variant) for variant in rewound},
+            {(('copycatClone', 'a8'), ('copycat', 'h8'), ('king', 'd10'))},
+        )
+
     def test_copycat_partner_and_rewind_mage_swap(self):
         position = (
             "w;king,w,a1,0,0,0,0,0,1,-1,1,-1,0;"
@@ -2600,7 +2613,7 @@ class ControllerActionTests(unittest.TestCase):
                          ("move", "d1", "f1"))
         self.assertEqual(game.events.pending, [])
 
-    def test_copycat_returns_after_selected_half_animation(self):
+    def test_copycat_waits_through_available_partner_animation(self):
         class FakeAdb:
             def tap_square(self, _geometry, _square):
                 pass
@@ -2613,6 +2626,7 @@ class ControllerActionTests(unittest.TestCase):
                     MODULE.AppEvent("dot_ready", source="g2"),
                     MODULE.AppEvent("touch_end"),
                     MODULE.AppEvent("move", "copycatClone", "b2", "a2"),
+                    MODULE.AppEvent("move", "copycat", "g2", "h2"),
                     MODULE.AppEvent("turn_end"),
                 ]
 
@@ -2640,8 +2654,7 @@ class ControllerActionTests(unittest.TestCase):
         event = game.execute("b2-a2")
         self.assertEqual((event.kind, event.source, event.target),
                          ("move", "b2", "a2"))
-        self.assertEqual(game.events.pending,
-                         [MODULE.AppEvent("turn_end")])
+        self.assertEqual(game.events.pending, [])
 
     def test_destination_retry_reselects_before_using_an_in_cell_offset(self):
         class FakeEvents:

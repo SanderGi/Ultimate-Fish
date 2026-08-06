@@ -65,6 +65,18 @@ void test_roster_and_position_round_trip() {
              Position::square_from_name("f3"),
            "UPN remaps CopyCat links after omitted captured pieces");
 
+    Position singleton;
+    const std::string singletonUpn =
+      "w;hm=92;fm=33;ep=-;cont=0;forced=-1;epv=-1;win=-;"
+      "king,w,a1,0,0,0,0,0,1,-1,1,-1,0;"
+      "copycat,w,f2,0,0,0,0,1,1,-1,1,-1,0;"
+      "giant,w,c2,0,0,0,0,1,1,-1,1,-1,0;"
+      "king,b,c9,0,0,0,0,1,1,-1,1,-1,0";
+    expect(singleton.set_upn(singletonUpn, &error),
+           "lossless Angel-surviving CopyCat singleton parses: " + error);
+    expect(singleton.upn() == singletonUpn,
+           "explicit CopyCat link=-1 does not regenerate an occupied mirror clone");
+
     Position recycled;
     recycled.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     recycled.add_piece(PieceType::King, Color::Black, Position::square_from_name("h10"));
@@ -284,7 +296,7 @@ void test_bomb_check_legality() {
     copycatPartner.add_piece(PieceType::Copycat, Color::Black,
                              Position::square_from_name("c6"));
     expect(!copycatPartner.move_from_string("a2-a3").has_value(),
-           "a Copycat half's direct attack counts as check");
+           "quiet Copycat half with a capturing mirrored partner counts as check");
 
     // Captured Ranked evidence: an opponent that still owned a Jester legally
     // moved a linked CopyCat while its real King remained attacked. Native
@@ -1256,12 +1268,29 @@ void test_native_giant_and_copycat_footprints() {
                                               Position::square_from_name("e4"));
     Undo pairedMove;
     expect(copycat.make_move(require_move(copycat, "c3-d4"), pairedMove),
-           "selected CopyCat half capture applies");
-    expect(!copycat.piece(leftVictim).alive && copycat.piece(rightVictim).alive,
-           "only the selected CopyCat half captures its target");
+           "copycat paired capture applies");
+    expect(!copycat.piece(leftVictim).alive && !copycat.piece(rightVictim).alive,
+           "copycat and clone capture both mirrored targets");
     expect(copycat.piece(original).square == Position::square_from_name("d4") &&
-           copycat.piece(clone).square == Position::square_from_name("f3"),
-           "linked CopyCat partner remains stationary after construction");
+           copycat.piece(clone).square == Position::square_from_name("e4"),
+           "available copycat clone follows the mirrored displacement");
+
+    Position frozenCopycat;
+    frozenCopycat.add_piece(PieceType::King, Color::White,
+                            Position::square_from_name("a1"));
+    frozenCopycat.add_piece(PieceType::King, Color::Black,
+                            Position::square_from_name("h10"));
+    const int thawedHalf = frozenCopycat.add_piece(
+      PieceType::Copycat, Color::White, Position::square_from_name("c3"));
+    const int frozenHalf = frozenCopycat.piece(thawedHalf).link;
+    frozenCopycat.piece(frozenHalf).freezeCount = 1;
+    Undo frozenPartnerMove;
+    expect(frozenCopycat.make_move(
+             require_move(frozenCopycat, "c3-d4"), frozenPartnerMove),
+           "CopyCat can move while its linked partner is unavailable");
+    expect(frozenCopycat.piece(thawedHalf).square == Position::square_from_name("d4") &&
+             frozenCopycat.piece(frozenHalf).square == Position::square_from_name("f3"),
+           "frozen CopyCat partner remains stationary and the UPN link stays exact");
 
     Position dyingCopycat;
     dyingCopycat.add_piece(PieceType::King, Color::White,
@@ -1278,12 +1307,12 @@ void test_native_giant_and_copycat_footprints() {
     Undo dyingPairMove;
     expect(dyingCopycat.make_move(
                require_move(dyingCopycat, "c3-d4"), dyingPairMove),
-           "CopyCat attack on a lethal target applies");
+           "CopyCat paired attack with a lethal first target applies");
     expect(!dyingCopycat.piece(lethalGoop).alive &&
                !dyingCopycat.piece(doomedHost).alive &&
                !dyingCopycat.piece(doomedClone).alive &&
-               dyingCopycat.piece(queuedVictim).alive,
-           "linked CopyCat death does not attack the stationary partner's neighbor");
+               !dyingCopycat.piece(queuedVictim).alive,
+           "queued CopyCat half resolves its target after linked Goop death");
 
     Position rescuedCopycat;
     rescuedCopycat.add_piece(PieceType::King, Color::White,
@@ -1321,8 +1350,8 @@ void test_native_giant_and_copycat_footprints() {
                !rescuedCopycat.piece(copycatAngel).alive &&
                !rescuedCopycat.piece(copycatGoop).alive &&
                rescuedCopycat.piece(movingClone).square ==
-                   Position::square_from_name("f3"),
-           "CopyCat retains its Angel relocation while its partner stays put");
+                   Position::square_from_name("e4"),
+           "CopyCat retains its Angel relocation while the paired half completes");
 
     Position hiddenPrimary;
     hiddenPrimary.add_piece(PieceType::King, Color::White,
@@ -1344,8 +1373,8 @@ void test_native_giant_and_copycat_footprints() {
              hiddenPrimary.piece(hiddenHost).square ==
                Position::square_from_name("d4") &&
              hiddenPrimary.piece(hiddenClone).square ==
-               Position::square_from_name("f3"),
-           "CopyCat captures a hidden Ghost without moving its linked partner");
+               Position::square_from_name("e4"),
+           "CopyCat captures a hidden Ghost while both halves complete their move");
 
     Position hiddenMirror;
     hiddenMirror.add_piece(PieceType::King, Color::White,
@@ -1361,14 +1390,14 @@ void test_native_giant_and_copycat_footprints() {
     Undo hiddenMirrorMove;
     expect(hiddenMirror.make_move(
              require_move(hiddenMirror, "c3-d4"), hiddenMirrorMove),
-           "CopyCat move is independent of its partner's neighboring Ghost");
-    expect(hiddenMirror.piece(mirrorGhost).alive &&
+           "CopyCat move can send its clone onto a hidden enemy Ghost");
+    expect(!hiddenMirror.piece(mirrorGhost).alive &&
              hiddenMirror.piece(mirrorHost).square ==
                Position::square_from_name("d4") &&
              hiddenMirror.piece(mirrorClone).alive &&
              hiddenMirror.piece(mirrorClone).square ==
-               Position::square_from_name("f3"),
-           "stationary CopyCat half does not capture an adjacent hidden Ghost");
+               Position::square_from_name("e4"),
+           "the mirrored CopyCat half captures its hidden Ghost normally");
 
     Position hiddenAlly;
     hiddenAlly.add_piece(PieceType::King, Color::White,

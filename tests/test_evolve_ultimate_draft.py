@@ -8,6 +8,7 @@ import random
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).parents[1]
@@ -92,6 +93,27 @@ class DraftEvolutionTests(unittest.TestCase):
             cumulative += sum(draft.PIECE_COST[piece] for piece in group)
             self.assertGreaterEqual(cumulative, before + added_minimum)
             self.assertLessEqual(cumulative, maximum)
+
+    def test_worker_reuses_deterministic_duplicate_positions(self) -> None:
+        class FakeEngine:
+            def __init__(self, _path):
+                self.new_games = 0
+
+            def new_game(self):
+                self.new_games += 1
+
+            def close(self):
+                pass
+
+        jobs = [
+            (0, 1, draft.BASE_POLICY, draft.BASE_POLICY),
+            (0, 2, draft.BASE_POLICY, draft.BASE_POLICY),
+        ]
+        with patch.object(draft, "Engine", FakeEngine), \
+             patch.object(draft, "play_game", return_value=0.5) as played:
+            completed = draft._play_chunk(("engine", jobs, 6, 100, 20))
+        self.assertEqual(len(completed), 2)
+        self.assertEqual(played.call_count, 2)
 
 
 if __name__ == "__main__":

@@ -641,6 +641,11 @@ void Position::add_giant_moves(std::vector<Move>& moves, int id, bool attacksOnl
 
 void Position::add_copycat_moves(std::vector<Move>& moves, int id, bool attacksOnly) const {
     const PieceState& actor = pieces_[id];
+    const int partner = actor.link;
+    const bool paired = partner != NoPiece && partner < pieceCount_ && pieces_[partner].alive &&
+                        pieces_[partner].onBoard && !frozen(partner) && !pieces_[partner].cooldown &&
+                        (pieces_[partner].type == PieceType::Copycat ||
+                         pieces_[partner].type == PieceType::CopycatClone);
     for (const auto& direction : Around) {
         const int toFile = file_of(actor.square) + direction[0];
         const int toRank = rank_of(actor.square) + direction[1];
@@ -648,14 +653,25 @@ void Position::add_copycat_moves(std::vector<Move>& moves, int id, bool attacksO
             continue;
         const int to = make_square(toFile, toRank);
         // Unlike the generic stepper helper, CopyCat.Check does not mark an
-        // unrevealed enemy Ghost unavailable. Either half can capture one on
-        // its own move; a hidden allied Ghost still blocks.
+        // unrevealed enemy Ghost unavailable. Either half can capture one as
+        // its part of the paired move; a hidden allied Ghost still blocks.
         if (!can_land(id, to, attacksOnly, true))
             continue;
-        // Mirroring is a construction rule, not a movement rule. The native
-        // app exposes one legal-dot set for each linked model, then moves only
-        // the selected half. The partner remains on its current square.
-        moves.push_back({actor.square, static_cast<std::uint8_t>(to)});
+
+        int partnerTo = 0xff;
+        if (paired) {
+            const PieceState& other = pieces_[partner];
+            const int otherFile = file_of(other.square) - direction[0];
+            const int otherRank = rank_of(other.square) + direction[1];
+            if (otherFile < 0 || otherFile >= BoardFiles || otherRank < 0 ||
+                otherRank >= BoardRanks)
+                continue;
+            partnerTo = make_square(otherFile, otherRank);
+            if (partnerTo == to || !can_land(partner, partnerTo, attacksOnly, true))
+                continue;
+        }
+        moves.push_back({actor.square, static_cast<std::uint8_t>(to),
+                         static_cast<std::uint8_t>(partnerTo)});
     }
 }
 
@@ -1123,10 +1139,11 @@ std::vector<Move> Position::pseudo_forcing_moves() const {
             continue;
         const PieceType type = pieces_[id].type;
         // These pieces have indirect forcing actions which their native
-        // attack-only generators omit: a Mage/Fisherman Giant relocation or
-        // a blind Sludge/Ghost collision.
+        // attack-only generators omit: a mirrored CopyCat capture, a
+        // Mage/Fisherman Giant relocation, or a blind Sludge/Ghost collision.
         const bool needsFullList =
           type == PieceType::Mage || type == PieceType::Fisherman ||
+          type == PieceType::Copycat || type == PieceType::CopycatClone ||
           type == PieceType::Sludge;
         append_moves_for(moves, id, !needsFullList);
     }
@@ -1237,10 +1254,11 @@ bool Position::real_king_threatened(Color color) const {
 
         const PieceType actorType = attacker.pieces_[actor].type;
         const bool needsQuietCompanion =
-          actorType == PieceType::Mage || actorType == PieceType::Fisherman;
+          actorType == PieceType::Mage || actorType == PieceType::Fisherman ||
+          actorType == PieceType::Copycat || actorType == PieceType::CopycatClone;
         // Most characters can knock out a King only through their native
-        // attack list. Mage and Fisherman need their full list because they
-        // can forcibly translate a Giant.
+        // attack list. Mage and Fisherman can forcibly translate a Giant,
+        // while either CopyCat half may move quietly as its partner captures.
         replies.clear();
         attacker.append_moves_for(replies, actor, !needsQuietCompanion);
         for (const Move& reply : replies) {
@@ -1290,6 +1308,14 @@ bool Position::real_king_threatened(Color color) const {
                         directlyHitsKing = bool(destination & square_bb(kingSquare));
                     }
                 }
+            }
+            else if (actorType == PieceType::Copycat ||
+                     actorType == PieceType::CopycatClone) {
+                const int primary = valid_square(reply.to) ? attacker.board_[reply.to] : NoPiece;
+                const int mirrored = valid_square(reply.auxiliary)
+                                   ? attacker.board_[reply.auxiliary] : NoPiece;
+                canKnockOut = dangerousVictim(primary) || dangerousVictim(mirrored);
+                directlyHitsKing = isKingVictim(primary) || isKingVictim(mirrored);
             }
             else if (reply.kind == MoveKind::Shoot) {
                 canKnockOut = dangerousVictim(reply.auxiliary);
@@ -1345,6 +1371,10 @@ bool Position::is_capture(const Move& move) const {
          pieces_[actor].type == PieceType::CheckerKing) &&
         move.auxiliary != 0 && valid_square(move.auxiliary) &&
         board_[move.auxiliary] != NoPiece)
+        return true;
+    if ((pieces_[actor].type == PieceType::Copycat ||
+         pieces_[actor].type == PieceType::CopycatClone) &&
+        valid_square(move.auxiliary) && board_[move.auxiliary] != NoPiece)
         return true;
     if (pieces_[actor].type == PieceType::Giant) {
         const Bitboard own = footprint(actor, pieces_[actor].square);
@@ -1952,6 +1982,37 @@ bool Position::apply_move_unchecked(const Move& move) {
             pieces_[dependent].square = pieces_[host].square;
         }
     }
+    else if ((actor.type == PieceType::Copycat || actor.type == PieceType::CopycatClone) &&
+             actor.link != NoPiece && valid_square(move.auxiliary) &&
+             pieces_[actor.link].alive && pieces_[actor.link].onBoard) {
+        const int partner = actor.link;
+        const int partnerFrom = pieces_[partner].square;
+        const int partnerTarget = board_[move.auxiliary];
+        erase_from_board(id);
+        erase_from_board(partner);
+        if (target != NoPiece)
+            capture_piece(target, id, move);
+        // Native CopyCat.MakeMove dispatches the queued clone submove when the
+        // partner is available. If the first half dies to Goop/Bomb, linked
+        // death marks both halves dying, but the queued target still resolves.
+        if (partnerTarget != NoPiece)
+            capture_piece(partnerTarget, partner,
+                          {pieces_[partner].square, move.auxiliary});
+        if (pieces_[id].alive) {
+            pieces_[id].moved = true;
+            if (pieces_[id].square == originalFrom) {
+                pieces_[id].square = move.to;
+                place_on_board(id);
+            }
+        }
+        if (pieces_[partner].alive) {
+            pieces_[partner].moved = true;
+            if (pieces_[partner].square == partnerFrom) {
+                pieces_[partner].square = move.auxiliary;
+                place_on_board(partner);
+            }
+        }
+    }
     else {
         erase_from_board(id);
         int victim = target;
@@ -2374,6 +2435,7 @@ std::string Position::upn() const {
 bool Position::set_upn(std::string_view text, std::string* error) {
     Position parsed;
     parsed.clear();
+    std::array<bool, MaxPieces> implicitCopycatCompanion{};
     const auto fail = [error](std::string_view message) {
         if (error)
             *error = std::string(message);
@@ -2475,6 +2537,12 @@ bool Position::set_upn(std::string_view text, std::string* error) {
                 *error = "overlapping or invalid piece footprint";
             return false;
         }
+        // Compact setup notation names only the deployable CopyCat and relies
+        // on construction to create its mirror. A lossless entry explicitly
+        // carries link=-1 when an Angel interaction left one half alive; that
+        // state must remain a singleton rather than regenerating a clone.
+        implicitCopycatCompanion[id] =
+          *type == PieceType::Copycat && values.size() < 10;
         PieceState& piece = parsed.pieces_[id];
         piece.action = numbers[0];
         piece.cooldown = numbers[1];
@@ -2493,7 +2561,8 @@ bool Position::set_upn(std::string_view text, std::string* error) {
     // name both members and are paired here without duplicating them.
     for (int id = 0; id < parsed.pieceCount_; ++id) {
         PieceState& copycat = parsed.pieces_[id];
-        if (!copycat.alive || copycat.type != PieceType::Copycat || copycat.link != NoPiece)
+        if (!copycat.alive || copycat.type != PieceType::Copycat ||
+            copycat.link != NoPiece || !implicitCopycatCompanion[id])
             continue;
         const int mirror = make_square(7 - file_of(copycat.square), rank_of(copycat.square));
         int clone = NoPiece;

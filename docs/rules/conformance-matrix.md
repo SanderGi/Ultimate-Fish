@@ -24,7 +24,7 @@ records behavior and public test evidence only.
 | Checker jumps, chains, promotion and hidden Ghosts | yes | yes | self-play | A deterministic multi-jump/promotion Local fixture remains desirable. |
 | Prince two-part action and hidden Ghost capture | yes | yes | self-play | Mid-continuation replay import remains fail-closed rather than reconstructed from one byte. |
 | Giant footprint, ordinary and forced collision | yes | yes | self-play | Onyx Angel rescue has a distinguishing-cell fixture in the gate. |
-| CopyCat independent-half movement, capture, linked death, Ghost and Angel interactions | yes | yes | fixture/self-play | Native gameplay proved file mirroring is construction-only; the app's duplicate death callbacks are journaled but deduplicated semantically. |
+| CopyCat conditional paired movement, capture, linked death, Ghost and Angel interactions | yes | yes | fixture/self-play | Native gameplay covers both two-callback available pairs and stationary unavailable partners; exact UPN links preserve the resulting asymmetric locations. |
 | Mage swaps, Giant translation and forced promotion | yes | yes | self-play | Mage, Fisherman and Angel use native drag gestures in Local automation. |
 | Fisherman rays, hidden Ghosts and Giant pull | yes | yes | self-play | Both allied/enemy hooks and a blind hidden-Ghost collision have run in Local. |
 | Penguin move-triggered stacked freeze | yes | yes | self-play | Deployment creates no aura; deterministic multi-Penguin stacking remains pending Local. |

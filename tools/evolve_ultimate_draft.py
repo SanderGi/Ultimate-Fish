@@ -197,13 +197,20 @@ def deploy_groups(groups: Sequence[Sequence[str]]) -> Army:
     The phone planner uses the same capacity invariant while placing each
     immutable group and can reserve these large regions incrementally.
     """
-    roster = [piece for group in groups for piece in group]
+    roster = tuple(piece for group in groups for piece in group)
+    return _deploy_roster(roster)
+
+
+@functools.lru_cache(maxsize=None)
+def _deploy_roster(roster: tuple[str, ...]) -> Army:
+    """Memoized exact deployment for a roster, independent of pick grouping."""
     indexed = sorted(
         enumerate(roster),
         key=lambda item: (footprint_size(item[1]), PIECE_COST[item[1]]),
         reverse=True,
     )
     occupied = {"a1"}
+    solid = {"a1"}
     assignments: dict[int, str] = {}
 
     def clearance(cells: frozenset[str]) -> int:
@@ -214,16 +221,15 @@ def deploy_groups(groups: Sequence[Sequence[str]]) -> Army:
         )
 
     require_shield = True
+    failed: set[tuple[int, frozenset[str], frozenset[str], bool]] = set()
 
     def place(depth: int) -> bool:
         if depth == len(indexed):
-            if not require_shield:
-                return True
-            solid = {"a1"}
-            for index, square in assignments.items():
-                if roster[index] not in ("ghost", "bomb"):
-                    solid.update(footprint(roster[index], square))
-            return KING_SHIELD <= solid
+            return not require_shield or KING_SHIELD <= solid
+
+        state = depth, frozenset(occupied), frozenset(solid), require_shield
+        if state in failed:
+            return False
 
         original_index, piece = indexed[depth]
         candidates = tuple(dict.fromkeys(PREFERENCES.get(piece, ()) + FALLBACK))
@@ -242,11 +248,16 @@ def deploy_groups(groups: Sequence[Sequence[str]]) -> Army:
         )
         for square, cells in valid:
             occupied.update(cells)
+            if blocking:
+                solid.update(cells)
             assignments[original_index] = square
             if place(depth + 1):
                 return True
             assignments.pop(original_index)
+            if blocking:
+                solid.difference_update(cells)
             occupied.difference_update(cells)
+        failed.add(state)
         return False
 
     if not place(0):
@@ -254,6 +265,7 @@ def deploy_groups(groups: Sequence[Sequence[str]]) -> Army:
         # no three-ray shield. Keep it in the league so actual engine play can
         # punish that weakness rather than treating it as a protocol failure.
         require_shield = False
+        failed.clear()
         if not place(0):
             raise RuntimeError("drafted roster has no legal deployment")
     return (("king", "a1"), *(
@@ -416,28 +428,46 @@ class Standing:
 PolicyJob = tuple[int, int, DraftPolicy, DraftPolicy]
 
 
+def _job_position_key(job: PolicyJob) -> tuple[str, str]:
+    _first_index, _second_index, first_policy, second_policy = job
+    first_as_white = simulate_draft(first_policy, second_policy)
+    first_as_black = simulate_draft(second_policy, first_policy)
+    return (
+        position(first_as_white.white, first_as_white.black, "w"),
+        position(first_as_black.black, first_as_black.white, "b"),
+    )
+
+
 def _play_chunk(arguments) -> list[tuple[int, int, tuple[float, float]]]:
     engine_path, jobs, depth, nodes, plies = arguments
     first, second = Engine(engine_path), Engine(engine_path)
     completed = []
+    # Policy weights frequently collapse to the exact same two deployed
+    # positions. Fixed-node search is deterministic, so replaying those games
+    # cannot add evidence; cache them inside each worker and attribute the
+    # identical result to every policy pairing that produced the position.
+    result_cache: dict[tuple[str, str], float] = {}
+
+    def cached_game(perspective: str, start: str) -> float:
+        key = perspective, start
+        if key not in result_cache:
+            first.new_game()
+            second.new_game()
+            result_cache[key] = play_game(
+                first, second, perspective, start, depth, nodes, plies,
+            )
+        return result_cache[key]
+
     try:
         for first_index, second_index, first_policy, second_policy in jobs:
             first_as_white = simulate_draft(first_policy, second_policy)
-            first.new_game()
-            second.new_game()
-            white_score = play_game(
-                first, second, "w",
-                position(first_as_white.white, first_as_white.black, "w"),
-                depth, nodes, plies,
+            white_score = cached_game(
+                "w", position(first_as_white.white, first_as_white.black, "w"),
             )
 
             first_as_black = simulate_draft(second_policy, first_policy)
-            first.new_game()
-            second.new_game()
-            black_score = play_game(
-                first, second, "b",
-                position(first_as_black.black, first_as_black.white, "b"),
-                depth, nodes, plies,
+            black_score = cached_game(
+                "b", position(first_as_black.black, first_as_black.white, "b"),
             )
             completed.append((first_index, second_index, (white_score, black_score)))
     finally:
@@ -457,7 +487,15 @@ def evaluate_policies(
         for first, second in itertools.combinations(range(len(policies)), 2)
     ]
     worker_count = min(workers, len(jobs))
-    chunks = [jobs[index::worker_count] for index in range(worker_count)]
+    # Keep identical drafted game pairs on one worker so its exact-result
+    # cache eliminates duplicates across the entire league, not merely the
+    # accidental subset reached by round-robin job slicing.
+    grouped: dict[tuple[str, str], list[PolicyJob]] = {}
+    for job in jobs:
+        grouped.setdefault(_job_position_key(job), []).append(job)
+    chunks: list[list[PolicyJob]] = [[] for _worker in range(worker_count)]
+    for index, group in enumerate(grouped.values()):
+        chunks[index % worker_count].extend(group)
     arguments = [
         (engine, chunk, depth, nodes, plies) for chunk in chunks if chunk
     ]

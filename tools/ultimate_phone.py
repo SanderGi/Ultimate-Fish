@@ -3060,14 +3060,19 @@ def rewind_public_enemy_opening(
                     index for index, (candidate, square) in enumerate(variant)
                     if candidate in ("copycat", "copycatClone") and square == target
                 ]
+                if not candidates:
+                    # Onyx initialization scans the three deployment ranks
+                    # after Ivory's opening action. A CopyCat half that moved
+                    # to rank 7 is therefore absent from ``variant`` even
+                    # though its native callback supplies the exact public
+                    # source. Restore that source directly; the companion
+                    # callback restores the other half of an available pair.
+                    restored_variants.append(variant + [(piece, source)])
+                    continue
                 for candidate in candidates:
                     restored = list(variant)
                     restored[candidate] = (restored[candidate][0], source)
                     restored_variants.append(restored)
-            if not restored_variants:
-                raise RuntimeError(
-                    f"cannot rewind public CopyCat move {source}-{target}"
-                )
             variants = restored_variants
             continue
 
@@ -7368,13 +7373,15 @@ class PhoneGame:
                     continue
                 if event.kind == "move":
                     action_observed = True
-                    if not expect_bomb_resolution and not castling:
+                    if (not expect_bomb_resolution and not castling and
+                            not linked_copycat):
                         return event
                     deadline = time.monotonic() + 15.0
                     continue
                 if event.kind == "turn_end":
                     action_observed = True
-                    if (castling or not expect_bomb_resolution or saw_bomb_death):
+                    if (castling or linked_copycat or
+                            not expect_bomb_resolution or saw_bomb_death):
                         return completed(event)
                     # Network turn dispatch precedes Bomb movement/death by
                     # several seconds. It is not yet an input-ready barrier.
@@ -7388,7 +7395,10 @@ class PhoneGame:
             # the Local perspective and then taps the next player's board.
             # This is only a maximum: ordinary move callbacks still return as
             # soon as they arrive.
-            return wait_for_completion(5.0)
+            # An available linked CopyCat partner animates serially; an
+            # unavailable (frozen/cooldown) partner stays put. In both cases
+            # the turn barrier is the unambiguous completion signal.
+            return wait_for_completion(15.0 if linked_copycat else 5.0)
         except TimeoutError:
             if action_observed:
                 raise

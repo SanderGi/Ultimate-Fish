@@ -738,9 +738,9 @@
     {
       "id": "copycat-captures-hidden-ghost",
       "covers": [
-        "copycat.selected-half-move",
+        "copycat.paired-mirror-move",
         "copycat.hidden-enemy-ghost-capture",
-        "copycat.partner-remains-stationary"
+        "copycat.both-halves-complete-after-hidden-capture"
       ],
       "player1": [
         ["king", "a1"],
