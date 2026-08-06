@@ -261,6 +261,10 @@ class ArmyPlacementRetry(RuntimeError):
     """A measured builder misdrop collided and requires a clean rebuild."""
 
 
+class OnlineAuthenticationRequired(RuntimeError):
+    """The restored account was rejected and needs an interactive sign-in."""
+
+
 @dataclass(frozen=True)
 class OpeningTerminal:
     """A public result reached before an Onyx position could be initialized."""
@@ -3359,6 +3363,7 @@ class PhoneGame:
         next_maintenance = 0.0
         next_reconnect = 0.0
         next_foreground = time.monotonic() + 10.0
+        login_failures = 0
         while time.monotonic() < deadline:
             image = self.adb.screenshot()
             if self._connected_main(image):
@@ -3375,8 +3380,18 @@ class PhoneGame:
                 continue
             login_failure = self._login_failure_ack_point(image)
             if login_failure:
-                self.log("dismissing failed Google login notice")
+                login_failures += 1
+                self.log(
+                    "dismissing failed Google login notice "
+                    f"({login_failures}/2)"
+                )
                 self.adb.tap(*login_failure)
+                if login_failures >= 2:
+                    raise OnlineAuthenticationRequired(
+                        "Google Play Games rejected the restored Chess Ultimate "
+                        "session twice; sign in interactively before starting an "
+                        "online run"
+                    )
                 time.sleep(0.5)
                 continue
             decline = self._reconnect_decline_point(image)

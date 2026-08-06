@@ -202,7 +202,12 @@ and remaps every relationship so captures cannot corrupt a round trip.
 - A Giant occupies `(x,y)`, `(x+1,y)`, `(x,y+1)`, and `(x+1,y+1)`. It moves
   exactly two coordinates orthogonally and knocks out every enemy character in
   the destination footprint; any friendly character in that footprint blocks
-  the move.
+  the move. The four destination cells are resolved in native sequence: if an
+  Angel rescues a struck enemy onto another one of those cells, the Giant
+  strikes it again. Generic movers occupy their destination before dispatching
+  the victim's death callback. Consequently, if an Angel-rescued Giant's new
+  footprint covers that destination, the rescued Giant knocks out the
+  attacker rather than sharing or surrendering the square.
 - A Mage selecting a Giant footprint tile translates the Giant so that tile
   lands on the Mage's origin. Native forced-Giant resolution then knocks out
   every other character in the translated footprint, including the Mage when

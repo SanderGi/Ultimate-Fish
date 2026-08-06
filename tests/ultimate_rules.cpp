@@ -806,6 +806,71 @@ void test_sludge_and_victory() {
     expect(knockout.winner() == Color::White, "surviving real king wins");
 }
 
+void test_giant_rechecks_angel_rescue_footprint() {
+    Position setup;
+    setup.add_piece(PieceType::King, Color::White,
+                    Position::square_from_name("a1"));
+    setup.add_piece(PieceType::Angel, Color::White,
+                    Position::square_from_name("b1"));
+    setup.add_piece(PieceType::King, Color::Black,
+                    Position::square_from_name("h10"));
+    setup.add_piece(PieceType::Giant, Color::Black,
+                    Position::square_from_name("c5"));
+    Undo link;
+    expect(setup.make_move(require_move(setup, "b1&a1"), link),
+           "Angel can protect a King inside the Giant's next footprint");
+
+    // Relocating the opposing Giant beside the already linked King constructs
+    // the exact state discovered by draft self-play without first asking the
+    // checked side to make an illegal setup move.
+    std::string collisionUpn = setup.upn();
+    const std::string oldGiant = "giant,b,c5";
+    const auto giant = collisionUpn.find(oldGiant);
+    expect(giant != std::string::npos, "collision fixture locates its Giant");
+    if (giant != std::string::npos)
+        collisionUpn.replace(giant, oldGiant.size(), "giant,b,c1");
+    Position position;
+    std::string error;
+    expect(position.set_upn(collisionUpn, &error),
+           "Angel/Giant collision fixture parses: " + error);
+
+    Undo collision;
+    expect(position.make_move(require_move(position, "c1-a1"), collision),
+           "Giant can enter a footprint containing an Angel-protected enemy");
+    expect(!position.has_real_king(Color::White) &&
+               position.winner() == Color::Black,
+           "Giant strikes a King again when its Angel rescues it onto another footprint cell");
+
+    Position roundTrip;
+    expect(roundTrip.set_upn(position.upn(), &error),
+           "Angel/Giant collision remains a valid round-trippable state: " + error);
+
+    Position rescuedGiant;
+    rescuedGiant.add_piece(PieceType::King, Color::White,
+                            Position::square_from_name("a1"));
+    rescuedGiant.add_piece(PieceType::Angel, Color::White,
+                            Position::square_from_name("c3"));
+    rescuedGiant.add_piece(PieceType::Giant, Color::White,
+                            Position::square_from_name("d3"));
+    rescuedGiant.add_piece(PieceType::King, Color::Black,
+                            Position::square_from_name("a10"));
+    rescuedGiant.add_piece(PieceType::Rook, Color::Black,
+                            Position::square_from_name("d8"));
+    Undo protectGiant;
+    expect(rescuedGiant.make_move(
+               require_move(rescuedGiant, "c3&d3"), protectGiant),
+           "Angel can protect a Giant from outside its current footprint");
+    Undo rookAttack;
+    expect(rescuedGiant.make_move(
+               require_move(rescuedGiant, "d8-d4"), rookAttack),
+           "Rook can attack an Angel-protected Giant footprint cell");
+    expect(rescuedGiant.pieces(Color::White, PieceType::Giant) != 0 &&
+               rescuedGiant.pieces(Color::Black, PieceType::Rook) == 0,
+           "rescued Giant's relocated footprint knocks out the already-landed attacker");
+    expect(roundTrip.set_upn(rescuedGiant.upn(), &error),
+           "rescued Giant/attacker collision round trips: " + error);
+}
+
 void test_parasite_goop_and_angel_interactions() {
     Position parasiteAttack;
     parasiteAttack.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
@@ -2573,6 +2638,7 @@ int main() {
     test_ninja_and_mage();
     test_checker_chain_and_prince_turns();
     test_sludge_and_victory();
+    test_giant_rechecks_angel_rescue_footprint();
     test_parasite_goop_and_angel_interactions();
     test_native_giant_and_copycat_footprints();
     test_native_fisherman_rays();

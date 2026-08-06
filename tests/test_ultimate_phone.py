@@ -1036,6 +1036,24 @@ class VisionTests(unittest.TestCase):
             MODULE.PhoneGame._login_failure_ack_point(image), (540, 1307)
         )
 
+    def test_connected_main_fails_fast_after_repeated_login_rejection(self):
+        from PIL import Image
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.adb = Mock()
+        game.adb.screenshot.return_value = Image.new("RGB", (1080, 2400))
+        game.log = Mock()
+        with (
+            patch.object(game, "_connected_main", return_value=False),
+            patch.object(game, "_maintenance_ack_point", return_value=None),
+            patch.object(game, "_login_failure_ack_point", return_value=(540, 1307)),
+        ):
+            with self.assertRaisesRegex(
+                MODULE.OnlineAuthenticationRequired, "sign in interactively"
+            ):
+                game.wait_connected_main(5.0)
+        self.assertEqual(game.adb.tap.call_count, 2)
+
     def test_unlock_ack_detector(self):
         from PIL import Image, ImageDraw
 

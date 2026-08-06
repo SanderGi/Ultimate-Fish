@@ -48,8 +48,8 @@ The final optimization pass used the now-corrected 13,724-node frontier and the
 | One computed ordering score per move | 7 | 259,422 | 1.210 s |
 | Ordered pseudo-legal actions, validated on the searched child | 7 | 259,421 | 0.505 s |
 
-A cold ten-second release search now completes **depth 10**, visits 5,902,464
-nodes, and selects `f2!f8` with the PV
+A cold ten-second release search now completes **depth 10**, visits about 5.99
+million nodes, and selects `f2!f8` with the PV
 `f2!f8 f3@h2 h1-g2 a8-b7 g2-h3 a10xa2 f1-f3 g9-d6 f2-a7 a10xa7`.
 The previous corrected native build required 8.019 seconds merely to complete
 depth seven. This is a position-specific performance result, not an Elo
@@ -132,6 +132,27 @@ nodes. The winning deployment in
 [`evolved-army-optimized-2026-08-06.json`](evolved-army-optimized-2026-08-06.json)
 scored 20W-13D-3L. It won two further supervised Very Hard CPU games: a forced
 mate in three and an immediate King capture. The app's online service was under
-maintenance during this validation, so Unranked and Ranked were not sampled;
-the CPU controller correctly fell back to the explicitly detected **Play
-Offline** control without invoking Google login.
+maintenance during the first validation, so Unranked and Ranked were not
+sampled; the CPU controller correctly fell back to the explicitly detected
+**Play Offline** control without invoking Google login. A later online attempt
+reached the version endpoint but rejected the restored account with HTTP 401;
+Google Play Games then failed twice. The controller now reports that state
+immediately instead of repeating navigation for its full online timeout.
+
+## Ranked draft coevolution
+
+A twelve-generation, 16-policy coevolution run exercised every native Ranked
+ban and immutable pick window. Each generation played a complete 240-game
+color-balanced league at 5,000 nodes per move; six finalists were reranked at
+30,000 nodes. This campaign also acted as a rules fuzzer and exposed two
+previously unrepresented Angel/Giant call-order cases. Both now have focused
+C++ regressions and round-trip clean state transitions.
+
+The final policies converged on Penguin/Prince/Giant cores and drew all ten
+high-budget finalist games. The leading policy's deployed Ivory roster against
+the baseline is `Penguin, Penguin, Bishop, Giant, Prince, Prince, Pawn, Giant,
+Parasite, CopyCat`; it bans `Rook, Ninja, Sniper, Penguin, Fisherman, Prince`
+across the six alternating ban turns. A direct 30,000-node color pair against
+the existing production draft policy was also 1.0/2.0, so the artifact is
+retained as an experimental result rather than promoted on a false Elo claim:
+[`evolved-draft-optimized-2026-08-06.json`](evolved-draft-optimized-2026-08-06.json).

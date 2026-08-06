@@ -2016,10 +2016,26 @@ bool Position::apply_move_unchecked(const Move& move) {
             victim = board_[move.auxiliary];
         if (actor.type == PieceType::Giant) {
             const Bitboard destination = footprint(id, move.to);
-            const auto victims = victims_on(destination, id);
-            for (const int occupant : victims)
-                if (pieces_[occupant].alive && pieces_[occupant].color != actor.color)
-                    capture_piece(occupant, id, move);
+            // Giant resolves its four destination cells in sequence. An
+            // attached Angel can rescue a struck enemy onto a later cell in
+            // that same footprint, where native Giant resolution strikes it
+            // again. A single victim snapshot left the rescued model and the
+            // Giant occupying one square, producing a non-round-trippable UPN.
+            // Each repeated hit consumes an Angel or removes a character, so
+            // MaxPieces is a conservative bound for malformed attachment
+            // chains supplied through analysis UPN.
+            for (int pass = 0; pass < MaxPieces && pieces_[id].alive; ++pass) {
+                const auto victims = victims_on(destination, id);
+                bool attacked = false;
+                for (const int occupant : victims)
+                    if (pieces_[occupant].alive &&
+                        pieces_[occupant].color != actor.color) {
+                        capture_piece(occupant, id, move);
+                        attacked = true;
+                    }
+                if (!attacked)
+                    break;
+            }
         }
         else if (checkerCapture) {
             // Checker resolves the jumped character first. A hidden enemy
@@ -2042,6 +2058,21 @@ bool Position::apply_move_unchecked(const Move& move) {
         }
         else if (victim != NoPiece)
             capture_piece(victim, id, move);
+        // Generic native movers install themselves on targetSquare before
+        // dispatching the victim's SimulateDeath callback. If an attached
+        // Angel rescues a Giant so that its new 2x2 footprint covers that
+        // target, Giant MakeMoveTurnSkip therefore strikes the attacker. Our
+        // compact model resolves deaths before final placement, so replay the
+        // equivalent collision explicitly instead of later overwriting the
+        // rescued Giant and emitting overlapping UPN state.
+        if (actor.alive && actor.type != PieceType::Giant &&
+            valid_square(move.to)) {
+            const int occupyingTarget = board_[move.to];
+            if (occupyingTarget != NoPiece && occupyingTarget != id &&
+                pieces_[occupyingTarget].alive)
+                capture_piece(id, occupyingTarget,
+                              {pieces_[occupyingTarget].square, move.to});
+        }
         if (actor.alive) {
             // Most native characters occupy the destination before resolving
             // its death effect. If that effect kills an Angel-protected
