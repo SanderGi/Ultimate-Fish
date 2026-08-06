@@ -145,29 +145,30 @@ std::optional<PieceType> DraftState::suggest(const std::vector<PieceType>& exclu
     if (std::none_of(choices.begin(), choices.end(), allowed))
         return std::nullopt;
     const DraftWindow current = window();
-    // The 2026-08-07 native-conditional CopyCat league evolved independent
-    // pick, repeat, and global-ban weights. Its strongest generation scored
-    // 18W-11D-1L and the deeper finalist pool converged on the same roster
-    // later validated 3/3 in live Unranked play. Native costs remain the
-    // legality constraint; these values express roster interaction.
+    // The deeper 2026-08-06 continuation league evolved independent pick,
+    // repeat, and global-ban weights over 20 generations at 8k nodes. Its top
+    // finalist went 4W-6D-0L at 50k nodes, then the continuation finalists
+    // beat the previous shipping policy 6-0 with 6 draws in a mixed 60k-node
+    // validation league. Native costs remain the legality constraint; these
+    // values express roster interaction.
     static constexpr std::array<int, static_cast<std::size_t>(PieceType::Count)> Pick = {{
-      0, 1068, 267, -411, 1663, 1095, 702, 134, 827, 1274,
-      -1148, 632, 1557, 0, 1210, 866, -543, 0, 39, 1014,
-      2218, -350, 0, -596, 775, 0, 943, 0, 701, -112,
+      0, 1779, 912, -953, 2476, 803, 1592, 330, 1227, 2000,
+      -1569, 1437, 1410, 0, 1653, 612, -544, 0, 723, 1048,
+      2333, -111, 0, -1329, 885, 0, 1618, 0, 1457, -327,
     }};
     static constexpr std::array<int, static_cast<std::size_t>(PieceType::Count)> Repeat = {{
-      0, 298, -218, -234, 55, 46, 214, 132, 247, -368,
-      301, 100, 169, 0, 331, 300, -217, 0, 225, -133,
-      -28, 289, 0, 123, 194, 0, 229, 0, -318, 163,
+      0, 146, 363, -5, 0, 92, 229, 53, -69, 8,
+      -136, 43, 51, 0, -260, -25, -74, 0, 19, -148,
+      45, -92, 0, 218, 728, 0, 334, 0, 343, -164,
     }};
     static constexpr std::array<int, static_cast<std::size_t>(PieceType::Count)> Ban = {{
-      0, 1358, -2, 635, 1240, 380, 154, 678, 1539, -456,
-      -910, 1001, 1901, 0, 452, 240, -248, 0, 337, 937,
-      2024, -291, 0, -502, 344, 0, 342, 0, 439, -190,
+      0, 1558, 81, 215, 1138, 1419, 1093, 580, 115, 1420,
+      -568, 84, 1226, 0, 1917, 284, -109, 0, 523, 996,
+      1670, -184, 0, -222, -16, 0, 552, 0, 688, -705,
     }};
-    constexpr int OpponentDeny = -89;
-    constexpr int SelfPreserve = 364;
-    constexpr int FinalPenguin = 103;
+    constexpr int OpponentDeny = -46;
+    constexpr int SelfPreserve = -188;
+    constexpr int FinalPenguin = 352;
     // Once this player's opening group has been revealed, the opponent has
     // already learned which royal is the fixed King. A newly drafted Jester
     // can no longer create royal-location ambiguity, so do not spend later

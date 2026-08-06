@@ -2664,7 +2664,7 @@ void test_native_draft_windows_and_costs() {
 
     DraftState automatic;
     std::vector<PieceType> automaticChoices;
-    expect(automatic.suggest() == PieceType::Prince,
+    expect(automatic.suggest() == PieceType::Penguin,
            "evolved Ranked policy opens by denying the strongest uncommitted threat");
     for (int phase = 0; phase < DraftState::PhaseCount; ++phase) {
         expect(automatic.autoplay(automaticChoices, &error),
@@ -2689,8 +2689,8 @@ void test_native_draft_windows_and_costs() {
            automatic.points(Color::Black) == 100,
            "draft AI preserves the evolved finalist's exact full-budget rosters");
     for (const PieceType denied : {
-           PieceType::Prince, PieceType::Mage, PieceType::Bomb,
-           PieceType::Jester, PieceType::Ghost, PieceType::Sniper})
+           PieceType::Penguin, PieceType::Prince, PieceType::Jester,
+           PieceType::Queen, PieceType::Ninja, PieceType::Rook})
         expect(automatic.banned(denied),
                "evolved policy preserves its validated adaptive ban sequence");
 }

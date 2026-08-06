@@ -41,28 +41,28 @@ INDEX = {piece: index for index, piece in enumerate(PIECES)}
 # synchronized with src/ultimate/draft.cpp so continuation leagues challenge
 # the policy that actually ships rather than the superseded heuristic.
 BASE_PICK = {
-    "jester": 1068, "knight": 267, "pawn": -411, "queen": 1663,
-    "rook": 1095, "bishop": 702, "berserker": 134, "bomb": 827,
-    "ninja": 1274, "turtle": -1148, "ghost": 632, "mage": 1557,
-    "penguin": 1210, "parasite": 866, "devil": -543, "sludge": 39,
-    "sniper": 1014, "prince": 2218, "checker": -350, "giant": -596,
-    "copycat": 775, "angel": 943, "fisherman": 701, "dragon": -112,
+    "jester": 1779, "knight": 912, "pawn": -953, "queen": 2476,
+    "rook": 803, "bishop": 1592, "berserker": 330, "bomb": 1227,
+    "ninja": 2000, "turtle": -1569, "ghost": 1437, "mage": 1410,
+    "penguin": 1653, "parasite": 612, "devil": -544, "sludge": 723,
+    "sniper": 1048, "prince": 2333, "checker": -111, "giant": -1329,
+    "copycat": 885, "angel": 1618, "fisherman": 1457, "dragon": -327,
 }
 BASE_REPEAT = {
-    "jester": 298, "knight": -218, "pawn": -234, "queen": 55,
-    "rook": 46, "bishop": 214, "berserker": 132, "bomb": 247,
-    "ninja": -368, "turtle": 301, "ghost": 100, "mage": 169,
-    "penguin": 331, "parasite": 300, "devil": -217, "sludge": 225,
-    "sniper": -133, "prince": -28, "checker": 289, "giant": 123,
-    "copycat": 194, "angel": 229, "fisherman": -318, "dragon": 163,
+    "jester": 146, "knight": 363, "pawn": -5, "queen": 0,
+    "rook": 92, "bishop": 229, "berserker": 53, "bomb": -69,
+    "ninja": 8, "turtle": -136, "ghost": 43, "mage": 51,
+    "penguin": -260, "parasite": -25, "devil": -74, "sludge": 19,
+    "sniper": -148, "prince": 45, "checker": -92, "giant": 218,
+    "copycat": 728, "angel": 334, "fisherman": 343, "dragon": -164,
 }
 BASE_BAN = {
-    "jester": 1358, "knight": -2, "pawn": 635, "queen": 1240,
-    "rook": 380, "bishop": 154, "berserker": 678, "bomb": 1539,
-    "ninja": -456, "turtle": -910, "ghost": 1001, "mage": 1901,
-    "penguin": 452, "parasite": 240, "devil": -248, "sludge": 337,
-    "sniper": 937, "prince": 2024, "checker": -291, "giant": -502,
-    "copycat": 344, "angel": 342, "fisherman": 439, "dragon": -190,
+    "jester": 1558, "knight": 81, "pawn": 215, "queen": 1138,
+    "rook": 1419, "bishop": 1093, "berserker": 580, "bomb": 115,
+    "ninja": 1420, "turtle": -568, "ghost": 84, "mage": 1226,
+    "penguin": 1917, "parasite": 284, "devil": -109, "sludge": 523,
+    "sniper": 996, "prince": 1670, "checker": -184, "giant": -222,
+    "copycat": -16, "angel": 552, "fisherman": 688, "dragon": -705,
 }
 
 
@@ -71,9 +71,9 @@ class DraftPolicy:
     pick: tuple[int, ...]
     repeat: tuple[int, ...]
     ban: tuple[int, ...]
-    opponent_deny: int = 120
-    self_preserve: int = 80
-    final_penguin: int = 500
+    opponent_deny: int = -46
+    self_preserve: int = -188
+    final_penguin: int = 352
 
     def __post_init__(self) -> None:
         if not (len(self.pick) == len(self.repeat) == len(self.ban) == len(PIECES)):
@@ -104,7 +104,7 @@ BASE_POLICY = DraftPolicy(
     tuple(BASE_PICK[piece] for piece in PIECES),
     tuple(BASE_REPEAT[piece] for piece in PIECES),
     tuple(BASE_BAN[piece] for piece in PIECES),
-    opponent_deny=-89, self_preserve=364, final_penguin=103,
+    opponent_deny=-46, self_preserve=-188, final_penguin=352,
 )
 
 

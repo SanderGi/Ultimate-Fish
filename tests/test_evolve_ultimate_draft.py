@@ -119,8 +119,9 @@ class DraftEvolutionTests(unittest.TestCase):
         state = draft.PublicDraftState().apply(("prince",)).apply(("mage",))
         actions = draft.ranked_macro_actions(state, width=8)
         self.assertEqual(
-            actions[0], ("queen", "queen", "giant", "copycat")
+            actions[0], ("knight", "queen", "queen")
         )
+        self.assertIn(("queen", "queen", "giant", "copycat"), actions)
         self.assertIn(("queen", "queen", "copycat"), actions)
 
     def test_adversarial_search_can_override_policy_order_at_engine_leaf(self) -> None:
