@@ -22,16 +22,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
-from evolve_ultimate_army import (
-    Army,
-    Engine,
-    PIECE_COST,
-    footprint,
-    footprint_size,
-    play_game,
-    position,
-    result_summary,
-)
+try:
+    from evolve_ultimate_army import (
+        Army, Engine, PIECE_COST, footprint, footprint_size, play_game,
+        position, result_summary,
+    )
+except ModuleNotFoundError:  # Imported as tools.evolve_ultimate_draft.
+    from tools.evolve_ultimate_army import (
+        Army, Engine, PIECE_COST, footprint, footprint_size, play_game,
+        position, result_summary,
+    )
 
 
 PIECES = tuple(PIECE_COST)
@@ -115,6 +115,62 @@ class DraftOutcome:
     white_groups: tuple[tuple[str, ...], ...]
     black_groups: tuple[tuple[str, ...], ...]
     bans: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class PublicDraftState:
+    """The public, placement-independent state of an in-progress draft."""
+
+    phase: int = 0
+    white_groups: tuple[tuple[str, ...], ...] = ()
+    black_groups: tuple[tuple[str, ...], ...] = ()
+    bans: tuple[str, ...] = ()
+
+    @property
+    def white(self) -> tuple[str, ...]:
+        return ("king", *(piece for group in self.white_groups for piece in group))
+
+    @property
+    def black(self) -> tuple[str, ...]:
+        return ("king", *(piece for group in self.black_groups for piece in group))
+
+    @property
+    def color(self) -> str:
+        return "w" if self.phase % 2 == 0 else "b"
+
+    @property
+    def action(self) -> str:
+        return "ban" if self.phase in (0, 1, 4, 5, 8, 9) else "pick"
+
+    def apply(self, action: Sequence[str]) -> "PublicDraftState":
+        if self.phase >= 12:
+            raise ValueError("draft is already complete")
+        action = tuple(action)
+        if self.action == "ban":
+            if len(action) != 1 or action[0] in self.bans or action[0] not in PIECES:
+                raise ValueError("invalid public ban action")
+            return PublicDraftState(
+                self.phase + 1, self.white_groups, self.black_groups,
+                (*self.bans, action[0]),
+            )
+
+        team = self.white if self.color == "w" else self.black
+        minimum, maximum, _final = draft_window(self.phase, team)
+        if any(piece not in PIECES or piece in self.bans for piece in action):
+            raise ValueError("invalid public pick action")
+        next_team = (*team, *action)
+        points = team_points(next_team)
+        if not minimum <= points <= maximum or team_slots(next_team) > 24:
+            raise ValueError("public pick violates its material/footprint window")
+        if self.color == "w":
+            return PublicDraftState(
+                self.phase + 1, (*self.white_groups, action),
+                self.black_groups, self.bans,
+            )
+        return PublicDraftState(
+            self.phase + 1, self.white_groups,
+            (*self.black_groups, action), self.bans,
+        )
 
 
 def team_points(team: Sequence[str]) -> int:
@@ -357,6 +413,241 @@ def simulate_draft(white: DraftPolicy, black: DraftPolicy) -> DraftOutcome:
     return DraftOutcome(
         deploy_groups(groups["w"]), deploy_groups(groups["b"]),
         tuple(groups["w"]), tuple(groups["b"]), tuple(bans),
+    )
+
+
+def _macro_action_score(
+    state: PublicDraftState, action: Sequence[str], policy: DraftPolicy,
+) -> tuple[int, ...]:
+    own = list(state.white if state.color == "w" else state.black)
+    enemy = state.black if state.color == "w" else state.white
+    if state.action == "ban":
+        return (policy.ban_score(action[0], own, enemy),)
+    _minimum, _maximum, final = draft_window(state.phase, own)
+    marginal_scores: list[int] = []
+    revealed = bool(
+        state.white_groups if state.color == "w" else state.black_groups
+    )
+    remaining = list(action)
+    # Reconstruct the strongest greedy ordering of this multiset. Comparing
+    # its marginal values lexicographically preserves the evolved policy's
+    # actual move ordering without rewarding a roster merely for containing
+    # many cheap taps (eight CopyCats must not outrank Queen/Queen/CopyCat/Giant
+    # just because eight positive scores can be added together).
+    while remaining:
+        piece = max(
+            remaining,
+            key=lambda candidate: (
+                policy.pick_score(candidate, own, final, revealed),
+                -INDEX[candidate],
+            ),
+        )
+        marginal_scores.append(policy.pick_score(piece, own, final, revealed))
+        own.append(piece)
+        remaining.remove(piece)
+    return tuple(marginal_scores)
+
+
+def ranked_macro_actions(
+    state: PublicDraftState,
+    policy: DraftPolicy = BASE_POLICY,
+    width: int = 12,
+    beam_width: int = 160,
+) -> list[tuple[str, ...]]:
+    """Generate strong legal whole-phase actions for adversarial search.
+
+    Picks are multisets rather than individual pot taps. A bounded beam keeps
+    cheap repeatable characters tractable while preserving different material
+    totals and footprints. The evolved policy orders this beam; it does not
+    decide the final action once engine-backed minimax evaluates the leaves.
+    """
+    if state.phase >= 12:
+        return []
+    own = state.white if state.color == "w" else state.black
+    if state.action == "ban":
+        actions = [
+            (piece,) for piece in PIECES if piece not in state.bans
+        ]
+        actions.sort(
+            key=lambda action: (
+                _macro_action_score(state, action, policy),
+                -INDEX[action[0]],
+            ),
+            reverse=True,
+        )
+        return actions[:width]
+
+    minimum, maximum, _final = draft_window(state.phase, own)
+    available = tuple(piece for piece in PIECES if piece not in state.bans)
+    initial_points = team_points(own)
+    initial_slots = team_slots(own)
+    # selected, lowest next index, added points, added slots
+    beam: list[tuple[tuple[str, ...], int, int, int]] = [
+        ((), 0, 0, 0)
+    ]
+    commits: dict[tuple[str, ...], tuple[int, ...]] = {}
+    while beam:
+        expanded: list[tuple[tuple[str, ...], int, int, int]] = []
+        for selected, first_index, added_points, added_slots in beam:
+            total = initial_points + added_points
+            if minimum <= total <= maximum:
+                commits[selected] = _macro_action_score(state, selected, policy)
+            for index in range(first_index, len(available)):
+                piece = available[index]
+                cost = PIECE_COST[piece]
+                cells = footprint_size(piece)
+                if total + cost > maximum or initial_slots + added_slots + cells > 24:
+                    continue
+                # The native 8x3 zone cannot pack five disjoint Giants around
+                # its fixed corner King even though the coarse slot sum is 21.
+                if piece == "giant" and own.count("giant") + selected.count("giant") >= 4:
+                    continue
+                next_selected = (*selected, piece)
+                expanded.append((
+                    next_selected, index,
+                    added_points + cost, added_slots + cells,
+                ))
+        if not expanded:
+            break
+        # Retain policy strength, but force material/slot diversity so a low
+        # cost tactical roster is not erased by many near-identical full-cap
+        # Queen variants before the engine evaluates it.
+        expanded.sort(
+            key=lambda item: (
+                _macro_action_score(state, item[0], policy),
+                item[2], -item[3], item[0],
+            ),
+            reverse=True,
+        )
+        next_beam = []
+        per_shape: dict[tuple[int, int], int] = {}
+        for item in expanded:
+            shape = item[2], item[3]
+            if per_shape.get(shape, 0) >= max(2, beam_width // 32):
+                continue
+            per_shape[shape] = per_shape.get(shape, 0) + 1
+            next_beam.append(item)
+            if len(next_beam) >= beam_width:
+                break
+        beam = next_beam
+
+    ranked = sorted(
+        commits,
+        key=lambda action: (
+            commits[action], team_points((*own, *action)),
+            -team_slots((*own, *action)), action,
+        ),
+        reverse=True,
+    )
+    return ranked[:width]
+
+
+def complete_public_draft(
+    state: PublicDraftState,
+    white_policy: DraftPolicy = BASE_POLICY,
+    black_policy: DraftPolicy = BASE_POLICY,
+    width: int = 8,
+) -> DraftOutcome:
+    """Policy-ordered backtracking rollout from a searched public state."""
+    policies = {"w": white_policy, "b": black_policy}
+
+    def finish(current: PublicDraftState) -> DraftOutcome | None:
+        if current.phase == 12:
+            try:
+                return DraftOutcome(
+                    deploy_groups(current.white_groups),
+                    deploy_groups(current.black_groups),
+                    current.white_groups, current.black_groups, current.bans,
+                )
+            except RuntimeError:
+                return None
+        for action in ranked_macro_actions(
+            current, policies[current.color], width=width,
+        ):
+            outcome = finish(current.apply(action))
+            if outcome is not None:
+                return outcome
+        return None
+
+    outcome = finish(state)
+    if outcome is None:
+        raise RuntimeError("no legal deployable completion from public draft")
+    return outcome
+
+
+@dataclass(frozen=True)
+class DraftSearchResult:
+    action: tuple[str, ...]
+    score: float
+    candidates: int
+    leaves: int
+    principal: DraftOutcome | None = None
+
+
+def search_public_draft(
+    state: PublicDraftState,
+    local_color: str,
+    evaluator,
+    white_policy: DraftPolicy = BASE_POLICY,
+    black_policy: DraftPolicy = BASE_POLICY,
+    action_width: int = 8,
+    reply_width: int = 6,
+    rollout_width: int = 5,
+    feasible=None,
+) -> DraftSearchResult:
+    """Two-ply adversarial macro search with full-draft rollout leaves.
+
+    ``evaluator`` receives a complete :class:`DraftOutcome` and returns a
+    local-player score. In live play it is backed by Ultimate Fish starting
+    position analysis. ``feasible`` may reject a terminal rollout that cannot
+    fit around exact already-locked native geometry.
+    """
+    if state.color != local_color:
+        raise ValueError("draft search may only choose the local public turn")
+    policies = {"w": white_policy, "b": black_policy}
+    candidates = ranked_macro_actions(
+        state, policies[state.color], width=action_width,
+    )
+    if not candidates:
+        raise RuntimeError("draft search has no legal local macro action")
+    best_action: tuple[str, ...] | None = None
+    best_principal: DraftOutcome | None = None
+    best_score = -math.inf
+    leaves = 0
+    for action in candidates:
+        after = state.apply(action)
+        replies = [()]
+        if after.phase < 12:
+            replies = ranked_macro_actions(
+                after, policies[after.color], width=reply_width,
+            )
+        worst = math.inf
+        worst_outcome: DraftOutcome | None = None
+        valid_reply = False
+        for reply in replies:
+            replied = after if after.phase == 12 else after.apply(reply)
+            try:
+                outcome = complete_public_draft(
+                    replied, white_policy, black_policy, rollout_width,
+                )
+            except RuntimeError:
+                continue
+            if feasible is not None and not feasible(outcome, action):
+                continue
+            score = float(evaluator(outcome))
+            leaves += 1
+            valid_reply = True
+            if score < worst:
+                worst = score
+                worst_outcome = outcome
+        if valid_reply and worst > best_score:
+            best_score = worst
+            best_action = action
+            best_principal = worst_outcome
+    if best_action is None:
+        raise RuntimeError("draft search found no feasible completed leaf")
+    return DraftSearchResult(
+        best_action, best_score, len(candidates), leaves, best_principal,
     )
 
 

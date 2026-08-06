@@ -115,6 +115,41 @@ class DraftEvolutionTests(unittest.TestCase):
         self.assertEqual(len(completed), 2)
         self.assertEqual(played.call_count, 2)
 
+    def test_macro_generator_contains_the_promoted_greedy_line(self) -> None:
+        state = draft.PublicDraftState().apply(("prince",)).apply(("mage",))
+        actions = draft.ranked_macro_actions(state, width=8)
+        self.assertEqual(
+            actions[0], ("queen", "queen", "giant", "copycat")
+        )
+        self.assertIn(("queen", "queen", "copycat"), actions)
+
+    def test_adversarial_search_can_override_policy_order_at_engine_leaf(self) -> None:
+        state = draft.PublicDraftState(
+            11,
+            (
+                ("queen", "queen", "copycat", "giant"),
+                ("queen", "queen", "copycat", "giant"),
+                ("queen", "checker", "giant"),
+            ),
+            (
+                ("queen", "queen", "copycat", "giant"),
+                ("queen", "queen", "penguin", "giant"),
+            ),
+            ("prince", "mage", "bomb", "jester", "ghost", "sniper"),
+        )
+
+        def evaluator(outcome):
+            return 1.0 if "turtle" in outcome.black_groups[-1] else 0.0
+
+        result = draft.search_public_draft(
+            state, "b", evaluator, action_width=30,
+        )
+        self.assertEqual(result.score, 1.0)
+        self.assertIn("turtle", result.action)
+        self.assertNotEqual(
+            result.action, draft.ranked_macro_actions(state, width=1)[0]
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -617,7 +617,7 @@ class RankedDraftControllerTests(unittest.TestCase):
             1: ["ghost"],
             3: ["jester", "dragon"],
             5: ["parasite"],
-            7: ["penguin"],
+            7: ["penguin", "queen", "mage"],
             9: ["sniper"],
             11: ["rook"],
         }
@@ -789,6 +789,24 @@ class RankedDraftControllerTests(unittest.TestCase):
         )
         self.assertNotEqual(retry[0], "a2")
         self.assertIn("a2", retry[1:])
+
+    def test_ranked_opening_plan_reserves_later_wide_finalist_footprints(self):
+        deployment = MODULE.DraftDeployment()
+        opening = ["queen", "queen", "copycat", "giant"]
+        future = [
+            "queen", "queen", "penguin", "giant", "copycat", "copycat",
+        ]
+        for index, piece in enumerate(opening):
+            square = deployment.plan([*opening[index:], *future])[0]
+            deployment.reserve(piece, square)
+
+        later = deployment.plan(future)
+        occupied = deployment.occupied.copy()
+        for piece, square in zip(future, later):
+            cells = deployment.cells(piece, square)
+            self.assertFalse(cells & occupied)
+            occupied.update(cells)
+        self.assertEqual(len(occupied), 20)
 
     def test_ranked_pick_previews_around_misplaced_locked_giant(self):
         class PreviewEngine:
@@ -1112,12 +1130,17 @@ class RankedDraftControllerTests(unittest.TestCase):
         first = [
             ("king", "a10"), ("queen", "b10"), ("king", "c10"),
         ]
-        middle_group = [("pawn", "d10")]
+        middle_group = [
+            ("pawn", "d10"), ("pawn", "e10"), ("pawn", "f10"),
+            ("pawn", "g10"), ("pawn", "h10"),
+        ]
         final_group = [
-            ("rook", "e10"), ("rook", "f10"), ("rook", "g10"),
-            ("rook", "h10"), ("rook", "a9"), ("turtle", "b9"),
+            ("rook", "a9"), ("rook", "b9"), ("rook", "g9"),
+            ("rook", "h9"), ("turtle", "a8"),
             ("giant", "c8"), ("giant", "d8"),
             ("giant", "c9"), ("giant", "d9"),
+            ("giant", "e8"), ("giant", "f8"),
+            ("giant", "e9"), ("giant", "f9"),
         ]
 
         game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
@@ -1151,7 +1174,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         )
         game._ranked_committed_points = Mock(side_effect=(
             (0, 27),       # remote opening group
-            (25, 30),      # remote middle group
+            (25, 42),      # remote middle group
             (40, 100),     # remote final group
         ))
         game.probe_enemy = Mock()
@@ -1166,8 +1189,8 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertTrue(team)
         self.assertEqual(game.ranked_enemy_roster["queen"], 1)
         self.assertEqual(game.ranked_enemy_roster["jester"], 1)
-        self.assertEqual(game.ranked_enemy_roster["rook"], 5)
-        self.assertEqual(game.ranked_enemy_roster["giant"], 1)
+        self.assertEqual(game.ranked_enemy_roster["rook"], 4)
+        self.assertEqual(game.ranked_enemy_roster["giant"], 2)
         self.assertEqual(game.ranked_enemy_king_candidates, {"a10", "c10"})
         game.probe_enemy.assert_not_called()
 
@@ -1441,7 +1464,8 @@ class VisionTests(unittest.TestCase):
         font = ImageFont.truetype(
             "/System/Library/Fonts/Supplemental/Arial Bold.ttf", 72)
         for headline, expected in (
-            ("VICTORY", "win"), ("DEFEAT", "loss"), ("DRAW", "draw"),
+            ("VICTORY", "win"), ("DEFEAT", "loss"),
+            ("STALEMATE", "draw"), ("DRAW", "draw"),
             ("CHECKMATE", "checkmate"), ("KNOCK-OUT!", "knockout"),
         ):
             image = Image.new("RGB", (800, 500), (50, 175, 235))
@@ -1468,6 +1492,17 @@ class VisionTests(unittest.TestCase):
         ) as run:
             self.assertEqual(MODULE.read_game_over_result(image), "win")
         self.assertEqual(run.call_count, 3)
+
+    def test_blank_game_over_overlay_never_invents_a_decisive_result(self):
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.adb = Mock()
+        with patch.object(
+            MODULE, "read_game_over_result", return_value="unknown"
+        ):
+            self.assertEqual(
+                game.classify_game_over(timeout=0.0, decisive_result="win"),
+                "unknown",
+            )
 
     def test_ranked_lock_checkmark_detector_uses_full_screen_coordinates(self):
         from PIL import Image, ImageDraw

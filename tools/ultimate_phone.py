@@ -29,6 +29,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence
 
+try:
+    from evolve_ultimate_army import position as draft_evaluation_position
+    from evolve_ultimate_draft import PublicDraftState, search_public_draft
+except ModuleNotFoundError:  # Imported as tools.ultimate_phone.
+    from tools.evolve_ultimate_army import position as draft_evaluation_position
+    from tools.evolve_ultimate_draft import PublicDraftState, search_public_draft
+
 
 PIECE_NAMES = (
     "king", "jester", "knight", "pawn", "queen", "rook", "bishop",
@@ -1309,7 +1316,8 @@ def read_game_over_result(image, tesseract: str = "tesseract") -> str:
     def classify(observations: Iterable[str]) -> str | None:
         observed = re.sub(r"[^A-Z]", "", " ".join(observations).upper())
         for token, result in (
-            ("VICTORY", "win"), ("DEFEAT", "loss"), ("DRAW", "draw"),
+            ("VICTORY", "win"), ("DEFEAT", "loss"),
+            ("STALEMATE", "draw"), ("DRAW", "draw"),
             ("CHECKMATE", "checkmate"), ("KNOCKOUT", "knockout"),
         ):
             if token in observed:
@@ -3547,6 +3555,9 @@ class PhoneGame:
         self.adb = AdbDevice(adb, device)
         self.events = EventStream(adb, device)
         self.engine = EngineClient(engine_path)
+        self.draft_evaluator: EngineClient | None = None
+        self.draft_evaluation_cache: dict[str, float] = {}
+        self.ranked_future_reservations: tuple[str, ...] = ()
         self.beliefs: BeliefSet | None = None
         self.perspective_flipped = False
         # Online positions are normalized to the local player's fixed camera,
@@ -5958,8 +5969,13 @@ class PhoneGame:
                 extras[replace[0]] -= 1
             else:
                 try:
+                    future = list(getattr(
+                        self, "ranked_future_reservations", ()
+                    ))
                     requested = deployment.plan(
-                        remaining, [excluded[key] for key in remaining_keys],
+                        [*remaining, *future],
+                        [*(excluded[key] for key in remaining_keys),
+                         *(set() for _piece in future)],
                     )[0]
                 except RuntimeError:
                     # A native miss is target-instance evidence, not proof that
@@ -6088,8 +6104,85 @@ class PhoneGame:
             )
             return
 
+    def _search_ranked_action(
+        self, public_state: PublicDraftState, deployment: DraftDeployment,
+        local_color: str,
+    ) -> tuple[str, ...]:
+        """Search public draft macros using Ultimate Fish at completed leaves."""
+        planned_armies: dict[tuple[object, ...], tuple[tuple[str, str], ...]] = {}
+
+        def outcome_key(outcome) -> tuple[object, ...]:
+            return outcome.white_groups, outcome.black_groups, outcome.bans
+
+        def local_roster(outcome) -> list[str]:
+            army = outcome.white if local_color == "w" else outcome.black
+            return [piece for piece, _square in army]
+
+        def feasible(outcome, _action) -> bool:
+            desired = local_roster(outcome)
+            locked = Counter(piece for piece, _square in deployment.team)
+            remaining = []
+            for piece in desired:
+                if locked[piece]:
+                    locked[piece] -= 1
+                else:
+                    remaining.append(piece)
+            if any(locked.values()):
+                return False
+            try:
+                squares = deployment.plan(remaining)
+            except RuntimeError:
+                return False
+            planned_armies[outcome_key(outcome)] = tuple(deployment.team) + tuple(
+                zip(remaining, squares)
+            )
+            return True
+
+        if self.draft_evaluator is None:
+            self.draft_evaluator = EngineClient(self.engine.path)
+
+        def evaluate(outcome) -> float:
+            local = planned_armies[outcome_key(outcome)]
+            opponent = outcome.black if local_color == "w" else outcome.white
+            upn = draft_evaluation_position(local, opponent, local_color)
+            if upn not in self.draft_evaluation_cache:
+                _move, score, _info = self.draft_evaluator.search(
+                    upn, depth=24, nodes=20_000,
+                )
+                self.draft_evaluation_cache[upn] = float(
+                    score if local_color == "w" else -score
+                )
+            return self.draft_evaluation_cache[upn]
+
+        result = search_public_draft(
+            public_state, local_color, evaluate,
+            action_width=6, reply_width=4, rollout_width=4,
+            feasible=feasible,
+        )
+        self.ranked_future_reservations = ()
+        if public_state.action == "pick" and result.principal is not None:
+            desired = local_roster(result.principal)
+            consumed = Counter(
+                piece for piece, _square in deployment.team
+            )
+            consumed.update(result.action)
+            future = []
+            for piece in desired:
+                if consumed[piece]:
+                    consumed[piece] -= 1
+                else:
+                    future.append(piece)
+            if not any(consumed.values()):
+                self.ranked_future_reservations = tuple(future)
+        self.log(
+            "draft search chose " + " ".join(result.action)
+            + f" (worst {result.score:+.0f}; {result.leaves} engine leaves)"
+        )
+        return result.action
+
     def _choose_feasible_ranked_pick(
         self, deployment: DraftDeployment,
+        searched: Sequence[str] | None = None,
     ) -> list[str]:
         """Commit the strongest engine group packable around exact locks.
 
@@ -6102,6 +6195,19 @@ class PhoneGame:
         previewer = getattr(self.engine, "draft_preview", None)
         if previewer is None:  # Lightweight legacy/replay test doubles.
             return self.engine.draft_auto()
+        if searched is not None:
+            choices = list(searched)
+            # Search feasibility included the expected later local groups.
+            # Recheck against the exact current locks before mutating the
+            # native draft state, then reserve those future footprints while
+            # this group's models are physically placed.
+            deployment.plan([
+                *choices, *getattr(self, "ranked_future_reservations", ())
+            ])
+            for piece in choices:
+                self.engine.draft_choose(piece)
+            self.engine.draft_commit()
+            return choices
         queue_: deque[frozenset[str]] = deque((frozenset(),))
         seen: set[frozenset[str]] = set()
         attempts = 0
@@ -6150,6 +6256,7 @@ class PhoneGame:
         if len(self.draft_pots) != len(POT_SORT_ORDER):
             raise RuntimeError("call start_ranked before drafting")
         self.engine.draft_new()
+        public_draft = PublicDraftState()
         deployment = DraftDeployment()
         # Preserve the pristine phase-zero locks before spending time on side
         # detection; a very fast Ivory opponent can otherwise finish its ban
@@ -6185,13 +6292,34 @@ class PhoneGame:
                 self.log(f"recovered pre-calibration opponent ban: {piece}")
                 self.engine.draft_choose(piece)
                 self.engine.draft_commit()
+                public_draft = public_draft.apply((piece,))
                 time.sleep(0.18)
                 continue
             if local:
-                choices = (
-                    self.engine.draft_auto() if action == "ban" else
-                    self._choose_feasible_ranked_pick(deployment)
-                )
+                searched: tuple[str, ...] | None = None
+                if isinstance(self.engine, EngineClient):
+                    try:
+                        searched = self._search_ranked_action(
+                            public_draft, deployment,
+                            "w" if local_ivory else "b",
+                        )
+                    except (RuntimeError, ValueError) as exc:
+                        self.ranked_future_reservations = ()
+                        self.log(
+                            f"draft search unavailable ({exc}); using evolved fallback"
+                        )
+                if action == "ban":
+                    if searched is None:
+                        choices = self.engine.draft_auto()
+                    else:
+                        choices = list(searched)
+                        for piece in choices:
+                            self.engine.draft_choose(piece)
+                        self.engine.draft_commit()
+                else:
+                    choices = self._choose_feasible_ranked_pick(
+                        deployment, searched,
+                    )
                 self.log(
                     f"draft phase {phase}: {action} "
                     + (" ".join(choices) if choices else "(none)"))
@@ -6202,6 +6330,7 @@ class PhoneGame:
                     self._commit_ranked_local_pick(
                         choices, deployment, phase, local_ivory,
                     )
+                public_draft = public_draft.apply(choices)
             else:
                 self.log(f"draft phase {phase}: waiting for opponent {action}")
                 ban_generation = (
@@ -6231,12 +6360,14 @@ class PhoneGame:
                     # immutable. Scan that public board, infer only the count
                     # of coordinate-hidden Ghosts from material, and apply the
                     # exact roster additions to the native draft state.
-                    self._observe_ranked_opponent_pick(local_ivory)
+                    choices = self._observe_ranked_opponent_pick(local_ivory)
+                    public_draft = public_draft.apply(choices)
                 else:
                     piece = self._observe_ranked_opponent_ban(ban_generation)
                     self.log(f"public opponent ban: {piece}")
                     self.engine.draft_choose(piece)
                     self.engine.draft_commit()
+                    public_draft = public_draft.apply((piece,))
             time.sleep(0.18)
 
         if self.engine.draft_status()["action"] != "complete":
@@ -7679,10 +7810,11 @@ class PhoneGame:
             if result != "unknown":
                 return result
             if time.monotonic() >= deadline:
-                # The native game-over event already establishes which side
-                # just ended the game in decisive call sites. Overlay text can
-                # animate too late for OCR, but must not erase that fact.
-                return decisive_result or "unknown"
+                # ``GameOver MESSAGE`` precedes the result menu and does not
+                # identify its winner. Only a visible/terminal condition may
+                # use ``decisive_result``; blank OCR must never turn an unknown
+                # loss or stalemate into a reported win.
+                return "unknown"
             time.sleep(0.25)
 
     def play(self) -> str:
@@ -7835,7 +7967,12 @@ class PhoneGame:
                 self.log("result: win (opponent out of time before moving)")
                 return "win"
             if event.kind == "game_over":
-                result = self.classify_game_over(decisive_result="win")
+                # This event arrived on the opponent's action side. A terminal
+                # CHECKMATE/KNOCK-OUT therefore means a loss; a resignation or
+                # draw is still taken from the public result overlay.
+                result = self.classify_game_over(
+                    timeout=10.0, decisive_result="loss"
+                )
                 self.log(f"result: {result} (public game-over screen)")
                 return result
             if event.kind == "turn_end":
@@ -8193,6 +8330,8 @@ class PhoneGame:
             self.beliefs.observe_continuation()
 
     def close(self) -> None:
+        if self.draft_evaluator is not None:
+            self.draft_evaluator.close()
         self.engine.close()
         self.events.close()
         self.adb.close()
