@@ -120,6 +120,16 @@ BAN_TEXTURE_RE = re.compile(
 DRAFT_TURN_RE = re.compile(
     r"\bmyBoard\.turn != team:\s*(True|False)\s*$", re.IGNORECASE
 )
+# Pot.OnPointerDown logs both the character object and the Pot component that
+# actually received the pointer.  This is the authoritative way to distinguish
+# a real character-pot selection from a stale BanButton intercepting the same
+# screen coordinate (for example Ninja's button covering the Prince pot).
+DRAFT_POT_RE = re.compile(
+    r"\b([A-Za-z][A-Za-z0-9_ -]*?)(?:\(Clone\))?\s+"
+    r"\([A-Za-z][A-Za-z0-9_ -]*?\)\s+"
+    r"PotPrefab(?:\(Clone\))?\s+\(Pot\)\s*$",
+    re.IGNORECASE,
+)
 PLAYER_TEAM_RE = re.compile(
     r"\bGameManager\.Instance\.playerTeam != team:\s*(True|False)\s*$",
     re.IGNORECASE,
@@ -451,6 +461,13 @@ def parse_unity_line(line: str) -> AppEvent | None:
             "draft_turn_probe",
             source="opponent" if match.group(1).lower() == "true" else "local",
             raw=line,
+        )
+    match = DRAFT_POT_RE.search(line)
+    if match:
+        piece = canonical_piece_name(match.group(1))
+        return (
+            AppEvent("draft_pot_selected", piece=piece, raw=line)
+            if piece else None
         )
     match = PLAYER_TEAM_RE.search(line)
     if match:
@@ -5260,30 +5277,19 @@ class PhoneGame:
         # Prince selection into ``BanSelection(Ninja)``. A top-row probe puts
         # that overlay above every pot and cannot intercept the real choice.
         probe = "giant"
-        self.events.drain()
-        self.adb.tap_sync(*self.draft_pots[probe])
         try:
-            event = self.events.wait(
-                ("draft_turn_probe", "game_over", "out_of_time"), 1.5
-            )
+            source, completed_bans = self._select_ranked_pot_exact(probe, 1.5)
         except TimeoutError:
-            event = None
-        if event is not None:
-            if event.kind != "draft_turn_probe":
-                raise RuntimeError(
-                    f"Ranked game ended during side detection: {event.kind}"
-                )
-            completed_bans = (
-                event.payload if isinstance(event.payload, int)
-                else self.events.ranked_bans_completed()
-            )
+            source = None
+            completed_bans = self.events.ranked_bans_completed()
+        if source is not None:
             if completed_bans not in (0, 1):
                 raise RuntimeError(
                     "Ranked side detection occurred after both opening bans"
                 )
-            if event.source == "local":
+            if source == "local":
                 return completed_bans % 2 == 0
-            if event.source == "opponent":
+            if source == "opponent":
                 return completed_bans % 2 == 1
             raise RuntimeError("native Ranked turn probe had no side")
 
@@ -5297,6 +5303,49 @@ class PhoneGame:
                 return completed_bans % 2 == 0
             time.sleep(0.12)
         return completed_bans % 2 == 1
+
+    def _select_ranked_pot_exact(
+        self, piece: str, timeout: float
+    ) -> tuple[str, int]:
+        """Select one draft pot and verify the exact native pointer receiver."""
+        deadline = time.monotonic() + timeout
+        self.events.drain()
+        self.adb.tap_sync(*self.draft_pots[piece])
+        selected = False
+        source: str | None = None
+        completed_bans = self.events.ranked_bans_completed()
+        while time.monotonic() < deadline and (not selected or source is None):
+            event = self.events.wait(
+                ("draft_pot_selected", "draft_turn_probe", "game_over",
+                 "out_of_time"),
+                max(0.01, deadline - time.monotonic()),
+            )
+            if event.kind in ("game_over", "out_of_time"):
+                raise RuntimeError(
+                    f"Ranked game ended while selecting {piece}: {event.kind}"
+                )
+            if event.kind == "draft_pot_selected":
+                if event.piece != piece:
+                    raise RuntimeError(
+                        f"Ranked {piece} tap was intercepted by "
+                        f"{event.piece or 'an unknown pot'}"
+                    )
+                selected = True
+            else:
+                source = event.source
+                completed_bans = (
+                    event.payload if isinstance(event.payload, int)
+                    else self.events.ranked_bans_completed()
+                )
+        if not selected:
+            raise TimeoutError(
+                f"native log never confirmed selection of Ranked {piece} pot"
+            )
+        if source is None:
+            raise TimeoutError(
+                f"native log never reported the Ranked turn for {piece}"
+            )
+        return source, completed_bans
 
     @classmethod
     def _ranked_queue_visible(cls, image) -> bool:
@@ -5399,26 +5448,25 @@ class PhoneGame:
         # side detection. Never click that stale control before selecting the
         # engine's actual choice. Wait for IsCharacterUsable's native turn
         # predicate so Unity has processed the new pot before confirming it.
-        self.events.drain()
-        self.adb.tap_sync(*self.draft_pots[piece])
-        try:
-            selected = self.events.wait(
-                ("draft_turn_probe", "game_over", "out_of_time"),
-                min(1.0, timeout),
+        # First move selection to a known-safe top-row pot. This positively
+        # clears Ninja's button from the Prince coordinate instead of merely
+        # assuming the previous selection disappeared. Then require the native
+        # Pot.OnPointerDown diagnostic to name the requested character exactly.
+        # Never press Ban on a turn-predicate log alone: that predicate does not
+        # identify which character remains selected.
+        if piece != "giant":
+            clear_source, _ = self._select_ranked_pot_exact(
+                "giant", min(1.0, timeout)
             )
-            if selected.kind != "draft_turn_probe":
+            if clear_source != "local":
                 raise RuntimeError(
-                    f"Ranked game ended while selecting {piece}: {selected.kind}"
+                    "Ranked selection reset was processed outside the local Ban turn"
                 )
-            if selected.source != "local":
-                raise RuntimeError(
-                    f"Ranked {piece} pot was processed outside the local Ban turn"
-                )
-        except TimeoutError:
-            # Compatibility fallback for builds without the predicate log.
-            # A short UI frame still prevents confirming the previously
-            # selected calibration pot.
-            time.sleep(0.20)
+        source, _ = self._select_ranked_pot_exact(piece, min(1.0, timeout))
+        if source != "local":
+            raise RuntimeError(
+                f"Ranked {piece} pot was processed outside the local Ban turn"
+            )
         # BanButton is serialized above the selected pot, not at a fixed
         # screen coordinate. Its vertical offset in the live layout is one
         # calibrated pot-row gap. For Prince this is approximately

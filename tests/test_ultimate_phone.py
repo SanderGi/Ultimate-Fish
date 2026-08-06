@@ -291,6 +291,12 @@ class LogParserTests(unittest.TestCase):
         )
         opponent_turn = MODULE.parse_unity_line("myBoard.turn != team: True")
         self.assertEqual(opponent_turn.source, "opponent")
+        pot = MODULE.parse_unity_line(
+            "ninja(Clone) (Ninja) PotPrefab(Clone) (Pot)"
+        )
+        self.assertEqual(
+            (pot.kind, pot.piece), ("draft_pot_selected", "ninja")
+        )
         player_team = MODULE.parse_unity_line(
             "GameManager.Instance.playerTeam != team: True"
         )
@@ -701,13 +707,19 @@ class RankedDraftControllerTests(unittest.TestCase):
                 self.taps.append((x, y))
 
         class BanEvents:
+            def __init__(self):
+                self.pending = []
+
             @staticmethod
             def drain():
                 return None
 
             @staticmethod
-            def wait(_kinds, _timeout):
-                return MODULE.AppEvent("draft_turn_probe", source="local")
+            def ranked_bans_completed():
+                return 0
+
+            def wait(self, _kinds, _timeout):
+                return self.pending.pop(0)
 
         game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
         game.adb = BanAdb()
@@ -717,8 +729,61 @@ class RankedDraftControllerTests(unittest.TestCase):
             "giant": (115, 964), "checker": (152, 1103),
             "pawn": (98, 1248), "prince": (934, 1101),
         }
+
+        def tap_sync(x, y):
+            game.adb.taps.append((x, y))
+            if (x, y) == game.draft_pots["giant"]:
+                piece = "giant"
+            elif (x, y) == game.draft_pots["prince"]:
+                piece = "prince"
+            else:
+                return
+            game.events.pending.extend((
+                MODULE.AppEvent("draft_pot_selected", piece),
+                MODULE.AppEvent(
+                    "draft_turn_probe", source="local", payload=0
+                ),
+            ))
+
+        game.adb.tap_sync = tap_sync
         game._ban_ranked_piece("prince")
-        self.assertEqual(game.adb.taps, [(934, 1101), (934, 959)])
+        self.assertEqual(
+            game.adb.taps,
+            [(115, 964), (934, 1101), (934, 959)],
+        )
+
+    def test_local_ban_refuses_to_confirm_intercepted_ninja(self):
+        class BanAdb:
+            @staticmethod
+            def tap_sync(_x, _y):
+                return None
+
+        class BanEvents:
+            def __init__(self):
+                self.responses = iter((
+                    MODULE.AppEvent("draft_pot_selected", "ninja"),
+                    MODULE.AppEvent(
+                        "draft_turn_probe", source="local", payload=0
+                    ),
+                ))
+
+            @staticmethod
+            def drain():
+                return None
+
+            @staticmethod
+            def ranked_bans_completed():
+                return 0
+
+            def wait(self, _kinds, _timeout):
+                return next(self.responses)
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.adb = BanAdb()
+        game.events = BanEvents()
+        game.draft_pots = {"giant": (115, 964), "prince": (934, 1101)}
+        with self.assertRaisesRegex(RuntimeError, "intercepted by ninja"):
+            game._ban_ranked_piece("prince")
 
     def test_local_ban_recovers_auto_ban_from_non_consuming_journals(self):
         class Events:
@@ -1443,6 +1508,7 @@ class RankedDraftControllerTests(unittest.TestCase):
             game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
             game.adb = ProbeAdb()
             game.events = self.FakeEvents((
+                MODULE.AppEvent("draft_pot_selected", "giant"),
                 MODULE.AppEvent(
                     "draft_turn_probe", source=source, payload=completed_bans,
                 ),
