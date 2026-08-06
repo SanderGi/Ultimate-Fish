@@ -5263,44 +5263,52 @@ class PhoneGame:
         deployment_geometry = RANKED_DEPLOYMENT_GEOMETRY.scaled(
             self.geometry.width, self.geometry.height,
         )
+        def collect_drag_events():
+            deadline = time.monotonic() + 1.5
+            last_received = time.monotonic()
+            received = False
+            landed: tuple[int, int] | None = None
+            identity: str | None = None
+            points: list[int] = []
+            while time.monotonic() < deadline:
+                try:
+                    event = self.events.wait(
+                        ("army_drop", "army_piece", "army_points",
+                         "game_over", "out_of_time"),
+                        min(0.18, deadline - time.monotonic()),
+                    )
+                except TimeoutError:
+                    if received and time.monotonic() - last_received >= 0.18:
+                        break
+                    continue
+                if event.kind in ("game_over", "out_of_time"):
+                    raise RuntimeError(
+                        f"Ranked draft ended while placing {piece}: {event.kind}"
+                    )
+                received = True
+                last_received = time.monotonic()
+                if event.kind == "army_drop" and event.source:
+                    x_text, y_text = event.source.split(":", 1)
+                    landed = int(x_text), int(y_text)
+                elif event.kind == "army_piece":
+                    identity = event.piece
+                elif event.kind == "army_points":
+                    player1 = int(event.source or -1)
+                    player2 = int(event.target or -1)
+                    points.append(player1 if local_ivory else player2)
+            return landed, identity, points
+
+        def local_square(coordinate: tuple[int, int]) -> str:
+            record = ModelPieceRecord(piece, 1, coordinate[0], coordinate[1])
+            return _online_square(record, not local_ivory)
+
         target = deployment_geometry.drop_point(piece, square)
         source = self.draft_pots[piece]
         # PointerDown grabs the pot model and PointerUp on the square performs
         # the native placement.  A moderately short gesture is fast while still
         # producing the pointer-enter callback on dense deployment cells.
         self.adb.drag_sync(source, target, 180)
-        deadline = time.monotonic() + 1.5
-        last_received = time.monotonic()
-        received = False
-        landed_coordinate: tuple[int, int] | None = None
-        actual_piece: str | None = None
-        point_history: list[int] = []
-        while time.monotonic() < deadline:
-            try:
-                event = self.events.wait(
-                    ("army_drop", "army_piece", "army_points",
-                     "game_over", "out_of_time"),
-                    min(0.18, deadline - time.monotonic()),
-                )
-            except TimeoutError:
-                if received and time.monotonic() - last_received >= 0.18:
-                    break
-                continue
-            if event.kind in ("game_over", "out_of_time"):
-                raise RuntimeError(
-                    f"Ranked draft ended while placing {piece}: {event.kind}"
-                )
-            received = True
-            last_received = time.monotonic()
-            if event.kind == "army_drop" and event.source:
-                x_text, y_text = event.source.split(":", 1)
-                landed_coordinate = int(x_text), int(y_text)
-            elif event.kind == "army_piece":
-                actual_piece = event.piece
-            elif event.kind == "army_points":
-                player1 = int(event.source or -1)
-                player2 = int(event.target or -1)
-                point_history.append(player1 if local_ivory else player2)
+        landed_coordinate, actual_piece, point_history = collect_drag_events()
 
         if landed_coordinate is None:
             if piece == "giant" and point_history:
@@ -5318,10 +5326,7 @@ class PhoneGame:
                     f"Ranked {piece} changed material without a landing coordinate"
                 )
         else:
-            record = ModelPieceRecord(
-                piece, 1, landed_coordinate[0], landed_coordinate[1]
-            )
-            actual_square = _online_square(record, not local_ivory)
+            actual_square = local_square(landed_coordinate)
 
         final_points = (
             point_history[-1] if point_history else self.ranked_local_points
@@ -5335,6 +5340,64 @@ class PhoneGame:
         )
         if actual_piece is None:
             actual_piece = piece
+
+        # Do not merely accept a public ordinary-piece misdrop into the logical
+        # planner. Move that already placed model to the requested cell using
+        # the same native-feedback correction loop proven by the Local builder.
+        # This preserves the intended complete packing and prevents a stray
+        # Prince/Queen from making a later Giant group appear impossible.
+        if (landed_coordinate is not None and actual_piece == piece
+                and piece != "giant" and actual_square != square):
+            desired = self._deployment_coordinate(square)
+            current_square = actual_square
+            correction_x = 0.0
+            correction_y = 0.0
+            for attempt in range(1, 7):
+                source = deployment_geometry.point(current_square)
+                base_target = deployment_geometry.point(square)
+                target = (
+                    round(base_target[0] + correction_x),
+                    round(base_target[1] + correction_y),
+                )
+                self.events.drain()
+                self.adb.drag_sync(source, target, 260)
+                corrected, corrected_piece, corrected_points = collect_drag_events()
+                point_history.extend(corrected_points)
+                if corrected_piece not in (None, piece):
+                    raise RuntimeError(
+                        f"correcting Ranked {piece}@{square} selected "
+                        f"{corrected_piece}"
+                    )
+                if corrected_points and corrected_points[-1] != final_points:
+                    raise RuntimeError(
+                        f"correcting Ranked {piece}@{square} changed material "
+                        f"from {final_points} to {corrected_points[-1]}"
+                    )
+                if corrected is None:
+                    time.sleep(0.12)
+                    continue
+                corrected_square = local_square(corrected)
+                if corrected_square == square:
+                    self.log(
+                        f"corrected native Ranked {piece} drop "
+                        f"{actual_square}->{square}"
+                    )
+                    actual_square = square
+                    break
+                current = self._deployment_coordinate(corrected_square)
+                correction_x += (desired[0] - current[0]) * deployment_geometry.cell_width
+                correction_y += (current[1] - desired[1]) * deployment_geometry.cell_height
+                current_square = corrected_square
+                if self.verbose:
+                    self.log(
+                        f"Ranked {piece} correction landed at {corrected_square}; "
+                        f"retrying ({attempt}/6)"
+                    )
+                time.sleep(0.12)
+            else:
+                raise TimeoutError(
+                    f"could not correct Ranked {piece} placement to {square}"
+                )
         return RankedPlacementResult(
             actual_square, actual_piece, final_points, tuple(point_history)
         )

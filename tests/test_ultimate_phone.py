@@ -810,6 +810,56 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertGreater(expected[1], center[1])
         self.assertEqual((result.square, result.local_points), ("c2", 1))
 
+    def test_ranked_ordinary_misdrop_is_physically_corrected_before_return(self):
+        class CorrectionEvents:
+            def __init__(self):
+                self.pending = []
+
+            def drain(self):
+                self.pending.clear()
+
+            def wait(self, _kinds, timeout):
+                if self.pending:
+                    return self.pending.pop(0)
+                MODULE.time.sleep(timeout)
+                raise TimeoutError
+
+        class CorrectionAdb:
+            def __init__(self, events):
+                self.events = events
+                self.drags = []
+
+            def drag_sync(self, source, target, duration):
+                self.drags.append((source, target, duration))
+                coordinate = "6:1" if len(self.drags) == 1 else "5:0"
+                self.events.pending.extend((
+                    MODULE.AppEvent("army_drop", source=coordinate),
+                    MODULE.AppEvent("army_piece", piece="prince"),
+                    MODULE.AppEvent("army_points", source="18", target="0"),
+                ))
+
+        events = CorrectionEvents()
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.geometry = MODULE.BoardGeometry()
+        game.events = events
+        game.adb = CorrectionAdb(events)
+        game.draft_pots = {"prince": (941, 1115)}
+        game.ranked_local_points = 0
+        game.verbose = False
+        game.log = lambda _message: None
+
+        result = game._place_ranked_piece("prince", "f1", True)
+
+        geometry = MODULE.RANKED_DEPLOYMENT_GEOMETRY
+        self.assertEqual(game.adb.drags[0], (
+            (941, 1115), geometry.drop_point("prince", "f1"), 180,
+        ))
+        self.assertEqual(game.adb.drags[1], (
+            geometry.point("g2"), geometry.point("f1"), 260,
+        ))
+        self.assertEqual((result.square, result.piece, result.local_points),
+                         ("f1", "prince", 18))
+
     def test_ranked_pick_repairs_intercepted_material_before_locking(self):
         class PickEvents:
             @staticmethod

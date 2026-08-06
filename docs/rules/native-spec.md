@@ -147,7 +147,12 @@ live `b1` target physically landed on `c2`. Ranked therefore prefers the
 Local-validated `f1,g1` back-rank cells for Princes before placing Giants. A
 two-sided Local fixture measured both Prince drops one rank high from their
 cell centers and learned the same `+52 px` correction on 111-pixel cells;
-Ranked applies that native-measured 47% downward in-cell bias up front.
+Ranked applies that native-measured 47% downward in-cell bias up front. If any
+ordinary pot still reports a different public landing, Ranked now drags that
+already placed model to the requested square and iteratively compensates from
+the next native `ArmyMove` coordinate, exactly like the Local builder. The
+planner never reserves the intended square until the physical correction is
+acknowledged, so a known misdrop is not represented as uncertainty.
 
 After selecting a Ban pot, the current Ranked UI exposes the actionable large
 red Ban button in the lower-left character inspector. The blue top-row `BAN`
