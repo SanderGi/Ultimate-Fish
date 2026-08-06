@@ -712,8 +712,8 @@ class RankedDraftControllerTests(unittest.TestCase):
         game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
         game.adb = BanAdb()
         game.events = BanEvents()
+        game.geometry = MODULE.BoardGeometry()
         game.draft_pots = {"prince": (941, 1105)}
-        game._pot_ban_control = lambda _image, _piece: (157, 1967)
         game._ban_ranked_piece("prince")
         self.assertEqual(game.adb.taps, [(941, 1105), (157, 1967)])
 
@@ -1204,6 +1204,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         # 24 addressable pots were still being calibrated.
         game.events = self.FakeEvents(responses, precompleted_bans=("angel",))
         game.engine = self.FakeEngine()
+        game.engine.draft_new = Mock(wraps=game.engine.draft_new)
         game.geometry = MODULE.BoardGeometry()
         game.draft_pots = {piece: (index, index) for index, piece in enumerate(
             MODULE.POT_SORT_ORDER
@@ -1217,7 +1218,21 @@ class RankedDraftControllerTests(unittest.TestCase):
         game.verbose = False
         game.log = lambda _message: None
         game._ranked_is_ivory = lambda: False
-        game._ban_ranked_piece = lambda _piece, _timeout=3.0: None
+        local_bans = 0
+
+        def ban_piece(piece, _timeout=3.0):
+            nonlocal local_bans
+            # Native TEXURE ASSIGNED is journaled independently of the later
+            # OnBanCharacter phase callback.
+            # The first requested Ghost is swallowed and Unity auto-bans
+            # Bishop. The controller must replay that certain public state
+            # and finish every later phase rather than terminating.
+            game.events.ban_pieces.append(
+                "bishop" if local_bans == 0 else piece
+            )
+            local_bans += 1
+
+        game._ban_ranked_piece = ban_piece
         game._tap_draft_control = lambda _labels, _timeout=4.0: "LOCK"
         def place(piece, square, _ivory):
             points = game.ranked_local_points + MODULE.PIECE_COST[piece]
@@ -1247,6 +1262,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertEqual(game.ranked_enemy_roster["rook"], 4)
         self.assertEqual(game.ranked_enemy_roster["giant"], 2)
         self.assertEqual(game.ranked_enemy_king_candidates, {"a10", "c10"})
+        self.assertEqual(game.engine.draft_new.call_count, 2)
         game.probe_enemy.assert_not_called()
 
     def test_opponent_ranked_draft_forfeit_is_a_completed_win(self):

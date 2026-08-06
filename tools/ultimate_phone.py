@@ -5414,14 +5414,17 @@ class PhoneGame:
             # A short UI frame still prevents confirming the previously
             # selected calibration pot.
             time.sleep(0.20)
-        deadline = time.monotonic() + timeout
-        while time.monotonic() < deadline:
-            point = self._pot_ban_control(self.adb.screenshot(), piece)
-            if point:
-                self.adb.tap_sync(*point)
-                return
-            time.sleep(0.10)
-        raise TimeoutError(f"native Ban action did not appear for {piece}")
+        # The actionable inspector button is fixed in the shipping 1080x2400
+        # layout. Screenshot detection repeatedly missed its short-lived red
+        # component and allowed Unity to auto-ban. The native turn predicate
+        # above is the safe selection barrier; tap the measured, scaled center
+        # immediately and let TEXURE ASSIGNED / OnBanCharacter be the
+        # authoritative identity and commitment checks below.
+        point = (
+            round(self.geometry.width * 157 / 1080),
+            round(self.geometry.height * 1967 / 2400),
+        )
+        self.adb.tap_sync(*point)
 
     def _place_ranked_piece(
         self, piece: str, square: str, local_ivory: bool,
@@ -5867,9 +5870,10 @@ class PhoneGame:
                     )
                     last_status = now
 
-    def _commit_ranked_local_ban(self, piece: str, phase: int) -> None:
+    def _commit_ranked_local_ban(self, piece: str, phase: int) -> str:
         """Submit and positively acknowledge a local ban before its clock."""
         deadline = time.monotonic() + 50.0
+        ban_generation = len(self.events.ranked_ban_snapshot())
         self.events.drain()
         for attempt in itertools.count(1):
             remaining = deadline - time.monotonic()
@@ -5899,7 +5903,15 @@ class PhoneGame:
                     f"Ranked draft stopped during local phase {phase}: "
                     f"{committed.kind}"
                 )
-            return
+            confirmed = self._observe_ranked_opponent_ban(ban_generation)
+            if confirmed != piece:
+                self.log(
+                    f"Ranked requested ban {piece}, but native public log "
+                    f"committed {confirmed}; resynchronizing draft"
+                )
+            else:
+                self.log(f"native Ranked ban confirmed: {confirmed}")
+            return confirmed
 
     def _commit_ranked_local_pick(
         self, choices: Sequence[str], deployment: DraftDeployment, phase: int,
@@ -6274,6 +6286,24 @@ class PhoneGame:
             "engine found no Ranked pick group packable around locked pieces"
         )
 
+    def _replay_public_draft(self, public_draft: PublicDraftState) -> None:
+        """Reset the engine draft to exact already-public committed macros."""
+        self.engine.draft_new()
+        ban_index = white_index = black_index = 0
+        for phase in range(public_draft.phase):
+            if phase in (0, 1, 4, 5, 8, 9):
+                action = (public_draft.bans[ban_index],)
+                ban_index += 1
+            elif phase % 2 == 0:
+                action = public_draft.white_groups[white_index]
+                white_index += 1
+            else:
+                action = public_draft.black_groups[black_index]
+                black_index += 1
+            for piece in action:
+                self.engine.draft_choose(piece)
+            self.engine.draft_commit()
+
     def run_ranked_draft(
         self,
         public_draft: PublicDraftState | None = None,
@@ -6283,7 +6313,6 @@ class PhoneGame:
         """Play all twelve public Ranked draft windows without private leaks."""
         if len(self.draft_pots) != len(POT_SORT_ORDER):
             raise RuntimeError("call start_ranked before drafting")
-        self.engine.draft_new()
         resuming = public_draft is not None
         public_draft = public_draft or PublicDraftState()
         deployment = deployment or DraftDeployment()
@@ -6293,20 +6322,7 @@ class PhoneGame:
             # Replay only public, already-committed macro actions into the
             # native engine. This is also a safe recovery point after a phone
             # controller restart: no hidden placement or identity enters it.
-            ban_index = white_index = black_index = 0
-            for replay_phase in range(public_draft.phase):
-                if replay_phase in (0, 1, 4, 5, 8, 9):
-                    action = (public_draft.bans[ban_index],)
-                    ban_index += 1
-                elif replay_phase % 2 == 0:
-                    action = public_draft.white_groups[white_index]
-                    white_index += 1
-                else:
-                    action = public_draft.black_groups[black_index]
-                    black_index += 1
-                for piece in action:
-                    self.engine.draft_choose(piece)
-                self.engine.draft_commit()
+            self._replay_public_draft(public_draft)
             self.ranked_local_points = sum(
                 PIECE_COST[piece] for piece, _square in deployment.team
             )
@@ -6318,6 +6334,7 @@ class PhoneGame:
             precompleted_count = 0
             precompleted_bans: tuple[str, ...] = ()
         else:
+            self.engine.draft_new()
             # Preserve the pristine phase-zero locks before spending time on
             # side detection; a very fast Ivory opponent can otherwise finish
             # its ban while that detection is running.
@@ -6393,12 +6410,19 @@ class PhoneGame:
                     + (" ".join(choices) if choices else "(none)"))
                 if action == "ban":
                     piece = choices[0]
-                    self._commit_ranked_local_ban(piece, phase)
+                    confirmed = self._commit_ranked_local_ban(piece, phase)
+                    committed_choices = (confirmed,)
                 else:
                     self._commit_ranked_local_pick(
                         choices, deployment, phase, local_ivory,
                     )
-                public_draft = public_draft.apply(choices)
+                    committed_choices = tuple(choices)
+                public_draft = public_draft.apply(committed_choices)
+                if action == "ban" and committed_choices != tuple(choices):
+                    # draft_auto/search already committed the requested Ban.
+                    # The app's exact public log wins; reconstruct every
+                    # committed macro and continue this same Ranked game.
+                    self._replay_public_draft(public_draft)
             else:
                 self.log(f"draft phase {phase}: waiting for opponent {action}")
                 ban_generation = (
