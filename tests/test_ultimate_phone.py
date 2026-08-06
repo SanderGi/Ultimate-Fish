@@ -686,7 +686,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         game._ban_ranked_piece("prince")
         self.assertEqual(game.adb.taps, [(941, 1105), (157, 1967)])
 
-    def test_ranked_pick_places_wide_and_high_value_models_first(self):
+    def test_ranked_pick_places_ordinary_models_before_wide_colliders(self):
         class PickEvents:
             @staticmethod
             def drain():
@@ -718,7 +718,7 @@ class RankedDraftControllerTests(unittest.TestCase):
 
         self.assertEqual(
             [piece for piece, _square in placed],
-            ["copycat", "queen", "dragon", "pawn"],
+            ["queen", "dragon", "pawn", "copycat"],
         )
         self.assertEqual(game.ranked_local_points, 40)
 
@@ -761,8 +761,8 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertEqual(geometry.point("c2"), (364, 1506))
         self.assertEqual(geometry.point("e2"), (607, 1506))
         self.assertEqual(geometry.point("g2"), (850, 1506))
-        self.assertEqual(geometry.giant_drop_point("a2"), (121, 1476))
-        self.assertGreater(geometry.giant_drop_point("a2")[1], geometry.top)
+        self.assertEqual(geometry.giant_drop_point("a2"), (121, 1550))
+        self.assertLess(geometry.giant_drop_point("a2")[1], geometry.bottom)
         self.assertGreater(geometry.left, 8)
 
     def test_ranked_giant_drag_uses_raycastable_anchor_cell_center(self):
@@ -798,7 +798,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertEqual(game.adb.drags, [((110, 840), expected, 180)])
         center = MODULE.RANKED_DEPLOYMENT_GEOMETRY.point("c2")
         self.assertEqual(expected[0], center[0])
-        self.assertLess(expected[1], center[1])
+        self.assertGreater(expected[1], center[1])
         self.assertEqual((result.square, result.local_points), ("c2", 1))
 
     def test_ranked_pick_repairs_intercepted_material_before_locking(self):

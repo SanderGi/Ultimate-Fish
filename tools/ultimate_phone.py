@@ -679,13 +679,13 @@ class DeploymentGeometry:
     def giant_drop_point(self, anchor: str) -> tuple[int, int]:
         """Choose a clear in-cell raycast point for a Giant anchor.
 
-        The fixed King's tall model covers the center of a2 even though that
-        square is logically empty. The upper quarter remains inside the same
-        Square collider, after which Giant.getClosestIntersection performs its
-        own four-square visual centering.
+        The shipping Local builder reliably clears tall/adjacent models by
+        dropping near the bottom of the requested cell. It remains inside the
+        same Square collider, after which Giant.getClosestIntersection performs
+        its own four-square visual centering.
         """
         x, y = self.point(anchor)
-        return x, round(y - self.cell_height * 0.28)
+        return x, round(y + self.cell_height * 0.41)
 
     def scaled(self, width: int, height: int) -> "DeploymentGeometry":
         return DeploymentGeometry(
@@ -5521,19 +5521,18 @@ class PhoneGame:
         placements = []
         self.events.drain()
         starting_points = self.ranked_local_points
-        # Place wide linked models first, then taller/high-value models before
-        # short ones. Clearance targeting keeps later short drops away from
-        # their meshes. More importantly, the loop below reconciles any native
-        # replacement instead of abandoning the game and losing on time.
+        # The native Local builder proved that ordinary models must be placed
+        # before wide models. A later Prince drag can otherwise hit a Giant's
+        # oversized collider and replace it despite targeting a disjoint
+        # logical cell. The complete backtracking plan still reserves enough
+        # room for every Giant/CopyCat before the first ordinary drop.
         ordered_choices = sorted(
             enumerate(choices),
             key=lambda item: (
-                item[1] == "giant",
-                item[1] == "copycat",
-                PIECE_COST[item[1]],
-                -item[0],
+                item[1] in ("giant", "copycat"),
+                -PIECE_COST[item[1]],
+                item[0],
             ),
-            reverse=True,
         )
         desired = Counter(choices)
         ordered_piece_names = [piece for _index, piece in ordered_choices]
@@ -5617,6 +5616,10 @@ class PhoneGame:
                         f"Ranked {piece} packing exhausted transient targets; "
                         "restarting its in-phase placement cycle"
                     )
+                    # A malformed recovery state previously emitted millions
+                    # of retries per second while the native phase clock ran.
+                    # Yield to Unity and the event reader before replanning.
+                    time.sleep(0.10)
                     continue
             before_points = self.ranked_local_points
             try:
