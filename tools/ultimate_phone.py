@@ -5148,6 +5148,15 @@ class PhoneGame:
                     f"match ended before {description} ({event.kind}); awaiting requeue")
 
     def start_ranked(self) -> None:
+        """Enter Ranked, recovering from expired offers and promotions."""
+        for attempt in itertools.count(1):
+            try:
+                self._start_ranked_once()
+                return
+            except MatchmakingNavigationRetry as exc:
+                self.log(f"{exc}; rejoining Ranked (attempt {attempt + 1})")
+
+    def _start_ranked_once(self) -> None:
         """Enter the explicitly authorized Ranked draft queue."""
         self.log("starting Ranked game")
         self.events.reset_network_state()

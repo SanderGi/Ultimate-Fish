@@ -1657,6 +1657,18 @@ class VisionTests(unittest.TestCase):
         game.log.assert_called_once_with(
             "promotion; rejoining Unranked (attempt 2)")
 
+    def test_ranked_retries_after_expired_offer_navigation(self):
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.log = Mock()
+        with patch.object(
+            game, "_start_ranked_once",
+            side_effect=(MODULE.MatchmakingNavigationRetry("main menu"), None),
+        ) as start_once:
+            game.start_ranked()
+        self.assertEqual(start_once.call_count, 2)
+        game.log.assert_called_once_with(
+            "main menu; rejoining Ranked (attempt 2)")
+
     def test_army_clear_confirmation_detector(self):
         from PIL import Image, ImageDraw
 
