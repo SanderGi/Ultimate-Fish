@@ -64,8 +64,9 @@ These summaries are not yet substitutes for native conformance cases:
   goop. Sniper moves one square sideways or shoots forward, then sleeps for one
   turn.
 - Prince can make a second one-square move if its first move did not attack.
-  Giant occupies a 2x2 footprint and shifts exactly two squares orthogonally. CopyCat and
-  its clone mirror one another and share death.
+  Giant occupies a 2x2 footprint and shifts exactly two squares orthogonally.
+  CopyCat creates a file-mirrored clone; afterward either half moves
+  independently, while the pair continues to share death.
 - Angel links to an ally and creates an immobile halo at its origin. A lethal
   hit removes the angel instead and returns the host to the halo; halo death
   also removes the angel.

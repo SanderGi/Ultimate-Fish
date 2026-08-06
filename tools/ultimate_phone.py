@@ -2352,6 +2352,26 @@ def is_copycat_square(position: str, square: str) -> bool:
     return bool(mirrored and mirrored[0] == "copycat")
 
 
+def copycat_partner_square(position: str, square: str) -> str | None:
+    """Return the linked model's current square from lossless UPN state."""
+    pieces = parse_upn_pieces(position)
+    for piece, _color, location, state in pieces:
+        if location != square or piece not in ("copycat", "copycatClone"):
+            continue
+        if len(state) > 6:
+            try:
+                partner = int(state[6])
+            except ValueError:
+                partner = -1
+            if (0 <= partner < len(pieces) and
+                    pieces[partner][0] in ("copycat", "copycatClone")):
+                return pieces[partner][2]
+        # Compact setup UPN omits the clone and therefore has no explicit link.
+        if piece == "copycat":
+            return f"{chr(ord('h') - (ord(square[0]) - ord('a')))}{square[1:]}"
+    return None
+
+
 def giant_footprint(anchor: str) -> set[str]:
     file_index = ord(anchor[0]) - ord("a")
     rank = int(anchor[1:])
@@ -3035,19 +3055,19 @@ def rewind_public_enemy_opening(
 
         if piece in ("copycat", "copycatClone"):
             restored_variants = []
-            source_mirror = (
-                f"{chr(ord('h') - (ord(source[0]) - ord('a')))}{source[1:]}"
-            )
-            first, second = sorted(
-                (source, source_mirror), key=square_sort_key
-            )
             for variant in variants:
-                restored = [
-                    item for item in variant
-                    if item[0] not in ("copycat", "copycatClone")
+                candidates = [
+                    index for index, (candidate, square) in enumerate(variant)
+                    if candidate in ("copycat", "copycatClone") and square == target
                 ]
-                restored.extend((("copycat", first), ("copycatClone", second)))
-                restored_variants.append(restored)
+                for candidate in candidates:
+                    restored = list(variant)
+                    restored[candidate] = (restored[candidate][0], source)
+                    restored_variants.append(restored)
+            if not restored_variants:
+                raise RuntimeError(
+                    f"cannot rewind public CopyCat move {source}-{target}"
+                )
             variants = restored_variants
             continue
 
@@ -7064,10 +7084,14 @@ class PhoneGame:
                 for position in beliefs.positions
             )
         )
-        copycat_selection_markers = {
-            source,
-            f"{chr(ord('h') - (ord(source[0]) - ord('a')))}{source[1:]}",
-        }
+        copycat_partners = {
+            partner
+            for position in beliefs.positions
+            if is_copycat_square(position, source)
+            for partner in (copycat_partner_square(position, source),)
+            if partner is not None
+        } if beliefs else set()
+        copycat_selection_markers = {source, *copycat_partners}
         display_source = self.device_square(source)
         display_target = self.device_square(target)
         destination_offsets = (
@@ -7344,15 +7368,13 @@ class PhoneGame:
                     continue
                 if event.kind == "move":
                     action_observed = True
-                    if (not expect_bomb_resolution and not castling and
-                            not linked_copycat):
+                    if not expect_bomb_resolution and not castling:
                         return event
                     deadline = time.monotonic() + 15.0
                     continue
                 if event.kind == "turn_end":
                     action_observed = True
-                    if (castling or linked_copycat or
-                            not expect_bomb_resolution or saw_bomb_death):
+                    if (castling or not expect_bomb_resolution or saw_bomb_death):
                         return completed(event)
                     # Network turn dispatch precedes Bomb movement/death by
                     # several seconds. It is not yet an input-ready barrier.
@@ -7366,11 +7388,7 @@ class PhoneGame:
             # the Local perspective and then taps the next player's board.
             # This is only a maximum: ordinary move callbacks still return as
             # soon as they arrive.
-            # Both CopyCat halves animate serially and the primary half's
-            # coordinate callback can arrive after the ordinary five-second
-            # action window.  Retrying at that point taps the next player's
-            # board even though Unity already committed both relocations.
-            return wait_for_completion(15.0 if linked_copycat else 5.0)
+            return wait_for_completion(5.0)
         except TimeoutError:
             if action_observed:
                 raise

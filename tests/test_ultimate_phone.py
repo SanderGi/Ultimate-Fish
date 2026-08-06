@@ -2190,7 +2190,7 @@ class OpeningSynchronizationTests(unittest.TestCase):
         )
         self.assertEqual(variants, [[("king", "a10")]])
 
-    def test_rewind_copycat_pair_and_mage_swap(self):
+    def test_rewind_copycat_moves_only_selected_half(self):
         copycat = MODULE.rewind_public_enemy_opening(
             (("king", "a10"), ("copycat", "b9"),
              ("copycatClone", "g9")),
@@ -2198,9 +2198,19 @@ class OpeningSynchronizationTests(unittest.TestCase):
         )
         self.assertEqual(
             {tuple(variant) for variant in copycat},
-            {(('king', 'a10'), ('copycat', 'b10'),
-              ('copycatClone', 'g10'))},
+            {(('copycatClone', 'g9'), ('king', 'a10'),
+              ('copycat', 'b10'))},
         )
+
+    def test_copycat_partner_and_rewind_mage_swap(self):
+        position = (
+            "w;king,w,a1,0,0,0,0,0,1,-1,1,-1,0;"
+            "king,b,h10,0,0,0,0,0,1,-1,1,-1,0;"
+            "copycat,w,e4,0,0,0,0,1,1,3,1,-1,0;"
+            "copycatClone,w,e3,0,0,0,0,0,1,2,1,-1,0"
+        )
+        self.assertEqual(MODULE.copycat_partner_square(position, "e4"), "e3")
+        self.assertEqual(MODULE.copycat_partner_square(position, "e3"), "e4")
 
         mage = MODULE.rewind_public_enemy_opening(
             (("king", "a10"), ("rook", "b10"), ("mage", "c10")),
@@ -2470,7 +2480,7 @@ class ControllerActionTests(unittest.TestCase):
                     MODULE.AppEvent("pointer_square", source="b10"),
                     MODULE.AppEvent("selected", "copycatClone"),
                     MODULE.AppEvent("dot_ready", source="b10"),
-                    MODULE.AppEvent("dot_ready", source="g10"),
+                    MODULE.AppEvent("dot_ready", source="e9"),
                     MODULE.AppEvent("touch_end"),
                     MODULE.AppEvent("move", "copycatClone", "b10", "c9"),
                     MODULE.AppEvent("turn_end"),
@@ -2496,7 +2506,10 @@ class ControllerActionTests(unittest.TestCase):
         game.perspective_flipped = False
         game.verbose = False
         game.beliefs = type("Beliefs", (), {"positions": [
-            "b;king,w,a1;king,b,h10;copycat,b,g10"
+            "b;king,w,a1,0,0,0,0,0,1,-1,1,-1,0;"
+            "king,b,h10,0,0,0,0,0,1,-1,1,-1,0;"
+            "copycat,b,e9,0,0,0,0,1,1,3,1,-1,0;"
+            "copycatClone,b,b10,0,0,0,0,0,1,2,1,-1,0"
         ]})()
 
         event = game.execute("b10-c9")
@@ -2587,7 +2600,7 @@ class ControllerActionTests(unittest.TestCase):
                          ("move", "d1", "f1"))
         self.assertEqual(game.events.pending, [])
 
-    def test_copycat_waits_through_the_linked_partner_animation(self):
+    def test_copycat_returns_after_selected_half_animation(self):
         class FakeAdb:
             def tap_square(self, _geometry, _square):
                 pass
@@ -2600,7 +2613,6 @@ class ControllerActionTests(unittest.TestCase):
                     MODULE.AppEvent("dot_ready", source="g2"),
                     MODULE.AppEvent("touch_end"),
                     MODULE.AppEvent("move", "copycatClone", "b2", "a2"),
-                    MODULE.AppEvent("move", "copycat", "g2", "h2"),
                     MODULE.AppEvent("turn_end"),
                 ]
 
@@ -2628,7 +2640,8 @@ class ControllerActionTests(unittest.TestCase):
         event = game.execute("b2-a2")
         self.assertEqual((event.kind, event.source, event.target),
                          ("move", "b2", "a2"))
-        self.assertEqual(game.events.pending, [])
+        self.assertEqual(game.events.pending,
+                         [MODULE.AppEvent("turn_end")])
 
     def test_destination_retry_reselects_before_using_an_in_cell_offset(self):
         class FakeEvents:

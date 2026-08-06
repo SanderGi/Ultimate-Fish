@@ -318,10 +318,9 @@ and remaps every relationship so captures cannot corrupt a round trip.
   lands on the Mage's origin. Native forced-Giant resolution then knocks out
   every other character in the translated footprint, including the Mage when
   its selected destination overlaps that footprint.
-- Constructing a CopyCat creates its clone at `(7-x,y)`. Either half moves one
-  square in any direction while the available partner applies `(-dx,dy)`.
-  Both targets must be legal, both captures resolve, and either half's death
-  removes the other. A stunned partner does not mirror that move.
+- Constructing a CopyCat creates its clone at `(7-x,y)`. Either half can then
+  move one square in any direction independently; the linked partner remains
+  on its current square. Either half's death removes the other.
 - Fisherman has queen-direction quiet rays. The first visible character on a
   ray can be hooked only at distance two or greater, regardless of team; it is
   pulled to the adjacent ray square while the Fisherman stays put. Hooking a
@@ -356,9 +355,10 @@ and remaps every relationship so captures cannot corrupt a round trip.
   duplicate has no new `Bot.RecordAiMove` diagnostic and no legal shot target
   on the opponent turn; the phone controller discards only this exact stale
   combination so it cannot be mistaken for the opponent's action.
-- A linked CopyCat action emits one movement callback for each half before the
-  common `ChangeTurn End` barrier. The phone controller consumes through that
-  barrier so the companion callback cannot be mistaken for an opponent move.
+- A CopyCat action emits a movement callback only for the selected half. Both
+  linked models emit legal-dot setup callbacks when either is selected, so the
+  phone controller validates their current UPN-linked squares rather than
+  assuming they remain file mirrors after moving.
 - A Mage can choose any of a Giant's four footprint tiles as its swap target
   when the translated Giant remains in bounds. The Mage lands on the selected
   tile; the Giant is forcibly translated to the Mage and knocks out either
