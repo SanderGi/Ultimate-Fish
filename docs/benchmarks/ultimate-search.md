@@ -120,6 +120,42 @@ The optimization suggestions were measured rather than accepted wholesale:
   without a proven variant-specific pass transition because cooldowns, forced
   continuations, compulsory captures, Jester check rules, and timeout wins all
   invalidate the usual null-move assumptions.
+- Native royal-threat validation now performs a conservative direct-attack
+  geometry test before generating complete action lists for ordinary pieces.
+  Bomb, Giant, Checker, Mage, Fisherman, and CopyCat retain the full special
+  simulator. On the recovered Unranked fixture this preserved the exact
+  271,325-node depth-7 tree, `-0.44` score, and PV while reducing the median of
+  seven fresh-process runs from 426 ms to 348 ms (18.3%). At depth nine it
+  preserved the exact 1,511,309-node `+0.16` result while reducing the median
+  from 2.155 s to 1.770 s (17.9%). Focused regressions exercise every ordinary
+  attack geometry, and the complete native rule suite remains green.
+- Three further Fairy-Stockfish ideas were ablated and rejected in their
+  initial and retuned forms. A per-position royal-threat cache measured 429 ms
+  versus 426 ms. Quiescence TT storage changed the depth-7 result and expanded
+  its tree. Adaptive deep aspiration changed the depth-9 result and expanded
+  1.51 million nodes to 2.74 million because Ultimate reductions and
+  same-side action bounds do not satisfy the ordinary repeated-probe
+  assumptions. Countermove ordering was retuned below killers/history, but
+  still expanded the depth-9 tree to 1.90 million nodes.
+
+## Deadline-aware draft search
+
+Ranked Ban and Pick now share the same engine-backed adversarial macro search.
+Ban uses a wider policy-ordered frontier with short per-leaf searches; Pick
+uses deeper leaves. Both are anytime searches with independent deadlines, and
+an incompletely searched opponent-reply frontier cannot displace a fully
+searched action. `tools/benchmark_ultimate_draft_search.py` reproduces the
+live limits. On the 2026-08-06 Apple Silicon development machine it measured:
+
+| Window | Choice | Engine leaves | Elapsed |
+| --- | --- | ---: | ---: |
+| Opening Ban | Penguin | 9 | 1.509 s |
+| Opening 40-point Pick | Queen, Queen, Checker x3 | 15 | 1.525 s |
+| Ban after both opening rosters reveal | Jester | 15 | 1.558 s |
+
+Ban deliberately stops at its 1.5-second analysis slice and reserves the rest
+of the native clock for pot selection and log-confirmed commit. Pick finished
+its complete configured frontier well inside the six-second search slice.
 
 Run `tools/benchmark_ultimate.sh` for fixed perft/search measurements, or set
 `ULTIMATE_LONG_BENCHMARK=1` to include the cold ten-second horizon check. Run

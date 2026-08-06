@@ -90,6 +90,11 @@ python3 tools/evolve_ultimate_army.py --population 32 --generations 20 \
 Use a fixed seed for reproducibility. `tools/selfplay_ultimate.py` compares two
 engine binaries on a color-balanced fixture suite, while
 `tools/benchmark_ultimate.sh` provides fixed performance and perft checks.
+`tools/benchmark_ultimate_draft_search.py` separately exercises the short Ban
+and longer Pick analysis budgets. Live defaults can be tuned with
+`ULTIMATE_DRAFT_BAN_SECONDS`, `ULTIMATE_DRAFT_PICK_SECONDS`, and
+`ULTIMATE_DRAFT_LEAF_NODES`; deadline expiry always returns the best fully
+searched policy-ordered action instead of risking a native auto-pick/ban.
 Re-rank saved finalists at a larger budget with
 `python3 tools/validate_ultimate_armies.py RESULTS.json --nodes 10000`.
 

@@ -18,6 +18,7 @@ import json
 import math
 import os
 import random
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
@@ -587,6 +588,8 @@ class DraftSearchResult:
     candidates: int
     leaves: int
     principal: DraftOutcome | None = None
+    elapsed_seconds: float = 0.0
+    timed_out: bool = False
 
 
 def search_public_draft(
@@ -599,6 +602,7 @@ def search_public_draft(
     reply_width: int = 6,
     rollout_width: int = 5,
     feasible=None,
+    time_limit_seconds: float | None = None,
 ) -> DraftSearchResult:
     """Two-ply adversarial macro search with full-draft rollout leaves.
 
@@ -607,6 +611,11 @@ def search_public_draft(
     position analysis. ``feasible`` may reject a terminal rollout that cannot
     fit around exact already-locked native geometry.
     """
+    started = time.monotonic()
+    deadline = (
+        None if time_limit_seconds is None
+        else started + max(0.0, time_limit_seconds)
+    )
     if state.color != local_color:
         raise ValueError("draft search may only choose the local public turn")
     policies = {"w": white_policy, "b": black_policy}
@@ -619,7 +628,11 @@ def search_public_draft(
     best_principal: DraftOutcome | None = None
     best_score = -math.inf
     leaves = 0
+    timed_out = False
     for action in candidates:
+        if deadline is not None and best_action is not None and time.monotonic() >= deadline:
+            timed_out = True
+            break
         after = state.apply(action)
         replies = [()]
         if after.phase < 12:
@@ -629,7 +642,11 @@ def search_public_draft(
         worst = math.inf
         worst_outcome: DraftOutcome | None = None
         valid_reply = False
+        searched_replies = 0
         for reply in replies:
+            if deadline is not None and valid_reply and time.monotonic() >= deadline:
+                timed_out = True
+                break
             replied = after if after.phase == 12 else after.apply(reply)
             try:
                 outcome = complete_public_draft(
@@ -645,10 +662,19 @@ def search_public_draft(
             score = float(evaluator(outcome))
             leaves += 1
             valid_reply = True
+            searched_replies += 1
+            if deadline is not None and time.monotonic() >= deadline:
+                timed_out = True
             if score < worst:
                 worst = score
                 worst_outcome = outcome
-        if valid_reply and worst > best_score:
+        # A candidate whose opponent replies were cut short has an optimistic
+        # maximin score. It may serve as the sole clock-expired fallback, but
+        # must not displace an action whose complete reply frontier was
+        # actually searched.
+        complete_reply_frontier = searched_replies == len(replies)
+        if (valid_reply and (complete_reply_frontier or best_action is None)
+                and worst > best_score):
             best_score = worst
             best_action = action
             best_principal = worst_outcome
@@ -656,6 +682,7 @@ def search_public_draft(
         raise RuntimeError("draft search found no feasible completed leaf")
     return DraftSearchResult(
         best_action, best_score, len(candidates), leaves, best_principal,
+        time.monotonic() - started, timed_out,
     )
 
 

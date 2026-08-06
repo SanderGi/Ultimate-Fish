@@ -151,6 +151,37 @@ class DraftEvolutionTests(unittest.TestCase):
             result.action, draft.ranked_macro_actions(state, width=1)[0]
         )
 
+    def test_deadline_search_returns_clock_safe_ban_and_pick(self) -> None:
+        ban = draft.search_public_draft(
+            draft.PublicDraftState(), "w", lambda _outcome: 0.0,
+            action_width=4, reply_width=2, rollout_width=2,
+            time_limit_seconds=0.0,
+        )
+        self.assertEqual(len(ban.action), 1)
+        self.assertEqual(ban.leaves, 1)
+        self.assertTrue(ban.timed_out)
+
+        pick_state = draft.PublicDraftState(
+            11,
+            (
+                ("queen", "queen", "copycat", "giant"),
+                ("queen", "queen", "copycat", "giant"),
+                ("queen", "checker", "giant"),
+            ),
+            (
+                ("queen", "queen", "copycat", "giant"),
+                ("queen", "queen", "penguin", "giant"),
+            ),
+            ("prince", "mage", "bomb", "jester", "ghost", "sniper"),
+        )
+        pick = draft.search_public_draft(
+            pick_state, "b", lambda _outcome: 0.0,
+            action_width=4, time_limit_seconds=0.0,
+        )
+        self.assertGreaterEqual(len(pick.action), 1)
+        self.assertEqual(pick.leaves, 1)
+        self.assertTrue(pick.timed_out)
+
 
 if __name__ == "__main__":
     unittest.main()

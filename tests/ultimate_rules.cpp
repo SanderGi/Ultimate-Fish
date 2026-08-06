@@ -255,6 +255,38 @@ void test_bomb_check_legality() {
     expect(control.move_from_string("b1-c2").has_value(),
            "same King escape survives when d1 is a Ghost rather than a Bomb");
 
+    // Search check detection uses a geometric prefilter before invoking the
+    // full native simulator. Exercise every ordinary attack geometry so a
+    // future piece change cannot make that performance shortcut drop checks.
+    const auto expectOrdinaryCheck = [](PieceType type, const char* square,
+                                        const char* description) {
+        Position checked;
+        checked.add_piece(PieceType::King, Color::White,
+                          Position::square_from_name("e5"));
+        checked.add_piece(PieceType::Pawn, Color::White,
+                          Position::square_from_name("a2"));
+        if (type != PieceType::King)
+            checked.add_piece(PieceType::King, Color::Black,
+                              Position::square_from_name("h10"));
+        checked.add_piece(type, Color::Black, Position::square_from_name(square));
+        expect(!checked.move_from_string("a2-a3").has_value(), description);
+    };
+    expectOrdinaryCheck(PieceType::King, "e6", "King geometry survives threat prefilter");
+    expectOrdinaryCheck(PieceType::Jester, "e6", "Jester geometry survives threat prefilter");
+    expectOrdinaryCheck(PieceType::Parasite, "e6", "Parasite geometry survives threat prefilter");
+    expectOrdinaryCheck(PieceType::Prince, "e6", "Prince geometry survives threat prefilter");
+    expectOrdinaryCheck(PieceType::Knight, "c4", "Knight geometry survives threat prefilter");
+    expectOrdinaryCheck(PieceType::Pawn, "d6", "Pawn geometry survives threat prefilter");
+    expectOrdinaryCheck(PieceType::Queen, "e9", "Queen geometry survives threat prefilter");
+    expectOrdinaryCheck(PieceType::Rook, "e9", "Rook geometry survives threat prefilter");
+    expectOrdinaryCheck(PieceType::Bishop, "b8", "Bishop geometry survives threat prefilter");
+    expectOrdinaryCheck(PieceType::Berserker, "d6",
+                        "Berserker geometry survives threat prefilter");
+    expectOrdinaryCheck(PieceType::Ninja, "e8", "Ninja geometry survives threat prefilter");
+    expectOrdinaryCheck(PieceType::Turtle, "e6", "Turtle geometry survives threat prefilter");
+    expectOrdinaryCheck(PieceType::Sniper, "e9", "Sniper geometry survives threat prefilter");
+    expectOrdinaryCheck(PieceType::Dragon, "b8", "Dragon geometry survives threat prefilter");
+
     // Royal threats are not limited to an attacker landing on the King's
     // square. Keep the optimized threat generator honest for every native
     // action in which a quiet-looking move knocks the King out indirectly.

@@ -1240,6 +1240,58 @@ bool Position::real_king_threatened(Color color) const {
     // only for the rare indirect/Angel case that actually needs simulation.
     const Position& attacker = *this;
     const Color attackingColor = ~color;
+    const auto ordinaryActorCanReachDanger = [&](int actor) {
+        const PieceState& piece = attacker.pieces_[actor];
+        const auto reaches = [&](int target) {
+            const int fileDelta = file_of(target) - file_of(piece.square);
+            const int rankDelta = rank_of(target) - rank_of(piece.square);
+            const int fileDistance = std::abs(fileDelta);
+            const int rankDistance = std::abs(rankDelta);
+            switch (piece.type) {
+            case PieceType::King:
+            case PieceType::Jester:
+            case PieceType::Parasite:
+            case PieceType::Prince:
+                return std::max(fileDistance, rankDistance) == 1;
+            case PieceType::Knight:
+                return (fileDistance == 1 && rankDistance == 2) ||
+                       (fileDistance == 2 && rankDistance == 1);
+            case PieceType::Pawn:
+                return fileDistance == 1 &&
+                  rankDelta == (piece.color == Color::White ? 1 : -1);
+            case PieceType::Queen:
+                return fileDelta == 0 || rankDelta == 0 || fileDistance == rankDistance;
+            case PieceType::Rook:
+                return fileDelta == 0 || rankDelta == 0;
+            case PieceType::Bishop:
+                return fileDistance == rankDistance;
+            case PieceType::Berserker:
+                return std::max(fileDistance, rankDistance) <= 1 + int(piece.power);
+            case PieceType::Ninja:
+                return std::max(fileDistance, rankDistance) <= 3 &&
+                  (fileDelta == 0 || rankDelta == 0 || fileDistance == rankDistance);
+            case PieceType::Turtle:
+                return fileDistance + rankDistance == 1;
+            case PieceType::Sniper:
+                return fileDelta == 0 &&
+                  rankDelta * (piece.color == Color::White ? 1 : -1) > 0;
+            case PieceType::Dragon:
+                return fileDistance == rankDistance ||
+                  (fileDistance == 1 && rankDistance == 2) ||
+                  (fileDistance == 2 && rankDistance == 1);
+            default:
+                // Bomb blasts, Giant footprints, paired CopyCats, Checker
+                // victims, and forced relocations need the full native action
+                // generator below. Returning true is deliberately conservative.
+                return true;
+            }
+        };
+        Bitboard danger = royalDanger;
+        while (danger)
+            if (reaches(pop_lsb(danger)))
+                return true;
+        return false;
+    };
     std::vector<Move> replies;
     replies.reserve(128);
     for (int actor = 0; actor < attacker.pieceCount_; ++actor) {
@@ -1253,6 +1305,8 @@ bool Position::real_king_threatened(Color color) const {
             continue;
 
         const PieceType actorType = attacker.pieces_[actor].type;
+        if (!ordinaryActorCanReachDanger(actor))
+            continue;
         const bool needsQuietCompanion =
           actorType == PieceType::Mage || actorType == PieceType::Fisherman ||
           actorType == PieceType::Copycat || actorType == PieceType::CopycatClone;

@@ -3569,6 +3569,15 @@ class PhoneGame:
         self.engine = EngineClient(engine_path)
         self.draft_evaluator: EngineClient | None = None
         self.draft_evaluation_cache: dict[str, float] = {}
+        self.draft_ban_time_seconds = float(os.environ.get(
+            "ULTIMATE_DRAFT_BAN_SECONDS", "1.5"
+        ))
+        self.draft_pick_time_seconds = float(os.environ.get(
+            "ULTIMATE_DRAFT_PICK_SECONDS", "6.0"
+        ))
+        self.draft_leaf_nodes = int(os.environ.get(
+            "ULTIMATE_DRAFT_LEAF_NODES", "10000"
+        ))
         self.ranked_future_reservations: tuple[str, ...] = ()
         self.beliefs: BeliefSet | None = None
         self.perspective_flipped = False
@@ -6271,13 +6280,31 @@ class PhoneGame:
         if self.draft_evaluator is None:
             self.draft_evaluator = EngineClient(self.engine.path)
 
+        is_ban = public_state.action == "ban"
+        time_budget = (
+            getattr(self, "draft_ban_time_seconds", 1.5) if is_ban
+            else getattr(self, "draft_pick_time_seconds", 6.0)
+        )
+        deadline = time.monotonic() + time_budget
+
         def evaluate(outcome) -> float:
             local = planned_armies[outcome_key(outcome)]
             opponent = outcome.black if local_color == "w" else outcome.white
             upn = draft_evaluation_position(local, opponent, local_color)
             if upn not in self.draft_evaluation_cache:
+                remaining_ms = max(40, int((deadline - time.monotonic()) * 1000))
+                # Ban windows need breadth over several candidate denials;
+                # pick windows can afford a deeper judgment of each complete
+                # roster. Both limits stop a single leaf before it consumes
+                # the whole public draft clock.
+                leaf_ms = min(180 if is_ban else 600, remaining_ms)
                 _move, score, _info = self.draft_evaluator.search(
-                    upn, depth=24, nodes=10_000,
+                    upn, depth=24,
+                    nodes=(
+                        min(getattr(self, "draft_leaf_nodes", 10_000), 4_000)
+                        if is_ban else getattr(self, "draft_leaf_nodes", 10_000)
+                    ),
+                    movetime_ms=leaf_ms,
                 )
                 self.draft_evaluation_cache[upn] = float(
                     score if local_color == "w" else -score
@@ -6286,8 +6313,11 @@ class PhoneGame:
 
         result = search_public_draft(
             public_state, local_color, evaluate,
-            action_width=5, reply_width=3, rollout_width=3,
+            action_width=12 if is_ban else 5,
+            reply_width=3,
+            rollout_width=2 if is_ban else 3,
             feasible=feasible,
+            time_limit_seconds=time_budget,
         )
         self.ranked_future_reservations = ()
         if public_state.action == "pick" and result.principal is not None:
@@ -6306,7 +6336,9 @@ class PhoneGame:
                 self.ranked_future_reservations = tuple(future)
         self.log(
             "draft search chose " + " ".join(result.action)
-            + f" (worst {result.score:+.0f}; {result.leaves} engine leaves)"
+            + f" (worst {result.score:+.0f}; {result.leaves} engine leaves; "
+            + f"{result.elapsed_seconds:.2f}s"
+            + ("; deadline" if result.timed_out else "") + ")"
         )
         return result.action
 
@@ -6468,14 +6500,11 @@ class PhoneGame:
                 continue
             if local:
                 searched: tuple[str, ...] | None = None
-                # Ban clocks are substantially shorter than Pick clocks. A
-                # phase-zero adversarial rollout can consume most of that
-                # native window after pot calibration and cause Unity to
-                # auto-ban before the first tap. Use the evolved native draft
-                # policy for the time-critical one-piece Ban action; retain
-                # full engine-evaluated adversarial search for roster Picks,
-                # whose long clocks accommodate it.
-                if action == "pick" and isinstance(self.engine, EngineClient):
+                # Both actions use deadline-aware engine search. Ban receives
+                # a shorter budget and shallower/broader leaves; Pick receives
+                # the longer native window. The evolved policy orders every
+                # partial search and remains the clock-safe fallback.
+                if isinstance(self.engine, EngineClient):
                     try:
                         searched = self._search_ranked_action(
                             public_draft, deployment,

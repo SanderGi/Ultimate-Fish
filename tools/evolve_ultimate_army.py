@@ -402,9 +402,13 @@ class Engine:
         if answer != "positionok":
             raise RuntimeError(f"engine rejected position: {answer}\n{upn}")
 
-    def search(self, upn: str, depth: int, nodes: int) -> tuple[str | None, int]:
+    def search(self, upn: str, depth: int, nodes: int,
+               movetime_ms: int = 0) -> tuple[str | None, int]:
         self.set_position(upn)
-        self.send(f"go depth {depth} nodes {nodes}")
+        command = f"go depth {depth} nodes {nodes}"
+        if movetime_ms:
+            command += f" movetime {movetime_ms}"
+        self.send(command)
         score = 0
         assert self.process.stdout is not None
         for line in self.process.stdout:
