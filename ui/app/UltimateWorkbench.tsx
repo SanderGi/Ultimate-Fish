@@ -94,8 +94,8 @@ const roster: RosterPiece[] = [
   { id: "prince", name: "Prince", symbol: "♕", family: "Melee", summary: "Can move twice if its first move does not attack." },
   { id: "sniper", name: "Sniper", symbol: "⌖", family: "Ranged", summary: "Shoots forward, then reloads for a turn." },
   { id: "fisherman", name: "Fisherman", symbol: "⚓", family: "Support", summary: "Slides on empty rays or pulls a distant character adjacent." },
-  { id: "copycat", name: "CopyCat", symbol: "⇄", family: "Linked", summary: "Moves with a mirrored clone; both share death." },
-  { id: "copycatClone", name: "CopyCat Clone", symbol: "⇆", family: "Linked", summary: "The mirrored half of CopyCat." },
+  { id: "copycat", name: "CopyCat", symbol: "⇄", family: "Linked", summary: "Creates a mirrored clone; either half moves independently and both share death." },
+  { id: "copycatClone", name: "CopyCat Clone", symbol: "⇆", family: "Linked", summary: "A linked half that moves independently and shares death." },
   { id: "angel", name: "Angel", symbol: "⚜", family: "Linked", summary: "Saves a linked ally and returns it to a halo." },
   { id: "halo", name: "Halo", symbol: "⊚", family: "Linked", summary: "Immobile return point linked to an angel." },
 ];

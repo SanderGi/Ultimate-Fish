@@ -107,9 +107,7 @@ int Search::move_score(const Position& position, const Move& move,
         const PieceType attackerType = attacker == Position::NoPiece ? PieceType::Count
                                                                     : position.piece(attacker).type;
         const bool linkedCapture = attackerType == PieceType::Checker ||
-                                   attackerType == PieceType::CheckerKing ||
-                                   attackerType == PieceType::Copycat ||
-                                   attackerType == PieceType::CopycatClone;
+                                   attackerType == PieceType::CheckerKing;
         const int secondary = linkedCapture && move.auxiliary < Position::BoardSquares
                             ? position.piece_on(move.auxiliary) : Position::NoPiece;
         if (secondary != Position::NoPiece && secondary != victim)
