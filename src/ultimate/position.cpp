@@ -25,6 +25,76 @@ constexpr int Around[8][2] = {
 constexpr int KnightOffsets[8][2] = {
   {1, 2}, {2, 1}, {-1, 2}, {-2, 1}, {1, -2}, {2, -1}, {-1, -2}, {-2, -1}};
 
+constexpr int file_of(int square) { return square & 7; }
+constexpr int rank_of(int square) { return square >> 3; }
+constexpr int make_square(int file, int rank) { return rank * 8 + file; }
+constexpr Bitboard square_bb(int square) { return Bitboard{1} << square; }
+
+struct ThreatGeometry {
+    std::array<Bitboard, Position::BoardSquares> king{};
+    std::array<Bitboard, Position::BoardSquares> knight{};
+    std::array<std::array<Bitboard, Position::BoardSquares>, 2> pawn{};
+    std::array<Bitboard, Position::BoardSquares> rook{};
+    std::array<Bitboard, Position::BoardSquares> bishop{};
+    std::array<Bitboard, Position::BoardSquares> queen{};
+    std::array<Bitboard, Position::BoardSquares> ninja{};
+    std::array<Bitboard, Position::BoardSquares> turtle{};
+    std::array<std::array<Bitboard, Position::BoardSquares>, 2> sniper{};
+    std::array<Bitboard, Position::BoardSquares> dragon{};
+};
+
+const ThreatGeometry& threat_geometry() {
+    static const ThreatGeometry geometry = [] {
+        ThreatGeometry result;
+        const auto addRays = [](Bitboard& mask, int square,
+                                const int (*directions)[2], int count, int distance) {
+            for (int direction = 0; direction < count; ++direction)
+                for (int step = 1; step <= distance; ++step) {
+                    const int file = file_of(square) + directions[direction][0] * step;
+                    const int rank = rank_of(square) + directions[direction][1] * step;
+                    if (file < 0 || file >= Position::BoardFiles ||
+                        rank < 0 || rank >= Position::BoardRanks)
+                        break;
+                    mask |= square_bb(make_square(file, rank));
+                }
+        };
+        for (int square = 0; square < Position::BoardSquares; ++square) {
+            addRays(result.king[square], square, Around, 8, 1);
+            addRays(result.rook[square], square, Orthogonal, 4, Position::BoardRanks);
+            addRays(result.bishop[square], square, Diagonal, 4, Position::BoardRanks);
+            result.queen[square] = result.rook[square] | result.bishop[square];
+            addRays(result.ninja[square], square, Around, 8, 3);
+            addRays(result.turtle[square], square, Orthogonal, 4, 1);
+            for (const auto& offset : KnightOffsets) {
+                const int file = file_of(square) + offset[0];
+                const int rank = rank_of(square) + offset[1];
+                if (file >= 0 && file < Position::BoardFiles &&
+                    rank >= 0 && rank < Position::BoardRanks)
+                    result.knight[square] |= square_bb(make_square(file, rank));
+            }
+            result.dragon[square] = result.bishop[square] | result.knight[square];
+            for (Color color : {Color::White, Color::Black}) {
+                const int colorIndex = static_cast<int>(color);
+                const int direction = color == Color::White ? 1 : -1;
+                const int targetRank = rank_of(square) + direction;
+                if (targetRank >= 0 && targetRank < Position::BoardRanks)
+                    for (const int horizontal : {-1, 1}) {
+                        const int targetFile = file_of(square) + horizontal;
+                        if (targetFile >= 0 && targetFile < Position::BoardFiles)
+                            result.pawn[colorIndex][square] |=
+                              square_bb(make_square(targetFile, targetRank));
+                    }
+                for (int rank = rank_of(square) + direction;
+                     rank >= 0 && rank < Position::BoardRanks; rank += direction)
+                    result.sniper[colorIndex][square] |=
+                      square_bb(make_square(file_of(square), rank));
+            }
+        }
+        return result;
+    }();
+    return geometry;
+}
+
 // SimulatedFreeze::Direction. These bits are serialized in Model_Piece.action
 // and identify the characters frozen by the Penguin's most recent move.
 constexpr std::uint8_t penguin_direction_bit(int deltaFile, int deltaRank) {
@@ -93,10 +163,6 @@ constexpr std::array<int, static_cast<std::size_t>(PieceType::Count)> TropismWei
 constexpr bool valid_square(int square) {
     return square >= 0 && square < Position::BoardSquares;
 }
-constexpr int file_of(int square) { return square & 7; }
-constexpr int rank_of(int square) { return square >> 3; }
-constexpr int make_square(int file, int rank) { return rank * 8 + file; }
-constexpr Bitboard square_bb(int square) { return Bitboard{1} << square; }
 
 int pop_lsb(Bitboard& mask) {
     const std::uint64_t low = static_cast<std::uint64_t>(mask);
@@ -1242,61 +1308,50 @@ bool Position::real_king_threatened(Color color) const {
     const Color attackingColor = ~color;
     const auto ordinaryActorCanReachDanger = [&](int actor) {
         const PieceState& piece = attacker.pieces_[actor];
-        const auto reaches = [&](int target) {
-            const int fileDelta = file_of(target) - file_of(piece.square);
-            const int rankDelta = rank_of(target) - rank_of(piece.square);
-            const int fileDistance = std::abs(fileDelta);
-            const int rankDistance = std::abs(rankDelta);
-            switch (piece.type) {
-            case PieceType::King:
-            case PieceType::Jester:
-            case PieceType::Parasite:
-            case PieceType::Prince:
-                return std::max(fileDistance, rankDistance) == 1;
-            case PieceType::Knight:
-                return (fileDistance == 1 && rankDistance == 2) ||
-                       (fileDistance == 2 && rankDistance == 1);
-            case PieceType::Pawn:
-                return fileDistance == 1 &&
-                  rankDelta == (piece.color == Color::White ? 1 : -1);
-            case PieceType::Queen:
-                return fileDelta == 0 || rankDelta == 0 || fileDistance == rankDistance;
-            case PieceType::Rook:
-                return fileDelta == 0 || rankDelta == 0;
-            case PieceType::Bishop:
-                return fileDistance == rankDistance;
-            case PieceType::Berserker:
-                return std::max(fileDistance, rankDistance) <= 1 + int(piece.power);
-            case PieceType::Ninja:
-                return std::max(fileDistance, rankDistance) <= 3 &&
-                  (fileDelta == 0 || rankDelta == 0 || fileDistance == rankDistance);
-            case PieceType::Turtle:
-                return fileDistance + rankDistance == 1;
-            case PieceType::Sniper:
-                return fileDelta == 0 &&
-                  rankDelta * (piece.color == Color::White ? 1 : -1) > 0;
-            case PieceType::Dragon:
-                return fileDistance == rankDistance ||
-                  (fileDistance == 1 && rankDistance == 2) ||
-                  (fileDistance == 2 && rankDistance == 1);
-            default:
-                // Bomb blasts, Giant footprints, paired CopyCats, Checker
-                // victims, and forced relocations need the full native action
-                // generator below. Returning true is deliberately conservative.
-                return true;
+        const ThreatGeometry& geometry = threat_geometry();
+        Bitboard reach = 0;
+        switch (piece.type) {
+        case PieceType::King:
+        case PieceType::Jester:
+        case PieceType::Parasite:
+        case PieceType::Prince: reach = geometry.king[piece.square]; break;
+        case PieceType::Knight: reach = geometry.knight[piece.square]; break;
+        case PieceType::Pawn:
+            reach = geometry.pawn[static_cast<int>(piece.color)][piece.square]; break;
+        case PieceType::Queen: reach = geometry.queen[piece.square]; break;
+        case PieceType::Rook: reach = geometry.rook[piece.square]; break;
+        case PieceType::Bishop: reach = geometry.bishop[piece.square]; break;
+        case PieceType::Ninja: reach = geometry.ninja[piece.square]; break;
+        case PieceType::Turtle: reach = geometry.turtle[piece.square]; break;
+        case PieceType::Sniper:
+            reach = geometry.sniper[static_cast<int>(piece.color)][piece.square]; break;
+        case PieceType::Dragon: reach = geometry.dragon[piece.square]; break;
+        case PieceType::Berserker: {
+            Bitboard danger = royalDanger;
+            const int radius = 1 + int(piece.power);
+            while (danger) {
+                const int target = pop_lsb(danger);
+                if (std::max(std::abs(file_of(target) - file_of(piece.square)),
+                             std::abs(rank_of(target) - rank_of(piece.square))) <= radius)
+                    return true;
             }
-        };
-        Bitboard danger = royalDanger;
-        while (danger)
-            if (reaches(pop_lsb(danger)))
-                return true;
-        return false;
+            return false;
+        }
+        default:
+            // Bomb blasts, Giant footprints, paired CopyCats, Checker
+            // victims, and forced relocations need the full native action
+            // generator below. Returning true is deliberately conservative.
+            return true;
+        }
+        return bool(reach & royalDanger);
     };
     std::vector<Move> replies;
     replies.reserve(128);
     for (int actor = 0; actor < attacker.pieceCount_; ++actor) {
         if (!attacker.pieces_[actor].alive || !attacker.pieces_[actor].onBoard ||
             attacker.pieces_[actor].color != attackingColor)
+            continue;
+        if (attacker.frozen(actor) || attacker.pieces_[actor].cooldown)
             continue;
         // Ghost attacks never produce check/checkmate in the app.  A royal may
         // enter a hidden Ghost's adjacency, reveal it, and remain alive until

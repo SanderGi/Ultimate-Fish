@@ -137,6 +137,19 @@ The optimization suggestions were measured rather than accepted wholesale:
   same-side action bounds do not satisfy the ordinary repeated-probe
   assumptions. Countermove ordering was retuned below killers/history, but
   still expanded the depth-9 tree to 1.90 million nodes.
+- The ordinary-piece royal prefilter now uses precomputed 80-square bitboard
+  masks for King, Pawn, Knight, sliders, Ninja, Turtle, Sniper, and Dragon,
+  while stateful Berserkers and indirect special effects retain native logic.
+  It also rejects frozen and cooldown actors before action generation. The
+  exact 1,511,309-node depth-9 result and PV were unchanged; seven
+  fresh-process runs reduced median time from 1.770 s to 1.672 s (5.5%).
+- Stockfish-style capture history was tested both globally and only from depth
+  four. Both versions preserved the result but made the depth-9 fixture
+  slightly slower, so neither was retained. A YBWC-like timed root split was
+  also rejected: at ten seconds one and two threads both completed depth 10,
+  while four workers expanded substantially more nodes without completing an
+  extra iteration. Independent worker tables destroyed enough shared ordering
+  information that raw throughput did not become usable depth.
 
 ## Deadline-aware draft search
 
@@ -176,6 +189,9 @@ reports mate in 12 at depth one. Replacing the Rook with a Queen reports mate
 in 9, demonstrating that DTW selects the shorter conversion. Unmoved pieces,
 special state, and unrepresented material decline the probe rather than
 silently using an inexact result.
+Normal middlegames reject the three-character probe from the incremental
+occupancy bitboard before scanning piece records, keeping exact-table lookup
+off the hot path until only three occupied cells remain.
 
 Run `tools/benchmark_ultimate.sh` for fixed perft/search measurements, or set
 `ULTIMATE_LONG_BENCHMARK=1` to include the cold ten-second horizon check. Run

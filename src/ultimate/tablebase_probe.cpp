@@ -105,6 +105,11 @@ const std::vector<Database>& databases() {
 }  // namespace
 
 std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
+    const Bitboard occupied = position.occupancy_[0] | position.occupancy_[1];
+    if (__builtin_popcountll(static_cast<std::uint64_t>(occupied)) +
+          __builtin_popcountll(static_cast<std::uint64_t>(occupied >> 64)) != 3)
+        return std::nullopt;
+
     if (position.continuation_ != Continuation::None ||
         position.forcedPiece_ != Position::NoPiece ||
         position.enPassantSquare_ != Position::NoSquare ||

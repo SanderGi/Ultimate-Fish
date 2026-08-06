@@ -302,7 +302,8 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
         // Special actions can relocate multiple pieces, create material, or
         // trigger a Giant collision. Treat only ordinary non-captures as LMR
         // candidates; reducing those actions was a large tactical blind spot.
-        const bool quiet = move.kind == MoveKind::Normal && !position.is_capture(move);
+        const bool capture = position.is_capture(move);
+        const bool quiet = move.kind == MoveKind::Normal && !capture;
         const int attacker = position.piece_on(move.from);
         int score;
         const bool rootDraw = ply == 0 &&
