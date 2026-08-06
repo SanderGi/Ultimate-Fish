@@ -2640,6 +2640,10 @@ void test_native_draft_windows_and_costs() {
     for (int phase = 0; phase < DraftState::PhaseCount; ++phase) {
         expect(automatic.autoplay(automaticChoices, &error),
                "draft AI satisfies every ranked window: " + error);
+        if (phase == 6 || phase == 7 || phase == 10 || phase == 11)
+            expect(std::find(automaticChoices.begin(), automaticChoices.end(),
+                             PieceType::Jester) == automaticChoices.end(),
+                   "draft AI does not buy Jester after its King was publicly locked");
         expect(automatic.deployment_slots(Color::White) <= 24 &&
                automatic.deployment_slots(Color::Black) <= 24,
                "draft AI never exceeds either three-rank deployment zone");

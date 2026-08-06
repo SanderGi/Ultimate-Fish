@@ -261,3 +261,17 @@ rather than additional strength evidence. Remote draft waits now follow the
 native commit/terminal events without a shorter local deadline. The same trace
 also motivated a five-point in-cell drop sweep so a locked Giant collider
 cannot indefinitely intercept a legal later Prince placement.
+
+The next Ivory repeat directly validated that placement recovery: an `e1`
+Prince was obstructed at all five first-pass target points, the controller
+remained in-phase, replanned, and locked the exact middle group without manual
+input. The final opponent group then exposed a ban-observation race rather
+than a draft-rule difference. Native logs showed the real earlier ban was
+Angel, but its texture line preceded the phase-complete frame and was discarded
+by the consuming wait; a visual fallback mislabeled an overlapping pot as
+Mage, causing the engine to reject the opponent's later legal Mage. The game
+timed out for -5 ranking before search and is excluded from strength evidence.
+Ban identity now comes exclusively from the non-consuming native texture
+journal. This run also showed the old policy spending its final group on two
+Jesters after the King square was already revealed; late Jesters now receive a
+prohibitive policy penalty pending the next coevolution run.

@@ -644,6 +644,28 @@ class RankedDraftControllerTests(unittest.TestCase):
         assert event is not None
         return event
 
+    def test_opponent_ban_uses_journal_when_texture_precedes_commit_frame(self):
+        class BanEvents:
+            def __init__(self):
+                self.waited = False
+
+            @staticmethod
+            def ranked_ban_snapshot():
+                # Captured ordering: TEXURE ASSIGNED TO Angel was journaled
+                # before NetworkManager:OnBanCharacter(Type) completed the
+                # phase wait.
+                return ("angel",)
+
+            def wait(self, _kinds, _timeout):
+                self.waited = True
+                raise AssertionError("journaled ban must not fall back to queue")
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.events = BanEvents()
+
+        self.assertEqual(game._observe_ranked_opponent_ban(0), "angel")
+        self.assertFalse(game.events.waited)
+
     def test_ranked_points_survive_phase_queue_consumption(self):
         class JournalOnlyEvents:
             def points_snapshot(self):

@@ -5672,29 +5672,43 @@ class PhoneGame:
 
     def _observe_ranked_opponent_ban(
         self,
-        previous,
-        banned: set[str],
+        previous_count: int,
     ) -> str:
-        """Recover the exact newly public ban from its native texture event."""
-        try:
-            event = self.events.wait(
-                ("draft_ban_piece", "game_over", "out_of_time"), 1.5
-            )
-        except TimeoutError:
-            # Compatibility fallback only. The public texture event is exact;
-            # whole-pot differencing can be ambiguous where pots overlap.
-            current = self.adb.screenshot()
-            available = {
-                piece: point for piece, point in self.draft_pots.items()
-                if piece not in banned
-            }
-            piece, _scores = changed_pot(previous, current, available)
-            return piece
-        if event.kind != "draft_ban_piece" or not event.piece:
-            raise RuntimeError(
-                f"Ranked draft stopped while reading opponent ban: {event.kind}"
-            )
-        return event.piece
+        """Recover the exact ban from its non-consuming native journal.
+
+        Unity does not consistently order the texture diagnostic and the
+        OnBanCharacter method frame. Waiting for the latter can therefore
+        consume and discard the former. The journal is authoritative across
+        either ordering; never substitute an overlapping-pot image guess.
+        """
+        deadline = time.monotonic() + 1.5
+        event: AppEvent | None = None
+        while time.monotonic() < deadline:
+            snapshot = self.events.ranked_ban_snapshot()
+            if len(snapshot) > previous_count:
+                if len(snapshot) != previous_count + 1:
+                    raise RuntimeError(
+                        "multiple native Ban identities appeared in one phase"
+                    )
+                return snapshot[-1]
+            try:
+                event = self.events.wait(
+                    ("draft_ban_piece", "game_over", "out_of_time"),
+                    min(0.10, deadline - time.monotonic()),
+                )
+            except TimeoutError:
+                continue
+            if event.kind != "draft_ban_piece" or not event.piece:
+                raise RuntimeError(
+                    f"Ranked draft stopped while reading opponent ban: {event.kind}"
+                )
+            # EventStream journals before queueing. Test/replay streams may
+            # expose only the event itself, which is equally exact.
+            snapshot = self.events.ranked_ban_snapshot()
+            if len(snapshot) > previous_count:
+                return snapshot[-1]
+            return event.piece
+        raise RuntimeError("native opponent Ban produced no public piece identity")
 
     def _wait_ranked_opponent_phase(
         self, event_kind: str, action: str, phase: int,
@@ -5980,11 +5994,9 @@ class PhoneGame:
             raise RuntimeError("call start_ranked before drafting")
         self.engine.draft_new()
         deployment = DraftDeployment()
-        banned: set[str] = set()
         # Preserve the pristine phase-zero locks before spending time on side
         # detection; a very fast Ivory opponent can otherwise finish its ban
         # while that detection is running.
-        previous = self.adb.screenshot()
         local_ivory = self._ranked_is_ivory()
         self.online_local_team = 0 if local_ivory else 1
         self.log("Ranked draft side: " + ("Ivory" if local_ivory else "Onyx"))
@@ -6016,9 +6028,7 @@ class PhoneGame:
                 self.log(f"recovered pre-calibration opponent ban: {piece}")
                 self.engine.draft_choose(piece)
                 self.engine.draft_commit()
-                banned.add(piece)
                 time.sleep(0.18)
-                previous = self.adb.screenshot()
                 continue
             if local:
                 choices = self.engine.draft_auto()
@@ -6028,13 +6038,16 @@ class PhoneGame:
                 if action == "ban":
                     piece = choices[0]
                     self._commit_ranked_local_ban(piece, phase)
-                    banned.add(piece)
                 else:
                     self._commit_ranked_local_pick(
                         choices, deployment, phase, local_ivory,
                     )
             else:
                 self.log(f"draft phase {phase}: waiting for opponent {action}")
+                ban_generation = (
+                    len(self.events.ranked_ban_snapshot())
+                    if action == "ban" else -1
+                )
                 committed = self._wait_ranked_opponent_phase(
                     event_kind, action, phase,
                 )
@@ -6060,13 +6073,11 @@ class PhoneGame:
                     # exact roster additions to the native draft state.
                     self._observe_ranked_opponent_pick(local_ivory)
                 else:
-                    piece = self._observe_ranked_opponent_ban(previous, banned)
+                    piece = self._observe_ranked_opponent_ban(ban_generation)
                     self.log(f"public opponent ban: {piece}")
                     self.engine.draft_choose(piece)
                     self.engine.draft_commit()
-                    banned.add(piece)
             time.sleep(0.18)
-            previous = self.adb.screenshot()
 
         if self.engine.draft_status()["action"] != "complete":
             raise RuntimeError("engine draft did not complete after twelve phases")

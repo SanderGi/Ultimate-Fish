@@ -165,6 +165,11 @@ std::optional<PieceType> DraftState::suggest() const {
     constexpr int OpponentDeny = 168;
     constexpr int SelfPreserve = 327;
     constexpr int FinalPenguin = -164;
+    // Once this player's opening group has been revealed, the opponent has
+    // already learned which royal is the fixed King. A newly drafted Jester
+    // can no longer create royal-location ambiguity, so do not spend later
+    // immutable groups on that now-redundant deception piece.
+    constexpr int RevealedKingJester = -100000;
     int bestScore = std::numeric_limits<int>::min();
     PieceType best = choices.front();
     for (const PieceType type : choices) {
@@ -178,6 +183,8 @@ std::optional<PieceType> DraftState::suggest() const {
               team(opponent).begin(), team(opponent).end(), type));
             score = Ban[typeIndex] + OpponentDeny * opponentCopies - SelfPreserve * copies;
         }
+        else if (type == PieceType::Jester && lockedSizes_[index(current.player)] > 1)
+            score += RevealedKingJester;
         else if (current.lastPick && type == PieceType::Penguin)
             score += FinalPenguin;
         if (score > bestScore) {

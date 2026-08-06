@@ -92,6 +92,15 @@ count and named pot are journaled independently of queue consumers, so a remote
 phase-zero Ban completed during pot calibration is replayed into the engine
 before the twelve-window loop continues.
 
+That identity journal must also be used after calibration. The shipping client
+can print `TEXURE ASSIGNED TO <piece>` either before or after the
+`OnBanCharacter` method frame. In a captured Ranked trace, the exact Angel
+texture arrived first; waiting for the method frame discarded it and an
+overlapping-pot image fallback incorrectly reported Mage. The controller now
+reads exactly one non-consuming journal addition for the phase and has no
+visual ban-identity fallback. Bans remain global and permanent, as in the
+native game.
+
 An opponent timeout or forfeit can end the game during any of their six draft
 windows, before a playable board exists. The result overlay is classified at
 that terminal callback and returned as a completed game, allowing a multi-game
@@ -161,6 +170,12 @@ transient landings and locked `Prince@d1,e1; Pawn@c1`, then
 `Prince@h1; Checker@b1`, producing the evolved 99-point roster without timeout
 or manual input. The resulting game remained synchronized and ended in an
 Ultimate Fish forced-mate win.
+
+Jester placement timing is strategically observable. Once a player's opening
+group has locked and revealed the fixed King's square, a Jester added in a
+later immutable group cannot make that known King location ambiguous. The
+draft policy therefore applies a prohibitive late-Jester penalty while keeping
+the choice rules-legal for replaying an opponent's public draft exactly.
 
 A later draft exposed why Giant's point-only acknowledgement is insufficient:
 one locked Giant footprint differed from the controller's assumed anchor, so a
