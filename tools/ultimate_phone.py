@@ -24,7 +24,7 @@ import subprocess
 import sys
 import threading
 import time
-from collections import Counter
+from collections import Counter, deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Iterator, Sequence
@@ -2179,6 +2179,23 @@ class EngineClient:
         unknown = [piece for piece in choices if piece not in DRAFT_PIECES]
         if unknown:
             raise RuntimeError(f"engine returned unknown draft pieces: {unknown}")
+        return choices
+
+    def draft_preview(self, excluded: Iterable[str] = ()) -> list[str]:
+        excluded = tuple(dict.fromkeys(excluded))
+        unknown = [piece for piece in excluded if piece not in DRAFT_PIECES]
+        if unknown:
+            raise ValueError(f"unknown excluded draft pieces: {unknown}")
+        self.send("draft preview" + (
+            " " + " ".join(excluded) if excluded else ""
+        ))
+        line = self.until(("draftpreview", "info string draft error"))
+        if line.startswith("info string"):
+            raise RuntimeError(line)
+        choices = line.split()[1:]
+        unknown = [piece for piece in choices if piece not in DRAFT_PIECES]
+        if unknown:
+            raise RuntimeError(f"engine previewed unknown draft pieces: {unknown}")
         return choices
 
     def draft_choose(self, piece: str) -> None:
@@ -5986,6 +6003,61 @@ class PhoneGame:
             )
             return
 
+    def _choose_feasible_ranked_pick(
+        self, deployment: DraftDeployment,
+    ) -> list[str]:
+        """Commit the strongest engine group packable around exact locks.
+
+        Native Giant placement can legally snap away from its requested anchor.
+        A later engine-optimal group may then be impossible even though every
+        individual piece fits the coarse 24-slot cap. Preview on a copied draft
+        state, test the complete geometric packing, and minimally exclude a
+        conflicting suggested type before committing the real engine state.
+        """
+        previewer = getattr(self.engine, "draft_preview", None)
+        if previewer is None:  # Lightweight legacy/replay test doubles.
+            return self.engine.draft_auto()
+        queue_: deque[frozenset[str]] = deque((frozenset(),))
+        seen: set[frozenset[str]] = set()
+        attempts = 0
+        while queue_ and attempts < 128:
+            excluded = queue_.popleft()
+            if excluded in seen:
+                continue
+            seen.add(excluded)
+            attempts += 1
+            try:
+                choices = previewer(sorted(excluded))
+            except RuntimeError:
+                continue
+            try:
+                deployment.plan(choices)
+            except RuntimeError:
+                # Breadth-first exclusion preserves as much of the engine's
+                # preferred group as possible. Duplicate types need only one
+                # branch because the preview policy chooses their multiplicity.
+                # Autoplay appends its strongest marginal choice first. Try
+                # excluding the weakest/latest distinct choice first so the
+                # first feasible same-cardinality preview preserves the most
+                # policy value.
+                for piece in reversed(tuple(dict.fromkeys(choices))):
+                    candidate = excluded | {piece}
+                    if candidate not in seen:
+                        queue_.append(candidate)
+                continue
+            for piece in choices:
+                self.engine.draft_choose(piece)
+            self.engine.draft_commit()
+            if excluded:
+                self.log(
+                    "adapted Ranked pick around locked geometry; excluded "
+                    + " ".join(sorted(excluded))
+                )
+            return choices
+        raise RuntimeError(
+            "engine found no Ranked pick group packable around locked pieces"
+        )
+
     def run_ranked_draft(
         self,
     ) -> list[tuple[str, str]] | OpeningTerminal:
@@ -6031,7 +6103,10 @@ class PhoneGame:
                 time.sleep(0.18)
                 continue
             if local:
-                choices = self.engine.draft_auto()
+                choices = (
+                    self.engine.draft_auto() if action == "ban" else
+                    self._choose_feasible_ranked_pick(deployment)
+                )
                 self.log(
                     f"draft phase {phase}: {action} "
                     + (" ".join(choices) if choices else "(none)"))

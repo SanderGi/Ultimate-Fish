@@ -192,6 +192,35 @@ int main() {
             }
             continue;
         }
+        if (line == "draft preview" || line.rfind("draft preview ", 0) == 0) {
+            std::istringstream input(line);
+            std::string token;
+            input >> token >> token;
+            std::vector<PieceType> excluded;
+            bool valid = true;
+            while (input >> token) {
+                const auto type = Position::type_from_name(token);
+                if (!type) {
+                    valid = false;
+                    break;
+                }
+                excluded.push_back(*type);
+            }
+            DraftState preview = draft;
+            std::vector<PieceType> choices;
+            std::string error;
+            if (!valid)
+                std::cout << "info string draft error unknown excluded piece\n";
+            else if (!preview.autoplay(choices, &error, excluded))
+                std::cout << "info string draft error " << error << '\n';
+            else {
+                std::cout << "draftpreview";
+                for (const PieceType type : choices)
+                    std::cout << ' ' << Position::type_name(type);
+                std::cout << '\n';
+            }
+            continue;
+        }
         if (line.rfind("draft choose ", 0) == 0) {
             const auto type = Position::type_from_name(line.substr(13));
             std::string error;

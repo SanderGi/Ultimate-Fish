@@ -485,6 +485,15 @@ class EngineDraftProtocolTests(unittest.TestCase):
             "draft auto", "draft choose queen", "draft commit",
         ])
 
+    def test_preview_accepts_exclusions_without_committing(self):
+        client, commands = self.client_with_lines(
+            "draftpreview queen queen checker")
+        self.assertEqual(
+            client.draft_preview(("copycat", "prince")),
+            ["queen", "queen", "checker"],
+        )
+        self.assertEqual(commands, ["draft preview copycat prince"])
+
 
 class AdbDeviceTests(unittest.TestCase):
     @unittest.skipUnless(importlib.util.find_spec("PIL"), "Pillow not installed")
@@ -780,6 +789,43 @@ class RankedDraftControllerTests(unittest.TestCase):
         )
         self.assertNotEqual(retry[0], "a2")
         self.assertIn("a2", retry[1:])
+
+    def test_ranked_pick_previews_around_misplaced_locked_giant(self):
+        class PreviewEngine:
+            def __init__(self):
+                self.chosen = []
+                self.commits = 0
+
+            @staticmethod
+            def draft_preview(excluded):
+                excluded = set(excluded)
+                if not excluded:
+                    return ["prince", "prince", "mage", "copycat"]
+                if "copycat" in excluded:
+                    return ["queen", "queen", "checker"]
+                raise RuntimeError("excluded group cannot meet its floor")
+
+            def draft_choose(self, piece):
+                self.chosen.append(piece)
+
+            def draft_commit(self):
+                self.commits += 1
+
+        deployment = MODULE.DraftDeployment()
+        for piece, square in (
+            ("giant", "c1"), ("prince", "f1"), ("prince", "g1"),
+            ("giant", "a2"), ("giant", "e2"), ("giant", "g2"),
+        ):
+            deployment.reserve(piece, square)
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.engine = PreviewEngine()
+        game.log = lambda _message: None
+
+        choices = game._choose_feasible_ranked_pick(deployment)
+
+        self.assertEqual(choices, ["queen", "queen", "checker"])
+        self.assertEqual(game.engine.chosen, choices)
+        self.assertEqual(game.engine.commits, 1)
 
     def test_ranked_pick_uses_compact_visible_deployment_geometry(self):
         self.assertEqual(

@@ -79,12 +79,16 @@ class DraftPolicy:
         if not (len(self.pick) == len(self.repeat) == len(self.ban) == len(PIECES)):
             raise ValueError("draft policy arrays must cover every selectable piece")
 
-    def pick_score(self, piece: str, own: Sequence[str], final: bool) -> int:
+    def pick_score(
+        self, piece: str, own: Sequence[str], final: bool,
+        royal_revealed: bool = False,
+    ) -> int:
         index = INDEX[piece]
         return (
             self.pick[index]
             + self.repeat[index] * own.count(piece)
             + (self.final_penguin if final and piece == "penguin" else 0)
+            - (100_000 if royal_revealed and piece == "jester" else 0)
         )
 
     def ban_score(self, piece: str, own: Sequence[str], enemy: Sequence[str]) -> int:
@@ -323,7 +327,10 @@ def simulate_draft(white: DraftPolicy, black: DraftPolicy) -> DraftOutcome:
             piece = max(
                 legal,
                 key=lambda candidate: (
-                    policy.pick_score(candidate, own, final),
+                    policy.pick_score(
+                        candidate, own, final,
+                        royal_revealed=bool(groups[color]),
+                    ),
                     -INDEX[candidate],
                 ),
             )

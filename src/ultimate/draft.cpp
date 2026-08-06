@@ -137,9 +137,12 @@ bool DraftState::commit(std::string* error) {
     return true;
 }
 
-std::optional<PieceType> DraftState::suggest() const {
+std::optional<PieceType> DraftState::suggest(const std::vector<PieceType>& excluded) const {
     const auto choices = legal_choices();
-    if (choices.empty())
+    const auto allowed = [&](PieceType type) {
+        return std::find(excluded.begin(), excluded.end(), type) == excluded.end();
+    };
+    if (std::none_of(choices.begin(), choices.end(), allowed))
         return std::nullopt;
     const DraftWindow current = window();
     // The 2026-08-06 continuation league evolved independent pick, repeat,
@@ -173,6 +176,8 @@ std::optional<PieceType> DraftState::suggest() const {
     int bestScore = std::numeric_limits<int>::min();
     PieceType best = choices.front();
     for (const PieceType type : choices) {
+        if (!allowed(type))
+            continue;
         const std::size_t typeIndex = static_cast<std::size_t>(type);
         const int copies = static_cast<int>(std::count(team(current.player).begin(),
                                                         team(current.player).end(), type));
@@ -195,7 +200,8 @@ std::optional<PieceType> DraftState::suggest() const {
     return best;
 }
 
-bool DraftState::autoplay(std::vector<PieceType>& choices, std::string* error) {
+bool DraftState::autoplay(std::vector<PieceType>& choices, std::string* error,
+                          const std::vector<PieceType>& excluded) {
     choices.clear();
     if (complete()) {
         if (error)
@@ -204,7 +210,7 @@ bool DraftState::autoplay(std::vector<PieceType>& choices, std::string* error) {
     }
     const DraftWindow current = window();
     if (current.action == DraftAction::Ban) {
-        const auto choice = suggest();
+        const auto choice = suggest(excluded);
         if (!choice || !choose(*choice, error))
             return false;
         choices.push_back(*choice);
@@ -218,7 +224,7 @@ bool DraftState::autoplay(std::vector<PieceType>& choices, std::string* error) {
     // The legal-choice filter enforces the native 100-point budget and finite
     // 8x3 deployment capacity, including multi-cell pairs.
     while (points(current.player) < target) {
-        const auto choice = suggest();
+        const auto choice = suggest(excluded);
         if (!choice || !choose(*choice, error))
             break;
         choices.push_back(*choice);

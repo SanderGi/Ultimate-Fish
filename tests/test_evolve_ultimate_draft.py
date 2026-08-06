@@ -41,6 +41,9 @@ class DraftEvolutionTests(unittest.TestCase):
                 self.assertTrue(cells)
                 self.assertFalse(cells & occupied)
                 occupied.update(cells)
+        for groups in (outcome.white_groups, outcome.black_groups):
+            self.assertNotIn("jester", groups[1])
+            self.assertNotIn("jester", groups[2])
 
     def test_live_deployment_policy_closes_corner_king_rays(self) -> None:
         outcome = draft.simulate_draft(draft.BASE_POLICY, draft.BASE_POLICY)

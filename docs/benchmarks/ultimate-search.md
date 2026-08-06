@@ -275,3 +275,17 @@ Ban identity now comes exclusively from the non-consuming native texture
 journal. This run also showed the old policy spending its final group on two
 Jesters after the King square was already revealed; late Jesters now receive a
 prohibitive policy penalty pending the next coevolution run.
+
+The following Onyx validation read the opponent's public bans exactly as
+Berserker and Ghost, confirming the journal-order repair. Its opening group
+also demonstrated exact local reconciliation when one Giant locked at `c1`
+instead of the requested `c2`. That legal footprint made the already-committed
+middle CopyCat geometrically impossible alongside the other three Giants; the
+controller correctly refused to invent a placement but had no way to revise
+the engine group, and the native draft timeout cost +0 rating. This is excluded
+from strength evidence. The engine protocol now supports non-mutating draft
+previews with candidate exclusions, and the controller validates full
+backtracked placement before committing. Replaying the captured draft yields
+the original infeasible `Prince Prince Mage CopyCat`, then the feasible
+same-cost `Prince Prince Mage Knight` when the weakest conflicting CopyCat is
+excluded.

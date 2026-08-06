@@ -177,6 +177,18 @@ later immutable group cannot make that known King location ambiguous. The
 draft policy therefore applies a prohibitive late-Jester penalty while keeping
 the choice rules-legal for replaying an opponent's public draft exactly.
 
+The coarse native 24-cell limit is not enough to prove a later group is
+physically packable. In one Onyx trace, a Giant requested at `c2` legally
+locked at `c1`; together with Giants at `a2,e2,g2`, that exact layout left five
+single cells but no free mirror pair for the engine's proposed CopyCat. Draft
+selection now uses a non-mutating `draft preview` protocol. The controller
+tests each complete proposed group against the exact locked footprints, then
+minimally excludes the weakest conflicting proposal and previews again before
+issuing any real `draft choose` or `draft commit`. For the captured state,
+excluding CopyCat changed `Prince Prince Mage CopyCat` into the packable exact
+50-point group `Prince Prince Mage Knight`; the engine draft phase remains
+unchanged throughout previewing.
+
 A later draft exposed why Giant's point-only acknowledgement is insufficient:
 one locked Giant footprint differed from the controller's assumed anchor, so a
 later group repeatedly targeted cells that were not actually free. The local

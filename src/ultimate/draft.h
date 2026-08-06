@@ -43,8 +43,10 @@ class DraftState {
     bool choose(PieceType type, std::string* error = nullptr);
     bool unchoose(PieceType type);
     bool commit(std::string* error = nullptr);
-    [[nodiscard]] std::optional<PieceType> suggest() const;
-    bool autoplay(std::vector<PieceType>& choices, std::string* error = nullptr);
+    [[nodiscard]] std::optional<PieceType> suggest(
+      const std::vector<PieceType>& excluded = {}) const;
+    bool autoplay(std::vector<PieceType>& choices, std::string* error = nullptr,
+                  const std::vector<PieceType>& excluded = {});
 
    private:
     static std::size_t index(Color color) { return static_cast<std::size_t>(color); }
