@@ -72,7 +72,8 @@ public cells and inferred Ghosts reconcile exactly with the announced material;
 the opening candidate must also contain a royal. Ranked automation fails closed
 if that public journal is absent and never falls back to tapping cells obscured
 by character pots.
-The final group may legally stop below 100. Ranked initialization therefore
+The final group may legally stop below 100. A live autonomous Onyx draft was
+accepted at 90 points and played to completion. Ranked initialization therefore
 uses the last public cumulative opponent total from `GetPoints`, not the global
 100-point ceiling, when reconstructing hidden Ghost count and royal hypotheses.
 `OnBanCharacter` is public. Its subsequent native

@@ -49,7 +49,7 @@ The final optimization pass used the now-corrected 13,724-node frontier and the
 | Ordered pseudo-legal actions, validated on the searched child | 7 | 259,421 | 0.505 s |
 
 A cold ten-second release search now completes **depth 10**, visits about
-6.0–6.2 million nodes, and selects `f2!f8` with the PV
+6.5 million nodes, and selects `f2!f8` with the PV
 `f2!f8 f3@h2 h1-g2 a8-b7 g2-h3 a10xa2 f1-f3 g9-d6 f2-a7 a10xa7`.
 The previous corrected native build required 8.019 seconds merely to complete
 depth seven. This is a position-specific performance result, not an Elo
@@ -99,6 +99,13 @@ The optimization suggestions were measured rather than accepted wholesale:
   runs, median time fell from 488 ms to 469 ms (3.9%); a ten-second run visited
   6,228,864 nodes while preserving the same score and PV. A reusable per-ply
   vector experiment measured 500 ms versus 499 ms and was rejected as noise.
+- Royal-threat generation formerly copied the entire position before it knew
+  whether any opponent action required simulation. Per-piece action generation
+  is side-independent, so replies now come directly from the immutable source
+  and a child is copied only for the rare Angel or indirect-knockout candidate.
+  Across sixteen alternating identical-tree depth-7 runs, median time fell
+  from 472 ms to 447 ms (5.4%). The ten-second fixture rose to 6,530,816 nodes
+  with the same best move and principal variation.
 
 Run `tools/benchmark_ultimate.sh` for fixed perft/search measurements, or set
 `ULTIMATE_LONG_BENCHMARK=1` to include the cold ten-second horizon check. Run

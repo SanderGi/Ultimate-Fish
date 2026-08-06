@@ -1604,7 +1604,7 @@ class EventStream:
                     self.points_frozen = False
             elif event.kind in self.GAMEPLAY_KINDS:
                 self.gameplay_events.append(event)
-                if event.kind in ("move", "attack", "dead"):
+                if event.kind in ("move", "attack"):
                     with self.points_lock:
                         self.points_frozen = True
         if event.kind == "army_points":
@@ -1616,12 +1616,16 @@ class EventStream:
                     if previous is None or (not self.points_frozen and value > previous):
                         self.initial_points[index] = value
 
-    def initial_points_snapshot(self) -> tuple[int, int] | None:
-        """Return exact native starting totals for the current loaded board."""
+    def points_snapshot(self) -> tuple[int, int] | None:
+        """Return non-consuming native point maxima for the loaded board."""
         with self.points_lock:
             if any(value is None for value in self.initial_points):
                 return None
             return int(self.initial_points[0]), int(self.initial_points[1])
+
+    def initial_points_snapshot(self) -> tuple[int, int] | None:
+        """Compatibility name for gameplay's frozen starting totals."""
+        return self.points_snapshot()
 
     def _read(self) -> None:
         assert self.process.stdout is not None
@@ -4111,7 +4115,7 @@ class PhoneGame:
         while time.monotonic() < deadline:
             try:
                 event = self.events.wait(
-                    ("army_drop", "army_points", "army_piece"),
+                    ("army_drop", "army_points", "army_piece", "selected"),
                     min(idle_timeout, deadline - time.monotonic()),
                 )
             except TimeoutError:
@@ -4122,7 +4126,11 @@ class PhoneGame:
             last_received = time.monotonic()
             if event.kind == "army_points":
                 points.append(int(event.source or "-1"))
-            elif event.kind == "army_piece":
+            elif event.kind in ("army_piece", "selected"):
+                # Moving an already persisted model within the builder emits
+                # its ordinary GetAvailableMoves selection callback, but not
+                # the ArmyMove creation diagnostic used for pot-to-board
+                # drags. Both records carry the same native prefab identity.
                 identity = event.piece
             elif event.source:
                 x_text, y_text = event.source.split(":", 1)
@@ -5223,38 +5231,26 @@ class PhoneGame:
         )
 
     def _ranked_committed_points(self, local_ivory: bool) -> tuple[int, int]:
-        """Read the final cumulative totals emitted after a committed group."""
-        latest: AppEvent | None = None
+        """Read cumulative draft totals from the non-consuming native ledger.
+
+        The phase-transition wait may consume every queued ``army_points``
+        event before this method runs. EventStream journals those public totals
+        independently, just like Ranked spawn groups, so observation never
+        depends on queue timing.
+        """
         deadline = time.monotonic() + 1.5
-        while latest is None:
-            event = self.events.wait(
-                ("army_points", "game_over", "out_of_time"),
-                max(0.01, deadline - time.monotonic()),
-            )
-            if event.kind != "army_points":
-                raise RuntimeError(
-                    f"Ranked game ended while reading draft material: {event.kind}"
-                )
-            latest = event
-        # GetPoints logs once after each model in a received group. Keep the
-        # last value after a short quiet period, not the first partial sum.
-        while True:
-            try:
-                event = self.events.wait(
-                    ("army_points", "game_over", "out_of_time"), 0.08
-                )
-            except TimeoutError:
-                continue
-            if event.kind != "army_points":
-                raise RuntimeError(
-                    f"Ranked game ended while reading draft material: {event.kind}"
-                )
-            latest = event
-        assert latest.source is not None and latest.target is not None
-        player1, player2 = int(latest.source), int(latest.target)
-        local = player1 if local_ivory else player2
-        opponent = player2 if local_ivory else player1
-        return local, opponent
+        previous_opponent = self.ranked_opponent_points or 0
+        while time.monotonic() < deadline:
+            snapshotter = getattr(self.events, "points_snapshot", None)
+            points = snapshotter() if snapshotter is not None else None
+            if points is not None:
+                player1, player2 = points
+                local = player1 if local_ivory else player2
+                opponent = player2 if local_ivory else player1
+                if opponent > previous_opponent:
+                    return local, opponent
+            time.sleep(0.01)
+        raise TimeoutError("Ranked committed group produced no new native points")
 
     def _observe_ranked_opponent_pick(self, local_ivory: bool) -> list[str]:
         """Apply the newly public, locked opponent group to draft knowledge."""
@@ -5268,6 +5264,14 @@ class PhoneGame:
             current_generation, complete, spawns = self.events.ranked_spawn_snapshot()
             if current_generation != generation:
                 raise RuntimeError("Ranked spawn journal advanced across pick phases")
+            snapshotter = getattr(self.events, "points_snapshot", None)
+            points = snapshotter() if snapshotter is not None else None
+            if points is not None:
+                player1, player2 = points
+                current_opponent = player2 if local_ivory else player1
+                if current_opponent >= opponent_points:
+                    opponent_points = current_opponent
+                    self.ranked_opponent_points = current_opponent
             if complete:
                 try:
                     candidate_group = ranked_spawn_public(spawns, local_ivory)

@@ -2616,6 +2616,14 @@ void test_native_draft_windows_and_costs() {
            "final alternating ban pair commits");
     expect(draft.window().minimumPoints == 42 && draft.window().maximumPoints == 100,
            "final Ivory group has no required addition under the 100 point cap");
+
+    DraftState underBudget = draft;
+    expect(underBudget.commit(&error) && underBudget.points(Color::White) == 42,
+           "Ivory may finish Ranked below the 100 point ceiling");
+    expect(underBudget.commit(&error) && underBudget.points(Color::Black) == 70 &&
+           underBudget.complete(),
+           "Onyx may also finish Ranked below the 100 point ceiling");
+
     for (int copy = 0; copy < 4; ++copy)
         expect(draft.choose(PieceType::Rook, &error), "ivory final Rook locks");
     expect(draft.choose(PieceType::Pawn, &error) && draft.commit(&error),

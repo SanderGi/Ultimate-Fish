@@ -1235,15 +1235,17 @@ bool Position::real_king_threatened(Color color) const {
     // capturing a nearby Bomb, translating a Giant footprint, or possessing
     // the King can remove the real King even when the attack does not land on
     // the King's square.
-    Position attacker = *this;
-    attacker.sideToMove_ = ~color;
-    attacker.forcedPiece_ = NoPiece;
-    attacker.continuation_ = Continuation::None;
+    // Per-piece generation depends on the actor's state and color, not the
+    // position's nominal side to move. Generate opponent replies directly
+    // from this immutable position; construct a disposable attacker child
+    // only for the rare indirect/Angel case that actually needs simulation.
+    const Position& attacker = *this;
+    const Color attackingColor = ~color;
     std::vector<Move> replies;
     replies.reserve(128);
     for (int actor = 0; actor < attacker.pieceCount_; ++actor) {
         if (!attacker.pieces_[actor].alive || !attacker.pieces_[actor].onBoard ||
-            attacker.pieces_[actor].color != attacker.sideToMove_)
+            attacker.pieces_[actor].color != attackingColor)
             continue;
         // Ghost attacks never produce check/checkmate in the app.  A royal may
         // enter a hidden Ghost's adjacency, reveal it, and remain alive until
@@ -1340,6 +1342,9 @@ bool Position::real_king_threatened(Color color) const {
             if (directlyHitsKing && !kingProtected)
                 return true;
             Position child = attacker;
+            child.sideToMove_ = attackingColor;
+            child.forcedPiece_ = NoPiece;
+            child.continuation_ = Continuation::None;
             if (!child.apply_move_unchecked(reply))
                 continue;
             const bool killed = !child.has_real_king(color);

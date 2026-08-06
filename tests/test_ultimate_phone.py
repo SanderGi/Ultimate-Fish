@@ -374,6 +374,7 @@ class EventPointLedgerTests(unittest.TestCase):
             MODULE.AppEvent("army_points", source="76", target="50")
         )
         self.assertEqual(stream.initial_points_snapshot(), (96, 100))
+        self.assertEqual(stream.points_snapshot(), (96, 100))
 
     def test_new_board_discards_previous_native_points(self):
         stream = self.make_stream()
@@ -526,6 +527,29 @@ class AdbDeviceTests(unittest.TestCase):
         self.assertEqual(run.call_count, 4)
 
 
+class ArmyBuilderEventTests(unittest.TestCase):
+    def test_persisted_piece_selection_supplies_round_trip_identity(self):
+        class FakeEvents:
+            def __init__(self):
+                self.items = [
+                    MODULE.AppEvent("selected", "queen"),
+                    MODULE.AppEvent("army_drop", source="7:2"),
+                    MODULE.AppEvent("army_points", source="100", target="0"),
+                ]
+
+            def wait(self, _kinds, _timeout):
+                if self.items:
+                    return self.items.pop(0)
+                raise TimeoutError
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.events = FakeEvents()
+        coordinate, points, identity = game._army_drag_result(0.02, 0.001)
+        self.assertEqual(coordinate, (7, 2))
+        self.assertEqual(points, [100])
+        self.assertEqual(identity, "queen")
+
+
 class RankedDraftControllerTests(unittest.TestCase):
     class FakeImage:
         width = 1080
@@ -619,6 +643,19 @@ class RankedDraftControllerTests(unittest.TestCase):
         event = MODULE.parse_unity_line(line)
         assert event is not None
         return event
+
+    def test_ranked_points_survive_phase_queue_consumption(self):
+        class JournalOnlyEvents:
+            def points_snapshot(self):
+                return 40, 27
+
+            def wait(self, *_args, **_kwargs):
+                raise AssertionError("committed points must not use the event queue")
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.events = JournalOnlyEvents()
+        game.ranked_opponent_points = None
+        self.assertEqual(game._ranked_committed_points(True), (40, 27))
 
     def test_local_ban_selects_requested_pot_before_fixed_control(self):
         class BanAdb:
