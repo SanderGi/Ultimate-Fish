@@ -142,7 +142,12 @@ maximum-clearance order (`a,g,e,c`); the latter left its final target between
 two oversized 3D colliders and was rejected despite a legal logical packing.
 Ordinary models are placed before Giants, matching the native Local builder;
 a live Prince placed afterward otherwise intercepted and replaced a logically
-disjoint Giant.
+disjoint Giant. Prince's far-right pot also has a large drag-model offset: a
+live `b1` target physically landed on `c2`. Ranked therefore prefers the
+Local-validated `f1,g1` back-rank cells for Princes before placing Giants. A
+two-sided Local fixture measured both Prince drops one rank high from their
+cell centers and learned the same `+52 px` correction on 111-pixel cells;
+Ranked applies that native-measured 47% downward in-cell bias up front.
 
 After selecting a Ban pot, the current Ranked UI exposes the actionable large
 red Ban button in the lower-left character inspector. The blue top-row `BAN`

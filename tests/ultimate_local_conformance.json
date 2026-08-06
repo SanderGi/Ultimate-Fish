@@ -1033,9 +1033,9 @@
         ["queen", "b1"],
         ["queen", "c1"],
         ["queen", "d1"],
-        ["queen", "e1"],
+        ["bishop", "e1"],
         ["prince", "f1"],
-        ["jester", "g1"]
+        ["prince", "g1"]
       ],
       "player2": [
         ["king", "a1"],
@@ -1046,9 +1046,9 @@
         ["queen", "b1"],
         ["queen", "c1"],
         ["queen", "d1"],
-        ["queen", "e1"],
+        ["bishop", "e1"],
         ["prince", "f1"],
-        ["jester", "g1"]
+        ["prince", "g1"]
       ]
     }
   ]

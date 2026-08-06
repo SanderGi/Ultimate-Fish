@@ -687,6 +687,18 @@ class DeploymentGeometry:
         x, y = self.point(anchor)
         return x, round(y + self.cell_height * 0.41)
 
+    def drop_point(self, piece: str, square: str) -> tuple[int, int]:
+        """Return a native-validated pointer-up point for a deployment pot."""
+        if piece == "giant":
+            return self.giant_drop_point(square)
+        x, y = self.point(square)
+        if piece == "prince":
+            # Both f1 and g1 landed one rank high in Local until its adaptive
+            # builder learned +52 px on a 111 px cell. Apply the same measured
+            # model/pointer correction before a Ranked clock starts.
+            y = round(y + self.cell_height * 0.47)
+        return x, y
+
     def scaled(self, width: int, height: int) -> "DeploymentGeometry":
         return DeploymentGeometry(
             width, height,
@@ -1450,6 +1462,10 @@ class DraftDeployment:
         "fisherman": ("c2", "f2", "b2", "g2"),
         "angel": ("c1", "b1", "d1"),
         "devil": ("f2", "c2", "g2"),
+        # The far-right Ranked pot gives Prince a large model/pointer offset.
+        # Native Local placement is reliable on the central/right back rank;
+        # a live b1 target physically landed on c2 and blocked Giant packing.
+        "prince": ("f1", "g1", "e1", "d1", "b1"),
     }
     FALLBACK = tuple(
         f"{file}{rank}"
@@ -1569,9 +1585,9 @@ class DraftDeployment:
                     valid.append((square, cells))
             valid.sort(
                 key=lambda item: (
-                    0 if piece in self.NON_BLOCKING_SHIELDS else
+                    0 if piece in self.NON_BLOCKING_SHIELDS or piece == "prince" else
                     len(item[1] & (self.KING_SHIELD - blocked)),
-                    0 if piece == "giant" else distance(item[1]),
+                    0 if piece in ("giant", "prince") else distance(item[1]),
                     -candidates.index(item[0]),
                 ),
                 reverse=True,
@@ -5247,10 +5263,7 @@ class PhoneGame:
         deployment_geometry = RANKED_DEPLOYMENT_GEOMETRY.scaled(
             self.geometry.width, self.geometry.height,
         )
-        target = (
-            deployment_geometry.giant_drop_point(square)
-            if piece == "giant" else deployment_geometry.point(square)
-        )
+        target = deployment_geometry.drop_point(piece, square)
         source = self.draft_pots[piece]
         # PointerDown grabs the pot model and PointerUp on the square performs
         # the native placement.  A moderately short gesture is fast while still
@@ -5541,6 +5554,7 @@ class PhoneGame:
             for piece, count in desired.items() for ordinal in range(count)
         }
         placement_deadline = time.monotonic() + 45.0
+        last_packing_log = 0.0
 
         def current_roster() -> Counter[str]:
             return Counter(piece for piece, _square in placements)
@@ -5612,10 +5626,13 @@ class PhoneGame:
                     # retry cycle and remain in-phase rather than donating a
                     # Ranked timeout by terminating the controller.
                     excluded[piece_key].clear()
-                    self.log(
-                        f"Ranked {piece} packing exhausted transient targets; "
-                        "restarting its in-phase placement cycle"
-                    )
+                    now = time.monotonic()
+                    if now - last_packing_log >= 1.0:
+                        self.log(
+                            f"Ranked {piece} packing exhausted transient targets; "
+                            "restarting its in-phase placement cycle"
+                        )
+                        last_packing_log = now
                     # A malformed recovery state previously emitted millions
                     # of retries per second while the native phase clock ran.
                     # Yield to Unity and the event reader before replanning.

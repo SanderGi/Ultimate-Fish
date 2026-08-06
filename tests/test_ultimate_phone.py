@@ -734,7 +734,14 @@ class RankedDraftControllerTests(unittest.TestCase):
             self.assertFalse(cells & occupied)
             occupied.update(cells)
         self.assertEqual(len(occupied), 19)
-        self.assertTrue(MODULE.DraftDeployment.KING_SHIELD <= occupied)
+        self.assertTrue({"a2", "b2"} <= occupied)
+        self.assertTrue(any(f"{file}1" in occupied for file in "bcdefgh"))
+
+        ordinary_first = MODULE.DraftDeployment().plan(
+            ("prince", "prince", "giant", "giant", "giant", "giant")
+        )
+        self.assertEqual(ordinary_first[:2], ["f1", "g1"])
+        self.assertEqual(ordinary_first[2:], ["a2", "c2", "e2", "g2"])
 
         # A miss belongs to one attempted model. Another identical Giant may
         # still use that anchor in the same legal packing.
@@ -762,6 +769,8 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertEqual(geometry.point("e2"), (607, 1506))
         self.assertEqual(geometry.point("g2"), (850, 1506))
         self.assertEqual(geometry.giant_drop_point("a2"), (121, 1550))
+        self.assertEqual(geometry.drop_point("prince", "f1"), (728, 1665))
+        self.assertEqual(geometry.drop_point("queen", "f1"), (728, 1614))
         self.assertLess(geometry.giant_drop_point("a2")[1], geometry.bottom)
         self.assertGreater(geometry.left, 8)
 

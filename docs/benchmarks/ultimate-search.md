@@ -207,6 +207,13 @@ the controller now uses the Local-proven contiguous left-to-right order. A
 successful live four-Giant Ranked lock remains an explicit validation gate
 rather than a claimed result.
 
+The strengthened Local profile exactly matches the difficult opening group:
+two Princes at `f1,g1` followed by Giants at `a2,c2,e2,g2`. Both native builders
+visually verified all six models. Their adaptive correction independently
+measured each Prince center drop one rank high and corrected it with `+52 px`;
+the Ranked controller now applies the equivalent 47%-cell bias before its first
+timed drag.
+
 The same checkpoint won a fresh Very Hard CPU game after searching 64 public
 beliefs and finding a forced mate, then won a fresh Unranked game against a
 100-point Giant/Rook/Mage army. Both used iterative depth up to 20 with a
