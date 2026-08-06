@@ -5414,15 +5414,18 @@ class PhoneGame:
             # A short UI frame still prevents confirming the previously
             # selected calibration pot.
             time.sleep(0.20)
-        # The actionable inspector button is fixed in the shipping 1080x2400
-        # layout. Screenshot detection repeatedly missed its short-lived red
-        # component and allowed Unity to auto-ban. The native turn predicate
-        # above is the safe selection barrier; tap the measured, scaled center
-        # immediately and let TEXURE ASSIGNED / OnBanCharacter be the
-        # authoritative identity and commitment checks below.
+        # The actionable inspector button is fixed in the shipping layout.
+        # APK asset hierarchy:
+        # CharacterDetails/largerScale (100.1, 161.2; scale 1.21)
+        #   /border/BanButton (0, 93.5)
+        # on Unity's 432x960 reference canvas. That resolves to (250, 1714)
+        # on 1080x2400. The previous (157, 1967) point lies inside the
+        # character card and can never submit a Ban. The native predicate
+        # above is the safe selection barrier; TEXURE ASSIGNED and
+        # OnBanCharacter remain the authoritative result checks below.
         point = (
-            round(self.geometry.width * 157 / 1080),
-            round(self.geometry.height * 1967 / 2400),
+            round(self.geometry.width * 250 / 1080),
+            round(self.geometry.height * 1714 / 2400),
         )
         self.adb.tap_sync(*point)
 
@@ -5875,6 +5878,29 @@ class PhoneGame:
         deadline = time.monotonic() + 50.0
         ban_generation = len(self.events.ranked_ban_snapshot())
         self.events.drain()
+
+        def journaled_commit() -> str | None:
+            identities = self.events.ranked_ban_snapshot()
+            completed = self.events.ranked_bans_completed()
+            if len(identities) <= ban_generation or completed <= ban_generation:
+                return None
+            if (len(identities) != ban_generation + 1
+                    or completed != ban_generation + 1):
+                raise RuntimeError(
+                    "multiple native Ban commits appeared in one local phase"
+                )
+            return identities[-1]
+
+        def finish(confirmed: str) -> str:
+            if confirmed != piece:
+                self.log(
+                    f"Ranked requested ban {piece}, but native public log "
+                    f"committed {confirmed}; resynchronizing draft"
+                )
+            else:
+                self.log(f"native Ranked ban confirmed: {confirmed}")
+            return confirmed
+
         for attempt in itertools.count(1):
             remaining = deadline - time.monotonic()
             if remaining <= 0:
@@ -5887,12 +5913,27 @@ class PhoneGame:
                 self.log(
                     f"Ranked ban control for {piece} was not ready; retrying"
                 )
+            except RuntimeError:
+                # A short native Ban can auto-complete between the requested
+                # pot's PointerDown and its turn-predicate callback. The queue
+                # waiter may consume OnBanCharacter while looking for that
+                # predicate, but the identity/count journals are independent.
+                confirmed = journaled_commit()
+                if confirmed is not None:
+                    return finish(confirmed)
+                raise
+            confirmed = journaled_commit()
+            if confirmed is not None:
+                return finish(confirmed)
             try:
                 committed = self.events.wait(
                     ("draft_ban_committed", "game_over", "out_of_time"),
                     min(3.0, max(0.01, deadline - time.monotonic())),
                 )
             except TimeoutError:
+                confirmed = journaled_commit()
+                if confirmed is not None:
+                    return finish(confirmed)
                 self.log(
                     f"Ranked ban {piece} lacked native acknowledgement; "
                     f"retrying tap {attempt + 1}"
@@ -5903,15 +5944,10 @@ class PhoneGame:
                     f"Ranked draft stopped during local phase {phase}: "
                     f"{committed.kind}"
                 )
-            confirmed = self._observe_ranked_opponent_ban(ban_generation)
-            if confirmed != piece:
-                self.log(
-                    f"Ranked requested ban {piece}, but native public log "
-                    f"committed {confirmed}; resynchronizing draft"
-                )
-            else:
-                self.log(f"native Ranked ban confirmed: {confirmed}")
-            return confirmed
+            confirmed = journaled_commit()
+            if confirmed is None:
+                confirmed = self._observe_ranked_opponent_ban(ban_generation)
+            return finish(confirmed)
 
     def _commit_ranked_local_pick(
         self, choices: Sequence[str], deployment: DraftDeployment, phase: int,

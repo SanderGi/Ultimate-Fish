@@ -715,7 +715,43 @@ class RankedDraftControllerTests(unittest.TestCase):
         game.geometry = MODULE.BoardGeometry()
         game.draft_pots = {"prince": (941, 1105)}
         game._ban_ranked_piece("prince")
-        self.assertEqual(game.adb.taps, [(941, 1105), (157, 1967)])
+        self.assertEqual(game.adb.taps, [(941, 1105), (250, 1714)])
+
+    def test_local_ban_recovers_auto_ban_from_non_consuming_journals(self):
+        class Events:
+            def __init__(self):
+                self.identities = []
+                self.completed = 0
+
+            @staticmethod
+            def drain():
+                return None
+
+            def ranked_ban_snapshot(self):
+                return tuple(self.identities)
+
+            def ranked_bans_completed(self):
+                return self.completed
+
+            @staticmethod
+            def wait(_kinds, _timeout):
+                raise TimeoutError
+
+        events = Events()
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.events = events
+        game.log = lambda _message: None
+
+        def raced_ban(_piece, _timeout):
+            # OnBanCharacter was consumed by a waiter for the turn probe, but
+            # EventStream's exact identity and count journals retained it.
+            events.identities.append("ninja")
+            events.completed += 1
+            raise RuntimeError("pot was processed outside the local Ban turn")
+
+        game._ban_ranked_piece = raced_ban
+
+        self.assertEqual(game._commit_ranked_local_ban("prince", 0), "ninja")
 
     def test_ranked_pick_places_ordinary_models_before_wide_colliders(self):
         class PickEvents:
