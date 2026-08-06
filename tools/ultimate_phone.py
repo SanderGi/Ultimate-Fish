@@ -71,11 +71,14 @@ DRAFT_PIECES = tuple(
 # prefab order recovered from the verified 5.731 APK and live ArmyMove identity
 # feedback. Dragon and Berserker share a value but their serialized order is
 # the reverse of the earlier visual-only assumption.
-POT_SORT_ORDER = (
-    "giant", "checker", "pawn", "turtle", "copycat", "knight", "mage",
-    "bishop", "jester", "sludge", "fisherman", "rook", "angel",
-    "berserker", "bomb", "ghost", "penguin", "parasite", "devil",
-    "dragon", "queen", "sniper", "prince", "ninja",
+POT_GRID = (
+    ("giant", "turtle", "mage", "sludge", "angel", "ghost", "devil", "sniper"),
+    ("checker", "copycat", "bishop", "fisherman", "berserker", "penguin",
+     "dragon", "prince"),
+    ("pawn", "knight", "jester", "rook", "bomb", "parasite", "queen", "ninja"),
+)
+POT_SORT_ORDER = tuple(
+    POT_GRID[row][column] for column in range(8) for row in range(3)
 )
 
 # This is the saved 100-point local army used by the controller.  A future
@@ -119,16 +122,6 @@ BAN_TEXTURE_RE = re.compile(
 )
 DRAFT_TURN_RE = re.compile(
     r"\bmyBoard\.turn != team:\s*(True|False)\s*$", re.IGNORECASE
-)
-# Pot.OnPointerDown logs both the character object and the Pot component that
-# actually received the pointer.  This is the authoritative way to distinguish
-# a real character-pot selection from a stale BanButton intercepting the same
-# screen coordinate (for example Ninja's button covering the Prince pot).
-DRAFT_POT_RE = re.compile(
-    r"\b([A-Za-z][A-Za-z0-9_ -]*?)(?:\(Clone\))?\s+"
-    r"\([A-Za-z][A-Za-z0-9_ -]*?\)\s+"
-    r"PotPrefab(?:\(Clone\))?\s+\(Pot\)\s*$",
-    re.IGNORECASE,
 )
 PLAYER_TEAM_RE = re.compile(
     r"\bGameManager\.Instance\.playerTeam != team:\s*(True|False)\s*$",
@@ -461,13 +454,6 @@ def parse_unity_line(line: str) -> AppEvent | None:
             "draft_turn_probe",
             source="opponent" if match.group(1).lower() == "true" else "local",
             raw=line,
-        )
-    match = DRAFT_POT_RE.search(line)
-    if match:
-        piece = canonical_piece_name(match.group(1))
-        return (
-            AppEvent("draft_pot_selected", piece=piece, raw=line)
-            if piece else None
         )
     match = PLAYER_TEAM_RE.search(line)
     if match:
@@ -930,10 +916,11 @@ def map_ranked_pots(image) -> dict[str, tuple[int, int]]:
         raise RuntimeError(
             "unexpected full pot layout: "
             f"top={len(top)} middle={len(middle)} bottom={len(bottom)}")
-    traversal: list[tuple[int, int]] = []
-    for column in range(8):
-        traversal.extend((top[column], middle[column], bottom[column]))
-    return dict(zip(POT_SORT_ORDER, traversal))
+    return {
+        piece: point
+        for piece_row, point_row in zip(POT_GRID, (top, middle, bottom))
+        for piece, point in zip(piece_row, point_row)
+    }
 
 
 def resolve_army_drag_identity(
@@ -5278,7 +5265,9 @@ class PhoneGame:
         # that overlay above every pot and cannot intercept the real choice.
         probe = "giant"
         try:
-            source, completed_bans = self._select_ranked_pot_exact(probe, 1.5)
+            source, completed_bans, _control = self._select_ranked_pot_verified(
+                probe, 1.5
+            )
         except TimeoutError:
             source = None
             completed_bans = self.events.ranked_bans_completed()
@@ -5304,48 +5293,42 @@ class PhoneGame:
             time.sleep(0.12)
         return completed_bans % 2 == 1
 
-    def _select_ranked_pot_exact(
+    def _select_ranked_pot_verified(
         self, piece: str, timeout: float
-    ) -> tuple[str, int]:
-        """Select one draft pot and verify the exact native pointer receiver."""
+    ) -> tuple[str, int, tuple[int, int] | None]:
+        """Select a pot and verify its local BanButton is anchored to it."""
         deadline = time.monotonic() + timeout
         self.events.drain()
         self.adb.tap_sync(*self.draft_pots[piece])
-        selected = False
-        source: str | None = None
-        completed_bans = self.events.ranked_bans_completed()
-        while time.monotonic() < deadline and (not selected or source is None):
-            event = self.events.wait(
-                ("draft_pot_selected", "draft_turn_probe", "game_over",
-                 "out_of_time"),
-                max(0.01, deadline - time.monotonic()),
+        event = self.events.wait(
+            ("draft_turn_probe", "game_over", "out_of_time"), timeout
+        )
+        if event.kind != "draft_turn_probe":
+            raise RuntimeError(
+                f"Ranked game ended while selecting {piece}: {event.kind}"
             )
-            if event.kind in ("game_over", "out_of_time"):
-                raise RuntimeError(
-                    f"Ranked game ended while selecting {piece}: {event.kind}"
-                )
-            if event.kind == "draft_pot_selected":
-                if event.piece != piece:
-                    raise RuntimeError(
-                        f"Ranked {piece} tap was intercepted by "
-                        f"{event.piece or 'an unknown pot'}"
-                    )
-                selected = True
-            else:
-                source = event.source
-                completed_bans = (
-                    event.payload if isinstance(event.payload, int)
-                    else self.events.ranked_bans_completed()
-                )
-        if not selected:
-            raise TimeoutError(
-                f"native log never confirmed selection of Ranked {piece} pot"
-            )
-        if source is None:
-            raise TimeoutError(
-                f"native log never reported the Ranked turn for {piece}"
-            )
-        return source, completed_bans
+        completed_bans = (
+            event.payload if isinstance(event.payload, int)
+            else self.events.ranked_bans_completed()
+        )
+        if event.source != "local":
+            return event.source or "opponent", completed_bans, None
+
+        # The shipping build logs pointerDown/start and the exact turn
+        # predicate, but no character identity. The selected pot's serialized
+        # red BanButton is public UI state and moves with that pot, so its
+        # detected anchor is the exact observable selection proof. In
+        # particular, Ninja's stale button appears above Ninja rather than the
+        # requested Prince/Penguin source and therefore cannot pass this test.
+        while time.monotonic() < deadline:
+            control = self._visual_ban_control(self.adb.screenshot(),
+                                               self.draft_pots[piece])
+            if control is not None:
+                return "local", completed_bans, control
+            time.sleep(0.06)
+        raise TimeoutError(
+            f"Ranked {piece} selection never displayed its anchored Ban control"
+        )
 
     @classmethod
     def _ranked_queue_visible(cls, image) -> bool:
@@ -5391,45 +5374,9 @@ class PhoneGame:
             rise = source[1] - center[1]
             if (image.width * 0.10 < width < image.width * 0.25
                     and image.height * 0.02 < height < image.height * 0.07
+                    and width / height > 1.45
                     and abs(center[0] - source[0]) < image.width * 0.18
-                    and image.height * 0.005 < rise < image.height * 0.14):
-                candidates.append((len(component), center[0], center[1]))
-        if not candidates:
-            return None
-        _pixels, x, y = max(candidates)
-        return x, y
-
-    @staticmethod
-    def _fixed_ban_control(image) -> tuple[int, int] | None:
-        """Find the actionable red Ban button in the lower-left inspector.
-
-        The blue top-row ``BAN`` is only the current phase label. Selected
-        pots also render a red speech bubble, but that bubble is not the
-        reliable pointer target in the shipping Android layout.
-        """
-        import numpy as np
-
-        rgb = np.asarray(image.convert("RGB"))
-        red, green, blue = rgb[:, :, 0], rgb[:, :, 1], rgb[:, :, 2]
-        mask = (
-            (red > 180) & (red > green * 1.35) & (red > blue * 1.15)
-        )
-        candidates: list[tuple[int, int, int]] = []
-        for component in _components(mask):
-            if len(component) < 6000:
-                continue
-            ys = [point[0] for point in component]
-            xs = [point[1] for point in component]
-            width = max(xs) - min(xs) + 1
-            height = max(ys) - min(ys) + 1
-            center = (
-                (min(xs) + max(xs)) // 2,
-                (min(ys) + max(ys)) // 2,
-            )
-            if (image.width * 0.18 < width < image.width * 0.32
-                    and image.height * 0.025 < height < image.height * 0.055
-                    and image.width * 0.05 < center[0] < image.width * 0.25
-                    and image.height * 0.77 < center[1] < image.height * 0.86):
+                    and image.height * 0.035 < rise < image.height * 0.085):
                 candidates.append((len(component), center[0], center[1]))
         if not candidates:
             return None
@@ -5437,57 +5384,34 @@ class PhoneGame:
         return x, y
 
     def _pot_ban_control(self, image, piece: str) -> tuple[int, int] | None:
-        # The selected-pot speech bubble and the top phase label are both
-        # visual-only in the shipping build. Waiting a frame for the fixed
-        # inspector control is cheaper and safer than tapping either decoy.
-        del piece
-        return self._fixed_ban_control(image)
+        # The actionable serialized BanButton moves with the selected pot.
+        # Resolve it relative to the requested source so the fixed top phase
+        # label and another character's stale control cannot be mistaken for
+        # the selection.
+        return self._visual_ban_control(image, self.draft_pots[piece])
 
     def _ban_ranked_piece(self, piece: str, timeout: float = 3.0) -> None:
-        # A fixed Ban button can remain visible for the pot touched during
-        # side detection. Never click that stale control before selecting the
+        # A Ban button can remain visible for the pot touched during side
+        # detection. Never click that stale control before selecting the
         # engine's actual choice. Wait for IsCharacterUsable's native turn
-        # predicate so Unity has processed the new pot before confirming it.
-        # First move selection to a known-safe top-row pot. This positively
-        # clears Ninja's button from the Prince coordinate instead of merely
-        # assuming the previous selection disappeared. Then require the native
-        # Pot.OnPointerDown diagnostic to name the requested character exactly.
-        # Never press Ban on a turn-predicate log alone: that predicate does not
-        # identify which character remains selected.
-        if piece != "giant":
-            clear_source, _ = self._select_ranked_pot_exact(
-                "giant", min(1.0, timeout)
-            )
-            if clear_source != "local":
-                raise RuntimeError(
-                    "Ranked selection reset was processed outside the local Ban turn"
-                )
-        source, _ = self._select_ranked_pot_exact(piece, min(1.0, timeout))
+        # predicate so Unity has processed the new pot before inspecting it.
+        # Select only the requested character. An earlier recovery selected a
+        # top-row Giant first to clear a possible stale overlay; when visual
+        # acknowledgement failed, Unity correctly auto-banned that still-
+        # selected Giant. Side detection already uses a safe top-row probe, so
+        # introducing any unrelated selection here is both unnecessary and
+        # unsafe. Require the red BanButton to be visually anchored above this
+        # exact requested pot before pressing it.
+        source, _, control = self._select_ranked_pot_verified(
+            piece, min(1.0, timeout)
+        )
         if source != "local":
             raise RuntimeError(
                 f"Ranked {piece} pot was processed outside the local Ban turn"
             )
-        # BanButton is serialized above the selected pot, not at a fixed
-        # screen coordinate. Its vertical offset in the live layout is one
-        # calibrated pot-row gap. For Prince this is approximately
-        # (934, 1101 - 139) = (934, 962). Tapping the old character-card point
-        # was a no-op; tapping Prince while Ninja's stale overlay was active
-        # confirmed Ninja. The top-row side probe above prevents that overlap.
-        rows: list[list[int]] = []
-        for y in sorted(y for _x, y in self.draft_pots.values()):
-            if (not rows or
-                    y - sum(rows[-1]) / len(rows[-1])
-                    > self.geometry.height * 0.035):
-                rows.append([y])
-            else:
-                rows[-1].append(y)
-        row_centers = [sum(row) / len(row) for row in rows]
-        gaps = [right - left for left, right in zip(row_centers, row_centers[1:])]
-        row_gap = round(sum(gaps) / len(gaps)) if gaps else round(
-            self.geometry.height * 0.058
-        )
-        point = (self.draft_pots[piece][0], self.draft_pots[piece][1] - row_gap)
-        self.adb.tap_sync(*point)
+        if control is None:
+            raise RuntimeError(f"Ranked {piece} Ban control disappeared")
+        self.adb.tap_sync(*control)
 
     def _place_ranked_piece(
         self, piece: str, square: str, local_ivory: bool,

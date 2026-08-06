@@ -291,12 +291,6 @@ class LogParserTests(unittest.TestCase):
         )
         opponent_turn = MODULE.parse_unity_line("myBoard.turn != team: True")
         self.assertEqual(opponent_turn.source, "opponent")
-        pot = MODULE.parse_unity_line(
-            "ninja(Clone) (Ninja) PotPrefab(Clone) (Pot)"
-        )
-        self.assertEqual(
-            (pot.kind, pot.piece), ("draft_pot_selected", "ninja")
-        )
         player_team = MODULE.parse_unity_line(
             "GameManager.Instance.playerTeam != team: True"
         )
@@ -708,7 +702,11 @@ class RankedDraftControllerTests(unittest.TestCase):
 
         class BanEvents:
             def __init__(self):
-                self.pending = []
+                self.pending = [
+                    MODULE.AppEvent(
+                        "draft_turn_probe", source="local", payload=0
+                    ),
+                ]
 
             @staticmethod
             def drain():
@@ -730,59 +728,28 @@ class RankedDraftControllerTests(unittest.TestCase):
             "pawn": (98, 1248), "prince": (934, 1101),
         }
 
-        def tap_sync(x, y):
-            game.adb.taps.append((x, y))
-            if (x, y) == game.draft_pots["giant"]:
-                piece = "giant"
-            elif (x, y) == game.draft_pots["prince"]:
-                piece = "prince"
-            else:
-                return
-            game.events.pending.extend((
-                MODULE.AppEvent("draft_pot_selected", piece),
-                MODULE.AppEvent(
-                    "draft_turn_probe", source="local", payload=0
-                ),
-            ))
-
-        game.adb.tap_sync = tap_sync
+        game._visual_ban_control = (
+            lambda _image, source: (source[0], source[1] - 142)
+        )
         game._ban_ranked_piece("prince")
         self.assertEqual(
             game.adb.taps,
-            [(115, 964), (934, 1101), (934, 959)],
+            [(934, 1101), (934, 959)],
         )
 
-    def test_local_ban_refuses_to_confirm_intercepted_ninja(self):
+    def test_local_ban_refuses_to_confirm_unanchored_selection(self):
         class BanAdb:
             @staticmethod
             def tap_sync(_x, _y):
                 return None
 
-        class BanEvents:
-            def __init__(self):
-                self.responses = iter((
-                    MODULE.AppEvent("draft_pot_selected", "ninja"),
-                    MODULE.AppEvent(
-                        "draft_turn_probe", source="local", payload=0
-                    ),
-                ))
-
-            @staticmethod
-            def drain():
-                return None
-
-            @staticmethod
-            def ranked_bans_completed():
-                return 0
-
-            def wait(self, _kinds, _timeout):
-                return next(self.responses)
-
         game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
         game.adb = BanAdb()
-        game.events = BanEvents()
         game.draft_pots = {"giant": (115, 964), "prince": (934, 1101)}
-        with self.assertRaisesRegex(RuntimeError, "intercepted by ninja"):
+        game._select_ranked_pot_verified = Mock(
+            return_value=("local", 0, None)
+        )
+        with self.assertRaisesRegex(RuntimeError, "control disappeared"):
             game._ban_ranked_piece("prince")
 
     def test_local_ban_recovers_auto_ban_from_non_consuming_journals(self):
@@ -1498,6 +1465,10 @@ class RankedDraftControllerTests(unittest.TestCase):
             def tap_sync(self, x, y):
                 self.taps.append((x, y))
 
+            @staticmethod
+            def screenshot():
+                return object()
+
         cases = (
             ("local", 0, True), ("opponent", 0, False),
             # Captured winning trace: the remote phase-zero Ban completed
@@ -1508,12 +1479,12 @@ class RankedDraftControllerTests(unittest.TestCase):
             game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
             game.adb = ProbeAdb()
             game.events = self.FakeEvents((
-                MODULE.AppEvent("draft_pot_selected", "giant"),
                 MODULE.AppEvent(
                     "draft_turn_probe", source=source, payload=completed_bans,
                 ),
             ))
             game.draft_pots = {"giant": (123, 456)}
+            game._visual_ban_control = lambda _image, _source: (123, 314)
             self.assertEqual(game._ranked_is_ivory(), expected)
             self.assertEqual(game.adb.taps, [(123, 456)])
 
@@ -1920,7 +1891,24 @@ class VisionTests(unittest.TestCase):
             MODULE.PhoneGame._visual_ban_control(image, source), (850, 805)
         )
 
-    def test_ranked_fixed_ban_button_wins_over_pot_lock_chains(self):
+    def test_ranked_ban_detector_rejects_live_opponent_banner_and_giant_art(self):
+        from PIL import Image, ImageDraw
+
+        image = Image.new("RGB", (1080, 2400), (80, 130, 80))
+        draw = ImageDraw.Draw(image)
+        # Bounds reproduced from the actual opponent-turn capture: a wide red
+        # status banner and the roughly square red-edged Giant artwork caused
+        # false controls before the anchor/aspect constraints were tightened.
+        draw.rounded_rectangle(
+            (722, 604, 917, 679), radius=25, fill=(235, 45, 25)
+        )
+        draw.ellipse((65, 879, 184, 1006), fill=(225, 35, 25))
+        for source in ((117, 929), (152, 1103), (722, 969), (962, 964)):
+            self.assertIsNone(
+                MODULE.PhoneGame._visual_ban_control(image, source)
+            )
+
+    def test_ranked_requested_pot_control_wins_over_fixed_decoy(self):
         from PIL import Image, ImageDraw
 
         image = Image.new("RGB", (1080, 2400), (80, 130, 80))
@@ -1944,10 +1932,9 @@ class VisionTests(unittest.TestCase):
         point = game._pot_ban_control(image, "prince")
 
         self.assertIsNotNone(point)
-        self.assertTrue(150 <= point[0] <= 165)
-        self.assertTrue(1960 <= point[1] <= 1975)
+        self.assertEqual(point, (850, 805))
 
-    def test_ranked_pot_bubble_is_not_a_confirmation_target(self):
+    def test_ranked_pot_bubble_is_the_anchored_confirmation_target(self):
         from PIL import Image, ImageDraw
 
         image = Image.new("RGB", (1080, 2400), (80, 130, 80))
@@ -1961,7 +1948,7 @@ class VisionTests(unittest.TestCase):
         game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
         game.draft_pots = {"prince": (850, 930)}
 
-        self.assertIsNone(game._pot_ban_control(image, "prince"))
+        self.assertEqual(game._pot_ban_control(image, "prince"), (850, 805))
 
     def test_connected_main_requires_profile_and_play(self):
         from PIL import Image, ImageDraw
@@ -2226,7 +2213,7 @@ class VisionTests(unittest.TestCase):
         self.assertEqual(len(centers), 24)
         self.assertEqual(len([point for point in centers if abs(point[0] - xs[2]) < 5]), 3)
 
-    def test_full_ranked_pot_layout_follows_live_column_major_traversal(self):
+    def test_full_ranked_pot_layout_matches_live_visual_grid(self):
         class FakeImage:
             height = 2400
 
@@ -2246,6 +2233,18 @@ class VisionTests(unittest.TestCase):
         self.assertEqual(mapped["ghost"], top[5])
         self.assertEqual(mapped["prince"], middle[7])
         self.assertEqual(mapped["ninja"], bottom[7])
+        # The live fully unlocked capture labels these rows with the following
+        # costs. This independently guards against transposing the recovered
+        # native prefab order while keeping visually similar models apart.
+        self.assertEqual(
+            tuple(tuple(MODULE.PIECE_COST[piece] for piece in row)
+                  for row in MODULE.POT_GRID),
+            (
+                (1, 4, 8, 12, 13, 15, 15, 17),
+                (2, 5, 9, 12, 15, 15, 15, 18),
+                (3, 6, 10, 13, 15, 15, 17, 20),
+            ),
+        )
 
     @unittest.skipUnless(importlib.util.find_spec("PIL") and importlib.util.find_spec("numpy"),
                          "Pillow/numpy not installed")
