@@ -1760,6 +1760,10 @@ class EventStream:
                         continue
                     with self.network_lock:
                         self.draft_ban_count += 1
+                        event = AppEvent(
+                            event.kind, event.piece, event.source, event.target,
+                            event.raw, self.draft_ban_count,
+                        )
                 elif event.kind == "draft_turn_probe":
                     # Bind the native turn predicate to the exact draft phase
                     # at which Unity evaluated it. A remote Ban can finish
@@ -1800,6 +1804,10 @@ class EventStream:
                 elif event.kind == "draft_ban_piece" and event.piece:
                     with self.network_lock:
                         self.draft_ban_pieces.append(event.piece)
+                        event = AppEvent(
+                            event.kind, event.piece, event.source, event.target,
+                            event.raw, len(self.draft_ban_pieces),
+                        )
                 if event.kind == "draft_pick_committed":
                     with self.draft_spawn_lock:
                         self.draft_spawn_generation += 1
@@ -5297,7 +5305,6 @@ class PhoneGame:
         self, piece: str, timeout: float
     ) -> tuple[str, int, tuple[int, int] | None]:
         """Select a pot and verify its local BanButton is anchored to it."""
-        deadline = time.monotonic() + timeout
         self.events.drain()
         self.adb.tap_sync(*self.draft_pots[piece])
         event = self.events.wait(
@@ -5314,21 +5321,17 @@ class PhoneGame:
         if event.source != "local":
             return event.source or "opponent", completed_bans, None
 
-        # The shipping build logs pointerDown/start and the exact turn
-        # predicate, but no character identity. The lower-left inspector is
-        # public UI state and prints the exact selected character name above a
-        # fixed red Ban button. Require both; a stale Ninja/Giant selection can
-        # no longer be confirmed as the requested Prince/Penguin.
-        while time.monotonic() < deadline:
-            frame = self.adb.screenshot()
-            control = self._fixed_ban_control(frame)
-            if (control is not None and
-                    self._ranked_inspector_piece_selected(frame, piece)):
-                return "local", completed_bans, control
-            time.sleep(0.06)
-        raise TimeoutError(
-            f"Ranked inspector never confirmed selected {piece} with Ban control"
+        # Restore the clock-safe path proven in earlier live games: after
+        # Unity has processed the requested pot and emitted its local-turn
+        # predicate, immediately tap the measured fixed inspector control.
+        # Screenshot/OCR validation is retained in fixture regressions but
+        # must not consume the short native Ban clock. TEXURE ASSIGNED and
+        # OnBanCharacter remain the authoritative post-commit identity gate.
+        control = (
+            round(self.geometry.width * 157 / 1080),
+            round(self.geometry.height * 1967 / 2400),
         )
+        return "local", completed_bans, control
 
     @classmethod
     def _ranked_queue_visible(cls, image) -> bool:
@@ -5390,21 +5393,22 @@ class PhoneGame:
         """OCR the dedicated selected-character name in Ranked's inspector."""
         import io
 
-        # Measured from the 1080x2400 shipping Android layout. Restricting OCR
-        # to the name strip avoids MESSAGES matching Mage and other surrounding
-        # controls. Three-times scaling reads the outlined comic font reliably
-        # (the live Prince capture returns PRINCE or RINCE).
+        # Measured from two 1080x2400 shipping Android captures. Tesseract needs
+        # the whole lower-left inspector context to segment Penguin's outlined
+        # word; a tight name-only crop returns nothing. Limiting x to 37% keeps
+        # only the leading edge of MESSAGES (observed as ``MI``), so it cannot
+        # falsely validate Mage. The live captures read PENGUIN and RINCE.
         crop = image.crop((
             0,
-            round(image.height * 0.900),
-            round(image.width * 0.296),
-            round(image.height * 0.963),
+            round(image.height * 0.833),
+            round(image.width * 0.370),
+            image.height,
         ))
-        crop = crop.resize((crop.width * 3, crop.height * 3))
+        crop = crop.resize((crop.width * 2, crop.height * 2))
         encoded = io.BytesIO()
         crop.save(encoded, format="PNG")
         result = subprocess.run(
-            [tesseract, "stdin", "stdout", "--psm", "7"],
+            [tesseract, "stdin", "stdout", "--psm", "11"],
             input=encoded.getvalue(), stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
         )
@@ -5892,6 +5896,13 @@ class PhoneGame:
                 raise RuntimeError(
                     f"Ranked draft stopped while reading opponent ban: {event.kind}"
                 )
+            # Ignore an identity event left in the queue by the immediately
+            # preceding local phase. EventStream attaches its non-consuming
+            # journal generation; without this guard the same global Giant Ban
+            # was once applied as both local phase zero and remote phase one.
+            if (isinstance(event.payload, int) and
+                    event.payload <= previous_count):
+                continue
             # EventStream journals before queueing. Test/replay streams may
             # expose only the event itself, which is equally exact.
             snapshot = self.events.ranked_ban_snapshot()

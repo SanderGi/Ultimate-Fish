@@ -675,6 +675,33 @@ class RankedDraftControllerTests(unittest.TestCase):
         self.assertEqual(game._observe_ranked_opponent_ban(0), "angel")
         self.assertFalse(game.events.waited)
 
+    def test_opponent_ban_ignores_stale_local_identity_generation(self):
+        class BanEvents:
+            def __init__(self):
+                self.identities = ["giant"]
+                self.responses = iter((
+                    MODULE.AppEvent(
+                        "draft_ban_piece", "giant", payload=1
+                    ),
+                    MODULE.AppEvent(
+                        "draft_ban_piece", "rook", payload=2
+                    ),
+                ))
+
+            def ranked_ban_snapshot(self):
+                return tuple(self.identities)
+
+            def wait(self, _kinds, _timeout):
+                event = next(self.responses)
+                if event.payload == 2:
+                    self.identities.append(event.piece)
+                return event
+
+        game = MODULE.PhoneGame.__new__(MODULE.PhoneGame)
+        game.events = BanEvents()
+
+        self.assertEqual(game._observe_ranked_opponent_ban(1), "rook")
+
     def test_ranked_points_survive_phase_queue_consumption(self):
         class JournalOnlyEvents:
             def points_snapshot(self):
@@ -688,7 +715,7 @@ class RankedDraftControllerTests(unittest.TestCase):
         game.ranked_opponent_points = None
         self.assertEqual(game._ranked_committed_points(True), (40, 27))
 
-    def test_local_ban_selects_requested_pot_then_relative_control(self):
+    def test_local_ban_selects_requested_pot_then_fixed_control_without_ocr(self):
         class BanAdb:
             def __init__(self):
                 self.taps = []
@@ -729,14 +756,17 @@ class RankedDraftControllerTests(unittest.TestCase):
         }
 
         game._fixed_ban_control = lambda _image: (157, 1967)
-        game._ranked_inspector_piece_selected = (
-            lambda _image, piece: piece == "prince"
+        game._ranked_inspector_piece_selected = Mock(
+            side_effect=AssertionError(
+                "clock-sensitive Ban must not wait for inspector OCR"
+            )
         )
         game._ban_ranked_piece("prince")
         self.assertEqual(
             game.adb.taps,
             [(934, 1101), (157, 1967)],
         )
+        game._ranked_inspector_piece_selected.assert_not_called()
 
     def test_local_ban_refuses_to_confirm_unanchored_selection(self):
         class BanAdb:
@@ -1484,6 +1514,7 @@ class RankedDraftControllerTests(unittest.TestCase):
                     "draft_turn_probe", source=source, payload=completed_bans,
                 ),
             ))
+            game.geometry = MODULE.BoardGeometry()
             game.draft_pots = {"giant": (123, 456)}
             game._fixed_ban_control = lambda _image: (157, 1967)
             game._ranked_inspector_piece_selected = (
@@ -1971,6 +2002,31 @@ class VisionTests(unittest.TestCase):
                     image, "ninja"
                 )
             )
+
+    @unittest.skipUnless(importlib.util.find_spec("PIL"), "Pillow not installed")
+    def test_live_ranked_inspector_fixtures_select_and_ban_exact_piece(self):
+        from PIL import Image
+
+        for piece, expected_control in (
+            ("penguin", (157, 1949)), ("prince", (157, 1967)),
+        ):
+            crop = Image.open(
+                ROOT / "tests/fixtures" / f"ranked_{piece}_inspector.png"
+            ).convert("RGB")
+            frame = Image.new("RGB", (1080, 2400), (70, 130, 80))
+            frame.paste(crop, (0, 1800))
+            self.assertEqual(
+                MODULE.PhoneGame._fixed_ban_control(frame), expected_control
+            )
+            self.assertTrue(
+                MODULE.PhoneGame._ranked_inspector_piece_selected(frame, piece)
+            )
+            for wrong in ({"penguin", "prince", "giant"} - {piece}):
+                self.assertFalse(
+                    MODULE.PhoneGame._ranked_inspector_piece_selected(
+                        frame, wrong
+                    )
+                )
 
     def test_connected_main_requires_profile_and_play(self):
         from PIL import Image, ImageDraw
