@@ -1,0 +1,189 @@
+{
+  "seed": 5732,
+  "completed_generations": 12,
+  "parameters": {
+    "engine": "src/ultimatefish",
+    "population": 10,
+    "generations": 12,
+    "depth": 20,
+    "nodes": 5000,
+    "plies": 100,
+    "finalists": 4,
+    "final_nodes": 20000,
+    "final_plies": 180,
+    "hall_size": 12,
+    "immigrants": 0.15,
+    "crossover": 0.25,
+    "workers": 4,
+    "seed": 5732
+  },
+  "rng_state": "(3, (494869646, 757519000, 1067503232, 1945919094, 1394724463, 2957416650, 1815609702, 3448092095, 1257957789, 1887391541, 1049848420, 1249292360, 3476561496, 1815383077, 1686119360, 3498489851, 3724204207, 2886321419, 429274589, 3843781529, 1819855725, 2713759822, 4038797964, 3509572020, 2463224177, 184249303, 303335857, 1099113796, 2562450420, 896017472, 2439853004, 1159905717, 1407732667, 701813541, 3369698629, 3714791994, 4115969597, 2519390685, 109797488, 3100156873, 4213193526, 1098308203, 587030612, 3082865061, 252341160, 682586804, 2593412323, 2262174975, 1758817408, 2879300640, 1614603761, 4045834526, 1818961781, 167636082, 34136063, 793060179, 3853608347, 2995201418, 3662346136, 3296332909, 3000343907, 3499667760, 1966726827, 3141620486, 2931857237, 2596659345, 4093036991, 1370381344, 3697574105, 3336629727, 625730073, 785244813, 280785232, 3829842399, 535731689, 3278094028, 1902161148, 326561750, 1047021811, 2862324174, 1307228851, 1827931204, 3905210560, 3346243262, 1515108296, 3668244662, 1894488030, 2266002867, 3800910245, 1019383381, 2109321480, 3764485244, 2487689605, 1146711398, 2246848261, 3513441361, 940368855, 1210947896, 3457557590, 2678954744, 91093907, 3049856946, 2416720137, 2170040284, 977871515, 317664957, 2063707564, 756890585, 1599838125, 2397038805, 2046781955, 2908478224, 3314385888, 2097055991, 2522378823, 646810591, 3216663159, 2275290272, 1758468273, 3626865573, 3128463082, 4229147976, 2029052276, 2734045611, 204252032, 1038592570, 2075154250, 1237229412, 3648631055, 20653910, 2216146770, 1901740931, 3310722753, 1079442200, 602517102, 2781859841, 1059777273, 1022707489, 1880702696, 3972836275, 508555462, 4220040448, 489598769, 1114973788, 3120819909, 2917065850, 3726603116, 3192077899, 4199910553, 1487882125, 2038474621, 3793759608, 2926517477, 381587663, 4220814374, 3188774169, 1942381919, 2004504296, 2401814143, 1854618048, 3429810324, 149025182, 2714525475, 521907749, 1366283389, 2095826710, 3890548571, 946052485, 1252245688, 130090864, 1917384429, 2888998560, 3228893937, 4246508295, 4039213541, 3724179889, 3382360704, 3320221981, 3764951044, 4134435396, 3767072680, 2707853960, 663421215, 3398187367, 4290014450, 2074632195, 3841576138, 1010749698, 546345144, 2937229906, 2419645209, 2768715949, 1071474718, 4095119102, 4164897366, 27730747, 2793724108, 2353447985, 1944634362, 900822129, 2892411642, 3964170180, 258972884, 1219526270, 4215910033, 569910868, 4283856507, 3941040367, 4256293186, 3917539030, 912263426, 495432035, 3561276259, 856709899, 412620883, 27955525, 3667586035, 1294018438, 2528927242, 1060399602, 2969747767, 2167380840, 503611621, 4163322258, 1804999728, 3905923986, 237755575, 537398184, 959608181, 3884947613, 2982868178, 3621427412, 3234227799, 93689659, 3041907160, 1071411154, 2618264368, 2166354508, 1678158625, 3853422185, 1363167039, 1975408652, 1109608467, 3630079614, 3283648388, 3988500255, 818676562, 545882014, 480537506, 1670665121, 3294282220, 2713904324, 2251838038, 945630877, 2876217756, 379590620, 2582164253, 2857884329, 2204196351, 555192046, 605423722, 1568486985, 3414032154, 812685467, 2016343192, 1585980616, 3837209761, 710313274, 3015523505, 3743878585, 3232354173, 3209108352, 2391954765, 1759308790, 3620554660, 2911264208, 534287420, 1051019583, 92162508, 1044685534, 2008558028, 2491505454, 1783198830, 217880551, 1029842429, 802180606, 364872028, 1815531244, 3094819614, 2473582061, 1917820680, 1476143262, 3218653713, 852891269, 2239634488, 3338533533, 4106490186, 4149860201, 3808903310, 3659925036, 1796500021, 3472015863, 2285421999, 1915930629, 2608826525, 1639781137, 3715474489, 1962443060, 2586606993, 2938995902, 2523972150, 3101571615, 580846579, 3577398604, 1580508086, 1029279145, 4257597219, 1549519371, 1677252520, 316963903, 4151038248, 141737979, 26491983, 2351644346, 3553405651, 660315939, 2103426073, 942735603, 2738882434, 4003457036, 3499395277, 3114771500, 3177808908, 4225408371, 3745915954, 1965948154, 1885433920, 3016090944, 2991270066, 537920743, 293568015, 3556061541, 1408099086, 392357097, 3857799046, 490252778, 205086140, 2141722682, 3484074559, 2144718661, 2864028622, 1373392342, 2497114718, 2252707504, 102960885, 3953383237, 199673196, 3271627663, 1069505704, 65924684, 3594618452, 1592137987, 1689058549, 210316944, 1341080813, 3986815715, 59696088, 3376372079, 3210850949, 1660966584, 3520130379, 3969002490, 3922737115, 1352318560, 3373851233, 743585286, 896362937, 66368715, 3475168963, 1571858050, 35568944, 2064776631, 654412001, 4123385148, 3323791574, 177217729, 3307249865, 1391821899, 920025083, 2047208320, 2552701102, 1339891355, 2627445342, 888556202, 3664776407, 3831900677, 1148179964, 2231280421, 2133926516, 115564989, 867027856, 3822708008, 1802520283, 3578363345, 3117443591, 2828017201, 2072497489, 716582682, 3750684946, 1449674535, 129856140, 1186716981, 1329538766, 3264799950, 712507487, 4271270552, 1078943974, 1459920541, 1992639479, 1342240239, 732357482, 1804095256, 1617820036, 27336903, 2289989148, 1293413426, 2632681577, 1314123965, 3121663498, 3334657637, 2285804761, 226534023, 3197626664, 3826719390, 2308309306, 441144548, 131704104, 2143289000, 568539614, 2322163171, 1073613131, 3318744933, 1279438570, 2849256748, 2957131469, 327464285, 2175763742, 2337657790, 4062347655, 3386391927, 1836610050, 621477365, 2737295101, 5977147, 1595243976, 971601114, 10745005, 3497711361, 2048054147, 702728852, 1059376306, 3915978585, 3073031985, 743430766, 3650350229, 2130534101, 2203815365, 363541045, 2904679355, 3240905983, 2231198294, 1514142909, 3141989643, 3073047728, 551615053, 3353035175, 2901636371, 2666066532, 3873858911, 4143077299, 1727930099, 2194301971, 1859708662, 3740963549, 356129778, 753752104, 387282856, 1781807221, 386131258, 409910441, 1117724698, 2734438245, 3694132751, 2509802313, 750846324, 2783874880, 4207479453, 2191951972, 561901137, 3698817999, 2747523683, 1867043502, 578974360, 3604825606, 1958383883, 921545957, 1585958969, 500836021, 136818895, 3728132574, 4256906200, 2422539529, 810604435, 2460544095, 3606856282, 2878846938, 420113395, 2734018035, 982850099, 4158431418, 1598752566, 2400888241, 2324292195, 2617101544, 4130093280, 2488989776, 4131653793, 3771774083, 2077250640, 622626120, 1621276306, 853365886, 1995425582, 1761143666, 1325247027, 4136130364, 1150328138, 597782833, 1983160939, 3956561535, 803770971, 1752067249, 3387388301, 1291628579, 1460851164, 1189168013, 874379284, 1926934925, 3881494167, 1695974077, 1112100147, 2001644430, 1033905285, 1370037831, 3888061680, 3386537789, 810320794, 1992590207, 135517423, 242957116, 2766009235, 3709199555, 3604130891, 418232404, 1882733466, 775473470, 1027157417, 2119693522, 1299803822, 1073193333, 3265613453, 503091108, 3721946024, 2299347415, 2972076079, 1942426964, 169845149, 1098690992, 2884361656, 541986089, 717533478, 1692016362, 2754405126, 4221660584, 2495721429, 4234231484, 3603075838, 2504182980, 1592623106, 1392499723, 544666151, 3393944303, 1351822270, 4258816403, 2399227311, 3897375331, 3097244225, 1918867881, 2276440482, 2350778092, 3531510394, 4035315662, 3662759084, 1875597928, 729804432, 2824894398, 3259188948, 265601697, 4082614111, 188460940, 3512682915, 4184589022, 649894089, 2163144318, 1111327854, 1508553520, 1648690096, 3826316872, 1726238185, 4226666949, 2443638771, 667228885, 1925815125, 1255168955, 555), None)",
+  "population": [
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,e3;pawn,a3;dragon,g1",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,f3;pawn,a3;dragon,g1",
+    "king,b1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,f3;pawn,a3;dragon,g1",
+    "king,a1;queen,h3;queen,a3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e2;giant,c1;pawn,g2;pawn,g3;pawn,b1;dragon,g1",
+    "king,a1;queen,h3;queen,b3;pawn,a2;giant,e1;giant,c1;pawn,g3;pawn,f3;pawn,a3;dragon,b1;bomb,h1;mage,b2;sludge,g1;checker,g2",
+    "king,a1;queen,h3;queen,a3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,b1;dragon,g1",
+    "king,b1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h1;giant,e1;giant,c1;pawn,g2;pawn,f3;pawn,a3;dragon,g1",
+    "king,a1;parasite,g1;checker,d1;penguin,a2;parasite,h1;angel,b2;ghost,g2;giant,c2;turtle,b1;queen,h2;giant,e1;checker,c1",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,b1;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,e3;pawn,a3;dragon,g1",
+    "king,a1;queen,b3;queen,c3;queen,b2;pawn,a2;giant,c1;pawn,f2;pawn,a3;dragon,e2;knight,b1;devil,f1;checker,e1;giant,g1"
+  ],
+  "hall": [
+    "king,a1;queen,b1;queen,c1;queen,d1;queen,e1;queen,f1;pawn,g1;pawn,h1;pawn,a3;pawn,b3;pawn,c3",
+    "king,a1;queen,h3;queen,b3;queen,h1;queen,c3;queen,b2;pawn,a2;checker,g2;checker,b1;pawn,g1;pawn,h2;giant,e1;giant,c1",
+    "king,a1;jester,b1;dragon,d1;ghost,d2;penguin,d3;penguin,e3;penguin,c3;penguin,f3",
+    "king,a1;jester,b1;ninja,c1;queen,d1;sniper,e1;prince,f1;mage,g1;knight,h1;turtle,a2",
+    "king,a1;jester,b1;ghost,c1;dragon,d1;bomb,e1;parasite,f1;devil,g1;berserker,h1",
+    "king,e2;sniper,a3;sniper,b3;sniper,e3;sniper,g3;sniper,h3;berserker,b2",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,g3;pawn,d3;checker,g2;checker,b2;pawn,h2;pawn,a3;giant,e1;giant,c1;knight,a2;turtle,h1;checker,f3;copycat,b1",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,h1;pawn,b1;dragon,g1",
+    "king,a1;queen,b1;queen,c2;queen,d1;queen,e1;queen,f1;pawn,g1;pawn,h1;pawn,a3;pawn,b3;pawn,c3",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,b1;dragon,g1",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,a3;dragon,g1",
+    "king,a1;queen,h3;queen,a3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,b1;dragon,g1",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,e3;pawn,a3;dragon,g1",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,f3;pawn,a3;dragon,g1"
+  ],
+  "champions": [
+    "king,a1;queen,h3;queen,b3;queen,h1;queen,c3;queen,b2;pawn,a2;checker,g2;checker,b1;pawn,g1;pawn,h2;giant,e1;giant,c1",
+    "king,a1;queen,b1;queen,c1;queen,d1;queen,e1;queen,f1;pawn,g1;pawn,h1;pawn,a3;pawn,b3;pawn,c3",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,g3;pawn,d3;checker,g2;checker,b2;pawn,h2;pawn,a3;giant,e1;giant,c1;knight,a2;turtle,h1;checker,f3;copycat,b1",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,h1;pawn,b1;dragon,g1",
+    "king,a1;queen,b1;queen,c2;queen,d1;queen,e1;queen,f1;pawn,g1;pawn,h1;pawn,a3;pawn,b3;pawn,c3",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,b1;dragon,g1",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,a3;dragon,g1",
+    "king,a1;queen,h3;queen,a3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,b1;dragon,g1",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,e3;pawn,a3;dragon,g1",
+    "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,f3;pawn,a3;dragon,g1"
+  ],
+  "generations": [
+    {
+      "generation": 1,
+      "fitness": 0.789986,
+      "score": 0.841649,
+      "lower_quartile": 0.583333,
+      "record": "13W-4D-1L",
+      "team": "king,a1;queen,h3;queen,b3;queen,h1;queen,c3;queen,b2;pawn,a2;checker,g2;checker,b1;pawn,g1;pawn,h2;giant,e1;giant,c1"
+    },
+    {
+      "generation": 2,
+      "fitness": 0.709844,
+      "score": 0.762304,
+      "lower_quartile": 0.5,
+      "record": "14W-8D-2L",
+      "team": "king,a1;queen,h3;queen,b3;queen,h1;queen,c3;queen,b2;pawn,a2;checker,g2;checker,b1;pawn,g1;pawn,h2;giant,e1;giant,c1"
+    },
+    {
+      "generation": 3,
+      "fitness": 0.627584,
+      "score": 0.65948,
+      "lower_quartile": 0.5,
+      "record": "8W-18D-0L",
+      "team": "king,a1;queen,b1;queen,c1;queen,d1;queen,e1;queen,f1;pawn,g1;pawn,h1;pawn,a3;pawn,b3;pawn,c3"
+    },
+    {
+      "generation": 4,
+      "fitness": 0.659498,
+      "score": 0.699372,
+      "lower_quartile": 0.5,
+      "record": "11W-17D-0L",
+      "team": "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,h1;pawn,b1;dragon,g1"
+    },
+    {
+      "generation": 5,
+      "fitness": 0.686051,
+      "score": 0.732564,
+      "lower_quartile": 0.5,
+      "record": "12W-16D-0L",
+      "team": "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,b1;dragon,g1"
+    },
+    {
+      "generation": 6,
+      "fitness": 0.682528,
+      "score": 0.72816,
+      "lower_quartile": 0.5,
+      "record": "13W-17D-0L",
+      "team": "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,b1;dragon,g1"
+    },
+    {
+      "generation": 7,
+      "fitness": 0.682991,
+      "score": 0.728739,
+      "lower_quartile": 0.5,
+      "record": "13W-17D-0L",
+      "team": "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,b1;dragon,g1"
+    },
+    {
+      "generation": 8,
+      "fitness": 0.611922,
+      "score": 0.639903,
+      "lower_quartile": 0.5,
+      "record": "8W-24D-0L",
+      "team": "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,b1;dragon,g1"
+    },
+    {
+      "generation": 9,
+      "fitness": 0.658238,
+      "score": 0.702484,
+      "lower_quartile": 0.48125,
+      "record": "13W-19D-0L",
+      "team": "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,a3;dragon,g1"
+    },
+    {
+      "generation": 10,
+      "fitness": 0.671373,
+      "score": 0.714217,
+      "lower_quartile": 0.5,
+      "record": "13W-21D-0L",
+      "team": "king,a1;queen,h3;queen,a3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,b1;dragon,g1"
+    },
+    {
+      "generation": 11,
+      "fitness": 0.677592,
+      "score": 0.729576,
+      "lower_quartile": 0.469654,
+      "record": "17W-19D-0L",
+      "team": "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,e3;pawn,a3;dragon,g1"
+    },
+    {
+      "generation": 12,
+      "fitness": 0.653507,
+      "score": 0.701169,
+      "lower_quartile": 0.462857,
+      "record": "18W-21D-1L",
+      "team": "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,e3;pawn,a3;dragon,g1"
+    }
+  ],
+  "finalists": [
+    {
+      "fitness": 0.678889,
+      "score": 0.736111,
+      "lower_quartile": 0.45,
+      "record": "20W-13D-3L",
+      "team": "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,e3;pawn,a3;dragon,g1"
+    },
+    {
+      "fitness": 0.666667,
+      "score": 0.708333,
+      "lower_quartile": 0.5,
+      "record": "17W-17D-2L",
+      "team": "king,b1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,f3;pawn,a3;dragon,g1"
+    },
+    {
+      "fitness": 0.55,
+      "score": 0.625,
+      "lower_quartile": 0.25,
+      "record": "15W-15D-6L",
+      "team": "king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e1;giant,c1;pawn,g2;pawn,g3;pawn,b1;dragon,g1"
+    },
+    {
+      "fitness": 0.462222,
+      "score": 0.527778,
+      "lower_quartile": 0.2,
+      "record": "10W-18D-8L",
+      "team": "king,a1;queen,h3;queen,a3;queen,c3;queen,b2;pawn,a2;pawn,h2;giant,e2;giant,c1;pawn,g2;pawn,g3;pawn,b1;dragon,g1"
+    }
+  ]
+}

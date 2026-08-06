@@ -120,6 +120,18 @@ king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;
 giant,e1;giant,c1;pawn,g2;pawn,h1;pawn,b1;dragon,g1
 ```
 
+After the 2026-08-06 search acceleration, four higher-budget continuation
+generations and 20,000-node finalist matches produced
+[`docs/benchmarks/evolved-army-optimized-2026-08-06.json`](docs/benchmarks/evolved-army-optimized-2026-08-06.json).
+The new champion scored 20W-13D-3L (73.6%) in its 36-game finalist pool and
+won both supervised Very Hard CPU validations, one with a forced mate in three
+and the other by immediate King capture:
+
+```text
+king,a1;queen,h3;queen,b3;queen,c3;queen,b2;pawn,a2;pawn,h2;
+giant,e1;giant,c1;pawn,g2;pawn,e3;pawn,a3;dragon,g1
+```
+
 ## Android conformance and live validation
 
 [`tools/ultimate_phone.py`](tools/ultimate_phone.py) controls a USB-debuggable
@@ -131,9 +143,9 @@ and King/Jester identities are sanitized into public-information belief sets.
 Examples:
 
 ```bash
-python3 tools/ultimate_phone.py cpu --device SERIAL --depth 7 --games 3
-python3 tools/ultimate_phone.py unranked --device SERIAL --depth 7
-python3 tools/ultimate_phone.py ranked --device SERIAL --depth 8
+python3 tools/ultimate_phone.py cpu --device SERIAL --depth 20 --movetime-ms 10000 --games 3
+python3 tools/ultimate_phone.py unranked --device SERIAL --depth 20 --movetime-ms 10000
+python3 tools/ultimate_phone.py ranked --device SERIAL --depth 20 --movetime-ms 10000
 ```
 
 Online modes should be run only with authorization for the account and game

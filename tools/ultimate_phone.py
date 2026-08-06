@@ -3438,10 +3438,8 @@ class PhoneGame:
                 self.adb.tap(*acknowledgement)
                 time.sleep(0.5)
                 continue
-            play_offline = self._login_point(image)
+            play_offline = self._play_offline_point(image)
             if play_offline:
-                # The largest light-cyan component on this screen is the
-                # bordered Play Offline control, immediately below Log In.
                 self.log("entering Play Offline")
                 self.adb.tap(*play_offline)
                 time.sleep(0.7)
@@ -3614,6 +3612,22 @@ class PhoneGame:
                     and image.width * 0.30 < center_x < image.width * 0.70
                     and image.height * 0.48 < center_y < image.height * 0.64):
                 return center_x, center_y
+        return None
+
+    @staticmethod
+    def _play_offline_point(image) -> tuple[int, int] | None:
+        """Find Play Offline without confusing it with the adjacent Log In.
+
+        Both disconnected-splash controls share the same wide cyan border, so
+        component color alone cannot identify which one was found first.
+        ``OFFLINE`` is large public UI text and gives an unambiguous safe tap.
+        """
+        point = find_text_center(image, "OFFLINE", exact=True)
+        if point is None:
+            return None
+        if (image.width * 0.25 < point[0] < image.width * 0.75 and
+                image.height * 0.45 < point[1] < image.height * 0.66):
+            return point
         return None
 
     @staticmethod
@@ -3792,7 +3806,10 @@ class PhoneGame:
         """Perform one CPU navigation/build attempt."""
         self.log("starting Very Hard CPU game")
         self.adb.restart_app("com.JesseLugassy.ChessUltimate")
-        self.wait_connected_main()
+        # CPU is available offline. This accepts an already-connected main
+        # menu too, but avoids repeatedly invoking Google login when the Chess
+        # Ultimate service is under maintenance.
+        self.wait_local_main()
         # Mirror the manually calibrated sequence: let the connected main menu
         # settle, then send exactly one Play tap.  Repeated asynchronous taps
         # can arrive after the mode transition and activate another control.

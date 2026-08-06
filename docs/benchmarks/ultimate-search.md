@@ -116,3 +116,22 @@ threefold-repetition draw, with no controller desynchronization. The draw was
 classified from the exact position history instead of unreliable result-screen
 OCR. This is useful end-to-end validation, but the sample is far too small to
 claim reliable dominance or an Elo gain.
+
+## 2026-08-06 live and setup validation
+
+The optimized engine won a complete Very Hard CPU game with the deliberately
+varied `Jester/Ninja/Queen/Sniper/Prince/Mage/Knight/Turtle` test roster. The
+controller installed and verified all nine deployment cells, reconstructed all
+nine CPU pieces, executed repeated Prince continuations correctly, and reached
+depths 11–15 within the ten-second cap before recognizing the public victory
+screen.
+
+The faster engine then continued the adversarial setup league from generations
+9 through 12 at 5,000 nodes per move and reranked four finalists at 20,000
+nodes. The winning deployment in
+[`evolved-army-optimized-2026-08-06.json`](evolved-army-optimized-2026-08-06.json)
+scored 20W-13D-3L. It won two further supervised Very Hard CPU games: a forced
+mate in three and an immediate King capture. The app's online service was under
+maintenance during this validation, so Unranked and Ranked were not sampled;
+the CPU controller correctly fell back to the explicitly detected **Play
+Offline** control without invoking Google login.

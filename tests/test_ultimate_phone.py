@@ -1062,6 +1062,20 @@ class VisionTests(unittest.TestCase):
             (265, 1250, 815, 1415), radius=60, fill=(135, 215, 240))
         self.assertEqual(MODULE.PhoneGame._login_point(image), (540, 1332))
 
+    def test_play_offline_detector_uses_text_not_adjacent_cyan_button(self):
+        from PIL import Image
+
+        image = Image.new("RGB", (1080, 2400), (40, 140, 210))
+        with patch.object(
+            MODULE, "find_text_center", return_value=(540, 1460)
+        ) as find:
+            self.assertEqual(
+                MODULE.PhoneGame._play_offline_point(image), (540, 1460)
+            )
+            find.assert_called_once_with(image, "OFFLINE", exact=True)
+        with patch.object(MODULE, "find_text_center", return_value=None):
+            self.assertIsNone(MODULE.PhoneGame._play_offline_point(image))
+
     def test_game_found_accept_detector_ignores_large_play_button(self):
         from PIL import Image, ImageDraw
 
