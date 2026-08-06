@@ -289,3 +289,16 @@ backtracked placement before committing. Replaying the captured draft yields
 the original infeasible `Prince Prince Mage CopyCat`, then the feasible
 same-cost `Prince Prince Mage Knight` when the weakest conflicting CopyCat is
 excluded.
+
+The immediate post-preview validation completed all twelve phases as Ivory
+without intervention. Exact bans were Rook, Ghost, Jester, Sniper, Bishop, and
+Devil; the final local group was `Prince@c1; Checker@h1`, confirming that no
+late Jester was purchased. Several obstructed target pixels were recovered and
+the exact 99-point roster locked. Gameplay initialized from two legitimate
+first-group royal hypotheses, remained synchronized through Prince
+continuations and Queen incursions, and searched roughly 11–82 million nodes
+per 10-second request at depths 9–12. Ultimate Fish held the worst belief near
++3 pawns until the opponent ran out of time. The public overlay recorded
+**Victory, +21 ranking** (and the 25/25 knockout-character milestone), so the
+corrected pipeline's Ranked strength record advances to **2 wins, 0 draws,
+0 losses**; controller-only abandoned games remain excluded.

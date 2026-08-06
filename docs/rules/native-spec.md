@@ -189,6 +189,12 @@ excluding CopyCat changed `Prince Prince Mage CopyCat` into the packable exact
 50-point group `Prince Prince Mage Knight`; the engine draft phase remains
 unchanged throughout previewing.
 
+The next live Ranked game validated the combined draft path end to end. It
+used only journaled Ban identities, locked all three exact local groups, and
+selected `Prince; Checker` rather than late Jesters in the final window.
+Gameplay stayed synchronized and ended in an opponent-clock victory worth +21
+ranking.
+
 A later draft exposed why Giant's point-only acknowledgement is insufficient:
 one locked Giant footprint differed from the controller's assumed anchor, so a
 later group repeatedly targeted cells that were not actually free. The local
