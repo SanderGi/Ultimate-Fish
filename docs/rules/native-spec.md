@@ -104,9 +104,10 @@ cumulative `GetPoints` transition before the cell is reserved in the engine
 draft. This matters for wide colliders such as CopyCat, which can land one file
 inward and create its mirror there. A live Prince drop aimed at a clear `a3`
 was intercepted at `c3`, despawned the pending Ghost there, and produced the
-authoritative point sequence 22 -> 7 -> 25. Pending wide and high-value models
-are now placed first, and every new cell is ranked by clearance. More
-importantly, a replacement no longer aborts the controller: the removed cost
+authoritative point sequence 22 -> 7 -> 25. Ordinary models are placed before
+Giants, matching the native builder's collider behavior, while each mutable
+group is planned as a complete non-overlapping packing. More importantly, a
+replacement no longer aborts the controller: the removed cost
 and reported landing identify the displaced pending model(s), their cells are
 released, the actual landing is reserved, and the missing desired roster is
 re-added during the same pick window. An accidentally selected extra type is
@@ -153,6 +154,13 @@ already placed model to the requested square and iteratively compensates from
 the next native `ArmyMove` coordinate, exactly like the Local builder. The
 planner never reserves the intended square until the physical correction is
 acknowledged, so a known misdrop is not represented as uncertainty.
+
+A fully autonomous live Ranked validation locked the exact difficult opening
+group `Prince@f1,g1; Giant@a2,c2,e2,g2`. The later windows also recovered
+transient landings and locked `Prince@d1,e1; Pawn@c1`, then
+`Prince@h1; Checker@b1`, producing the evolved 99-point roster without timeout
+or manual input. The resulting game remained synchronized and ended in an
+Ultimate Fish forced-mate win.
 
 After selecting a Ban pot, the current Ranked UI exposes the actionable large
 red Ban button in the lower-left character inspector. The blue top-row `BAN`

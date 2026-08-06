@@ -208,14 +208,12 @@ ArmyMove raycasts an ordinary anchor cell; direct grid-seam drops were all
 rejected in a live match. The controller now uses the measured gray-cell edges
 `(60,1344)` through `(1032,1668)`, targets raycastable cell centers, and
 backtracks the remaining mutable group. Offline tests pack four Giants plus two
-Princes without overlap and assert all four
-corrected centers. A shipping-app Local profile then built and visually
+Princes without overlap and assert all four corrected centers. A shipping-app
+Local profile then built and visually
 verified `a2,c2,e2,g2` for both players, launched the position, and accepted a
-Giant move in differential play. Ranked accepted three corrected placements;
-the remaining center was occluded by the earlier maximum-clearance order, so
-the controller now uses the Local-proven contiguous left-to-right order. A
-successful live four-Giant Ranked lock remains an explicit validation gate
-rather than a claimed result.
+Giant move in differential play. The subsequent live Ranked run locked both
+Princes and all four Giants with the Local-proven contiguous left-to-right
+order, closing the placement validation gate.
 
 The 2026-08-06 CPU startup regression also established that an opponent army
 need not spend the full 100-point allowance. A live Very Hard opponent reported
@@ -225,6 +223,21 @@ hypotheses, and Ultimate Fish won by checkmate at a 10-second move budget.
 Material mismatches now trigger a coordinate-confirmed native grid scan rather
 than filling the opponent roster toward 100 or treating missed public pieces as
 uncertainty.
+
+The pending Ranked placement gate subsequently passed in a fully autonomous
+Silver IV match. Ultimate Fish acted first, completed all twelve ban/pick
+windows, and locked the evolved 99-point roster without intervention:
+
+```text
+king@a1; prince@d1,e1,f1,g1,h1; giant@a2,c2,e2,g2; pawn@c1; checker@b1
+```
+
+The difficult opening group placed both Princes and all four Giants exactly;
+later transient Prince/Checker collisions were corrected inside the active pick
+window rather than abandoning the match. The opponent's public 100-point spawn
+journal produced one exact hypothesis. Search reached depths 8–11 at the
+10-second cap, converted an approximately +8 score, and executed a forced mate
+in three for the first fully autonomous Ranked win at this checkpoint.
 
 The strengthened Local profile exactly matches the difficult opening group:
 two Princes at `f1,g1` followed by Giants at `a2,c2,e2,g2`. Both native builders
