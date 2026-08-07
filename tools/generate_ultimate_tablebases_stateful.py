@@ -26,6 +26,8 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--budget", type=int, default=plan.DEFAULT_BUDGET)
     parser.add_argument("--max-classes", type=int)
+    parser.add_argument("--only", action="append", default=[],
+                        help="generate only this logical .uftb filename (repeatable)")
     parser.add_argument("--checkpoint-dir", type=Path,
                         default=Path("/tmp/ultimatefish-stateful-checkpoints"))
     args = parser.parse_args()
@@ -40,6 +42,14 @@ def main() -> None:
             f"{len(missing_stateless)} tables remain")
     selected = [record for record in records
                 if record["phase"] == "kings+2-stateful"]
+    if args.only:
+        requested = set(args.only)
+        known = {str(record["filename"]) for record in selected}
+        unknown = sorted(requested - known)
+        if unknown:
+            raise RuntimeError(f"unknown stateful tablebase class: {', '.join(unknown)}")
+        selected = [record for record in selected
+                    if str(record["filename"]) in requested]
     if args.max_classes is not None:
         selected = selected[:args.max_classes]
 

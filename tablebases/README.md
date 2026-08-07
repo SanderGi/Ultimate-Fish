@@ -190,6 +190,7 @@ represented by that class.
 | `kpawnbombk.uftb` | King+Pawn+Bomb vs King | 779,725,448 | 37,957,918 / 0 / 2 | 0 (3,219,216) / 34,675,860 / 62,844 | `804da1e2b87eac100ac6101ea2fe10fc2e83adeb8d0e4f50143f3a89719f3684` |
 | `kbombcheckerk.uftb` | King+Bomb+Checker vs King | 818,127,549 | 38,253,312 (547,296) / 0 (3,286,402) / 0 (33,828,830) | 0 (3,219,216) / 34,678,360 (8,207,456) / 60,344 (29,750,464) | `013330f8184618b0d536da4a4e9417c8fbc1b49fcaab2a1842266e8246b7ad52` |
 | `kbombsniperk.uftb` | King+Bomb+Sniper vs King | 1,509,762,618 | 56,936,876 (18,978,960) / 0 / 4 | 0 (6,438,432) / 51,998,886 (17,339,238) / 109,170 (30,114) | `be04af3e927cf0a34219b0bd2b3663e659da16c86be7775ee8afb05d55150b9e` |
+| `kbishopghostk.uftb` | King+Bishop+Ghost vs King | 958,964,780 | 37,957,920 / 0 / 0 | 0 (3,219,216) / 33,484,914 / 1,253,790 | `61bc4f9865d4c217868da670e27e16e9a493f31ca15ae6a68f91469b8c48dcf2` |
 <!-- GENERATED_TABLE_END -->
 
 Each W / L / D cell is from the perspective of the side to move named by its
