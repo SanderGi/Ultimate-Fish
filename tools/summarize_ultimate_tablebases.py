@@ -189,8 +189,9 @@ def add_penguin_reachability_artifacts(
             active = substate % 2 == 1
             locally_impossible = active and not (freezes_white or freezes_black)
             impossible_turn = side == 0 and active and freezes_black
-            adjacent_penguin_side_win = (side == 0 and kings_adjacent and result == 1)
-            if not (locally_impossible or impossible_turn or adjacent_penguin_side_win):
+            adjacent_penguin_decisive = (kings_adjacent and
+                ((side == 0 and result == 1) or (side == 1 and result == 2)))
+            if not (locally_impossible or impossible_turn or adjacent_penguin_decisive):
                 continue
             general_artifact = kings_adjacent and (
                 (result == 1 and not owns_material[side]) or

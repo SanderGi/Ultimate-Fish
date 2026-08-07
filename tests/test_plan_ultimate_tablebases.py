@@ -119,6 +119,8 @@ class TablebasePlanTests(unittest.TestCase):
         totals, illegal = summary.summary(ROOT / "tablebases" / "kpenguink.uftb")
         self.assertEqual(summary.cell(totals[0], illegal[0]),
                          "0 (289,648) / 0 (8,992) / 2,928,752 (2,688,128)")
+        self.assertEqual(summary.cell(totals[1], illegal[1]),
+                         "19,576 (261,408) / 0 (10,560) / 3,148,280 (2,475,696)")
 
     def test_jester_adjacent_king_wins_are_legal(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "kjesterk.uftb")
