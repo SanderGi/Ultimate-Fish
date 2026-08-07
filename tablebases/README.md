@@ -47,6 +47,10 @@ represented by that class.
 | `kjesterkparasite.uftb` | King+Jester vs King+Parasite | 450,905,824 | 3,349,672 / 15,592,716 / 36,572 | 18,877,766 / 87,668 / 13,526 | `45f0f26f182a2e231455df61931cf49d6a54d9b36f9be0e1fd9fd87117a7fd18` |
 | `kjestergiantk.uftb` | King+Jester+Giant vs King | 259,948,596 | 13,286,700 / 0 / 5,692,260 | 1,142,116 / 11,300,932 / 6,535,912 | `9cee141bd1bc8cd2e0427a95d6b96683e24e5096d2bafce7390750918a5eb1f8` |
 | `kjesterkgiant.uftb` | King+Jester vs King+Giant | 265,285,348 | 13,180,164 / 21,472 / 5,777,324 | 3,091,428 / 7,778,226 / 8,109,306 | `67a539cfcbeeb53837a6b7c07c497aed513aa9d12260a7588213eee783a204e6` |
+| `kjesterfishermank.uftb` | King+Jester+Fisherman vs King | 796,241,336 | 18,978,960 / 0 / 0 | 1,609,608 / 15,952,244 / 1,417,108 | `3f335332d457d184fc3a20b5ddddf2806911bb5e5bfd607872eb757a2a90a968` |
+| `kjesterkfisherman.uftb` | King+Jester vs King+Fisherman | 723,303,740 | 5,592,998 / 0 / 13,385,962 | 1,609,608 / 11,842 / 17,357,510 | `ce378df3a2be9b6fe0dcb82098a88abc7067ed1cde02821ca744af46dc461df0` |
+| `kjesterdragonk.uftb` | King+Jester+Dragon vs King | 596,943,520 | 18,978,960 / 0 / 0 | 1,609,608 / 17,350,088 / 19,264 | `3553fad7d75c3c428bbf0d9333801d57cb3dae0a99bc505ef1bf45de1f7cc017` |
+| `kjesterkdragon.uftb` | King+Jester vs King+Dragon | 573,650,240 | 5,587,240 / 7,153,948 / 6,237,772 | 16,036,060 / 5,426 / 2,937,474 | `55477de8dd1263ab734582dea3409af5409fa704bf35088d4ab4300beee7a5fb` |
 | `kknightknightk.uftb` | King+2 Knights vs King | 196,460,680 | 1,964,822 / 0 / 7,524,658 | 0 (804,804) / 68 / 8,684,608 | `5c95ba0ed74d95e4d2c2fa4d1a98c1dddb121a9d11406853c75d4d5e1ba15138` |
 | `kknightturtlek.uftb` | King+Knight+Turtle vs King | 363,952,568 | 17,632,308 / 0 / 1,346,652 | 0 (1,609,608) / 12,261,896 / 5,107,456 | `e51001e72d79078c3da96de0dab87d8752d5f7496621b4b3812f82624107c5df` |
 | `kbishopbishopk.uftb` | King+2 Bishops vs King | 130,467,458 | 4,804,466 / 0 / 4,685,014 | 0 (407,502) / 3,708,210 / 5,373,768 | `18ee411f10c1c62e365b9e30359a1403f5d34e827bcc5509f20d8c0e73ded490` |
