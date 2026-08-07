@@ -60,7 +60,11 @@ represented by that class.
 | `kknightbombk.uftb` | King+Knight+Bomb vs King | 457,027,800 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,337,540 / 31,812 | `6c1e33d2b92fe411485a2370fb18621c86d5e26de45a3deb053f0a4547312d72` |
 | `kknightkbomb.uftb` | King+Knight vs King+Bomb | 431,449,080 | 2,903,304 / 14,810,768 / 1,264,888 | 18,908,960 / 52 / 69,948 | `64f63059b0d87f4b28bf8d30c0a1c3354ed42441fd6b84c6a1be26263aa9afde` |
 | `kknightninjak.uftb` | King+Knight+Ninja vs King | 564,591,464 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 16,000,796 / 1,368,556 | `ecb39a6f313de06083df9552b6b46e291fdfda4f04c4536744096eea5615a3fa` |
+| `kknightkninja.uftb` | King+Knight vs King+Ninja | 524,358,488 | 2,808,960 / 13,522,364 / 2,647,636 | 18,916,224 / 0 / 62,736 | `c72d856b445ae577e4394e9b0fe4ec3589a3c0fd55bd991d037a709bad688e78` |
 | `kknightturtlek.uftb` | King+Knight+Turtle vs King | 363,952,568 | 17,632,308 / 0 / 1,346,652 | 0 (1,609,608) / 12,261,896 / 5,107,456 | `e51001e72d79078c3da96de0dab87d8752d5f7496621b4b3812f82624107c5df` |
+| `kknightparasitek.uftb` | King+Knight+Parasite vs King | 412,737,272 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,364,220 / 5,132 | `80703fb82f8caf5589e4e3d07bec5f6b4ce78dec12ce44d7a7f7e07d5e127246` |
+| `kknightkparasite.uftb` | King+Knight vs King+Parasite | 396,499,600 | 2,808,980 / 14,791,096 / 1,378,884 | 18,910,940 / 4 / 68,016 | `c9c65bc38098b46e30464eabc4816c9d4e68c498b0876c7dca2df59103257c04` |
+| `kknightgiantk.uftb` | King+Knight+Giant vs King | 228,702,604 | 13,080,248 / 0 / 5,898,712 | 0 (1,142,116) / 9,132,192 / 8,704,652 | `2aecb1ceed4793a173c917fda61cb26bd622bf4dfec8e66d61c0e837f5cba541` |
 | `kbishopbishopk.uftb` | King+2 Bishops vs King | 130,467,458 | 4,804,466 / 0 / 4,685,014 | 0 (407,502) / 3,708,210 / 5,373,768 | `18ee411f10c1c62e365b9e30359a1403f5d34e827bcc5509f20d8c0e73ded490` |
 | `kbombbombk.uftb` | King+2 Bombs vs King | 260,111,166 | 9,489,402 / 78 / 0 | 0 (804,804) / 8,652,882 / 31,794 | `3007861257e32343194410f89e6c446a904086162f15481d46d7a5337404a4ab` |
 | `kturtleturtlek.uftb` | King+2 Turtles vs King | 167,494,620 | 1,579,316 / 0 / 7,910,164 | 0 (804,804) / 416 / 8,684,260 | `bbb146a2f252eaf0eb40d23e49d0ddda56de183fb202c515ff64a0fd172037b1` |
