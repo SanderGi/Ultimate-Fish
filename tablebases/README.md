@@ -113,6 +113,10 @@ represented by that class.
 | `kbishopbishopk.uftb` | King+2 Bishops vs King | 130,467,458 | 4,804,466 / 0 / 4,685,014 | 0 (407,502) / 3,708,210 / 5,373,768 | `18ee411f10c1c62e365b9e30359a1403f5d34e827bcc5509f20d8c0e73ded490` |
 | `kbishopbombk.uftb` | King+Bishop+Bomb vs King | 514,356,290 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,333,560 / 35,792 | `7551d93b34162827fa0b35578b4c6a4d9acd181bddcaa31582ab1361756764b1` |
 | `kbishopkbomb.uftb` | King+Bishop vs King+Bomb | 471,646,156 | 3,850,636 / 13,199,096 / 1,929,228 | 18,829,288 / 40 / 149,632 | `8f3edd16e534811b61a4dcd792f2bb7a26e7c6f43fb0397c9c3696de56d0ddbe` |
+| `kbishopninjak.uftb` | King+Bishop+Ninja vs King | 622,467,416 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 16,048,930 / 1,320,422 | `25afeb53b8ab30386bf683f20c1769220d7e3b1c1356e543c60f1f260ad58985` |
+| `kbishopkninja.uftb` | King+Bishop vs King+Ninja | 554,408,596 | 3,693,788 / 12,195,462 / 3,089,710 | 18,939,060 / 0 / 39,900 | `cd948abb01bd00c51ffdf0c4aebb46394b4f3052e6b86073c8b4e327fa813f22` |
+| `kbishopturtlek.uftb` | King+Bishop+Turtle vs King | 421,326,784 | 18,936,088 / 0 / 42,872 | 0 (1,609,608) / 14,694,114 / 2,675,238 | `356dc50f942ccd939ea3a1364b4481691b4abf9bb4338c65fef015b567bea827` |
+| `kbishopmagek.uftb` | King+Bishop+Mage vs King | 400,784,944 | 3,693,788 / 0 / 15,285,172 | 0 (1,609,608) / 0 / 17,369,352 | `4b32c84e4e56475370f5439dcd28b75a743e86531c8f27c4b652d47b722b767a` |
 | `kbombbombk.uftb` | King+2 Bombs vs King | 260,111,166 | 9,489,402 / 78 / 0 | 0 (804,804) / 8,652,882 / 31,794 | `3007861257e32343194410f89e6c446a904086162f15481d46d7a5337404a4ab` |
 | `kturtleturtlek.uftb` | King+2 Turtles vs King | 167,494,620 | 1,579,316 / 0 / 7,910,164 | 0 (804,804) / 416 / 8,684,260 | `bbb146a2f252eaf0eb40d23e49d0ddda56de183fb202c515ff64a0fd172037b1` |
 | `kmagekparasite.uftb` | King+Mage vs King+Parasite | 344,453,172 | 1,609,608 / 17,369,180 / 172 | 18,978,960 / 0 / 0 | `7d8638ada4d6e2fb5314afc7b87bf25a4013f149b76525f44ba561a55cf147aa` |
