@@ -108,7 +108,11 @@ represented by that class.
 | `krookkgiant.uftb` | King+Rook vs King+Giant | 287,592,138 | 13,212,128 / 13,856 / 5,752,976 | 3,082,334 / 7,888,652 / 8,007,974 | `82ef14d4804794e0aba2a3d0faec6441e261f5200546f726f28e50bc1bbc72d6` |
 | `krookfishermank.uftb` | King+Rook+Fisherman vs King | 857,801,488 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 15,950,608 / 1,418,744 | `093944252b6b71ad34c31a006493a6bb6ab46fef02238e6f1d4714dacf0e6707` |
 | `krookkfisherman.uftb` | King+Rook vs King+Fisherman | 778,458,154 | 9,374,180 / 0 / 9,604,780 | 1,609,608 / 461,572 / 16,907,780 | `bd7c952e4779e7b9fd1e035dc1e9eabcd2202c51f0e96b0dfbe38bdd20b713a9` |
+| `krookdragonk.uftb` | King+Rook+Dragon vs King | 676,425,340 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,325,054 / 44,298 | `7705efb335912c0ed7c8f7dd7c1ac63ea6cce8f353ce5f8f4799d8a09aa4f70c` |
+| `krookkdragon.uftb` | King+Rook vs King+Dragon | 579,444,158 | 9,327,596 / 437,638 / 9,213,726 | 10,675,404 / 324,630 / 7,978,926 | `59d1e0f5d1a560efbd24fde36c9d5d6947e64ec50509b5500b56cff1b28644d8` |
 | `kbishopbishopk.uftb` | King+2 Bishops vs King | 130,467,458 | 4,804,466 / 0 / 4,685,014 | 0 (407,502) / 3,708,210 / 5,373,768 | `18ee411f10c1c62e365b9e30359a1403f5d34e827bcc5509f20d8c0e73ded490` |
+| `kbishopbombk.uftb` | King+Bishop+Bomb vs King | 514,356,290 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,333,560 / 35,792 | `7551d93b34162827fa0b35578b4c6a4d9acd181bddcaa31582ab1361756764b1` |
+| `kbishopkbomb.uftb` | King+Bishop vs King+Bomb | 471,646,156 | 3,850,636 / 13,199,096 / 1,929,228 | 18,829,288 / 40 / 149,632 | `8f3edd16e534811b61a4dcd792f2bb7a26e7c6f43fb0397c9c3696de56d0ddbe` |
 | `kbombbombk.uftb` | King+2 Bombs vs King | 260,111,166 | 9,489,402 / 78 / 0 | 0 (804,804) / 8,652,882 / 31,794 | `3007861257e32343194410f89e6c446a904086162f15481d46d7a5337404a4ab` |
 | `kturtleturtlek.uftb` | King+2 Turtles vs King | 167,494,620 | 1,579,316 / 0 / 7,910,164 | 0 (804,804) / 416 / 8,684,260 | `bbb146a2f252eaf0eb40d23e49d0ddda56de183fb202c515ff64a0fd172037b1` |
 | `kmagekparasite.uftb` | King+Mage vs King+Parasite | 344,453,172 | 1,609,608 / 17,369,180 / 172 | 18,978,960 / 0 / 0 | `7d8638ada4d6e2fb5314afc7b87bf25a4013f149b76525f44ba561a55cf147aa` |
