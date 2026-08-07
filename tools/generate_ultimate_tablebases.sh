@@ -21,3 +21,13 @@ generate rook krk
 generate queen kqk
 generate ninja kninjak
 generate dragon kdragonk
+generate jester kjesterk
+generate bomb kbombk
+generate parasite kparasitek
+generate giant kgiantk
+generate berserker kberserkerk
+generate ghost kghostk
+generate sniper ksniperk
+generate prince kprincek
+generate pawn kpawnk
+generate penguin kpenguink

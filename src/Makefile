@@ -66,7 +66,8 @@ ultimate-nnue-reference:
 
 ultimate-tablebase:
 	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic \
-		ultimate/tablebase.cpp ultimate/position.cpp -o ultimate_tablebase
+		ultimate/tablebase.cpp ultimate/position.cpp ultimate/tablebase_probe.cpp \
+		ultimate/nnue.cpp -o ultimate_tablebase
 
 ultimate-test:
 	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror ../tests/ultimate_rules.cpp \

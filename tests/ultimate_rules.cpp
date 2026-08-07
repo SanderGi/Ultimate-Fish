@@ -1893,6 +1893,57 @@ void test_exact_tablebase_probing() {
     expect(white && black && black->wdl == white->wdl && black->dtw == white->dtw,
            "tablebase color canonicalization preserves exact WDL and DTW");
 
+    for (const auto [type, square] : {
+           std::pair{PieceType::Jester, "b1"},
+           std::pair{PieceType::Bomb, "b1"},
+           std::pair{PieceType::Parasite, "b1"},
+           std::pair{PieceType::Giant, "b1"},
+         }) {
+        Position special;
+        moved(special, PieceType::King, Color::White, "a4");
+        moved(special, type, Color::White, square);
+        moved(special, PieceType::King, Color::Black, "h10");
+        expect(TablebaseProbe::probe(special).has_value(),
+               std::string("bundled K+") + std::string(Position::type_name(type)) +
+                 "+K tablebase is probeable");
+    }
+
+    for (const PieceType type : {PieceType::Pawn, PieceType::Ghost,
+                                 PieceType::Sniper, PieceType::Prince,
+                                 PieceType::Penguin}) {
+        Position stateful;
+        moved(stateful, PieceType::King, Color::White, "a1");
+        const int extra = moved(stateful, type, Color::White, "c3");
+        moved(stateful, PieceType::King, Color::Black, "h10");
+        if (type == PieceType::Pawn)
+            stateful.piece(extra).moved = false;
+        else if (type == PieceType::Ghost)
+            stateful.piece(extra).visible = false;
+        else if (type == PieceType::Sniper)
+            stateful.piece(extra).cooldown = 3;
+        else if (type == PieceType::Penguin)
+            stateful.piece(extra).cooldown = 5;
+        expect(TablebaseProbe::probe(stateful).has_value(),
+               std::string("stateful K+") + std::string(Position::type_name(type)) +
+                 "+K tablebase is probeable");
+    }
+
+    Position copycat;
+    moved(copycat, PieceType::King, Color::White, "a1");
+    const int cat = moved(copycat, PieceType::Copycat, Color::White, "c3");
+    copycat.piece(copycat.piece(cat).link).moved = true;
+    moved(copycat, PieceType::King, Color::Black, "h10");
+    expect(TablebaseProbe::probe(copycat).has_value(),
+           "linked Copycat mirror-pair tablebase is probeable");
+
+    Position twoKnights;
+    moved(twoKnights, PieceType::King, Color::White, "a1");
+    moved(twoKnights, PieceType::Knight, Color::White, "c3");
+    moved(twoKnights, PieceType::Knight, Color::White, "f4");
+    moved(twoKnights, PieceType::King, Color::Black, "h10");
+    expect(TablebaseProbe::probe(twoKnights).has_value(),
+           "horizontally canonical identical-extra K+NN+K tablebase is probeable");
+
     queen.piece(1).moved = false;
     expect(!TablebaseProbe::probe(queen),
            "tablebase declines an unmoved state whose castling class is absent");
