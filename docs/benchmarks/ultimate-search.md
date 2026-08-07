@@ -208,6 +208,17 @@ The optimization suggestions were measured rather than accepted wholesale:
   recovered fixture's small 1.4% node reduction did not offset hash/update
   overhead (1.73 s to 1.97 s). The learned residuals destabilized shallow
   pruning bounds more than they corrected the handcrafted evaluator.
+- Incremental Zobrist hashing was prototyped with cached contributions for all
+  character fields plus side, continuation, forced actor, en-passant state,
+  timeout winner, and attachment order. A full 96-slot refresh slowed the
+  current classic fixture from 1.54 s to about 1.83 s and the recovered
+  Ultimate fixture from 1.73 s to about 2.63 s because it ran after every
+  pseudo-child. A parent-delta version deferred work to legal searched edges,
+  but the independent recomputation oracle caught stale state when callers
+  retained the public mutable `PieceState&` analysis handle. Both versions
+  were rejected: incremental hashing must follow a compact-state refactor that
+  routes every mutation through tracked setters, otherwise TT correctness
+  cannot be guaranteed.
 
 ## Deadline-aware draft search
 
