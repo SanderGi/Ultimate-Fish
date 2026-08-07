@@ -88,6 +88,10 @@ represented by that class.
 | `kqueenkgiant.uftb` | King+Queen vs King+Giant | 358,244,540 | 13,273,492 / 7,090 / 5,698,378 | 3,072,430 / 7,900,780 / 8,005,750 | `e9ce180e7176f25be6857375977f5c4f56fc5b5b5805fa1c60a22e6a15510baa` |
 | `kqueenfishermank.uftb` | King+Queen+Fisherman vs King | 998,335,056 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 15,912,942 / 1,456,410 | `d8999ba65bae1875637e5cc4e5b7ad857bb178533a7f41751cbdadce731f1c38` |
 | `kqueenkfisherman.uftb` | King+Queen vs King+Fisherman | 870,038,166 | 18,978,960 / 0 / 0 | 1,609,608 / 15,953,468 / 1,415,884 | `c321eebe57da1b0b119a42001f06b98d1353528567fc9c6dffcd09b95c27e3b2` |
+| `kqueendragonk.uftb` | King+Queen+Dragon vs King | 819,198,846 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,238,014 / 131,338 | `59dbc00aeff1770fdae48bb5ebeb6db85c4318e17d95f1fa531cc4fcf4c9f32e` |
+| `kqueenkdragon.uftb` | King+Queen vs King+Dragon | 661,400,078 | 15,001,422 / 108,042 / 3,869,496 | 9,183,222 / 1,437,880 / 8,357,858 | `c4cf5caf8667b03528602cfa24f1b35e13bd1d038c5791fb028196965988d7cd` |
+| `krookrookk.uftb` | King+2 Rooks vs King | 336,683,762 | 9,489,480 / 0 / 0 | 0 (804,804) / 8,669,238 / 15,438 | `6ad45d2181b8bb5e7780e8bb87b654970778d108405c43d21c06954ed287a635` |
+| `krookkrook.uftb` | King+Rook vs King+Rook | 574,799,708 | 8,699,932 / 85,386 / 10,193,642 | 8,699,932 / 85,386 / 10,193,642 | `74424fbc58c6b6e837780bed913ada2eb256cdcaf27fb53162c4b84e1e9d763e` |
 | `kbishopbishopk.uftb` | King+2 Bishops vs King | 130,467,458 | 4,804,466 / 0 / 4,685,014 | 0 (407,502) / 3,708,210 / 5,373,768 | `18ee411f10c1c62e365b9e30359a1403f5d34e827bcc5509f20d8c0e73ded490` |
 | `kbombbombk.uftb` | King+2 Bombs vs King | 260,111,166 | 9,489,402 / 78 / 0 | 0 (804,804) / 8,652,882 / 31,794 | `3007861257e32343194410f89e6c446a904086162f15481d46d7a5337404a4ab` |
 | `kturtleturtlek.uftb` | King+2 Turtles vs King | 167,494,620 | 1,579,316 / 0 / 7,910,164 | 0 (804,804) / 416 / 8,684,260 | `bbb146a2f252eaf0eb40d23e49d0ddda56de183fb202c515ff64a0fd172037b1` |
