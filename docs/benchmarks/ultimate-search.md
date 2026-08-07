@@ -219,6 +219,13 @@ The optimization suggestions were measured rather than accepted wholesale:
   were rejected: incremental hashing must follow a compact-state refactor that
   routes every mutation through tracked setters, otherwise TT correctness
   cannot be guaranteed.
+- Packing the four `PieceState` booleans into bitfields reduced each record
+  from 16 to 12 bytes and shrank both the 2,656-byte `Position` and reference
+  `Undo` by 384 bytes. It did not improve the identical-tree classic median
+  (1.529 s versus 1.528 s) and slowed the recovered fixture median from
+  1.722 s to 1.753 s through bitfield access overhead. The layout was reverted;
+  a useful compact make/unmake design must eliminate full copies rather than
+  only making them 14% smaller.
 
 ## Deadline-aware draft search
 
