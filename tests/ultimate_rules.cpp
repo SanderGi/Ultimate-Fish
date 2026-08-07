@@ -1928,6 +1928,20 @@ void test_exact_tablebase_probing() {
                  "+K tablebase is probeable");
     }
 
+    Position princeMate;
+    std::string princeError;
+    expect(princeMate.set_upn(
+      "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;win=-;"
+      "king,w,a1,0,0,0,0,1,1,-1,1,-1,0;"
+      "king,b,c1,0,0,0,0,1,1,-1,1,-1,0;"
+      "prince,w,e1,0,0,0,0,1,1,-1,1,-1,0",
+      &princeError),
+      "same-turn Prince tablebase regression parses: " + princeError);
+    const auto princeResult = TablebaseProbe::probe(princeMate);
+    expect(princeResult && princeResult->wdl == TablebaseWdl::Win &&
+             princeResult->dtw == 2,
+           "Prince e1-d1 followed by forced d1xc1 is an exact two-action win");
+
     Position copycat;
     moved(copycat, PieceType::King, Color::White, "a1");
     const int cat = moved(copycat, PieceType::Copycat, Color::White, "c3");

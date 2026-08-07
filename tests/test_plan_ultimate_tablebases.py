@@ -101,9 +101,15 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertEqual(summary.cell(totals[1], illegal[1]),
                          "0 (41,808) / 414,300 / 36,852")
 
+    def test_prince_continuation_losses_are_annotated_as_illegal(self):
+        totals, illegal = summary.summary(ROOT / "tablebases" / "kprincek.uftb")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "947,384 / 0 (38,536) / 0")
+        self.assertEqual(illegal[0], [0, 0, 38_536, 0])
+
     def test_jester_adjacent_king_wins_are_legal(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "kjesterk.uftb")
-        self.assertEqual(illegal[1], 0)
+        self.assertEqual(illegal[1], [0, 0, 0, 0])
         self.assertEqual(summary.cell(totals[1], illegal[1]),
                          "41,808 / 414,344 / 36,808")
 

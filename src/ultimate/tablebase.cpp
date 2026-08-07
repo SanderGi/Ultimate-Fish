@@ -32,6 +32,16 @@ constexpr std::uint32_t PlacementStateCount =
 
 enum class Wdl : std::uint8_t { Unknown, Win, Loss, Draw };
 
+Wdl parent_wdl(Wdl child, bool sameSide) {
+    if (sameSide || child == Wdl::Draw || child == Wdl::Unknown)
+        return child;
+    return child == Wdl::Win ? Wdl::Loss : Wdl::Win;
+}
+
+Wdl parent_wdl(TablebaseWdl child, bool sameSide) {
+    return parent_wdl(static_cast<Wdl>(child), sameSide);
+}
+
 struct State {
     Color side;
     std::uint8_t whiteKing;
@@ -408,7 +418,7 @@ class TablebaseGenerator {
         const auto start = std::chrono::steady_clock::now();
         std::uint32_t begin = load_checkpoint();
         for (std::uint32_t index = begin; index < stateCount_; ++index) {
-            analyze_node(index, true, [](std::uint32_t) {});
+            analyze_node(index, true, [](std::uint32_t, bool) {});
             if (checkpointEvery_ && (index + 1) % checkpointEvery_ == 0) {
                 save_checkpoint(index + 1);
                 progress("frontier", index + 1, start);
@@ -425,11 +435,14 @@ class TablebaseGenerator {
             for (std::uint32_t index = 0; index < stateCount_; ++index)
                 offsets[index + 1] = static_cast<Offset>(offsets[index] +
                                                          predecessorCounts_[index]);
+            constexpr std::uint32_t SameSideMask = std::uint32_t{1} << 31;
+            if (stateCount_ >= SameSideMask)
+                throw std::runtime_error("tablebase state index exceeds packed edge capacity");
             std::vector<std::uint32_t> predecessors(edgeCount);
             std::vector<Offset> cursor(offsets.begin(), offsets.end() - 1);
             for (std::uint32_t index = 0; index < stateCount_; ++index) {
-                analyze_node(index, false, [&](std::uint32_t child) {
-                    predecessors[cursor[child]++] = index;
+                analyze_node(index, false, [&](std::uint32_t child, bool sameSide) {
+                    predecessors[cursor[child]++] = index | (sameSide ? SameSideMask : 0);
                 });
                 if (checkpointEvery_ && (index + 1) % checkpointEvery_ == 0)
                     progress("reverse", index + 1, start);
@@ -450,26 +463,30 @@ class TablebaseGenerator {
                 if (distance != childNode.dtw)
                     continue;
                 for (Offset edge = offsets[child]; edge < offsets[child + 1]; ++edge) {
-                    Node& parent = nodes_[predecessors[edge]];
-                    if (parent.wdl == Wdl::Win && childNode.wdl == Wdl::Loss) {
+                    const std::uint32_t packedParent = predecessors[edge];
+                    const std::uint32_t parentIndex = packedParent & ~SameSideMask;
+                    const bool sameSide = (packedParent & SameSideMask) != 0;
+                    Node& parent = nodes_[parentIndex];
+                    const Wdl outcome = parent_wdl(childNode.wdl, sameSide);
+                    if (parent.wdl == Wdl::Win && outcome == Wdl::Win) {
                         const std::uint16_t distance = static_cast<std::uint16_t>(
                           std::min<int>(std::numeric_limits<std::uint16_t>::max(),
                                         childNode.dtw + 1));
                         if (distance < parent.dtw) {
                             parent.dtw = distance;
-                            buckets[parent.dtw].push_back(predecessors[edge]);
+                            buckets[parent.dtw].push_back(parentIndex);
                         }
                         continue;
                     }
                     if (parent.wdl != Wdl::Unknown)
                         continue;
-                    if (childNode.wdl == Wdl::Loss) {
+                    if (outcome == Wdl::Win) {
                         parent.wdl = Wdl::Win;
                         parent.dtw = static_cast<std::uint16_t>(std::min<int>(
                           std::numeric_limits<std::uint16_t>::max(), childNode.dtw + 1));
-                        buckets[parent.dtw].push_back(predecessors[edge]);
+                        buckets[parent.dtw].push_back(parentIndex);
                     }
-                    else if (childNode.wdl == Wdl::Win) {
+                    else if (outcome == Wdl::Loss) {
                         if (parent.remaining)
                             --parent.remaining;
                         parent.longestWinChild = std::max(parent.longestWinChild, childNode.dtw);
@@ -478,7 +495,7 @@ class TablebaseGenerator {
                             parent.dtw = static_cast<std::uint16_t>(std::min<int>(
                               std::numeric_limits<std::uint16_t>::max(),
                               parent.longestWinChild + 1));
-                            buckets[parent.dtw].push_back(predecessors[edge]);
+                            buckets[parent.dtw].push_back(parentIndex);
                         }
                     }
                 }
@@ -781,13 +798,16 @@ class TablebaseGenerator {
             if (!in_class(child)) {
                 if (initialize) {
                     const auto external = TablebaseProbe::probe(child);
-                    if (external && external->wdl == TablebaseWdl::Loss) {
+                    const bool sameSide = child.side_to_move() == position.side_to_move();
+                    const Wdl outcome = external
+                      ? parent_wdl(external->wdl, sameSide) : Wdl::Unknown;
+                    if (outcome == Wdl::Win) {
                         nodes_[index].wdl = Wdl::Win;
                         const std::uint16_t distance = static_cast<std::uint16_t>(external->dtw + 1);
                         nodes_[index].dtw = nodes_[index].dtw
                           ? std::min(nodes_[index].dtw, distance) : distance;
                     }
-                    else if (external && external->wdl == TablebaseWdl::Win) {
+                    else if (outcome == Wdl::Loss) {
                         if (nodes_[index].remaining)
                             --nodes_[index].remaining;
                         nodes_[index].longestWinChild = std::max<std::uint16_t>(
@@ -805,7 +825,7 @@ class TablebaseGenerator {
             if (initialize)
                 ++predecessorCounts_[successor];
             else
-                consume(successor);
+                consume(successor, child.side_to_move() == position.side_to_move());
         }
     }
 
@@ -814,7 +834,7 @@ class TablebaseGenerator {
         std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
         if (!stream)
             throw std::runtime_error("cannot write tablebase checkpoint");
-        const std::array<char, 8> magic{{'U','F','T','B','C','P','2','\0'}};
+        const std::array<char, 8> magic{{'U','F','T','B','C','P','3','\0'}};
         const std::uint32_t piece = static_cast<std::uint32_t>(attackerType_);
         stream.write(magic.data(), magic.size());
         stream.write(reinterpret_cast<const char*>(&piece), sizeof(piece));
@@ -837,7 +857,7 @@ class TablebaseGenerator {
         stream.read(magic.data(), magic.size());
         stream.read(reinterpret_cast<char*>(&piece), sizeof(piece));
         stream.read(reinterpret_cast<char*>(&processed), sizeof(processed));
-        const std::array<char, 8> expected{{'U','F','T','B','C','P','2','\0'}};
+        const std::array<char, 8> expected{{'U','F','T','B','C','P','3','\0'}};
         if (magic != expected || piece != static_cast<std::uint32_t>(attackerType_) ||
             processed > stateCount_)
             throw std::runtime_error("invalid tablebase checkpoint");
@@ -949,12 +969,15 @@ class TablebaseGenerator {
                 }
                 if (!in_class(child)) {
                     const auto external = TablebaseProbe::probe(child);
-                    if (external && external->wdl == TablebaseWdl::Loss) {
+                    const bool sameSide = child.side_to_move() == position.side_to_move();
+                    const Wdl outcome = external
+                      ? parent_wdl(external->wdl, sameSide) : Wdl::Unknown;
+                    if (outcome == Wdl::Win) {
                         hasLoss = true;
                         shortestLoss = std::min(shortestLoss, external->dtw);
                         allWin = false;
                     }
-                    else if (external && external->wdl == TablebaseWdl::Win)
+                    else if (outcome == Wdl::Loss)
                         longestWin = std::max(longestWin, external->dtw);
                     else {
                         hasDraw = true;
@@ -963,16 +986,18 @@ class TablebaseGenerator {
                     continue;
                 }
                 const Node successor = nodes_[child_index(child)];
-                if (successor.wdl == Wdl::Loss) {
+                const Wdl outcome = parent_wdl(
+                  successor.wdl, child.side_to_move() == position.side_to_move());
+                if (outcome == Wdl::Win) {
                     hasLoss = true;
                     shortestLoss = std::min(shortestLoss, successor.dtw);
                     allWin = false;
                 }
-                else if (successor.wdl == Wdl::Draw) {
+                else if (outcome == Wdl::Draw) {
                     hasDraw = true;
                     allWin = false;
                 }
-                else if (successor.wdl == Wdl::Win)
+                else if (outcome == Wdl::Loss)
                     longestWin = std::max(longestWin, successor.dtw);
                 else
                     throw std::runtime_error("unknown state remains after retrograde");
