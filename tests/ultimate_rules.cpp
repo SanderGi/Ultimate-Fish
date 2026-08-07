@@ -2757,6 +2757,32 @@ void test_native_draft_windows_and_costs() {
                "evolved policy preserves its validated adaptive ban sequence");
 }
 
+void test_safe_ordinary_static_exchange() {
+    const auto exchange = [](std::string_view upn, std::string_view notation) {
+        Position position;
+        std::string error;
+        expect(position.set_upn(upn, &error), "SEE fixture parses: " + error);
+        const auto move = position.move_from_string(notation);
+        expect(bool(move), "SEE fixture move parses");
+        return move ? position.static_exchange(*move) : std::optional<int>{};
+    };
+    const auto freePawn = exchange(
+      "w;king,w,a1;queen,w,d4;king,b,h10;pawn,b,d5", "d4-d5");
+    expect(freePawn && *freePawn == Position::material_value(PieceType::Pawn),
+           "ordinary SEE values an undefended Pawn capture");
+
+    const auto defendedPawn = exchange(
+      "w;king,w,a1;queen,w,d4;king,b,h10;pawn,b,d5;rook,b,d8", "d4-d5");
+    expect(defendedPawn && *defendedPawn < 0,
+           "ordinary SEE classifies Queen-for-Pawn into a Rook recapture as losing");
+
+    expect(!exchange("w;king,w,a1;queen,w,d4;king,b,h10;bomb,b,d5", "d4-d5"),
+           "SEE declines Bomb death and blast semantics");
+    expect(!exchange(
+      "w;king,w,a1;queen,w,d4;angel,w,b2;king,b,h10;pawn,b,d5", "d4-d5"),
+      "SEE declines positions containing Angel attachment semantics");
+}
+
 }  // namespace
 
 int main() {
@@ -2779,6 +2805,7 @@ int main() {
     test_pawn_en_passant_lifetime();
     test_cooldowns_minions_and_freeze_stacking();
     test_sniper_berserker_and_dragon();
+    test_safe_ordinary_static_exchange();
     test_native_draft_windows_and_costs();
     if (failures) {
         std::cerr << failures << " Ultimate rules test(s) failed\n";

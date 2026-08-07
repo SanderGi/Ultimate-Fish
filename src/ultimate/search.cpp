@@ -132,6 +132,12 @@ int Search::move_score(const Position& position, const Move& move,
             score += 100'000;
         if (attacker != Position::NoPiece)
             score -= piece_order_value(position.piece(attacker).type) / 16;
+#ifndef ULTIMATE_DISABLE_SEE_ORDERING
+        if (const auto exchange = position.static_exchange(move))
+            score += *exchange >= 0
+                   ? 20'000 + std::min(*exchange, 2'000) * 4
+                   : -150'000 + std::max(*exchange, -2'000) * 4;
+#endif
     }
     if (move.promotion != PieceType::Count)
         score += 80'000 + piece_order_value(move.promotion);
@@ -213,6 +219,16 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
 
     bool foundLegal = false;
     for (const Move& move : moves) {
+#ifndef ULTIMATE_DISABLE_SEE_PRUNING
+        // In a quiet ordinary position, do not extend a losing exchange into
+        // quiescence. static_exchange() deliberately declines every Ultimate
+        // action with blast, attachment, hidden-information, forced-action,
+        // promotion, or other non-orthodox semantics; those actions always
+        // retain the full reference search below.
+        if (!forced)
+            if (const auto exchange = position.static_exchange(move); exchange && *exchange < 0)
+                continue;
+#endif
         const Color before = position.side_to_move();
         // Search a disposable child. This copies Position once; mutating and
         // restoring the parent through the reference Undo path copied the

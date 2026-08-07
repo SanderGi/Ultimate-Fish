@@ -1503,6 +1503,147 @@ void Position::annotate_captures(std::vector<Move>& moves) const {
     }
 }
 
+std::optional<int> Position::static_exchange(const Move& move) const {
+    if (move.kind != MoveKind::Normal || move.promotion != PieceType::Count ||
+        !valid_square(move.from) || !valid_square(move.to) ||
+        move.to == enPassantSquare_ || rank_of(move.to) == 0 ||
+        rank_of(move.to) == BoardRanks - 1)
+        return std::nullopt;
+    const int firstAttacker = board_[move.from];
+    const int firstVictim = board_[move.to];
+    if (firstAttacker == NoPiece || firstVictim == NoPiece ||
+        pieces_[firstAttacker].color == pieces_[firstVictim].color)
+        return std::nullopt;
+
+    const auto ordinary = [](PieceType type) {
+        switch (type) {
+        case PieceType::King:
+        case PieceType::Jester:
+        case PieceType::Knight:
+        case PieceType::Pawn:
+        case PieceType::Queen:
+        case PieceType::Rook:
+        case PieceType::Bishop:
+        case PieceType::Ninja:
+        case PieceType::Turtle:
+        case PieceType::Dragon: return true;
+        default: return false;
+        }
+    };
+    for (int id = 0; id < pieceCount_; ++id) {
+        const PieceState& piece = pieces_[id];
+        if (!piece.alive)
+            continue;
+        if (!ordinary(piece.type) || !piece.onBoard || piece.action || piece.cooldown ||
+            piece.freezeCount || piece.power || piece.link != NoPiece ||
+            piece.host != NoPiece || !piece.visible)
+            return std::nullopt;
+    }
+
+    std::array<int, MaxPieces> square{};
+    std::array<bool, MaxPieces> alive{};
+    std::array<int, BoardSquares> board{};
+    board.fill(NoPiece);
+    for (int id = 0; id < pieceCount_; ++id) {
+        square[id] = pieces_[id].square;
+        alive[id] = pieces_[id].alive;
+        if (alive[id])
+            board[square[id]] = id;
+    }
+    const auto attacks = [&](int id, int target) {
+        const PieceState& piece = pieces_[id];
+        const int fileDelta = file_of(target) - file_of(square[id]);
+        const int rankDelta = rank_of(target) - rank_of(square[id]);
+        const int fileDistance = std::abs(fileDelta);
+        const int rankDistance = std::abs(rankDelta);
+        const auto rayClear = [&] {
+            const int fileStep = (fileDelta > 0) - (fileDelta < 0);
+            const int rankStep = (rankDelta > 0) - (rankDelta < 0);
+            int file = file_of(square[id]) + fileStep;
+            int rank = rank_of(square[id]) + rankStep;
+            while (file != file_of(target) || rank != rank_of(target)) {
+                if (board[make_square(file, rank)] != NoPiece)
+                    return false;
+                file += fileStep;
+                rank += rankStep;
+            }
+            return true;
+        };
+        switch (piece.type) {
+        case PieceType::King:
+        case PieceType::Jester:
+            return std::max(fileDistance, rankDistance) == 1;
+        case PieceType::Knight:
+            return (fileDistance == 1 && rankDistance == 2) ||
+                   (fileDistance == 2 && rankDistance == 1);
+        case PieceType::Pawn:
+            return fileDistance == 1 &&
+              rankDelta == (piece.color == Color::White ? 1 : -1);
+        case PieceType::Queen:
+            return (fileDelta == 0 || rankDelta == 0 || fileDistance == rankDistance) &&
+                   rayClear();
+        case PieceType::Rook:
+            return (fileDelta == 0 || rankDelta == 0) && rayClear();
+        case PieceType::Bishop:
+            return fileDistance == rankDistance && rayClear();
+        case PieceType::Ninja:
+            return std::max(fileDistance, rankDistance) <= 3 &&
+              (fileDelta == 0 || rankDelta == 0 || fileDistance == rankDistance);
+        case PieceType::Turtle:
+            return fileDistance + rankDistance == 1;
+        case PieceType::Dragon:
+            return ((fileDistance == 1 && rankDistance == 2) ||
+                    (fileDistance == 2 && rankDistance == 1)) ||
+                   (fileDistance == rankDistance && rayClear());
+        default: return false;
+        }
+    };
+
+    std::array<int, MaxPieces> gains{};
+    int depth = 0;
+    gains[0] = material_value(pieces_[firstVictim].type);
+    int capturedValue = material_value(pieces_[firstAttacker].type);
+    int occupant = firstAttacker;
+    alive[firstVictim] = false;
+    board[move.from] = NoPiece;
+    board[move.to] = firstAttacker;
+    square[firstAttacker] = move.to;
+    Color side = pieces_[firstVictim].color;
+
+    while (depth + 1 < MaxPieces) {
+        int least = NoPiece;
+        int leastValue = 1'000'000;
+        for (int id = 0; id < pieceCount_; ++id) {
+            if (!alive[id] || id == occupant || pieces_[id].color != side ||
+                !attacks(id, move.to))
+                continue;
+            const int value = material_value(pieces_[id].type);
+            if (value < leastValue) {
+                least = id;
+                leastValue = value;
+            }
+        }
+        if (least == NoPiece)
+            break;
+        ++depth;
+        gains[depth] = capturedValue - gains[depth - 1];
+        if (std::max(-gains[depth - 1], gains[depth]) < 0)
+            break;
+        alive[occupant] = false;
+        board[square[least]] = NoPiece;
+        board[move.to] = least;
+        square[least] = move.to;
+        occupant = least;
+        capturedValue = leastValue;
+        side = ~side;
+    }
+    while (depth > 0) {
+        gains[depth - 1] = -std::max(-gains[depth - 1], gains[depth]);
+        --depth;
+    }
+    return gains[0];
+}
+
 bool Position::is_legal(const Move& move) const {
     const auto moves = legal_moves();
     return std::find(moves.begin(), moves.end(), move) != moves.end();

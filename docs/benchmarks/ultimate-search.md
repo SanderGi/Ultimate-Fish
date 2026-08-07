@@ -157,6 +157,18 @@ The optimization suggestions were measured rather than accepted wholesale:
   to depth two still changed the recovered fixture from `+0.16` to `+1.27`
   for only a 6% node reduction. All forms were rejected: Ultimate's explosive
   captures and stateful actions make static material margins too unreliable.
+- Ultimate-aware static exchange evaluation (SEE) now orders and prunes only
+  provably ordinary captures. It declines the entire position when any live
+  piece has blast, attachment, hidden-information, forced-state, generated,
+  or other non-orthodox semantics, and also declines promotion and en-passant
+  edges. On the classic 8x10 fixture, SEE ordering alone reduced the depth-7
+  tree from 35,074 to 34,916 nodes. Pruning negative SEE captures only in
+  non-forced quiescence reduced the depth-9 tree from 426,737 to 392,240 nodes
+  (8.1%) with the same `+0.20` score, move, and PV; five fresh-process medians
+  improved from 406 ms to 388 ms. The pruning candidate scored 7.0/14 in a
+  20,000-node color-balanced match and 7.5/14 at 20 ms per move against the
+  ordering-only build. Bomb and Angel regressions verify that special semantics
+  fail closed and retain the complete search.
 
 ## Deadline-aware draft search
 
