@@ -195,6 +195,19 @@ The optimization suggestions were measured rather than accepted wholesale:
   remained exactly unchanged at 1,511,309 nodes and the same score/PV. The
   combined candidate scored 7.0/14 at 20,000 nodes and 21.0/42 at 20 ms per
   move against the unpruned build.
+- A 65,536-entry continuation history keyed by the previous character type,
+  action kind, destination, same-side-continuation bit, and current action was
+  tested and rejected. It expanded the classic depth-10 tree from 1,195,914 to
+  1,346,313 nodes (12.6%) and the recovered Ultimate tree from 1,511,309 to
+  1,633,178 (8.1%), changing both horizon lines. At current Ultimate depths,
+  splitting the proven piece/destination history into this sparse context
+  loses more ordering signal than it adds.
+- A 16,384-entry correction history keyed by the complete Ultimate position
+  hash and side was also rejected. It expanded the classic depth-10 tree from
+  1,195,914 to 1,471,957 nodes and slowed it from 1.54 s to 2.45 s, while the
+  recovered fixture's small 1.4% node reduction did not offset hash/update
+  overhead (1.73 s to 1.97 s). The learned residuals destabilized shallow
+  pruning bounds more than they corrected the handcrafted evaluator.
 
 ## Deadline-aware draft search
 
