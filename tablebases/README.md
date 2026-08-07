@@ -56,6 +56,10 @@ represented by that class.
 | `kknightkqueen.uftb` | King+Knight vs King+Queen | 616,478,182 | 2,808,960 / 13,559,860 / 2,610,140 | 18,924,172 / 0 / 54,788 | `c708a791064b0b9f45bd506b3cfc1657912890dd1fb080533d311db6c3418750` |
 | `kknightrookk.uftb` | King+Knight+Rook vs King | 533,160,532 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 16,041,948 / 1,327,404 | `04513bc582ac66c262ce0a50aadc7dc4a103cf281b5ae66aa06a73fd4a78d457` |
 | `kknightkrook.uftb` | King+Knight vs King+Rook | 497,289,662 | 2,808,976 / 1,871,092 / 14,298,892 | 11,603,962 / 4 / 7,374,994 | `4f1655eb31c7a335de951bcc217a2e01b777872b2fc867fead6d42ed3f255da8` |
+| `kknightbishopk.uftb` | King+Knight+Bishop vs King | 450,616,302 | 18,933,414 / 0 / 45,546 | 0 (1,609,608) / 14,751,040 / 2,618,312 | `e78a30ba8605cccbbc3c9198dd717843ef80115905b7ea05b03f130756d54f48` |
+| `kknightbombk.uftb` | King+Knight+Bomb vs King | 457,027,800 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,337,540 / 31,812 | `6c1e33d2b92fe411485a2370fb18621c86d5e26de45a3deb053f0a4547312d72` |
+| `kknightkbomb.uftb` | King+Knight vs King+Bomb | 431,449,080 | 2,903,304 / 14,810,768 / 1,264,888 | 18,908,960 / 52 / 69,948 | `64f63059b0d87f4b28bf8d30c0a1c3354ed42441fd6b84c6a1be26263aa9afde` |
+| `kknightninjak.uftb` | King+Knight+Ninja vs King | 564,591,464 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 16,000,796 / 1,368,556 | `ecb39a6f313de06083df9552b6b46e291fdfda4f04c4536744096eea5615a3fa` |
 | `kknightturtlek.uftb` | King+Knight+Turtle vs King | 363,952,568 | 17,632,308 / 0 / 1,346,652 | 0 (1,609,608) / 12,261,896 / 5,107,456 | `e51001e72d79078c3da96de0dab87d8752d5f7496621b4b3812f82624107c5df` |
 | `kbishopbishopk.uftb` | King+2 Bishops vs King | 130,467,458 | 4,804,466 / 0 / 4,685,014 | 0 (407,502) / 3,708,210 / 5,373,768 | `18ee411f10c1c62e365b9e30359a1403f5d34e827bcc5509f20d8c0e73ded490` |
 | `kbombbombk.uftb` | King+2 Bombs vs King | 260,111,166 | 9,489,402 / 78 / 0 | 0 (804,804) / 8,652,882 / 31,794 | `3007861257e32343194410f89e6c446a904086162f15481d46d7a5337404a4ab` |
