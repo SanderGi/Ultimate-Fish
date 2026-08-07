@@ -54,8 +54,14 @@ void print_score(int score) {
         std::cout << "cp " << score;
 }
 
-SearchLimits parse_limits(std::istringstream& input, const Position* position = nullptr) {
+SearchLimits parse_limits(std::istringstream& input, const Position* position = nullptr,
+                          int moveOverhead = 50) {
     SearchLimits limits;
+    limits.moveOverhead = std::chrono::milliseconds(moveOverhead);
+    int whiteTime = 0;
+    int blackTime = 0;
+    int whiteIncrement = 0;
+    int blackIncrement = 0;
     std::string token;
     while (input >> token) {
         if (token == "drawmoves") {
@@ -83,6 +89,24 @@ SearchLimits parse_limits(std::istringstream& input, const Position* position = 
             limits.moveTime = std::chrono::milliseconds(parsed);
         else if (token == "nodes")
             limits.nodes = static_cast<std::uint64_t>(std::max(0, parsed));
+        else if (token == "wtime")
+            whiteTime = std::max(0, parsed);
+        else if (token == "btime")
+            blackTime = std::max(0, parsed);
+        else if (token == "winc")
+            whiteIncrement = std::max(0, parsed);
+        else if (token == "binc")
+            blackIncrement = std::max(0, parsed);
+        else if (token == "movestogo")
+            limits.movesToGo = std::max(0, parsed);
+        else if (token == "overhead")
+            limits.moveOverhead = std::chrono::milliseconds(std::max(0, parsed));
+    }
+    if (position) {
+        const bool white = position->side_to_move() == Color::White;
+        limits.remainingTime = std::chrono::milliseconds(white ? whiteTime : blackTime);
+        limits.increment = std::chrono::milliseconds(
+          white ? whiteIncrement : blackIncrement);
     }
     return limits;
 }
@@ -95,6 +119,7 @@ int main() {
     Search search;
     DraftState draft;
     std::vector<Position> beliefs;
+    int configuredMoveOverhead = 50;
     std::string line;
     while (std::getline(std::cin, line)) {
         if (line == "quit")
@@ -103,11 +128,19 @@ int main() {
             std::cout << "id name Ultimate Fish 0.1\n"
                          "id author Ultimate Fish contributors\n"
                          "option name Hash type spin default 64 min 1 max 4096\n"
+                         "option name Move Overhead type spin default 50 min 0 max 5000\n"
                          "uciok\n";
             continue;
         }
         if (line == "isready") {
             std::cout << "readyok\n";
+            continue;
+        }
+        constexpr std::string_view overheadPrefix = "setoption name Move Overhead value ";
+        if (line.rfind(overheadPrefix, 0) == 0) {
+            int value = 50;
+            if (parse_int(line.substr(overheadPrefix.size()), value))
+                configuredMoveOverhead = std::clamp(value, 0, 5000);
             continue;
         }
         if (line == "ucinewgame") {
@@ -142,7 +175,7 @@ int main() {
             std::istringstream input(line);
             std::string token;
             input >> token >> token;
-            const SearchLimits limits = parse_limits(input);
+            const SearchLimits limits = parse_limits(input, nullptr, configuredMoveOverhead);
             const BeliefSearchResult result = search.think_beliefs(beliefs, limits);
             std::cout << "info depth " << result.completedDepth << " score ";
             print_score(result.score);
@@ -273,7 +306,7 @@ int main() {
             std::istringstream input(line);
             std::string token;
             input >> token;
-            const SearchLimits limits = parse_limits(input, &position);
+            const SearchLimits limits = parse_limits(input, &position, configuredMoveOverhead);
             const SearchResult result = search.think(position, limits);
             std::cout << "info depth " << result.completedDepth << " score ";
             print_score(result.score);

@@ -483,6 +483,15 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
 
 SearchResult Search::think(Position& position, const SearchLimits& limits) {
     limits_ = limits;
+    softTime_ = std::chrono::milliseconds{0};
+    if (!limits_.moveTime.count() && limits_.remainingTime.count()) {
+        const auto usable = std::max(
+          std::chrono::milliseconds{1}, limits_.remainingTime - limits_.moveOverhead);
+        const int moves = limits_.movesToGo > 0 ? limits_.movesToGo : 30;
+        softTime_ = std::min(usable, usable / moves + limits_.increment * 3 / 4);
+        limits_.moveTime = std::min(
+          usable, std::max(softTime_ * 4, softTime_ + std::chrono::milliseconds{50}));
+    }
     rootMoves_ = limits.rootMoves;
     rootDrawMoves_.clear();
     for (const std::string& notation : limits.rootDrawMoveStrings)
@@ -502,7 +511,10 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
     SearchResult result;
     const int maxDepth = std::clamp(limits.depth, 1, MaxPly - 2);
     int previousScore = 0;
+    std::optional<Move> previousBest;
+    int stableBest = 0;
     for (int depth = 1; depth <= maxDepth; ++depth) {
+        const auto iterationStart = std::chrono::steady_clock::now();
         std::vector<Move> pv;
         // At deeper Ultimate plies, whole-character swings make the narrow
         // probe fail often enough that its work is a net loss before the
@@ -518,6 +530,7 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
         }
         if (stop_)
             break;
+        const int scoreChange = std::abs(score - previousScore);
         previousScore = score;
         result.score = score;
         result.completedDepth = depth;
@@ -526,6 +539,22 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
             result.bestMove = pv.front();
         if (std::abs(score) >= Mate - 128)
             break;
+        if (result.bestMove && previousBest && *result.bestMove == *previousBest)
+            ++stableBest;
+        else
+            stableBest = 0;
+        previousBest = result.bestMove;
+        if (softTime_.count() && depth >= 4) {
+            int scale = stableBest >= 3 ? 65 : stableBest >= 2 ? 80 : 115;
+            if (scoreChange > 100)
+                scale = std::max(scale, 140);
+            const auto elapsed = std::chrono::steady_clock::now() - start_;
+            const auto iterationElapsed = std::chrono::steady_clock::now() - iterationStart;
+            const auto softDeadline = softTime_ * scale / 100;
+            if (elapsed >= softDeadline ||
+                (depth >= 5 && elapsed + iterationElapsed * 2 >= softDeadline))
+                break;
+        }
     }
     result.nodes = nodes_;
     result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(

@@ -2047,7 +2047,7 @@ bool Position::make_move(const Move& move, Undo& undo) {
 }
 
 bool Position::make_move_unchecked(const Move& move, Undo& undo) {
-    undo = {board_, pieces_, byType_, occupancy_, pieceCount_, sideToMove_, enPassantSquare_,
+    undo = {pieces_, pieceCount_, sideToMove_, enPassantSquare_,
             enPassantVictim_, forcedPiece_, continuation_, forcedTimeoutWinner_, halfmove_, fullmove_,
             nextAttachmentOrder_};
 
@@ -2465,10 +2465,7 @@ std::uint64_t Position::perft(int depth) const {
 }
 
 void Position::undo_move(const Undo& undo) {
-    board_ = undo.board;
     pieces_ = undo.pieces;
-    byType_ = undo.byType;
-    occupancy_ = undo.occupancy;
     pieceCount_ = undo.pieceCount;
     sideToMove_ = undo.sideToMove;
     enPassantSquare_ = undo.enPassantSquare;
@@ -2479,6 +2476,7 @@ void Position::undo_move(const Undo& undo) {
     halfmove_ = undo.halfmove;
     fullmove_ = undo.fullmove;
     nextAttachmentOrder_ = undo.nextAttachmentOrder;
+    rebuild_bitboards();
 }
 
 bool Position::has_real_king(Color color) const {

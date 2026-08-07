@@ -21,6 +21,10 @@ struct SearchLimits {
     int depth = 10;
     std::uint64_t nodes = 0;
     std::chrono::milliseconds moveTime{0};
+    std::chrono::milliseconds remainingTime{0};
+    std::chrono::milliseconds increment{0};
+    std::chrono::milliseconds moveOverhead{50};
+    int movesToGo = 0;
     std::vector<Move> rootMoves;
     // Roots which immediately complete a public threefold repetition. They
     // remain legal candidates but must score as draws inside native search.
@@ -118,6 +122,7 @@ class Search {
     std::vector<Cluster> table_;
     SearchLimits limits_;
     std::chrono::steady_clock::time_point start_;
+    std::chrono::milliseconds softTime_{0};
     std::uint64_t nodes_ = 0;
     std::uint8_t generation_ = 0;
     bool stop_ = false;

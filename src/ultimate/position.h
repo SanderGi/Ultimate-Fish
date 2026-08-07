@@ -294,10 +294,7 @@ class Position {
 };
 
 struct Undo {
-    std::array<std::int8_t, Position::BoardSquares> board;
     std::array<PieceState, Position::MaxPieces> pieces;
-    std::array<std::array<Bitboard, static_cast<std::size_t>(PieceType::Count)>, 2> byType;
-    std::array<Bitboard, 2> occupancy;
     int pieceCount;
     Color sideToMove;
     int enPassantSquare;

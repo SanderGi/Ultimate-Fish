@@ -234,6 +234,27 @@ The optimization suggestions were measured rather than accepted wholesale:
   reduced duplication but still did not finish depth 11. This version was
   rejected: unlike the earlier independent-table split, shared bounds scale
   raw work, but the remaining same-tree duplication yields no usable depth.
+- Reference make/unmake now stores only the 96 character records and scalar
+  turn state; board ownership and type/occupancy bitboards are derived and are
+  rebuilt on restore. This reduces `Undo` from 2,656 to 1,572 bytes (40.8%)
+  while the full native rule and undo oracle remains green. Hot search retains
+  disposable child positions: its prior benchmark showed that even compact
+  restoration work cannot beat one optimized 2,656-byte child copy on these
+  broad trees, while the smaller transactional state benefits analysis and
+  conformance callers that require actual undo.
+- Clock-aware time management accepts UCI `wtime`, `btime`, increments,
+  `movestogo`, and configurable `Move Overhead`. It derives separate soft and
+  hard budgets, predicts the next iteration from the last iteration cost, and
+  scales the soft stop by PV stability and score volatility. No clock still
+  means unlimited search, and explicit `movetime` remains an exact hard cap.
+  On the recovered fixture, 10 seconds remaining used 280 ms for depth 6;
+  60 seconds plus a 2-second increment used 5.025 s for depth 10; explicit
+  `movetime 1000` stopped at 1,000 ms after depth 8.
+- The combined retained search changes scored 21.0/42 against the pre-pass
+  `0b52b815` checkpoint at both 20,000 nodes and 20 ms per move across the
+  seven color-balanced fixture families. All 206 Python controller/vision
+  tests, the native C++ rule/undo suite, and the fixed perft/search benchmark
+  passed in the final audit.
 
 ## Deadline-aware draft search
 
