@@ -55,6 +55,14 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertNotIn("KmagefishermanvK", planned)
         self.assertNotIn("KknightvKturtle", planned)
 
+    def test_fisherman_parasite_catalog_preserves_header_owner_order(self):
+        records = {record["filename"]: record for record in tb.inventory()}
+        record = records["kfishermankparasite.uftb"]
+        self.assertEqual(record["class"], "KfishermanvKparasite")
+        self.assertEqual(record["primary"], "fisherman")
+        self.assertEqual(record["secondary"], "parasite")
+        self.assertNotIn("kparasitekfisherman.uftb", records)
+
     def test_every_planned_file_is_sharded_below_github_limit(self):
         for record in tb.inventory():
             per_shard = (record["packed_bytes"] + record["shards"] - 1) // record["shards"]

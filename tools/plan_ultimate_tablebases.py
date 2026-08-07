@@ -204,10 +204,19 @@ def inventory(budget: int = DEFAULT_BUDGET) -> list[dict[str, object]]:
                     filename=f"k{first.name}{second.name}k.uftb"))
             if sufficient_pair(first, second, False):
                 states = placement_states(first.models + second.models)
+                # Pair order normally follows PIECES, but this exact table was
+                # generated with Fisherman as the first (Ivory) material owner.
+                # Keep the catalog aligned with its header so side-to-move WDL
+                # columns and resume checks cannot silently swap the owners.
+                opposing_first, opposing_second = first, second
+                if first.name == "parasite" and second.name == "fisherman":
+                    opposing_first, opposing_second = second, first
                 result.append(class_record(
-                    f"K{first.name}vK{second.name}", states, "kings+2-stateless",
-                    primary=first.name, secondary=second.name, opposing=True,
-                    filename=f"k{first.name}k{second.name}.uftb"))
+                    f"K{opposing_first.name}vK{opposing_second.name}", states,
+                    "kings+2-stateless", primary=opposing_first.name,
+                    secondary=opposing_second.name, opposing=True,
+                    filename=(f"k{opposing_first.name}k{opposing_second.name}"
+                              ".uftb")))
     # Stateful combinations are admitted deterministically only while their
     # conservative split-plane size fits. This makes the 10 GiB rule a hard
     # inventory invariant instead of a best-effort generator check.

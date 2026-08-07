@@ -65,9 +65,14 @@ represented by that class.
 | `kknightparasitek.uftb` | King+Knight+Parasite vs King | 412,737,272 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,364,220 / 5,132 | `80703fb82f8caf5589e4e3d07bec5f6b4ce78dec12ce44d7a7f7e07d5e127246` |
 | `kknightkparasite.uftb` | King+Knight vs King+Parasite | 396,499,600 | 2,808,980 / 14,791,096 / 1,378,884 | 18,910,940 / 4 / 68,016 | `c9c65bc38098b46e30464eabc4816c9d4e68c498b0876c7dca2df59103257c04` |
 | `kknightgiantk.uftb` | King+Knight+Giant vs King | 228,702,604 | 13,080,248 / 0 / 5,898,712 | 0 (1,142,116) / 9,132,192 / 8,704,652 | `2aecb1ceed4793a173c917fda61cb26bd622bf4dfec8e66d61c0e837f5cba541` |
+| `kknightkgiant.uftb` | King+Knight vs King+Giant | 215,826,804 | 1,968,832 / 19,388 / 16,990,740 | 3,089,504 / 0 / 15,889,456 | `c3c8ceb56c11bbd52c3316e8dbb786e4fbe573382b6190b0e2596bf49ffda8fc` |
+| `kknightdragonk.uftb` | King+Knight+Dragon vs King | 534,668,038 | 18,978,956 / 0 / 4 | 0 (1,609,608) / 16,039,998 / 1,329,354 | `5a186985b6ca6e024562e2a0cff6dbe34003e30903761bae751400135abeb01c` |
+| `kknightkdragon.uftb` | King+Knight vs King+Dragon | 498,929,176 | 2,808,960 / 13,805,686 / 2,364,314 | 18,934,576 / 0 / 44,384 | `22a14009f6d4f456eddcb659d3a5c1d99170ff4c706a517b786357abaecddabb` |
 | `kbishopbishopk.uftb` | King+2 Bishops vs King | 130,467,458 | 4,804,466 / 0 / 4,685,014 | 0 (407,502) / 3,708,210 / 5,373,768 | `18ee411f10c1c62e365b9e30359a1403f5d34e827bcc5509f20d8c0e73ded490` |
 | `kbombbombk.uftb` | King+2 Bombs vs King | 260,111,166 | 9,489,402 / 78 / 0 | 0 (804,804) / 8,652,882 / 31,794 | `3007861257e32343194410f89e6c446a904086162f15481d46d7a5337404a4ab` |
 | `kturtleturtlek.uftb` | King+2 Turtles vs King | 167,494,620 | 1,579,316 / 0 / 7,910,164 | 0 (804,804) / 416 / 8,684,260 | `bbb146a2f252eaf0eb40d23e49d0ddda56de183fb202c515ff64a0fd172037b1` |
+| `kmagekparasite.uftb` | King+Mage vs King+Parasite | 344,453,172 | 1,609,608 / 17,369,180 / 172 | 18,978,960 / 0 / 0 | `7d8638ada4d6e2fb5314afc7b87bf25a4013f149b76525f44ba561a55cf147aa` |
+| `kfishermankparasite.uftb` | King+Fisherman vs King+Parasite | 703,350,700 | 1,609,608 / 314,868 / 17,054,484 | 4,835,644 / 0 / 14,143,316 | `6032d4e60931298ce7fc31341cde1318a4fdcd19604c29a1a260a577d0f4c389` |
 <!-- GENERATED_TABLE_END -->
 
 Each W / L / D cell is from the perspective of the side to move named by its
