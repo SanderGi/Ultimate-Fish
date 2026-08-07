@@ -50,11 +50,17 @@ def main() -> None:
         if output.exists():
             print(f"skip {output.name}", flush=True)
             continue
-        checkpoint = args.checkpoint_dir / (output.stem + "-state-v1.checkpoint")
+        checkpoint = args.checkpoint_dir / (output.stem + "-state-v3.checkpoint")
+        # A checkpoint stores the full Node and predecessor-count arrays. For
+        # the largest stateful graphs, even one atomic replacement would need
+        # more temporary disk than a typical clone has available. Those runs
+        # trade resumability for bounded disk use; smaller classes retain
+        # periodic checkpoints and remove them after verified installation.
+        checkpoint_every = "0" if int(record["states"]) >= 300_000_000 else "2000000"
         command = [
             str(GENERATOR), "--piece", str(record["primary"]),
             "--piece2", str(record["secondary"]), "--output", str(output),
-            "--checkpoint", str(checkpoint), "--checkpoint-every", "2000000",
+            "--checkpoint", str(checkpoint), "--checkpoint-every", checkpoint_every,
         ]
         if record["opposing"]:
             command.append("--opposing")
@@ -68,6 +74,7 @@ def main() -> None:
                      (path.name.endswith(".uftb") or ".uftb.part" in path.name))
         if actual > args.budget:
             raise RuntimeError("actual tablebase bytes exceeded budget")
+        checkpoint.unlink(missing_ok=True)
         print(f"complete {output.name} {logical_size(output) / 1024**2:.2f} MiB "
               f"in {len(outputs) - 1 or 1} data file(s)", flush=True)
     print("stateful K+K+2 batch complete", flush=True)
@@ -79,4 +86,3 @@ if __name__ == "__main__":
     except (subprocess.CalledProcessError, RuntimeError, ValueError) as error:
         print(f"stateful tablebase batch error: {error}", file=sys.stderr)
         raise SystemExit(1)
-

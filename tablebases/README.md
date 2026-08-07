@@ -185,6 +185,7 @@ represented by that class.
 | `kfishermankdragon.uftb` | King+Fisherman vs King+Dragon | 782,325,302 | 1,609,608 / 15,953,310 / 1,416,042 | 18,978,960 / 0 / 0 | `949f749c991ae2901b0cc9bad4acb8fababef28a5e3e4b62e483211a1d467c41` |
 | `kdragondragonk.uftb` | King+2 Dragons vs King | 338,720,772 | 9,489,480 / 0 / 0 | 0 (804,804) / 8,655,726 / 28,950 | `fcbd96c4751483c15c31577d3850fd3270ddaac00d7a96fe5495a60f49ede102` |
 | `kdragonkdragon.uftb` | King+Dragon vs King+Dragon | 580,885,096 | 8,516,064 / 110,414 / 10,352,482 | 8,516,064 / 110,414 / 10,352,482 | `a8740a9fc8683cd75bcd319081c544e1067796ad37b401a2259f2c6799847b56` |
+| `kbombghostk.uftb` | King+Bomb+Ghost vs King | 969,368,924 | 37,957,920 / 0 / 0 | 0 (3,219,216) / 34,677,748 / 60,956 | `25fc8d85b05c1104b50118cc7486bd3cfb8bb853eeedbb748cc81d29b95fa86b` |
 <!-- GENERATED_TABLE_END -->
 
 Each W / L / D cell is from the perspective of the side to move named by its

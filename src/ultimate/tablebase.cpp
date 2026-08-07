@@ -424,7 +424,8 @@ class TablebaseGenerator {
                 progress("frontier", index + 1, start);
             }
         }
-        save_checkpoint(stateCount_);
+        if (checkpointEvery_)
+            save_checkpoint(stateCount_);
 
         std::uint64_t edgeCount = 0;
         for (const std::uint32_t count : predecessorCounts_)
@@ -849,6 +850,8 @@ class TablebaseGenerator {
     }
 
     std::uint32_t load_checkpoint() {
+        if (!checkpointEvery_)
+            return 0;
         std::ifstream stream(checkpoint_, std::ios::binary);
         if (!stream)
             return 0;
