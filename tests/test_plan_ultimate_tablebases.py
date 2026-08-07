@@ -25,6 +25,12 @@ assert SHARD_SPEC and SHARD_SPEC.loader
 shards = importlib.util.module_from_spec(SHARD_SPEC)
 sys.modules[SHARD_SPEC.name] = shards
 SHARD_SPEC.loader.exec_module(shards)
+README_SPEC = importlib.util.spec_from_file_location(
+    "tb_readme", ROOT / "tools" / "update_ultimate_tablebase_readme.py")
+assert README_SPEC and README_SPEC.loader
+readme = importlib.util.module_from_spec(README_SPEC)
+sys.modules[README_SPEC.name] = readme
+README_SPEC.loader.exec_module(readme)
 
 
 class TablebasePlanTests(unittest.TestCase):
@@ -130,6 +136,16 @@ class TablebasePlanTests(unittest.TestCase):
                 self.assertEqual(
                     summary.kings_for(placement * 2 + substate, identical * 2, 2),
                     expected)
+
+    def test_incremental_readme_rows_are_keyed_by_logical_filename(self):
+        first = "| `krk.uftb` | King+Rook vs King | 1 | 2 | 3 | `abc` |"
+        second = "| `kqk.uftb` | King+Queen vs King | 4 | 5 | 6 | `def` |"
+        text = "\n".join((readme.START, "| header |", first, second,
+                           readme.END))
+        self.assertEqual(readme.cached_rows(text), {
+            "krk.uftb": first,
+            "kqk.uftb": second,
+        })
 
 
 if __name__ == "__main__":

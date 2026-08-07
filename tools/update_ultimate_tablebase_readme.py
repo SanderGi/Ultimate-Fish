@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 from pathlib import Path
 import struct
@@ -30,12 +31,41 @@ def display_name(record: dict[str, object]) -> str:
     return f"King+{first}+{second} vs King"
 
 
+def cached_rows(text: str) -> dict[str, str]:
+    """Return previously generated rows keyed by their logical filename.
+
+    Exact table files are immutable once generated. Reusing an older row when
+    its file is no newer than the README avoids rereading gigabytes on every
+    incremental batch. ``--full`` remains the authoritative end-to-end audit.
+    """
+    begin = text.index(START)
+    end = text.index(END, begin)
+    result: dict[str, str] = {}
+    for line in text[begin:end].splitlines():
+        if not line.startswith("| `"):
+            continue
+        filename, separator, _rest = line[3:].partition("` |")
+        if separator:
+            result[filename] = line
+    return result
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--full", action="store_true",
+        help="reread, validate, summarize, and hash every packed table")
+    args = parser.parse_args()
+
     records = {str(record["filename"]): record for record in plan.inventory()}
     # Copycat uses v5 because its one deployable character has a linked clone,
     # but remains a K+K+1 inventory class.
     ordered = [record for record in plan.inventory()
                if (ROOT / "tablebases" / str(record["filename"])).exists()]
+    text = README.read_text()
+    old_rows = cached_rows(text)
+    readme_mtime = README.stat().st_mtime_ns
+    reused = 0
     lines = [
         START,
         "| File | Class | In-class edges | First material owner starts W / L / D | "
@@ -44,6 +74,12 @@ def main() -> None:
     ]
     for record in ordered:
         path = ROOT / "tablebases" / str(record["filename"])
+        cached = old_rows.get(path.name)
+        if (not args.full and cached is not None
+                and path.stat().st_mtime_ns <= readme_mtime):
+            lines.append(cached)
+            reused += 1
+            continue
         data = shards.read_logical(path)
         _magic, version, _piece, _count, edges = struct.unpack_from("<8sIIII", data)
         if version >= 6:
@@ -56,11 +92,10 @@ def main() -> None:
             f"{summarize.cell(totals[1], illegal[1])} | `{digest}` |")
     lines.append(END)
 
-    text = README.read_text()
     begin = text.index(START)
     end = text.index(END, begin) + len(END)
     README.write_text(text[:begin] + "\n".join(lines) + text[end:])
-    print(f"updated {README} with {len(ordered)} tables")
+    print(f"updated {README} with {len(ordered)} tables ({reused} cached)")
 
 
 if __name__ == "__main__":
