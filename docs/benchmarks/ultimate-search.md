@@ -226,6 +226,14 @@ The optimization suggestions were measured rather than accepted wholesale:
   1.722 s to 1.753 s through bitfield access overhead. The layout was reverted;
   a useful compact make/unmake design must eliminate full copies rather than
   only making them 14% smaller.
+- Shared-TT Lazy SMP was tested with race-free atomic four-way clusters and
+  helper-specific equal-score ordering. The atomic TT preserved single-thread
+  throughput and results. At ten seconds, 1/2/4 workers searched about
+  8.3M/16.4M/29.6M aggregate nodes, but every configuration completed only
+  depth 10 with the identical score and PV. Staggering helpers over odd depths
+  reduced duplication but still did not finish depth 11. This version was
+  rejected: unlike the earlier independent-table split, shared bounds scale
+  raw work, but the remaining same-tree duplication yields no usable depth.
 
 ## Deadline-aware draft search
 
