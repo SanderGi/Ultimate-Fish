@@ -416,75 +416,83 @@ class TablebaseGenerator {
         }
         save_checkpoint(stateCount_);
 
-        std::vector<std::uint32_t> offsets(stateCount_ + 1, 0);
-        for (std::uint32_t index = 0; index < stateCount_; ++index) {
-            const std::uint64_t next = std::uint64_t(offsets[index]) + predecessorCounts_[index];
-            if (next > std::numeric_limits<std::uint32_t>::max())
-                throw std::runtime_error("tablebase predecessor graph exceeds 32-bit storage");
-            offsets[index + 1] = static_cast<std::uint32_t>(next);
-        }
-        std::vector<std::uint32_t> predecessors(offsets.back());
-        std::vector<std::uint32_t> cursor(offsets.begin(), offsets.end() - 1);
-        for (std::uint32_t index = 0; index < stateCount_; ++index) {
-            analyze_node(index, false, [&](std::uint32_t child) {
-                predecessors[cursor[child]++] = index;
-            });
-            if (checkpointEvery_ && (index + 1) % checkpointEvery_ == 0)
-                progress("reverse", index + 1, start);
-        }
-
-        // DTW edges have unit cost. A Dial-style bucket queue preserves the
-        // distance ordering required for shortest wins/longest losses without
-        // paying O(log N) heap cost for tens of millions of solved states.
-        std::vector<std::vector<std::uint32_t>> buckets(
-          std::numeric_limits<std::uint16_t>::max() + 1ULL);
-        for (std::uint32_t index = 0; index < stateCount_; ++index)
-            if (nodes_[index].wdl == Wdl::Win || nodes_[index].wdl == Wdl::Loss)
-                buckets[nodes_[index].dtw].push_back(index);
-        for (std::uint32_t distance = 0; distance < buckets.size(); ++distance)
-          for (std::size_t queued = 0; queued < buckets[distance].size(); ++queued) {
-            const std::uint32_t child = buckets[distance][queued];
-            const Node childNode = nodes_[child];
-            if (distance != childNode.dtw)
-                continue;
-            for (std::uint32_t edge = offsets[child]; edge < offsets[child + 1]; ++edge) {
-                Node& parent = nodes_[predecessors[edge]];
-                if (parent.wdl == Wdl::Win && childNode.wdl == Wdl::Loss) {
-                    const std::uint16_t distance = static_cast<std::uint16_t>(
-                      std::min<int>(std::numeric_limits<std::uint16_t>::max(), childNode.dtw + 1));
-                    if (distance < parent.dtw) {
-                        parent.dtw = distance;
-                        buckets[parent.dtw].push_back(predecessors[edge]);
-                    }
-                    continue;
-                }
-                if (parent.wdl != Wdl::Unknown)
-                    continue;
-                if (childNode.wdl == Wdl::Loss) {
-                    parent.wdl = Wdl::Win;
-                    parent.dtw = static_cast<std::uint16_t>(std::min<int>(
-                      std::numeric_limits<std::uint16_t>::max(), childNode.dtw + 1));
-                    buckets[parent.dtw].push_back(predecessors[edge]);
-                }
-                else if (childNode.wdl == Wdl::Win) {
-                    if (parent.remaining)
-                        --parent.remaining;
-                    parent.longestWinChild = std::max(parent.longestWinChild, childNode.dtw);
-                    if (!parent.remaining) {
-                        parent.wdl = Wdl::Loss;
-                        parent.dtw = static_cast<std::uint16_t>(std::min<int>(
-                          std::numeric_limits<std::uint16_t>::max(),
-                          parent.longestWinChild + 1));
-                        buckets[parent.dtw].push_back(predecessors[edge]);
-                    }
-                }
+        std::uint64_t edgeCount = 0;
+        for (const std::uint32_t count : predecessorCounts_)
+            edgeCount += count;
+        const auto solve = [&](auto offsetZero) {
+            using Offset = decltype(offsetZero);
+            std::vector<Offset> offsets(stateCount_ + 1, 0);
+            for (std::uint32_t index = 0; index < stateCount_; ++index)
+                offsets[index + 1] = static_cast<Offset>(offsets[index] +
+                                                         predecessorCounts_[index]);
+            std::vector<std::uint32_t> predecessors(edgeCount);
+            std::vector<Offset> cursor(offsets.begin(), offsets.end() - 1);
+            for (std::uint32_t index = 0; index < stateCount_; ++index) {
+                analyze_node(index, false, [&](std::uint32_t child) {
+                    predecessors[cursor[child]++] = index;
+                });
+                if (checkpointEvery_ && (index + 1) % checkpointEvery_ == 0)
+                    progress("reverse", index + 1, start);
             }
-          }
-        for (Node& node : nodes_)
-            if (node.wdl == Wdl::Unknown)
-                node.wdl = Wdl::Draw;
+
+            // DTW edges have unit cost. A Dial-style bucket queue preserves the
+            // distance ordering required for shortest wins/longest losses without
+            // paying O(log N) heap cost for tens of millions of solved states.
+            std::vector<std::vector<std::uint32_t>> buckets(
+              std::numeric_limits<std::uint16_t>::max() + 1ULL);
+            for (std::uint32_t index = 0; index < stateCount_; ++index)
+                if (nodes_[index].wdl == Wdl::Win || nodes_[index].wdl == Wdl::Loss)
+                    buckets[nodes_[index].dtw].push_back(index);
+            for (std::uint32_t distance = 0; distance < buckets.size(); ++distance)
+              for (std::size_t queued = 0; queued < buckets[distance].size(); ++queued) {
+                const std::uint32_t child = buckets[distance][queued];
+                const Node childNode = nodes_[child];
+                if (distance != childNode.dtw)
+                    continue;
+                for (Offset edge = offsets[child]; edge < offsets[child + 1]; ++edge) {
+                    Node& parent = nodes_[predecessors[edge]];
+                    if (parent.wdl == Wdl::Win && childNode.wdl == Wdl::Loss) {
+                        const std::uint16_t distance = static_cast<std::uint16_t>(
+                          std::min<int>(std::numeric_limits<std::uint16_t>::max(),
+                                        childNode.dtw + 1));
+                        if (distance < parent.dtw) {
+                            parent.dtw = distance;
+                            buckets[parent.dtw].push_back(predecessors[edge]);
+                        }
+                        continue;
+                    }
+                    if (parent.wdl != Wdl::Unknown)
+                        continue;
+                    if (childNode.wdl == Wdl::Loss) {
+                        parent.wdl = Wdl::Win;
+                        parent.dtw = static_cast<std::uint16_t>(std::min<int>(
+                          std::numeric_limits<std::uint16_t>::max(), childNode.dtw + 1));
+                        buckets[parent.dtw].push_back(predecessors[edge]);
+                    }
+                    else if (childNode.wdl == Wdl::Win) {
+                        if (parent.remaining)
+                            --parent.remaining;
+                        parent.longestWinChild = std::max(parent.longestWinChild, childNode.dtw);
+                        if (!parent.remaining) {
+                            parent.wdl = Wdl::Loss;
+                            parent.dtw = static_cast<std::uint16_t>(std::min<int>(
+                              std::numeric_limits<std::uint16_t>::max(),
+                              parent.longestWinChild + 1));
+                            buckets[parent.dtw].push_back(predecessors[edge]);
+                        }
+                    }
+                }
+              }
+            for (Node& node : nodes_)
+                if (node.wdl == Wdl::Unknown)
+                    node.wdl = Wdl::Draw;
+        };
+        if (edgeCount <= std::numeric_limits<std::uint32_t>::max())
+            solve(std::uint32_t{});
+        else
+            solve(std::uint64_t{});
         verify_solution();
-        write_output(offsets.back());
+        write_output(edgeCount);
         progress("complete", stateCount_, start);
     }
 
@@ -842,18 +850,21 @@ class TablebaseGenerator {
         return processed;
     }
 
-    void write_output(std::uint32_t edges) const {
+    void write_output(std::uint64_t edges) const {
         std::ofstream stream(output_, std::ios::binary | std::ios::trunc);
         if (!stream)
             throw std::runtime_error("cannot write tablebase output");
         const std::array<char, 8> magic{{'U','F','T','B','1','\0','\0','\0'}};
-        const std::uint32_t version = fourModels_ ? 5 : 4;
+        const std::uint32_t version = edges > std::numeric_limits<std::uint32_t>::max()
+          ? 6 : fourModels_ ? 5 : 4;
         const std::uint32_t piece = static_cast<std::uint32_t>(attackerType_);
+        const std::uint32_t legacyEdges = static_cast<std::uint32_t>(
+          std::min<std::uint64_t>(edges, std::numeric_limits<std::uint32_t>::max()));
         stream.write(magic.data(), magic.size());
         stream.write(reinterpret_cast<const char*>(&version), sizeof(version));
         stream.write(reinterpret_cast<const char*>(&piece), sizeof(piece));
         stream.write(reinterpret_cast<const char*>(&stateCount_), sizeof(stateCount_));
-        stream.write(reinterpret_cast<const char*>(&edges), sizeof(edges));
+        stream.write(reinterpret_cast<const char*>(&legacyEdges), sizeof(legacyEdges));
         stream.write(reinterpret_cast<const char*>(&substates_), sizeof(substates_));
         const std::uint32_t wdlBytes = (stateCount_ + 3) / 4;
         const std::uint32_t dtwBytes = stateCount_;
@@ -865,12 +876,14 @@ class TablebaseGenerator {
         stream.write(reinterpret_cast<const char*>(&wdlBytes), sizeof(wdlBytes));
         stream.write(reinterpret_cast<const char*>(&dtwBytes), sizeof(dtwBytes));
         stream.write(reinterpret_cast<const char*>(&exceptionCount), sizeof(exceptionCount));
-        if (version == 5) {
+        if (version >= 5) {
             const std::uint32_t secondary = static_cast<std::uint32_t>(secondaryType_);
             const std::uint32_t secondaryColor = static_cast<std::uint32_t>(secondaryColor_);
             stream.write(reinterpret_cast<const char*>(&secondary), sizeof(secondary));
             stream.write(reinterpret_cast<const char*>(&secondaryColor), sizeof(secondaryColor));
         }
+        if (version >= 6)
+            stream.write(reinterpret_cast<const char*>(&edges), sizeof(edges));
         std::vector<std::uint8_t> wdlPlane(wdlBytes, 0);
         for (std::uint32_t index = 0; index < stateCount_; ++index)
             wdlPlane[index / 4] |= static_cast<std::uint8_t>(nodes_[index].wdl)

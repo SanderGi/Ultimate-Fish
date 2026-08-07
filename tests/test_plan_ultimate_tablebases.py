@@ -44,6 +44,11 @@ class TablebasePlanTests(unittest.TestCase):
     def test_stateless_pair_material_filter(self):
         planned = {record["class"] for record in tb.inventory()
                    if record["phase"] == "kings+2-stateless"}
+        stateless = [piece for piece in tb.PIECES if piece.stateless]
+        possible = len(stateless) * (len(stateless) + 1)
+        self.assertEqual(possible, 182)
+        self.assertEqual(len(planned), 160)
+        self.assertEqual(possible - len(planned), 22)
         self.assertIn("KknightturtlevK", planned)
         self.assertIn("KbishopmagevK", planned)
         self.assertIn("KbishopbishopvK", planned)
@@ -61,6 +66,7 @@ class TablebasePlanTests(unittest.TestCase):
                              tb.DEFAULT_BUDGET)
         admitted = [record for record in records
                     if record["phase"] == "kings+2-stateful"]
+        self.assertEqual(len(admitted), 24)
         represented = {str(record[side]) for record in admitted
                        for side in ("primary", "secondary")}
         self.assertTrue({"pawn", "berserker", "ghost", "penguin", "sniper",

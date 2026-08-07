@@ -41,10 +41,10 @@ def summary(path: Path, data: bytes | None = None) -> tuple[list[list[int]], lis
     if data is None:
         data = shards.read_logical(path)
     magic, version, piece, count, _edges = struct.unpack_from("<8sIIII", data)
-    if magic != MAGIC or version not in (4, 5):
-        raise ValueError(f"{path}: summary requires packed v4/v5")
+    if magic != MAGIC or version not in (4, 5, 6):
+        raise ValueError(f"{path}: summary requires packed v4/v5/v6")
     substates, wdl_bytes, dtw_bytes, exceptions = struct.unpack_from("<IIII", data, 24)
-    offset = 40 + (8 if version == 5 else 0)
+    offset = 40 + (8 if version >= 5 else 0) + (8 if version >= 6 else 0)
     wdl = data[offset:offset + wdl_bytes]
     if len(wdl) != wdl_bytes or dtw_bytes != count:
         raise ValueError(f"{path}: invalid plane sizes")
@@ -53,7 +53,7 @@ def summary(path: Path, data: bytes | None = None) -> tuple[list[list[int]], lis
     # Canonical v4/v5 tables always assign the first material owner to Ivory.
     # In same-team classes Onyx is bare; in opposing v5 classes neither side is.
     secondary_color = 0
-    if version == 5:
+    if version >= 5:
         _secondary, secondary_color = struct.unpack_from("<II", data, 40)
     # A live Jester intentionally permits its real King to remain threatened,
     # so adjacent-King wins by the bare side are reachable in that class.

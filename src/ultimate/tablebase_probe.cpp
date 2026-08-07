@@ -9,6 +9,7 @@
 #include <fstream>
 #include <functional>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <sstream>
@@ -292,8 +293,8 @@ std::vector<Database> load_databases() {
         std::uint32_t substates = 1;
         if (version >= 3)
             stream.read(reinterpret_cast<char*>(&substates), sizeof(substates));
-        if (!stream || magic != expected || (version < 2 || version > 5) ||
-            !substates || (version != 5 && count != StateCount * substates) ||
+        if (!stream || magic != expected || (version < 2 || version > 6) ||
+            !substates || (version < 5 && count != StateCount * substates) ||
             piece >= static_cast<std::uint32_t>(PieceType::Count))
             continue;
         Database database;
@@ -305,7 +306,7 @@ std::vector<Database> load_databases() {
             stream.read(reinterpret_cast<char*>(&wdlBytes), sizeof(wdlBytes));
             stream.read(reinterpret_cast<char*>(&dtwBytes), sizeof(dtwBytes));
             stream.read(reinterpret_cast<char*>(&exceptionCount), sizeof(exceptionCount));
-            if (version == 5) {
+            if (version >= 5) {
                 std::uint32_t secondary = 0, secondaryColor = 0;
                 stream.read(reinterpret_cast<char*>(&secondary), sizeof(secondary));
                 stream.read(reinterpret_cast<char*>(&secondaryColor), sizeof(secondaryColor));
@@ -323,6 +324,14 @@ std::vector<Database> load_databases() {
                 const std::uint64_t placementCount = copycat ? StateCount
                   : identical ? IdenticalFourStateCount : FourStateCount;
                 if (std::uint64_t(count) != placementCount * substates) {
+                    database.count = 0;
+                    continue;
+                }
+            }
+            if (version >= 6) {
+                std::uint64_t exactEdges = 0;
+                stream.read(reinterpret_cast<char*>(&exactEdges), sizeof(exactEdges));
+                if (exactEdges <= std::numeric_limits<std::uint32_t>::max()) {
                     database.count = 0;
                     continue;
                 }

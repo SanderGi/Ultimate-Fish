@@ -43,6 +43,10 @@ represented by that class.
 | `kjesterkturtle.uftb` | King+Jester vs King+Turtle | 402,759,128 | 11,993,228 / 0 / 6,985,732 | 2,397,164 / 5,356,036 / 11,225,760 | `7216f1e140c32fc3ed69addce02b651f64ec3fef5173f7b0c11259fcc38ccebd` |
 | `kjestermagek.uftb` | King+Jester+Mage vs King | 386,478,416 | 18,978,960 / 0 / 0 | 1,609,608 / 15,952,244 / 1,417,108 | `9d48c76c568315e9ff533fe3d518f1c7fe528c421891b65b1e171657f2ed7c09` |
 | `kjesterkmage.uftb` | King+Jester vs King+Mage | 364,406,212 | 18,978,960 / 0 / 0 | 1,609,608 / 15,953,304 / 1,416,048 | `705b00311fc61e20615b79e13472b96cf7705f8e80227303877ec0445326d274` |
+| `kjesterparasitek.uftb` | King+Jester+Parasite vs King | 462,590,064 | 18,978,960 / 0 / 0 | 1,609,608 / 17,365,128 / 4,224 | `50d5e2a3a35f7746b27395ebeb922dd9583b10800b59a6870c18750416ac5630` |
+| `kjesterkparasite.uftb` | King+Jester vs King+Parasite | 450,905,824 | 3,349,672 / 15,592,716 / 36,572 | 18,877,766 / 87,668 / 13,526 | `45f0f26f182a2e231455df61931cf49d6a54d9b36f9be0e1fd9fd87117a7fd18` |
+| `kjestergiantk.uftb` | King+Jester+Giant vs King | 259,948,596 | 13,286,700 / 0 / 5,692,260 | 1,142,116 / 11,300,932 / 6,535,912 | `9cee141bd1bc8cd2e0427a95d6b96683e24e5096d2bafce7390750918a5eb1f8` |
+| `kjesterkgiant.uftb` | King+Jester vs King+Giant | 265,285,348 | 13,180,164 / 21,472 / 5,777,324 | 3,091,428 / 7,778,226 / 8,109,306 | `67a539cfcbeeb53837a6b7c07c497aed513aa9d12260a7588213eee783a204e6` |
 | `kknightknightk.uftb` | King+2 Knights vs King | 196,460,680 | 1,964,822 / 0 / 7,524,658 | 0 (804,804) / 68 / 8,684,608 | `5c95ba0ed74d95e4d2c2fa4d1a98c1dddb121a9d11406853c75d4d5e1ba15138` |
 | `kknightturtlek.uftb` | King+Knight+Turtle vs King | 363,952,568 | 17,632,308 / 0 / 1,346,652 | 0 (1,609,608) / 12,261,896 / 5,107,456 | `e51001e72d79078c3da96de0dab87d8752d5f7496621b4b3812f82624107c5df` |
 | `kbishopbishopk.uftb` | King+2 Bishops vs King | 130,467,458 | 4,804,466 / 0 / 4,685,014 | 0 (407,502) / 3,708,210 / 5,373,768 | `18ee411f10c1c62e365b9e30359a1403f5d34e827bcc5509f20d8c0e73ded490` |
@@ -85,6 +89,29 @@ extra margin,
 not as a speculative assumption when enforcing the 10 GiB total cap.
 
 Regenerate them with `tools/generate_ultimate_tablebases.sh`. Checkpoints are
-piece-tagged and resumable. Lone Bishop, Knight, and Turtle classes are not
-bundled because the recovered native insufficient-material rule makes every
-such position an immediate draw.
+piece-tagged and resumable. Lone Bishop, Knight, Turtle, Mage, Devil, Sludge,
+Checker, Angel, and Fisherman classes are not bundled because the recovered
+native insufficient-material rule makes each an immediate draw.
+
+Of the 182 possible stateless K+K+2 material classes, 160 are bundled and the
+remaining 22 are omitted as immediate insufficient-material draws. The 22
+omitted classes are King+Knight+Mage, King+Knight+Fisherman, King+Turtle+Mage,
+King+Turtle+Fisherman, King+Mage+Mage, King+Mage+Fisherman, and
+King+Fisherman+Fisherman versus a bare King, plus King+Knight versus
+King+Knight, Bishop, Turtle, Mage, or Fisherman; King+Bishop versus
+King+Bishop, Turtle, Mage, or Fisherman; King+Turtle versus King+Turtle, Mage,
+or Fisherman; King+Mage versus King+Mage or Fisherman; and King+Fisherman
+versus King+Fisherman.
+
+The 10 GiB budget additionally admits 24 stateful classes: K+Bomb+Ghost,
+K+Bomb+Prince, K+Pawn+Bomb, K+Bomb+Checker, K+Bomb+Sniper,
+K+Berserker+Bomb, K+Bomb+Penguin, K+Bishop+Ghost, K+Bishop versus K+Ghost,
+K+Bishop versus K+Prince, K+Bishop+Prince, K+Bomb versus K+Ghost, K+Bomb
+versus K+Prince, K+Ghost+Dragon, K+Ghost+Fisherman, K+Ghost+Ghost,
+K+Ghost+Giant, K+Ghost versus K+Dragon, K+Ghost versus K+Fisherman, K+Ghost
+versus K+Giant, K+Ghost versus K+Mage, K+Ghost versus K+Parasite,
+K+Ghost+Mage, and K+Ghost+Parasite. Devil, Sludge, Angel, and Copycat
+combinations are excluded from K+K+2 because Minion spawning, persistent
+Goop, Angel host/Halo state, and Copycat's linked clone make those classes
+larger than the exact four-model closure used here; representing them as
+ordinary K+K+2 tables would be incorrect.

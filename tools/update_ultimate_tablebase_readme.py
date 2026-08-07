@@ -45,7 +45,9 @@ def main() -> None:
     for record in ordered:
         path = ROOT / "tablebases" / str(record["filename"])
         data = shards.read_logical(path)
-        _magic, _version, _piece, _count, edges = struct.unpack_from("<8sIIII", data)
+        _magic, version, _piece, _count, edges = struct.unpack_from("<8sIIII", data)
+        if version >= 6:
+            edges = struct.unpack_from("<Q", data, 48)[0]
         totals, illegal = summarize.summary(path, data)
         digest = hashlib.sha256(data).hexdigest()
         lines.append(
