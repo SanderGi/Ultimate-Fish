@@ -187,6 +187,14 @@ The optimization suggestions were measured rather than accepted wholesale:
   1,665,145 nodes / 1.59 s (35% and 36%) while completing selectively deeper
   forcing lines. The guarded build scored 21.0/42 in the 20 ms color-balanced
   wall-clock gate.
+- Forward futility and late-move pruning are likewise limited to ordinary,
+  non-PV, non-check, non-continuation nodes. Forward futility alone saved 1.2%
+  of the classic depth-10 tree with the same result. The stronger depth-1/2
+  late-quiet cutoff, combined with futility, reduced 1,665,145 nodes to
+  1,195,914 (28.2%) and about 1.80 s to 1.54 s. The recovered Ultimate fixture
+  remained exactly unchanged at 1,511,309 nodes and the same score/PV. The
+  combined candidate scored 7.0/14 at 20,000 nodes and 21.0/42 at 20 ms per
+  move against the unpruned build.
 
 ## Deadline-aware draft search
 

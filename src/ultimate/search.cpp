@@ -284,6 +284,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
 
     ++nodes_;
     const int originalAlpha = alpha;
+    const bool pvNode = beta - alpha > 1;
     const std::uint64_t key = position.key();
     Entry* entry = find_entry(key);
     const bool restrictedRoot = ply == 0 && !rootMoves_.empty();
@@ -349,6 +350,12 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
     Move bestMove{};
     std::vector<Move> childPv;
     int moveNumber = 0;
+    const bool quietPruningNode = ply > 0 && !pvNode && depth <= 3 &&
+      std::abs(alpha) < MateThreshold && !position.has_forced_action() &&
+      position.supports_ordinary_exchange() &&
+      (position.pieces(side, PieceType::Jester) ||
+       !position.real_king_threatened(side));
+    const int staticEval = quietPruningNode ? evaluate(position, ply) : 0;
     for (const Move& move : moves) {
         if (excludedMove && move == *excludedMove)
             continue;
@@ -374,6 +381,20 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
                 continue;
             if (!child.legal_after_unchecked_move(side))
                 continue;
+#ifndef ULTIMATE_DISABLE_LATE_MOVE_PRUNING
+            if (quietPruningNode && quiet && depth <= 2 &&
+                moveNumber >= 6 + 5 * depth) {
+                ++moveNumber;
+                continue;
+            }
+#endif
+#ifndef ULTIMATE_DISABLE_FORWARD_FUTILITY
+            if (quietPruningNode && quiet && moveNumber >= 4 + 3 * depth &&
+                staticEval + 140 * depth <= alpha) {
+                ++moveNumber;
+                continue;
+            }
+#endif
             if (useNnue_)
                 UltimateNnue::update(position, child, accumulators_[ply],
                                      accumulators_[ply + 1]);
