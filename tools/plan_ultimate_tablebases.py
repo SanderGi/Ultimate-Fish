@@ -116,7 +116,9 @@ def sufficient_pair(first: Piece, second: Piece, same_team: bool) -> bool:
     return first.color_bound and second.color_bound
 
 
-def class_record(name: str, states: int, phase: str, note: str = "") -> dict[str, object]:
+def class_record(name: str, states: int, phase: str, note: str = "",
+                 primary: str = "", secondary: str = "",
+                 opposing: bool = False, filename: str = "") -> dict[str, object]:
     size = split_plane_bytes(states)
     return {
         "class": name,
@@ -125,6 +127,10 @@ def class_record(name: str, states: int, phase: str, note: str = "") -> dict[str
         "packed_bytes": size,
         "shards": (size + DEFAULT_SHARD_LIMIT - 1) // DEFAULT_SHARD_LIMIT,
         "note": note,
+        "primary": primary,
+        "secondary": secondary,
+        "opposing": opposing,
+        "filename": filename,
     }
 
 
@@ -134,7 +140,11 @@ def inventory() -> list[dict[str, object]]:
         if not piece.decisive:
             continue
         states = placement_states(piece.models) * piece.state_factor
-        result.append(class_record(f"K{piece.name}vK", states, "kings+1", piece.note))
+        single_filename = {"queen": "kqk.uftb", "rook": "krk.uftb"}.get(
+            piece.name, f"k{piece.name}k.uftb")
+        result.append(class_record(f"K{piece.name}vK", states, "kings+1", piece.note,
+                                   primary=piece.name,
+                                   filename=single_filename))
 
     stateless = tuple(piece for piece in PIECES if piece.stateless)
     for first_index, first in enumerate(stateless):
@@ -143,11 +153,15 @@ def inventory() -> list[dict[str, object]]:
                 states = placement_states(first.models + second.models,
                                           first == second and first.models == 1)
                 result.append(class_record(
-                    f"K{first.name}{second.name}vK", states, "kings+2-stateless"))
+                    f"K{first.name}{second.name}vK", states, "kings+2-stateless",
+                    primary=first.name, secondary=second.name,
+                    filename=f"k{first.name}{second.name}k.uftb"))
             if sufficient_pair(first, second, False):
                 states = placement_states(first.models + second.models)
                 result.append(class_record(
-                    f"K{first.name}vK{second.name}", states, "kings+2-stateless"))
+                    f"K{first.name}vK{second.name}", states, "kings+2-stateless",
+                    primary=first.name, secondary=second.name, opposing=True,
+                    filename=f"k{first.name}k{second.name}.uftb"))
     return result
 
 

@@ -1944,6 +1944,15 @@ void test_exact_tablebase_probing() {
     expect(TablebaseProbe::probe(twoKnights).has_value(),
            "horizontally canonical identical-extra K+NN+K tablebase is probeable");
 
+    Position sameColorBishops;
+    moved(sameColorBishops, PieceType::King, Color::White, "a1");
+    moved(sameColorBishops, PieceType::Bishop, Color::White, "c3");
+    moved(sameColorBishops, PieceType::Bishop, Color::White, "e5");
+    moved(sameColorBishops, PieceType::King, Color::Black, "h10");
+    const auto sameColor = TablebaseProbe::probe(sameColorBishops);
+    expect(sameColor && sameColor->wdl == TablebaseWdl::Draw,
+           "same-color Bishop pair is a terminal insufficient-material tablebase draw");
+
     queen.piece(1).moved = false;
     expect(!TablebaseProbe::probe(queen),
            "tablebase declines an unmoved state whose castling class is absent");

@@ -14,10 +14,12 @@
 #include <cstring>
 #include <deque>
 #include <fstream>
+#include <future>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace Stockfish::Ultimate {
@@ -601,6 +603,11 @@ class TablebaseGenerator {
                 nodes_[index].wdl = Wdl::Draw;
             return;
         }
+        if (!position.is_checkmate_possible()) {
+            if (initialize)
+                nodes_[index].wdl = Wdl::Draw;
+            return;
+        }
         const auto moves = position.legal_moves();
         if (initialize) {
             Node& node = nodes_[index];
@@ -615,7 +622,10 @@ class TablebaseGenerator {
             Position child = position;
             if (!child.apply_move_unchecked(move))
                 throw std::runtime_error("legal tablebase move failed trusted application");
-            if (child.game_over()) {
+            if (child.forced_timeout_winner() ||
+                !child.has_real_king(Color::White) ||
+                !child.has_real_king(Color::Black) ||
+                !child.is_checkmate_possible()) {
                 const auto winner = child.winner();
                 if (initialize) {
                     if (winner && *winner == position.side_to_move()) {
@@ -626,9 +636,12 @@ class TablebaseGenerator {
                     else if (winner) {
                         if (nodes_[index].remaining)
                             --nodes_[index].remaining;
+                        nodes_[index].longestWinChild = std::max<std::uint16_t>(
+                          nodes_[index].longestWinChild, 0);
                         if (!nodes_[index].remaining && nodes_[index].wdl == Wdl::Unknown) {
                             nodes_[index].wdl = Wdl::Loss;
-                            nodes_[index].dtw = 1;
+                            nodes_[index].dtw = static_cast<std::uint16_t>(
+                              nodes_[index].longestWinChild + 1);
                         }
                     }
                 }
@@ -650,7 +663,8 @@ class TablebaseGenerator {
                           nodes_[index].longestWinChild, external->dtw);
                         if (!nodes_[index].remaining && nodes_[index].wdl == Wdl::Unknown) {
                             nodes_[index].wdl = Wdl::Loss;
-                            nodes_[index].dtw = static_cast<std::uint16_t>(external->dtw + 1);
+                            nodes_[index].dtw = static_cast<std::uint16_t>(
+                              nodes_[index].longestWinChild + 1);
                         }
                     }
                 }
@@ -757,13 +771,18 @@ class TablebaseGenerator {
         std::cout << '\n';
     }
 
-    void verify_solution() const {
-        for (std::uint32_t index = 0; index < stateCount_; ++index) {
+    void verify_range(std::uint32_t begin, std::uint32_t end) const {
+        for (std::uint32_t index = begin; index < end; ++index) {
             const Node node = nodes_[index];
             Position position;
             if (!make_position_at(index, position)) {
                 if (node.wdl != Wdl::Draw)
                     throw std::runtime_error("invalid geometry is not a draw sentinel");
+                continue;
+            }
+            if (!position.is_checkmate_possible()) {
+                if (node.wdl != Wdl::Draw || node.dtw != 0)
+                    throw std::runtime_error("terminal tablebase state is misclassified");
                 continue;
             }
             const auto moves = position.legal_moves();
@@ -776,7 +795,10 @@ class TablebaseGenerator {
                 Position child = position;
                 if (!child.apply_move_unchecked(move))
                     throw std::runtime_error("verification move failed trusted application");
-                if (child.game_over()) {
+                if (child.forced_timeout_winner() ||
+                    !child.has_real_king(Color::White) ||
+                    !child.has_real_king(Color::Black) ||
+                    !child.is_checkmate_possible()) {
                     const auto winner = child.winner();
                     if (winner && *winner == position.side_to_move()) {
                         hasLoss = true;
@@ -838,6 +860,21 @@ class TablebaseGenerator {
                   std::to_string(shortestLoss) + " longestWin=" +
                   std::to_string(longestWin));
         }
+    }
+
+    void verify_solution() const {
+        const std::uint32_t workers = std::min<std::uint32_t>(
+          4, std::max(1u, std::thread::hardware_concurrency()));
+        std::vector<std::future<void>> tasks;
+        for (std::uint32_t worker = 0; worker < workers; ++worker) {
+            const std::uint32_t begin = stateCount_ * worker / workers;
+            const std::uint32_t end = stateCount_ * (worker + 1) / workers;
+            tasks.push_back(std::async(std::launch::async, [this, begin, end] {
+                verify_range(begin, end);
+            }));
+        }
+        for (auto& task : tasks)
+            task.get();
         std::cout << "verifyok states " << stateCount_ << '\n';
     }
 
