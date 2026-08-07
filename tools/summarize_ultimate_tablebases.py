@@ -141,6 +141,22 @@ def continuation_mismatches(primary: int, secondary: int, secondary_color: int,
     return result
 
 
+def unobservable_sniper_cooldowns(primary: int, secondary: int,
+                                  substates: int) -> set[int]:
+    """Return combined substates with pre-ChangeTurn Sniper cooldown 3."""
+    primary_factor = STATE_FACTORS.get(primary, 1)
+    secondary_factor = STATE_FACTORS.get(secondary, 1)
+    if primary_factor * secondary_factor != substates:
+        return set()
+    result: set[int] = set()
+    for combined in range(substates):
+        first = combined // secondary_factor
+        second = combined % secondary_factor
+        if (primary == 19 and first == 3) or (secondary == 19 and second == 3):
+            result.add(combined)
+    return result
+
+
 def checker_forced_without_jump_artifacts(
         wdl: bytes, count: int, substates: int,
         primary: int, secondary: int, secondary_color: int,
@@ -340,6 +356,22 @@ def summary(path: Path, data: bytes | None = None) -> tuple[list[list[int]], lis
         for result in (1, 2, 3):
             illegal[side][result] += mismatch_counts[result]
         illegal[side][overlap_result] -= overlap
+    cooldown_artifacts = unobservable_sniper_cooldowns(piece, secondary, substates)
+    if cooldown_artifacts:
+        for side in range(2):
+            counts = count_substates(
+                wdl, side * count // 2, (side + 1) * count // 2,
+                substates, cooldown_artifacts)
+            overlap_result = 2 if owns_material[side] else 1
+            overlap = 0
+            if count_adjacent_as_illegal:
+                for begin, end in adjacent_ranges(count, substates, side):
+                    overlap += count_substates(
+                        wdl, begin, end, substates,
+                        cooldown_artifacts)[overlap_result]
+            for result in (1, 2, 3):
+                illegal[side][result] += counts[result]
+            illegal[side][overlap_result] -= overlap
     checker_forced_without_jump_artifacts(
         wdl, count, substates, piece, secondary, secondary_color,
         owns_material, illegal)

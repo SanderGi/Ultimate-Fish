@@ -122,6 +122,13 @@ class TablebasePlanTests(unittest.TestCase):
                          "38,253,312 (547,296) / 0 (3,286,402) / "
                          "0 (33,828,830)")
 
+    def test_sniper_pre_turn_change_cooldown_is_unreachable(self):
+        totals, illegal = summary.summary(ROOT / "tablebases" / "ksniperk.uftb")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "157,334 (42,232) / 0 / 1,321,546 (450,728)")
+        self.assertEqual(summary.cell(totals[1], illegal[1]),
+                         "0 (167,232) / 2,244 (32) / 1,351,212 (451,120)")
+
     def test_penguin_wins_with_impossible_aura_turns_are_unreachable(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "kpenguink.uftb")
         self.assertEqual(summary.cell(totals[0], illegal[0]),

@@ -1,1 +1,3 @@
 README.md merge=ours
+*.uftb binary
+*.uftb.part* binary

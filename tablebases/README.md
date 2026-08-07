@@ -20,7 +20,7 @@ represented by that class.
 | `kghostk.uftb` | King+Ghost vs King | 17,761,144 | 985,920 / 0 / 0 | 0 (83,616) / 865,512 / 36,792 | `3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31` |
 | `kpenguink.uftb` | King+Penguin vs King | 39,165,400 | 0 (289,648) / 0 (8,992) / 2,928,752 (2,688,128) | 19,576 (261,408) / 0 (10,560) / 3,148,280 (2,475,696) | `bec15406a45c4a955e5ca35a0190e3447abd7c68f621de254b9fc6afe242f8f3` |
 | `kparasitek.uftb` | King+Parasite vs King | 8,602,716 | 492,960 / 0 / 0 | 0 (41,808) / 451,120 / 32 | `f08b2676a703259ef638bc4ab72b9cd7e6b2000afc72dd70b0ac17e03ea858ab` |
-| `ksniperk.uftb` | King+Sniper vs King | 24,180,908 | 199,566 / 0 / 1,772,274 | 0 (167,232) / 2,276 / 1,802,332 | `473022c95908a45eec7ac8aab7752482d30033cb24f66b65bdf329a7c49c49c5` |
+| `ksniperk.uftb` | King+Sniper vs King | 24,180,908 | 157,334 (42,232) / 0 / 1,321,546 (450,728) | 0 (167,232) / 2,244 (32) / 1,351,212 (451,120) | `473022c95908a45eec7ac8aab7752482d30033cb24f66b65bdf329a7c49c49c5` |
 | `kprincek.uftb` | King+Prince vs King | 14,324,280 | 947,384 / 0 (38,536) / 0 | 0 (41,808) / 414,344 (492,944) / 36,808 (16) | `7bce11ab717f49e1e2b6e1e0844825139382fe324b2ad88a59b5fc027ba0e6c0` |
 | `kgiantk.uftb` | King+Giant vs King | 4,747,504 | 85,776 / 0 / 407,184 | 0 (30,868) / 1,460 / 460,632 | `eb52f2c08cf88e1e3682d0c72dfde191d9009e79779ad7eee23ca82fdcade591` |
 | `kcopycatk.uftb` | King+Copycat vs King | 10,685,864 | 480,408 / 0 / 12,552 | 0 (40,776) / 374,136 / 78,048 | `98dbd354da959fa923ed9b712c1bde7147f2039a9bcf50306cbdc2a9b3098aeb` |
@@ -189,6 +189,7 @@ represented by that class.
 | `kbombprincek.uftb` | King+Bomb+Prince vs King | 678,856,408 | 36,384,612 / 62,344 (1,483,636) / 27,328 | 0 (1,609,608) / 17,331,368 (18,978,092) / 37,984 (868) | `74b48061b11795d274bcbb421019558cedc9fb1decb422c967020c9a8f9f827e` |
 | `kpawnbombk.uftb` | King+Pawn+Bomb vs King | 779,725,448 | 37,957,918 / 0 / 2 | 0 (3,219,216) / 34,675,860 / 62,844 | `804da1e2b87eac100ac6101ea2fe10fc2e83adeb8d0e4f50143f3a89719f3684` |
 | `kbombcheckerk.uftb` | King+Bomb+Checker vs King | 818,127,549 | 38,253,312 (547,296) / 0 (3,286,402) / 0 (33,828,830) | 0 (3,219,216) / 34,678,360 (8,207,456) / 60,344 (29,750,464) | `013330f8184618b0d536da4a4e9417c8fbc1b49fcaab2a1842266e8246b7ad52` |
+| `kbombsniperk.uftb` | King+Bomb+Sniper vs King | 1,509,762,618 | 56,936,876 (18,978,960) / 0 / 4 | 0 (6,438,432) / 51,998,886 (17,339,238) / 109,170 (30,114) | `be04af3e927cf0a34219b0bd2b3663e659da16c86be7775ee8afb05d55150b9e` |
 <!-- GENERATED_TABLE_END -->
 
 Each W / L / D cell is from the perspective of the side to move named by its
