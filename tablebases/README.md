@@ -149,6 +149,10 @@ represented by that class.
 | `kninjaparasitek.uftb` | King+Ninja+Parasite vs King | 584,118,216 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,313,736 / 55,616 | `c37a2962c07c0e6317ff0db96a1e742c97a63259fe708a80f9423b013d857a60` |
 | `kninjakparasite.uftb` | King+Ninja vs King+Parasite | 535,099,432 | 7,458,260 / 1,828,856 / 9,691,844 | 8,163,266 / 1,201,524 / 9,614,170 | `3b3eec23f0e5f96eb845c436bf35aabc5eda9b870d96411981f7e8023e5e6c6e` |
 | `kninjagiantk.uftb` | King+Ninja+Giant vs King | 344,953,212 | 13,286,700 / 0 / 5,692,260 | 0 (1,142,116) / 11,260,640 / 6,576,204 | `b43c74ea48ece9cbba5c344193b2db26044735da0f7a32f70b86f734206fb1df` |
+| `kninjakgiant.uftb` | King+Ninja vs King+Giant | 306,835,628 | 13,264,058 / 13,504 / 5,701,398 | 3,080,994 / 7,890,026 / 8,007,940 | `3a41d7ff3cd4906c814bf8e6bd3af56ec30079cbdd4e43b8ed7c523edff4225b` |
+| `kninjafishermank.uftb` | King+Ninja+Fisherman vs King | 888,968,396 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 15,914,976 / 1,454,376 | `2adcd8f6d511a359b43a9dbb89650b0e2492d338d6d98538208796a182df0763` |
+| `kninjakfisherman.uftb` | King+Ninja vs King+Fisherman | 803,024,716 | 18,978,960 / 0 / 0 | 1,609,608 / 15,953,476 / 1,415,876 | `de5c29df362dc35024077e4dcd380fffe6836e469d863e3871a7a1b52549be09` |
+| `kninjadragonk.uftb` | King+Ninja+Dragon vs King | 707,856,384 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,252,356 / 116,996 | `de0501b3bef6a6abf8fc81c478c31af9a6c3f71f28d313473de954dc62beb52c` |
 | `kturtleturtlek.uftb` | King+2 Turtles vs King | 167,494,620 | 1,579,316 / 0 / 7,910,164 | 0 (804,804) / 416 / 8,684,260 | `bbb146a2f252eaf0eb40d23e49d0ddda56de183fb202c515ff64a0fd172037b1` |
 | `kmagekparasite.uftb` | King+Mage vs King+Parasite | 344,453,172 | 1,609,608 / 17,369,180 / 172 | 18,978,960 / 0 / 0 | `7d8638ada4d6e2fb5314afc7b87bf25a4013f149b76525f44ba561a55cf147aa` |
 | `kfishermankparasite.uftb` | King+Fisherman vs King+Parasite | 703,350,700 | 1,609,608 / 314,868 / 17,054,484 | 4,835,644 / 0 / 14,143,316 | `6032d4e60931298ce7fc31341cde1318a4fdcd19604c29a1a260a577d0f4c389` |
