@@ -176,6 +176,10 @@ represented by that class.
 | `kparasitedragonk.uftb` | King+Parasite+Dragon vs King | 554,255,912 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,350,088 / 19,264 | `2b91e50eb9ff938d3f0419b34bff35c5496b5c1ee077949f09a46bb4d8090ca2` |
 | `kparasitekdragon.uftb` | King+Parasite vs King+Dragon | 510,498,792 | 7,991,790 / 314,622 / 10,672,548 | 5,780,856 / 1,657,392 / 11,540,712 | `5259021302823eed33bf757a63b2c32caf8f07a45ad619e0fa9ab52af20df75e` |
 | `kgiantgiantk.uftb` | King+2 Giants vs King | 62,426,868 | 3,268,834 / 0 / 6,220,646 | 0 (389,094) / 1,722,850 / 7,377,536 | `1c737dec95c4c28c2127edf5bf190aa000687d95d19360175b9aa8c561906b59` |
+| `kgiantkgiant.uftb` | King+Giant vs King+Giant | 117,385,888 | 2,096,142 / 15,798 / 16,867,020 | 2,094,572 / 15,770 / 16,868,618 | `d5503ba4bfd875b28958d3ffc5f7a6c5b77ebe0cd9b952a37dd7923126df4302` |
+| `kgiantfishermank.uftb` | King+Giant+Fisherman vs King | 441,838,754 | 13,177,244 / 0 / 5,801,716 | 0 (1,142,116) / 9,407,898 / 8,428,946 | `d6322a6a99b4876cb25e05b88317a7b32cd762065c54c9415bfbd3ce01127ffe` |
+| `kgiantkfisherman.uftb` | King+Giant vs King+Fisherman | 398,427,880 | 3,081,944 / 0 / 15,897,016 | 1,313,848 / 12,816 / 17,652,296 | `2e999ecfec7aa2dd0f604edc406ec77e79f39a5251f13a65065181486522a64d` |
+| `kgiantdragonk.uftb` | King+Giant+Dragon vs King | 319,145,998 | 13,286,396 / 0 / 5,692,564 | 0 (1,142,116) / 11,293,652 / 6,543,192 | `12c16784095c23ca9aefd21ebb6322477be1659d36001e459b534d9713af9fab` |
 <!-- GENERATED_TABLE_END -->
 
 Each W / L / D cell is from the perspective of the side to move named by its
