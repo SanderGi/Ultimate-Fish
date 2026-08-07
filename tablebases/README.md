@@ -193,6 +193,7 @@ represented by that class.
 | `kbishopghostk.uftb` | King+Bishop+Ghost vs King | 958,964,780 | 37,957,920 / 0 / 0 | 0 (3,219,216) / 33,484,914 / 1,253,790 | `61bc4f9865d4c217868da670e27e16e9a493f31ca15ae6a68f91469b8c48dcf2` |
 | `kbishopkghost.uftb` | King+Bishop vs King+Ghost | 931,510,904 | 7,430,290 / 246,120 / 30,281,510 | 11,208,264 / 0 / 26,749,656 | `0649b7859ba72c8534929a902f18b3ca1a74cd7d7b3713ac109633e83a85ac15` |
 | `kbishopkprince.uftb` | King+Bishop vs King+Prince | 648,044,796 | 3,693,788 / 12,149,366 (18,668,874) / 3,135,806 (310,086) | 34,627,216 / 1,598,858 (1,483,636) / 248,210 | `e3e2ae7d3c017eeaf0b0365b7bc1114170d0b076ea55dbc83ff66ebbbf318fb9` |
+| `kbishopprincek.uftb` | King+Bishop+Prince vs King | 673,430,482 | 36,469,598 / 0 (1,483,636) / 4,686 | 0 (1,609,608) / 16,113,394 (18,972,918) / 1,255,958 (6,042) | `bdfb6056b073a1c261379d0e2d56ffdc30f3422cf6ed5de00a912cfe3a117116` |
 <!-- GENERATED_TABLE_END -->
 
 Each W / L / D cell is from the perspective of the side to move named by its
