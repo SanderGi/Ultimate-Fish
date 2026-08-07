@@ -14,16 +14,17 @@ MAGIC = b"UFTB1\0\0\0"
 
 
 def kings_for(index: int, count: int, substates: int) -> tuple[int, int]:
-    if count // substates == 985_920:
-        placement = index // substates
+    placements = count // substates
+    placement = index // substates
+    if placements == 985_920:
         placement //= 78
         black_rank = placement % 79
         placement //= 79
         white = placement % 80
         black = black_rank + (black_rank >= white)
         return white, black
-    pair_states = 3_003 if count == 18_978_960 else 78 * 77
-    placement = index // pair_states
+    pair_states = 3_003 if placements == 18_978_960 else 78 * 77
+    placement //= pair_states
     black_rank = placement % 79
     placement //= 79
     white_rank = placement % 40

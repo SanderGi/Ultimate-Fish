@@ -9,8 +9,10 @@
 #include <fstream>
 #include <functional>
 #include <iterator>
+#include <memory>
 #include <mutex>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -24,6 +26,36 @@ constexpr std::uint32_t FourStateCount =
   2 * (SquareCount / 2) * (SquareCount - 1) * (SquareCount - 2) * (SquareCount - 3);
 constexpr std::uint32_t IdenticalFourStateCount = FourStateCount / 2;
 
+struct PackedStorage {
+    std::string path;
+    std::uint64_t wdlOffset = 0;
+    std::uint32_t wdlBytes = 0;
+    std::uint32_t dtwBytes = 0;
+    std::uint32_t count = 0;
+    mutable std::once_flag loadOnce;
+    mutable std::vector<std::uint8_t> wdl;
+    mutable std::vector<std::uint8_t> dtw;
+
+    void load() const {
+        std::call_once(loadOnce, [&] {
+            std::ifstream stream(path, std::ios::binary);
+            stream.seekg(static_cast<std::streamoff>(wdlOffset));
+            wdl.resize(wdlBytes);
+            dtw.resize(dtwBytes);
+            stream.read(reinterpret_cast<char*>(wdl.data()), wdl.size());
+            stream.read(reinterpret_cast<char*>(dtw.data()), dtw.size());
+            if (!stream)
+                throw std::runtime_error("truncated packed Ultimate tablebase: " + path);
+            for (std::uint32_t index = 0; index < count; ++index) {
+                const std::uint8_t value = (wdl[index / 4] >> ((index % 4) * 2)) & 3;
+                if (value < static_cast<std::uint8_t>(TablebaseWdl::Win) ||
+                    value > static_cast<std::uint8_t>(TablebaseWdl::Draw))
+                    throw std::runtime_error("invalid packed Ultimate WDL value: " + path);
+            }
+        });
+    }
+};
+
 struct Database {
     PieceType attacker = PieceType::Count;
     PieceType secondary = PieceType::Count;
@@ -31,15 +63,15 @@ struct Database {
     std::uint32_t substates = 1;
     std::uint32_t count = 0;
     std::vector<TablebaseResult> records;
-    std::vector<std::uint8_t> wdlPlane;
-    std::vector<std::uint8_t> dtwPlane;
+    std::shared_ptr<PackedStorage> packed;
     std::vector<std::pair<std::uint32_t, std::uint16_t>> exceptions;
 
     TablebaseResult at(std::uint32_t index) const {
-        if (!wdlPlane.empty()) {
+        if (packed) {
+            packed->load();
             const auto wdl = static_cast<TablebaseWdl>(
-              (wdlPlane[index / 4] >> ((index % 4) * 2)) & 3);
-            std::uint16_t distance = dtwPlane[index];
+              (packed->wdl[index / 4] >> ((index % 4) * 2)) & 3);
+            std::uint16_t distance = packed->dtw[index];
             if (distance == 255) {
                 const auto found = std::lower_bound(
                   exceptions.begin(), exceptions.end(), index,
@@ -299,19 +331,20 @@ std::vector<Database> load_databases() {
                 database.count = 0;
                 continue;
             }
-            database.wdlPlane.resize(wdlBytes);
-            database.dtwPlane.resize(dtwBytes);
-            stream.read(reinterpret_cast<char*>(database.wdlPlane.data()), database.wdlPlane.size());
-            stream.read(reinterpret_cast<char*>(database.dtwPlane.data()), database.dtwPlane.size());
-            for (std::uint32_t index = 0; index < count; ++index) {
-                const std::uint8_t wdl =
-                  (database.wdlPlane[index / 4] >> ((index % 4) * 2)) & 3;
-                if (wdl < static_cast<std::uint8_t>(TablebaseWdl::Win) ||
-                    wdl > static_cast<std::uint8_t>(TablebaseWdl::Draw)) {
-                    database.count = 0;
-                    break;
-                }
+            const std::streamoff planeOffset = stream.tellg();
+            if (planeOffset < 0) {
+                database.count = 0;
+                continue;
             }
+            database.packed = std::make_shared<PackedStorage>();
+            database.packed->path = logicalPath;
+            database.packed->wdlOffset = static_cast<std::uint64_t>(planeOffset);
+            database.packed->wdlBytes = wdlBytes;
+            database.packed->dtwBytes = dtwBytes;
+            database.packed->count = count;
+            const std::uint64_t exceptionOffset =
+              database.packed->wdlOffset + wdlBytes + dtwBytes;
+            stream.seekg(static_cast<std::streamoff>(exceptionOffset));
             for (std::uint32_t item = 0; item < exceptionCount; ++item) {
                 std::uint32_t index = 0;
                 std::uint16_t distance = 0;
@@ -323,6 +356,11 @@ std::vector<Database> load_databases() {
                 }
                 database.exceptions.emplace_back(index, distance);
             }
+            std::error_code sizeError;
+            const std::uint64_t expectedSize = exceptionOffset +
+              std::uint64_t(exceptionCount) * (sizeof(std::uint32_t) + sizeof(std::uint16_t));
+            if (std::filesystem::file_size(logicalPath, sizeError) != expectedSize || sizeError)
+                database.count = 0;
         }
         else {
             database.records.resize(count);
@@ -340,7 +378,7 @@ std::vector<Database> load_databases() {
             }
         }
         if (stream && database.count == count &&
-            (database.records.size() == count || database.dtwPlane.size() == count))
+            (database.records.size() == count || database.packed))
             result.push_back(std::move(database));
     }
     return result;

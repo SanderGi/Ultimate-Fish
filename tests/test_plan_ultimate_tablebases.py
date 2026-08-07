@@ -101,6 +101,22 @@ class TablebasePlanTests(unittest.TestCase):
             self.assertEqual(shards.logical_sha256(path),
                              hashlib.sha256(payload).hexdigest())
 
+    def test_stateful_side_summary_removes_substate_dimension(self):
+        full = tb.placement_states(2)
+        identical = tb.placement_states(2, identical_pair=True)
+        for placement in (0, 1, 123_456, full - 1):
+            expected = summary.kings_for(placement, full, 1)
+            for substate in range(4):
+                self.assertEqual(
+                    summary.kings_for(placement * 4 + substate, full * 4, 4),
+                    expected)
+        for placement in (0, 1, 123_456, identical - 1):
+            expected = summary.kings_for(placement, identical, 1)
+            for substate in range(2):
+                self.assertEqual(
+                    summary.kings_for(placement * 2 + substate, identical * 2, 2),
+                    expected)
+
 
 if __name__ == "__main__":
     unittest.main()

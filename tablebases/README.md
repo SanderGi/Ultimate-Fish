@@ -39,6 +39,10 @@ represented by that class.
 | `kjesterkbomb.uftb` | King+Jester vs King+Bomb | 494,687,920 | 3,248,390 / 9,716,844 / 6,013,726 | 15,947,500 / 29,024 / 3,002,436 | `b01b14d0a5d920e9c519c1c9a310882c7aec263c8a7aa71c2abbefb3202dc8cb` |
 | `kjesterninjak.uftb` | King+Jester+Ninja vs King | 629,742,840 | 18,978,960 / 0 / 0 | 1,609,608 / 17,313,736 / 55,616 | `33431727e988e9c2f48dc0f22e3418072fc8c6f741290b037fd1a5e28b0bbf97` |
 | `kjesterkninja.uftb` | King+Jester vs King+Ninja | 602,269,760 | 5,592,936 / 6,238,816 / 7,147,208 | 15,125,298 / 5,680 / 3,847,982 | `7255da99637afb9a015c284056b4be3431d602c6c0febddb7fd439157170a55b` |
+| `kjesterturtlek.uftb` | King+Jester+Turtle vs King | 409,044,272 | 18,978,960 / 0 / 0 | 1,609,608 / 16,006,830 / 1,362,522 | `496ab5eb6012ff5500b54b6589d153710839563621cbb4340e6f69534a0d3067` |
+| `kjesterkturtle.uftb` | King+Jester vs King+Turtle | 402,759,128 | 11,993,228 / 0 / 6,985,732 | 2,397,164 / 5,356,036 / 11,225,760 | `7216f1e140c32fc3ed69addce02b651f64ec3fef5173f7b0c11259fcc38ccebd` |
+| `kjestermagek.uftb` | King+Jester+Mage vs King | 386,478,416 | 18,978,960 / 0 / 0 | 1,609,608 / 15,952,244 / 1,417,108 | `9d48c76c568315e9ff533fe3d518f1c7fe528c421891b65b1e171657f2ed7c09` |
+| `kjesterkmage.uftb` | King+Jester vs King+Mage | 364,406,212 | 18,978,960 / 0 / 0 | 1,609,608 / 15,953,304 / 1,416,048 | `705b00311fc61e20615b79e13472b96cf7705f8e80227303877ec0445326d274` |
 | `kknightknightk.uftb` | King+2 Knights vs King | 196,460,680 | 1,964,822 / 0 / 7,524,658 | 0 (804,804) / 68 / 8,684,608 | `5c95ba0ed74d95e4d2c2fa4d1a98c1dddb121a9d11406853c75d4d5e1ba15138` |
 | `kknightturtlek.uftb` | King+Knight+Turtle vs King | 363,952,568 | 17,632,308 / 0 / 1,346,652 | 0 (1,609,608) / 12,261,896 / 5,107,456 | `e51001e72d79078c3da96de0dab87d8752d5f7496621b4b3812f82624107c5df` |
 | `kbishopbishopk.uftb` | King+2 Bishops vs King | 130,467,458 | 4,804,466 / 0 / 4,685,014 | 0 (407,502) / 3,708,210 / 5,373,768 | `18ee411f10c1c62e365b9e30359a1403f5d34e827bcc5509f20d8c0e73ded490` |
