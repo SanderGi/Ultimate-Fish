@@ -77,6 +77,10 @@ represented by that class.
 | `kqueenbombk.uftb` | King+Queen+Bomb vs King | 738,060,636 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,268,888 / 100,464 | `a75bcbfedb3e5fc4f35d711e81b50db0b23d93ef232bdf1ee5b15c44787cf5d9` |
 | `kqueenkbomb.uftb` | King+Queen vs King+Bomb | 629,403,948 | 8,774,424 / 1,328,334 / 8,876,202 | 7,454,474 / 671,100 / 10,853,386 | `7317a875224cf62e25de4b51c3bcabb3720fce8c0ebdab45e1db2cd2f4db9330` |
 | `kqueenninjak.uftb` | King+Queen+Ninja vs King | 849,027,988 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,178,972 / 190,380 | `d9b0d5151b48d5137566ed0a0d7364af0122b1b68adfcc6d946afc9a31881f74` |
+| `kqueenkninja.uftb` | King+Queen vs King+Ninja | 672,276,532 | 14,565,046 / 9,456 / 4,404,458 | 8,881,656 / 1,365,734 / 8,731,570 | `d406e996eabed529e140e6e31c93a5841561e412ce0350f8e36d169f0ddc8e4c` |
+| `kqueenturtlek.uftb` | King+Queen+Turtle vs King | 644,511,080 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 15,954,050 / 1,415,302 | `c2a325eccaf941235c632d386beac95de4cdcc22b2005511b80e538f3353f39a` |
+| `kqueenkturtle.uftb` | King+Queen vs King+Turtle | 606,531,770 | 18,978,928 / 0 / 32 | 2,397,164 / 14,534,402 / 2,047,394 | `353627128552df82c4eece2999e8e6805a11b29a418078c7f4f255f5e0ec55fe` |
+| `kqueenmagek.uftb` | King+Queen+Mage vs King | 623,307,860 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 15,912,942 / 1,456,410 | `de3e8f1a0b0d1d5f216c8be8d4ab9efccf8a7a09a4c803175a4e6651c451a22e` |
 | `kbishopbishopk.uftb` | King+2 Bishops vs King | 130,467,458 | 4,804,466 / 0 / 4,685,014 | 0 (407,502) / 3,708,210 / 5,373,768 | `18ee411f10c1c62e365b9e30359a1403f5d34e827bcc5509f20d8c0e73ded490` |
 | `kbombbombk.uftb` | King+2 Bombs vs King | 260,111,166 | 9,489,402 / 78 / 0 | 0 (804,804) / 8,652,882 / 31,794 | `3007861257e32343194410f89e6c446a904086162f15481d46d7a5337404a4ab` |
 | `kturtleturtlek.uftb` | King+2 Turtles vs King | 167,494,620 | 1,579,316 / 0 / 7,910,164 | 0 (804,804) / 416 / 8,684,260 | `bbb146a2f252eaf0eb40d23e49d0ddda56de183fb202c515ff64a0fd172037b1` |
