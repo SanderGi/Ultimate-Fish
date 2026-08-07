@@ -9,6 +9,7 @@ import struct
 
 import plan_ultimate_tablebases as plan
 import summarize_ultimate_tablebases as summarize
+import ultimate_tablebase_shards as shards
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -43,9 +44,9 @@ def main() -> None:
     ]
     for record in ordered:
         path = ROOT / "tablebases" / str(record["filename"])
-        data = path.read_bytes()
+        data = shards.read_logical(path)
         _magic, _version, _piece, _count, edges = struct.unpack_from("<8sIIII", data)
-        totals, illegal = summarize.summary(path)
+        totals, illegal = summarize.summary(path, data)
         digest = hashlib.sha256(data).hexdigest()
         lines.append(
             f"| `{path.name}` | {display_name(record)} | {edges:,} | "

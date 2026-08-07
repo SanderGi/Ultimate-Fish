@@ -19,7 +19,8 @@ FILES = 8
 RANKS = 10
 SQUARES = FILES * RANKS
 GITHUB_FILE_LIMIT = 100_000_000
-DEFAULT_SHARD_LIMIT = 64 * 1024 * 1024
+# Leave a full 5 MB safety margin below GitHub's decimal 100 MB hard limit.
+DEFAULT_SHARD_LIMIT = 95_000_000
 DEFAULT_BUDGET = 10 * 1024**3
 
 
@@ -33,6 +34,7 @@ class Piece:
     state_factor: int = 1
     models: int = 1
     stateless: bool = True
+    closed_k2: bool = True
     note: str = ""
 
 
@@ -57,21 +59,21 @@ PIECES = (
     Piece("penguin", decisive=True, state_factor=12, stateless=False,
           note="cooldown 0..5 and reachable freeze-aura phase"),
     Piece("parasite", decisive=True),
-    Piece("devil", state_factor=4, stateless=False,
+    Piece("devil", state_factor=4, stateless=False, closed_k2=False,
           note="insufficient alone; generated Minions belong to larger closures"),
-    Piece("sludge", stateless=False,
+    Piece("sludge", stateless=False, closed_k2=False,
           note="insufficient alone; generated Goop belongs to larger closures"),
     Piece("sniper", decisive=True, state_factor=4, stateless=False,
           note="cooldown 0..3"),
     Piece("prince", decisive=True, state_factor=2, stateless=False,
           note="ordinary/forced-second-action phase"),
-    Piece("checker", color_bound=True, state_factor=2, stateless=False,
-          note="Checker/CheckerKing promotion state"),
+    Piece("checker", color_bound=True, state_factor=4, stateless=False,
+          note="Checker/CheckerKing type and ordinary/forced-jump phase"),
     Piece("giant", decisive=True,
           note="2x2 footprint makes some anchor tuples invalid"),
-    Piece("copycat", decisive=True, stateless=False,
+    Piece("copycat", decisive=True, stateless=False, closed_k2=False,
           note="linked mirror clone is position-derived until an external effect displaces it"),
-    Piece("angel", stateless=False,
+    Piece("angel", stateless=False, closed_k2=False,
           note="insufficient alone; attachment/host/Halo state"),
     Piece("fisherman", support=True),
     Piece("dragon", decisive=True),
@@ -134,7 +136,51 @@ def class_record(name: str, states: int, phase: str, note: str = "",
     }
 
 
-def inventory() -> list[dict[str, object]]:
+def stateful_candidates() -> list[dict[str, object]]:
+    """Closed K+K+2 classes containing at least one stateful character.
+
+    Spawning, attachment, and linked-multi-model characters are deliberately
+    excluded: their exact closure is larger than four board models and cannot
+    truthfully be represented by this codec. Candidate order gives every
+    closed stateful type one same-team Bomb class before spending the
+    remaining budget on the smallest classes. Bomb keeps this coverage tier's
+    predecessor graphs much smaller than an equally sized Queen pairing.
+    """
+    closed = tuple(piece for piece in PIECES if piece.closed_k2)
+    result: list[dict[str, object]] = []
+    for first_index, first in enumerate(closed):
+        for second in closed[first_index:]:
+            if first.stateless and second.stateless:
+                continue
+            factor = first.state_factor * second.state_factor
+            if sufficient_pair(first, second, True):
+                states = placement_states(
+                    first.models + second.models,
+                    first == second and first.models == 1) * factor
+                result.append(class_record(
+                    f"K{first.name}{second.name}vK", states, "kings+2-stateful",
+                    primary=first.name, secondary=second.name,
+                    filename=f"k{first.name}{second.name}k.uftb"))
+            if sufficient_pair(first, second, False):
+                states = placement_states(first.models + second.models) * factor
+                result.append(class_record(
+                    f"K{first.name}vK{second.name}", states, "kings+2-stateful",
+                    primary=first.name, secondary=second.name, opposing=True,
+                    filename=f"k{first.name}k{second.name}.uftb"))
+
+    stateful_names = {piece.name for piece in closed if not piece.stateless}
+    coverage = {
+        (name, "bomb", False) for name in stateful_names
+    } | {
+        ("bomb", name, False) for name in stateful_names
+    }
+    return sorted(result, key=lambda record: (
+        (str(record["primary"]), str(record["secondary"]), bool(record["opposing"]))
+        not in coverage,
+        int(record["packed_bytes"]), str(record["filename"])))
+
+
+def inventory(budget: int = DEFAULT_BUDGET) -> list[dict[str, object]]:
     result: list[dict[str, object]] = []
     for piece in PIECES:
         if not piece.decisive:
@@ -162,6 +208,15 @@ def inventory() -> list[dict[str, object]]:
                     f"K{first.name}vK{second.name}", states, "kings+2-stateless",
                     primary=first.name, secondary=second.name, opposing=True,
                     filename=f"k{first.name}k{second.name}.uftb"))
+    # Stateful combinations are admitted deterministically only while their
+    # conservative split-plane size fits. This makes the 10 GiB rule a hard
+    # inventory invariant instead of a best-effort generator check.
+    used = sum(int(record["packed_bytes"]) for record in result)
+    for record in stateful_candidates():
+        size = int(record["packed_bytes"])
+        if used + size <= budget:
+            result.append(record)
+            used += size
     return result
 
 
@@ -170,7 +225,7 @@ def main() -> None:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--budget", type=int, default=DEFAULT_BUDGET)
     args = parser.parse_args()
-    records = inventory()
+    records = inventory(args.budget)
     total = sum(int(record["packed_bytes"]) for record in records)
     if args.json:
         print(json.dumps({

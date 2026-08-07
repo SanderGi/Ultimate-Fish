@@ -7,6 +7,8 @@ import argparse
 from pathlib import Path
 import struct
 
+import ultimate_tablebase_shards as shards
+
 
 MAGIC = b"UFTB1\0\0\0"
 
@@ -34,8 +36,9 @@ def adjacent(first: int, second: int) -> bool:
     return max(abs(first % 8 - second % 8), abs(first // 8 - second // 8)) == 1
 
 
-def summary(path: Path) -> tuple[list[list[int]], list[int]]:
-    data = path.read_bytes()
+def summary(path: Path, data: bytes | None = None) -> tuple[list[list[int]], list[int]]:
+    if data is None:
+        data = shards.read_logical(path)
     magic, version, piece, count, _edges = struct.unpack_from("<8sIIII", data)
     if magic != MAGIC or version not in (4, 5):
         raise ValueError(f"{path}: summary requires packed v4/v5")

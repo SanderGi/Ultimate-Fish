@@ -33,6 +33,12 @@ represented by that class.
 | `kjesterkqueen.uftb` | King+Jester vs King+Queen | 712,427,800 | 5,582,532 / 7,673,186 / 5,723,242 | 16,716,862 / 2,682 / 2,259,416 | `1345e2b73a1978a6569821a379c236415997ff3b9cdb108563c982f458d88600` |
 | `kjesterrookk.uftb` | King+Jester+Rook vs King | 595,252,940 | 18,978,960 / 0 / 0 | 1,609,608 / 17,360,968 / 8,384 | `9e485cf5516add2e833527fbce24374380f444322b0db1e5a41e687bda500c82` |
 | `kjesterkrook.uftb` | King+Jester vs King+Rook | 571,417,768 | 5,584,592 / 1,291,354 / 12,103,014 | 10,758,014 / 4,634 / 8,216,312 | `ba1a6ecd7e71b6e3fbe1bff9a1576c0d4a9d0cc2f241aefd48ea519959ef984d` |
+| `kjesterbishopk.uftb` | King+Jester+Bishop vs King | 504,293,320 | 18,978,960 / 0 / 0 | 1,609,608 / 16,113,394 / 1,255,958 | `5816410c814d49a27dac924a0f5beb1b792b61b742a2fc83f0411bf10d15eae0` |
+| `kjesterkbishop.uftb` | King+Jester vs King+Bishop | 489,530,528 | 5,600,180 / 0 / 13,378,780 | 3,693,788 / 10,706 / 15,274,466 | `698f617b02ec063f481f57dac1b3677e7d9db618ca006dac59a3105c872dfd43` |
+| `kjesterbombk.uftb` | King+Jester+Bomb vs King | 512,779,944 | 18,978,960 / 0 / 0 | 1,609,608 / 17,331,368 / 37,984 | `5fdb70947be34ad506f893291c4657a4b0f850e39672caae6e564a1df71486fb` |
+| `kjesterkbomb.uftb` | King+Jester vs King+Bomb | 494,687,920 | 3,248,390 / 9,716,844 / 6,013,726 | 15,947,500 / 29,024 / 3,002,436 | `b01b14d0a5d920e9c519c1c9a310882c7aec263c8a7aa71c2abbefb3202dc8cb` |
+| `kjesterninjak.uftb` | King+Jester+Ninja vs King | 629,742,840 | 18,978,960 / 0 / 0 | 1,609,608 / 17,313,736 / 55,616 | `33431727e988e9c2f48dc0f22e3418072fc8c6f741290b037fd1a5e28b0bbf97` |
+| `kjesterkninja.uftb` | King+Jester vs King+Ninja | 602,269,760 | 5,592,936 / 6,238,816 / 7,147,208 | 15,125,298 / 5,680 / 3,847,982 | `7255da99637afb9a015c284056b4be3431d602c6c0febddb7fd439157170a55b` |
 | `kknightknightk.uftb` | King+2 Knights vs King | 196,460,680 | 1,964,822 / 0 / 7,524,658 | 0 (804,804) / 68 / 8,684,608 | `5c95ba0ed74d95e4d2c2fa4d1a98c1dddb121a9d11406853c75d4d5e1ba15138` |
 | `kknightturtlek.uftb` | King+Knight+Turtle vs King | 363,952,568 | 17,632,308 / 0 / 1,346,652 | 0 (1,609,608) / 12,261,896 / 5,107,456 | `e51001e72d79078c3da96de0dab87d8752d5f7496621b4b3812f82624107c5df` |
 | `kbishopbishopk.uftb` | King+2 Bishops vs King | 130,467,458 | 4,804,466 / 0 / 4,685,014 | 0 (407,502) / 3,708,210 / 5,373,768 | `18ee411f10c1c62e365b9e30359a1403f5d34e827bcc5509f20d8c0e73ded490` |
@@ -67,9 +73,11 @@ clone coordinates.
 
 `tools/plan_ultimate_tablebases.py` is the authoritative class and storage
 inventory for the expansion. It applies horizontal-reflection canonicalization
-and budgets separate two-bit WDL and byte DTW planes. Future large planes are
-split at 64 MiB, below GitHub's regular 100 MB per-file limit; the repository
-does not use Git LFS. The planner treats entropy compression as extra margin,
+and budgets separate two-bit WDL and byte DTW planes. Future large logical
+files are split into SHA-256-checked parts of at most 95 MB, below GitHub's
+regular 100 MB per-file limit; the engine materializes them transparently and
+the repository does not use Git LFS. The planner treats entropy compression as
+extra margin,
 not as a speculative assumption when enforcing the 10 GiB total cap.
 
 Regenerate them with `tools/generate_ultimate_tablebases.sh`. Checkpoints are

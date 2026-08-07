@@ -7,7 +7,10 @@
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <functional>
+#include <iterator>
 #include <mutex>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -115,6 +118,96 @@ std::uint32_t encode_identical_four(Color side, std::uint8_t whiteKing,
              * (SquareCount - 1) + blackRank) * pairs + pairRank;
 }
 
+std::uint32_t represented_substates(PieceType type) {
+    switch (type) {
+    case PieceType::Berserker: return 10;
+    case PieceType::Ghost: return 2;
+    case PieceType::Sniper: return 4;
+    case PieceType::Prince: return 2;
+    case PieceType::Checker: return 4;
+    case PieceType::Pawn: return 2;
+    case PieceType::Penguin: return 12;
+    default: return 1;
+    }
+}
+
+std::string materialize_shards(const std::string& path) {
+    std::ifstream source(path, std::ios::binary);
+    const std::array<char, 8> shardMagic{{'U','F','T','B','S','1','\0','\0'}};
+    std::array<char, 8> prefix{};
+    source.read(prefix.data(), prefix.size());
+    if (!source || prefix != shardMagic)
+        return path;
+    source.clear();
+    source.seekg(0);
+    const std::string data((std::istreambuf_iterator<char>(source)),
+                           std::istreambuf_iterator<char>());
+    std::istringstream manifest(data, std::ios::in | std::ios::binary);
+    std::array<char, 8> magic{};
+    std::uint32_t version = 0, count = 0;
+    std::uint64_t total = 0;
+    manifest.read(magic.data(), magic.size());
+    manifest.read(reinterpret_cast<char*>(&version), sizeof(version));
+    manifest.read(reinterpret_cast<char*>(&count), sizeof(count));
+    manifest.read(reinterpret_cast<char*>(&total), sizeof(total));
+    if (!manifest || magic != shardMagic || version != 1 || !count)
+        return {};
+    struct Part { std::string name; std::uint64_t size; };
+    std::vector<Part> parts;
+    std::uint64_t summed = 0;
+    for (std::uint32_t item = 0; item < count; ++item) {
+        std::uint16_t nameLength = 0;
+        std::uint64_t size = 0;
+        std::array<char, 32> digest{};
+        manifest.read(reinterpret_cast<char*>(&nameLength), sizeof(nameLength));
+        manifest.read(reinterpret_cast<char*>(&size), sizeof(size));
+        manifest.read(digest.data(), digest.size());
+        std::string name(nameLength, '\0');
+        manifest.read(name.data(), name.size());
+        if (!manifest || name.empty() || std::filesystem::path(name).filename() != name)
+            return {};
+        parts.push_back({std::move(name), size});
+        summed += size;
+    }
+    if (manifest.peek() != std::char_traits<char>::eof() || summed != total)
+        return {};
+
+    std::error_code error;
+    const std::string key = std::filesystem::absolute(path, error).string() + data;
+    const auto cache = std::filesystem::temp_directory_path(error) /
+      ("ultimatefish-tb-" + std::to_string(std::hash<std::string>{}(key)) + ".uftb");
+    if (!error && std::filesystem::file_size(cache, error) == total && !error)
+        return cache.string();
+    error.clear();
+    const auto temporary = cache.string() + ".tmp";
+    std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+    if (!output)
+        return {};
+    const auto directory = std::filesystem::path(path).parent_path();
+    std::array<char, 1 << 20> buffer{};
+    for (const Part& part : parts) {
+        std::ifstream input(directory / part.name, std::ios::binary);
+        std::uint64_t copied = 0;
+        while (input && copied < part.size) {
+            const std::size_t wanted = static_cast<std::size_t>(
+              std::min<std::uint64_t>(buffer.size(), part.size - copied));
+            input.read(buffer.data(), wanted);
+            const std::streamsize received = input.gcount();
+            if (received <= 0)
+                break;
+            output.write(buffer.data(), received);
+            copied += static_cast<std::uint64_t>(received);
+        }
+        if (copied != part.size)
+            return {};
+    }
+    output.close();
+    std::filesystem::rename(temporary, cache, error);
+    if (error)
+        return {};
+    return cache.string();
+}
+
 std::vector<std::string> paths() {
     const auto expand = [](const std::vector<std::string>& configured) {
         std::vector<std::string> result;
@@ -152,7 +245,8 @@ std::vector<std::string> paths() {
 std::vector<Database> load_databases() {
     std::vector<Database> result;
     for (const std::string& path : paths()) {
-        std::ifstream stream(path, std::ios::binary);
+        const std::string logicalPath = materialize_shards(path);
+        std::ifstream stream(logicalPath, std::ios::binary);
         if (!stream)
             continue;
         std::array<char, 8> magic{};
@@ -167,11 +261,7 @@ std::vector<Database> load_databases() {
         if (version >= 3)
             stream.read(reinterpret_cast<char*>(&substates), sizeof(substates));
         if (!stream || magic != expected || (version < 2 || version > 5) ||
-            !substates ||
-            count != (version == 5 ? (count == FourStateCount ? FourStateCount
-                                      : count == IdenticalFourStateCount ? IdenticalFourStateCount
-                                      : StateCount)
-                                   : StateCount * substates) ||
+            !substates || (version != 5 && count != StateCount * substates) ||
             piece >= static_cast<std::uint32_t>(PieceType::Count))
             continue;
         Database database;
@@ -194,6 +284,16 @@ std::vector<Database> load_databases() {
                 }
                 database.secondary = static_cast<PieceType>(secondary);
                 database.secondaryColor = static_cast<Color>(secondaryColor);
+                const bool copycat = database.attacker == PieceType::Copycat &&
+                                     database.secondary == PieceType::CopycatClone;
+                const bool identical = database.attacker == database.secondary &&
+                                       database.secondaryColor == Color::White;
+                const std::uint64_t placementCount = copycat ? StateCount
+                  : identical ? IdenticalFourStateCount : FourStateCount;
+                if (std::uint64_t(count) != placementCount * substates) {
+                    database.count = 0;
+                    continue;
+                }
             }
             if (!stream || wdlBytes != (count + 3) / 4 || dtwBytes != count) {
                 database.count = 0;
@@ -283,11 +383,6 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
         return std::nullopt;
 
     if (extraCount == 2) {
-        if (position.continuation_ != Continuation::None ||
-            position.forcedPiece_ != Position::NoPiece ||
-            position.enPassantVictim_ != Position::NoPiece ||
-            position.enPassantSquare_ != Position::NoSquare)
-            return std::nullopt;
         for (const Database& database : databases()) {
             if (database.secondary == PieceType::Count)
                 continue;
@@ -296,43 +391,159 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 const int second = extras[1 - order];
                 const PieceState& primary = position.pieces_[first];
                 const PieceState& secondary = position.pieces_[second];
-                if (primary.type != database.attacker || secondary.type != database.secondary)
+                const auto typeMatches = [](PieceType represented, PieceType actual) {
+                    return represented == PieceType::Checker
+                      ? actual == PieceType::Checker || actual == PieceType::CheckerKing
+                      : represented == actual;
+                };
+                if (!typeMatches(database.attacker, primary.type) ||
+                    !typeMatches(database.secondary, secondary.type))
                     continue;
                 const bool swapColors = primary.color == Color::Black;
                 const Color expectedSecondary = database.secondaryColor == Color::White
                   ? primary.color : ~primary.color;
                 if (secondary.color != expectedSecondary)
                     continue;
-                bool scalarOk = true;
-                for (int id : {whiteKing, blackKing, first, second}) {
-                    const PieceState& item = position.pieces_[id];
-                    scalarOk = scalarOk && !item.cooldown && !item.freezeCount &&
-                               !item.action && !item.power;
-                }
                 const bool copycat = primary.type == PieceType::Copycat &&
                                      secondary.type == PieceType::CopycatClone;
-                if (copycat)
-                    scalarOk = scalarOk && primary.link == second && secondary.link == first;
-                else
-                    scalarOk = scalarOk && primary.link == Position::NoPiece &&
-                               secondary.link == Position::NoPiece;
-                if (!scalarOk)
+                if (copycat ? !(primary.link == second && secondary.link == first)
+                            : !(primary.link == Position::NoPiece &&
+                                secondary.link == Position::NoPiece))
                     continue;
+                if (copycat && (primary.cooldown || primary.power ||
+                                secondary.cooldown || secondary.power))
+                    continue;
+                bool continuationMatched = position.continuation_ == Continuation::None &&
+                                           position.forcedPiece_ == Position::NoPiece;
+                const auto extractSubstate = [&](int id, PieceType represented)
+                  -> std::optional<std::uint32_t> {
+                    const PieceState& item = position.pieces_[id];
+                    if (!typeMatches(represented, item.type) || item.link != Position::NoPiece)
+                        return std::nullopt;
+                    switch (represented) {
+                    case PieceType::Berserker:
+                        if (item.cooldown || item.action) return std::nullopt;
+                        return std::min<std::uint32_t>(item.power, 9);
+                    case PieceType::Ghost:
+                        if (item.cooldown || item.power || item.action) return std::nullopt;
+                        return item.visible ? 1u : 0u;
+                    case PieceType::Sniper:
+                        if (item.cooldown > 3 || item.power || item.action) return std::nullopt;
+                        return item.cooldown;
+                    case PieceType::Prince: {
+                        if (item.cooldown || item.power || item.action) return std::nullopt;
+                        const bool forced = position.continuation_ == Continuation::PrinceSecondMove &&
+                                            position.forcedPiece_ == id;
+                        continuationMatched = continuationMatched || forced;
+                        return forced ? 1u : 0u;
+                    }
+                    case PieceType::Checker: {
+                        if (item.cooldown || item.power || item.action) return std::nullopt;
+                        const bool forced = position.continuation_ == Continuation::CheckerJump &&
+                                            position.forcedPiece_ == id;
+                        continuationMatched = continuationMatched || forced;
+                        return (item.type == PieceType::CheckerKing ? 2u : 0u) +
+                               (forced ? 1u : 0u);
+                    }
+                    case PieceType::Pawn:
+                        if (item.cooldown || item.power || item.action) return std::nullopt;
+                        return item.moved ? 1u : 0u;
+                    case PieceType::Penguin:
+                        if (item.cooldown > 5 || item.power) return std::nullopt;
+                        return item.cooldown * 2 + (item.action ? 1u : 0u);
+                    default:
+                        if (item.cooldown || item.power || item.action) return std::nullopt;
+                        return 0u;
+                    }
+                };
+                std::optional<std::uint32_t> primarySubstate = copycat
+                  ? std::optional<std::uint32_t>(0) : extractSubstate(first, database.attacker);
+                std::optional<std::uint32_t> secondarySubstate = copycat
+                  ? std::optional<std::uint32_t>(0) : extractSubstate(second, database.secondary);
+                if (!primarySubstate || !secondarySubstate || !continuationMatched)
+                    continue;
+                if (position.enPassantVictim_ != Position::NoPiece) {
+                    const int victim = position.enPassantVictim_;
+                    if ((victim != first && victim != second) ||
+                        position.pieces_[victim].type != PieceType::Pawn)
+                        continue;
+                }
+                else if (position.enPassantSquare_ != Position::NoSquare)
+                    continue;
+
+                std::array<int, 2> representedPenguins{Position::NoPiece, Position::NoPiece};
+                int penguinCount = 0;
+                if (database.attacker == PieceType::Penguin)
+                    representedPenguins[penguinCount++] = first;
+                if (database.secondary == PieceType::Penguin)
+                    representedPenguins[penguinCount++] = second;
+                if (penguinCount) {
+                    Position expected = position;
+                    for (int id = 0; id < expected.pieceCount_; ++id) {
+                        expected.pieces_[id].freezeCount = 0;
+                        expected.pieces_[id].action = 0;
+                    }
+                    for (int slot = 0; slot < penguinCount; ++slot) {
+                        const int id = representedPenguins[slot];
+                        if (position.pieces_[id].action)
+                            expected.apply_penguin_freeze(id);
+                    }
+                    bool freezeMatches = true;
+                    for (int id = 0; id < position.pieceCount_; ++id)
+                        if (position.pieces_[id].alive)
+                            freezeMatches = freezeMatches &&
+                              position.pieces_[id].freezeCount == expected.pieces_[id].freezeCount &&
+                              position.pieces_[id].action == expected.pieces_[id].action;
+                    if (!freezeMatches)
+                        continue;
+                }
+                else {
+                    bool hasFreeze = false;
+                    for (int id = 0; id < position.pieceCount_; ++id)
+                        hasFreeze = hasFreeze || (position.pieces_[id].alive &&
+                          (position.pieces_[id].freezeCount || position.pieces_[id].action));
+                    if (hasFreeze)
+                        continue;
+                }
                 const Color side = swapColors ? ~position.sideToMove_ : position.sideToMove_;
                 const int canonicalWhite = swapColors ? blackKing : whiteKing;
                 const int canonicalBlack = swapColors ? whiteKing : blackKing;
                 const bool identical = database.attacker == database.secondary &&
                                        database.secondaryColor == Color::White;
-                const std::uint32_t index = copycat
-                  ? encode(side, position.pieces_[canonicalWhite].square,
-                           position.pieces_[canonicalBlack].square, primary.square)
-                  : identical
-                  ? encode_identical_four(side, position.pieces_[canonicalWhite].square,
-                                          position.pieces_[canonicalBlack].square,
-                                          primary.square, secondary.square)
-                  : encode_four(side, position.pieces_[canonicalWhite].square,
-                                position.pieces_[canonicalBlack].square,
-                                primary.square, secondary.square);
+                std::uint32_t placement = 0;
+                if (copycat)
+                    placement = encode(side, position.pieces_[canonicalWhite].square,
+                                       position.pieces_[canonicalBlack].square, primary.square);
+                else if (identical) {
+                    std::uint8_t wk = position.pieces_[canonicalWhite].square;
+                    std::uint8_t bk = position.pieces_[canonicalBlack].square;
+                    std::uint8_t firstSquare = primary.square;
+                    std::uint8_t secondSquare = secondary.square;
+                    if (wk % 8 >= 4) {
+                        wk = reflect_horizontal(wk);
+                        bk = reflect_horizontal(bk);
+                        firstSquare = reflect_horizontal(firstSquare);
+                        secondSquare = reflect_horizontal(secondSquare);
+                    }
+                    if (rank_excluding(firstSquare, {wk, bk}) >
+                        rank_excluding(secondSquare, {wk, bk}))
+                        std::swap(*primarySubstate, *secondarySubstate);
+                    placement = encode_identical_four(
+                      side, position.pieces_[canonicalWhite].square,
+                      position.pieces_[canonicalBlack].square, primary.square, secondary.square);
+                }
+                else placement = encode_four(
+                  side, position.pieces_[canonicalWhite].square,
+                  position.pieces_[canonicalBlack].square, primary.square, secondary.square);
+                const std::uint32_t secondaryFactor = represented_substates(database.secondary);
+                if (*primarySubstate >= represented_substates(database.attacker) ||
+                    *secondarySubstate >= secondaryFactor)
+                    continue;
+                const std::uint64_t index64 = std::uint64_t(placement) * database.substates +
+                  *primarySubstate * secondaryFactor + *secondarySubstate;
+                if (index64 >= database.count)
+                    continue;
+                const std::uint32_t index = static_cast<std::uint32_t>(index64);
                 return database.at(index);
             }
         }

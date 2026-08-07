@@ -20,6 +20,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <tuple>
 #include <vector>
 
 namespace Stockfish::Ultimate {
@@ -280,12 +281,28 @@ bool stateless_four_piece(PieceType type) {
     }
 }
 
+bool closed_four_piece(PieceType type) {
+    if (stateless_four_piece(type))
+        return true;
+    switch (type) {
+    case PieceType::Pawn:
+    case PieceType::Berserker:
+    case PieceType::Ghost:
+    case PieceType::Penguin:
+    case PieceType::Sniper:
+    case PieceType::Prince:
+    case PieceType::Checker: return true;
+    default: return false;
+    }
+}
+
 std::uint32_t substate_count(PieceType type) {
     switch (type) {
     case PieceType::Berserker: return 10;  // power 0..8, then board-saturating 9+
     case PieceType::Ghost: return 2;
     case PieceType::Sniper: return 4;
     case PieceType::Prince: return 2;
+    case PieceType::Checker: return 4;  // ordinary/promoted x normal/forced jump
     case PieceType::Pawn: return 2;
     case PieceType::Penguin: return 12;
     default: return 1;
@@ -306,10 +323,12 @@ class TablebaseGenerator {
         secondaryColor_(secondaryColor),
         fourModels_(secondaryType_ != PieceType::Count),
         identicalExtras_(secondaryType == attackerType && secondaryColor == Color::White),
-        substates_(substate_count(attackerType)),
+        primarySubstates_(substate_count(attackerType)),
+        secondarySubstates_(fourModels_ ? substate_count(secondaryType_) : 1),
+        substates_(primarySubstates_ * secondarySubstates_),
         stateCount_(attackerType_ == PieceType::Copycat ? PlacementStateCount
-                    : identicalExtras_ ? IdenticalFourStateCount
-                    : fourModels_ ? FourPlacementStateCount
+                    : identicalExtras_ ? IdenticalFourStateCount * substates_
+                    : fourModels_ ? FourPlacementStateCount * substates_
                                : PlacementStateCount * substates_),
         nodes_(stateCount_), predecessorCounts_(stateCount_) {}
 
@@ -327,6 +346,15 @@ class TablebaseGenerator {
     void self_test() const {
         if (fourModels_ && attackerType_ != PieceType::Copycat) {
             self_test_four_codec();
+            constexpr std::uint32_t samples = 20'000;
+            for (std::uint32_t sample = 0; sample < samples; ++sample) {
+                const std::uint32_t index = static_cast<std::uint32_t>(
+                  std::uint64_t(stateCount_) * sample / samples);
+                Position position;
+                if (make_position_at(index, position) && child_index(position) != index)
+                    throw std::runtime_error("four-model substate codec is not bijective");
+            }
+            std::cout << "foursubstatecodecok samples " << samples << '\n';
             return;
         }
         for (std::uint32_t index = 0; index < stateCount_; ++index) {
@@ -461,6 +489,70 @@ class TablebaseGenerator {
     }
 
    private:
+    static PieceType represented_type(PieceType type, std::uint32_t substate) {
+        return type == PieceType::Checker && (substate & 2)
+          ? PieceType::CheckerKing : type;
+    }
+
+    static bool type_matches(PieceType represented, PieceType actual) {
+        return represented == PieceType::Checker
+          ? actual == PieceType::Checker || actual == PieceType::CheckerKing
+          : actual == represented;
+    }
+
+    bool apply_substate(Position& position, int id, PieceType type,
+                        std::uint32_t substate) const {
+        switch (type) {
+        case PieceType::Berserker: position.piece(id).power = substate; break;
+        case PieceType::Ghost: position.piece(id).visible = substate != 0; break;
+        case PieceType::Sniper: position.piece(id).cooldown = substate; break;
+        case PieceType::Prince:
+            if (substate) {
+                if (position.continuation_ != Continuation::None)
+                    return false;
+                position.continuation_ = Continuation::PrinceSecondMove;
+                position.forcedPiece_ = id;
+            }
+            break;
+        case PieceType::Checker:
+            if (substate & 1) {
+                if (position.continuation_ != Continuation::None)
+                    return false;
+                position.continuation_ = Continuation::CheckerJump;
+                position.forcedPiece_ = id;
+            }
+            break;
+        case PieceType::Pawn: position.piece(id).moved = substate != 0; break;
+        case PieceType::Penguin:
+            position.piece(id).cooldown = substate / 2;
+            break;
+        default: break;
+        }
+        return true;
+    }
+
+    std::uint32_t piece_substate(const Position& position, int id,
+                                 PieceType type) const {
+        switch (type) {
+        case PieceType::Berserker:
+            return std::min<std::uint32_t>(position.piece(id).power, 9);
+        case PieceType::Ghost: return position.piece(id).visible ? 1 : 0;
+        case PieceType::Sniper: return position.piece(id).cooldown;
+        case PieceType::Prince:
+            return position.continuation_ == Continuation::PrinceSecondMove &&
+                   position.forcedPiece_ == id;
+        case PieceType::Checker:
+            return (position.piece(id).type == PieceType::CheckerKing ? 2u : 0u) +
+                   (position.continuation_ == Continuation::CheckerJump &&
+                    position.forcedPiece_ == id ? 1u : 0u);
+        case PieceType::Pawn: return position.piece(id).moved ? 1 : 0;
+        case PieceType::Penguin:
+            return position.piece(id).cooldown * 2 +
+                   (position.piece(id).action ? 1u : 0u);
+        default: return 0;
+        }
+    }
+
     bool make_position_at(std::uint32_t index, Position& position) const {
         if (!fourModels_)
             return make_position(decode(index), position);
@@ -482,21 +574,39 @@ class TablebaseGenerator {
             position.set_side_to_move(state.side);
             return true;
         }
-        const FourState state = identicalExtras_ ? decode_identical_four(index)
-                                                 : decode_four(index);
+        const std::uint32_t combinedSubstate = index % substates_;
+        const std::uint32_t primarySubstate = combinedSubstate / secondarySubstates_;
+        const std::uint32_t secondarySubstate = combinedSubstate % secondarySubstates_;
+        const std::uint32_t placement = index / substates_;
+        const FourState state = identicalExtras_ ? decode_identical_four(placement)
+                                                 : decode_four(placement);
         position.clear();
         const int whiteKing = position.add_piece(PieceType::King, Color::White,
                                                   state.whiteKing);
         const int blackKing = position.add_piece(PieceType::King, Color::Black,
                                                   state.blackKing);
-        const int first = position.add_piece(attackerType_, Color::White, state.first);
+        const int first = position.add_piece(
+          represented_type(attackerType_, primarySubstate), Color::White, state.first);
         int second = Position::NoPiece;
-        second = position.add_piece(secondaryType_, secondaryColor_, state.second);
+        second = position.add_piece(
+          represented_type(secondaryType_, secondarySubstate), secondaryColor_, state.second);
         if (whiteKing == Position::NoPiece || blackKing == Position::NoPiece ||
             first == Position::NoPiece || second == Position::NoPiece)
             return false;
         for (int id : {whiteKing, blackKing, first, second})
             position.piece(id).moved = true;
+        if (!apply_substate(position, first, attackerType_, primarySubstate) ||
+            !apply_substate(position, second, secondaryType_, secondarySubstate))
+            return false;
+        for (const auto [id, type, substate] : {
+               std::tuple<int, PieceType, std::uint32_t>{first, attackerType_, primarySubstate},
+               {second, secondaryType_, secondarySubstate}}) {
+            if (type == PieceType::Penguin && (substate & 1)) {
+                position.apply_penguin_freeze(id);
+                if (!position.piece(id).action)
+                    return false;
+            }
+        }
         position.set_side_to_move(state.side);
         return true;
     }
@@ -555,25 +665,38 @@ class TablebaseGenerator {
         const bool primary = position.has_real_king(Color::White) &&
                position.has_real_king(Color::Black) &&
                position.piece(2).alive && position.piece(2).onBoard &&
-               position.piece(2).type == attackerType_;
+               type_matches(attackerType_, position.piece(2).type);
         if (!primary || !fourModels_)
             return primary;
         return position.piece(3).alive && position.piece(3).onBoard &&
-               position.piece(3).type == secondaryType_;
+               type_matches(secondaryType_, position.piece(3).type);
     }
 
     std::uint32_t child_index(const Position& position) const {
         if (attackerType_ == PieceType::Copycat)
             return encode_placement({position.side_to_move(), position.piece(0).square,
                                      position.piece(1).square, position.piece(2).square});
-        if (fourModels_)
-            return identicalExtras_
-              ? encode_identical_four({position.side_to_move(), position.piece(0).square,
-                                       position.piece(1).square, position.piece(2).square,
-                                       position.piece(3).square})
-              : encode_four({position.side_to_move(), position.piece(0).square,
-                             position.piece(1).square, position.piece(2).square,
-                             position.piece(3).square});
+        if (fourModels_) {
+            std::uint32_t primarySubstate = piece_substate(position, 2, attackerType_);
+            std::uint32_t secondarySubstate = piece_substate(position, 3, secondaryType_);
+            const FourState state{position.side_to_move(), position.piece(0).square,
+                                  position.piece(1).square, position.piece(2).square,
+                                  position.piece(3).square};
+            std::uint32_t placement = 0;
+            if (identicalExtras_) {
+                FourState canonical = canonicalize(state);
+                const std::uint32_t firstRank = rank_excluding(
+                  canonical.first, {canonical.whiteKing, canonical.blackKing});
+                const std::uint32_t secondRank = rank_excluding(
+                  canonical.second, {canonical.whiteKing, canonical.blackKing});
+                if (firstRank > secondRank)
+                    std::swap(primarySubstate, secondarySubstate);
+                placement = encode_identical_four(state);
+            }
+            else placement = encode_four(state);
+            return placement * substates_ +
+                   primarySubstate * secondarySubstates_ + secondarySubstate;
+        }
         std::uint8_t substate = 0;
         switch (attackerType_) {
         case PieceType::Berserker:
@@ -894,6 +1017,8 @@ class TablebaseGenerator {
     Color secondaryColor_;
     bool fourModels_;
     bool identicalExtras_;
+    std::uint32_t primarySubstates_;
+    std::uint32_t secondarySubstates_;
     std::uint32_t substates_;
     std::uint32_t stateCount_;
     std::vector<Node> nodes_;
@@ -956,9 +1081,9 @@ int main(int argc, char** argv) {
             if (!closed_position_only_attacker(attackerType))
                 throw std::runtime_error("piece is not a closed K+K+1 tablebase class");
         }
-        else if (!stateless_four_piece(attackerType) ||
-                 !stateless_four_piece(secondaryType))
-            throw std::runtime_error("K+K+2 generation currently requires stateless pieces");
+        else if (!closed_four_piece(attackerType) ||
+                 !closed_four_piece(secondaryType))
+            throw std::runtime_error("K+K+2 piece requires a larger non-closed model");
         TablebaseGenerator generator(attackerType, secondaryType, secondaryColor,
                                      output, checkpoint, checkpointEvery);
         if (selfTest)
