@@ -167,6 +167,10 @@ represented by that class.
 | `kmagekgiant.uftb` | King+Mage vs King+Giant | 182,439,080 | 1,142,116 / 11,618 / 17,825,226 | 3,083,328 / 0 / 15,895,632 | `c456f597bd6c281aa69b447da488e97cc9b7f274bc8ecba4e243ad676f66b959` |
 | `kmagedragonk.uftb` | King+Mage+Dragon vs King | 484,234,160 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 15,945,268 / 1,424,084 | `d3733f70585208428185796973f80c171dc0f6b83adcc9923f46832f6fb73150` |
 | `kmagekdragon.uftb` | King+Mage vs King+Dragon | 463,581,276 | 1,609,608 / 15,951,230 / 1,418,122 | 18,978,960 / 0 / 0 | `37521b0c37cfcd7cfb313f0532649eb0e9d4007a15c6d2524d34295b0c3790ae` |
+| `kparasiteparasitek.uftb` | King+2 Parasites vs King | 216,128,928 | 9,489,480 / 0 / 0 | 0 (804,804) / 8,682,564 / 2,112 | `000efc03710b9ed9771056a3c2d6490803739a163475094580fe499b39527e70` |
+| `kparasitekparasite.uftb` | King+Parasite vs King+Parasite | 412,490,816 | 8,895,872 / 3,262,986 / 6,820,102 | 8,895,872 / 3,262,986 / 6,820,102 | `3d8117f1323b75f1b183355ca1eff44c122b40b7647d65ca24135c13be30169e` |
+| `kparasitegiantk.uftb` | King+Parasite+Giant vs King | 243,180,684 | 13,286,700 / 0 / 5,692,260 | 0 (1,142,116) / 12,141,428 / 5,695,416 | `7b0536386bd6b8525b9054578edba1331f8daabadb6089a555e05001572b926a` |
+| `kparasitekgiant.uftb` | King+Parasite vs King+Giant | 227,572,076 | 6,622,656 / 22,222 / 12,334,082 | 3,090,728 / 1,811,896 / 14,076,336 | `93b215613d5bd0322ec937aac8f875aa62f4642d913a6f5bf5c43abe0461d434` |
 | `kfishermankparasite.uftb` | King+Fisherman vs King+Parasite | 703,350,700 | 1,609,608 / 314,868 / 17,054,484 | 4,835,644 / 0 / 14,143,316 | `6032d4e60931298ce7fc31341cde1318a4fdcd19604c29a1a260a577d0f4c389` |
 <!-- GENERATED_TABLE_END -->
 
