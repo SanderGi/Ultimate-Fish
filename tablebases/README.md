@@ -68,6 +68,7 @@ represented by that class.
 | `kknightkgiant.uftb` | King+Knight vs King+Giant | 215,826,804 | 1,968,832 / 19,388 / 16,990,740 | 3,089,504 / 0 / 15,889,456 | `c3c8ceb56c11bbd52c3316e8dbb786e4fbe573382b6190b0e2596bf49ffda8fc` |
 | `kknightdragonk.uftb` | King+Knight+Dragon vs King | 534,668,038 | 18,978,956 / 0 / 4 | 0 (1,609,608) / 16,039,998 / 1,329,354 | `5a186985b6ca6e024562e2a0cff6dbe34003e30903761bae751400135abeb01c` |
 | `kknightkdragon.uftb` | King+Knight vs King+Dragon | 498,929,176 | 2,808,960 / 13,805,686 / 2,364,314 | 18,934,576 / 0 / 44,384 | `22a14009f6d4f456eddcb659d3a5c1d99170ff4c706a517b786357abaecddabb` |
+| `kqueenqueenk.uftb` | King+2 Queens vs King | 480,508,116 | 9,489,480 / 0 / 0 | 0 (804,804) / 8,560,812 / 123,864 | `953ef23458f3681680b5d58736d854930218e59dea4961d8ddec5632108f1b21` |
 | `kbishopbishopk.uftb` | King+2 Bishops vs King | 130,467,458 | 4,804,466 / 0 / 4,685,014 | 0 (407,502) / 3,708,210 / 5,373,768 | `18ee411f10c1c62e365b9e30359a1403f5d34e827bcc5509f20d8c0e73ded490` |
 | `kbombbombk.uftb` | King+2 Bombs vs King | 260,111,166 | 9,489,402 / 78 / 0 | 0 (804,804) / 8,652,882 / 31,794 | `3007861257e32343194410f89e6c446a904086162f15481d46d7a5337404a4ab` |
 | `kturtleturtlek.uftb` | King+2 Turtles vs King | 167,494,620 | 1,579,316 / 0 / 7,910,164 | 0 (804,804) / 416 / 8,684,260 | `bbb146a2f252eaf0eb40d23e49d0ddda56de183fb202c515ff64a0fd172037b1` |
