@@ -158,6 +158,10 @@ represented by that class.
 | `kturtleparasitek.uftb` | King+Turtle+Parasite vs King | 383,586,096 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,364,876 / 4,476 | `eecd62d724dc6c09c12d13d3170a88c951b884bb7c6fed5c522c6085a763a0ae` |
 | `kturtlekparasite.uftb` | King+Turtle vs King+Parasite | 373,105,856 | 2,397,164 / 7,602,610 / 8,979,186 | 13,089,020 / 0 / 5,889,940 | `7e174a2eaa35113df49bbd5b8dd89e16eac9359a96e93b9032d7c1622de8d878` |
 | `kturtlegiantk.uftb` | King+Turtle+Giant vs King | 210,345,328 | 12,328,232 / 0 / 6,650,728 | 0 (1,142,116) / 7,851,670 / 9,985,174 | `f84a9bc0224441dbb0d78d0fac8fbad6a92ff7159cc9bab1772ccece4f03911a` |
+| `kturtlekgiant.uftb` | King+Turtle vs King+Giant | 201,853,704 | 1,705,440 / 24,002 / 17,249,518 | 3,094,458 / 4 / 15,884,498 | `08adee4b8b5903dac5038a2d70abed1be2b75773f1ae0b64d5d432d63ef21cc6` |
+| `kturtledragonk.uftb` | King+Turtle+Dragon vs King | 505,144,192 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 15,996,498 / 1,372,854 | `5a40d96d2a1f2747a0e246d52add88cd99496a7a6d3e796fc1e11c0bec5a4f36` |
+| `kturtlekdragon.uftb` | King+Turtle vs King+Dragon | 481,941,236 | 2,397,164 / 14,530,158 / 2,051,638 | 18,949,588 / 0 / 29,372 | `15fd11a4865807c48c1d47b508b5073f78efdf12332b34ab8ff7fd062d567fca` |
+| `kmageparasitek.uftb` | King+Mage+Parasite vs King | 363,306,160 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,368,120 / 1,232 | `d3d34227988697a1416e50aba326819bd14915ff18f9e5794846c477488ab076` |
 | `kmagekparasite.uftb` | King+Mage vs King+Parasite | 344,453,172 | 1,609,608 / 17,369,180 / 172 | 18,978,960 / 0 / 0 | `7d8638ada4d6e2fb5314afc7b87bf25a4013f149b76525f44ba561a55cf147aa` |
 | `kfishermankparasite.uftb` | King+Fisherman vs King+Parasite | 703,350,700 | 1,609,608 / 314,868 / 17,054,484 | 4,835,644 / 0 / 14,143,316 | `6032d4e60931298ce7fc31341cde1318a4fdcd19604c29a1a260a577d0f4c389` |
 <!-- GENERATED_TABLE_END -->
