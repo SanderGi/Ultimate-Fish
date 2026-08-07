@@ -150,6 +150,13 @@ The optimization suggestions were measured rather than accepted wholesale:
   while four workers expanded substantially more nodes without completing an
   extra iteration. Independent worker tables destroyed enough shared ordering
   information that raw throughput did not become usable depth.
+- Reverse-futility pruning was tested with native check/continuation guards.
+  A conservative 500 cp-per-turn margin expanded the depth-9 tree from 1.51M
+  to 1.81M nodes through less useful fail-soft bounds. A 250 cp margin reduced
+  it to 0.95M but lost its fixed-node match 6.5/14. Restricting the heuristic
+  to depth two still changed the recovered fixture from `+0.16` to `+1.27`
+  for only a 6% node reduction. All forms were rejected: Ultimate's explosive
+  captures and stateful actions make static material margins too unreliable.
 
 ## Deadline-aware draft search
 
