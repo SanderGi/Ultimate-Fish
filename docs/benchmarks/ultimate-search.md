@@ -193,6 +193,34 @@ Normal middlegames reject the three-character probe from the incremental
 occupancy bitboard before scanning piece records, keeping exact-table lookup
 off the hot path until only three occupied cells remain.
 
+## Ultimate-specific NNUE experiment
+
+The surrounding Fairy-Stockfish NNUE cannot represent Ultimate directly: it
+assumes 64 squares, orthodox/Fairy piece planes, and Fairy's `Position` state.
+The experimental Ultimate evaluator instead uses 7,164 sparse features for
+oriented 8x10 locations, all 30 native/generated types, moved/visibility,
+cooldown, freeze, Berserker power, action bits, links/hosts, forced actors,
+continuations, en passant, and side to move. A 32-neuron accumulator learns a
+residual over the native handcrafted score and serializes to a strictly
+versioned 458,784-byte `.ufnn` file.
+
+The first expanded corpus contains 12,977 positions from 200 exploratory games
+at 50,000 teacher nodes per position across seven fixture families. Complete
+games, rather than adjacent positions, form a 20% validation split. Its best
+checkpoint reduced held-out residual MAE from 302.54 to 299.28 cp and quantized
+within 1 cp of the float model. A fresh C++ process matched Python integer
+inference on 100/100 records, and incremental search matched the full-refresh
+reference exactly at depth five on all seven fixture families.
+
+This prediction improvement did **not** establish playing strength. The final
+candidate drew all 14 color-balanced games at 30,000 nodes per move. At 100 ms
+per move it scored 7.0/14, with one win and one loss in the same color pair and
+all other games drawn. A 50/50 outcome/search target also drew 14/14. Even with
+incremental accumulators, a one-million-node fixture took a 1.303 s median
+versus 1.120 s handcrafted (16.3% overhead). Consequently NNUE remains opt-in;
+these tools and correctness gates are retained, but the neutral pilot is not
+presented as an Elo gain or enabled by default.
+
 Run `tools/benchmark_ultimate.sh` for fixed perft/search measurements, or set
 `ULTIMATE_LONG_BENCHMARK=1` to include the cold ten-second horizon check. Run
 `tools/selfplay_ultimate.py CANDIDATE BASELINE` to alternate colors between two

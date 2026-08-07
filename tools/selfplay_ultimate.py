@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 from dataclasses import dataclass
 
@@ -44,17 +45,38 @@ STARTS = (
         "fisherman,w,a2;rook,w,d3;king,b,e10;mage,b,c9;giant,b,f8;"
         "fisherman,b,a9;rook,b,d8"
     ),
+    (
+        "evolved_queens",
+        "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,a1;queen,w,h3;"
+        "queen,w,b3;queen,w,c3;queen,w,b2;pawn,w,a2;pawn,w,h2;giant,w,e1;"
+        "giant,w,c1;pawn,w,g2;pawn,w,e3;pawn,w,a3;dragon,w,g1;king,b,b10;"
+        "queen,b,h8;queen,b,b8;queen,b,c8;queen,b,b9;pawn,b,a9;pawn,b,h9;"
+        "giant,b,e9;giant,b,c9;pawn,b,g9;pawn,b,f8;pawn,b,a8;dragon,b,g10"
+    ),
+    (
+        "evolved_mixed",
+        "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,a1;bishop,w,h3;"
+        "queen,w,f2;bishop,w,b2;queen,w,c1;queen,w,g3;queen,w,c2;checker,w,b1;"
+        "giant,w,d1;pawn,w,d3;checker,w,a3;pawn,w,a2;giant,w,g1;checker,w,f1;"
+        "king,b,a10;queen,b,f8;queen,b,b8;queen,b,h10;queen,b,c8;queen,b,b9;"
+        "pawn,b,a9;checker,b,g9;checker,b,b10;pawn,b,g10;pawn,b,h9;giant,b,e9;"
+        "giant,b,c9"
+    ),
 )
 
 
 @dataclass
 class Engine:
     path: str
+    nnue: str | None = None
 
     def __post_init__(self) -> None:
+        environment = dict(os.environ)
+        if self.nnue:
+            environment["ULTIMATE_NNUE_FILE"] = self.nnue
         self.process = subprocess.Popen(
             [self.path], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, text=True, bufsize=1,
+            stderr=subprocess.PIPE, text=True, bufsize=1, env=environment,
         )
 
     def send(self, command: str) -> None:
@@ -81,9 +103,10 @@ class Engine:
         self.send("isready")
         self.until_any(("readyok",))
 
-    def bestmove(self, upn: str, depth: int, nodes: int) -> str | None:
+    def bestmove(self, upn: str, depth: int, nodes: int, movetime: int = 0) -> str | None:
         self.set_position(upn)
-        self.send(f"go depth {depth} nodes {nodes}")
+        self.send(f"go depth {depth} " +
+                  (f"movetime {movetime}" if movetime else f"nodes {nodes}"))
         try:
             line = self.until_any(("bestmove ",))
         except RuntimeError as error:
@@ -129,12 +152,12 @@ def repetition_key(upn: str) -> str:
 
 
 def play(candidate: Engine, baseline: Engine, candidate_color: str, depth: int,
-         nodes: int, plies: int, start: str, verbose: bool) -> float:
+         nodes: int, movetime: int, plies: int, start: str, verbose: bool) -> float:
     upn = start
     seen = {repetition_key(upn): 1}
     for ply in range(plies):
         current = candidate if side(upn) == candidate_color else baseline
-        move = current.bestmove(upn, depth, nodes)
+        move = current.bestmove(upn, depth, nodes, movetime)
         if move is None:
             break
         if verbose:
@@ -159,10 +182,13 @@ def main() -> None:
                         help="maximum iterative-deepening depth")
     parser.add_argument("--nodes", type=int, default=20_000,
                         help="deterministic node budget per move")
+    parser.add_argument("--movetime", type=int, default=0,
+                        help="wall-clock milliseconds per move; overrides --nodes")
     parser.add_argument("--plies", type=int, default=160)
     parser.add_argument("--fixtures", default=",".join(name for name, _ in STARTS),
                         help="comma-separated fixture names (each is played as a color pair)")
     parser.add_argument("--verbose", action="store_true", help="print every played move")
+    parser.add_argument("--candidate-nnue", help="opt-in .ufnn network for candidate only")
     args = parser.parse_args()
 
     requested = [name.strip() for name in args.fixtures.split(",") if name.strip()]
@@ -179,11 +205,11 @@ def main() -> None:
         # Fresh processes make color pairs independent of TT/history state and
         # also allow old binaries whose ucinewgame reset was incomplete to be
         # benchmarked fairly.
-        candidate = Engine(args.candidate)
+        candidate = Engine(args.candidate, args.candidate_nnue)
         baseline = Engine(args.baseline)
         try:
-            result = play(candidate, baseline, color, args.depth, args.nodes, args.plies, start,
-                          args.verbose)
+            result = play(candidate, baseline, color, args.depth, args.nodes, args.movetime,
+                          args.plies, start, args.verbose)
             score += result
             print(f"game {game + 1}: {fixture_name}, candidate {color}, score {result:.1f}")
         finally:

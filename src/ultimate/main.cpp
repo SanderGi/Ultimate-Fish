@@ -242,6 +242,10 @@ int main() {
             print_position(position);
             continue;
         }
+        if (line == "eval") {
+            std::cout << "eval cp " << position.static_evaluate() << '\n';
+            continue;
+        }
         if (line.rfind("position upn ", 0) == 0) {
             std::string error;
             if (!position.set_upn(line.substr(13), &error))

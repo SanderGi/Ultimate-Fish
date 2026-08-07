@@ -137,6 +137,7 @@ struct Move {
 struct Undo;
 class TablebaseGenerator;
 class TablebaseProbe;
+class UltimateNnue;
 
 class Position {
    public:
@@ -212,6 +213,9 @@ class Position {
     friend class Search;
     friend class TablebaseGenerator;
     friend class TablebaseProbe;
+    friend class UltimateNnue;
+
+    [[nodiscard]] int handcrafted_evaluate() const;
 
     static constexpr std::size_t index(Color color) { return static_cast<std::size_t>(color); }
     static constexpr std::size_t index(PieceType type) { return static_cast<std::size_t>(type); }

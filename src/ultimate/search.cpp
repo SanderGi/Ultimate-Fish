@@ -78,6 +78,19 @@ Search::Entry& Search::replacement_entry(std::uint64_t key) {
       });
 }
 
+int Search::evaluate(const Position& position, int ply) const {
+    int score = position.handcrafted_evaluate();
+    if (useNnue_) {
+#ifdef ULTIMATE_NNUE_REFRESH_EVERY_EVAL
+        (void) ply;
+        score += *UltimateNnue::evaluate(position);
+#else
+        score += UltimateNnue::correction(position, accumulators_[ply]);
+#endif
+    }
+    return score;
+}
+
 bool Search::stopped() {
     if (stop_)
         return true;
@@ -144,7 +157,7 @@ int Search::move_score(const Position& position, const Move& move,
 int Search::quiescence(Position& position, int alpha, int beta, int ply) {
     ++nodes_;
     if (stopped())
-        return position.static_evaluate();
+        return evaluate(position, ply);
     const Color side = position.side_to_move();
     if (const auto winner = position.forced_timeout_winner())
         return *winner == side ? Mate - ply : -Mate + ply;
@@ -158,7 +171,7 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
     // quiescence cycle. Never let such a line consume the native thread's
     // stack; the ordinary stand-pat cap below cannot apply while in check.
     if (ply >= MaxPly - 1)
-        return position.static_evaluate();
+        return evaluate(position, ply);
     if (ply > 0)
         if (const auto tablebase = TablebaseProbe::probe(position)) {
             if (tablebase->wdl == TablebaseWdl::Draw)
@@ -175,7 +188,7 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
                          position.real_king_threatened(side);
     const bool forced = position.has_forced_action() || inCheck;
     if (!forced) {
-        const int standPat = position.static_evaluate();
+        const int standPat = evaluate(position, ply);
         if (standPat >= beta)
             return beta;
         alpha = std::max(alpha, standPat);
@@ -209,6 +222,8 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
             continue;
         if (!child.legal_after_unchecked_move(side))
             continue;
+        if (useNnue_)
+            UltimateNnue::update(position, child, accumulators_[ply], accumulators_[ply + 1]);
         foundLegal = true;
         const bool sameSide = child.side_to_move() == before;
         const int score = sameSide ? quiescence(child, alpha, beta, ply + 1)
@@ -228,7 +243,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
                     std::vector<Move>& pv) {
     pv.clear();
     if (stopped())
-        return position.static_evaluate();
+        return evaluate(position, ply);
     const Color side = position.side_to_move();
     if (const auto winner = position.forced_timeout_winner())
         return *winner == side ? Mate - ply : -Mate + ply;
@@ -239,7 +254,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
     if (!position.is_checkmate_possible())
         return 0;
     if (ply >= MaxPly - 1)
-        return position.static_evaluate();
+        return evaluate(position, ply);
     if (ply > 0)
         if (const auto tablebase = TablebaseProbe::probe(position)) {
             if (tablebase->wdl == TablebaseWdl::Draw)
@@ -320,6 +335,9 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
                 continue;
             if (!child.legal_after_unchecked_move(side))
                 continue;
+            if (useNnue_)
+                UltimateNnue::update(position, child, accumulators_[ply],
+                                     accumulators_[ply + 1]);
             const bool sameSide = child.side_to_move() == before;
             const int nextDepth = depth - (sameSide ? 0 : 1);
             int reduction = 0;
@@ -379,7 +397,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
     }
 
     if (bestScore == -Infinity)
-        return stop_ ? position.static_evaluate()
+        return stop_ ? evaluate(position, ply)
                      : position.real_king_threatened(side) ? -Mate + ply : 0;
 
     if (!stop_ && !adjustedRoot &&
@@ -408,6 +426,9 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
     start_ = std::chrono::steady_clock::now();
     nodes_ = 0;
     stop_ = false;
+    useNnue_ = UltimateNnue::enabled();
+    if (useNnue_)
+        UltimateNnue::refresh(position, accumulators_[0]);
     ++generation_;
     for (auto& bySquare : history_)
         for (int& value : bySquare)

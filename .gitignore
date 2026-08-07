@@ -52,3 +52,6 @@ reverse-engineering/input/
 reverse-engineering/output/
 tablebases/*.checkpoint
 tablebases/*.tmp
+training/*.jsonl
+networks/*pilot*.ufnn
+networks/*pilot*.ufnn.json

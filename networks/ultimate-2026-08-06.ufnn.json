@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "records": 12977,
+  "training_records": 10558,
+  "validation_records": 2419,
+  "inputs": 7164,
+  "hidden": 32,
+  "outcome_weight": 0.2,
+  "validation_mae_cp": 299.2757558822632,
+  "zero_residual_validation_mae_cp": 302.53806710243225,
+  "quantization_mean_error_cp": 0.06614303431169904,
+  "quantization_max_error_cp": 1
+}

@@ -111,6 +111,34 @@ another location. Only closed stateless classes are accepted: stateful pieces
 are intentionally rejected until their cooldown/power/attachment transitions
 are represented exactly.
 
+### Experimental Ultimate NNUE
+
+Ultimate Fish includes an opt-in sparse neural residual evaluator designed for
+the native 8x10 board and all 30 character/state types. It does not reuse the
+incompatible orthodox 64-square Fairy-Stockfish network. Generate deep-search
+records and train a versioned `.ufnn` file with:
+
+```bash
+python3 -m pip install -r tools/requirements-nnue.txt
+python3 tools/generate_ultimate_nnue_data.py src/ultimatefish training/run.jsonl \
+  --games 200 --nodes 50000 --overwrite
+python3 tools/train_ultimate_nnue.py training/run.jsonl \
+  --output networks/ultimate-local.ufnn --verify-engine src/ultimatefish
+```
+
+Run an experimental network by setting `ULTIMATE_NNUE_FILE`. Networks are
+strictly validated and invalid/missing files fall back to handcrafted
+evaluation:
+
+```bash
+ULTIMATE_NNUE_FILE=networks/ultimate-local.ufnn src/ultimatefish
+```
+
+The production default remains handcrafted until a candidate wins both
+fixed-node and wall-clock matches. `make -C src ultimate-nnue-reference` and
+`tools/verify_ultimate_nnue_incremental.py` compare incremental accumulators
+against full refresh across the complete fixture suite.
+
 Ranked needs a separate coevolution because each opponent changes the available
 roster through six interleaved bans and publicly revealed locked groups. The
 draft-policy league executes those twelve native windows before every game and

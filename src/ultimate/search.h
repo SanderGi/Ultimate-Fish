@@ -7,6 +7,7 @@
 #define ULTIMATE_SEARCH_H_INCLUDED
 
 #include "position.h"
+#include "nnue.h"
 
 #include <chrono>
 #include <cstdint>
@@ -109,6 +110,7 @@ class Search {
     int quiescence(Position& position, int alpha, int beta, int ply);
     int move_score(const Position& position, const Move& move,
                    const Move* ttMove, int ply) const;
+    int evaluate(const Position& position, int ply) const;
     bool stopped();
     Entry* find_entry(std::uint64_t key);
     Entry& replacement_entry(std::uint64_t key);
@@ -119,11 +121,13 @@ class Search {
     std::uint64_t nodes_ = 0;
     std::uint8_t generation_ = 0;
     bool stop_ = false;
+    bool useNnue_ = false;
     std::vector<Move> rootMoves_;
     std::vector<Move> rootDrawMoves_;
     std::array<std::array<int, Position::BoardSquares>, static_cast<std::size_t>(PieceType::Count)>
       history_{};
     std::array<std::array<Move, 2>, MaxPly> killers_{};
+    std::array<UltimateNnue::Accumulator, MaxPly> accumulators_{};
 };
 
 }  // namespace Stockfish::Ultimate

@@ -6,6 +6,7 @@
 */
 
 #include "position.h"
+#include "nnue.h"
 
 #include <algorithm>
 #include <array>
@@ -2442,6 +2443,13 @@ std::uint64_t Position::key() const {
 }
 
 int Position::static_evaluate() const {
+    const int handcrafted = handcrafted_evaluate();
+    if (const auto correction = UltimateNnue::evaluate(*this))
+        return handcrafted + *correction;
+    return handcrafted;
+}
+
+int Position::handcrafted_evaluate() const {
     int score = 0;
     int kingSquare[2] = {NoSquare, NoSquare};
     for (Color color : {Color::White, Color::Black}) {
