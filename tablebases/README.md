@@ -129,6 +129,10 @@ represented by that class.
 | `kbombninjak.uftb` | King+Bomb+Ninja vs King | 628,229,260 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,287,464 / 81,888 | `6b3ae1d52b88034772c3ecc8d59303dfe2b66c23f199d70b1613060f8f0017f6` |
 | `kbombkninja.uftb` | King+Bomb vs King+Ninja | 554,146,022 | 8,743,756 / 489,670 / 9,745,534 | 6,611,870 / 2,230,988 / 10,136,102 | `3c4bbaa19cd78e42cc8d5f74c14ba98052ae381c0b705123357a11fd364ca9d5` |
 | `kbombturtlek.uftb` | King+Bomb+Turtle vs King | 427,769,788 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,337,600 / 31,752 | `ee4dca71935ad3215f55f9647542ca737f86a6b092ef36923ae7662032b827de` |
+| `kbombkturtle.uftb` | King+Bomb vs King+Turtle | 411,556,236 | 18,978,596 / 4 / 360 | 2,437,986 / 15,886,854 / 654,120 | `b3ed8e16f550dc7325b87bf02578d8b949f758f070a7c7e98cddfd741c107f91` |
+| `kbombmagek.uftb` | King+Bomb+Mage vs King | 407,442,416 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,339,240 / 30,112 | `17d8e361f33ffa0b7e2ea366d9a68711ea96a2115aab8fd4de09b55800f412af` |
+| `kbombkmage.uftb` | King+Bomb vs King+Mage | 387,466,920 | 18,978,960 / 0 / 0 | 1,609,608 / 17,363,848 / 5,504 | `a7469c100c45ef088a63fb7016ea648a2b93e8ed3793054d83961f364e92fbe3` |
+| `kbombparasitek.uftb` | King+Bomb+Parasite vs King | 476,419,868 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,331,368 / 37,984 | `2af30741c6d6e9892aac5bd68b397454f3e351f0e459d04c274e47a7f80d9a30` |
 | `kturtleturtlek.uftb` | King+2 Turtles vs King | 167,494,620 | 1,579,316 / 0 / 7,910,164 | 0 (804,804) / 416 / 8,684,260 | `bbb146a2f252eaf0eb40d23e49d0ddda56de183fb202c515ff64a0fd172037b1` |
 | `kmagekparasite.uftb` | King+Mage vs King+Parasite | 344,453,172 | 1,609,608 / 17,369,180 / 172 | 18,978,960 / 0 / 0 | `7d8638ada4d6e2fb5314afc7b87bf25a4013f149b76525f44ba561a55cf147aa` |
 | `kfishermankparasite.uftb` | King+Fisherman vs King+Parasite | 703,350,700 | 1,609,608 / 314,868 / 17,054,484 | 4,835,644 / 0 / 14,143,316 | `6032d4e60931298ce7fc31341cde1318a4fdcd19604c29a1a260a577d0f4c389` |
