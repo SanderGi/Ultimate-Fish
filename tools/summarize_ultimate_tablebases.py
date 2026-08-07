@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+import math
 from pathlib import Path
 import struct
 
@@ -60,6 +61,68 @@ def count_results(wdl: bytes, begin: int, end: int) -> list[int]:
     return totals
 
 
+def count_substates(wdl: bytes, begin: int, end: int, substates: int,
+                    selected: set[int]) -> list[int]:
+    """Count results whose per-placement substate belongs to ``selected``."""
+    totals = [0, 0, 0, 0]
+    while begin < end and begin % 4:
+        if begin % substates in selected:
+            totals[(wdl[begin // 4] >> ((begin % 4) * 2)) & 3] += 1
+        begin += 1
+    aligned_end = end - end % 4
+    period = substates // math.gcd(substates, 4)
+    first_byte = begin // 4
+    last_byte = aligned_end // 4
+    for phase in range(period):
+        byte_index = first_byte + phase
+        if byte_index >= last_byte:
+            continue
+        frequencies = Counter(wdl[byte_index:last_byte:period])
+        slot_selected = tuple(
+            (byte_index * 4 + slot) % substates in selected for slot in range(4))
+        for byte, occurrences in frequencies.items():
+            for slot, include in enumerate(slot_selected):
+                if include:
+                    totals[(byte >> (slot * 2)) & 3] += occurrences
+    begin = aligned_end
+    while begin < end:
+        if begin % substates in selected:
+            totals[(wdl[begin // 4] >> ((begin % 4) * 2)) & 3] += 1
+        begin += 1
+    return totals
+
+
+STATE_FACTORS = {
+    3: 2,   # Pawn
+    7: 10,  # Berserker
+    11: 2,  # Ghost
+    14: 12, # Penguin
+    19: 4,  # Sniper
+    20: 2,  # Prince
+    21: 4,  # Checker / CheckerKing x ordinary/forced
+}
+
+
+def continuation_mismatches(primary: int, secondary: int, secondary_color: int,
+                            substates: int, side: int) -> set[int]:
+    primary_factor = STATE_FACTORS.get(primary, 1)
+    secondary_factor = STATE_FACTORS.get(secondary, 1)
+    if primary_factor * secondary_factor != substates:
+        return set()
+    result: set[int] = set()
+    for combined in range(substates):
+        first = combined // secondary_factor
+        second = combined % secondary_factor
+        primary_forced = ((primary == 20 and first == 1) or
+                          (primary == 21 and first % 2 == 1))
+        secondary_forced = ((secondary == 20 and second == 1) or
+                            (secondary == 21 and second % 2 == 1))
+        if ((primary_forced and side != 0) or
+                (secondary_forced and side != secondary_color)):
+            result.add(combined)
+    return result
+
+
 def adjacent_ranges(count: int, substates: int, side: int):
     """Yield contiguous state ranges for every adjacent canonical King pair."""
     placements = count // substates
@@ -88,6 +151,54 @@ def adjacent_ranges(count: int, substates: int, side: int):
             yield begin, begin + material_placements * substates
 
 
+def add_penguin_reachability_artifacts(
+        wdl: bytes, count: int, substates: int,
+        owns_material: tuple[bool, bool], illegal: list[list[int]]) -> None:
+    """Separate impossible K+Penguin-v-K aura/turn states.
+
+    An active aura must freeze at least one adjacent model. If it freezes the
+    lone enemy King, that King receives the next turn and either moves (which
+    detaches it from the aura) or the game ends; the turn cannot return to the
+    Penguin owner with that King still frozen. An inactive Penguin cannot
+    attack, so its only dense-index wins with adjacent Kings are unreachable
+    geometry rather than genuine winning Penguin positions.
+    """
+    if count // substates != 985_920:
+        raise ValueError("Penguin reachability currently requires a K+K+1 codec")
+    for placement in range(count // substates):
+        rest = placement
+        attacker_rank = rest % 78
+        rest //= 78
+        black_rank = rest % 79
+        rest //= 79
+        white = rest % 80
+        side = rest // 80
+        black = black_rank + (black_rank >= white)
+        low, high = sorted((white, black))
+        penguin = attacker_rank
+        if penguin >= low:
+            penguin += 1
+        if penguin >= high:
+            penguin += 1
+        kings_adjacent = adjacent(white, black)
+        freezes_white = adjacent(penguin, white)
+        freezes_black = adjacent(penguin, black)
+        for substate in range(substates):
+            index = placement * substates + substate
+            result = (wdl[index // 4] >> ((index % 4) * 2)) & 3
+            active = substate % 2 == 1
+            locally_impossible = active and not (freezes_white or freezes_black)
+            impossible_turn = side == 0 and active and freezes_black
+            adjacent_penguin_side_win = (side == 0 and kings_adjacent and result == 1)
+            if not (locally_impossible or impossible_turn or adjacent_penguin_side_win):
+                continue
+            general_artifact = kings_adjacent and (
+                (result == 1 and not owns_material[side]) or
+                (result == 2 and owns_material[side]))
+            if not general_artifact:
+                illegal[side][result] += 1
+
+
 def summary(path: Path, data: bytes | None = None) -> tuple[list[list[int]], list[list[int]]]:
     if data is None:
         data = shards.read_logical(path)
@@ -105,9 +216,10 @@ def summary(path: Path, data: bytes | None = None) -> tuple[list[list[int]], lis
     # Canonical tables always assign the primary material to Ivory. In same-
     # team classes Onyx is bare; in opposing v5/v6 classes Onyx owns the
     # secondary material as well.
+    secondary = -1
     secondary_color = 0
     if version >= 5:
-        _secondary, secondary_color = struct.unpack_from("<II", data, 40)
+        secondary, secondary_color = struct.unpack_from("<II", data, 40)
     owns_material = (True, secondary_color == 1)
     # A live Jester intentionally permits its real King to remain threatened.
     # Inventory ordering makes Jester the primary piece in every class that
@@ -124,6 +236,28 @@ def summary(path: Path, data: bytes | None = None) -> tuple[list[list[int]], lis
             artifact = 2 if owns_material[side] else 1
             for begin, end in adjacent_ranges(count, substates, side):
                 illegal[side][artifact] += count_results(wdl, begin, end)[artifact]
+    if piece == 14:  # Penguin / native SimulatedFreeze
+        add_penguin_reachability_artifacts(wdl, count, substates,
+                                           owns_material, illegal)
+    for side in range(2):
+        mismatches = continuation_mismatches(
+            piece, secondary, secondary_color, substates, side)
+        if not mismatches:
+            continue
+        mismatch_counts = count_substates(
+            wdl, side * count // 2, (side + 1) * count // 2,
+            substates, mismatches)
+        # Adjacent outcome artifacts were already counted above. Subtract the
+        # intersection so each unreachable record appears exactly once.
+        overlap_result = 2 if owns_material[side] else 1
+        overlap = 0
+        if count_adjacent_as_illegal:
+            for begin, end in adjacent_ranges(count, substates, side):
+                overlap += count_substates(
+                    wdl, begin, end, substates, mismatches)[overlap_result]
+        for result in (1, 2, 3):
+            illegal[side][result] += mismatch_counts[result]
+        illegal[side][overlap_result] -= overlap
     expected_size = offset + wdl_bytes + dtw_bytes + exceptions * 6
     if len(data) != expected_size:
         raise ValueError(f"{path}: trailing or truncated packed data")

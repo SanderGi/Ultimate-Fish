@@ -106,6 +106,19 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertEqual(summary.cell(totals[0], illegal[0]),
                          "947,384 / 0 (38,536) / 0")
         self.assertEqual(illegal[0], [0, 0, 38_536, 0])
+        self.assertEqual(summary.cell(totals[1], illegal[1]),
+                         "0 (41,808) / 414,344 (492,944) / 36,808 (16)")
+
+    def test_forced_checker_substate_requires_its_owners_turn(self):
+        self.assertEqual(summary.continuation_mismatches(8, 21, 0, 4, 0), set())
+        self.assertEqual(summary.continuation_mismatches(8, 21, 0, 4, 1), {1, 3})
+        self.assertEqual(summary.continuation_mismatches(8, 21, 1, 4, 0), {1, 3})
+        self.assertEqual(summary.continuation_mismatches(8, 21, 1, 4, 1), set())
+
+    def test_penguin_wins_with_impossible_aura_turns_are_unreachable(self):
+        totals, illegal = summary.summary(ROOT / "tablebases" / "kpenguink.uftb")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "0 (289,648) / 0 (8,992) / 2,928,752 (2,688,128)")
 
     def test_jester_adjacent_king_wins_are_legal(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "kjesterk.uftb")

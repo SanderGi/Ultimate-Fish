@@ -65,6 +65,10 @@ def main() -> None:
     text = README.read_text()
     old_rows = cached_rows(text)
     readme_mtime = README.stat().st_mtime_ns
+    logic_mtime = max(Path(__file__).stat().st_mtime_ns,
+                      Path(summarize.__file__).stat().st_mtime_ns,
+                      Path(plan.__file__).stat().st_mtime_ns,
+                      Path(shards.__file__).stat().st_mtime_ns)
     reused = 0
     lines = [
         START,
@@ -75,7 +79,7 @@ def main() -> None:
     for record in ordered:
         path = ROOT / "tablebases" / str(record["filename"])
         cached = old_rows.get(path.name)
-        if (not args.full and cached is not None
+        if (not args.full and logic_mtime <= readme_mtime and cached is not None
                 and path.stat().st_mtime_ns <= readme_mtime):
             lines.append(cached)
             reused += 1
