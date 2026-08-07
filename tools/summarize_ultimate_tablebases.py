@@ -43,6 +43,24 @@ def adjacent(first: int, second: int) -> bool:
     return max(abs(first % 8 - second % 8), abs(first // 8 - second // 8)) == 1
 
 
+def rank_excluding(square: int, occupied: tuple[int, ...]) -> int:
+    return square - sum(item < square for item in occupied)
+
+
+def encode_four(side: int, white: int, black: int, first: int, second: int) -> int:
+    if white % 8 >= 4:
+        white = (white // 8) * 8 + 7 - white % 8
+        black = (black // 8) * 8 + 7 - black % 8
+        first = (first // 8) * 8 + 7 - first % 8
+        second = (second // 8) * 8 + 7 - second % 8
+    white_rank = (white // 8) * 4 + white % 8
+    black_rank = rank_excluding(black, (white,))
+    first_rank = rank_excluding(first, (white, black))
+    second_rank = rank_excluding(second, (white, black, first))
+    return ((((side * 40 + white_rank) * 79 + black_rank) * 78 + first_rank) * 77
+            + second_rank)
+
+
 def count_results(wdl: bytes, begin: int, end: int) -> list[int]:
     """Count packed two-bit WDL values in [begin, end) without a Python state loop."""
     totals = [0, 0, 0, 0]
@@ -121,6 +139,69 @@ def continuation_mismatches(primary: int, secondary: int, secondary_color: int,
                 (secondary_forced and side != secondary_color)):
             result.add(combined)
     return result
+
+
+def checker_forced_without_jump_artifacts(
+        wdl: bytes, count: int, substates: int,
+        primary: int, secondary: int, secondary_color: int,
+        owns_material: tuple[bool, bool], illegal: list[list[int]]) -> None:
+    """Exclude forced Checker states that have no legal continued capture.
+
+    The admitted stateful inventory currently has one Checker class:
+    K+Bomb+Checker vs K, with both extras owned by Ivory. A forced chain can
+    enter that four-model class from a larger endgame only when the remaining
+    Black King is immediately jump-capturable. Enumerating those sparse valid
+    geometries is much cheaper than walking the 151.8-million-state plane.
+    """
+    if not (primary == 8 and secondary == 21 and secondary_color == 0 and
+            count // substates == 37_957_920 and substates == 4):
+        return
+    side = 0
+    forced = {1, 3}
+    forced_totals = count_substates(wdl, 0, count // 2, substates, forced)
+    forced_adjacent_loss = 0
+    for begin, end in adjacent_ranges(count, substates, side):
+        forced_adjacent_loss += count_substates(
+            wdl, begin, end, substates, forced)[2]
+    valid = [0, 0, 0, 0]
+    valid_adjacent_loss = 0
+    white_squares = ((rank // 4) * 8 + rank % 4 for rank in range(40))
+    for white in white_squares:
+        for black in range(80):
+            if black == white:
+                continue
+            for bomb in range(80):
+                if bomb == white or bomb == black:
+                    continue
+                occupied = {white, black, bomb}
+                for checker_substate, directions in (
+                    (1, ((-1, 1), (1, 1))),
+                    (3, ((-1, -1), (1, -1), (-1, 1), (1, 1))),
+                ):
+                    for file_delta, rank_delta in directions:
+                        checker_file = black % 8 - file_delta
+                        checker_rank = black // 8 - rank_delta
+                        landing_file = black % 8 + file_delta
+                        landing_rank = black // 8 + rank_delta
+                        if not (0 <= checker_file < 8 and 0 <= checker_rank < 10 and
+                                0 <= landing_file < 8 and 0 <= landing_rank < 10):
+                            continue
+                        checker = checker_rank * 8 + checker_file
+                        landing = landing_rank * 8 + landing_file
+                        if checker in occupied or landing in occupied:
+                            continue
+                        placement = encode_four(side, white, black, bomb, checker)
+                        index = placement * substates + checker_substate
+                        result = (wdl[index // 4] >> ((index % 4) * 2)) & 3
+                        valid[result] += 1
+                        if adjacent(white, black) and result == 2:
+                            valid_adjacent_loss += 1
+                        break
+    for result in (1, 2, 3):
+        illegal[side][result] += forced_totals[result] - valid[result]
+    # Material-owner adjacent losses were already classified by the generic
+    # geometry pass. Only the invalid forced portion overlaps this addition.
+    illegal[side][2] -= forced_adjacent_loss - valid_adjacent_loss
 
 
 def adjacent_ranges(count: int, substates: int, side: int):
@@ -259,6 +340,9 @@ def summary(path: Path, data: bytes | None = None) -> tuple[list[list[int]], lis
         for result in (1, 2, 3):
             illegal[side][result] += mismatch_counts[result]
         illegal[side][overlap_result] -= overlap
+    checker_forced_without_jump_artifacts(
+        wdl, count, substates, piece, secondary, secondary_color,
+        owns_material, illegal)
     expected_size = offset + wdl_bytes + dtw_bytes + exceptions * 6
     if len(data) != expected_size:
         raise ValueError(f"{path}: trailing or truncated packed data")

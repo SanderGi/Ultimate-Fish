@@ -115,6 +115,13 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertEqual(summary.continuation_mismatches(8, 21, 1, 4, 0), {1, 3})
         self.assertEqual(summary.continuation_mismatches(8, 21, 1, 4, 1), set())
 
+    def test_forced_checker_requires_an_available_continued_jump(self):
+        totals, illegal = summary.summary(
+            ROOT / "tablebases" / "kbombcheckerk.uftb")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "38,253,312 (547,296) / 0 (3,286,402) / "
+                         "0 (33,828,830)")
+
     def test_penguin_wins_with_impossible_aura_turns_are_unreachable(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "kpenguink.uftb")
         self.assertEqual(summary.cell(totals[0], illegal[0]),
