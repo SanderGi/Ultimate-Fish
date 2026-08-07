@@ -153,7 +153,11 @@ represented by that class.
 | `kninjafishermank.uftb` | King+Ninja+Fisherman vs King | 888,968,396 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 15,914,976 / 1,454,376 | `2adcd8f6d511a359b43a9dbb89650b0e2492d338d6d98538208796a182df0763` |
 | `kninjakfisherman.uftb` | King+Ninja vs King+Fisherman | 803,024,716 | 18,978,960 / 0 / 0 | 1,609,608 / 15,953,476 / 1,415,876 | `de5c29df362dc35024077e4dcd380fffe6836e469d863e3871a7a1b52549be09` |
 | `kninjadragonk.uftb` | King+Ninja+Dragon vs King | 707,856,384 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,252,356 / 116,996 | `de0501b3bef6a6abf8fc81c478c31af9a6c3f71f28d313473de954dc62beb52c` |
+| `kninjakdragon.uftb` | King+Ninja vs King+Dragon | 599,564,588 | 9,848,620 / 186,156 / 8,944,184 | 9,699,576 / 276,566 / 9,002,818 | `b95ef8b87226cdbcbd0181443086fd4bb55033760d1e3cbc4fff0512141bdf5e` |
 | `kturtleturtlek.uftb` | King+2 Turtles vs King | 167,494,620 | 1,579,316 / 0 / 7,910,164 | 0 (804,804) / 416 / 8,684,260 | `bbb146a2f252eaf0eb40d23e49d0ddda56de183fb202c515ff64a0fd172037b1` |
+| `kturtleparasitek.uftb` | King+Turtle+Parasite vs King | 383,586,096 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,364,876 / 4,476 | `eecd62d724dc6c09c12d13d3170a88c951b884bb7c6fed5c522c6085a763a0ae` |
+| `kturtlekparasite.uftb` | King+Turtle vs King+Parasite | 373,105,856 | 2,397,164 / 7,602,610 / 8,979,186 | 13,089,020 / 0 / 5,889,940 | `7e174a2eaa35113df49bbd5b8dd89e16eac9359a96e93b9032d7c1622de8d878` |
+| `kturtlegiantk.uftb` | King+Turtle+Giant vs King | 210,345,328 | 12,328,232 / 0 / 6,650,728 | 0 (1,142,116) / 7,851,670 / 9,985,174 | `f84a9bc0224441dbb0d78d0fac8fbad6a92ff7159cc9bab1772ccece4f03911a` |
 | `kmagekparasite.uftb` | King+Mage vs King+Parasite | 344,453,172 | 1,609,608 / 17,369,180 / 172 | 18,978,960 / 0 / 0 | `7d8638ada4d6e2fb5314afc7b87bf25a4013f149b76525f44ba561a55cf147aa` |
 | `kfishermankparasite.uftb` | King+Fisherman vs King+Parasite | 703,350,700 | 1,609,608 / 314,868 / 17,054,484 | 4,835,644 / 0 / 14,143,316 | `6032d4e60931298ce7fc31341cde1318a4fdcd19604c29a1a260a577d0f4c389` |
 <!-- GENERATED_TABLE_END -->
