@@ -174,6 +174,7 @@ class Position {
     [[nodiscard]] std::vector<Move> legal_forcing_moves() const;
     [[nodiscard]] bool is_legal(const Move& move) const;
     [[nodiscard]] bool is_capture(const Move& move) const;
+    [[nodiscard]] bool supports_ordinary_exchange() const;
     [[nodiscard]] std::optional<int> static_exchange(const Move& move) const;
     bool make_move(const Move& move, Undo& undo);
     void undo_move(const Undo& undo);

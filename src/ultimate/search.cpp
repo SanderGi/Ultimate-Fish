@@ -256,7 +256,7 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
 }
 
 int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
-                    std::vector<Move>& pv) {
+                    std::vector<Move>& pv, const Move* excludedMove) {
     pv.clear();
     if (stopped())
         return evaluate(position, ply);
@@ -288,9 +288,10 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
     Entry* entry = find_entry(key);
     const bool restrictedRoot = ply == 0 && !rootMoves_.empty();
     const bool adjustedRoot = restrictedRoot || (ply == 0 && !rootDrawMoves_.empty());
+    const bool adjustedNode = adjustedRoot || excludedMove;
     Move ttMove{};
     const Move* ttMovePtr = nullptr;
-    if (entry && !adjustedRoot) {
+    if (entry && !adjustedNode) {
         ttMove = entry->move.unpack();
         ttMovePtr = &ttMove;
         if (entry->depth >= depth) {
@@ -324,11 +325,33 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
         return lhs.orderScore > rhs.orderScore;
     });
 
+#ifndef ULTIMATE_DISABLE_SINGULAR_EXTENSIONS
+    bool singularTtMove = false;
+    if (ply > 0 && depth >= 6 && entry && ttMovePtr &&
+        entry->bound == Bound::Lower && entry->depth >= depth - 2 &&
+        std::abs(score_from_tt(entry->score, ply)) < MateThreshold &&
+        ttMove.kind == MoveKind::Normal &&
+        ttMove.promotion == PieceType::Count &&
+        position.supports_ordinary_exchange()) {
+        const int ttScore = score_from_tt(entry->score, ply);
+        const int singularBeta = ttScore - 2 * depth;
+        std::vector<Move> exclusionPv;
+        const int alternative = negamax(position, (depth - 1) / 2,
+                                        singularBeta - 1, singularBeta, ply,
+                                        exclusionPv, &ttMove);
+        singularTtMove = !stopped() && alternative < singularBeta;
+    }
+#else
+    constexpr bool singularTtMove = false;
+#endif
+
     int bestScore = -Infinity;
     Move bestMove{};
     std::vector<Move> childPv;
     int moveNumber = 0;
     for (const Move& move : moves) {
+        if (excludedMove && move == *excludedMove)
+            continue;
         const Color before = position.side_to_move();
         // Special actions can relocate multiple pieces, create material, or
         // trigger a Giant collision. Treat only ordinary non-captures as LMR
@@ -355,7 +378,12 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
                 UltimateNnue::update(position, child, accumulators_[ply],
                                      accumulators_[ply + 1]);
             const bool sameSide = child.side_to_move() == before;
-            const int nextDepth = depth - (sameSide ? 0 : 1);
+            int nextDepth = depth - (sameSide ? 0 : 1);
+            // Same-side Checker/Prince actions already retain the current
+            // nominal turn depth. Extend a singular TT action only when it
+            // actually hands the turn to the opponent.
+            if (!sameSide && singularTtMove && move == ttMove)
+                ++nextDepth;
             int reduction = 0;
             if (depth >= 3 && moveNumber >= 4 && quiet && !sameSide) {
                 reduction = 1;
@@ -416,7 +444,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
         return stop_ ? evaluate(position, ply)
                      : position.real_king_threatened(side) ? -Mate + ply : 0;
 
-    if (!stop_ && !adjustedRoot &&
+    if (!stop_ && !adjustedNode &&
         (!entry || depth >= entry->depth || entry->generation != generation_)) {
         Entry& replacement = replacement_entry(key);
         replacement.key = key;

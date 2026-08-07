@@ -1503,18 +1503,7 @@ void Position::annotate_captures(std::vector<Move>& moves) const {
     }
 }
 
-std::optional<int> Position::static_exchange(const Move& move) const {
-    if (move.kind != MoveKind::Normal || move.promotion != PieceType::Count ||
-        !valid_square(move.from) || !valid_square(move.to) ||
-        move.to == enPassantSquare_ || rank_of(move.to) == 0 ||
-        rank_of(move.to) == BoardRanks - 1)
-        return std::nullopt;
-    const int firstAttacker = board_[move.from];
-    const int firstVictim = board_[move.to];
-    if (firstAttacker == NoPiece || firstVictim == NoPiece ||
-        pieces_[firstAttacker].color == pieces_[firstVictim].color)
-        return std::nullopt;
-
+bool Position::supports_ordinary_exchange() const {
     const auto ordinary = [](PieceType type) {
         switch (type) {
         case PieceType::King:
@@ -1537,8 +1526,22 @@ std::optional<int> Position::static_exchange(const Move& move) const {
         if (!ordinary(piece.type) || !piece.onBoard || piece.action || piece.cooldown ||
             piece.freezeCount || piece.power || piece.link != NoPiece ||
             piece.host != NoPiece || !piece.visible)
-            return std::nullopt;
+            return false;
     }
+    return true;
+}
+
+std::optional<int> Position::static_exchange(const Move& move) const {
+    if (move.kind != MoveKind::Normal || move.promotion != PieceType::Count ||
+        !valid_square(move.from) || !valid_square(move.to) ||
+        move.to == enPassantSquare_ || rank_of(move.to) == 0 ||
+        rank_of(move.to) == BoardRanks - 1 || !supports_ordinary_exchange())
+        return std::nullopt;
+    const int firstAttacker = board_[move.from];
+    const int firstVictim = board_[move.to];
+    if (firstAttacker == NoPiece || firstVictim == NoPiece ||
+        pieces_[firstAttacker].color == pieces_[firstVictim].color)
+        return std::nullopt;
 
     std::array<int, MaxPieces> square{};
     std::array<bool, MaxPieces> alive{};

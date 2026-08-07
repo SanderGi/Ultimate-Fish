@@ -169,6 +169,24 @@ The optimization suggestions were measured rather than accepted wholesale:
   20,000-node color-balanced match and 7.5/14 at 20 ms per move against the
   ordering-only build. Bomb and Angel regressions verify that special semantics
   fail closed and retain the complete search.
+- ProbCut was tested behind the same ordinary-SEE and native check/continuation
+  guards. A conservative depth-5, 180 cp-margin version preserved the classic
+  depth-10 result but reduced 2,561,912 nodes by only 0.09% and had no median
+  wall-clock gain. Expanding it to depth four with a 120 cp margin increased
+  the tree to 2,996,819 nodes (17.0%), slowed the search, and changed the best
+  move. Neither version was retained; forcing-action probes are too sparse
+  under safe Ultimate guards to repay their verification searches.
+- TT singular extensions are retained only when every live character and state
+  is supported by the ordinary exchange model and the TT action itself is a
+  normal, non-promotion move. The exclusion search cannot probe or store the
+  excluded node, and an extension adds a nominal ply only when the action
+  hands over the turn; Checker and Prince same-side continuations already keep
+  full turn depth. This leaves the recovered special-interaction depth-9 tree
+  exactly unchanged at 1,511,309 nodes, `+0.16`, and the same PV. On the
+  classic fixture it reduced depth ten from 2,561,912 nodes / 2.49 s to
+  1,665,145 nodes / 1.59 s (35% and 36%) while completing selectively deeper
+  forcing lines. The guarded build scored 21.0/42 in the 20 ms color-balanced
+  wall-clock gate.
 
 ## Deadline-aware draft search
 

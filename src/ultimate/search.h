@@ -106,7 +106,7 @@ class Search {
     };
 
     int negamax(Position& position, int depth, int alpha, int beta, int ply,
-                std::vector<Move>& pv);
+                std::vector<Move>& pv, const Move* excludedMove = nullptr);
     int quiescence(Position& position, int alpha, int beta, int ply);
     int move_score(const Position& position, const Move& move,
                    const Move* ttMove, int ply) const;
