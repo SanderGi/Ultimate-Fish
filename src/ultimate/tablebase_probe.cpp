@@ -159,7 +159,7 @@ std::uint32_t represented_substates(PieceType type) {
     case PieceType::Prince: return 2;
     case PieceType::Checker: return 4;
     case PieceType::Pawn: return 2;
-    case PieceType::Penguin: return 12;
+    case PieceType::Penguin: return 2;
     default: return 1;
     }
 }
@@ -498,8 +498,8 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                         if (item.cooldown || item.power || item.action) return std::nullopt;
                         return item.moved ? 1u : 0u;
                     case PieceType::Penguin:
-                        if (item.cooldown > 5 || item.power) return std::nullopt;
-                        return item.cooldown * 2 + (item.action ? 1u : 0u);
+                        if (item.cooldown || item.power) return std::nullopt;
+                        return item.action ? 1u : 0u;
                     default:
                         if (item.cooldown || item.power || item.action) return std::nullopt;
                         return 0u;
@@ -657,7 +657,7 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
             substate = extra.moved ? 1 : 0;
             break;
         case PieceType::Penguin: {
-            if (extra.cooldown > 5 || extra.power ||
+            if (extra.cooldown || extra.power ||
                 position.continuation_ != Continuation::None ||
                 position.forcedPiece_ != Position::NoPiece)
                 continue;
@@ -677,7 +677,7 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
             }
             else if (has_unrepresented_freeze())
                 continue;
-            substate = extra.cooldown * 2 + (extra.action ? 1 : 0);
+            substate = extra.action ? 1 : 0;
             break;
         }
         default:

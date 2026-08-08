@@ -369,7 +369,7 @@ std::uint32_t substate_count(PieceType type) {
     case PieceType::Prince: return 2;
     case PieceType::Checker: return 4;  // ordinary/promoted x normal/forced jump
     case PieceType::Pawn: return 2;
-    case PieceType::Penguin: return 12;
+    case PieceType::Penguin: return 2;  // inactive / exact geometry-derived freeze aura
     default: return 1;
     }
 }
@@ -487,6 +487,181 @@ class TablebaseGenerator {
                 std::cout << " tb " << static_cast<int>(result->wdl) << '/' << result->dtw;
             std::cout << '\n';
         }
+    }
+
+    void audit_reachability(const std::string& input, bool full) const {
+        std::ifstream stream(input, std::ios::binary);
+        if (!stream)
+            throw std::runtime_error("cannot open packed tablebase for reachability audit");
+        std::array<std::uint8_t, 56> header{};
+        stream.read(reinterpret_cast<char*>(header.data()), header.size());
+        if (stream.gcount() < 40 || std::memcmp(header.data(), "UFTB1\0\0\0", 8) != 0)
+            throw std::runtime_error("invalid packed tablebase header");
+        const auto word = [&](std::size_t offset) {
+            std::uint32_t value = 0;
+            std::memcpy(&value, header.data() + offset, sizeof(value));
+            return value;
+        };
+        const std::uint32_t version = word(8);
+        const std::uint32_t primary = word(12);
+        const std::uint32_t count = word(16);
+        const std::uint32_t fileSubstates = word(24);
+        const std::uint32_t wdlBytes = word(28);
+        if (version < 4 || version > 6 || primary != static_cast<std::uint32_t>(attackerType_) ||
+            count != stateCount_ || fileSubstates != substates_ || wdlBytes != (count + 3) / 4)
+            throw std::runtime_error("packed tablebase does not match requested material class");
+        if (version >= 5 &&
+            (word(40) != static_cast<std::uint32_t>(secondaryType_) ||
+             word(44) != static_cast<std::uint32_t>(secondaryColor_)))
+            throw std::runtime_error("packed tablebase secondary material does not match");
+        const std::size_t planeOffset = 40 + (version >= 5 ? 8 : 0) + (version >= 6 ? 8 : 0);
+        stream.seekg(static_cast<std::streamoff>(planeOffset));
+        std::vector<std::uint8_t> wdl(wdlBytes);
+        stream.read(reinterpret_cast<char*>(wdl.data()), wdl.size());
+        if (static_cast<std::size_t>(stream.gcount()) != wdl.size())
+            throw std::runtime_error("truncated packed WDL plane");
+
+        using Counts = std::array<std::array<std::uint64_t, 4>, 2>;
+        using Examples = std::array<std::array<std::uint32_t, 4>, 2>;
+        constexpr std::uint32_t Block = 10'000;
+        const std::uint32_t workers = std::min<std::uint32_t>(
+          4, std::max(1u, std::thread::hardware_concurrency()));
+        std::atomic<std::uint32_t> next{0};
+        std::vector<Counts> local(workers);
+        std::vector<Examples> localExamples(workers);
+        for (Examples& examples : localExamples)
+            for (auto& side : examples)
+                side.fill(std::numeric_limits<std::uint32_t>::max());
+        std::vector<std::thread> tasks;
+        for (std::uint32_t worker = 0; worker < workers; ++worker)
+            tasks.emplace_back([&, worker] {
+                while (true) {
+                    const std::uint32_t begin = next.fetch_add(Block, std::memory_order_relaxed);
+                    if (begin >= stateCount_)
+                        break;
+                    const std::uint32_t end = std::min(stateCount_, begin + Block);
+                    for (std::uint32_t index = begin; index < end; ++index) {
+                        const Color encodedSide = fourModels_
+                          ? (identicalExtras_
+                               ? decode_identical_four(index / substates_).side
+                               : decode_four(index / substates_).side)
+                          : decode(index).side;
+                        Position position;
+                        bool unreachable = !make_position_at(index, position);
+                        if (!unreachable && !position.has_forced_action())
+                            unreachable = !position.ordinary_predecessor_king_safe();
+                        if (!unreachable && full) {
+                            if (position.has_forced_action()) {
+                                const int forced = position.forcedPiece_;
+                                unreachable = forced == Position::NoPiece ||
+                                  position.pieces_[forced].color != position.sideToMove_ ||
+                                  position.legal_moves().empty();
+                            }
+                            for (int id = 0; !unreachable && id < position.pieceCount_; ++id) {
+                                const PieceState& piece = position.pieces_[id];
+                                if (!piece.alive || !piece.onBoard)
+                                    continue;
+                                if (piece.type == PieceType::Sniper) {
+                                    // Shoot assigns 3, then the same turn boundary
+                                    // immediately decrements it to 2. Subsequent
+                                    // boundaries alternate owner/opponent at 1/2.
+                                    unreachable = piece.cooldown >= 3 ||
+                                      (piece.cooldown == 2 && position.sideToMove_ == piece.color) ||
+                                      (piece.cooldown == 1 && position.sideToMove_ != piece.color);
+                                }
+                                else if (piece.type == PieceType::Pawn ||
+                                         piece.type == PieceType::Checker) {
+                                    const int promotionRank = piece.color == Color::White
+                                                              ? Position::BoardRanks - 1 : 0;
+                                    unreachable = piece.square / Position::BoardFiles == promotionRank;
+                                }
+                                else if (piece.type == PieceType::Ghost && !piece.visible) {
+                                    for (int royal = 0; royal < position.pieceCount_; ++royal) {
+                                        const PieceState& target = position.pieces_[royal];
+                                        if (!target.alive || !target.onBoard ||
+                                            target.color == piece.color ||
+                                            (target.type != PieceType::King &&
+                                             target.type != PieceType::Jester))
+                                            continue;
+                                        unreachable = std::max(
+                                          std::abs(int(piece.square % Position::BoardFiles) -
+                                                   int(target.square % Position::BoardFiles)),
+                                          std::abs(int(piece.square / Position::BoardFiles) -
+                                                   int(target.square / Position::BoardFiles))) <= 1;
+                                        if (unreachable)
+                                            break;
+                                    }
+                                }
+                            }
+                            // An active aura freezing a lone enemy King cannot
+                            // survive until the Penguin owner's next turn: the
+                            // enemy had no action with which to return the turn.
+                            for (int id = 0; !unreachable && id < position.pieceCount_; ++id) {
+                                const PieceState& penguin = position.pieces_[id];
+                                if (!penguin.alive || !penguin.onBoard ||
+                                    penguin.type != PieceType::Penguin || !penguin.action ||
+                                    position.sideToMove_ != penguin.color)
+                                    continue;
+                                const Color enemy = ~penguin.color;
+                                int enemyKing = Position::NoPiece;
+                                bool enemyHasOther = false;
+                                for (int target = 0; target < position.pieceCount_; ++target) {
+                                    const PieceState& piece = position.pieces_[target];
+                                    if (!piece.alive || !piece.onBoard || piece.color != enemy)
+                                        continue;
+                                    if (piece.type == PieceType::King)
+                                        enemyKing = target;
+                                    else
+                                        enemyHasOther = true;
+                                }
+                                unreachable = !enemyHasOther && enemyKing != Position::NoPiece &&
+                                              position.pieces_[enemyKing].freezeCount != 0;
+                            }
+                        }
+                        const std::uint32_t result =
+                          (wdl[index / 4] >> (2 * (index % 4))) & 3;
+                        const std::size_t side = static_cast<std::size_t>(encodedSide);
+                        if (!unreachable) {
+                            localExamples[worker][side][result] = std::min(
+                              localExamples[worker][side][result], index);
+                            continue;
+                        }
+                        ++local[worker][side][result];
+                    }
+                }
+            });
+        for (std::thread& task : tasks)
+            task.join();
+        Counts totals{};
+        Examples examples{};
+        for (auto& side : examples)
+            side.fill(std::numeric_limits<std::uint32_t>::max());
+        for (const Counts& part : local)
+            for (std::size_t side = 0; side < 2; ++side)
+                for (std::size_t result = 0; result < 4; ++result)
+                    totals[side][result] += part[side][result];
+        for (const Examples& part : localExamples)
+            for (std::size_t side = 0; side < 2; ++side)
+                for (std::size_t result = 0; result < 4; ++result)
+                    examples[side][result] = std::min(examples[side][result],
+                                                      part[side][result]);
+        for (std::size_t side = 0; side < 2; ++side)
+            std::cout << (full ? "reachability" : "predecessor_safety")
+                      << " side " << side
+                      << " unknown " << totals[side][0]
+                      << " win " << totals[side][1]
+                      << " loss " << totals[side][2]
+                      << " draw " << totals[side][3] << '\n';
+        if (full)
+            for (std::size_t side = 0; side < 2; ++side)
+                for (std::size_t result = 1; result < 4; ++result)
+                    if (examples[side][result] != std::numeric_limits<std::uint32_t>::max()) {
+                        Position position;
+                        if (make_position_at(examples[side][result], position))
+                            std::cout << "legal_example side " << side << " result " << result
+                                      << " index " << examples[side][result] << ' '
+                                      << position.upn() << '\n';
+                    }
     }
 
     void generate() {
@@ -705,9 +880,7 @@ class TablebaseGenerator {
             }
             break;
         case PieceType::Pawn: position.piece(id).moved = substate != 0; break;
-        case PieceType::Penguin:
-            position.piece(id).cooldown = substate / 2;
-            break;
+        case PieceType::Penguin: break;
         default: break;
         }
         return true;
@@ -728,9 +901,7 @@ class TablebaseGenerator {
                    (position.continuation_ == Continuation::CheckerJump &&
                     position.forcedPiece_ == id ? 1u : 0u);
         case PieceType::Pawn: return position.piece(id).moved ? 1 : 0;
-        case PieceType::Penguin:
-            return position.piece(id).cooldown * 2 +
-                   (position.piece(id).action ? 1u : 0u);
+        case PieceType::Penguin: return position.piece(id).action ? 1u : 0u;
         default: return 0;
         }
     }
@@ -891,8 +1062,7 @@ class TablebaseGenerator {
             break;
         case PieceType::Pawn: substate = position.piece(2).moved ? 1 : 0; break;
         case PieceType::Penguin:
-            substate = static_cast<std::uint8_t>(position.piece(2).cooldown * 2 +
-                                                 (position.piece(2).action ? 1 : 0));
+            substate = position.piece(2).action ? 1 : 0;
             break;
         default: break;
         }
@@ -1245,6 +1415,8 @@ int main(int argc, char** argv) {
     std::uint32_t dryRun = 0;
     std::uint32_t dryRunBegin = 0;
     std::uint32_t inspect = std::numeric_limits<std::uint32_t>::max();
+    std::string auditPredecessorSafety;
+    std::string auditReachability;
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
         const auto value = [&](const char* option) -> std::string {
@@ -1277,6 +1449,10 @@ int main(int argc, char** argv) {
             dryRunBegin = static_cast<std::uint32_t>(std::stoul(value("--dry-run-begin")));
         else if (argument == "--inspect")
             inspect = static_cast<std::uint32_t>(std::stoul(value("--inspect")));
+        else if (argument == "--audit-predecessor-safety")
+            auditPredecessorSafety = value("--audit-predecessor-safety");
+        else if (argument == "--audit-reachability")
+            auditReachability = value("--audit-reachability");
         else if (argument == "--self-test") selfTest = true;
         else if (argument == "--four-codec-self-test") fourCodecSelfTest = true;
         else throw std::runtime_error("unknown argument: " + argument);
@@ -1301,7 +1477,12 @@ int main(int argc, char** argv) {
             generator.dry_run(dryRunBegin, dryRun);
         if (inspect != std::numeric_limits<std::uint32_t>::max())
             generator.inspect(inspect);
-        if (!selfTest && !dryRun && inspect == std::numeric_limits<std::uint32_t>::max())
+        if (!auditPredecessorSafety.empty())
+            generator.audit_reachability(auditPredecessorSafety, false);
+        if (!auditReachability.empty())
+            generator.audit_reachability(auditReachability, true);
+        if (!selfTest && !dryRun && inspect == std::numeric_limits<std::uint32_t>::max() &&
+            auditPredecessorSafety.empty() && auditReachability.empty())
             generator.generate();
     }
     catch (const std::exception& error) {

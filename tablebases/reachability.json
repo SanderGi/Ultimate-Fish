@@ -1,0 +1,3355 @@
+{
+  "files": {
+    "kberserkerk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          3461224,
+          0,
+          0
+        ],
+        [
+          0,
+          418080,
+          0,
+          0
+        ]
+      ],
+      "sha256": "f41245a06eb280136c458e6337ef4a588a0d5142b606413b92f84c248487e2b1"
+    },
+    "kbishopbishopk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1498130,
+          0,
+          1308328
+        ],
+        [
+          0,
+          407502,
+          0,
+          397302
+        ]
+      ],
+      "sha256": "18ee411f10c1c62e365b9e30359a1403f5d34e827bcc5509f20d8c0e73ded490"
+    },
+    "kbishopbombk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5595722,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          67760,
+          0
+        ]
+      ],
+      "sha256": "7551d93b34162827fa0b35578b4c6a4d9acd181bddcaa31582ab1361756764b1"
+    },
+    "kbishopdragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6653042,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "e5441c998ebc7f4ef1a7be2079a7919b96a2e02238a21ccd4b0e342925bfc6fd"
+    },
+    "kbishopfishermank.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3693788,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "3e2b9df328f5ae439a9d4559b83e5d7d80ae35c07004c9f3f6abccff7cc254f3"
+    },
+    "kbishopghostk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          8731292,
+          0,
+          0
+        ],
+        [
+          0,
+          3219216,
+          1482452,
+          1184
+        ]
+      ],
+      "sha256": "61bc4f9865d4c217868da670e27e16e9a493f31ca15ae6a68f91469b8c48dcf2"
+    },
+    "kbishopgiantk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4150080,
+          0,
+          0
+        ],
+        [
+          0,
+          1142116,
+          0,
+          0
+        ]
+      ],
+      "sha256": "f7bed858352d77238adb64d894d2e2ce4bc716703aa4354fa16f288708bd658c"
+    },
+    "kbishopkbomb.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3850520,
+          59240,
+          1200
+        ],
+        [
+          0,
+          3845632,
+          16,
+          376
+        ]
+      ],
+      "sha256": "8f3edd16e534811b61a4dcd792f2bb7a26e7c6f43fb0397c9c3696de56d0ddbe"
+    },
+    "kbishopkdragon.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3693788,
+          0,
+          0
+        ],
+        [
+          0,
+          4893140,
+          0,
+          0
+        ]
+      ],
+      "sha256": "8c0fba9b456b74d6784bd9b48932a1ccabf44237792ee57413bfbf55a95d2be0"
+    },
+    "kbishopkghost.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          7430290,
+          229350,
+          1073334
+        ],
+        [
+          0,
+          4702852,
+          0,
+          0
+        ]
+      ],
+      "sha256": "0649b7859ba72c8534929a902f18b3ca1a74cd7d7b3713ac109633e83a85ac15"
+    },
+    "kbishopkgiant.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2519718,
+          0,
+          0
+        ],
+        [
+          0,
+          3051612,
+          0,
+          0
+        ]
+      ],
+      "sha256": "0693144e84471959edad34705a14dbef0685df3b60bc6d83960b904001133bb2"
+    },
+    "kbishopkninja.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3693788,
+          0,
+          0
+        ],
+        [
+          0,
+          5259100,
+          0,
+          0
+        ]
+      ],
+      "sha256": "cd948abb01bd00c51ffdf0c4aebb46394b4f3052e6b86073c8b4e327fa813f22"
+    },
+    "kbishopkparasite.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3693788,
+          0,
+          0
+        ],
+        [
+          0,
+          3093244,
+          0,
+          0
+        ]
+      ],
+      "sha256": "4974a88a0665613f8097467df8bf39c67a1048046963e7be6f0cbbd802e879b0"
+    },
+    "kbishopkprince.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          3693788,
+          18668874,
+          310086
+        ],
+        [
+          0,
+          3093244,
+          3082494,
+          0
+        ]
+      ],
+      "sha256": "e3e2ae7d3c017eeaf0b0365b7bc1114170d0b076ea55dbc83ff66ebbbf318fb9"
+    },
+    "kbishopmagek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3693788,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "4b32c84e4e56475370f5439dcd28b75a743e86531c8f27c4b652d47b722b767a"
+    },
+    "kbishopninjak.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6925376,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "25afeb53b8ab30386bf683f20c1769220d7e3b1c1356e543c60f1f260ad58985"
+    },
+    "kbishopparasitek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5013372,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "f47108fdea572a895b49d0e1ac7f94e342f0029a753a7aa3cd99217ae4d275fb"
+    },
+    "kbishopprincek.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          5013372,
+          1483636,
+          0
+        ],
+        [
+          0,
+          1609608,
+          18972918,
+          6042
+        ]
+      ],
+      "sha256": "bdfb6056b073a1c261379d0e2d56ffdc30f3422cf6ed5de00a912cfe3a117116"
+    },
+    "kbishopturtlek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4380964,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "356dc50f942ccd939ea3a1364b4481691b4abf9bb4338c65fef015b567bea827"
+    },
+    "kbombbombk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2838050,
+          78,
+          0
+        ],
+        [
+          0,
+          804804,
+          70112,
+          0
+        ]
+      ],
+      "sha256": "3007861257e32343194410f89e6c446a904086162f15481d46d7a5337404a4ab"
+    },
+    "kbombcheckerk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          9725859,
+          3286402,
+          33828830
+        ],
+        [
+          0,
+          3219216,
+          10068704,
+          29753410
+        ]
+      ],
+      "sha256": "013330f8184618b0d536da4a4e9417c8fbc1b49fcaab2a1842266e8246b7ad52"
+    },
+    "kbombdragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6632374,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          67760,
+          0
+        ]
+      ],
+      "sha256": "062163e51a367a6558d6cf520594ea40fcf3ba1f4d1572ea4a8eb62bcbd2f9ff"
+    },
+    "kbombfishermank.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3763108,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          67760,
+          0
+        ]
+      ],
+      "sha256": "c35a204b36baf78a0c823f857b370adeb4a22a2aa1b7eb159cface00da7e5b6b"
+    },
+    "kbombghostk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          8840920,
+          0,
+          0
+        ],
+        [
+          0,
+          3219216,
+          1612016,
+          1724
+        ]
+      ],
+      "sha256": "25fc8d85b05c1104b50118cc7486bd3cfb8bb853eeedbb748cc81d29b95fa86b"
+    },
+    "kbombgiantk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4350174,
+          0,
+          0
+        ],
+        [
+          0,
+          1142116,
+          48420,
+          0
+        ]
+      ],
+      "sha256": "50ad69316185c89f66f3f15d61ce3f6f969419eea73b5dbd331cc6d831cbae5e"
+    },
+    "kbombk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          97972,
+          0,
+          0
+        ],
+        [
+          0,
+          41808,
+          1760,
+          0
+        ]
+      ],
+      "sha256": "3d4f44035652e486cbd72c59e8247cfbba355b748107ee2b9d06abfe4674b864"
+    },
+    "kbombkbomb.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3841414,
+          60466,
+          896
+        ],
+        [
+          0,
+          3841414,
+          60466,
+          896
+        ]
+      ],
+      "sha256": "c32ed66d65ba864590c1539a383f2e74d703d9e0b7a221226bf91bde30816736"
+    },
+    "kbombkdragon.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3843440,
+          264,
+          2320
+        ],
+        [
+          0,
+          5087512,
+          54248,
+          1200
+        ]
+      ],
+      "sha256": "6b1c65f252af9e836c6ccf51a368baaca815bffeeb2d1efca8034cf8c85a900e"
+    },
+    "kbombkfisherman.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3845724,
+          0,
+          300
+        ],
+        [
+          0,
+          1609608,
+          42504,
+          25256
+        ]
+      ],
+      "sha256": "afdd6e53d8f69c864f9c4dd29d44082319d434640b52157181cf078a31ddbf72"
+    },
+    "kbombkghost.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          8298186,
+          130734,
+          487482
+        ],
+        [
+          0,
+          4708268,
+          124688,
+          0
+        ]
+      ],
+      "sha256": "29305aa38fce6a02b0ca1dca724388c02d6e8a4ec5002edc123248c59850bfd0"
+    },
+    "kbombkgiant.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2726186,
+          0,
+          8
+        ],
+        [
+          0,
+          3121728,
+          43224,
+          1020
+        ]
+      ],
+      "sha256": "b504391775e091cd8ca49bca0763e9359262ad794a7f9b6cd79d80d66a6fb9f1"
+    },
+    "kbombkmage.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3846024,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          67760,
+          0
+        ]
+      ],
+      "sha256": "a7469c100c45ef088a63fb7016ea648a2b93e8ed3793054d83961f364e92fbe3"
+    },
+    "kbombkninja.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3842796,
+          528,
+          2700
+        ],
+        [
+          0,
+          5421572,
+          53280,
+          0
+        ]
+      ],
+      "sha256": "3c4bbaa19cd78e42cc8d5f74c14ba98052ae381c0b705123357a11fd364ca9d5"
+    },
+    "kbombkparasite.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3842796,
+          3224,
+          4
+        ],
+        [
+          0,
+          3093268,
+          59260,
+          3060
+        ]
+      ],
+      "sha256": "bc300fdbcb2945fd8fe494f09337a39f28fe7f6c41debac8535a7b124fca3d5f"
+    },
+    "kbombkprince.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          7726596,
+          10145276,
+          4953112
+        ],
+        [
+          0,
+          3162508,
+          3453840,
+          352
+        ]
+      ],
+      "sha256": "cd220ce57a5db672809cf550f82f9d06f2195e60a001f6fe2e6c5186fabf8b94"
+    },
+    "kbombkturtle.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3845820,
+          4,
+          200
+        ],
+        [
+          0,
+          2437986,
+          64838,
+          0
+        ]
+      ],
+      "sha256": "b3ed8e16f550dc7325b87bf02578d8b949f758f070a7c7e98cddfd741c107f91"
+    },
+    "kbombmagek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3763108,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          67760,
+          0
+        ]
+      ],
+      "sha256": "17d8e361f33ffa0b7e2ea366d9a68711ea96a2115aab8fd4de09b55800f412af"
+    },
+    "kbombninjak.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6966170,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          67760,
+          0
+        ]
+      ],
+      "sha256": "6b3ae1d52b88034772c3ecc8d59303dfe2b66c23f199d70b1613060f8f0017f6"
+    },
+    "kbombparasitek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5077812,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          67760,
+          0
+        ]
+      ],
+      "sha256": "2af30741c6d6e9892aac5bd68b397454f3e351f0e459d04c274e47a7f80d9a30"
+    },
+    "kbombprincek.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          5077812,
+          1545980,
+          0
+        ],
+        [
+          0,
+          1609608,
+          19045852,
+          868
+        ]
+      ],
+      "sha256": "74b48061b11795d274bcbb421019558cedc9fb1decb422c967020c9a8f9f827e"
+    },
+    "kbombsniperk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          46319320,
+          0,
+          2
+        ],
+        [
+          0,
+          6438432,
+          34802038,
+          72186
+        ]
+      ],
+      "sha256": "be04af3e927cf0a34219b0bd2b3663e659da16c86be7775ee8afb05d55150b9e"
+    },
+    "kbombturtlek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4466844,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          67760,
+          0
+        ]
+      ],
+      "sha256": "ee4dca71935ad3215f55f9647542ca737f86a6b092ef36923ae7662032b827de"
+    },
+    "kcopycatk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          108184,
+          0,
+          0
+        ],
+        [
+          0,
+          40776,
+          0,
+          0
+        ]
+      ],
+      "sha256": "98dbd354da959fa923ed9b712c1bde7147f2039a9bcf50306cbdc2a9b3098aeb"
+    },
+    "kdragondragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3806890,
+          0,
+          0
+        ],
+        [
+          0,
+          804804,
+          0,
+          0
+        ]
+      ],
+      "sha256": "fcbd96c4751483c15c31577d3850fd3270ddaac00d7a96fe5495a60f49ede102"
+    },
+    "kdragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          128204,
+          0,
+          0
+        ],
+        [
+          0,
+          41808,
+          0,
+          0
+        ]
+      ],
+      "sha256": "28d3cbeba82d02611a48bf2d0a6a527d11ff4cd3049f04bf2b4b929a05ed86c6"
+    },
+    "kdragonkdragon.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4893140,
+          0,
+          0
+        ],
+        [
+          0,
+          4893140,
+          0,
+          0
+        ]
+      ],
+      "sha256": "a8740a9fc8683cd75bcd319081c544e1067796ad37b401a2259f2c6799847b56"
+    },
+    "kfishermandragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4893140,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "0c860c29d234c4d0cb13106abe1fb3fb0281697533d8b6e1eb5c90cb9ea19f70"
+    },
+    "kfishermankdragon.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1609608,
+          0,
+          0
+        ],
+        [
+          0,
+          4893140,
+          0,
+          0
+        ]
+      ],
+      "sha256": "949f749c991ae2901b0cc9bad4acb8fababef28a5e3e4b62e483211a1d467c41"
+    },
+    "kfishermankparasite.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1609608,
+          0,
+          0
+        ],
+        [
+          0,
+          3093244,
+          0,
+          0
+        ]
+      ],
+      "sha256": "6032d4e60931298ce7fc31341cde1318a4fdcd19604c29a1a260a577d0f4c389"
+    },
+    "kghostdragonk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          11018276,
+          0,
+          0
+        ],
+        [
+          0,
+          3219216,
+          1480412,
+          3224
+        ]
+      ],
+      "sha256": "863de816680ef282923aca7cf9a5bf0b60cd76fa01dc7c2ffdf6a64e51a3b236"
+    },
+    "kghostfishermank.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          4702852,
+          0,
+          0
+        ],
+        [
+          0,
+          3219216,
+          1483020,
+          616
+        ]
+      ],
+      "sha256": "94db43bfad0d5e40f35e5cae91ddff67789f90741f28f5ebef357fc10fd77dea"
+    },
+    "kghostghostk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          6127960,
+          0,
+          0
+        ],
+        [
+          0,
+          3219216,
+          2907496,
+          1248
+        ]
+      ],
+      "sha256": "204f4de6d0f9ff6da111d3d0c0a08c3562493cdec2130cc946b4eae7183012ee"
+    },
+    "kghostgiantk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          6913364,
+          0,
+          11384520
+        ],
+        [
+          0,
+          2284232,
+          1049920,
+          11385792
+        ]
+      ],
+      "sha256": "5261c5a3d62f8711e2d6e007b89788701a7cdd2ab2afda0edea5607514e4c793"
+    },
+    "kghostk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          122152,
+          0,
+          0
+        ],
+        [
+          0,
+          83616,
+          38520,
+          16
+        ]
+      ],
+      "sha256": "3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31"
+    },
+    "kghostkdragon.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          4702852,
+          0,
+          0
+        ],
+        [
+          0,
+          9832194,
+          213998,
+          983478
+        ]
+      ],
+      "sha256": "f9e825a80062da30fb4ffcb40ad7c9e4cf7348e03f2269e83812c34925080225"
+    },
+    "kghostkfisherman.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          4702852,
+          0,
+          0
+        ],
+        [
+          0,
+          3219216,
+          154200,
+          1329436
+        ]
+      ],
+      "sha256": "ed56e8ccba231dbe962870891330ebae25495c3693e010b7aa874d511183c389"
+    },
+    "kghostkgiant.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          3335424,
+          0,
+          11384520
+        ],
+        [
+          0,
+          6103488,
+          810214,
+          11459470
+        ]
+      ],
+      "sha256": "452b47d680ae8c40b4136d33c3398145909c68119a9fe1c53cde0e7c4c5e7a63"
+    },
+    "kghostkmage.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          4702852,
+          0,
+          0
+        ],
+        [
+          0,
+          3219216,
+          1483584,
+          52
+        ]
+      ],
+      "sha256": "d23e1c2253e1ff26822069f5852989c73c1ab308b3720ce4a5473fa29c881519"
+    },
+    "kghostkparasite.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          4702852,
+          0,
+          0
+        ],
+        [
+          0,
+          7390752,
+          147194,
+          4998
+        ]
+      ],
+      "sha256": "18c6dc8986ac43d9f38315bbc9e0c2ab6b0bed32c6c638991be01478cc2aceff"
+    },
+    "kghostmagek.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          4702852,
+          0,
+          0
+        ],
+        [
+          0,
+          3219216,
+          1483020,
+          616
+        ]
+      ],
+      "sha256": "061a250c66c18e769baec7410be2257db98e669cf6b3d6b39cd5153b27792596"
+    },
+    "kghostparasitek.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          7553068,
+          0,
+          0
+        ],
+        [
+          0,
+          3219216,
+          1482156,
+          1480
+        ]
+      ],
+      "sha256": "1bb1c977b7af34b2295dd6c693d8a79006e69ab2f4291a828b930515742222ca"
+    },
+    "kgiantdragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4840992,
+          0,
+          0
+        ],
+        [
+          0,
+          1142116,
+          0,
+          0
+        ]
+      ],
+      "sha256": "12c16784095c23ca9aefd21ebb6322477be1659d36001e459b534d9713af9fab"
+    },
+    "kgiantfishermank.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3097480,
+          0,
+          0
+        ],
+        [
+          0,
+          1142116,
+          0,
+          0
+        ]
+      ],
+      "sha256": "d6322a6a99b4876cb25e05b88317a7b32cd762065c54c9415bfbd3ce01127ffe"
+    },
+    "kgiantgiantk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1555208,
+          0,
+          0
+        ],
+        [
+          0,
+          389094,
+          0,
+          0
+        ]
+      ],
+      "sha256": "1c737dec95c4c28c2127edf5bf190aa000687d95d19360175b9aa8c561906b59"
+    },
+    "kgiantk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          82476,
+          0,
+          0
+        ],
+        [
+          0,
+          30868,
+          0,
+          0
+        ]
+      ],
+      "sha256": "eb52f2c08cf88e1e3682d0c72dfde191d9009e79779ad7eee23ca82fdcade591"
+    },
+    "kgiantkdragon.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3051612,
+          0,
+          0
+        ],
+        [
+          0,
+          3346434,
+          0,
+          0
+        ]
+      ],
+      "sha256": "bf638c7b6b3082eb9c9899a67c6e3a7cb25dfd80ac2a7ba251b184fc0edc4a80"
+    },
+    "kgiantkfisherman.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3051612,
+          0,
+          0
+        ],
+        [
+          0,
+          1313848,
+          0,
+          0
+        ]
+      ],
+      "sha256": "2e999ecfec7aa2dd0f604edc406ec77e79f39a5251f13a65065181486522a64d"
+    },
+    "kgiantkgiant.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2060572,
+          0,
+          0
+        ],
+        [
+          0,
+          2060572,
+          0,
+          0
+        ]
+      ],
+      "sha256": "d5503ba4bfd875b28958d3ffc5f7a6c5b77ebe0cd9b952a37dd7923126df4302"
+    },
+    "kjesterbishopk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5013372,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "5816410c814d49a27dac924a0f5beb1b792b61b742a2fc83f0411bf10d15eae0"
+    },
+    "kjesterbombk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5077812,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "5fdb70947be34ad506f893291c4657a4b0f850e39672caae6e564a1df71486fb"
+    },
+    "kjesterdragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6101004,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "3553fad7d75c3c428bbf0d9333801d57cb3dae0a99bc505ef1bf45de1f7cc017"
+    },
+    "kjesterfishermank.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "3f335332d457d184fc3a20b5ddddf2806911bb5e5bfd607872eb757a2a90a968"
+    },
+    "kjestergiantk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3939164,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "9cee141bd1bc8cd2e0427a95d6b96683e24e5096d2bafce7390750918a5eb1f8"
+    },
+    "kjesterjesterk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2229912,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "791453682cab1999efeeea44cc79b7d84be3b2658975a0e004cf589ca891e150"
+    },
+    "kjesterk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          80344,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "3d896b07c0f7ee97da5aabefee6551c90732bbc200343a4af51a08b678e236aa"
+    },
+    "kjesterkbishop.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "698f617b02ec063f481f57dac1b3677e7d9db618ca006dac59a3105c872dfd43"
+    },
+    "kjesterkbomb.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3152980,
+          62344,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "b01b14d0a5d920e9c519c1c9a310882c7aec263c8a7aa71c2abbefb3202dc8cb"
+    },
+    "kjesterkdragon.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "55477de8dd1263ab734582dea3409af5409fa704bf35088d4ab4300beee7a5fb"
+    },
+    "kjesterkfisherman.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "ce378df3a2be9b6fe0dcb82098a88abc7067ed1cde02821ca744af46dc461df0"
+    },
+    "kjesterkgiant.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2193308,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "67a539cfcbeeb53837a6b7c07c497aed513aa9d12260a7588213eee783a204e6"
+    },
+    "kjesterkjester.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "243f0eaaf838774684082dadfeb69496b200e0061514239a83ccb771b879deee"
+    },
+    "kjesterkknight.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "cf6d15681c176ff90cd7c862187b5d1ab4db217c6b00468f032f57c817155d69"
+    },
+    "kjesterkmage.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "705b00311fc61e20615b79e13472b96cf7705f8e80227303877ec0445326d274"
+    },
+    "kjesterknightk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4180876,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "4d9e7cd0ad349ef4ddc10f214ba3d5e63000d551b307a4e0e5266ee3950de9e6"
+    },
+    "kjesterkninja.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "7255da99637afb9a015c284056b4be3431d602c6c0febddb7fd439157170a55b"
+    },
+    "kjesterkparasite.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "45f0f26f182a2e231455df61931cf49d6a54d9b36f9be0e1fd9fd87117a7fd18"
+    },
+    "kjesterkqueen.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "1345e2b73a1978a6569821a379c236415997ff3b9cdb108563c982f458d88600"
+    },
+    "kjesterkrook.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "ba1a6ecd7e71b6e3fbe1bff9a1576c0d4a9d0cc2f241aefd48ea519959ef984d"
+    },
+    "kjesterkturtle.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "7216f1e140c32fc3ed69addce02b651f64ec3fef5173f7b0c11259fcc38ccebd"
+    },
+    "kjestermagek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "9d48c76c568315e9ff533fe3d518f1c7fe528c421891b65b1e171657f2ed7c09"
+    },
+    "kjesterninjak.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6430560,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "33431727e988e9c2f48dc0f22e3418072fc8c6f741290b037fd1a5e28b0bbf97"
+    },
+    "kjesterparasitek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4459824,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "50d5e2a3a35f7746b27395ebeb922dd9583b10800b59a6870c18750416ac5630"
+    },
+    "kjesterqueenk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          8101388,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "b1e938905b645a70b2a2de433eb0ea12dc1374ad0bdef79738f115b65adfcb74"
+    },
+    "kjesterrookk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6181260,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "9e485cf5516add2e833527fbce24374380f444322b0db1e5a41e687bda500c82"
+    },
+    "kjesterturtlek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3820048,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "496ab5eb6012ff5500b54b6589d153710839563621cbb4340e6f69534a0d3067"
+    },
+    "kknightbishopk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4733914,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "e78a30ba8605cccbbc3c9198dd717843ef80115905b7ea05b03f130756d54f48"
+    },
+    "kknightbombk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4799760,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          67760,
+          0
+        ]
+      ],
+      "sha256": "6c1e33d2b92fe411485a2370fb18621c86d5e26de45a3deb053f0a4547312d72"
+    },
+    "kknightdragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5853878,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "5a186985b6ca6e024562e2a0cff6dbe34003e30903761bae751400135abeb01c"
+    },
+    "kknightgiantk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3665112,
+          0,
+          0
+        ],
+        [
+          0,
+          1142116,
+          0,
+          0
+        ]
+      ],
+      "sha256": "2aecb1ceed4793a173c917fda61cb26bd622bf4dfec8e66d61c0e837f5cba541"
+    },
+    "kknightkbomb.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2903040,
+          62768,
+          0
+        ],
+        [
+          0,
+          3846020,
+          0,
+          4
+        ]
+      ],
+      "sha256": "64f63059b0d87f4b28bf8d30c0a1c3354ed42441fd6b84c6a1be26263aa9afde"
+    },
+    "kknightkdragon.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2808960,
+          0,
+          0
+        ],
+        [
+          0,
+          4893140,
+          0,
+          0
+        ]
+      ],
+      "sha256": "22a14009f6d4f456eddcb659d3a5c1d99170ff4c706a517b786357abaecddabb"
+    },
+    "kknightkgiant.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1968832,
+          0,
+          0
+        ],
+        [
+          0,
+          3051612,
+          0,
+          0
+        ]
+      ],
+      "sha256": "c3c8ceb56c11bbd52c3316e8dbb786e4fbe573382b6190b0e2596bf49ffda8fc"
+    },
+    "kknightknightk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1964462,
+          0,
+          0
+        ],
+        [
+          0,
+          804804,
+          0,
+          0
+        ]
+      ],
+      "sha256": "5c95ba0ed74d95e4d2c2fa4d1a98c1dddb121a9d11406853c75d4d5e1ba15138"
+    },
+    "kknightkninja.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2808960,
+          0,
+          0
+        ],
+        [
+          0,
+          5259100,
+          0,
+          0
+        ]
+      ],
+      "sha256": "c72d856b445ae577e4394e9b0fe4ec3589a3c0fd55bd991d037a709bad688e78"
+    },
+    "kknightkparasite.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2808960,
+          0,
+          0
+        ],
+        [
+          0,
+          3093244,
+          0,
+          0
+        ]
+      ],
+      "sha256": "c9c65bc38098b46e30464eabc4816c9d4e68c498b0876c7dca2df59103257c04"
+    },
+    "kknightkqueen.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2808960,
+          0,
+          0
+        ],
+        [
+          0,
+          7035616,
+          0,
+          0
+        ]
+      ],
+      "sha256": "c708a791064b0b9f45bd506b3cfc1657912890dd1fb080533d311db6c3418750"
+    },
+    "kknightkrook.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2808960,
+          0,
+          0
+        ],
+        [
+          0,
+          4951436,
+          0,
+          0
+        ]
+      ],
+      "sha256": "4f1655eb31c7a335de951bcc217a2e01b777872b2fc867fead6d42ed3f255da8"
+    },
+    "kknightninjak.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6181348,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "ecb39a6f313de06083df9552b6b46e291fdfda4f04c4536744096eea5615a3fa"
+    },
+    "kknightparasitek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4180876,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "80703fb82f8caf5589e4e3d07bec5f6b4ce78dec12ce44d7a7f7e07d5e127246"
+    },
+    "kknightqueenk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7834262,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "5a2143cee6221564e0acaf53e5d0f5fd764f2997445fc8bbc490deb79c5693ba"
+    },
+    "kknightrookk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5909308,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "04513bc582ac66c262ce0a50aadc7dc4a103cf281b5ae66aa06a73fd4a78d457"
+    },
+    "kknightturtlek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3538608,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "e51001e72d79078c3da96de0dab87d8752d5f7496621b4b3812f82624107c5df"
+    },
+    "kmagedragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4893140,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "d3733f70585208428185796973f80c171dc0f6b83adcc9923f46832f6fb73150"
+    },
+    "kmagegiantk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3939164,
+          0,
+          0
+        ],
+        [
+          0,
+          1142116,
+          0,
+          0
+        ]
+      ],
+      "sha256": "84c017bbc31770a08feee5bc2c35d57783594af5b11916178076314a963ffb22"
+    },
+    "kmagekdragon.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1609608,
+          0,
+          0
+        ],
+        [
+          0,
+          4893140,
+          0,
+          0
+        ]
+      ],
+      "sha256": "37521b0c37cfcd7cfb313f0532649eb0e9d4007a15c6d2524d34295b0c3790ae"
+    },
+    "kmagekgiant.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1142116,
+          0,
+          0
+        ],
+        [
+          0,
+          3051612,
+          0,
+          0
+        ]
+      ],
+      "sha256": "c456f597bd6c281aa69b447da488e97cc9b7f274bc8ecba4e243ad676f66b959"
+    },
+    "kmagekparasite.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1609608,
+          0,
+          0
+        ],
+        [
+          0,
+          3093244,
+          0,
+          0
+        ]
+      ],
+      "sha256": "7d8638ada4d6e2fb5314afc7b87bf25a4013f149b76525f44ba561a55cf147aa"
+    },
+    "kmageparasitek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "d3d34227988697a1416e50aba326819bd14915ff18f9e5794846c477488ab076"
+    },
+    "kninjadragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7847624,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "de0501b3bef6a6abf8fc81c478c31af9a6c3f71f28d313473de954dc62beb52c"
+    },
+    "kninjafishermank.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5259100,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "2adcd8f6d511a359b43a9dbb89650b0e2492d338d6d98538208796a182df0763"
+    },
+    "kninjagiantk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5198536,
+          0,
+          0
+        ],
+        [
+          0,
+          1142116,
+          0,
+          0
+        ]
+      ],
+      "sha256": "b43c74ea48ece9cbba5c344193b2db26044735da0f7a32f70b86f734206fb1df"
+    },
+    "kninjak.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          136600,
+          0,
+          0
+        ],
+        [
+          0,
+          41808,
+          0,
+          0
+        ]
+      ],
+      "sha256": "4552403a54317cfdb3fee192ea4e7e80d33769ef956ee5b0c8f82548efb87776"
+    },
+    "kninjakdragon.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5259100,
+          0,
+          0
+        ],
+        [
+          0,
+          4893140,
+          0,
+          0
+        ]
+      ],
+      "sha256": "b95ef8b87226cdbcbd0181443086fd4bb55033760d1e3cbc4fff0512141bdf5e"
+    },
+    "kninjakfisherman.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5259100,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "de5c29df362dc35024077e4dcd380fffe6836e469d863e3871a7a1b52549be09"
+    },
+    "kninjakgiant.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3695184,
+          0,
+          0
+        ],
+        [
+          0,
+          3051612,
+          0,
+          0
+        ]
+      ],
+      "sha256": "3a41d7ff3cd4906c814bf8e6bd3af56ec30079cbdd4e43b8ed7c523edff4225b"
+    },
+    "kninjakmage.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5259100,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "8686c7bcc2093ef3812ced89ef620f6f01a876a72b8b928aae23fce957f510be"
+    },
+    "kninjakninja.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5259100,
+          0,
+          0
+        ],
+        [
+          0,
+          5259100,
+          0,
+          0
+        ]
+      ],
+      "sha256": "f6decd9288f45723c055e89e2af71dee4a02865fbaea5b8256952131cfe74898"
+    },
+    "kninjakparasite.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5259100,
+          0,
+          0
+        ],
+        [
+          0,
+          3093244,
+          0,
+          0
+        ]
+      ],
+      "sha256": "3b3eec23f0e5f96eb845c436bf35aabc5eda9b870d96411981f7e8023e5e6c6e"
+    },
+    "kninjakturtle.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5259100,
+          0,
+          0
+        ],
+        [
+          0,
+          2397164,
+          0,
+          0
+        ]
+      ],
+      "sha256": "5aa6d5de8a796b51006eccdaddb13ed8054a9339bc05c05371069365d7358a1a"
+    },
+    "kninjamagek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5259100,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "47d3661b0f889b224609320c39b595ceb0acd7bf96b4842f41c73118ee7c50a9"
+    },
+    "kninjaninjak.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4065174,
+          0,
+          0
+        ],
+        [
+          0,
+          804804,
+          0,
+          0
+        ]
+      ],
+      "sha256": "18fd0757d22df706de52658fc16ff2448be7ddb042e4c84b5561983c1031d6c8"
+    },
+    "kninjaparasitek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6430560,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "c37a2962c07c0e6317ff0db96a1e742c97a63259fe708a80f9423b013d857a60"
+    },
+    "kninjaturtlek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5883660,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "d74dad4d2f24688128956f8a6953f18bfadd5db0d3662844c3e8c99d0f888326"
+    },
+    "kparasitedragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6101004,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "2b91e50eb9ff938d3f0419b34bff35c5496b5c1ee077949f09a46bb4d8090ca2"
+    },
+    "kparasitefishermank.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "6b18865fd3c4e670c68a7ad5845239dece0fabbcbb3fad83c456018b5e274a03"
+    },
+    "kparasitegiantk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3939164,
+          0,
+          0
+        ],
+        [
+          0,
+          1142116,
+          0,
+          0
+        ]
+      ],
+      "sha256": "7b0536386bd6b8525b9054578edba1331f8daabadb6089a555e05001572b926a"
+    },
+    "kparasitek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          80344,
+          0,
+          0
+        ],
+        [
+          0,
+          41808,
+          0,
+          0
+        ]
+      ],
+      "sha256": "f08b2676a703259ef638bc4ab72b9cd7e6b2000afc72dd70b0ac17e03ea858ab"
+    },
+    "kparasitekdragon.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          4893140,
+          0,
+          0
+        ]
+      ],
+      "sha256": "5259021302823eed33bf757a63b2c32caf8f07a45ad619e0fa9ab52af20df75e"
+    },
+    "kparasitekgiant.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2193308,
+          0,
+          0
+        ],
+        [
+          0,
+          3051612,
+          0,
+          0
+        ]
+      ],
+      "sha256": "93b215613d5bd0322ec937aac8f875aa62f4642d913a6f5bf5c43abe0461d434"
+    },
+    "kparasitekparasite.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3093244,
+          0,
+          0
+        ],
+        [
+          0,
+          3093244,
+          0,
+          0
+        ]
+      ],
+      "sha256": "3d8117f1323b75f1b183355ca1eff44c122b40b7647d65ca24135c13be30169e"
+    },
+    "kparasiteparasitek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2229912,
+          0,
+          0
+        ],
+        [
+          0,
+          804804,
+          0,
+          0
+        ]
+      ],
+      "sha256": "000efc03710b9ed9771056a3c2d6490803739a163475094580fe499b39527e70"
+    },
+    "kpawnbombk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          11173990,
+          0,
+          0
+        ],
+        [
+          0,
+          3219216,
+          3586976,
+          5892
+        ]
+      ],
+      "sha256": "804da1e2b87eac100ac6101ea2fe10fc2e83adeb8d0e4f50143f3a89719f3684"
+    },
+    "kpawnk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          101696,
+          0,
+          90160
+        ],
+        [
+          0,
+          83616,
+          0,
+          90160
+        ]
+      ],
+      "sha256": "42a2cd002c3e1b9c15f78fa895f9a9e030e93ac2ddfd2f416c9301ba2a791844"
+    },
+    "kpenguink.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          48064,
+          0,
+          448168
+        ],
+        [
+          0,
+          43568,
+          0,
+          412616
+        ]
+      ],
+      "sha256": "7097ade2d86569ab5d5edf5b5700eaf0c5fa576f92d3510f523b2bf4625b7cbd"
+    },
+    "kprincek.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          80344,
+          38536,
+          0
+        ],
+        [
+          0,
+          41808,
+          492944,
+          16
+        ]
+      ],
+      "sha256": "7bce11ab717f49e1e2b6e1e0844825139382fe324b2ad88a59b5fc027ba0e6c0"
+    },
+    "kqk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          186556,
+          0,
+          0
+        ],
+        [
+          0,
+          41808,
+          0,
+          0
+        ]
+      ],
+      "sha256": "1d5d15c2a5ed93d06aa423d458c9a32b8b7854bafba4f6d15bb4e8fb6cdf1fd3"
+    },
+    "kqueenbishopk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          8527016,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "8ce01962e4b7dde87d17de918bfe89ce50337bd353de2cd19ec8c2b99739774e"
+    },
+    "kqueenbombk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          8590058,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          67760,
+          0
+        ]
+      ],
+      "sha256": "a75bcbfedb3e5fc4f35d711e81b50db0b23d93ef232bdf1ee5b15c44787cf5d9"
+    },
+    "kqueendragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          9325662,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "59dbc00aeff1770fdae48bb5ebeb6db85c4318e17d95f1fa531cc4fcf4c9f32e"
+    },
+    "kqueenfishermank.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7035616,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "d8999ba65bae1875637e5cc4e5b7ad857bb178533a7f41751cbdadce731f1c38"
+    },
+    "kqueengiantk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6215686,
+          0,
+          0
+        ],
+        [
+          0,
+          1142116,
+          0,
+          0
+        ]
+      ],
+      "sha256": "b1e6c719cd0a03774e09c3bb700b63e54f1b6ad940780498c0d5ae3169302d85"
+    },
+    "kqueenkbishop.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7035616,
+          0,
+          0
+        ],
+        [
+          0,
+          3693788,
+          0,
+          0
+        ]
+      ],
+      "sha256": "3cb84ad6176d504554d46a67b62a03853d8590e6940ed9d66a6e983e0e2594f6"
+    },
+    "kqueenkbomb.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7353252,
+          46244,
+          2692
+        ],
+        [
+          0,
+          3842796,
+          528,
+          2700
+        ]
+      ],
+      "sha256": "7317a875224cf62e25de4b51c3bcabb3720fce8c0ebdab45e1db2cd2f4db9330"
+    },
+    "kqueenkdragon.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7035616,
+          0,
+          0
+        ],
+        [
+          0,
+          4893140,
+          0,
+          0
+        ]
+      ],
+      "sha256": "c4cf5caf8667b03528602cfa24f1b35e13bd1d038c5791fb028196965988d7cd"
+    },
+    "kqueenkfisherman.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7035616,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "c321eebe57da1b0b119a42001f06b98d1353528567fc9c6dffcd09b95c27e3b2"
+    },
+    "kqueenkgiant.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4821246,
+          0,
+          0
+        ],
+        [
+          0,
+          3051612,
+          0,
+          0
+        ]
+      ],
+      "sha256": "e9ce180e7176f25be6857375977f5c4f56fc5b5b5805fa1c60a22e6a15510baa"
+    },
+    "kqueenkmage.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7035616,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "88a74961c77c7da83eded1c1d716037ffbe71a46746849651c3a308141d4b2f4"
+    },
+    "kqueenkninja.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7035616,
+          0,
+          0
+        ],
+        [
+          0,
+          5259100,
+          0,
+          0
+        ]
+      ],
+      "sha256": "d406e996eabed529e140e6e31c93a5841561e412ce0350f8e36d169f0ddc8e4c"
+    },
+    "kqueenkparasite.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7035616,
+          0,
+          0
+        ],
+        [
+          0,
+          3093244,
+          0,
+          0
+        ]
+      ],
+      "sha256": "f088d7d7937b6efed0cc69eec38fda1448bbb0351d135b9fb07027a9ad578d39"
+    },
+    "kqueenkqueen.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7035616,
+          0,
+          0
+        ],
+        [
+          0,
+          7035616,
+          0,
+          0
+        ]
+      ],
+      "sha256": "41421585773f70182648370f85b441f6bb7ad39a43a1d9926b249a3c4f435fe1"
+    },
+    "kqueenkrook.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7035616,
+          0,
+          0
+        ],
+        [
+          0,
+          4951436,
+          0,
+          0
+        ]
+      ],
+      "sha256": "e3616069bee07342fda4eed31660b8504ca8c0ac149038c8bbc35e10beb89a90"
+    },
+    "kqueenkturtle.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7035616,
+          0,
+          0
+        ],
+        [
+          0,
+          2397164,
+          0,
+          0
+        ]
+      ],
+      "sha256": "353627128552df82c4eece2999e8e6805a11b29a418078c7f4f255f5e0ec55fe"
+    },
+    "kqueenmagek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7035616,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "de3e8f1a0b0d1d5f216c8be8d4ab9efccf8a7a09a4c803175a4e6651c451a22e"
+    },
+    "kqueenninjak.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          9636854,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "d9b0d5151b48d5137566ed0a0d7364af0122b1b68adfcc6d946afc9a31881f74"
+    },
+    "kqueenparasitek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          8101388,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "6a29b00ab2a1edd510e94e67d5ca70d6da108b15bc9d9a3edd54b547d2b8327c"
+    },
+    "kqueenqueenk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5498014,
+          0,
+          0
+        ],
+        [
+          0,
+          804804,
+          0,
+          0
+        ]
+      ],
+      "sha256": "953ef23458f3681680b5d58736d854930218e59dea4961d8ddec5632108f1b21"
+    },
+    "kqueenrookk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          9504628,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "8674db75197f632ee8a9a0740b3569a49082929879fbd79ea70fe30efd10eaea"
+    },
+    "kqueenturtlek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7609126,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "c2a325eccaf941235c632d386beac95de4cdcc22b2005511b80e538f3353f39a"
+    },
+    "krk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          131312,
+          0,
+          0
+        ],
+        [
+          0,
+          41808,
+          0,
+          0
+        ]
+      ],
+      "sha256": "abeef6191dd9baa87918f74a379592dde9683be81675691e8d8e6550dcd1ce44"
+    },
+    "krookbishopk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6607888,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "0c5930e4043e0581648739b7d5fc499ce18daec8d18e19f04836f27ca49cc2ad"
+    },
+    "krookbombk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6757444,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          67760,
+          0
+        ]
+      ],
+      "sha256": "6af34f7ec80a32ea17a32a38a3ce217e620a3883a5d637e7077706c1b5260443"
+    },
+    "krookdragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7565760,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "7705efb335912c0ed7c8f7dd7c1ac63ea6cce8f353ce5f8f4799d8a09aa4f70c"
+    },
+    "krookfishermank.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4951436,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "093944252b6b71ad34c31a006493a6bb6ab46fef02238e6f1d4714dacf0e6707"
+    },
+    "krookgiantk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5039806,
+          0,
+          0
+        ],
+        [
+          0,
+          1142116,
+          0,
+          0
+        ]
+      ],
+      "sha256": "36b212cd1ac7cc12ad2773453e30d9baef52b691488e5ffe777698708b8d0bc6"
+    },
+    "krookkbishop.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4951436,
+          0,
+          0
+        ],
+        [
+          0,
+          3693788,
+          0,
+          0
+        ]
+      ],
+      "sha256": "ce2f769cedcf748f0cf45fb78eb7f642c5df51e01f2aad7263a65238ab82bc56"
+    },
+    "krookkbomb.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5176766,
+          54846,
+          1440
+        ],
+        [
+          0,
+          3844836,
+          8,
+          1180
+        ]
+      ],
+      "sha256": "8c427bef832972b822da38aedd9c2acbb86fe8f4e1a615c84644cf0e729f5121"
+    },
+    "krookkdragon.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4951436,
+          0,
+          0
+        ],
+        [
+          0,
+          4893140,
+          0,
+          0
+        ]
+      ],
+      "sha256": "59d1e0f5d1a560efbd24fde36c9d5d6947e64ec50509b5500b56cff1b28644d8"
+    },
+    "krookkfisherman.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4951436,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "bd7c952e4779e7b9fd1e035dc1e9eabcd2202c51f0e96b0dfbe38bdd20b713a9"
+    },
+    "krookkgiant.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3443644,
+          0,
+          0
+        ],
+        [
+          0,
+          3051612,
+          0,
+          0
+        ]
+      ],
+      "sha256": "82ef14d4804794e0aba2a3d0faec6441e261f5200546f726f28e50bc1bbc72d6"
+    },
+    "krookkmage.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4951436,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "f7f3e7b23902188d6c0e47673f8c59b483656de94486fa52a0affcb6ced4abd7"
+    },
+    "krookkninja.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4951436,
+          0,
+          0
+        ],
+        [
+          0,
+          5259100,
+          0,
+          0
+        ]
+      ],
+      "sha256": "f3b3c7caa225f800a73cdb302dec38601f02bd805700a1cbb001b41844b23492"
+    },
+    "krookkparasite.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4951436,
+          0,
+          0
+        ],
+        [
+          0,
+          3093244,
+          0,
+          0
+        ]
+      ],
+      "sha256": "05d30182c25ad00379ab4e5c1d51223cb108ee133c30d00efc89faa012e9aed2"
+    },
+    "krookkrook.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4951436,
+          0,
+          0
+        ],
+        [
+          0,
+          4951436,
+          0,
+          0
+        ]
+      ],
+      "sha256": "74424fbc58c6b6e837780bed913ada2eb256cdcaf27fb53162c4b84e1e9d763e"
+    },
+    "krookkturtle.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4951436,
+          0,
+          0
+        ],
+        [
+          0,
+          2397164,
+          0,
+          0
+        ]
+      ],
+      "sha256": "9250b5addb8e8b775422b8eb5d562337847f03ea08fe21cc660e2b7849045819"
+    },
+    "krookmagek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4951436,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "b1704edd22b133cf0e3b036a69990353ce923d10f524aa3802d2ce54d03326ca"
+    },
+    "krookninjak.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          7970578,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "a19e735be310cbf8caa6e8397d8202d134c16a51f9f5de486c3f4f56583584ea"
+    },
+    "krookparasitek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6181260,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "91ca9a8f1a35291a384b84a2813e29433b331cb354039cd992d860cad7ac3c19"
+    },
+    "krookrookk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3924088,
+          0,
+          0
+        ],
+        [
+          0,
+          804804,
+          0,
+          0
+        ]
+      ],
+      "sha256": "6ad45d2181b8bb5e7780e8bb87b654970778d108405c43d21c06954ed287a635"
+    },
+    "krookturtlek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5625326,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "e2752a01a8c10a08344f8aa51373a2913a5c0175b48a476baccb907e7fc77526"
+    },
+    "ksniperk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          194552,
+          0,
+          900052
+        ],
+        [
+          0,
+          167232,
+          1066,
+          901238
+        ]
+      ],
+      "sha256": "473022c95908a45eec7ac8aab7752482d30033cb24f66b65bdf329a7c49c49c5"
+    },
+    "kturtledragonk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5522408,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "5a40d96d2a1f2747a0e246d52add88cd99496a7a6d3e796fc1e11c0bec5a4f36"
+    },
+    "kturtlegiantk.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3504624,
+          0,
+          0
+        ],
+        [
+          0,
+          1142116,
+          0,
+          0
+        ]
+      ],
+      "sha256": "f84a9bc0224441dbb0d78d0fac8fbad6a92ff7159cc9bab1772ccece4f03911a"
+    },
+    "kturtlekdragon.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2397164,
+          0,
+          0
+        ],
+        [
+          0,
+          4893140,
+          0,
+          0
+        ]
+      ],
+      "sha256": "15fd11a4865807c48c1d47b508b5073f78efdf12332b34ab8ff7fd062d567fca"
+    },
+    "kturtlekgiant.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1705440,
+          0,
+          0
+        ],
+        [
+          0,
+          3051612,
+          0,
+          0
+        ]
+      ],
+      "sha256": "08adee4b8b5903dac5038a2d70abed1be2b75773f1ae0b64d5d432d63ef21cc6"
+    },
+    "kturtlekparasite.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2397164,
+          0,
+          0
+        ],
+        [
+          0,
+          3093244,
+          0,
+          0
+        ]
+      ],
+      "sha256": "7e174a2eaa35113df49bbd5b8dd89e16eac9359a96e93b9032d7c1622de8d878"
+    },
+    "kturtleparasitek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3820048,
+          0,
+          0
+        ],
+        [
+          0,
+          1609608,
+          0,
+          0
+        ]
+      ],
+      "sha256": "eecd62d724dc6c09c12d13d3170a88c951b884bb7c6fed5c522c6085a763a0ae"
+    },
+    "kturtleturtlek.uftb": {
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1578876,
+          0,
+          0
+        ],
+        [
+          0,
+          804804,
+          0,
+          0
+        ]
+      ],
+      "sha256": "bbb146a2f252eaf0eb40d23e49d0ddda56de183fb202c515ff64a0fd172037b1"
+    }
+  },
+  "predicate": "ordinary_previous_mover_king_safety",
+  "version": 1
+}

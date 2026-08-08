@@ -1921,12 +1921,19 @@ void test_exact_tablebase_probing() {
             stateful.piece(extra).visible = false;
         else if (type == PieceType::Sniper)
             stateful.piece(extra).cooldown = 3;
-        else if (type == PieceType::Penguin)
-            stateful.piece(extra).cooldown = 5;
         expect(TablebaseProbe::probe(stateful).has_value(),
                std::string("stateful K+") + std::string(Position::type_name(type)) +
                  "+K tablebase is probeable");
     }
+
+    Position fabricatedPenguinCooldown;
+    moved(fabricatedPenguinCooldown, PieceType::King, Color::White, "a1");
+    const int penguin = moved(fabricatedPenguinCooldown, PieceType::Penguin,
+                              Color::White, "c3");
+    moved(fabricatedPenguinCooldown, PieceType::King, Color::Black, "h10");
+    fabricatedPenguinCooldown.piece(penguin).cooldown = 5;
+    expect(!TablebaseProbe::probe(fabricatedPenguinCooldown),
+           "fabricated Penguin cooldown state is outside the exact table domain");
 
     Position princeMate;
     std::string princeError;
@@ -2857,6 +2864,29 @@ void test_safe_ordinary_static_exchange() {
       "SEE declines positions containing Angel attachment semantics");
 }
 
+void test_turn_boundary_reachability() {
+    const auto parses = [](std::string_view upn) {
+        Position position;
+        std::string error;
+        expect(position.set_upn(upn, &error), "reachability fixture parses: " + error);
+        return position;
+    };
+    const Position bombArtifact = parses(
+      "w;king,w,a1;king,b,c1;bomb,w,b1;bomb,w,b2");
+    expect(!bombArtifact.ordinary_predecessor_king_safe(),
+           "a nonmoving King cannot have been left vulnerable to a Bomb blast");
+
+    const Position hiddenRoyal = parses(
+      "w;king,w,a1;king,b,c1;jester,b,h10;bomb,w,b1;bomb,w,b2");
+    expect(hiddenRoyal.ordinary_predecessor_king_safe(),
+           "the previous mover's live Jester suspends ordinary King safety");
+
+    const Position wrongJester = parses(
+      "w;king,w,a1;jester,w,h1;king,b,c1;bomb,w,b1;bomb,w,b2");
+    expect(!wrongJester.ordinary_predecessor_king_safe(),
+           "a Jester owned by the current mover does not protect the previous mover");
+}
+
 }  // namespace
 
 int main() {
@@ -2880,6 +2910,7 @@ int main() {
     test_cooldowns_minions_and_freeze_stacking();
     test_sniper_berserker_and_dragon();
     test_safe_ordinary_static_exchange();
+    test_turn_boundary_reachability();
     test_native_draft_windows_and_costs();
     if (failures) {
         std::cerr << failures << " Ultimate rules test(s) failed\n";

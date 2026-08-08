@@ -180,6 +180,9 @@ class Position {
     void undo_move(const Undo& undo);
 
     [[nodiscard]] bool has_real_king(Color color) const;
+    // Necessary reachability condition at a completed turn boundary. Forced
+    // same-side continuations have their own predecessor rules.
+    [[nodiscard]] bool ordinary_predecessor_king_safe() const;
     [[nodiscard]] bool team_has_sufficient_material(Color color) const;
     [[nodiscard]] bool is_checkmate_possible() const;
     [[nodiscard]] bool game_over() const;

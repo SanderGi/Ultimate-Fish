@@ -6,6 +6,8 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from functools import lru_cache
+import hashlib
+import json
 import math
 from pathlib import Path
 import struct
@@ -14,10 +16,37 @@ import ultimate_tablebase_shards as shards
 
 
 MAGIC = b"UFTB1\0\0\0"
+REACHABILITY = Path(__file__).resolve().parents[1] / "tablebases" / "reachability.json"
 BYTE_RESULTS = tuple(
     tuple(sum(((byte >> (slot * 2)) & 3) == result for slot in range(4))
           for result in range(4))
     for byte in range(256))
+
+
+@lru_cache(maxsize=1)
+def reachability_catalog() -> dict[str, object]:
+    if not REACHABILITY.exists():
+        return {}
+    document = json.loads(REACHABILITY.read_text())
+    if document.get("version") != 1:
+        raise ValueError(f"{REACHABILITY}: unsupported reachability catalog version")
+    return dict(document.get("files", {}))
+
+
+def audited_counts(path: Path, data: bytes, field: str,
+                   digest: str | None = None) -> list[list[int]] | None:
+    record = reachability_catalog().get(path.name)
+    if not isinstance(record, dict):
+        return None
+    if record.get("sha256") != (digest or hashlib.sha256(data).hexdigest()):
+        raise ValueError(f"{path}: stale native reachability audit")
+    counts = record.get(field)
+    if counts is None:
+        return None
+    if (not isinstance(counts, list) or len(counts) != 2 or
+            any(not isinstance(side, list) or len(side) != 4 for side in counts)):
+        raise ValueError(f"{path}: malformed native reachability audit")
+    return [[int(value) for value in side] for side in counts]
 
 
 def kings_for(index: int, count: int, substates: int) -> tuple[int, int]:
@@ -115,7 +144,7 @@ STATE_FACTORS = {
     3: 2,   # Pawn
     7: 10,  # Berserker
     11: 2,  # Ghost
-    14: 12, # Penguin
+    14: 2,  # Penguin inactive / active freeze aura
     19: 4,  # Sniper
     20: 2,  # Prince
     21: 4,  # Checker / CheckerKing x ordinary/forced
@@ -365,7 +394,8 @@ def add_penguin_reachability_artifacts(
                 illegal[side][result] += 1
 
 
-def summary(path: Path, data: bytes | None = None) -> tuple[list[list[int]], list[list[int]]]:
+def summary(path: Path, data: bytes | None = None,
+            digest: str | None = None) -> tuple[list[list[int]], list[list[int]]]:
     if data is None:
         data = shards.read_logical(path)
     magic, version, piece, count, _edges = struct.unpack_from("<8sIIII", data)
@@ -378,7 +408,10 @@ def summary(path: Path, data: bytes | None = None) -> tuple[list[list[int]], lis
         raise ValueError(f"{path}: invalid plane sizes")
     totals = [count_results(wdl, side * count // 2, (side + 1) * count // 2)
               for side in range(2)]
-    illegal = [[0, 0, 0, 0] for _ in range(2)]
+    native_full = audited_counts(path, data, "necessary_reachability", digest)
+    native_safety = audited_counts(
+        path, data, "ordinary_predecessor_safety", digest) if native_full is None else None
+    illegal = native_full or native_safety or [[0, 0, 0, 0] for _ in range(2)]
     # Canonical tables always assign the primary material to Ivory. In same-
     # team classes Onyx is bare; in opposing v5/v6 classes Onyx owns the
     # secondary material as well.
@@ -387,16 +420,16 @@ def summary(path: Path, data: bytes | None = None) -> tuple[list[list[int]], lis
     if version >= 5:
         secondary, secondary_color = struct.unpack_from("<II", data, 40)
     owns_material = (True, secondary_color == 1)
-    # A live Jester intentionally permits its real King to remain threatened.
-    # Inventory ordering makes Jester the primary piece in every class that
-    # contains one, so its adjacent-King states are not artifacts. For other
-    # classes the dense geometric index includes adjacent Kings. Preserve the
-    # established useful-result convention: expected material-owner wins and
-    # bare-side losses remain in the headline totals, while adjacent-King
-    # artifacts that invent a bare-side win or a material-owner loss are shown
-    # parenthetically. The latter matters for stateful continuations such as
-    # Prince cont=2, which used to appear as 38,536 genuine losses.
-    count_adjacent_as_illegal = piece != 1
+    if native_full is not None:
+        expected_size = offset + wdl_bytes + dtw_bytes + exceptions * 6
+        if len(data) != expected_size:
+            raise ValueError(f"{path}: trailing or truncated packed data")
+        return totals, illegal
+    # Audited ordinary classes use Position's complete, color-specific royal
+    # safety simulation. Until each stateful class has a unioned native audit,
+    # retain the older narrow adjacent-King annotation as a conservative
+    # fallback; its special causal predicates below still catch forced phases.
+    count_adjacent_as_illegal = native_safety is None and piece != 1
     if count_adjacent_as_illegal:
         for side in range(2):
             artifact = 2 if owns_material[side] else 1

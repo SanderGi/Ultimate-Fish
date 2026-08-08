@@ -88,8 +88,8 @@ def main() -> None:
         _magic, version, _piece, _count, edges = struct.unpack_from("<8sIIII", data)
         if version >= 6:
             edges = struct.unpack_from("<Q", data, 48)[0]
-        totals, illegal = summarize.summary(path, data)
         digest = hashlib.sha256(data).hexdigest()
+        totals, illegal = summarize.summary(path, data, digest)
         lines.append(
             f"| `{path.name}` | {display_name(record)} | {edges:,} | "
             f"{summarize.cell(totals[0], illegal[0])} | "

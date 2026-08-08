@@ -1463,6 +1463,14 @@ bool Position::real_king_threatened(Color color) const {
     return false;
 }
 
+bool Position::ordinary_predecessor_king_safe() const {
+    if (has_forced_action())
+        return true;
+    const Color previous = ~sideToMove_;
+    return pieces(previous, PieceType::Jester) != 0 ||
+           !real_king_threatened(previous);
+}
+
 bool Position::is_capture(const Move& move) const {
     if (move.flags & Move::CaptureKnown)
         return move.flags & Move::Capture;

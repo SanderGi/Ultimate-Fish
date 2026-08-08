@@ -80,7 +80,7 @@ class TablebasePlanTests(unittest.TestCase):
                              tb.DEFAULT_BUDGET)
         admitted = [record for record in records
                     if record["phase"] == "kings+2-stateful"]
-        self.assertEqual(len(admitted), 24)
+        self.assertEqual(len(admitted), 29)
         represented = {str(record[side]) for record in admitted
                        for side in ("primary", "secondary")}
         self.assertTrue({"pawn", "berserker", "ghost", "penguin", "sniper",
@@ -97,15 +97,16 @@ class TablebasePlanTests(unittest.TestCase):
 
     def test_krk_side_split_and_illegal_annotation(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "krk.uftb")
-        self.assertEqual(summary.cell(totals[0], illegal[0]), "492,960 / 0 / 0")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "361,648 (131,312) / 0 / 0")
         self.assertEqual(summary.cell(totals[1], illegal[1]),
                          "0 (41,808) / 414,300 / 36,852")
 
     def test_prince_continuation_losses_are_annotated_as_illegal(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "kprincek.uftb")
         self.assertEqual(summary.cell(totals[0], illegal[0]),
-                         "947,384 / 0 (38,536) / 0")
-        self.assertEqual(illegal[0], [0, 0, 38_536, 0])
+                         "867,040 (80,344) / 0 (38,536) / 0")
+        self.assertEqual(illegal[0], [0, 80_344, 38_536, 0])
         self.assertEqual(summary.cell(totals[1], illegal[1]),
                          "0 (41,808) / 414,344 (492,944) / 36,808 (16)")
 
@@ -119,27 +120,35 @@ class TablebasePlanTests(unittest.TestCase):
         totals, illegal = summary.summary(
             ROOT / "tablebases" / "kbombcheckerk.uftb")
         self.assertEqual(summary.cell(totals[0], illegal[0]),
-                         "38,253,312 (547,296) / 0 (3,286,402) / "
+                         "29,074,749 (9,725,859) / 0 (3,286,402) / "
                          "0 (33,828,830)")
 
     def test_sniper_pre_turn_change_cooldown_is_unreachable(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "ksniperk.uftb")
         self.assertEqual(summary.cell(totals[0], illegal[0]),
-                         "157,334 (42,232) / 0 / 1,321,546 (450,728)")
+                         "5,014 (194,552) / 0 / 872,222 (900,052)")
         self.assertEqual(summary.cell(totals[1], illegal[1]),
-                         "0 (167,232) / 2,244 (32) / 1,351,212 (451,120)")
+                         "0 (167,232) / 1,210 (1,066) / 901,094 (901,238)")
 
     def test_penguin_wins_with_impossible_aura_turns_are_unreachable(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "kpenguink.uftb")
         self.assertEqual(summary.cell(totals[0], illegal[0]),
-                         "0 (289,648) / 0 (8,992) / 2,928,752 (2,688,128)")
+                         "384 (48,064) / 192 / 489,112 (448,168)")
         self.assertEqual(summary.cell(totals[1], illegal[1]),
-                         "19,576 (261,408) / 0 (10,560) / 3,148,280 (2,475,696)")
+                         "796 (43,568) / 1,760 / 527,180 (412,616)")
+
+    def test_native_stateful_audit_catches_promotion_and_hidden_ghost_states(self):
+        totals, illegal = summary.summary(ROOT / "tablebases" / "kpawnk.uftb")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "576,806 (101,696) / 0 / 217,258 (90,160)")
+        totals, illegal = summary.summary(ROOT / "tablebases" / "kghostk.uftb")
+        self.assertEqual(summary.cell(totals[1], illegal[1]),
+                         "0 (83,616) / 826,992 (38,520) / 36,776 (16)")
 
     def test_invalid_giant_footprints_are_unreachable_draw_sentinels(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "kgiantk.uftb")
         self.assertEqual(summary.cell(totals[0], illegal[0]),
-                         "85,776 / 0 / 273,324 (133,860)")
+                         "3,300 (82,476) / 0 / 273,324 (133,860)")
         self.assertEqual(summary.cell(totals[1], illegal[1]),
                          "0 (30,868) / 1,460 / 326,772 (133,860)")
         self.assertEqual(summary.giant_invalid_placements(37_957_920, 1),
@@ -152,8 +161,24 @@ class TablebasePlanTests(unittest.TestCase):
     def test_jester_adjacent_king_wins_are_legal(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "kjesterk.uftb")
         self.assertEqual(illegal[1], [0, 0, 0, 0])
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "412,616 (80,344) / 0 / 0")
         self.assertEqual(summary.cell(totals[1], illegal[1]),
                          "41,808 / 414,344 / 36,808")
+
+    def test_bomb_chain_predecessor_safety_is_outcome_independent(self):
+        totals, illegal = summary.summary(ROOT / "tablebases" / "kbombbombk.uftb")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "6,651,352 (2,838,050) / 0 (78) / 0")
+        self.assertEqual(summary.cell(totals[1], illegal[1]),
+                         "0 (804,804) / 8,582,770 (70,112) / 31,794")
+
+    def test_every_generated_table_has_a_native_reachability_audit(self):
+        catalog = summary.reachability_catalog()
+        for record in tb.inventory():
+            path = ROOT / "tablebases" / str(record["filename"])
+            if path.exists():
+                self.assertIn(path.name, catalog)
 
     def test_regular_git_shards_round_trip_and_verify(self):
         payload = bytes(range(251)) * 17
