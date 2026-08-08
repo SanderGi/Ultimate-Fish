@@ -17,7 +17,7 @@ represented by that class.
 | `kberserkerk.uftb` | King+Berserker vs King | 92,321,028 | 1,468,376 (3,461,224) / 0 / 0 | 0 (418,080) / 4,143,200 / 368,320 | `f41245a06eb280136c458e6337ef4a588a0d5142b606413b92f84c248487e2b1` |
 | `kbombk.uftb` | King+Bomb vs King | 9,761,788 | 394,988 (97,972) / 0 / 0 | 0 (41,808) / 448,600 (1,760) / 792 | `3d4f44035652e486cbd72c59e8247cfbba355b748107ee2b9d06abfe4674b864` |
 | `kninjak.uftb` | King+Ninja vs King | 12,610,592 | 356,360 (136,600) / 0 / 0 | 0 (41,808) / 413,376 / 37,776 | `4552403a54317cfdb3fee192ea4e7e80d33769ef956ee5b0c8f82548efb87776` |
-| `kghostk.uftb` | King+Ghost vs King | 17,761,144 | 863,768 (122,152) / 0 / 0 | 0 (83,616) / 826,992 (38,520) / 36,776 (16) | `3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31` |
+| `kghostk.uftb` | King+Ghost vs King | 17,761,144 | 902,304 (83,616) / 0 / 0 | 0 (83,616) / 865,512 / 36,792 | `3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31` |
 | `kpenguink.uftb` | King+Penguin vs King | 9,874,656 | 384 (48,064) / 192 / 489,112 (448,168) | 796 (43,568) / 1,760 / 527,180 (412,616) | `7097ade2d86569ab5d5edf5b5700eaf0c5fa576f92d3510f523b2bf4625b7cbd` |
 | `kparasitek.uftb` | King+Parasite vs King | 8,602,716 | 412,616 (80,344) / 0 / 0 | 0 (41,808) / 451,120 / 32 | `f08b2676a703259ef638bc4ab72b9cd7e6b2000afc72dd70b0ac17e03ea858ab` |
 | `ksniperk.uftb` | King+Sniper vs King | 24,180,908 | 5,014 (194,552) / 0 / 872,222 (900,052) | 0 (167,232) / 1,210 (1,066) / 901,094 (901,238) | `473022c95908a45eec7ac8aab7752482d30033cb24f66b65bdf329a7c49c49c5` |
@@ -185,40 +185,42 @@ represented by that class.
 | `kfishermankdragon.uftb` | King+Fisherman vs King+Dragon | 782,325,302 | 0 (1,609,608) / 15,953,310 / 1,416,042 | 14,085,820 (4,893,140) / 0 / 0 | `949f749c991ae2901b0cc9bad4acb8fababef28a5e3e4b62e483211a1d467c41` |
 | `kdragondragonk.uftb` | King+2 Dragons vs King | 338,720,772 | 5,682,590 (3,806,890) / 0 / 0 | 0 (804,804) / 8,655,726 / 28,950 | `fcbd96c4751483c15c31577d3850fd3270ddaac00d7a96fe5495a60f49ede102` |
 | `kdragonkdragon.uftb` | King+Dragon vs King+Dragon | 580,885,096 | 3,622,924 (4,893,140) / 110,414 / 10,352,482 | 3,622,924 (4,893,140) / 110,414 / 10,352,482 | `a8740a9fc8683cd75bcd319081c544e1067796ad37b401a2259f2c6799847b56` |
-| `kbombghostk.uftb` | King+Bomb+Ghost vs King | 969,368,924 | 29,117,000 (8,840,920) / 0 / 0 | 0 (3,219,216) / 33,065,732 (1,612,016) / 59,232 (1,724) | `25fc8d85b05c1104b50118cc7486bd3cfb8bb853eeedbb748cc81d29b95fa86b` |
+| `kbombghostk.uftb` | King+Bomb+Ghost vs King | 969,368,924 | 30,422,890 (7,535,030) / 0 / 0 | 0 (3,219,216) / 34,542,228 (135,520) / 60,956 | `25fc8d85b05c1104b50118cc7486bd3cfb8bb853eeedbb748cc81d29b95fa86b` |
 | `kbombprincek.uftb` | King+Bomb+Prince vs King | 678,856,408 | 31,306,800 (5,077,812) / 0 (1,545,980) / 27,328 | 0 (1,609,608) / 17,263,608 (19,045,852) / 37,984 (868) | `74b48061b11795d274bcbb421019558cedc9fb1decb422c967020c9a8f9f827e` |
 | `kpawnbombk.uftb` | King+Pawn+Bomb vs King | 779,725,448 | 26,783,928 (11,173,990) / 0 / 2 | 0 (3,219,216) / 31,088,884 (3,586,976) / 56,952 (5,892) | `804da1e2b87eac100ac6101ea2fe10fc2e83adeb8d0e4f50143f3a89719f3684` |
 | `kbombcheckerk.uftb` | King+Bomb+Checker vs King | 818,127,549 | 29,074,749 (9,725,859) / 0 (3,286,402) / 0 (33,828,830) | 0 (3,219,216) / 32,817,112 (10,068,704) / 57,398 (29,753,410) | `013330f8184618b0d536da4a4e9417c8fbc1b49fcaab2a1842266e8246b7ad52` |
 | `kbombsniperk.uftb` | King+Bomb+Sniper vs King | 1,509,762,618 | 29,596,516 (46,319,320) / 0 / 2 (2) | 0 (6,438,432) / 34,536,086 (34,802,038) / 67,098 (72,186) | `be04af3e927cf0a34219b0bd2b3663e659da16c86be7775ee8afb05d55150b9e` |
-| `kbishopghostk.uftb` | King+Bishop+Ghost vs King | 958,964,780 | 29,226,628 (8,731,292) / 0 / 0 | 0 (3,219,216) / 32,002,462 (1,482,452) / 1,252,606 (1,184) | `61bc4f9865d4c217868da670e27e16e9a493f31ca15ae6a68f91469b8c48dcf2` |
-| `kbishopkghost.uftb` | King+Bishop vs King+Ghost | 931,510,904 | 0 (7,430,290) / 16,770 (229,350) / 29,208,176 (1,073,334) | 6,505,412 (4,702,852) / 0 / 26,749,656 | `0649b7859ba72c8534929a902f18b3ca1a74cd7d7b3713ac109633e83a85ac15` |
+| `kbishopghostk.uftb` | King+Bishop+Ghost vs King | 958,964,780 | 30,527,630 (7,430,290) / 0 / 0 | 0 (3,219,216) / 33,484,914 / 1,253,790 | `61bc4f9865d4c217868da670e27e16e9a493f31ca15ae6a68f91469b8c48dcf2` |
+| `kbishopkghost.uftb` | King+Bishop vs King+Ghost | 931,510,904 | 0 (7,430,290) / 246,120 / 30,281,510 | 7,989,048 (3,219,216) / 0 / 26,749,656 | `0649b7859ba72c8534929a902f18b3ca1a74cd7d7b3713ac109633e83a85ac15` |
 | `kbishopkprince.uftb` | King+Bishop vs King+Prince | 648,044,796 | 0 (3,693,788) / 12,149,366 (18,668,874) / 3,135,806 (310,086) | 31,533,972 (3,093,244) / 0 (3,082,494) / 248,210 | `e3e2ae7d3c017eeaf0b0365b7bc1114170d0b076ea55dbc83ff66ebbbf318fb9` |
 | `kbishopprincek.uftb` | King+Bishop+Prince vs King | 673,430,482 | 31,456,226 (5,013,372) / 0 (1,483,636) / 4,686 | 0 (1,609,608) / 16,113,394 (18,972,918) / 1,255,958 (6,042) | `bdfb6056b073a1c261379d0e2d56ffdc30f3422cf6ed5de00a912cfe3a117116` |
-| `kbombkghost.uftb` | King+Bomb vs King+Ghost | 941,791,120 | 22,593,234 (8,298,186) / 49,906 (130,734) / 6,398,378 (487,482) | 1,782,612 (4,708,268) / 18,679,062 (124,688) / 12,663,290 | `29305aa38fce6a02b0ca1dca724388c02d6e8a4ec5002edc123248c59850bfd0` |
+| `kbombkghost.uftb` | King+Bomb vs King+Ghost | 941,791,120 | 23,276,066 (7,615,354) / 180,348 (292) / 6,883,560 (2,300) | 3,260,832 (3,230,048) / 18,679,062 (124,688) / 12,663,290 | `29305aa38fce6a02b0ca1dca724388c02d6e8a4ec5002edc123248c59850bfd0` |
 | `kbombkprince.uftb` | King+Bomb vs King+Prince | 648,908,976 | 5,503,540 (7,726,596) / 4,450,992 (10,145,276) / 5,178,404 (4,953,112) | 17,973,414 (3,162,508) / 5,324,652 (3,453,840) / 8,043,154 (352) | `cd220ce57a5db672809cf550f82f9d06f2195e60a001f6fe2e6c5186fabf8b94` |
-| `kghostdragonk.uftb` | King+Ghost+Dragon vs King | 1,125,863,212 | 26,939,644 (11,018,276) / 0 / 0 | 0 (3,219,216) / 33,239,122 (1,480,412) / 15,946 (3,224) | `863de816680ef282923aca7cf9a5bf0b60cd76fa01dc7c2ffdf6a64e51a3b236` |
-| `kghostfishermank.uftb` | King+Ghost+Fisherman vs King | 1,501,353,596 | 33,255,068 (4,702,852) / 0 / 0 | 0 (3,219,216) / 31,839,192 (1,483,020) / 1,415,876 (616) | `94db43bfad0d5e40f35e5cae91ddff67789f90741f28f5ebef357fc10fd77dea` |
-| `kghostghostk.uftb` | King+2 Ghosts vs King | 898,829,504 | 31,829,960 (6,127,960) / 0 / 0 | 0 (3,219,216) / 31,829,960 (2,907,496) / 0 (1,248) | `204f4de6d0f9ff6da111d3d0c0a08c3562493cdec2130cc946b4eae7183012ee` |
-| `kghostgiantk.uftb` | King+Ghost+Giant vs King | 497,645,576 | 19,660,036 (6,913,364) / 0 / 0 (11,384,520) | 0 (2,284,232) / 22,395,792 (1,049,920) / 842,184 (11,385,792) | `5261c5a3d62f8711e2d6e007b89788701a7cdd2ab2afda0edea5607514e4c793` |
-| `kghostkdragon.uftb` | King+Ghost vs King+Dragon | 1,083,015,640 | 6,472,220 (4,702,852) / 1,136,062 / 25,646,786 | 7,655,934 (9,832,194) / 5,792 (213,998) / 19,266,524 (983,478) | `f9e825a80062da30fb4ffcb40ad7c9e4cf7348e03f2269e83812c34925080225` |
-| `kghostkfisherman.uftb` | King+Ghost vs King+Fisherman | 1,501,353,596 | 6,480,254 (4,702,852) / 0 / 26,774,814 | 0 (3,219,216) / 12,160 (154,200) / 33,242,908 (1,329,436) | `ed56e8ccba231dbe962870891330ebae25495c3693e010b7aa874d511183c389` |
-| `kghostkgiant.uftb` | King+Ghost vs King+Giant | 472,896,720 | 23,023,276 (3,335,424) / 44,444 / 170,256 (11,384,520) | 79,414 (6,103,488) / 15,513,330 (810,214) / 3,992,004 (11,459,470) | `452b47d680ae8c40b4136d33c3398145909c68119a9fe1c53cde0e7c4c5e7a63` |
-| `kghostkmage.uftb` | King+Ghost vs King+Mage | 709,666,128 | 33,255,068 (4,702,852) / 0 / 0 | 0 (3,219,216) / 31,839,192 (1,483,584) / 1,415,876 (52) | `d23e1c2253e1ff26822069f5852989c73c1ab308b3720ce4a5473fa29c881519` |
-| `kghostkparasite.uftb` | King+Ghost vs King+Parasite | 861,905,568 | 1,997,810 (4,702,852) / 31,182,462 / 74,796 | 30,220,468 (7,390,752) / 167,760 (147,194) / 26,748 (4,998) | `18c6dc8986ac43d9f38315bbc9e0c2ab6b0bed32c6c638991be01478cc2aceff` |
-| `kghostmagek.uftb` | King+Ghost+Mage vs King | 744,404,832 | 33,255,068 (4,702,852) / 0 / 0 | 0 (3,219,216) / 31,839,192 (1,483,020) / 1,415,876 (616) | `061a250c66c18e769baec7410be2257db98e669cf6b3d6b39cd5153b27792596` |
-| `kghostparasitek.uftb` | King+Ghost+Parasite vs King | 881,036,992 | 30,404,852 (7,553,068) / 0 / 0 | 0 (3,219,216) / 33,252,652 (1,482,156) / 2,416 (1,480) | `1bb1c977b7af34b2295dd6c693d8a79006e69ab2f4291a828b930515742222ca` |
+| `kghostdragonk.uftb` | King+Ghost+Dragon vs King | 1,125,863,212 | 28,128,926 (9,828,994) / 0 / 0 | 0 (3,219,216) / 34,719,534 / 19,170 | `863de816680ef282923aca7cf9a5bf0b60cd76fa01dc7c2ffdf6a64e51a3b236` |
+| `kghostfishermank.uftb` | King+Ghost+Fisherman vs King | 1,501,353,596 | 34,738,704 (3,219,216) / 0 / 0 | 0 (3,219,216) / 33,322,212 / 1,416,492 | `94db43bfad0d5e40f35e5cae91ddff67789f90741f28f5ebef357fc10fd77dea` |
+| `kghostghostk.uftb` | King+2 Ghosts vs King | 898,829,504 | 34,738,704 (3,219,216) / 0 / 0 | 0 (3,219,216) / 34,737,456 / 1,248 | `204f4de6d0f9ff6da111d3d0c0a08c3562493cdec2130cc946b4eae7183012ee` |
+| `kghostgiantk.uftb` | King+Ghost+Giant vs King | 497,645,576 | 20,625,000 (5,948,400) / 0 / 0 (11,384,520) | 0 (2,284,232) / 23,445,712 / 843,456 (11,384,520) | `5261c5a3d62f8711e2d6e007b89788701a7cdd2ab2afda0edea5607514e4c793` |
+| `kghostkdragon.uftb` | King+Ghost vs King+Dragon | 1,083,015,640 | 7,955,856 (3,219,216) / 1,136,062 / 25,646,786 | 7,659,134 (9,828,994) / 219,790 / 20,250,002 | `f9e825a80062da30fb4ffcb40ad7c9e4cf7348e03f2269e83812c34925080225` |
+| `kghostkfisherman.uftb` | King+Ghost vs King+Fisherman | 1,501,353,596 | 7,963,890 (3,219,216) / 0 / 26,774,814 | 0 (3,219,216) / 166,360 / 34,572,344 | `ed56e8ccba231dbe962870891330ebae25495c3693e010b7aa874d511183c389` |
+| `kghostkgiant.uftb` | King+Ghost vs King+Giant | 472,896,720 | 24,074,468 (2,284,232) / 44,444 / 170,256 (11,384,520) | 79,678 (6,103,224) / 16,323,544 / 4,066,954 (11,384,520) | `452b47d680ae8c40b4136d33c3398145909c68119a9fe1c53cde0e7c4c5e7a63` |
+| `kghostkmage.uftb` | King+Ghost vs King+Mage | 709,666,128 | 34,738,704 (3,219,216) / 0 / 0 | 0 (3,219,216) / 33,322,776 / 1,415,928 | `d23e1c2253e1ff26822069f5852989c73c1ab308b3720ce4a5473fa29c881519` |
+| `kghostkparasite.uftb` | King+Ghost vs King+Parasite | 861,905,568 | 3,481,446 (3,219,216) / 31,182,462 / 74,796 | 31,424,732 (6,186,488) / 314,954 / 31,746 | `18c6dc8986ac43d9f38315bbc9e0c2ab6b0bed32c6c638991be01478cc2aceff` |
+| `kghostmagek.uftb` | King+Ghost+Mage vs King | 744,404,832 | 34,738,704 (3,219,216) / 0 / 0 | 0 (3,219,216) / 33,322,212 / 1,416,492 | `061a250c66c18e769baec7410be2257db98e669cf6b3d6b39cd5153b27792596` |
+| `kghostparasitek.uftb` | King+Ghost+Parasite vs King | 881,036,992 | 31,771,432 (6,186,488) / 0 / 0 | 0 (3,219,216) / 34,734,808 / 3,896 | `1bb1c977b7af34b2295dd6c693d8a79006e69ab2f4291a828b930515742222ca` |
 <!-- GENERATED_TABLE_END -->
 
 Each W / L / D cell is from the perspective of the side to move named by its
 column. Parentheses separate unreachable dense-index states and exclude them
-from the preceding legal-result count. Every generated row has a SHA-bound
+from the preceding result count. They are proven causal impossibilities, not a
+claim that every unparenthesized state is reachable from a particular Ranked
+deployment. Every generated row has a SHA-bound
 native audit using the same royal-safety simulation as move legality: at an
 ordinary turn boundary, the previous mover cannot have left its real King
 threatened unless that side still owns a live Jester. The audit is
 outcome-independent and includes indirect royal kills through Bomb chains and
 other character effects. Stateful audits union that condition by state identity
-with recovered causal failures such as impossible promotion squares, hidden
-Ghost adjacency, Sniper cooldown/turn parity, an active Penguin aura with no
+with recovered causal failures such as impossible promotion squares, Sniper
+cooldown/turn parity, an active Penguin aura with no
 frozen model, an impossible forced-action turn, or a turn that could not survive
 the frozen lone enemy King. A Jester exemption is color-specific; the 41,808
 bare-King-side wins in `kjesterk` remain legal because the previous mover owns

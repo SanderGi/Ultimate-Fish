@@ -143,7 +143,7 @@ class TablebasePlanTests(unittest.TestCase):
                          "576,806 (101,696) / 0 / 217,258 (90,160)")
         totals, illegal = summary.summary(ROOT / "tablebases" / "kghostk.uftb")
         self.assertEqual(summary.cell(totals[1], illegal[1]),
-                         "0 (83,616) / 826,992 (38,520) / 36,776 (16)")
+                         "0 (83,616) / 865,512 / 36,792")
 
     def test_invalid_giant_footprints_are_unreachable_draw_sentinels(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "kgiantk.uftb")

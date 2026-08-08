@@ -575,23 +575,6 @@ class TablebaseGenerator {
                                                               ? Position::BoardRanks - 1 : 0;
                                     unreachable = piece.square / Position::BoardFiles == promotionRank;
                                 }
-                                else if (piece.type == PieceType::Ghost && !piece.visible) {
-                                    for (int royal = 0; royal < position.pieceCount_; ++royal) {
-                                        const PieceState& target = position.pieces_[royal];
-                                        if (!target.alive || !target.onBoard ||
-                                            target.color == piece.color ||
-                                            (target.type != PieceType::King &&
-                                             target.type != PieceType::Jester))
-                                            continue;
-                                        unreachable = std::max(
-                                          std::abs(int(piece.square % Position::BoardFiles) -
-                                                   int(target.square % Position::BoardFiles)),
-                                          std::abs(int(piece.square / Position::BoardFiles) -
-                                                   int(target.square / Position::BoardFiles))) <= 1;
-                                        if (unreachable)
-                                            break;
-                                    }
-                                }
                             }
                             // An active aura freezing a lone enemy King cannot
                             // survive until the Penguin owner's next turn: the
