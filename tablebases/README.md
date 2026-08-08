@@ -206,6 +206,7 @@ represented by that class.
 | `kghostkmage.uftb` | King+Ghost vs King+Mage | 709,666,128 | 37,957,920 / 0 / 0 | 3,219,216 / 33,322,776 / 1,415,928 | `d23e1c2253e1ff26822069f5852989c73c1ab308b3720ce4a5473fa29c881519` |
 | `kghostkparasite.uftb` | King+Ghost vs King+Parasite | 861,905,568 | 6,700,662 / 31,182,462 / 74,796 | 37,611,220 / 314,954 / 31,746 | `18c6dc8986ac43d9f38315bbc9e0c2ab6b0bed32c6c638991be01478cc2aceff` |
 | `kghostmagek.uftb` | King+Ghost+Mage vs King | 744,404,832 | 37,957,920 / 0 / 0 | 0 (3,219,216) / 33,322,212 / 1,416,492 | `061a250c66c18e769baec7410be2257db98e669cf6b3d6b39cd5153b27792596` |
+| `kghostparasitek.uftb` | King+Ghost+Parasite vs King | 881,036,992 | 37,957,920 / 0 / 0 | 0 (3,219,216) / 34,734,808 / 3,896 | `1bb1c977b7af34b2295dd6c693d8a79006e69ab2f4291a828b930515742222ca` |
 <!-- GENERATED_TABLE_END -->
 
 Each W / L / D cell is from the perspective of the side to move named by its
