@@ -186,6 +186,7 @@ represented by that class.
 | `kdragondragonk.uftb` | King+2 Dragons vs King | 338,720,772 | 5,682,590 (3,806,890) / 0 / 0 | 0 (804,804) / 8,655,726 / 28,950 | `fcbd96c4751483c15c31577d3850fd3270ddaac00d7a96fe5495a60f49ede102` |
 | `kdragonkdragon.uftb` | King+Dragon vs King+Dragon | 580,885,096 | 3,622,924 (4,893,140) / 110,414 / 10,352,482 | 3,622,924 (4,893,140) / 110,414 / 10,352,482 | `a8740a9fc8683cd75bcd319081c544e1067796ad37b401a2259f2c6799847b56` |
 | `kbombghostk.uftb` | King+Bomb+Ghost vs King | 969,368,924 | 30,422,890 (7,535,030) / 0 / 0 | 0 (3,219,216) / 34,542,228 (135,520) / 60,956 | `25fc8d85b05c1104b50118cc7486bd3cfb8bb853eeedbb748cc81d29b95fa86b` |
+| `kbombpenguink.uftb` | King+Bomb+Penguin vs King | 571,189,358 | 17,706,778 (5,565,108) / 7,182 (918) / 53,716 (14,624,218) | 27,840 (1,799,520) / 19,930,438 (71,756) / 1,608,118 (14,520,248) | `82cf3af9f6175786884628b9c0c30942abe3be0659d74996cc160c1b469c3319` |
 | `kbombprincek.uftb` | King+Bomb+Prince vs King | 678,856,408 | 31,306,800 (5,077,812) / 0 (1,545,980) / 27,328 | 0 (1,609,608) / 17,263,608 (19,045,852) / 37,984 (868) | `74b48061b11795d274bcbb421019558cedc9fb1decb422c967020c9a8f9f827e` |
 | `kpawnbombk.uftb` | King+Pawn+Bomb vs King | 779,725,448 | 26,783,928 (11,173,990) / 0 / 2 | 0 (3,219,216) / 31,088,884 (3,586,976) / 56,952 (5,892) | `804da1e2b87eac100ac6101ea2fe10fc2e83adeb8d0e4f50143f3a89719f3684` |
 | `kbombcheckerk.uftb` | King+Bomb+Checker vs King | 818,127,549 | 29,074,749 (9,725,859) / 0 (3,286,402) / 0 (33,828,830) | 0 (3,219,216) / 32,817,112 (10,068,704) / 57,398 (29,753,410) | `013330f8184618b0d536da4a4e9417c8fbc1b49fcaab2a1842266e8246b7ad52` |
@@ -193,9 +194,12 @@ represented by that class.
 | `kberserkerbombk.uftb` | King+Berserker+Bomb vs King | 11,931,939,740 | 49,719,592 (140,070,008) / 0 / 0 | 0 (16,096,080) / 172,804,228 (677,600) / 211,692 | `b05efd1d29f32bd1647ee78672a7b5acd3468729a0b262e4370754a74216c1f6` |
 | `kbishopghostk.uftb` | King+Bishop+Ghost vs King | 958,964,780 | 30,527,630 (7,430,290) / 0 / 0 | 0 (3,219,216) / 33,484,914 / 1,253,790 | `61bc4f9865d4c217868da670e27e16e9a493f31ca15ae6a68f91469b8c48dcf2` |
 | `kbishopkghost.uftb` | King+Bishop vs King+Ghost | 931,510,904 | 0 (7,430,290) / 246,120 / 30,281,510 | 7,989,048 (3,219,216) / 0 / 26,749,656 | `0649b7859ba72c8534929a902f18b3ca1a74cd7d7b3713ac109633e83a85ac15` |
+| `kbishopkpenguin.uftb` | King+Bishop vs King+Penguin | 548,610,928 | 327,680 (4,200,384) / 442,674 / 18,468,046 (14,519,136) | 1,918,710 (1,831,104) / 128,814 / 19,471,572 (14,607,720) | `cc50f8a92e10f18e5d2f5b4c42fb298f7e70e49cb4723bb193491b97d0b7afee` |
 | `kbishopkprince.uftb` | King+Bishop vs King+Prince | 648,044,796 | 0 (3,693,788) / 12,149,366 (18,668,874) / 3,135,806 (310,086) | 31,533,972 (3,093,244) / 0 (3,082,494) / 248,210 | `e3e2ae7d3c017eeaf0b0365b7bc1114170d0b076ea55dbc83ff66ebbbf318fb9` |
+| `kbishoppenguink.uftb` | King+Bishop+Penguin vs King | 563,484,664 | 168,786 (4,810,998) / 7,248 / 17,672,042 (15,298,846) | 29,018 (1,799,132) / 244,310 / 21,366,324 (14,519,136) | `df5acdf459387330ee9ca968f694076fe4f282665f63d4d0ad33ab5167a878ad` |
 | `kbishopprincek.uftb` | King+Bishop+Prince vs King | 673,430,482 | 31,456,226 (5,013,372) / 0 (1,483,636) / 4,686 | 0 (1,609,608) / 16,113,394 (18,972,918) / 1,255,958 (6,042) | `bdfb6056b073a1c261379d0e2d56ffdc30f3422cf6ed5de00a912cfe3a117116` |
 | `kbombkghost.uftb` | King+Bomb vs King+Ghost | 941,791,120 | 23,276,066 (7,615,354) / 180,348 (292) / 6,883,560 (2,300) | 3,260,832 (3,230,048) / 18,679,062 (124,688) / 12,663,290 | `29305aa38fce6a02b0ca1dca724388c02d6e8a4ec5002edc123248c59850bfd0` |
+| `kbombkpenguin.uftb` | King+Bomb vs King+Penguin | 555,642,912 | 6,593,680 (4,340,536) / 406,090 (6,876) / 12,086,542 (14,524,196) | 1,559,586 (1,826,880) / 3,972,334 (31,726) / 15,915,376 (14,652,018) | `9a13b1b54eccfab965fd7babc812a6368d557e7d28e3479d80bd6b6a5fb10f6c` |
 | `kbombkprince.uftb` | King+Bomb vs King+Prince | 648,908,976 | 5,503,540 (7,726,596) / 4,450,992 (10,145,276) / 5,178,404 (4,953,112) | 17,973,414 (3,162,508) / 5,324,652 (3,453,840) / 8,043,154 (352) | `cd220ce57a5db672809cf550f82f9d06f2195e60a001f6fe2e6c5186fabf8b94` |
 | `kghostdragonk.uftb` | King+Ghost+Dragon vs King | 1,125,863,212 | 28,128,926 (9,828,994) / 0 / 0 | 0 (3,219,216) / 34,719,534 / 19,170 | `863de816680ef282923aca7cf9a5bf0b60cd76fa01dc7c2ffdf6a64e51a3b236` |
 | `kghostfishermank.uftb` | King+Ghost+Fisherman vs King | 1,501,353,596 | 34,738,704 (3,219,216) / 0 / 0 | 0 (3,219,216) / 33,322,212 / 1,416,492 | `94db43bfad0d5e40f35e5cae91ddff67789f90741f28f5ebef357fc10fd77dea` |
@@ -208,6 +212,8 @@ represented by that class.
 | `kghostkparasite.uftb` | King+Ghost vs King+Parasite | 861,905,568 | 3,481,446 (3,219,216) / 31,182,462 / 74,796 | 31,424,732 (6,186,488) / 314,954 / 31,746 | `18c6dc8986ac43d9f38315bbc9e0c2ab6b0bed32c6c638991be01478cc2aceff` |
 | `kghostmagek.uftb` | King+Ghost+Mage vs King | 744,404,832 | 34,738,704 (3,219,216) / 0 / 0 | 0 (3,219,216) / 33,322,212 / 1,416,492 | `061a250c66c18e769baec7410be2257db98e669cf6b3d6b39cd5153b27792596` |
 | `kghostparasitek.uftb` | King+Ghost+Parasite vs King | 881,036,992 | 31,771,432 (6,186,488) / 0 / 0 | 0 (3,219,216) / 34,734,808 / 3,896 | `1bb1c977b7af34b2295dd6c693d8a79006e69ab2f4291a828b930515742222ca` |
+| `kjesterghostk.uftb` | King+Jester+Ghost vs King | 941,701,408 | 31,771,432 (6,186,488) / 0 / 0 | 3,219,216 / 34,734,808 / 3,896 | `ad82489372318a7561a43a7c2d0cbc1fdc3e5a840c67470c5eb25704fdfecf7e` |
+| `kjesterkghost.uftb` | King+Jester vs King+Ghost | 901,811,648 | 4,720,184 (6,186,488) / 1,380,558 / 25,670,690 | 13,279,972 / 987,932 / 23,690,016 | `d9b75b6aa4d4cad713206e18f12efb1c4781adea0cc5f99a4a77fd58eca92cc3` |
 <!-- GENERATED_TABLE_END -->
 
 Each W / L / D cell is from the perspective of the side to move named by its

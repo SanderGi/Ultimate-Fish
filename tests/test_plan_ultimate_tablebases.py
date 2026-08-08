@@ -173,6 +173,40 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertEqual(summary.cell(totals[1], illegal[1]),
                          "0 (804,804) / 8,582,770 (70,112) / 31,794")
 
+    def test_penguin_pairings_keep_causal_turn_artifacts_parenthesized(self):
+        totals, illegal = summary.summary(
+            ROOT / "tablebases" / "kbombpenguink.uftb")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "17,706,778 (5,565,108) / 7,182 (918) / "
+                         "53,716 (14,624,218)")
+        self.assertEqual(summary.cell(totals[1], illegal[1]),
+                         "27,840 (1,799,520) / 19,930,438 (71,756) / "
+                         "1,608,118 (14,520,248)")
+
+        totals, illegal = summary.summary(
+            ROOT / "tablebases" / "kbombkpenguin.uftb")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "6,593,680 (4,340,536) / 406,090 (6,876) / "
+                         "12,086,542 (14,524,196)")
+        self.assertEqual(summary.cell(totals[1], illegal[1]),
+                         "1,559,586 (1,826,880) / 3,972,334 (31,726) / "
+                         "15,915,376 (14,652,018)")
+
+    def test_jester_ghost_audit_is_directional_by_jester_owner(self):
+        totals, illegal = summary.summary(
+            ROOT / "tablebases" / "kjesterghostk.uftb")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "31,771,432 (6,186,488) / 0 / 0")
+        self.assertEqual(summary.cell(totals[1], illegal[1]),
+                         "3,219,216 / 34,734,808 / 3,896")
+
+        totals, illegal = summary.summary(
+            ROOT / "tablebases" / "kjesterkghost.uftb")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "4,720,184 (6,186,488) / 1,380,558 / 25,670,690")
+        self.assertEqual(summary.cell(totals[1], illegal[1]),
+                         "13,279,972 / 987,932 / 23,690,016")
+
     def test_every_generated_table_has_a_native_reachability_audit(self):
         catalog = summary.reachability_catalog()
         for record in tb.inventory():

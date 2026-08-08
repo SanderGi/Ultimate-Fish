@@ -238,6 +238,23 @@
       ],
       "sha256": "4974a88a0665613f8097467df8bf39c67a1048046963e7be6f0cbbd802e879b0"
     },
+    "kbishopkpenguin.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          4200384,
+          0,
+          14519136
+        ],
+        [
+          0,
+          1831104,
+          0,
+          14607720
+        ]
+      ],
+      "sha256": "cc50f8a92e10f18e5d2f5b4c42fb298f7e70e49cb4723bb193491b97d0b7afee"
+    },
     "kbishopkprince.uftb": {
       "necessary_reachability": [
         [
@@ -305,6 +322,23 @@
         ]
       ],
       "sha256": "f47108fdea572a895b49d0e1ac7f94e342f0029a753a7aa3cd99217ae4d275fb"
+    },
+    "kbishoppenguink.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          4810998,
+          0,
+          15298846
+        ],
+        [
+          0,
+          1799132,
+          0,
+          14519136
+        ]
+      ],
+      "sha256": "df5acdf459387330ee9ca968f694076fe4f282665f63d4d0ad33ab5167a878ad"
     },
     "kbishopprincek.uftb": {
       "necessary_reachability": [
@@ -595,6 +629,23 @@
       ],
       "sha256": "bc300fdbcb2945fd8fe494f09337a39f28fe7f6c41debac8535a7b124fca3d5f"
     },
+    "kbombkpenguin.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          4340536,
+          6876,
+          14524196
+        ],
+        [
+          0,
+          1826880,
+          31726,
+          14652018
+        ]
+      ],
+      "sha256": "9a13b1b54eccfab965fd7babc812a6368d557e7d28e3479d80bd6b6a5fb10f6c"
+    },
     "kbombkprince.uftb": {
       "necessary_reachability": [
         [
@@ -679,6 +730,23 @@
         ]
       ],
       "sha256": "2af30741c6d6e9892aac5bd68b397454f3e351f0e459d04c274e47a7f80d9a30"
+    },
+    "kbombpenguink.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          5565108,
+          918,
+          14624218
+        ],
+        [
+          0,
+          1799520,
+          71756,
+          14520248
+        ]
+      ],
+      "sha256": "82cf3af9f6175786884628b9c0c30942abe3be0659d74996cc160c1b469c3319"
     },
     "kbombprincek.uftb": {
       "necessary_reachability": [
@@ -1241,6 +1309,23 @@
       ],
       "sha256": "3f335332d457d184fc3a20b5ddddf2806911bb5e5bfd607872eb757a2a90a968"
     },
+    "kjesterghostk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          6186488,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "ad82489372318a7561a43a7c2d0cbc1fdc3e5a840c67470c5eb25704fdfecf7e"
+    },
     "kjestergiantk.uftb": {
       "ordinary_predecessor_safety": [
         [
@@ -1359,6 +1444,23 @@
         ]
       ],
       "sha256": "ce378df3a2be9b6fe0dcb82098a88abc7067ed1cde02821ca744af46dc461df0"
+    },
+    "kjesterkghost.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          6186488,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "sha256": "d9b75b6aa4d4cad713206e18f12efb1c4781adea0cc5f99a4a77fd58eca92cc3"
     },
     "kjesterkgiant.uftb": {
       "ordinary_predecessor_safety": [
