@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstdint>
@@ -472,14 +473,59 @@ class TablebaseGenerator {
         const auto start = std::chrono::steady_clock::now();
         std::uint32_t begin = load_checkpoint();
         const std::uint32_t progressEvery = checkpointEvery_ ? checkpointEvery_ : 2'000'000;
-        for (std::uint32_t index = begin; index < stateCount_; ++index) {
-            analyze_node(index, true, [](std::uint32_t, bool) {});
-            if ((index + 1) % progressEvery == 0) {
-                if (checkpointEvery_)
-                    save_checkpoint(index + 1);
-                progress("frontier", index + 1, start);
+        const bool parallelScan = !checkpointEvery_ &&
+                                  (diskBacked_ || stateCount_ >= 300'000'000);
+        const auto scan = [&](const char* phase, std::uint32_t scanBegin, auto&& action) {
+            if (!parallelScan) {
+                for (std::uint32_t index = scanBegin; index < stateCount_; ++index) {
+                    action(index, false);
+                    if ((index + 1) % progressEvery == 0)
+                        progress(phase, index + 1, start);
+                }
+                return;
             }
-        }
+            constexpr std::uint32_t Block = 10'000;
+            const std::uint32_t workers = std::min<std::uint32_t>(
+              4, std::max(1u, std::thread::hardware_concurrency()));
+            std::atomic<std::uint32_t> next{scanBegin};
+            std::atomic<std::uint32_t> completed{scanBegin};
+            std::atomic<std::uint32_t> nextReport{
+              static_cast<std::uint32_t>((scanBegin / progressEvery + 1) * progressEvery)};
+            std::vector<std::thread> tasks;
+            for (std::uint32_t worker = 0; worker < workers; ++worker)
+                tasks.emplace_back([&] {
+                    for (;;) {
+                        const std::uint32_t blockBegin = next.fetch_add(
+                          Block, std::memory_order_relaxed);
+                        if (blockBegin >= stateCount_)
+                            break;
+                        const std::uint32_t blockEnd = std::min(
+                          stateCount_, static_cast<std::uint32_t>(blockBegin + Block));
+                        for (std::uint32_t index = blockBegin; index < blockEnd; ++index)
+                            action(index, true);
+                        const std::uint32_t done = completed.fetch_add(
+                          blockEnd - blockBegin, std::memory_order_relaxed) +
+                          blockEnd - blockBegin;
+                        std::uint32_t report = nextReport.load(std::memory_order_relaxed);
+                        while (done >= report && report <= stateCount_ &&
+                               !nextReport.compare_exchange_weak(
+                                 report, static_cast<std::uint32_t>(report + progressEvery),
+                                 std::memory_order_relaxed)) {}
+                        if (done >= report && report <= stateCount_)
+                            progress(phase, report, start);
+                    }
+                });
+            for (auto& task : tasks)
+                task.join();
+        };
+        scan("frontier", begin, [&](std::uint32_t index, bool atomic) {
+            analyze_node(index, true, [&](std::uint32_t child, bool) {
+                if (atomic)
+                    __atomic_fetch_add(&predecessorCounts_[child], 1u, __ATOMIC_RELAXED);
+                else
+                    ++predecessorCounts_[child];
+            });
+        });
         if (checkpointEvery_)
             save_checkpoint(stateCount_);
 
@@ -495,13 +541,14 @@ class TablebaseGenerator {
             constexpr std::uint32_t SameSideMask = std::uint32_t{1} << 31;
             if (stateCount_ >= SameSideMask)
                 throw std::runtime_error("tablebase state index exceeds packed edge capacity");
-            for (std::uint32_t index = 0; index < stateCount_; ++index) {
+            scan("reverse", 0, [&](std::uint32_t index, bool atomic) {
                 analyze_node(index, false, [&](std::uint32_t child, bool sameSide) {
-                    predecessors[offsets[child]++] = index | (sameSide ? SameSideMask : 0);
+                    const Offset cursor = atomic
+                      ? __atomic_fetch_add(&offsets[child], Offset{1}, __ATOMIC_RELAXED)
+                      : offsets[child]++;
+                    predecessors[cursor] = index | (sameSide ? SameSideMask : 0);
                 });
-                if ((index + 1) % progressEvery == 0)
-                    progress("reverse", index + 1, start);
-            }
+            });
 
             // Filling reused the offsets as cursors. Reconstruct their prefix
             // values from the degree plane, then release that 4-byte-per-state
@@ -902,10 +949,7 @@ class TablebaseGenerator {
                 continue;  // Captures enter K-v-K; promotions use a lower table.
             }
             const std::uint32_t successor = child_index(child);
-            if (initialize)
-                ++predecessorCounts_[successor];
-            else
-                consume(successor, child.side_to_move() == position.side_to_move());
+            consume(successor, child.side_to_move() == position.side_to_move());
         }
     }
 
