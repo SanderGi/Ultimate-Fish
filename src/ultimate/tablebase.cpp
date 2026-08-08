@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <sys/mman.h>
@@ -256,6 +257,7 @@ class MappedArray {
 
     T& operator[](std::uint64_t index) { return data_[index]; }
     const T& operator[](std::uint64_t index) const { return data_[index]; }
+    T* data() { return data_; }
 
    private:
     int fd_ = -1;
@@ -394,8 +396,22 @@ class TablebaseGenerator {
         stateCount_(attackerType_ == PieceType::Copycat ? PlacementStateCount
                     : identicalExtras_ ? IdenticalFourStateCount * substates_
                     : fourModels_ ? FourPlacementStateCount * substates_
-                               : PlacementStateCount * substates_),
-        nodes_(stateCount_), predecessorCounts_(stateCount_) {}
+                               : PlacementStateCount * substates_) {
+        if (diskBacked_) {
+            mappedNodes_ = std::make_unique<MappedArray<Node>>(
+              checkpoint_ + ".nodes", stateCount_);
+            mappedPredecessorCounts_ = std::make_unique<MappedArray<std::uint32_t>>(
+              checkpoint_ + ".degrees", stateCount_);
+            nodes_ = mappedNodes_->data();
+            predecessorCounts_ = mappedPredecessorCounts_->data();
+        }
+        else {
+            nodeStorage_.resize(stateCount_);
+            predecessorCountStorage_.resize(stateCount_);
+            nodes_ = nodeStorage_.data();
+            predecessorCounts_ = predecessorCountStorage_.data();
+        }
+    }
 
     std::uint32_t encode(const State& state) const {
         return encode_placement(state) * substates_ + state.substate;
@@ -530,8 +546,8 @@ class TablebaseGenerator {
             save_checkpoint(stateCount_);
 
         std::uint64_t edgeCount = 0;
-        for (const std::uint32_t count : predecessorCounts_)
-            edgeCount += count;
+        for (std::uint32_t index = 0; index < stateCount_; ++index)
+            edgeCount += predecessorCounts_[index];
         const auto solve_arrays = [&](auto& offsets, auto& predecessors) {
             using Offset = std::remove_reference_t<decltype(offsets[0])>;
             offsets[0] = 0;
@@ -559,7 +575,11 @@ class TablebaseGenerator {
                 running = static_cast<Offset>(running + predecessorCounts_[index]);
             }
             offsets[stateCount_] = running;
-            std::vector<std::uint32_t>().swap(predecessorCounts_);
+            if (mappedPredecessorCounts_)
+                mappedPredecessorCounts_.reset();
+            else
+                std::vector<std::uint32_t>().swap(predecessorCountStorage_);
+            predecessorCounts_ = nullptr;
 
             // DTW edges have unit cost. A Dial-style bucket queue preserves the
             // distance ordering required for shortest wins/longest losses without
@@ -613,9 +633,9 @@ class TablebaseGenerator {
                     }
                 }
               }
-            for (Node& node : nodes_)
-                if (node.wdl == Wdl::Unknown)
-                    node.wdl = Wdl::Draw;
+            for (std::uint32_t index = 0; index < stateCount_; ++index)
+                if (nodes_[index].wdl == Wdl::Unknown)
+                    nodes_[index].wdl = Wdl::Draw;
         };
         const auto solve = [&](auto offsetZero) {
             using Offset = decltype(offsetZero);
@@ -963,10 +983,10 @@ class TablebaseGenerator {
         stream.write(magic.data(), magic.size());
         stream.write(reinterpret_cast<const char*>(&piece), sizeof(piece));
         stream.write(reinterpret_cast<const char*>(&processed), sizeof(processed));
-        stream.write(reinterpret_cast<const char*>(nodes_.data()),
-                     nodes_.size() * sizeof(Node));
-        stream.write(reinterpret_cast<const char*>(predecessorCounts_.data()),
-                     predecessorCounts_.size() * sizeof(std::uint32_t));
+        stream.write(reinterpret_cast<const char*>(nodes_),
+                     std::uint64_t(stateCount_) * sizeof(Node));
+        stream.write(reinterpret_cast<const char*>(predecessorCounts_),
+                     std::uint64_t(stateCount_) * sizeof(std::uint32_t));
         stream.close();
         if (std::rename(temporary.c_str(), checkpoint_.c_str()) != 0)
             throw std::runtime_error("cannot install tablebase checkpoint");
@@ -987,9 +1007,10 @@ class TablebaseGenerator {
         if (magic != expected || piece != static_cast<std::uint32_t>(attackerType_) ||
             processed > stateCount_)
             throw std::runtime_error("invalid tablebase checkpoint");
-        stream.read(reinterpret_cast<char*>(nodes_.data()), nodes_.size() * sizeof(Node));
-        stream.read(reinterpret_cast<char*>(predecessorCounts_.data()),
-                    predecessorCounts_.size() * sizeof(std::uint32_t));
+        stream.read(reinterpret_cast<char*>(nodes_),
+                    std::uint64_t(stateCount_) * sizeof(Node));
+        stream.read(reinterpret_cast<char*>(predecessorCounts_),
+                    std::uint64_t(stateCount_) * sizeof(std::uint32_t));
         if (!stream)
             throw std::runtime_error("truncated tablebase checkpoint");
         std::cout << "resume states " << processed << '\n';
@@ -1035,8 +1056,9 @@ class TablebaseGenerator {
             wdlPlane[index / 4] |= static_cast<std::uint8_t>(nodes_[index].wdl)
                                  << ((index % 4) * 2);
         stream.write(reinterpret_cast<const char*>(wdlPlane.data()), wdlPlane.size());
-        for (const Node& node : nodes_) {
-            const std::uint8_t distance = static_cast<std::uint8_t>(std::min<int>(node.dtw, 255));
+        for (std::uint32_t index = 0; index < stateCount_; ++index) {
+            const std::uint8_t distance = static_cast<std::uint8_t>(
+              std::min<int>(nodes_[index].dtw, 255));
             stream.write(reinterpret_cast<const char*>(&distance), sizeof(distance));
         }
         for (const auto [index, distance] : exceptions) {
@@ -1044,8 +1066,8 @@ class TablebaseGenerator {
             stream.write(reinterpret_cast<const char*>(&distance), sizeof(distance));
         }
         std::array<std::uint64_t, 4> totals{};
-        for (const Node& node : nodes_)
-            ++totals[static_cast<std::size_t>(node.wdl)];
+        for (std::uint32_t index = 0; index < stateCount_; ++index)
+            ++totals[static_cast<std::size_t>(nodes_[index].wdl)];
         std::cout << "output " << output_ << " edges " << edges;
         for (Wdl wdl : {Wdl::Win, Wdl::Loss, Wdl::Draw})
             std::cout << ' ' << wdl_name(wdl) << ' '
@@ -1186,8 +1208,12 @@ class TablebaseGenerator {
     std::uint32_t secondarySubstates_;
     std::uint32_t substates_;
     std::uint32_t stateCount_;
-    std::vector<Node> nodes_;
-    std::vector<std::uint32_t> predecessorCounts_;
+    std::vector<Node> nodeStorage_;
+    std::vector<std::uint32_t> predecessorCountStorage_;
+    std::unique_ptr<MappedArray<Node>> mappedNodes_;
+    std::unique_ptr<MappedArray<std::uint32_t>> mappedPredecessorCounts_;
+    Node* nodes_ = nullptr;
+    std::uint32_t* predecessorCounts_ = nullptr;
 };
 
 }  // namespace Stockfish::Ultimate
