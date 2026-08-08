@@ -198,6 +198,7 @@ represented by that class.
 | `kbombkprince.uftb` | King+Bomb vs King+Prince | 648,908,976 | 9,346,336 (3,883,800) / 4,454,220 (10,142,048) / 5,178,404 (4,953,112) | 21,135,922 / 7,297,936 (1,480,556) / 8,043,506 | `cd220ce57a5db672809cf550f82f9d06f2195e60a001f6fe2e6c5186fabf8b94` |
 | `kghostdragonk.uftb` | King+Ghost+Dragon vs King | 1,125,863,212 | 37,957,920 / 0 / 0 | 0 (3,219,216) / 34,719,534 / 19,170 | `863de816680ef282923aca7cf9a5bf0b60cd76fa01dc7c2ffdf6a64e51a3b236` |
 | `kghostfishermank.uftb` | King+Ghost+Fisherman vs King | 1,501,353,596 | 37,957,920 / 0 / 0 | 0 (3,219,216) / 33,322,212 / 1,416,492 | `94db43bfad0d5e40f35e5cae91ddff67789f90741f28f5ebef357fc10fd77dea` |
+| `kghostghostk.uftb` | King+2 Ghosts vs King | 898,829,504 | 37,957,920 / 0 / 0 | 0 (3,219,216) / 34,737,456 / 1,248 | `204f4de6d0f9ff6da111d3d0c0a08c3562493cdec2130cc946b4eae7183012ee` |
 <!-- GENERATED_TABLE_END -->
 
 Each W / L / D cell is from the perspective of the side to move named by its
