@@ -202,6 +202,7 @@ represented by that class.
 | `kghostgiantk.uftb` | King+Ghost+Giant vs King | 497,645,576 | 26,573,400 / 0 / 0 (11,384,520) | 0 (2,284,232) / 23,445,712 / 843,456 (11,384,520) | `5261c5a3d62f8711e2d6e007b89788701a7cdd2ab2afda0edea5607514e4c793` |
 | `kghostkdragon.uftb` | King+Ghost vs King+Dragon | 1,083,015,640 | 11,175,072 / 1,136,062 / 25,646,786 | 17,488,128 / 219,790 / 20,250,002 | `f9e825a80062da30fb4ffcb40ad7c9e4cf7348e03f2269e83812c34925080225` |
 | `kghostkfisherman.uftb` | King+Ghost vs King+Fisherman | 1,501,353,596 | 11,183,106 / 0 / 26,774,814 | 3,219,216 / 166,360 / 34,572,344 | `ed56e8ccba231dbe962870891330ebae25495c3693e010b7aa874d511183c389` |
+| `kghostkgiant.uftb` | King+Ghost vs King+Giant | 472,896,720 | 26,358,700 / 44,444 / 170,256 (11,384,520) | 6,182,902 / 16,323,544 / 4,066,954 (11,384,520) | `452b47d680ae8c40b4136d33c3398145909c68119a9fe1c53cde0e7c4c5e7a63` |
 <!-- GENERATED_TABLE_END -->
 
 Each W / L / D cell is from the perspective of the side to move named by its
