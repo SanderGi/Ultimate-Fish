@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the exact budget-admitted stateful K+K+2 tablebases."""
+"""Generate exact admitted and explicitly approved stateful K+K+2 tables."""
 
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ def main() -> None:
             f"stateful generation requires the stateless closure first; "
             f"{len(missing_stateless)} tables remain")
     selected = [record for record in records
-                if record["phase"] == "kings+2-stateful"]
+                if record["phase"] in {"kings+2-stateful", "kings+2-requested"}]
     if args.only:
         requested = set(args.only)
         known = {str(record["filename"]) for record in selected}
@@ -84,8 +84,8 @@ def main() -> None:
         actual = sum(path.stat().st_size for path in TABLEBASES.iterdir()
                      if path.is_file() and
                      (path.name.endswith(".uftb") or ".uftb.part" in path.name))
-        if actual > args.budget:
-            raise RuntimeError("actual tablebase bytes exceeded budget")
+        if actual > plan.AUTHORIZED_BUDGET:
+            raise RuntimeError("actual tablebase bytes exceeded authorized ceiling")
         checkpoint.unlink(missing_ok=True)
         print(f"complete {output.name} {logical_size(output) / 1024**2:.2f} MiB "
               f"in {len(outputs) - 1 or 1} data file(s)", flush=True)

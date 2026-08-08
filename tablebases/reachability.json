@@ -816,6 +816,23 @@
       ],
       "sha256": "98dbd354da959fa923ed9b712c1bde7147f2039a9bcf50306cbdc2a9b3098aeb"
     },
+    "kcopycatkbishop.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          8221984,
+          0,
+          1441440
+        ],
+        [
+          0,
+          7021104,
+          0,
+          1441440
+        ]
+      ],
+      "sha256": "80879aedce245b17492c375236d447dfc011a96d56bbf749797ab398603dd8a7"
+    },
     "kdragondragonk.uftb": {
       "ordinary_predecessor_safety": [
         [
@@ -866,6 +883,23 @@
         ]
       ],
       "sha256": "a8740a9fc8683cd75bcd319081c544e1067796ad37b401a2259f2c6799847b56"
+    },
+    "kdragonkpenguin.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          5578528,
+          0,
+          14519136
+        ],
+        [
+          0,
+          1813288,
+          240,
+          14625296
+        ]
+      ],
+      "sha256": "aa757f14399a8eaa8cb1d48ff449dcafca186c94672a130f91fea5448eaddb65"
     },
     "kfishermandragonk.uftb": {
       "ordinary_predecessor_safety": [

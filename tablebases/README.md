@@ -214,6 +214,8 @@ represented by that class.
 | `kghostparasitek.uftb` | King+Ghost+Parasite vs King | 881,036,992 | 31,771,432 (6,186,488) / 0 / 0 | 0 (3,219,216) / 34,734,808 / 3,896 | `1bb1c977b7af34b2295dd6c693d8a79006e69ab2f4291a828b930515742222ca` |
 | `kjesterghostk.uftb` | King+Jester+Ghost vs King | 941,701,408 | 31,771,432 (6,186,488) / 0 / 0 | 3,219,216 / 34,734,808 / 3,896 | `ad82489372318a7561a43a7c2d0cbc1fdc3e5a840c67470c5eb25704fdfecf7e` |
 | `kjesterkghost.uftb` | King+Jester vs King+Ghost | 901,811,648 | 4,720,184 (6,186,488) / 1,380,558 / 25,670,690 | 13,279,972 / 987,932 / 23,690,016 | `d9b75b6aa4d4cad713206e18f12efb1c4781adea0cc5f99a4a77fd58eca92cc3` |
+| `kcopycatkbishop.uftb` | King+Copycat vs King+Bishop | 967,403,928 | 5,967,160 (8,221,984) / 0 / 22,327,336 (1,441,440) | 0 (7,021,104) / 36,168 / 29,459,208 (1,441,440) | `80879aedce245b17492c375236d447dfc011a96d56bbf749797ab398603dd8a7` |
+| `kdragonkpenguin.uftb` | King+Dragon vs King+Penguin | 637,574,400 | 6,096,392 (5,578,528) / 112,646 / 11,651,218 (14,519,136) | 461,796 (1,813,288) / 931,680 (240) / 20,125,620 (14,625,296) | `aa757f14399a8eaa8cb1d48ff449dcafca186c94672a130f91fea5448eaddb65` |
 <!-- GENERATED_TABLE_END -->
 
 Each W / L / D cell is from the perspective of the side to move named by its
@@ -248,10 +250,14 @@ geometry-derived freeze aura. Penguins have no native cooldown. Pawn
 promotions cross-probe the exact Queen table. A double-step
 en-passant marker is quotient-equivalent here because no opposing Pawn exists
 to use it.
-Copycat is one deployable character with two board models; in this material
-class its clone remains the exact horizontal mirror of the selected half, so
-the invariant is encoded directly rather than storing unreachable arbitrary
-clone coordinates.
+Copycat is one deployable character with two board models. The K+Copycat-v-K
+and K+Copycat-v-K+Bishop classes index it as one compound piece: the linked
+half is reconstructed at the exact horizontal mirror of the selected half
+rather than storing unreachable arbitrary clone coordinates. Bishop cannot
+separate or save one half, so every in-class transition preserves that
+invariant. Singleton Copycats and independently displaced halves remain outside
+the bundled domain; Penguin, Mage, Fisherman, and Angel interactions require
+larger state closures before those combinations can be represented exactly.
 
 `tools/plan_ultimate_tablebases.py` is the authoritative class and storage
 inventory for the expansion. It applies horizontal-reflection canonicalization
@@ -260,7 +266,9 @@ files are split into SHA-256-checked parts of at most 95 MB, below GitHub's
 regular 100 MB per-file limit; the engine materializes them transparently and
 the repository does not use Git LFS. The planner treats entropy compression as
 extra margin,
-not as a speculative assumption when enforcing the 10 GiB total cap.
+not as a speculative assumption when enforcing the original 10 GiB target.
+The explicitly requested K+Copycat-v-K+Bishop and K+Dragon-v-K+Penguin tables
+use a narrow documented exception, capped at 160 MiB beyond that target.
 
 Regenerate them with `tools/generate_ultimate_tablebases.sh`; checkpoints are
 piece-tagged and resumable. After generation,
@@ -281,7 +289,7 @@ King+Bishop, Turtle, Mage, or Fisherman; King+Turtle versus King+Turtle, Mage,
 or Fisherman; King+Mage versus King+Mage or Fisherman; and King+Fisherman
 versus King+Fisherman.
 
-The 10 GiB budget additionally admits 29 stateful classes: K+Bomb+Ghost,
+The original 10 GiB budget admits 29 stateful classes: K+Bomb+Ghost,
 K+Bomb+Penguin, K+Bomb+Prince, K+Pawn+Bomb, K+Bomb+Checker, K+Bomb+Sniper,
 K+Berserker+Bomb, K+Bishop+Ghost, K+Bishop versus K+Ghost, K+Bishop versus
 K+Penguin, K+Bishop versus K+Prince, K+Bishop+Penguin, K+Bishop+Prince,
@@ -289,9 +297,11 @@ K+Bomb versus K+Ghost, K+Bomb versus K+Penguin, K+Bomb versus K+Prince,
 K+Ghost+Dragon, K+Ghost+Fisherman, K+Ghost+Ghost, K+Ghost+Giant, K+Ghost
 versus K+Dragon, K+Ghost versus K+Fisherman, K+Ghost versus K+Giant,
 K+Ghost versus K+Mage, K+Ghost versus K+Parasite, K+Ghost+Mage,
-K+Ghost+Parasite, K+Jester+Ghost, and K+Jester versus K+Ghost. Devil, Sludge,
-Angel, and Copycat
-combinations are excluded from K+K+2 because Minion spawning, persistent
-Goop, Angel host/Halo state, and Copycat's linked clone make those classes
-larger than the exact four-model closure used here; representing them as
-ordinary K+K+2 tables would be incorrect.
+K+Ghost+Parasite, K+Jester+Ghost, and K+Jester versus K+Ghost. The narrow
+approved overrun adds K+Copycat versus K+Bishop and K+Dragon versus K+Penguin.
+Devil, Sludge, Angel, and general Copycat combinations remain excluded from
+K+K+2 because Minion spawning, persistent Goop, Angel host/Halo state, and
+separated Copycat halves make those classes larger than the exact indexed
+closure used here. The linked compound Copycat+Bishop class is the deliberate
+exception described above; representing the other combinations as ordinary
+K+K+2 tables would be incorrect.

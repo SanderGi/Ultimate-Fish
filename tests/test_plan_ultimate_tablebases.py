@@ -74,10 +74,11 @@ class TablebasePlanTests(unittest.TestCase):
             per_shard = (record["packed_bytes"] + record["shards"] - 1) // record["shards"]
             self.assertLess(per_shard, tb.GITHUB_FILE_LIMIT)
 
-    def test_stateful_inventory_is_exactly_budget_capped(self):
+    def test_stateful_inventory_has_only_the_approved_narrow_overrun(self):
         records = tb.inventory()
-        self.assertLessEqual(sum(record["packed_bytes"] for record in records),
-                             tb.DEFAULT_BUDGET)
+        total = sum(record["packed_bytes"] for record in records)
+        self.assertGreater(total, tb.DEFAULT_BUDGET)
+        self.assertLessEqual(total, tb.AUTHORIZED_BUDGET)
         admitted = [record for record in records
                     if record["phase"] == "kings+2-stateful"]
         self.assertEqual(len(admitted), 29)
@@ -87,6 +88,16 @@ class TablebasePlanTests(unittest.TestCase):
                          "prince", "checker"}.issubset(represented))
         self.assertTrue(represented.isdisjoint(
             {"devil", "sludge", "copycat", "angel"}))
+        requested = {record["filename"] for record in records
+                     if record["phase"] == "kings+2-requested"}
+        self.assertEqual(requested, {
+            "kcopycatkbishop.uftb", "kdragonkpenguin.uftb"})
+
+    def test_compound_copycat_indexes_one_anchor_not_both_halves(self):
+        records = {record["filename"]: record for record in tb.inventory()}
+        copycat = records["kcopycatkbishop.uftb"]
+        self.assertEqual(copycat["states"], 75_915_840)
+        self.assertEqual(copycat["states"], tb.compound_copycat_pair_states())
 
     def test_stateful_candidate_closures_are_explicit(self):
         candidates = tb.stateful_candidates()
@@ -206,6 +217,25 @@ class TablebasePlanTests(unittest.TestCase):
                          "4,720,184 (6,186,488) / 1,380,558 / 25,670,690")
         self.assertEqual(summary.cell(totals[1], illegal[1]),
                          "13,279,972 / 987,932 / 23,690,016")
+
+    def test_requested_overrun_tables_keep_audited_state_counts(self):
+        totals, illegal = summary.summary(
+            ROOT / "tablebases" / "kcopycatkbishop.uftb")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "5,967,160 (8,221,984) / 0 / "
+                         "22,327,336 (1,441,440)")
+        self.assertEqual(summary.cell(totals[1], illegal[1]),
+                         "0 (7,021,104) / 36,168 / "
+                         "29,459,208 (1,441,440)")
+
+        totals, illegal = summary.summary(
+            ROOT / "tablebases" / "kdragonkpenguin.uftb")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "6,096,392 (5,578,528) / 112,646 / "
+                         "11,651,218 (14,519,136)")
+        self.assertEqual(summary.cell(totals[1], illegal[1]),
+                         "461,796 (1,813,288) / 931,680 (240) / "
+                         "20,125,620 (14,625,296)")
 
     def test_every_generated_table_has_a_native_reachability_audit(self):
         catalog = summary.reachability_catalog()

@@ -1957,6 +1957,46 @@ void test_exact_tablebase_probing() {
     expect(TablebaseProbe::probe(copycat).has_value(),
            "linked Copycat mirror-pair tablebase is probeable");
 
+    Position copycatBishop;
+    moved(copycatBishop, PieceType::King, Color::White, "a1");
+    const int compoundCat = moved(
+      copycatBishop, PieceType::Copycat, Color::White, "c3");
+    const int compoundClone = copycatBishop.piece(compoundCat).link;
+    copycatBishop.piece(compoundClone).moved = true;
+    moved(copycatBishop, PieceType::King, Color::Black, "h10");
+    moved(copycatBishop, PieceType::Bishop, Color::Black, "d8");
+    const auto compoundWhite = TablebaseProbe::probe(copycatBishop);
+    expect(compoundWhite.has_value(),
+           "linked compound Copycat versus Bishop tablebase is probeable");
+
+    Position copycatBishopSwapped;
+    moved(copycatBishopSwapped, PieceType::King, Color::Black, "a1");
+    const int swappedCat = moved(
+      copycatBishopSwapped, PieceType::Copycat, Color::Black, "c3");
+    copycatBishopSwapped.piece(
+      copycatBishopSwapped.piece(swappedCat).link).moved = true;
+    moved(copycatBishopSwapped, PieceType::King, Color::White, "h10");
+    moved(copycatBishopSwapped, PieceType::Bishop, Color::White, "d8");
+    copycatBishopSwapped.set_side_to_move(Color::Black);
+    const auto compoundBlack = TablebaseProbe::probe(copycatBishopSwapped);
+    expect(compoundBlack && compoundWhite &&
+             compoundBlack->wdl == compoundWhite->wdl &&
+             compoundBlack->dtw == compoundWhite->dtw,
+           "compound Copycat tablebase canonicalizes material-owner color");
+
+    copycatBishop.piece(compoundClone).square =
+      Position::square_from_name("e3");
+    expect(!TablebaseProbe::probe(copycatBishop),
+           "independently displaced Copycat halves remain outside the exact domain");
+
+    Position dragonPenguin;
+    moved(dragonPenguin, PieceType::King, Color::White, "a1");
+    moved(dragonPenguin, PieceType::Dragon, Color::White, "c3");
+    moved(dragonPenguin, PieceType::King, Color::Black, "h10");
+    moved(dragonPenguin, PieceType::Penguin, Color::Black, "d8");
+    expect(TablebaseProbe::probe(dragonPenguin).has_value(),
+           "Dragon versus inactive Penguin tablebase is probeable");
+
     Position twoKnights;
     moved(twoKnights, PieceType::King, Color::White, "a1");
     moved(twoKnights, PieceType::Knight, Color::White, "c3");

@@ -4,7 +4,8 @@
 This planner deliberately reports conservative *uncompressed* sizes for the
 v3 split-plane format.  The generator may make files smaller, but it must not
 use optimistic compression ratios when deciding whether the repository's
-10 GiB tablebase budget has already been exhausted.
+original 10 GiB target has already been exhausted. Two explicitly requested
+classes are then accounted for against a separate narrow overrun ceiling.
 """
 
 from __future__ import annotations
@@ -22,6 +23,10 @@ GITHUB_FILE_LIMIT = 100_000_000
 # Leave a full 5 MB safety margin below GitHub's decimal 100 MB hard limit.
 DEFAULT_SHARD_LIMIT = 95_000_000
 DEFAULT_BUDGET = 10 * 1024**3
+# Two explicitly requested compound/stateful classes may exceed the original
+# storage target.  The current bundle plus their format overhead remains below
+# this narrow, documented ceiling (about 160 MiB over 10 GiB).
+AUTHORIZED_BUDGET = DEFAULT_BUDGET + 160 * 1024**2
 
 
 @dataclass(frozen=True)
@@ -94,6 +99,17 @@ def placement_states(extra_models: int, identical_pair: bool = False) -> int:
     if identical_pair:
         result //= 2
     return result
+
+
+def compound_copycat_pair_states() -> int:
+    """K+linked-Copycat vs K+piece states without reflection folding.
+
+    The Copycat's second board model is derived from the indexed half, so only
+    four logical squares are stored.  Horizontal reflection exchanges the two
+    typed halves, however, so this codec deliberately retains both orbits just
+    like the existing K+Copycat-v-K table.
+    """
+    return 2 * SQUARES * (SQUARES - 1) * (SQUARES - 2) * (SQUARES - 3)
 
 
 def split_plane_bytes(states: int) -> int:
@@ -217,15 +233,32 @@ def inventory(budget: int = DEFAULT_BUDGET) -> list[dict[str, object]]:
                     secondary=opposing_second.name, opposing=True,
                     filename=(f"k{opposing_first.name}k{opposing_second.name}"
                               ".uftb")))
-    # Stateful combinations are admitted deterministically only while their
-    # conservative split-plane size fits. This makes the 10 GiB rule a hard
-    # inventory invariant instead of a best-effort generator check.
+    # Ordinary stateful combinations are admitted deterministically only while
+    # their conservative split-plane size fits the original 10 GiB target.
     used = sum(int(record["packed_bytes"]) for record in result)
     for record in stateful_candidates():
         size = int(record["packed_bytes"])
         if used + size <= budget:
             result.append(record)
             used += size
+
+    # Deliberate, narrowly scoped over-budget additions. Copycat is exact only
+    # while its linked half remains at the mirrored square; Bishop cannot split
+    # or save one half, so this material class is closed under that invariant.
+    requested = (
+        class_record(
+            "KcopycatvKbishop", compound_copycat_pair_states(),
+            "kings+2-requested", primary="copycat", secondary="bishop",
+            opposing=True, filename="kcopycatkbishop.uftb",
+            note="linked mirrored Copycat compound; displaced/singleton states excluded"),
+        class_record(
+            "KdragonvKpenguin", placement_states(2) * 2,
+            "kings+2-requested", primary="dragon", secondary="penguin",
+            opposing=True, filename="kdragonkpenguin.uftb"),
+    )
+    known = {str(record["filename"]) for record in result}
+    result.extend(record for record in requested
+                  if str(record["filename"]) not in known)
     return result
 
 
@@ -252,8 +285,14 @@ def main() -> None:
         size = sum(int(item["packed_bytes"]) for item in group)
         print(f"{phase}: {len(group)} classes, {size / 1024**3:.3f} GiB")
     print(f"total: {len(records)} classes, {total / 1024**3:.3f} GiB")
-    print(f"budget: {args.budget / 1024**3:.3f} GiB")
-    print("compression required" if total > args.budget else "fits conservative budget")
+    print(f"baseline budget: {args.budget / 1024**3:.3f} GiB")
+    print(f"authorized ceiling: {AUTHORIZED_BUDGET / 1024**3:.3f} GiB")
+    if total > AUTHORIZED_BUDGET:
+        print("exceeds authorized ceiling")
+    elif total > args.budget:
+        print("uses approved narrow overrun")
+    else:
+        print("fits conservative budget")
 
 
 if __name__ == "__main__":

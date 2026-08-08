@@ -67,6 +67,8 @@ struct FourState {
 constexpr std::uint32_t FourPlacementStateCount =
   2 * (SquareCount / 2) * (SquareCount - 1) * (SquareCount - 2) * (SquareCount - 3);
 constexpr std::uint32_t IdenticalFourStateCount = FourPlacementStateCount / 2;
+constexpr std::uint32_t CompoundCopycatStateCount =
+  2 * SquareCount * (SquareCount - 1) * (SquareCount - 2) * (SquareCount - 3);
 
 std::uint8_t horizontal_reflection(std::uint8_t square) {
     return static_cast<std::uint8_t>((square / 8) * 8 + 7 - square % 8);
@@ -127,6 +129,34 @@ FourState decode_four(std::uint32_t index) {
     const Color side = static_cast<Color>(index / (SquareCount / 2));
     const std::uint8_t whiteKing = static_cast<std::uint8_t>(
       (whiteRank / 4) * 8 + whiteRank % 4);
+    const std::uint8_t blackKing = unrank_excluding(blackRank, {whiteKing});
+    const std::uint8_t first = unrank_excluding(firstRank, {whiteKing, blackKing});
+    const std::uint8_t second = unrank_excluding(
+      secondRank, {whiteKing, blackKing, first});
+    return {side, whiteKing, blackKing, first, second};
+}
+
+std::uint32_t encode_compound_copycat(FourState state) {
+    const std::uint32_t blackRank = rank_excluding(state.blackKing, {state.whiteKing});
+    const std::uint32_t firstRank = rank_excluding(
+      state.first, {state.whiteKing, state.blackKing});
+    const std::uint32_t secondRank = rank_excluding(
+      state.second, {state.whiteKing, state.blackKing, state.first});
+    return ((((static_cast<std::uint32_t>(state.side) * SquareCount + state.whiteKing)
+               * (SquareCount - 1) + blackRank)
+              * (SquareCount - 2) + firstRank)
+             * (SquareCount - 3) + secondRank);
+}
+
+FourState decode_compound_copycat(std::uint32_t index) {
+    const std::uint32_t secondRank = index % (SquareCount - 3);
+    index /= SquareCount - 3;
+    const std::uint32_t firstRank = index % (SquareCount - 2);
+    index /= SquareCount - 2;
+    const std::uint32_t blackRank = index % (SquareCount - 1);
+    index /= SquareCount - 1;
+    const std::uint8_t whiteKing = static_cast<std::uint8_t>(index % SquareCount);
+    const Color side = static_cast<Color>(index / SquareCount);
     const std::uint8_t blackKing = unrank_excluding(blackRank, {whiteKing});
     const std::uint8_t first = unrank_excluding(firstRank, {whiteKing, blackKing});
     const std::uint8_t second = unrank_excluding(
@@ -206,8 +236,17 @@ void self_test_four_codec() {
             encode_identical_four(swapped) != index)
             throw std::runtime_error("identical four-model codec is not bijective");
     }
+    for (std::uint32_t index = 0; index < CompoundCopycatStateCount; ++index) {
+        const FourState state = decode_compound_copycat(index);
+        if (state.whiteKing == state.blackKing || state.whiteKing == state.first ||
+            state.whiteKing == state.second || state.blackKing == state.first ||
+            state.blackKing == state.second || state.first == state.second ||
+            encode_compound_copycat(state) != index)
+            throw std::runtime_error("compound Copycat codec is not bijective");
+    }
     std::cout << "fourcodecok states " << FourPlacementStateCount << '\n';
     std::cout << "identicalfourcodecok states " << IdenticalFourStateCount << '\n';
+    std::cout << "compoundcopycatcodecok states " << CompoundCopycatStateCount << '\n';
 }
 
 struct Node {
@@ -385,15 +424,19 @@ class TablebaseGenerator {
         attackerType_(attackerType), output_(std::move(output)),
         checkpoint_(std::move(checkpoint)), checkpointEvery_(checkpointEvery),
         diskBacked_(diskBacked),
-        secondaryType_(attackerType == PieceType::Copycat
-                         ? PieceType::CopycatClone : secondaryType),
+        copycatOnly_(attackerType == PieceType::Copycat &&
+                     secondaryType == PieceType::Count),
+        compoundCopycat_(attackerType == PieceType::Copycat &&
+                         secondaryType != PieceType::Count),
+        secondaryType_(copycatOnly_ ? PieceType::CopycatClone : secondaryType),
         secondaryColor_(secondaryColor),
         fourModels_(secondaryType_ != PieceType::Count),
         identicalExtras_(secondaryType == attackerType && secondaryColor == Color::White),
         primarySubstates_(substate_count(attackerType)),
         secondarySubstates_(fourModels_ ? substate_count(secondaryType_) : 1),
         substates_(primarySubstates_ * secondarySubstates_),
-        stateCount_(attackerType_ == PieceType::Copycat ? PlacementStateCount
+        stateCount_(copycatOnly_ ? PlacementStateCount
+                    : compoundCopycat_ ? CompoundCopycatStateCount * substates_
                     : identicalExtras_ ? IdenticalFourStateCount * substates_
                     : fourModels_ ? FourPlacementStateCount * substates_
                                : PlacementStateCount * substates_) {}
@@ -427,7 +470,19 @@ class TablebaseGenerator {
     }
 
     void self_test() const {
-        if (fourModels_ && attackerType_ != PieceType::Copycat) {
+        if (compoundCopycat_) {
+            constexpr std::uint32_t samples = 20'000;
+            for (std::uint32_t sample = 0; sample < samples; ++sample) {
+                const std::uint32_t index = static_cast<std::uint32_t>(
+                  std::uint64_t(stateCount_) * sample / samples);
+                Position position;
+                if (make_position_at(index, position) && child_index(position) != index)
+                    throw std::runtime_error("compound Copycat codec is not bijective");
+            }
+            std::cout << "compoundcopycatsubstatecodecok samples " << samples << '\n';
+            return;
+        }
+        if (fourModels_ && !copycatOnly_) {
             self_test_four_codec();
             constexpr std::uint32_t samples = 20'000;
             for (std::uint32_t sample = 0; sample < samples; ++sample) {
@@ -541,8 +596,9 @@ class TablebaseGenerator {
                         break;
                     const std::uint32_t end = std::min(stateCount_, begin + Block);
                     for (std::uint32_t index = begin; index < end; ++index) {
-                        const Color encodedSide = fourModels_
-                          ? (identicalExtras_
+                        const Color encodedSide = compoundCopycat_
+                          ? decode_compound_copycat(index / substates_).side
+                          : fourModels_ ? (identicalExtras_
                                ? decode_identical_four(index / substates_).side
                                : decode_four(index / substates_).side)
                           : decode(index).side;
@@ -940,7 +996,7 @@ class TablebaseGenerator {
     bool make_position_at(std::uint32_t index, Position& position) const {
         if (!fourModels_)
             return make_position(decode(index), position);
-        if (attackerType_ == PieceType::Copycat) {
+        if (copycatOnly_) {
             const State state = decode_placement(index);
             position.clear();
             const int whiteKing = position.add_piece(
@@ -962,8 +1018,8 @@ class TablebaseGenerator {
         const std::uint32_t primarySubstate = combinedSubstate / secondarySubstates_;
         const std::uint32_t secondarySubstate = combinedSubstate % secondarySubstates_;
         const std::uint32_t placement = index / substates_;
-        const FourState state = identicalExtras_ ? decode_identical_four(placement)
-                                                 : decode_four(placement);
+        const FourState state = compoundCopycat_ ? decode_compound_copycat(placement)
+          : identicalExtras_ ? decode_identical_four(placement) : decode_four(placement);
         position.clear();
         const int whiteKing = position.add_piece(PieceType::King, Color::White,
                                                   state.whiteKing);
@@ -979,6 +1035,13 @@ class TablebaseGenerator {
             return false;
         for (int id : {whiteKing, blackKing, first, second})
             position.piece(id).moved = true;
+        if (compoundCopycat_) {
+            const int clone = position.piece(first).link;
+            if (clone == Position::NoPiece || !position.piece(clone).alive ||
+                !position.piece(clone).onBoard)
+                return false;
+            position.piece(clone).moved = true;
+        }
         if (!apply_substate(position, first, attackerType_, primarySubstate) ||
             !apply_substate(position, second, secondaryType_, secondarySubstate))
             return false;
@@ -1052,14 +1115,32 @@ class TablebaseGenerator {
                type_matches(attackerType_, position.piece(2).type);
         if (!primary || !fourModels_)
             return primary;
+        if (compoundCopycat_) {
+            const int clone = position.piece(2).link;
+            return clone == 3 && position.piece(3).alive && position.piece(3).onBoard &&
+                   position.piece(3).type == PieceType::CopycatClone &&
+                   position.piece(3).color == position.piece(2).color &&
+                   position.piece(3).link == 2 &&
+                   position.piece(3).square ==
+                     horizontal_reflection(position.piece(2).square) &&
+                   position.piece(4).alive && position.piece(4).onBoard &&
+                   position.piece(4).link == Position::NoPiece &&
+                   type_matches(secondaryType_, position.piece(4).type);
+        }
         return position.piece(3).alive && position.piece(3).onBoard &&
                type_matches(secondaryType_, position.piece(3).type);
     }
 
     std::uint32_t child_index(const Position& position) const {
-        if (attackerType_ == PieceType::Copycat)
+        if (copycatOnly_)
             return encode_placement({position.side_to_move(), position.piece(0).square,
                                      position.piece(1).square, position.piece(2).square});
+        if (compoundCopycat_) {
+            const FourState state{position.side_to_move(), position.piece(0).square,
+                                  position.piece(1).square, position.piece(2).square,
+                                  position.piece(4).square};
+            return encode_compound_copycat(state) * substates_;
+        }
         if (fourModels_) {
             std::uint32_t primarySubstate = piece_substate(position, 2, attackerType_);
             std::uint32_t secondarySubstate = piece_substate(position, 3, secondaryType_);
@@ -1414,6 +1495,8 @@ class TablebaseGenerator {
     std::string checkpoint_;
     std::uint32_t checkpointEvery_;
     bool diskBacked_;
+    bool copycatOnly_;
+    bool compoundCopycat_;
     PieceType secondaryType_;
     Color secondaryColor_;
     bool fourModels_;
@@ -1497,9 +1580,14 @@ int main(int argc, char** argv) {
             if (!closed_position_only_attacker(attackerType))
                 throw std::runtime_error("piece is not a closed K+K+1 tablebase class");
         }
-        else if (!closed_four_piece(attackerType) ||
-                 !closed_four_piece(secondaryType))
-            throw std::runtime_error("K+K+2 piece requires a larger non-closed model");
+        else {
+            const bool linkedCopycatBishop =
+              attackerType == PieceType::Copycat &&
+              secondaryType == PieceType::Bishop && secondaryColor == Color::Black;
+            if ((!closed_four_piece(attackerType) ||
+                 !closed_four_piece(secondaryType)) && !linkedCopycatBishop)
+                throw std::runtime_error("K+K+2 piece requires a larger non-closed model");
+        }
         TablebaseGenerator generator(attackerType, secondaryType, secondaryColor,
                                      output, checkpoint, checkpointEvery, diskBacked);
         if (selfTest)

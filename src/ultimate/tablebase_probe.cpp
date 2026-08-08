@@ -26,6 +26,8 @@ constexpr std::uint32_t StateCount =
 constexpr std::uint32_t FourStateCount =
   2 * (SquareCount / 2) * (SquareCount - 1) * (SquareCount - 2) * (SquareCount - 3);
 constexpr std::uint32_t IdenticalFourStateCount = FourStateCount / 2;
+constexpr std::uint32_t CompoundCopycatStateCount =
+  2 * SquareCount * (SquareCount - 1) * (SquareCount - 2) * (SquareCount - 3);
 
 struct PackedStorage {
     std::string path;
@@ -126,6 +128,21 @@ std::uint32_t encode_four(Color side, std::uint8_t whiteKing,
                * (SquareCount - 1) + blackRank)
               * (SquareCount - 2) + firstRank)
              * (SquareCount - 3) + secondRank);
+}
+
+std::uint32_t encode_compound_copycat(Color side, std::uint8_t whiteKing,
+                                      std::uint8_t blackKing,
+                                      std::uint8_t copycat,
+                                      std::uint8_t secondary) {
+    const std::uint32_t blackRank = rank_excluding(blackKing, {whiteKing});
+    const std::uint32_t copycatRank = rank_excluding(
+      copycat, {whiteKing, blackKing});
+    const std::uint32_t secondaryRank = rank_excluding(
+      secondary, {whiteKing, blackKing, copycat});
+    return ((((static_cast<std::uint32_t>(side) * SquareCount + whiteKing)
+               * (SquareCount - 1) + blackRank)
+              * (SquareCount - 2) + copycatRank)
+             * (SquareCount - 3) + secondaryRank);
 }
 
 std::uint32_t encode_identical_four(Color side, std::uint8_t whiteKing,
@@ -319,9 +336,12 @@ std::vector<Database> load_databases() {
                 database.secondaryColor = static_cast<Color>(secondaryColor);
                 const bool copycat = database.attacker == PieceType::Copycat &&
                                      database.secondary == PieceType::CopycatClone;
+                const bool compoundCopycat = database.attacker == PieceType::Copycat &&
+                                             database.secondary != PieceType::CopycatClone;
                 const bool identical = database.attacker == database.secondary &&
                                        database.secondaryColor == Color::White;
                 const std::uint64_t placementCount = copycat ? StateCount
+                  : compoundCopycat ? CompoundCopycatStateCount
                   : identical ? IdenticalFourStateCount : FourStateCount;
                 if (std::uint64_t(count) != placementCount * substates) {
                     database.count = 0;
@@ -410,7 +430,8 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
 
     int whiteKing = Position::NoPiece;
     int blackKing = Position::NoPiece;
-    std::array<int, 2> extras{Position::NoPiece, Position::NoPiece};
+    std::array<int, 3> extras{Position::NoPiece, Position::NoPiece,
+                              Position::NoPiece};
     int extraCount = 0;
     int alive = 0;
     for (int id = 0; id < position.pieceCount_; ++id) {
@@ -423,13 +444,70 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
         ++alive;
         if (piece.type == PieceType::King)
             (piece.color == Color::White ? whiteKing : blackKing) = id;
-        else if (extraCount < 2)
+        else if (extraCount < 3)
             extras[extraCount++] = id;
         else return std::nullopt;
     }
-    if ((alive != 3 && alive != 4) || whiteKing == Position::NoPiece ||
+    if ((alive < 3 || alive > 5) || whiteKing == Position::NoPiece ||
         blackKing == Position::NoPiece || extraCount != alive - 2)
         return std::nullopt;
+
+    if (extraCount == 3) {
+        int copycat = Position::NoPiece;
+        int clone = Position::NoPiece;
+        int material = Position::NoPiece;
+        for (const int id : extras) {
+            if (position.pieces_[id].type == PieceType::Copycat)
+                copycat = id;
+            else if (position.pieces_[id].type == PieceType::CopycatClone)
+                clone = id;
+            else
+                material = id;
+        }
+        if (copycat == Position::NoPiece || clone == Position::NoPiece ||
+            material == Position::NoPiece)
+            return std::nullopt;
+        const PieceState& primary = position.pieces_[copycat];
+        const PieceState& linked = position.pieces_[clone];
+        const PieceState& secondary = position.pieces_[material];
+        if (primary.link != clone || linked.link != copycat ||
+            linked.type != PieceType::CopycatClone || linked.color != primary.color ||
+            linked.square != reflect_horizontal(primary.square) ||
+            secondary.link != Position::NoPiece ||
+            position.continuation_ != Continuation::None ||
+            position.forcedPiece_ != Position::NoPiece ||
+            position.enPassantVictim_ != Position::NoPiece ||
+            position.enPassantSquare_ != Position::NoSquare)
+            return std::nullopt;
+        for (int id = 0; id < position.pieceCount_; ++id) {
+            const PieceState& item = position.pieces_[id];
+            if (item.alive && (item.cooldown || item.power || item.action ||
+                               item.freezeCount))
+                return std::nullopt;
+        }
+        for (const Database& database : databases()) {
+            if (database.attacker != PieceType::Copycat ||
+                database.secondary == PieceType::Count ||
+                database.secondary == PieceType::CopycatClone ||
+                database.secondary != secondary.type)
+                continue;
+            const Color expectedSecondary = database.secondaryColor == Color::White
+              ? primary.color : ~primary.color;
+            if (secondary.color != expectedSecondary || database.substates != 1)
+                continue;
+            const bool swapColors = primary.color == Color::Black;
+            const Color side = swapColors ? ~position.sideToMove_ : position.sideToMove_;
+            const int canonicalWhite = swapColors ? blackKing : whiteKing;
+            const int canonicalBlack = swapColors ? whiteKing : blackKing;
+            const std::uint32_t index = encode_compound_copycat(
+              side, position.pieces_[canonicalWhite].square,
+              position.pieces_[canonicalBlack].square, primary.square,
+              secondary.square);
+            if (index < database.count)
+                return database.at(index);
+        }
+        return std::nullopt;
+    }
 
     if (extraCount == 2) {
         for (const Database& database : databases()) {

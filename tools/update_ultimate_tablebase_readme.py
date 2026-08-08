@@ -58,8 +58,8 @@ def main() -> None:
     args = parser.parse_args()
 
     records = {str(record["filename"]): record for record in plan.inventory()}
-    # Copycat uses v5 because its one deployable character has a linked clone,
-    # but remains a K+K+1 inventory class.
+    # Copycat uses v5 because its one deployable character has a linked clone;
+    # the linked K+Copycat-v-K+Bishop extension also carries opposing material.
     ordered = [record for record in plan.inventory()
                if (ROOT / "tablebases" / str(record["filename"])).exists()]
     text = README.read_text()
