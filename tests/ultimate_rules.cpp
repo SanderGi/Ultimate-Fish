@@ -2014,6 +2014,30 @@ void test_exact_tablebase_probing() {
     expect(sameColor && sameColor->wdl == TablebaseWdl::Draw,
            "same-color Bishop pair is a terminal insufficient-material tablebase draw");
 
+    Position longDragonWin;
+    std::string longDragonError;
+    expect(longDragonWin.set_upn(
+      "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;win=-;"
+      "king,w,c2,0,0,0,0,1,1,-1,1,-1,0;"
+      "king,b,a1,0,0,0,0,1,1,-1,1,-1,0;"
+      "bishop,w,h1,0,0,0,0,1,1,-1,1,-1,0;"
+      "dragon,b,c1,0,0,0,0,1,1,-1,1,-1,0",
+      &longDragonError),
+      "long Dragon tablebase regression parses: " + longDragonError);
+    const auto longDragonResult = TablebaseProbe::probe(longDragonWin);
+    expect(longDragonResult && longDragonResult->wdl == TablebaseWdl::Win &&
+             longDragonResult->dtw == 143,
+           "Dragon-side root probes as an exact 143-action win");
+    Search longDragonSearch(1);
+    SearchLimits longDragonLimits;
+    longDragonLimits.depth = 16;
+    const SearchResult longDragonAnalysis =
+      longDragonSearch.think(longDragonWin, longDragonLimits);
+    expect(longDragonAnalysis.mateActions && *longDragonAnalysis.mateActions == 143,
+           "analysis preserves a long tablebase DTW as an exact action count");
+    expect(longDragonAnalysis.completedDepth == 1,
+           "an exact root tablebase result stops after selecting its optimal action");
+
     queen.piece(1).moved = false;
     expect(!TablebaseProbe::probe(queen),
            "tablebase declines an unmoved state whose castling class is absent");

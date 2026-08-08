@@ -509,6 +509,12 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
             value /= 2;
 
     SearchResult result;
+    // An unrestricted concrete root can retain the tablebase's exact WDL/DTW
+    // independently of the numeric search score. Searching one iteration is
+    // still necessary to select the DTW-optimal legal root action.
+    const auto rootTablebase = rootMoves_.empty() && rootDrawMoves_.empty()
+                             ? TablebaseProbe::probe(position)
+                             : std::nullopt;
     const int maxDepth = std::clamp(limits.depth, 1, MaxPly - 2);
     int previousScore = 0;
     std::optional<Move> previousBest;
@@ -537,6 +543,13 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
         result.principalVariation = pv;
         if (!pv.empty())
             result.bestMove = pv.front();
+        if (rootTablebase && rootTablebase->wdl != TablebaseWdl::Draw) {
+            const int distance = static_cast<int>(rootTablebase->dtw);
+            result.mateActions = rootTablebase->wdl == TablebaseWdl::Win
+                               ? distance : -distance;
+        }
+        if (rootTablebase)
+            break;
         if (std::abs(score) >= Mate - 128)
             break;
         if (result.bestMove && previousBest && *result.bestMove == *previousBest)
@@ -602,6 +615,7 @@ BeliefSearchResult Search::think_beliefs(const std::vector<Position>& beliefs,
                         ? std::optional<std::string>(position.move_to_string(*exact.bestMove))
                         : std::nullopt;
         result.score = result.worstScore = result.meanScore = exact.score;
+        result.mateActions = exact.mateActions;
         result.completedDepth = exact.completedDepth;
         result.nodes = exact.nodes;
         result.deepBeliefs = 1;

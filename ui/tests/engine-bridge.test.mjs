@@ -66,6 +66,12 @@ test("bridge exposes state, mate scores, results, continuations, and the complet
   assert.equal(analysis.score, 1);
   assert.equal(analysis.bestmove, "b2-b4");
 
+  const longTablebaseUpn = "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;win=-;king,w,c2,0,0,0,0,1,1,-1,1,-1,0;king,b,a1,0,0,0,0,1,1,-1,1,-1,0;bishop,w,h1,0,0,0,0,1,1,-1,1,-1,0;dragon,b,c1,0,0,0,0,1,1,-1,1,-1,0";
+  const longTablebase = await post("/analyze", { upn: longTablebaseUpn, depth: 16 });
+  assert.equal(longTablebase.scoreType, "mate");
+  assert.equal(longTablebase.score, 143);
+  assert.equal(longTablebase.depth, 1);
+
   const captured = await post("/move", { upn: mateUpn, move: "b2-b4" });
   assert.equal(captured.result, "white");
   assert.equal(captured.resultReason, "king-captured");

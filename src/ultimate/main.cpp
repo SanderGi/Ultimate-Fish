@@ -44,11 +44,13 @@ void print_position(const Position& position) {
         std::cout << "result draw simultaneous-king-capture\n";
 }
 
-void print_score(int score) {
-    if (std::abs(score) >= 30000 - 128) {
-        const int plies = 30000 - std::abs(score);
-        const int moves = std::max(1, (plies + 1) / 2);
-        std::cout << "mate " << (score < 0 ? -moves : moves);
+void print_score(int score, const std::optional<int>& exactMateActions = std::nullopt) {
+    if (exactMateActions) {
+        std::cout << "mate " << *exactMateActions;
+    }
+    else if (std::abs(score) >= 30000 - 128) {
+        const int actions = std::max(1, 30000 - std::abs(score));
+        std::cout << "mate " << (score < 0 ? -actions : actions);
     }
     else
         std::cout << "cp " << score;
@@ -178,7 +180,7 @@ int main() {
             const SearchLimits limits = parse_limits(input, nullptr, configuredMoveOverhead);
             const BeliefSearchResult result = search.think_beliefs(beliefs, limits);
             std::cout << "info depth " << result.completedDepth << " score ";
-            print_score(result.score);
+            print_score(result.score, result.mateActions);
             std::cout << " nodes " << result.nodes << " time " << result.elapsed.count()
                       << " beliefs " << result.beliefs << " deepbeliefs " << result.deepBeliefs
                       << " common " << result.commonMoves << " candidates " << result.candidates
@@ -309,7 +311,7 @@ int main() {
             const SearchLimits limits = parse_limits(input, &position, configuredMoveOverhead);
             const SearchResult result = search.think(position, limits);
             std::cout << "info depth " << result.completedDepth << " score ";
-            print_score(result.score);
+            print_score(result.score, result.mateActions);
             std::cout << " nodes " << result.nodes << " time " << result.elapsed.count() << " pv";
             for (const Move& move : result.principalVariation)
                 std::cout << ' ' << position.move_to_string(move);

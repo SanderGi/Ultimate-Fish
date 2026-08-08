@@ -34,6 +34,11 @@ struct SearchLimits {
 struct SearchResult {
     std::optional<Move> bestMove;
     int score = 0;
+    // Exact signed distance-to-win in native Ultimate actions. This is kept
+    // separate from score so long tablebase wins cannot be mistaken for a
+    // large centipawn evaluation, and because same-side continuations make
+    // orthodox ply-to-move conversion invalid.
+    std::optional<int> mateActions;
     int completedDepth = 0;
     std::uint64_t nodes = 0;
     std::chrono::milliseconds elapsed{0};
@@ -47,6 +52,7 @@ struct SearchResult {
 struct BeliefSearchResult {
     std::optional<std::string> bestMove;
     int score = 0;
+    std::optional<int> mateActions;
     int worstScore = 0;
     int meanScore = 0;
     int completedDepth = 0;
