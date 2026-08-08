@@ -576,6 +576,49 @@ class TablebaseGenerator {
                                     unreachable = piece.square / Position::BoardFiles == promotionRank;
                                 }
                             }
+                            if (!unreachable && !fourModels_ &&
+                                attackerType_ == PieceType::Prince &&
+                                position.has_forced_action()) {
+                                const int prince = 2;
+                                const int destination = position.pieces_[prince].square;
+                                bool hasPredecessor = false;
+                                for (int deltaFile = -1; !hasPredecessor && deltaFile <= 1;
+                                     ++deltaFile)
+                                    for (int deltaRank = -1; !hasPredecessor && deltaRank <= 1;
+                                         ++deltaRank) {
+                                        if (!deltaFile && !deltaRank)
+                                            continue;
+                                        const int file = int(destination % Position::BoardFiles) -
+                                                         deltaFile;
+                                        const int rank = int(destination / Position::BoardFiles) -
+                                                         deltaRank;
+                                        if (file < 0 || file >= Position::BoardFiles ||
+                                            rank < 0 || rank >= Position::BoardRanks)
+                                            continue;
+                                        const int origin = rank * Position::BoardFiles + file;
+                                        if (position.board_[origin] != Position::NoPiece)
+                                            continue;
+                                        Position predecessor = position;
+                                        predecessor.continuation_ = Continuation::None;
+                                        predecessor.forcedPiece_ = Position::NoPiece;
+                                        predecessor.erase_from_board(prince);
+                                        predecessor.pieces_[prince].square =
+                                          static_cast<std::uint8_t>(origin);
+                                        predecessor.place_on_board(prince);
+                                        predecessor.sideToMove_ = predecessor.pieces_[prince].color;
+                                        for (const Move& move : predecessor.legal_moves()) {
+                                            if (move.from != origin || move.to != destination)
+                                                continue;
+                                            Position child = predecessor;
+                                            if (child.apply_move_unchecked(move) &&
+                                                in_class(child) && child_index(child) == index) {
+                                                hasPredecessor = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                unreachable = !hasPredecessor;
+                            }
                             // An active aura freezing a lone enemy King cannot
                             // survive until the Penguin owner's next turn: the
                             // enemy had no action with which to return the turn.
@@ -586,19 +629,17 @@ class TablebaseGenerator {
                                     position.sideToMove_ != penguin.color)
                                     continue;
                                 const Color enemy = ~penguin.color;
-                                int enemyKing = Position::NoPiece;
-                                bool enemyHasOther = false;
+                                bool enemyHasPiece = false;
+                                bool enemyCanAct = false;
                                 for (int target = 0; target < position.pieceCount_; ++target) {
                                     const PieceState& piece = position.pieces_[target];
                                     if (!piece.alive || !piece.onBoard || piece.color != enemy)
                                         continue;
-                                    if (piece.type == PieceType::King)
-                                        enemyKing = target;
-                                    else
-                                        enemyHasOther = true;
+                                    enemyHasPiece = true;
+                                    enemyCanAct = enemyCanAct ||
+                                                  (!piece.freezeCount && !piece.cooldown);
                                 }
-                                unreachable = !enemyHasOther && enemyKing != Position::NoPiece &&
-                                              position.pieces_[enemyKing].freezeCount != 0;
+                                unreachable = enemyHasPiece && !enemyCanAct;
                             }
                         }
                         const std::uint32_t result =
