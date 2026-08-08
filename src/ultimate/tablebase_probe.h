@@ -19,6 +19,7 @@ struct TablebaseResult {
 
 class TablebaseProbe {
    public:
+    static void preload();
     [[nodiscard]] static std::optional<TablebaseResult> probe(const Position& position);
 };
 

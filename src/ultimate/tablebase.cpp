@@ -396,7 +396,9 @@ class TablebaseGenerator {
         stateCount_(attackerType_ == PieceType::Copycat ? PlacementStateCount
                     : identicalExtras_ ? IdenticalFourStateCount * substates_
                     : fourModels_ ? FourPlacementStateCount * substates_
-                               : PlacementStateCount * substates_) {
+                               : PlacementStateCount * substates_) {}
+
+    void allocate_state_planes() {
         if (diskBacked_) {
             mappedNodes_ = std::make_unique<MappedArray<Node>>(
               checkpoint_ + ".nodes", stateCount_);
@@ -447,10 +449,12 @@ class TablebaseGenerator {
         std::cout << "codecok states " << stateCount_ << '\n';
     }
 
-    void dry_run(std::uint32_t count) const {
-        count = std::min(count, stateCount_);
+    void dry_run(std::uint32_t begin, std::uint32_t count) const {
+        begin = std::min(begin, stateCount_);
+        const std::uint32_t end = static_cast<std::uint32_t>(
+          std::min<std::uint64_t>(stateCount_, std::uint64_t(begin) + count));
         std::uint64_t edges = 0;
-        for (std::uint32_t index = 0; index < count; ++index) {
+        for (std::uint32_t index = begin; index < end; ++index) {
             Position position;
             if (!make_position_at(index, position))
                 continue;
@@ -459,11 +463,11 @@ class TablebaseGenerator {
                 if (!child.apply_move_unchecked(move))
                     throw std::runtime_error("legal tablebase move failed trusted application");
                 ++edges;
-                if (in_class(child))
-                    (void) child_index(child);
+                if (in_class(child) && child_index(child) >= stateCount_)
+                    throw std::runtime_error("dry-run child index exceeds tablebase domain");
             }
         }
-        std::cout << "dryrun states " << count << " edges " << edges << '\n';
+        std::cout << "dryrun states " << begin << ".." << end << " edges " << edges << '\n';
     }
 
     void inspect(std::uint32_t index) const {
@@ -486,6 +490,12 @@ class TablebaseGenerator {
     }
 
     void generate() {
+        // Discover and materialize lower table dependencies before dirtying
+        // multi-gigabyte mapped state planes. The first opponent-to-move state
+        // otherwise triggers this work at the side-half boundary, where macOS
+        // can SIGBUS a scratch mapping under transient VM pressure.
+        TablebaseProbe::preload();
+        allocate_state_planes();
         const auto start = std::chrono::steady_clock::now();
         std::uint32_t begin = load_checkpoint();
         const std::uint32_t progressEvery = checkpointEvery_ ? checkpointEvery_ : 2'000'000;
@@ -969,6 +979,9 @@ class TablebaseGenerator {
                 continue;  // Captures enter K-v-K; promotions use a lower table.
             }
             const std::uint32_t successor = child_index(child);
+            if (successor >= stateCount_)
+                throw std::runtime_error("child index exceeds tablebase domain at parent " +
+                                         std::to_string(index));
             consume(successor, child.side_to_move() == position.side_to_move());
         }
     }
@@ -1230,6 +1243,7 @@ int main(int argc, char** argv) {
     bool fourCodecSelfTest = false;
     bool diskBacked = false;
     std::uint32_t dryRun = 0;
+    std::uint32_t dryRunBegin = 0;
     std::uint32_t inspect = std::numeric_limits<std::uint32_t>::max();
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
@@ -1259,6 +1273,8 @@ int main(int argc, char** argv) {
             checkpointEvery = static_cast<std::uint32_t>(std::stoul(value("--checkpoint-every")));
         else if (argument == "--dry-run")
             dryRun = static_cast<std::uint32_t>(std::stoul(value("--dry-run")));
+        else if (argument == "--dry-run-begin")
+            dryRunBegin = static_cast<std::uint32_t>(std::stoul(value("--dry-run-begin")));
         else if (argument == "--inspect")
             inspect = static_cast<std::uint32_t>(std::stoul(value("--inspect")));
         else if (argument == "--self-test") selfTest = true;
@@ -1282,7 +1298,7 @@ int main(int argc, char** argv) {
         if (selfTest)
             generator.self_test();
         if (dryRun)
-            generator.dry_run(dryRun);
+            generator.dry_run(dryRunBegin, dryRun);
         if (inspect != std::numeric_limits<std::uint32_t>::max())
             generator.inspect(inspect);
         if (!selfTest && !dryRun && inspect == std::numeric_limits<std::uint32_t>::max())

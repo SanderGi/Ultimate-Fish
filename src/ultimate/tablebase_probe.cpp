@@ -402,6 +402,8 @@ const std::vector<Database>& databases() {
 
 }  // namespace
 
+void TablebaseProbe::preload() { (void) databases(); }
+
 std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
     if (position.forcedTimeoutWinner_ >= 0)
         return std::nullopt;
