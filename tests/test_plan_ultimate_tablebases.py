@@ -136,6 +136,19 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertEqual(summary.cell(totals[1], illegal[1]),
                          "19,576 (261,408) / 0 (10,560) / 3,148,280 (2,475,696)")
 
+    def test_invalid_giant_footprints_are_unreachable_draw_sentinels(self):
+        totals, illegal = summary.summary(ROOT / "tablebases" / "kgiantk.uftb")
+        self.assertEqual(summary.cell(totals[0], illegal[0]),
+                         "85,776 / 0 / 273,324 (133,860)")
+        self.assertEqual(summary.cell(totals[1], illegal[1]),
+                         "0 (30,868) / 1,460 / 326,772 (133,860)")
+        self.assertEqual(summary.giant_invalid_placements(37_957_920, 1),
+                         5_692_260)
+        self.assertEqual(summary.giant_invalid_placements(18_978_960, 2),
+                         5_024_148)
+        self.assertEqual(summary.giant_invalid_placements(37_957_920, 2),
+                         10_048_296)
+
     def test_jester_adjacent_king_wins_are_legal(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "kjesterk.uftb")
         self.assertEqual(illegal[1], [0, 0, 0, 0])

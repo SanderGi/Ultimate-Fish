@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
+from functools import lru_cache
 import math
 from pathlib import Path
 import struct
@@ -119,6 +120,73 @@ STATE_FACTORS = {
     20: 2,  # Prince
     21: 4,  # Checker / CheckerKing x ordinary/forced
 }
+
+
+GIANT = 23
+
+
+def giant_footprint(anchor: int) -> int:
+    """Return the native 2x2 Giant footprint, or zero for an invalid anchor."""
+    if anchor % 8 == 7 or anchor // 8 == 9:
+        return 0
+    return ((1 << anchor) | (1 << (anchor + 1)) |
+            (1 << (anchor + 8)) | (1 << (anchor + 9)))
+
+
+@lru_cache(maxsize=None)
+def giant_invalid_placements(placements: int, giant_models: int) -> int:
+    """Count invalid Giant geometries in one side-to-move placement half.
+
+    Invalid geometries are written as draw sentinels by the generator.  Count
+    them from the codec domain instead of walking the WDL plane: legality is
+    entirely geometric and identical for both sides to move.
+    """
+    if giant_models not in (1, 2):
+        return 0
+    if placements == 985_920:
+        if giant_models != 1:
+            raise ValueError("K+K+1 cannot contain two Giant models")
+        white_squares = range(80)
+        models_per_king_pair = 78
+        identical = False
+    elif placements in (37_957_920, 18_978_960):
+        white_squares = ((rank // 4) * 8 + rank % 4 for rank in range(40))
+        models_per_king_pair = 78 * 77 if placements == 37_957_920 else 3_003
+        identical = placements == 18_978_960
+        if identical and giant_models != 2:
+            raise ValueError("identical four-model codec requires two Giants")
+    else:
+        raise ValueError(f"unsupported Giant placement count {placements}")
+
+    invalid = 0
+    for white in white_squares:
+        for black in range(80):
+            if black == white:
+                continue
+            kings = (1 << white) | (1 << black)
+            valid = [giant_footprint(anchor) for anchor in range(80)
+                     if anchor != white and anchor != black]
+            valid = [mask for mask in valid if mask and not (mask & kings)]
+            if giant_models == 1:
+                legal = len(valid) if placements == 985_920 else len(valid) * 74
+            else:
+                legal_ordered = sum(not (first & second)
+                                    for first in valid for second in valid)
+                legal = legal_ordered // 2 if identical else legal_ordered
+            invalid += models_per_king_pair - legal
+    return invalid
+
+
+def add_giant_geometry_artifacts(
+        count: int, substates: int, primary: int, secondary: int,
+        illegal: list[list[int]]) -> None:
+    giant_models = int(primary == GIANT) + int(secondary == GIANT)
+    if not giant_models:
+        return
+    placements = count // substates
+    invalid = giant_invalid_placements(placements, giant_models) * substates
+    for side in range(2):
+        illegal[side][3] += invalid
 
 
 def continuation_mismatches(primary: int, secondary: int, secondary_color: int,
@@ -375,6 +443,7 @@ def summary(path: Path, data: bytes | None = None) -> tuple[list[list[int]], lis
     checker_forced_without_jump_artifacts(
         wdl, count, substates, piece, secondary, secondary_color,
         owns_material, illegal)
+    add_giant_geometry_artifacts(count, substates, piece, secondary, illegal)
     expected_size = offset + wdl_bytes + dtw_bytes + exceptions * 6
     if len(data) != expected_size:
         raise ValueError(f"{path}: trailing or truncated packed data")

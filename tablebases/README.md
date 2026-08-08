@@ -22,7 +22,7 @@ represented by that class.
 | `kparasitek.uftb` | King+Parasite vs King | 8,602,716 | 492,960 / 0 / 0 | 0 (41,808) / 451,120 / 32 | `f08b2676a703259ef638bc4ab72b9cd7e6b2000afc72dd70b0ac17e03ea858ab` |
 | `ksniperk.uftb` | King+Sniper vs King | 24,180,908 | 157,334 (42,232) / 0 / 1,321,546 (450,728) | 0 (167,232) / 2,244 (32) / 1,351,212 (451,120) | `473022c95908a45eec7ac8aab7752482d30033cb24f66b65bdf329a7c49c49c5` |
 | `kprincek.uftb` | King+Prince vs King | 14,324,280 | 947,384 / 0 (38,536) / 0 | 0 (41,808) / 414,344 (492,944) / 36,808 (16) | `7bce11ab717f49e1e2b6e1e0844825139382fe324b2ad88a59b5fc027ba0e6c0` |
-| `kgiantk.uftb` | King+Giant vs King | 4,747,504 | 85,776 / 0 / 407,184 | 0 (30,868) / 1,460 / 460,632 | `eb52f2c08cf88e1e3682d0c72dfde191d9009e79779ad7eee23ca82fdcade591` |
+| `kgiantk.uftb` | King+Giant vs King | 4,747,504 | 85,776 / 0 / 273,324 (133,860) | 0 (30,868) / 1,460 / 326,772 (133,860) | `eb52f2c08cf88e1e3682d0c72dfde191d9009e79779ad7eee23ca82fdcade591` |
 | `kcopycatk.uftb` | King+Copycat vs King | 10,685,864 | 480,408 / 0 / 12,552 | 0 (40,776) / 374,136 / 78,048 | `98dbd354da959fa923ed9b712c1bde7147f2039a9bcf50306cbdc2a9b3098aeb` |
 | `kdragonk.uftb` | King+Dragon vs King | 11,904,156 | 492,960 / 0 / 0 | 0 (41,808) / 414,164 / 36,988 | `28d3cbeba82d02611a48bf2d0a6a527d11ff4cd3049f04bf2b4b929a05ed86c6` |
 | `kjesterjesterk.uftb` | King+2 Jesters vs King | 231,295,032 | 9,489,480 / 0 / 0 | 804,804 / 8,682,564 / 2,112 | `791453682cab1999efeeea44cc79b7d84be3b2658975a0e004cf589ca891e150` |
@@ -45,8 +45,8 @@ represented by that class.
 | `kjesterkmage.uftb` | King+Jester vs King+Mage | 364,406,212 | 18,978,960 / 0 / 0 | 1,609,608 / 15,953,304 / 1,416,048 | `705b00311fc61e20615b79e13472b96cf7705f8e80227303877ec0445326d274` |
 | `kjesterparasitek.uftb` | King+Jester+Parasite vs King | 462,590,064 | 18,978,960 / 0 / 0 | 1,609,608 / 17,365,128 / 4,224 | `50d5e2a3a35f7746b27395ebeb922dd9583b10800b59a6870c18750416ac5630` |
 | `kjesterkparasite.uftb` | King+Jester vs King+Parasite | 450,905,824 | 3,349,672 / 15,592,716 / 36,572 | 18,877,766 / 87,668 / 13,526 | `45f0f26f182a2e231455df61931cf49d6a54d9b36f9be0e1fd9fd87117a7fd18` |
-| `kjestergiantk.uftb` | King+Jester+Giant vs King | 259,948,596 | 13,286,700 / 0 / 5,692,260 | 1,142,116 / 11,300,932 / 6,535,912 | `9cee141bd1bc8cd2e0427a95d6b96683e24e5096d2bafce7390750918a5eb1f8` |
-| `kjesterkgiant.uftb` | King+Jester vs King+Giant | 265,285,348 | 13,180,164 / 21,472 / 5,777,324 | 3,091,428 / 7,778,226 / 8,109,306 | `67a539cfcbeeb53837a6b7c07c497aed513aa9d12260a7588213eee783a204e6` |
+| `kjestergiantk.uftb` | King+Jester+Giant vs King | 259,948,596 | 13,286,700 / 0 / 0 (5,692,260) | 1,142,116 / 11,300,932 / 843,652 (5,692,260) | `9cee141bd1bc8cd2e0427a95d6b96683e24e5096d2bafce7390750918a5eb1f8` |
+| `kjesterkgiant.uftb` | King+Jester vs King+Giant | 265,285,348 | 13,180,164 / 21,472 / 85,064 (5,692,260) | 3,091,428 / 7,778,226 / 2,417,046 (5,692,260) | `67a539cfcbeeb53837a6b7c07c497aed513aa9d12260a7588213eee783a204e6` |
 | `kjesterfishermank.uftb` | King+Jester+Fisherman vs King | 796,241,336 | 18,978,960 / 0 / 0 | 1,609,608 / 15,952,244 / 1,417,108 | `3f335332d457d184fc3a20b5ddddf2806911bb5e5bfd607872eb757a2a90a968` |
 | `kjesterkfisherman.uftb` | King+Jester vs King+Fisherman | 723,303,740 | 5,592,998 / 0 / 13,385,962 | 1,609,608 / 11,842 / 17,357,510 | `ce378df3a2be9b6fe0dcb82098a88abc7067ed1cde02821ca744af46dc461df0` |
 | `kjesterdragonk.uftb` | King+Jester+Dragon vs King | 596,943,520 | 18,978,960 / 0 / 0 | 1,609,608 / 17,350,088 / 19,264 | `3553fad7d75c3c428bbf0d9333801d57cb3dae0a99bc505ef1bf45de1f7cc017` |
@@ -64,8 +64,8 @@ represented by that class.
 | `kknightturtlek.uftb` | King+Knight+Turtle vs King | 363,952,568 | 17,632,308 / 0 / 1,346,652 | 0 (1,609,608) / 12,261,896 / 5,107,456 | `e51001e72d79078c3da96de0dab87d8752d5f7496621b4b3812f82624107c5df` |
 | `kknightparasitek.uftb` | King+Knight+Parasite vs King | 412,737,272 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,364,220 / 5,132 | `80703fb82f8caf5589e4e3d07bec5f6b4ce78dec12ce44d7a7f7e07d5e127246` |
 | `kknightkparasite.uftb` | King+Knight vs King+Parasite | 396,499,600 | 2,808,980 / 14,791,096 / 1,378,884 | 18,910,940 / 4 / 68,016 | `c9c65bc38098b46e30464eabc4816c9d4e68c498b0876c7dca2df59103257c04` |
-| `kknightgiantk.uftb` | King+Knight+Giant vs King | 228,702,604 | 13,080,248 / 0 / 5,898,712 | 0 (1,142,116) / 9,132,192 / 8,704,652 | `2aecb1ceed4793a173c917fda61cb26bd622bf4dfec8e66d61c0e837f5cba541` |
-| `kknightkgiant.uftb` | King+Knight vs King+Giant | 215,826,804 | 1,968,832 / 19,388 / 16,990,740 | 3,089,504 / 0 / 15,889,456 | `c3c8ceb56c11bbd52c3316e8dbb786e4fbe573382b6190b0e2596bf49ffda8fc` |
+| `kknightgiantk.uftb` | King+Knight+Giant vs King | 228,702,604 | 13,080,248 / 0 / 206,452 (5,692,260) | 0 (1,142,116) / 9,132,192 / 3,012,392 (5,692,260) | `2aecb1ceed4793a173c917fda61cb26bd622bf4dfec8e66d61c0e837f5cba541` |
+| `kknightkgiant.uftb` | King+Knight vs King+Giant | 215,826,804 | 1,968,832 / 19,388 / 11,298,480 (5,692,260) | 3,089,504 / 0 / 10,197,196 (5,692,260) | `c3c8ceb56c11bbd52c3316e8dbb786e4fbe573382b6190b0e2596bf49ffda8fc` |
 | `kknightdragonk.uftb` | King+Knight+Dragon vs King | 534,668,038 | 18,978,956 / 0 / 4 | 0 (1,609,608) / 16,039,998 / 1,329,354 | `5a186985b6ca6e024562e2a0cff6dbe34003e30903761bae751400135abeb01c` |
 | `kknightkdragon.uftb` | King+Knight vs King+Dragon | 498,929,176 | 2,808,960 / 13,805,686 / 2,364,314 | 18,934,576 / 0 / 44,384 | `22a14009f6d4f456eddcb659d3a5c1d99170ff4c706a517b786357abaecddabb` |
 | `kqueenqueenk.uftb` | King+2 Queens vs King | 480,508,116 | 9,489,480 / 0 / 0 | 0 (804,804) / 8,560,812 / 123,864 | `953ef23458f3681680b5d58736d854930218e59dea4961d8ddec5632108f1b21` |
@@ -84,8 +84,8 @@ represented by that class.
 | `kqueenkmage.uftb` | King+Queen vs King+Mage | 600,512,500 | 18,978,960 / 0 / 0 | 1,609,608 / 15,938,592 / 1,430,760 | `88a74961c77c7da83eded1c1d716037ffbe71a46746849651c3a308141d4b2f4` |
 | `kqueenparasitek.uftb` | King+Queen+Parasite vs King | 694,110,316 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,307,456 / 61,896 | `6a29b00ab2a1edd510e94e67d5ca70d6da108b15bc9d9a3edd54b547d2b8327c` |
 | `kqueenkparasite.uftb` | King+Queen vs King+Parasite | 622,639,914 | 9,388,712 / 794,236 / 8,796,012 | 6,833,856 / 1,561,098 / 10,584,006 | `f088d7d7937b6efed0cc69eec38fda1448bbb0351d135b9fb07027a9ad578d39` |
-| `kqueengiantk.uftb` | King+Queen+Giant vs King | 411,446,456 | 13,286,700 / 0 / 5,692,260 | 0 (1,142,116) / 11,256,584 / 6,580,260 | `b1e6c719cd0a03774e09c3bb700b63e54f1b6ad940780498c0d5ae3169302d85` |
-| `kqueenkgiant.uftb` | King+Queen vs King+Giant | 358,244,540 | 13,273,492 / 7,090 / 5,698,378 | 3,072,430 / 7,900,780 / 8,005,750 | `e9ce180e7176f25be6857375977f5c4f56fc5b5b5805fa1c60a22e6a15510baa` |
+| `kqueengiantk.uftb` | King+Queen+Giant vs King | 411,446,456 | 13,286,700 / 0 / 0 (5,692,260) | 0 (1,142,116) / 11,256,584 / 888,000 (5,692,260) | `b1e6c719cd0a03774e09c3bb700b63e54f1b6ad940780498c0d5ae3169302d85` |
+| `kqueenkgiant.uftb` | King+Queen vs King+Giant | 358,244,540 | 13,273,492 / 7,090 / 6,118 (5,692,260) | 3,072,430 / 7,900,780 / 2,313,490 (5,692,260) | `e9ce180e7176f25be6857375977f5c4f56fc5b5b5805fa1c60a22e6a15510baa` |
 | `kqueenfishermank.uftb` | King+Queen+Fisherman vs King | 998,335,056 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 15,912,942 / 1,456,410 | `d8999ba65bae1875637e5cc4e5b7ad857bb178533a7f41751cbdadce731f1c38` |
 | `kqueenkfisherman.uftb` | King+Queen vs King+Fisherman | 870,038,166 | 18,978,960 / 0 / 0 | 1,609,608 / 15,953,468 / 1,415,884 | `c321eebe57da1b0b119a42001f06b98d1353528567fc9c6dffcd09b95c27e3b2` |
 | `kqueendragonk.uftb` | King+Queen+Dragon vs King | 819,198,846 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,238,014 / 131,338 | `59dbc00aeff1770fdae48bb5ebeb6db85c4318e17d95f1fa531cc4fcf4c9f32e` |
@@ -104,8 +104,8 @@ represented by that class.
 | `krookkmage.uftb` | King+Rook vs King+Mage | 462,063,112 | 18,978,960 / 0 / 0 | 1,609,608 / 15,952,876 / 1,416,476 | `f7f3e7b23902188d6c0e47673f8c59b483656de94486fa52a0affcb6ced4abd7` |
 | `krookparasitek.uftb` | King+Rook+Parasite vs King | 552,591,676 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,360,968 / 8,384 | `91ca9a8f1a35291a384b84a2813e29433b331cb354039cd992d860cad7ac3c19` |
 | `krookkparasite.uftb` | King+Rook vs King+Parasite | 508,640,722 | 5,052,318 / 13,479,612 / 447,030 | 18,808,556 / 17,690 / 152,714 | `05d30182c25ad00379ab4e5c1d51223cb108ee133c30d00efc89faa012e9aed2` |
-| `krookgiantk.uftb` | King+Rook+Giant vs King | 321,003,062 | 13,286,700 / 0 / 5,692,260 | 0 (1,142,116) / 11,296,414 / 6,540,430 | `36b212cd1ac7cc12ad2773453e30d9baef52b691488e5ffe777698708b8d0bc6` |
-| `krookkgiant.uftb` | King+Rook vs King+Giant | 287,592,138 | 13,212,128 / 13,856 / 5,752,976 | 3,082,334 / 7,888,652 / 8,007,974 | `82ef14d4804794e0aba2a3d0faec6441e261f5200546f726f28e50bc1bbc72d6` |
+| `krookgiantk.uftb` | King+Rook+Giant vs King | 321,003,062 | 13,286,700 / 0 / 0 (5,692,260) | 0 (1,142,116) / 11,296,414 / 848,170 (5,692,260) | `36b212cd1ac7cc12ad2773453e30d9baef52b691488e5ffe777698708b8d0bc6` |
+| `krookkgiant.uftb` | King+Rook vs King+Giant | 287,592,138 | 13,212,128 / 13,856 / 60,716 (5,692,260) | 3,082,334 / 7,888,652 / 2,315,714 (5,692,260) | `82ef14d4804794e0aba2a3d0faec6441e261f5200546f726f28e50bc1bbc72d6` |
 | `krookfishermank.uftb` | King+Rook+Fisherman vs King | 857,801,488 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 15,950,608 / 1,418,744 | `093944252b6b71ad34c31a006493a6bb6ab46fef02238e6f1d4714dacf0e6707` |
 | `krookkfisherman.uftb` | King+Rook vs King+Fisherman | 778,458,154 | 9,374,180 / 0 / 9,604,780 | 1,609,608 / 461,572 / 16,907,780 | `bd7c952e4779e7b9fd1e035dc1e9eabcd2202c51f0e96b0dfbe38bdd20b713a9` |
 | `krookdragonk.uftb` | King+Rook+Dragon vs King | 676,425,340 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,325,054 / 44,298 | `7705efb335912c0ed7c8f7dd7c1ac63ea6cce8f353ce5f8f4799d8a09aa4f70c` |
@@ -119,8 +119,8 @@ represented by that class.
 | `kbishopmagek.uftb` | King+Bishop+Mage vs King | 400,784,944 | 3,693,788 / 0 / 15,285,172 | 0 (1,609,608) / 0 / 17,369,352 | `4b32c84e4e56475370f5439dcd28b75a743e86531c8f27c4b652d47b722b767a` |
 | `kbishopparasitek.uftb` | King+Bishop+Parasite vs King | 470,086,096 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,355,020 / 14,332 | `f47108fdea572a895b49d0e1ac7f94e342f0029a753a7aa3cd99217ae4d275fb` |
 | `kbishopkparasite.uftb` | King+Bishop vs King+Parasite | 442,566,648 | 3,693,788 / 13,243,670 / 2,041,502 | 18,831,764 / 0 / 147,196 | `4974a88a0665613f8097467df8bf39c67a1048046963e7be6f0cbbd802e879b0` |
-| `kbishopgiantk.uftb` | King+Bishop+Giant vs King | 263,060,894 | 9,818,744 / 0 / 9,160,216 | 0 (1,142,116) / 5,650,886 / 12,185,958 | `f7bed858352d77238adb64d894d2e2ce4bc716703aa4354fa16f288708bd658c` |
-| `kbishopkgiant.uftb` | King+Bishop vs King+Giant | 242,856,394 | 2,519,718 / 15,910 / 16,443,332 | 3,084,448 / 0 / 15,894,512 | `0693144e84471959edad34705a14dbef0685df3b60bc6d83960b904001133bb2` |
+| `kbishopgiantk.uftb` | King+Bishop+Giant vs King | 263,060,894 | 9,818,744 / 0 / 3,467,956 (5,692,260) | 0 (1,142,116) / 5,650,886 / 6,493,698 (5,692,260) | `f7bed858352d77238adb64d894d2e2ce4bc716703aa4354fa16f288708bd658c` |
+| `kbishopkgiant.uftb` | King+Bishop vs King+Giant | 242,856,394 | 2,519,718 / 15,910 / 10,751,072 (5,692,260) | 3,084,448 / 0 / 10,202,252 (5,692,260) | `0693144e84471959edad34705a14dbef0685df3b60bc6d83960b904001133bb2` |
 | `kbishopfishermank.uftb` | King+Bishop+Fisherman vs King | 775,812,140 | 3,693,788 / 0 / 15,285,172 | 0 (1,609,608) / 0 / 17,369,352 | `3e2b9df328f5ae439a9d4559b83e5d7d80ae35c07004c9f3f6abccff7cc254f3` |
 | `kbishopdragonk.uftb` | King+Bishop+Dragon vs King | 592,268,962 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 16,094,422 / 1,274,930 | `e5441c998ebc7f4ef1a7be2079a7919b96a2e02238a21ccd4b0e342925bfc6fd` |
 | `kbishopkdragon.uftb` | King+Bishop vs King+Dragon | 531,451,376 | 3,693,796 / 12,191,210 / 3,093,954 | 18,874,392 / 4 / 104,564 | `8c0fba9b456b74d6784bd9b48932a1ccabf44237792ee57413bfbf55a95d2be0` |
@@ -134,8 +134,8 @@ represented by that class.
 | `kbombkmage.uftb` | King+Bomb vs King+Mage | 387,466,920 | 18,978,960 / 0 / 0 | 1,609,608 / 17,363,848 / 5,504 | `a7469c100c45ef088a63fb7016ea648a2b93e8ed3793054d83961f364e92fbe3` |
 | `kbombparasitek.uftb` | King+Bomb+Parasite vs King | 476,419,868 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,331,368 / 37,984 | `2af30741c6d6e9892aac5bd68b397454f3e351f0e459d04c274e47a7f80d9a30` |
 | `kbombkparasite.uftb` | King+Bomb vs King+Parasite | 447,255,924 | 10,818,954 / 3,010,424 / 5,149,582 | 8,467,632 / 5,296,948 / 5,214,380 | `bc300fdbcb2945fd8fe494f09337a39f28fe7f6c41debac8535a7b124fca3d5f` |
-| `kbombgiantk.uftb` | King+Bomb+Giant vs King | 273,239,456 | 13,286,700 / 0 / 5,692,260 | 0 (1,142,116) / 12,116,408 / 5,720,436 | `50ad69316185c89f66f3f15d61ce3f6f969419eea73b5dbd331cc6d831cbae5e` |
-| `kbombkgiant.uftb` | King+Bomb vs King+Giant | 249,537,360 | 12,522,720 / 19,520 / 6,436,720 | 3,152,398 / 7,689,034 / 8,137,528 | `b504391775e091cd8ca49bca0763e9359262ad794a7f9b6cd79d80d66a6fb9f1` |
+| `kbombgiantk.uftb` | King+Bomb+Giant vs King | 273,239,456 | 13,286,700 / 0 / 0 (5,692,260) | 0 (1,142,116) / 12,116,408 / 28,176 (5,692,260) | `50ad69316185c89f66f3f15d61ce3f6f969419eea73b5dbd331cc6d831cbae5e` |
+| `kbombkgiant.uftb` | King+Bomb vs King+Giant | 249,537,360 | 12,522,720 / 19,520 / 744,460 (5,692,260) | 3,152,398 / 7,689,034 / 2,445,268 (5,692,260) | `b504391775e091cd8ca49bca0763e9359262ad794a7f9b6cd79d80d66a6fb9f1` |
 | `kbombfishermank.uftb` | King+Bomb+Fisherman vs King | 781,013,976 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,339,240 / 30,112 | `c35a204b36baf78a0c823f857b370adeb4a22a2aa1b7eb159cface00da7e5b6b` |
 | `kbombkfisherman.uftb` | King+Bomb vs King+Fisherman | 729,381,942 | 7,728,782 / 0 / 11,250,178 | 1,609,608 / 1,511,094 / 15,858,258 | `afdd6e53d8f69c864f9c4dd29d44082319d434640b52157181cf078a31ddbf72` |
 | `kbombdragonk.uftb` | King+Bomb+Dragon vs King | 598,544,858 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,324,550 / 44,802 | `062163e51a367a6558d6cf520594ea40fcf3ba1f4d1572ea4a8eb62bcbd2f9ff` |
@@ -148,8 +148,8 @@ represented by that class.
 | `kninjakmage.uftb` | King+Ninja vs King+Mage | 492,922,356 | 18,978,960 / 0 / 0 | 1,609,608 / 15,942,740 / 1,426,612 | `8686c7bcc2093ef3812ced89ef620f6f01a876a72b8b928aae23fce957f510be` |
 | `kninjaparasitek.uftb` | King+Ninja+Parasite vs King | 584,118,216 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,313,736 / 55,616 | `c37a2962c07c0e6317ff0db96a1e742c97a63259fe708a80f9423b013d857a60` |
 | `kninjakparasite.uftb` | King+Ninja vs King+Parasite | 535,099,432 | 7,458,260 / 1,828,856 / 9,691,844 | 8,163,266 / 1,201,524 / 9,614,170 | `3b3eec23f0e5f96eb845c436bf35aabc5eda9b870d96411981f7e8023e5e6c6e` |
-| `kninjagiantk.uftb` | King+Ninja+Giant vs King | 344,953,212 | 13,286,700 / 0 / 5,692,260 | 0 (1,142,116) / 11,260,640 / 6,576,204 | `b43c74ea48ece9cbba5c344193b2db26044735da0f7a32f70b86f734206fb1df` |
-| `kninjakgiant.uftb` | King+Ninja vs King+Giant | 306,835,628 | 13,264,058 / 13,504 / 5,701,398 | 3,080,994 / 7,890,026 / 8,007,940 | `3a41d7ff3cd4906c814bf8e6bd3af56ec30079cbdd4e43b8ed7c523edff4225b` |
+| `kninjagiantk.uftb` | King+Ninja+Giant vs King | 344,953,212 | 13,286,700 / 0 / 0 (5,692,260) | 0 (1,142,116) / 11,260,640 / 883,944 (5,692,260) | `b43c74ea48ece9cbba5c344193b2db26044735da0f7a32f70b86f734206fb1df` |
+| `kninjakgiant.uftb` | King+Ninja vs King+Giant | 306,835,628 | 13,264,058 / 13,504 / 9,138 (5,692,260) | 3,080,994 / 7,890,026 / 2,315,680 (5,692,260) | `3a41d7ff3cd4906c814bf8e6bd3af56ec30079cbdd4e43b8ed7c523edff4225b` |
 | `kninjafishermank.uftb` | King+Ninja+Fisherman vs King | 888,968,396 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 15,914,976 / 1,454,376 | `2adcd8f6d511a359b43a9dbb89650b0e2492d338d6d98538208796a182df0763` |
 | `kninjakfisherman.uftb` | King+Ninja vs King+Fisherman | 803,024,716 | 18,978,960 / 0 / 0 | 1,609,608 / 15,953,476 / 1,415,876 | `de5c29df362dc35024077e4dcd380fffe6836e469d863e3871a7a1b52549be09` |
 | `kninjadragonk.uftb` | King+Ninja+Dragon vs King | 707,856,384 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,252,356 / 116,996 | `de0501b3bef6a6abf8fc81c478c31af9a6c3f71f28d313473de954dc62beb52c` |
@@ -157,30 +157,30 @@ represented by that class.
 | `kturtleturtlek.uftb` | King+2 Turtles vs King | 167,494,620 | 1,579,316 / 0 / 7,910,164 | 0 (804,804) / 416 / 8,684,260 | `bbb146a2f252eaf0eb40d23e49d0ddda56de183fb202c515ff64a0fd172037b1` |
 | `kturtleparasitek.uftb` | King+Turtle+Parasite vs King | 383,586,096 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,364,876 / 4,476 | `eecd62d724dc6c09c12d13d3170a88c951b884bb7c6fed5c522c6085a763a0ae` |
 | `kturtlekparasite.uftb` | King+Turtle vs King+Parasite | 373,105,856 | 2,397,164 / 7,602,610 / 8,979,186 | 13,089,020 / 0 / 5,889,940 | `7e174a2eaa35113df49bbd5b8dd89e16eac9359a96e93b9032d7c1622de8d878` |
-| `kturtlegiantk.uftb` | King+Turtle+Giant vs King | 210,345,328 | 12,328,232 / 0 / 6,650,728 | 0 (1,142,116) / 7,851,670 / 9,985,174 | `f84a9bc0224441dbb0d78d0fac8fbad6a92ff7159cc9bab1772ccece4f03911a` |
-| `kturtlekgiant.uftb` | King+Turtle vs King+Giant | 201,853,704 | 1,705,440 / 24,002 / 17,249,518 | 3,094,458 / 4 / 15,884,498 | `08adee4b8b5903dac5038a2d70abed1be2b75773f1ae0b64d5d432d63ef21cc6` |
+| `kturtlegiantk.uftb` | King+Turtle+Giant vs King | 210,345,328 | 12,328,232 / 0 / 958,468 (5,692,260) | 0 (1,142,116) / 7,851,670 / 4,292,914 (5,692,260) | `f84a9bc0224441dbb0d78d0fac8fbad6a92ff7159cc9bab1772ccece4f03911a` |
+| `kturtlekgiant.uftb` | King+Turtle vs King+Giant | 201,853,704 | 1,705,440 / 24,002 / 11,557,258 (5,692,260) | 3,094,458 / 4 / 10,192,238 (5,692,260) | `08adee4b8b5903dac5038a2d70abed1be2b75773f1ae0b64d5d432d63ef21cc6` |
 | `kturtledragonk.uftb` | King+Turtle+Dragon vs King | 505,144,192 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 15,996,498 / 1,372,854 | `5a40d96d2a1f2747a0e246d52add88cd99496a7a6d3e796fc1e11c0bec5a4f36` |
 | `kturtlekdragon.uftb` | King+Turtle vs King+Dragon | 481,941,236 | 2,397,164 / 14,530,158 / 2,051,638 | 18,949,588 / 0 / 29,372 | `15fd11a4865807c48c1d47b508b5073f78efdf12332b34ab8ff7fd062d567fca` |
 | `kmageparasitek.uftb` | King+Mage+Parasite vs King | 363,306,160 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,368,120 / 1,232 | `d3d34227988697a1416e50aba326819bd14915ff18f9e5794846c477488ab076` |
 | `kmagekparasite.uftb` | King+Mage vs King+Parasite | 344,453,172 | 1,609,608 / 17,369,180 / 172 | 18,978,960 / 0 / 0 | `7d8638ada4d6e2fb5314afc7b87bf25a4013f149b76525f44ba561a55cf147aa` |
-| `kmagegiantk.uftb` | King+Mage+Giant vs King | 212,650,924 | 13,283,618 / 0 / 5,695,342 | 0 (1,142,116) / 9,720,526 / 8,116,318 | `84c017bbc31770a08feee5bc2c35d57783594af5b11916178076314a963ffb22` |
-| `kmagekgiant.uftb` | King+Mage vs King+Giant | 182,439,080 | 1,142,116 / 11,618 / 17,825,226 | 3,083,328 / 0 / 15,895,632 | `c456f597bd6c281aa69b447da488e97cc9b7f274bc8ecba4e243ad676f66b959` |
+| `kmagegiantk.uftb` | King+Mage+Giant vs King | 212,650,924 | 13,283,618 / 0 / 3,082 (5,692,260) | 0 (1,142,116) / 9,720,526 / 2,424,058 (5,692,260) | `84c017bbc31770a08feee5bc2c35d57783594af5b11916178076314a963ffb22` |
+| `kmagekgiant.uftb` | King+Mage vs King+Giant | 182,439,080 | 1,142,116 / 11,618 / 12,132,966 (5,692,260) | 3,083,328 / 0 / 10,203,372 (5,692,260) | `c456f597bd6c281aa69b447da488e97cc9b7f274bc8ecba4e243ad676f66b959` |
 | `kmagedragonk.uftb` | King+Mage+Dragon vs King | 484,234,160 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 15,945,268 / 1,424,084 | `d3733f70585208428185796973f80c171dc0f6b83adcc9923f46832f6fb73150` |
 | `kmagekdragon.uftb` | King+Mage vs King+Dragon | 463,581,276 | 1,609,608 / 15,951,230 / 1,418,122 | 18,978,960 / 0 / 0 | `37521b0c37cfcd7cfb313f0532649eb0e9d4007a15c6d2524d34295b0c3790ae` |
 | `kparasiteparasitek.uftb` | King+2 Parasites vs King | 216,128,928 | 9,489,480 / 0 / 0 | 0 (804,804) / 8,682,564 / 2,112 | `000efc03710b9ed9771056a3c2d6490803739a163475094580fe499b39527e70` |
 | `kparasitekparasite.uftb` | King+Parasite vs King+Parasite | 412,490,816 | 8,895,872 / 3,262,986 / 6,820,102 | 8,895,872 / 3,262,986 / 6,820,102 | `3d8117f1323b75f1b183355ca1eff44c122b40b7647d65ca24135c13be30169e` |
-| `kparasitegiantk.uftb` | King+Parasite+Giant vs King | 243,180,684 | 13,286,700 / 0 / 5,692,260 | 0 (1,142,116) / 12,141,428 / 5,695,416 | `7b0536386bd6b8525b9054578edba1331f8daabadb6089a555e05001572b926a` |
-| `kparasitekgiant.uftb` | King+Parasite vs King+Giant | 227,572,076 | 6,622,656 / 22,222 / 12,334,082 | 3,090,728 / 1,811,896 / 14,076,336 | `93b215613d5bd0322ec937aac8f875aa62f4642d913a6f5bf5c43abe0461d434` |
+| `kparasitegiantk.uftb` | King+Parasite+Giant vs King | 243,180,684 | 13,286,700 / 0 / 0 (5,692,260) | 0 (1,142,116) / 12,141,428 / 3,156 (5,692,260) | `7b0536386bd6b8525b9054578edba1331f8daabadb6089a555e05001572b926a` |
+| `kparasitekgiant.uftb` | King+Parasite vs King+Giant | 227,572,076 | 6,622,656 / 22,222 / 6,641,822 (5,692,260) | 3,090,728 / 1,811,896 / 8,384,076 (5,692,260) | `93b215613d5bd0322ec937aac8f875aa62f4642d913a6f5bf5c43abe0461d434` |
 | `kparasitefishermank.uftb` | King+Parasite+Fisherman vs King | 738,333,356 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,368,120 / 1,232 | `6b18865fd3c4e670c68a7ad5845239dece0fabbcbb3fad83c456018b5e274a03` |
 | `kfishermankparasite.uftb` | King+Fisherman vs King+Parasite | 703,350,700 | 1,609,608 / 314,868 / 17,054,484 | 4,835,644 / 0 / 14,143,316 | `6032d4e60931298ce7fc31341cde1318a4fdcd19604c29a1a260a577d0f4c389` |
 | `kparasitedragonk.uftb` | King+Parasite+Dragon vs King | 554,255,912 | 18,978,960 / 0 / 0 | 0 (1,609,608) / 17,350,088 / 19,264 | `2b91e50eb9ff938d3f0419b34bff35c5496b5c1ee077949f09a46bb4d8090ca2` |
 | `kparasitekdragon.uftb` | King+Parasite vs King+Dragon | 510,498,792 | 7,991,790 / 314,622 / 10,672,548 | 5,780,856 / 1,657,392 / 11,540,712 | `5259021302823eed33bf757a63b2c32caf8f07a45ad619e0fa9ab52af20df75e` |
-| `kgiantgiantk.uftb` | King+2 Giants vs King | 62,426,868 | 3,268,834 / 0 / 6,220,646 | 0 (389,094) / 1,722,850 / 7,377,536 | `1c737dec95c4c28c2127edf5bf190aa000687d95d19360175b9aa8c561906b59` |
-| `kgiantkgiant.uftb` | King+Giant vs King+Giant | 117,385,888 | 2,096,142 / 15,798 / 16,867,020 | 2,094,572 / 15,770 / 16,868,618 | `d5503ba4bfd875b28958d3ffc5f7a6c5b77ebe0cd9b952a37dd7923126df4302` |
-| `kgiantfishermank.uftb` | King+Giant+Fisherman vs King | 441,838,754 | 13,177,244 / 0 / 5,801,716 | 0 (1,142,116) / 9,407,898 / 8,428,946 | `d6322a6a99b4876cb25e05b88317a7b32cd762065c54c9415bfbd3ce01127ffe` |
-| `kgiantkfisherman.uftb` | King+Giant vs King+Fisherman | 398,427,880 | 3,081,944 / 0 / 15,897,016 | 1,313,848 / 12,816 / 17,652,296 | `2e999ecfec7aa2dd0f604edc406ec77e79f39a5251f13a65065181486522a64d` |
-| `kgiantdragonk.uftb` | King+Giant+Dragon vs King | 319,145,998 | 13,286,396 / 0 / 5,692,564 | 0 (1,142,116) / 11,293,652 / 6,543,192 | `12c16784095c23ca9aefd21ebb6322477be1659d36001e459b534d9713af9fab` |
-| `kgiantkdragon.uftb` | King+Giant vs King+Dragon | 286,479,206 | 3,083,338 / 7,071,638 / 8,823,984 | 13,015,334 / 12,978 / 5,950,648 | `bf638c7b6b3082eb9c9899a67c6e3a7cb25dfd80ac2a7ba251b184fc0edc4a80` |
+| `kgiantgiantk.uftb` | King+2 Giants vs King | 62,426,868 | 3,268,834 / 0 / 1,196,498 (5,024,148) | 0 (389,094) / 1,722,850 / 2,353,388 (5,024,148) | `1c737dec95c4c28c2127edf5bf190aa000687d95d19360175b9aa8c561906b59` |
+| `kgiantkgiant.uftb` | King+Giant vs King+Giant | 117,385,888 | 2,096,142 / 15,798 / 6,818,724 (10,048,296) | 2,094,572 / 15,770 / 6,820,322 (10,048,296) | `d5503ba4bfd875b28958d3ffc5f7a6c5b77ebe0cd9b952a37dd7923126df4302` |
+| `kgiantfishermank.uftb` | King+Giant+Fisherman vs King | 441,838,754 | 13,177,244 / 0 / 109,456 (5,692,260) | 0 (1,142,116) / 9,407,898 / 2,736,686 (5,692,260) | `d6322a6a99b4876cb25e05b88317a7b32cd762065c54c9415bfbd3ce01127ffe` |
+| `kgiantkfisherman.uftb` | King+Giant vs King+Fisherman | 398,427,880 | 3,081,944 / 0 / 10,204,756 (5,692,260) | 1,313,848 / 12,816 / 11,960,036 (5,692,260) | `2e999ecfec7aa2dd0f604edc406ec77e79f39a5251f13a65065181486522a64d` |
+| `kgiantdragonk.uftb` | King+Giant+Dragon vs King | 319,145,998 | 13,286,396 / 0 / 304 (5,692,260) | 0 (1,142,116) / 11,293,652 / 850,932 (5,692,260) | `12c16784095c23ca9aefd21ebb6322477be1659d36001e459b534d9713af9fab` |
+| `kgiantkdragon.uftb` | King+Giant vs King+Dragon | 286,479,206 | 3,083,338 / 7,071,638 / 3,131,724 (5,692,260) | 13,015,334 / 12,978 / 258,388 (5,692,260) | `bf638c7b6b3082eb9c9899a67c6e3a7cb25dfd80ac2a7ba251b184fc0edc4a80` |
 | `kfishermandragonk.uftb` | King+Fisherman+Dragon vs King | 859,261,356 | 18,978,956 / 0 / 4 | 0 (1,609,608) / 15,945,260 / 1,424,092 | `0c860c29d234c4d0cb13106abe1fb3fb0281697533d8b6e1eb5c90cb9ea19f70` |
 | `kfishermankdragon.uftb` | King+Fisherman vs King+Dragon | 782,325,302 | 1,609,608 / 15,953,310 / 1,416,042 | 18,978,960 / 0 / 0 | `949f749c991ae2901b0cc9bad4acb8fababef28a5e3e4b62e483211a1d467c41` |
 | `kdragondragonk.uftb` | King+2 Dragons vs King | 338,720,772 | 9,489,480 / 0 / 0 | 0 (804,804) / 8,655,726 / 28,950 | `fcbd96c4751483c15c31577d3850fd3270ddaac00d7a96fe5495a60f49ede102` |
@@ -199,6 +199,7 @@ represented by that class.
 | `kghostdragonk.uftb` | King+Ghost+Dragon vs King | 1,125,863,212 | 37,957,920 / 0 / 0 | 0 (3,219,216) / 34,719,534 / 19,170 | `863de816680ef282923aca7cf9a5bf0b60cd76fa01dc7c2ffdf6a64e51a3b236` |
 | `kghostfishermank.uftb` | King+Ghost+Fisherman vs King | 1,501,353,596 | 37,957,920 / 0 / 0 | 0 (3,219,216) / 33,322,212 / 1,416,492 | `94db43bfad0d5e40f35e5cae91ddff67789f90741f28f5ebef357fc10fd77dea` |
 | `kghostghostk.uftb` | King+2 Ghosts vs King | 898,829,504 | 37,957,920 / 0 / 0 | 0 (3,219,216) / 34,737,456 / 1,248 | `204f4de6d0f9ff6da111d3d0c0a08c3562493cdec2130cc946b4eae7183012ee` |
+| `kghostgiantk.uftb` | King+Ghost+Giant vs King | 497,645,576 | 26,573,400 / 0 / 0 (11,384,520) | 0 (2,284,232) / 23,445,712 / 843,456 (11,384,520) | `5261c5a3d62f8711e2d6e007b89788701a7cdd2ab2afda0edea5607514e4c793` |
 <!-- GENERATED_TABLE_END -->
 
 Each W / L / D cell is from the perspective of the side to move named by its
