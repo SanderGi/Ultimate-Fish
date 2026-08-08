@@ -1,5 +1,22 @@
 {
   "files": {
+    "kberserkerbombk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          140070008,
+          0,
+          0
+        ],
+        [
+          0,
+          16096080,
+          677600,
+          0
+        ]
+      ],
+      "sha256": "b05efd1d29f32bd1647ee78672a7b5acd3468729a0b262e4370754a74216c1f6"
+    },
     "kberserkerk.uftb": {
       "necessary_reachability": [
         [

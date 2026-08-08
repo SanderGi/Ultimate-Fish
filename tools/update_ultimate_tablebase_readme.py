@@ -68,7 +68,8 @@ def main() -> None:
     logic_mtime = max(Path(__file__).stat().st_mtime_ns,
                       Path(summarize.__file__).stat().st_mtime_ns,
                       Path(plan.__file__).stat().st_mtime_ns,
-                      Path(shards.__file__).stat().st_mtime_ns)
+                      Path(shards.__file__).stat().st_mtime_ns,
+                      summarize.REACHABILITY.stat().st_mtime_ns)
     reused = 0
     lines = [
         START,
