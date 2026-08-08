@@ -798,12 +798,19 @@ class TablebaseGenerator {
             for (std::uint32_t index = 0; index < stateCount_; ++index)
                 if (nodes_[index].wdl == Wdl::Win || nodes_[index].wdl == Wdl::Loss)
                     buckets[nodes_[index].dtw].push_back(index);
+            std::uint64_t propagated = 0;
             for (std::uint32_t distance = 0; distance < buckets.size(); ++distance)
               for (std::size_t queued = 0; queued < buckets[distance].size(); ++queued) {
                 const std::uint32_t child = buckets[distance][queued];
                 const Node childNode = nodes_[child];
                 if (distance != childNode.dtw)
                     continue;
+                if (++propagated % progressEvery == 0) {
+                    const auto elapsed = std::chrono::duration<double>(
+                      std::chrono::steady_clock::now() - start).count();
+                    std::cout << "propagate queue " << propagated
+                              << " elapsed " << elapsed << "s\n";
+                }
                 for (Offset edge = offsets[child]; edge < offsets[child + 1]; ++edge) {
                     const std::uint32_t packedParent = predecessors[edge];
                     const std::uint32_t parentIndex = packedParent & ~SameSideMask;
