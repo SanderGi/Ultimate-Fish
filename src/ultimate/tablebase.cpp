@@ -15,12 +15,16 @@
 #include <deque>
 #include <fstream>
 #include <future>
+#include <fcntl.h>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <sys/mman.h>
 #include <thread>
 #include <tuple>
+#include <type_traits>
+#include <unistd.h>
 #include <vector>
 
 namespace Stockfish::Ultimate {
@@ -211,6 +215,54 @@ struct Node {
     std::uint16_t longestWinChild = 0;
 };
 
+template<typename T>
+class MappedArray {
+   public:
+    MappedArray(const std::string& path, std::uint64_t count) : count_(count) {
+        if (count_ > std::numeric_limits<std::size_t>::max() / sizeof(T))
+            throw std::runtime_error("mapped tablebase array is too large");
+        bytes_ = static_cast<std::size_t>(count_) * sizeof(T);
+        fd_ = ::open(path.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0600);
+        if (fd_ == -1)
+            throw std::runtime_error("cannot create mapped tablebase scratch file");
+        if (::ftruncate(fd_, static_cast<off_t>(bytes_)) != 0) {
+            ::close(fd_);
+            fd_ = -1;
+            throw std::runtime_error("cannot size mapped tablebase scratch file");
+        }
+        void* mapping = ::mmap(nullptr, bytes_, PROT_READ | PROT_WRITE,
+                               MAP_SHARED, fd_, 0);
+        if (mapping == MAP_FAILED) {
+            ::close(fd_);
+            fd_ = -1;
+            throw std::runtime_error("cannot map tablebase scratch file");
+        }
+        data_ = static_cast<T*>(mapping);
+        // The live mapping keeps the inode and disk allocation alive. Removing
+        // the directory entry here guarantees cleanup if generation is killed.
+        ::unlink(path.c_str());
+    }
+
+    MappedArray(const MappedArray&) = delete;
+    MappedArray& operator=(const MappedArray&) = delete;
+
+    ~MappedArray() {
+        if (data_)
+            ::munmap(data_, bytes_);
+        if (fd_ != -1)
+            ::close(fd_);
+    }
+
+    T& operator[](std::uint64_t index) { return data_[index]; }
+    const T& operator[](std::uint64_t index) const { return data_[index]; }
+
+   private:
+    int fd_ = -1;
+    std::uint64_t count_ = 0;
+    std::size_t bytes_ = 0;
+    T* data_ = nullptr;
+};
+
 std::uint32_t encode_placement(const State& state) {
     const std::uint32_t blackRank = state.blackKing - (state.blackKing > state.whiteKing);
     const std::uint8_t low = std::min(state.whiteKing, state.blackKing);
@@ -325,9 +377,11 @@ class TablebaseGenerator {
    public:
     TablebaseGenerator(PieceType attackerType, PieceType secondaryType,
                        Color secondaryColor, std::string output,
-                       std::string checkpoint, std::uint32_t checkpointEvery) :
+                       std::string checkpoint, std::uint32_t checkpointEvery,
+                       bool diskBacked) :
         attackerType_(attackerType), output_(std::move(output)),
         checkpoint_(std::move(checkpoint)), checkpointEvery_(checkpointEvery),
+        diskBacked_(diskBacked),
         secondaryType_(attackerType == PieceType::Copycat
                          ? PieceType::CopycatClone : secondaryType),
         secondaryColor_(secondaryColor),
@@ -417,10 +471,12 @@ class TablebaseGenerator {
     void generate() {
         const auto start = std::chrono::steady_clock::now();
         std::uint32_t begin = load_checkpoint();
+        const std::uint32_t progressEvery = checkpointEvery_ ? checkpointEvery_ : 2'000'000;
         for (std::uint32_t index = begin; index < stateCount_; ++index) {
             analyze_node(index, true, [](std::uint32_t, bool) {});
-            if (checkpointEvery_ && (index + 1) % checkpointEvery_ == 0) {
-                save_checkpoint(index + 1);
+            if ((index + 1) % progressEvery == 0) {
+                if (checkpointEvery_)
+                    save_checkpoint(index + 1);
                 progress("frontier", index + 1, start);
             }
         }
@@ -430,24 +486,33 @@ class TablebaseGenerator {
         std::uint64_t edgeCount = 0;
         for (const std::uint32_t count : predecessorCounts_)
             edgeCount += count;
-        const auto solve = [&](auto offsetZero) {
-            using Offset = decltype(offsetZero);
-            std::vector<Offset> offsets(stateCount_ + 1, 0);
+        const auto solve_arrays = [&](auto& offsets, auto& predecessors) {
+            using Offset = std::remove_reference_t<decltype(offsets[0])>;
+            offsets[0] = 0;
             for (std::uint32_t index = 0; index < stateCount_; ++index)
                 offsets[index + 1] = static_cast<Offset>(offsets[index] +
                                                          predecessorCounts_[index]);
             constexpr std::uint32_t SameSideMask = std::uint32_t{1} << 31;
             if (stateCount_ >= SameSideMask)
                 throw std::runtime_error("tablebase state index exceeds packed edge capacity");
-            std::vector<std::uint32_t> predecessors(edgeCount);
-            std::vector<Offset> cursor(offsets.begin(), offsets.end() - 1);
             for (std::uint32_t index = 0; index < stateCount_; ++index) {
                 analyze_node(index, false, [&](std::uint32_t child, bool sameSide) {
-                    predecessors[cursor[child]++] = index | (sameSide ? SameSideMask : 0);
+                    predecessors[offsets[child]++] = index | (sameSide ? SameSideMask : 0);
                 });
-                if (checkpointEvery_ && (index + 1) % checkpointEvery_ == 0)
+                if ((index + 1) % progressEvery == 0)
                     progress("reverse", index + 1, start);
             }
+
+            // Filling reused the offsets as cursors. Reconstruct their prefix
+            // values from the degree plane, then release that 4-byte-per-state
+            // plane before the retrograde queue starts growing.
+            Offset running = 0;
+            for (std::uint32_t index = 0; index < stateCount_; ++index) {
+                offsets[index] = running;
+                running = static_cast<Offset>(running + predecessorCounts_[index]);
+            }
+            offsets[stateCount_] = running;
+            std::vector<std::uint32_t>().swap(predecessorCounts_);
 
             // DTW edges have unit cost. A Dial-style bucket queue preserves the
             // distance ordering required for shortest wins/longest losses without
@@ -504,6 +569,20 @@ class TablebaseGenerator {
             for (Node& node : nodes_)
                 if (node.wdl == Wdl::Unknown)
                     node.wdl = Wdl::Draw;
+        };
+        const auto solve = [&](auto offsetZero) {
+            using Offset = decltype(offsetZero);
+            if (diskBacked_ || stateCount_ >= 300'000'000) {
+                MappedArray<Offset> offsets(checkpoint_ + ".offsets", stateCount_ + 1ULL);
+                MappedArray<std::uint32_t> predecessors(
+                  checkpoint_ + ".predecessors", edgeCount);
+                solve_arrays(offsets, predecessors);
+            }
+            else {
+                std::vector<Offset> offsets(stateCount_ + 1);
+                std::vector<std::uint32_t> predecessors(edgeCount);
+                solve_arrays(offsets, predecessors);
+            }
         };
         if (edgeCount <= std::numeric_limits<std::uint32_t>::max())
             solve(std::uint32_t{});
@@ -1054,6 +1133,7 @@ class TablebaseGenerator {
     std::string output_;
     std::string checkpoint_;
     std::uint32_t checkpointEvery_;
+    bool diskBacked_;
     PieceType secondaryType_;
     Color secondaryColor_;
     bool fourModels_;
@@ -1078,6 +1158,7 @@ int main(int argc, char** argv) {
     std::uint32_t checkpointEvery = 50'000;
     bool selfTest = false;
     bool fourCodecSelfTest = false;
+    bool diskBacked = false;
     std::uint32_t dryRun = 0;
     std::uint32_t inspect = std::numeric_limits<std::uint32_t>::max();
     for (int index = 1; index < argc; ++index) {
@@ -1103,6 +1184,7 @@ int main(int argc, char** argv) {
             secondaryType = *parsed;
         }
         else if (argument == "--opposing") secondaryColor = Color::Black;
+        else if (argument == "--disk-backed") diskBacked = true;
         else if (argument == "--checkpoint-every")
             checkpointEvery = static_cast<std::uint32_t>(std::stoul(value("--checkpoint-every")));
         else if (argument == "--dry-run")
@@ -1126,7 +1208,7 @@ int main(int argc, char** argv) {
                  !closed_four_piece(secondaryType))
             throw std::runtime_error("K+K+2 piece requires a larger non-closed model");
         TablebaseGenerator generator(attackerType, secondaryType, secondaryColor,
-                                     output, checkpoint, checkpointEvery);
+                                     output, checkpoint, checkpointEvery, diskBacked);
         if (selfTest)
             generator.self_test();
         if (dryRun)

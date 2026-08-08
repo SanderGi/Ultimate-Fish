@@ -74,6 +74,8 @@ def main() -> None:
         ]
         if record["opposing"]:
             command.append("--opposing")
+        if int(record["states"]) >= 300_000_000:
+            command.append("--disk-backed")
         print(f"generate {output.name}", flush=True)
         subprocess.run(command, cwd=ROOT, check=True)
         outputs = shards.split(output, plan.DEFAULT_SHARD_LIMIT)
