@@ -445,21 +445,24 @@ export function UltimateWorkbench() {
     return draftPlacedUids.includes(hostUid) || (piece.id === "king" && initialDraftKingUnlocked);
   }
 
-  const legalTargets = useMemo(() => {
-    const targets = new Set<number>();
+  const legalTargetMoves = useMemo(() => {
+    const targets = new Map<number, string>();
     if (!selectedPiece) return targets;
     const from = squareName(selectedPiece.square);
     for (const move of legalMoves) {
       const match = move.match(/^([a-h](?:10|[1-9]))[-~@x!&]([a-h](?:10|[1-9]))$/);
       if (match?.[1] !== from) continue;
       const destination = squareIndex(match[2]);
-      if (selectedPiece.id === "giant")
-        footprintSquares(selectedPiece, destination).forEach((square) => targets.add(square));
-      else
-        targets.add(destination);
+      const footprint = selectedPiece.id === "giant" ? footprintSquares(selectedPiece, destination) : [destination];
+      footprint.forEach((square) => {
+        // A square can belong to overlapping Giant destinations. Prefer the move
+        // whose anchor was clicked; otherwise retain the first matching footprint.
+        if (!targets.has(square) || square === destination) targets.set(square, move);
+      });
     }
     return targets;
   }, [legalMoves, selectedPiece]);
+  const legalTargets = useMemo(() => new Set(legalTargetMoves.keys()), [legalTargetMoves]);
 
   const historyRows = useMemo(() => {
     const rows: Array<{ white: MoveRecord[]; black: MoveRecord[] }> = [];
@@ -798,11 +801,7 @@ export function UltimateWorkbench() {
     const clicked = occupant && view === "play" && occupant.color !== playerSide &&
       occupant.id === "ghost" && !occupant.visible ? undefined : occupant;
     if (view === "play" && gameActive && selectedPiece && selected !== index) {
-      const from = squareName(selectedPiece.square); const to = squareName(index);
-      const move = legalMoves.find((candidate) => {
-        const match = candidate.match(/^([a-h](?:10|[1-9]))[-~@x!&]([a-h](?:10|[1-9]))$/);
-        return match?.[1] === from && match?.[2] === to;
-      });
+      const move = legalTargetMoves.get(index);
       if (move) { void playMove(move); return; }
     }
     setSelected((current) => current === index ? null : (clicked?.square ?? index));
