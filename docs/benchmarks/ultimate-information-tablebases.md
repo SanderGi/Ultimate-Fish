@@ -192,6 +192,35 @@ transition observations. The opposing-Knight graph contains 17,233,738 pairs
 and 400,132,808 transition observations. Both have zero empty uniform-action
 sets and zero Bellman/rank residuals after their legal-dot root splits.
 
+## First exact Ghost stratum
+
+`K+Ghost versus K` is solved over arbitrary hidden-location subsets rather
+than enumerating a capped list of worlds. For each fixed public geometry, the
+solver represents all 80 Ghost-membership bits in a canonical reduced ordered
+binary decision diagram and applies the exact non-signaling observation image
+symbolically. The completed least fixed point took 49 iterations and 5,477,899
+canonical BDD nodes, with no sampling, depth bound, or belief cap.
+
+| Side to move | Public-information W / L / D | Concrete unreachable W / L / D |
+| --- | ---: | ---: |
+| Ghost owner | 863,768 / 0 / 0 | 122,152 / 0 / 0 |
+| Bare King | 0 / 826,992 / 36,776 | 83,616 / 38,520 / 16 |
+
+The proof exhaustively matches all 1,971,840 concrete singleton states, checks
+the monotonicity required by the symbolic antichains, and re-evaluates the
+complete symbolic Bellman equations; all three residuals are zero. Its root
+certificate conserves 1,727,536 admitted concrete roots. Four exact rectangle
+symmetries reduce the 913,872 physical initial information sets to 228,468
+canonical set orbits (114,234 per starting side) without changing their
+realization weights.
+
+The committed proof kernel is bound to model
+`9c3700a9fab27c9971300db6f7d7f3af8edb16ed9af0f33753f4b5bf957de6ba`;
+the concrete table SHA-256 is
+`3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31`.
+The generated UFIW2 overlay is 1,972,000 bytes with SHA-256
+`53c313acae8207f4569b03082367589abd820ce4be4a6c1d11631c5b1cad6f66`.
+
 ## Invalidated v1 results
 
 The earlier `K+Jester versus K` overlay intersected legal actions before giving
