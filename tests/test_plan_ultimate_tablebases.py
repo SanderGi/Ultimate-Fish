@@ -169,6 +169,44 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertEqual(summary.giant_invalid_placements(37_957_920, 2),
                          10_048_296)
 
+    def test_folded_giant_anchor_payloads_fail_closed_until_regenerated(self):
+        catalog = summary.giant_codec_catalog()
+        self.assertEqual(len(catalog), 28)
+        statuses = [record["status"] for record in catalog.values()]
+        verified = statuses.count("verified-anchor-v2")
+        stale = statuses.count("stale-anchor-v1-requires-regeneration")
+        self.assertGreaterEqual(verified, 2)
+        self.assertEqual(verified + stale, 28)
+        self.assertTrue(set(statuses) <= {
+            "verified-anchor-v2", "stale-anchor-v1-requires-regeneration"})
+        for filename, record in catalog.items():
+            if record["status"] != "verified-anchor-v2":
+                continue
+            certificate = record["generation_certificate"]
+            self.assertEqual(certificate["bellman_residual"], 0)
+            self.assertEqual(
+                certificate["win"] + certificate["loss"] +
+                certificate["draw"], certificate["states"], filename)
+            packaging = record["packaging_certificate"]
+            self.assertEqual(packaging["format_version"], 7)
+            self.assertEqual(
+                packaging["giant_anchor_tag"], "0x32474e4149474655")
+        for filename in ("kjestergiantk.uftb", "kjesterkgiant.uftb"):
+            record = catalog[filename]
+            summary.require_current_giant_codec(
+                ROOT / "tablebases" / filename, record["current_sha256"])
+        if stale:
+            stale_filename = next(
+                filename for filename, record in catalog.items()
+                if record["status"] == "stale-anchor-v1-requires-regeneration")
+            with self.assertRaisesRegex(ValueError, "stale Giant anchor-v1"):
+                summary.require_current_giant_codec(
+                    ROOT / "tablebases" / stale_filename)
+        # K+Giant-v-K retains both horizontal orientations and never used the
+        # folded four-model transform.
+        summary.require_current_giant_codec(
+            ROOT / "tablebases" / "kgiantk.uftb")
+
     def test_jester_adjacent_king_wins_are_legal(self):
         totals, illegal = summary.summary(ROOT / "tablebases" / "kjesterk.uftb")
         self.assertEqual(illegal[1], [0, 0, 0, 0])

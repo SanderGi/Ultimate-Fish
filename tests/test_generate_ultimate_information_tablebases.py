@@ -164,6 +164,8 @@ class InformationGenerationDriverTests(unittest.TestCase):
             args = self._args(root)
             cases = {
                 "kjesterk.uftb": (str(args.binary), "--solve-jester-information"),
+                "kjestergiantk.uftb": (
+                    str(args.binary), "--solve-jester-information"),
                 "kghostk.uftb": (str(args.ghost_binary), "--input"),
                 "kjesterjesterk.uftb": (
                     str(args.double_jester_binary),
@@ -209,6 +211,24 @@ class InformationGenerationDriverTests(unittest.TestCase):
                     "kjesterkknight.uftb"))
             self.assertEqual(command[command.index("--piece2") + 1], "knight")
             self.assertIn("--opposing", command)
+            lower_model = command[
+                command.index("--lower-information-model-sha256") + 1]
+            self.assertEqual(
+                lower_model,
+                generate.information.solver_model_fingerprint("kjesterk.uftb"))
+
+            giant = generate.solver_command(
+                args, records["kjestergiantk.uftb"], root / "giant.ufiw",
+                "1" * 64,
+                generate.information.solver_model_fingerprint(
+                    "kjestergiantk.uftb"))
+            self.assertEqual(
+                giant[giant.index("--lower-information-model-sha256") + 1],
+                generate.information.solver_model_fingerprint("kjesterk.uftb"))
+            self.assertNotEqual(
+                generate.information.solver_model_fingerprint(
+                    "kjestergiantk.uftb"),
+                generate.information.solver_model_fingerprint("kjesterk.uftb"))
 
     def test_unsupported_material_never_routes_to_a_nearby_solver(self):
         records = generate._records()  # pylint: disable=protected-access

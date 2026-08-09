@@ -73,17 +73,37 @@ constexpr std::uint32_t FourPlacementStateCount =
 constexpr std::uint32_t IdenticalFourStateCount = FourPlacementStateCount / 2;
 constexpr std::uint32_t CompoundCopycatStateCount =
   2 * SquareCount * (SquareCount - 1) * (SquareCount - 2) * (SquareCount - 3);
+constexpr std::uint64_t GiantAnchorV2Tag = 0x32474e4149474655ULL;
+
+std::size_t packed_header_size(std::uint32_t version) {
+    return 40 + (version >= 5 ? 8 : 0) + (version >= 6 ? 8 : 0) +
+           (version >= 7 ? 8 : 0);
+}
 
 std::uint8_t horizontal_reflection(std::uint8_t square) {
     return static_cast<std::uint8_t>((square / 8) * 8 + 7 - square % 8);
 }
 
-FourState canonicalize(FourState state) {
+// A Giant stores the lower-left anchor of a 2x2 footprint. Reflecting the
+// anchor as though it were an ordinary one-square piece shifts the mirrored
+// footprint one file to the right (g1 would become b1 instead of a1). File h
+// is not a legal Giant anchor, but keeping it fixed makes this a total
+// involution over the dense codec's deliberately retained invalid records.
+std::uint8_t horizontal_giant_anchor_reflection(std::uint8_t square) {
+    const int file = square % 8;
+    return file == 7 ? square
+                     : static_cast<std::uint8_t>((square / 8) * 8 + 6 - file);
+}
+
+FourState canonicalize(FourState state, bool firstGiant = false,
+                        bool secondGiant = false) {
     if (state.whiteKing % 8 >= 4) {
         state.whiteKing = horizontal_reflection(state.whiteKing);
         state.blackKing = horizontal_reflection(state.blackKing);
-        state.first = horizontal_reflection(state.first);
-        state.second = horizontal_reflection(state.second);
+        state.first = firstGiant ? horizontal_giant_anchor_reflection(state.first)
+                                 : horizontal_reflection(state.first);
+        state.second = secondGiant ? horizontal_giant_anchor_reflection(state.second)
+                                   : horizontal_reflection(state.second);
     }
     return state;
 }
@@ -108,8 +128,9 @@ std::uint8_t unrank_excluding(std::uint32_t rank,
     throw std::runtime_error("four-model square rank is invalid");
 }
 
-std::uint32_t encode_four(FourState state) {
-    state = canonicalize(state);
+std::uint32_t encode_four(FourState state, bool firstGiant = false,
+                          bool secondGiant = false) {
+    state = canonicalize(state, firstGiant, secondGiant);
     const std::uint32_t whiteRank = (state.whiteKing / 8) * 4 + state.whiteKing % 8;
     const std::uint32_t blackRank = rank_excluding(state.blackKing, {state.whiteKing});
     const std::uint32_t firstRank = rank_excluding(
@@ -168,8 +189,9 @@ FourState decode_compound_copycat(std::uint32_t index) {
     return {side, whiteKing, blackKing, first, second};
 }
 
-std::uint32_t encode_identical_four(FourState state) {
-    state = canonicalize(state);
+std::uint32_t encode_identical_four(FourState state, bool firstGiant = false,
+                                    bool secondGiant = false) {
+    state = canonicalize(state, firstGiant, secondGiant);
     const std::uint32_t whiteRank = (state.whiteKing / 8) * 4 + state.whiteKing % 8;
     const std::uint32_t blackRank = rank_excluding(state.blackKing, {state.whiteKing});
     std::uint32_t firstRank = rank_excluding(
@@ -628,6 +650,8 @@ class TablebaseGenerator {
         }
         if (fourModels_ && !copycatOnly_) {
             self_test_four_codec();
+            if (primary_is_giant() || secondary_is_giant())
+                self_test_giant_four_codec();
             constexpr std::uint32_t samples = 20'000;
             for (std::uint32_t sample = 0; sample < samples; ++sample) {
                 const std::uint32_t index = static_cast<std::uint32_t>(
@@ -640,12 +664,15 @@ class TablebaseGenerator {
                 for (std::uint32_t sample = 0; sample < samples; ++sample) {
                     const std::uint32_t index = static_cast<std::uint32_t>(
                       std::uint64_t(stateCount_) * sample / samples);
+                    Position concrete, concreteAlternative;
+                    if (!make_position_at(index, concrete))
+                        continue;
                     const std::uint32_t alternative =
                       primary_jester_alternative(index);
-                    Position concrete, concreteAlternative;
-                    if (!make_position_at(index, concrete) ||
+                    if (
                         !make_position_at(alternative, concreteAlternative))
-                        continue;
+                        throw std::runtime_error(
+                          "valid Jester world reflected to invalid geometry");
                     Position physical, physicalAlternative;
                     if (primary_jester_alternative(alternative) != index ||
                         !make_primary_jester_world(index, false, physical) ||
@@ -728,7 +755,7 @@ class TablebaseGenerator {
         std::ifstream stream(input, std::ios::binary);
         if (!stream)
             throw std::runtime_error("cannot open packed tablebase for reachability audit");
-        std::array<std::uint8_t, 56> header{};
+        std::array<std::uint8_t, 64> header{};
         stream.read(reinterpret_cast<char*>(header.data()), header.size());
         if (stream.gcount() < 40 || std::memcmp(header.data(), "UFTB1\0\0\0", 8) != 0)
             throw std::runtime_error("invalid packed tablebase header");
@@ -737,19 +764,29 @@ class TablebaseGenerator {
             std::memcpy(&value, header.data() + offset, sizeof(value));
             return value;
         };
+        const auto qword = [&](std::size_t offset) {
+            std::uint64_t value = 0;
+            std::memcpy(&value, header.data() + offset, sizeof(value));
+            return value;
+        };
         const std::uint32_t version = word(8);
         const std::uint32_t primary = word(12);
         const std::uint32_t count = word(16);
         const std::uint32_t fileSubstates = word(24);
         const std::uint32_t wdlBytes = word(28);
-        if (version < 4 || version > 6 || primary != static_cast<std::uint32_t>(attackerType_) ||
+        const bool foldedGiant = fourModels_ &&
+          (primary_is_giant() || secondary_is_giant());
+        if (version < 4 || version > 7 ||
+            foldedGiant != (version == 7) ||
+            (foldedGiant && qword(56) != GiantAnchorV2Tag) ||
+            primary != static_cast<std::uint32_t>(attackerType_) ||
             count != stateCount_ || fileSubstates != substates_ || wdlBytes != (count + 3) / 4)
             throw std::runtime_error("packed tablebase does not match requested material class");
         if (version >= 5 &&
             (word(40) != static_cast<std::uint32_t>(secondaryType_) ||
              word(44) != static_cast<std::uint32_t>(secondaryColor_)))
             throw std::runtime_error("packed tablebase secondary material does not match");
-        const std::size_t planeOffset = 40 + (version >= 5 ? 8 : 0) + (version >= 6 ? 8 : 0);
+        const std::size_t planeOffset = packed_header_size(version);
         stream.seekg(static_cast<std::streamoff>(planeOffset));
         std::vector<std::uint8_t> wdl(wdlBytes);
         stream.read(reinterpret_cast<char*>(wdl.data()), wdl.size());
@@ -944,7 +981,7 @@ class TablebaseGenerator {
         std::ifstream stream(input, std::ios::binary);
         if (!stream)
             throw std::runtime_error("cannot open concrete Jester tablebase");
-        std::array<std::uint8_t, 56> header{};
+        std::array<std::uint8_t, 64> header{};
         stream.read(reinterpret_cast<char*>(header.data()), header.size());
         if (stream.gcount() < 40 || std::memcmp(header.data(), "UFTB1\0\0\0", 8) != 0)
             throw std::runtime_error("invalid concrete Jester tablebase header");
@@ -957,7 +994,7 @@ class TablebaseGenerator {
         const std::uint32_t count = word(16);
         const std::uint32_t fileSubstates = word(24);
         const std::uint32_t wdlBytes = word(28);
-        if (version < 4 || version > 6 ||
+        if (version < 4 || version > 7 || version == 7 ||
             word(12) != static_cast<std::uint32_t>(PieceType::Jester) ||
             count != stateCount_ || fileSubstates != substates_ ||
             wdlBytes != (count + 3) / 4 ||
@@ -965,8 +1002,7 @@ class TablebaseGenerator {
              (word(40) != static_cast<std::uint32_t>(secondaryType_) ||
               word(44) != static_cast<std::uint32_t>(secondaryColor_))))
             throw std::runtime_error("concrete Jester tablebase does not match codec");
-        const std::size_t planeOffset = 40 + (version >= 5 ? 8 : 0) +
-                                        (version >= 6 ? 8 : 0);
+        const std::size_t planeOffset = packed_header_size(version);
         stream.seekg(static_cast<std::streamoff>(planeOffset));
         std::vector<std::uint8_t> concreteWdl(wdlBytes);
         stream.read(reinterpret_cast<char*>(concreteWdl.data()), concreteWdl.size());
@@ -1436,6 +1472,7 @@ class TablebaseGenerator {
     void solve_jester_information(const std::string& input,
                                   const std::string& lowerOverlay,
                                   const std::string& lowerSourceSha256,
+                                  const std::string& lowerModelSha256,
                                   const std::string& sourceSha256,
                                   const std::string& modelSha256,
                                   const std::string& overlayOutput,
@@ -1448,7 +1485,7 @@ class TablebaseGenerator {
         std::ifstream stream(input, std::ios::binary);
         if (!stream)
             throw std::runtime_error("cannot open concrete Jester tablebase");
-        std::array<std::uint8_t, 56> header{};
+        std::array<std::uint8_t, 64> header{};
         stream.read(reinterpret_cast<char*>(header.data()), header.size());
         if (stream.gcount() < 40 || std::memcmp(header.data(), "UFTB1\0\0\0", 8) != 0)
             throw std::runtime_error("invalid concrete Jester tablebase header");
@@ -1457,10 +1494,19 @@ class TablebaseGenerator {
             std::memcpy(&value, header.data() + offset, sizeof(value));
             return value;
         };
+        const auto qword = [&](std::size_t offset) {
+            std::uint64_t value = 0;
+            std::memcpy(&value, header.data() + offset, sizeof(value));
+            return value;
+        };
         const std::uint32_t version = word(8);
         const std::uint32_t count = word(16);
         const std::uint32_t wdlBytes = word(28);
-        if (version < 4 || version > 6 ||
+        const bool foldedGiant = fourModels_ &&
+          (primary_is_giant() || secondary_is_giant());
+        if (version < 4 || version > 7 ||
+            foldedGiant != (version == 7) ||
+            (foldedGiant && qword(56) != GiantAnchorV2Tag) ||
             word(12) != static_cast<std::uint32_t>(attackerType_) ||
             count != stateCount_ || word(24) != substates_ ||
             wdlBytes != (count + 3) / 4 ||
@@ -1468,8 +1514,7 @@ class TablebaseGenerator {
              (word(40) != static_cast<std::uint32_t>(secondaryType_) ||
               word(44) != static_cast<std::uint32_t>(secondaryColor_))))
             throw std::runtime_error("concrete Jester tablebase does not match codec");
-        const std::size_t planeOffset = 40 + (version >= 5 ? 8 : 0) +
-                                        (version >= 6 ? 8 : 0);
+        const std::size_t planeOffset = packed_header_size(version);
         stream.seekg(static_cast<std::streamoff>(planeOffset));
         std::vector<std::uint8_t> concreteWdl(wdlBytes);
         stream.read(reinterpret_cast<char*>(concreteWdl.data()), concreteWdl.size());
@@ -1499,8 +1544,10 @@ class TablebaseGenerator {
         std::array<std::uint64_t, 2> dotSplitPairs{};
         const auto frontierStart = std::chrono::steady_clock::now();
         for (std::uint32_t index = 0; index < stateCount_; ++index) {
+            if (!admitted(index))
+                continue;
             const std::uint32_t other = primary_jester_alternative(index);
-            if (index >= other || !admitted(index) || !admitted(other))
+            if (index >= other || !admitted(other))
                 continue;
             Position first, second;
             if (!make_primary_jester_world(index, false, first) ||
@@ -1612,7 +1659,7 @@ class TablebaseGenerator {
             throw std::runtime_error(
               "exact information solve requires 64-digit source/model SHA-256 bindings");
         const JesterInformationOverlay lower(
-          lowerOverlay, lowerSourceSha256, modelSha256);
+          lowerOverlay, lowerSourceSha256, lowerModelSha256);
         const auto concrete_position_forces = [&](const Position& position,
                                                   Color target) {
             if (position.game_over()) {
@@ -2359,6 +2406,141 @@ class TablebaseGenerator {
         return decode(index).side;
     }
 
+    [[nodiscard]] bool primary_is_giant() const {
+        return attackerType_ == PieceType::Giant;
+    }
+
+    [[nodiscard]] bool secondary_is_giant() const {
+        return fourModels_ && secondaryType_ == PieceType::Giant;
+    }
+
+    FourState canonicalize_four(FourState state) const {
+        return canonicalize(state, primary_is_giant(), secondary_is_giant());
+    }
+
+    std::uint32_t encode_four_material(FourState state) const {
+        return encode_four(state, primary_is_giant(), secondary_is_giant());
+    }
+
+    std::uint32_t encode_identical_four_material(FourState state) const {
+        return encode_identical_four(
+          state, primary_is_giant(), secondary_is_giant());
+    }
+
+    void self_test_giant_four_codec() const {
+        const bool firstGiant = primary_is_giant();
+        const bool secondGiant = secondary_is_giant();
+        if (!fourModels_ || (!firstGiant && !secondGiant))
+            throw std::runtime_error(
+              "Giant symmetry test requires a four-model Giant class");
+
+        const auto piece_mask = [](std::uint8_t square, bool giant) -> Bitboard {
+            const Bitboard origin = Bitboard(1) << square;
+            if (!giant)
+                return origin;
+            if (square % Position::BoardFiles == Position::BoardFiles - 1 ||
+                square / Position::BoardFiles == Position::BoardRanks - 1)
+                return 0;
+            return origin | (origin << 1) |
+                   (origin << Position::BoardFiles) |
+                   (origin << (Position::BoardFiles + 1));
+        };
+        const auto valid_geometry = [&](const FourState& state) {
+            const std::array<Bitboard, 4> occupied{
+              piece_mask(state.whiteKing, false),
+              piece_mask(state.blackKing, false),
+              piece_mask(state.first, firstGiant),
+              piece_mask(state.second, secondGiant)};
+            for (const Bitboard mask : occupied)
+                if (!mask)
+                    return false;
+            for (std::size_t first = 0; first < occupied.size(); ++first)
+                for (std::size_t second = first + 1;
+                     second < occupied.size(); ++second)
+                    if (occupied[first] & occupied[second])
+                        return false;
+            return true;
+        };
+        const auto reflect = [&](FourState state) {
+            state.whiteKing = horizontal_reflection(state.whiteKing);
+            state.blackKing = horizontal_reflection(state.blackKing);
+            state.first = firstGiant
+              ? horizontal_giant_anchor_reflection(state.first)
+              : horizontal_reflection(state.first);
+            state.second = secondGiant
+              ? horizontal_giant_anchor_reflection(state.second)
+              : horizontal_reflection(state.second);
+            return state;
+        };
+        const auto same_state = [](const FourState& first,
+                                   const FourState& second) {
+            return first.side == second.side &&
+                   first.whiteKing == second.whiteKing &&
+                   first.blackKing == second.blackKing &&
+                   first.first == second.first &&
+                   first.second == second.second;
+        };
+
+        const std::uint32_t placements = identicalExtras_
+          ? IdenticalFourStateCount : FourPlacementStateCount;
+        std::uint64_t validOrbits = 0;
+        for (std::uint32_t index = 0; index < placements; ++index) {
+            const FourState state = identicalExtras_
+              ? decode_identical_four(index) : decode_four(index);
+            const std::uint32_t roundTrip = identicalExtras_
+              ? encode_identical_four_material(state)
+              : encode_four_material(state);
+            if (roundTrip != index)
+                throw std::runtime_error(
+                  "Giant four-model canonical codec is not bijective");
+            if (!valid_geometry(state))
+                continue;
+            const FourState mirrored = reflect(state);
+            if (!same_state(reflect(mirrored), state) ||
+                !valid_geometry(mirrored))
+                throw std::runtime_error(
+                  "Giant horizontal reflection does not preserve geometry");
+            const std::uint32_t mirroredIndex = identicalExtras_
+              ? encode_identical_four_material(mirrored)
+              : encode_four_material(mirrored);
+            if (mirroredIndex != index)
+                throw std::runtime_error(
+                  "Giant horizontal reflection changed its codec orbit");
+            ++validOrbits;
+        }
+
+        // Minimal failure that exposed the old point-square anchor transform.
+        // In one world e1 is the Jester and in the other it is the King. After
+        // the common public action e1-f1, g1's 2x2 Giant must reflect to a1.
+        // The old codec reflected its anchor to b1, overlapping the King on c1
+        // and destroying an otherwise canonical royal pair.
+        if (!identicalExtras_ && attackerType_ == PieceType::Jester &&
+            secondaryType_ == PieceType::Giant && substates_ == 1) {
+            constexpr std::uint32_t FirstChild = 18'985'200;
+            constexpr std::uint32_t SwappedChild = 19'952'317;
+            Position first, swapped;
+            if (primary_jester_alternative(FirstChild) != SwappedChild ||
+                primary_jester_alternative(SwappedChild) != FirstChild ||
+                !make_primary_jester_world(FirstChild, false, first) ||
+                !make_primary_jester_world(FirstChild, true, swapped) ||
+                child_index(swapped) != SwappedChild ||
+                primary_jester_view_key(first) !=
+                  primary_jester_view_key(swapped) ||
+                primary_jester_decision_markers(first) !=
+                  primary_jester_decision_markers(swapped))
+                throw std::runtime_error(
+                  "Giant/Jester royal-pair reflection regression failed");
+            Position formerlyShifted;
+            if (make_position_at(19'952'318, formerlyShifted))
+                throw std::runtime_error(
+                  "shifted Giant-anchor regression record became valid");
+            std::cout << "giantjesterreflectionwitness first " << FirstChild
+                      << " swapped " << SwappedChild << '\n';
+        }
+        std::cout << "giantfourreflectioncodecok valid_orbits "
+                  << validOrbits << '\n';
+    }
+
     std::uint32_t primary_jester_alternative(std::uint32_t index) const {
         if (attackerType_ != PieceType::Jester || identicalExtras_ ||
             compoundCopycat_ || copycatOnly_)
@@ -2372,7 +2554,7 @@ class TablebaseGenerator {
         const std::uint32_t combinedSubstate = index % substates_;
         FourState state = decode_four(index / substates_);
         std::swap(state.whiteKing, state.first);
-        return encode_four(state) * substates_ + combinedSubstate;
+        return encode_four_material(state) * substates_ + combinedSubstate;
     }
 
     bool make_primary_jester_world(std::uint32_t representative, bool swapped,
@@ -2631,16 +2813,16 @@ class TablebaseGenerator {
                                   position.piece(3).square};
             std::uint32_t placement = 0;
             if (identicalExtras_) {
-                FourState canonical = canonicalize(state);
+                FourState canonical = canonicalize_four(state);
                 const std::uint32_t firstRank = rank_excluding(
                   canonical.first, {canonical.whiteKing, canonical.blackKing});
                 const std::uint32_t secondRank = rank_excluding(
                   canonical.second, {canonical.whiteKing, canonical.blackKing});
                 if (firstRank > secondRank)
                     std::swap(primarySubstate, secondarySubstate);
-                placement = encode_identical_four(state);
+                placement = encode_identical_four_material(state);
             }
-            else placement = encode_four(state);
+            else placement = encode_four_material(state);
             return placement * substates_ +
                    primarySubstate * secondarySubstates_ + secondarySubstate;
         }
@@ -2799,8 +2981,14 @@ class TablebaseGenerator {
         if (!stream)
             throw std::runtime_error("cannot write tablebase output");
         const std::array<char, 8> magic{{'U','F','T','B','1','\0','\0','\0'}};
-        const std::uint32_t version = edges > std::numeric_limits<std::uint32_t>::max()
-          ? 6 : fourModels_ ? 5 : 4;
+        // v7 authenticates the corrected lower-left Giant-anchor reflection.
+        // Folded Giant payloads from v4-v6 used point-square reflection and
+        // must never be interpreted by the corrected codec.
+        const bool foldedGiant = fourModels_ &&
+          (primary_is_giant() || secondary_is_giant());
+        const std::uint32_t version = foldedGiant ? 7
+          : edges > std::numeric_limits<std::uint32_t>::max() ? 6
+          : fourModels_ ? 5 : 4;
         const std::uint32_t piece = static_cast<std::uint32_t>(attackerType_);
         const std::uint32_t legacyEdges = static_cast<std::uint32_t>(
           std::min<std::uint64_t>(edges, std::numeric_limits<std::uint32_t>::max()));
@@ -2828,6 +3016,9 @@ class TablebaseGenerator {
         }
         if (version >= 6)
             stream.write(reinterpret_cast<const char*>(&edges), sizeof(edges));
+        if (version >= 7)
+            stream.write(reinterpret_cast<const char*>(&GiantAnchorV2Tag),
+                         sizeof(GiantAnchorV2Tag));
         std::vector<std::uint8_t> wdlPlane(wdlBytes, 0);
         for (std::uint32_t index = 0; index < stateCount_; ++index)
             wdlPlane[index / 4] |= static_cast<std::uint8_t>(nodes_[index].wdl)
@@ -3017,6 +3208,7 @@ int main(int argc, char** argv) {
     std::string informationOverlay;
     std::string lowerInformationOverlay;
     std::string lowerInformationSourceSha256;
+    std::string lowerInformationModelSha256;
     std::string informationSourceSha256;
     std::string informationModelSha256;
     std::string informationScratch = "/tmp";
@@ -3065,6 +3257,8 @@ int main(int argc, char** argv) {
             lowerInformationOverlay = value("--lower-information-overlay");
         else if (argument == "--lower-information-source-sha256")
             lowerInformationSourceSha256 = value("--lower-information-source-sha256");
+        else if (argument == "--lower-information-model-sha256")
+            lowerInformationModelSha256 = value("--lower-information-model-sha256");
         else if (argument == "--information-source-sha256")
             informationSourceSha256 = value("--information-source-sha256");
         else if (argument == "--information-model-sha256")
@@ -3113,7 +3307,8 @@ int main(int argc, char** argv) {
             else
                 generator.solve_jester_information(
                   solveJesterInformation, lowerInformationOverlay,
-                  lowerInformationSourceSha256, informationSourceSha256,
+                  lowerInformationSourceSha256, lowerInformationModelSha256,
+                  informationSourceSha256,
                   informationModelSha256, informationOverlay,
                   informationScratch);
         }

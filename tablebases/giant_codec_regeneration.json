@@ -1,0 +1,902 @@
+{
+  "codec": "giant-lower-left-horizontal-reflection-v2",
+  "files": {
+    "kbishopgiantk.uftb": {
+      "current_sha256": "b0b370a4128b71835d8c55c149ad1e88ab6003e62c0eab1e96596d4361086fd7",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 24027270,
+        "edges": 263060894,
+        "loss": 4160272,
+        "states": 37957920,
+        "win": 9770378
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "686e2d793a1e9e086d57a28497b74022b6bb1ceefeb3e6dfc2c4b2ab58f47416"
+      },
+      "primary": "bishop",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "bishop",
+        "--piece2",
+        "giant",
+        "--output",
+        "tablebases/kbishopgiantk.uftb",
+        "--checkpoint",
+        "/tmp/kbishopgiantk.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kbishopkgiant.uftb": {
+      "current_sha256": "996ff93dba83521f5d211c03639b30c68caeb96a662a181e78f9b7e30127d2ad",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 32337816,
+        "edges": 242856394,
+        "loss": 15926,
+        "states": 37957920,
+        "win": 5604178
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "c1c7b80bba9aba443ebe7d227134df57ceef716415eb343841adeee047c85d3b"
+      },
+      "primary": "bishop",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "bishop",
+        "--piece2",
+        "giant",
+        "--opposing",
+        "--output",
+        "tablebases/kbishopkgiant.uftb",
+        "--checkpoint",
+        "/tmp/kbishopkgiant.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kbombgiantk.uftb": {
+      "current_sha256": "560dcad95f6939eebb225e0f1751b0315a94a4b7bc1e2eb1a48d93229059956a",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 11412696,
+        "edges": 273239456,
+        "loss": 12116408,
+        "states": 37957920,
+        "win": 14428816
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "732059c4639edd846fd9ec17fc29438e85f704e555e6aa8574d34ed231b5328d"
+      },
+      "primary": "bomb",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "bomb",
+        "--piece2",
+        "giant",
+        "--output",
+        "tablebases/kbombgiantk.uftb",
+        "--checkpoint",
+        "/tmp/kbombgiantk.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kbombkgiant.uftb": {
+      "current_sha256": "a933018cdcc7a230eb2613e12b512bc36063a672cd33188fb8d7f30ae727dace",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 13908468,
+        "edges": 249537360,
+        "loss": 8099930,
+        "states": 37957920,
+        "win": 15949522
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "a0356467d0b21d2c88368dbbcfce936570f1466179a24604ab8dc3366240f9af"
+      },
+      "primary": "bomb",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "bomb",
+        "--piece2",
+        "giant",
+        "--opposing",
+        "--output",
+        "tablebases/kbombkgiant.uftb",
+        "--checkpoint",
+        "/tmp/kbombkgiant.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kghostgiantk.uftb": {
+      "current_sha256": "cd18051587a58abc21c84828ca05ff901967b8e42a6c4f694ba3066fab657b7d",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 23612496,
+        "edges": 497645576,
+        "loss": 23445712,
+        "states": 75915840,
+        "win": 28857632
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "0009c3f090657389497412ef3a16d895d997165dc5c93531044c65366f40cfa7"
+      },
+      "primary": "ghost",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "ghost",
+        "--piece2",
+        "giant",
+        "--output",
+        "tablebases/kghostgiantk.uftb",
+        "--checkpoint",
+        "/tmp/kghostgiantk.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kghostkgiant.uftb": {
+      "current_sha256": "aecce77c512fb3427cbb00b147650b4f95777e41b325e024d2720f7fcf2869cd",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 27003802,
+        "edges": 472896720,
+        "loss": 16366336,
+        "states": 75915840,
+        "win": 32545702
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "b80ea80c146f6f899d047e5adb5b3fcc5e7ed8f9402e369e259543198f002eda"
+      },
+      "primary": "ghost",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "ghost",
+        "--piece2",
+        "giant",
+        "--opposing",
+        "--output",
+        "tablebases/kghostkgiant.uftb",
+        "--checkpoint",
+        "/tmp/kghostkgiant.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kgiantdragonk.uftb": {
+      "current_sha256": "2a53fa8edbbc5a68bce7f1e66a52867626fda3ecb474f177377afd2fc4579015",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 12235756,
+        "edges": 319145998,
+        "loss": 11293652,
+        "states": 37957920,
+        "win": 14428512
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "f6153f8902453649e26a4d8af54b2a1f35b4e434d51f1addf8a641fd00054765"
+      },
+      "primary": "giant",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "giant",
+        "--piece2",
+        "dragon",
+        "--output",
+        "tablebases/kgiantdragonk.uftb",
+        "--checkpoint",
+        "/tmp/kgiantdragonk.anchor-v2.checkpoint"
+      ],
+      "secondary": "dragon",
+      "status": "verified-anchor-v2"
+    },
+    "kgiantfishermank.uftb": {
+      "current_sha256": "56728fb7a48b9dd7dc0652050521c168d1023d6da2160a34158b0c7b3b256217",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 14236906,
+        "edges": 441838754,
+        "loss": 9403952,
+        "states": 37957920,
+        "win": 14317062
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "6ee1d65cb149b4d8295b72967a59aba26fd3a38d9466d0d47e99e2ea68d0e3e8"
+      },
+      "primary": "giant",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "giant",
+        "--piece2",
+        "fisherman",
+        "--output",
+        "tablebases/kgiantfishermank.uftb",
+        "--checkpoint",
+        "/tmp/kgiantfishermank.anchor-v2.checkpoint"
+      ],
+      "secondary": "fisherman",
+      "status": "verified-anchor-v2"
+    },
+    "kgiantgiantk.uftb": {
+      "current_sha256": "9cfc00607ab58e3be4b4312c6eef4abd6a5f95cf427316d5802bf290284847a7",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 14087256,
+        "edges": 62426868,
+        "loss": 1480138,
+        "states": 18978960,
+        "win": 3411566
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "ad7bae563f3cb7f9e3226764af44955a7be59fd91b88927fc7fbc379b1697a71"
+      },
+      "primary": "giant",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "giant",
+        "--piece2",
+        "giant",
+        "--output",
+        "tablebases/kgiantgiantk.uftb",
+        "--checkpoint",
+        "/tmp/kgiantgiantk.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kgiantkdragon.uftb": {
+      "current_sha256": "88b1b6bc867d11eb78cab27c599bbe94db8a32d97edb1a250624982d09a02c72",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 13742000,
+        "edges": 286479206,
+        "loss": 7912354,
+        "states": 37957920,
+        "win": 16303566
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "775f8ef7395d0dff239726e4bc710ded5f5b37772040d5c167ac7d9976f5c645"
+      },
+      "primary": "giant",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "giant",
+        "--piece2",
+        "dragon",
+        "--opposing",
+        "--output",
+        "tablebases/kgiantkdragon.uftb",
+        "--checkpoint",
+        "/tmp/kgiantkdragon.anchor-v2.checkpoint"
+      ],
+      "secondary": "dragon",
+      "status": "verified-anchor-v2"
+    },
+    "kgiantkfisherman.uftb": {
+      "current_sha256": "547b564ac58fff439ed090a9f765563f764228be6ae05b6434313707fe49aa32",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 33551254,
+        "edges": 398427880,
+        "loss": 12796,
+        "states": 37957920,
+        "win": 4393870
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "dfd9b6600a4bb550ca7fa04994a06b185d27bee842d9eb00977764cc1c81849c"
+      },
+      "primary": "giant",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "giant",
+        "--piece2",
+        "fisherman",
+        "--opposing",
+        "--output",
+        "tablebases/kgiantkfisherman.uftb",
+        "--checkpoint",
+        "/tmp/kgiantkfisherman.anchor-v2.checkpoint"
+      ],
+      "secondary": "fisherman",
+      "status": "verified-anchor-v2"
+    },
+    "kgiantkgiant.uftb": {
+      "current_sha256": "192e190c240441b5c1d461b39fe3f93f44377ba8f03391df6c2dfba230f42893",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 33737340,
+        "edges": 117385888,
+        "loss": 31540,
+        "states": 37957920,
+        "win": 4189040
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "f32122fc6ae0060b826b1618c968013c3e9dc32c4d396fb9f3f70cadae2b6bdc"
+      },
+      "primary": "giant",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "giant",
+        "--piece2",
+        "giant",
+        "--opposing",
+        "--output",
+        "tablebases/kgiantkgiant.uftb",
+        "--checkpoint",
+        "/tmp/kgiantkgiant.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kjestergiantk.uftb": {
+      "current_sha256": "36fce15f18bf2d78f16e9599dc351b2cecf66b9147ccb315eb1e10af364ffebc",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 12228172,
+        "edges": 259948596,
+        "loss": 11300932,
+        "states": 37957920,
+        "win": 14428816
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "884989b7da46b32ca63ce18c70dec5c9df6125255537bb805d8445c05c284024",
+        "payload_identity_from_v5": true
+      },
+      "primary": "jester",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "jester",
+        "--piece2",
+        "giant",
+        "--output",
+        "tablebases/kjestergiantk.uftb",
+        "--checkpoint",
+        "/tmp/kjestergiantk.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kjesterkgiant.uftb": {
+      "current_sha256": "0c0d2aa723badd35e14708cfecfaeeb0c8039ef4c76f741a43b60709ff08c615",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 13886764,
+        "edges": 265285348,
+        "loss": 7797590,
+        "states": 37957920,
+        "win": 16273566
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "4d97495e23c3bdf7a15afd264121e600da6b63544403566585886bd0054c7dc4",
+        "payload_identity_from_v5": true
+      },
+      "primary": "jester",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "jester",
+        "--piece2",
+        "giant",
+        "--opposing",
+        "--output",
+        "tablebases/kjesterkgiant.uftb",
+        "--checkpoint",
+        "/tmp/kjesterkgiant.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kknightgiantk.uftb": {
+      "current_sha256": "190eeb250445920f4027a7d8a20421c5200b26bd44972d94b5a489d246a87f32",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 18145004,
+        "edges": 228702604,
+        "loss": 7416466,
+        "states": 37957920,
+        "win": 12396450
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "6316e48d0b5faec5b3f7abbde0936bc076840fcf4d7ed3a34195d6566ed3824a"
+      },
+      "primary": "knight",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "knight",
+        "--piece2",
+        "giant",
+        "--output",
+        "tablebases/kknightgiantk.uftb",
+        "--checkpoint",
+        "/tmp/kknightgiantk.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kknightkgiant.uftb": {
+      "current_sha256": "79d484eae6e15ed424647a3c1e1501ab06bb88d502be6b98b3a6c62cd2bc38ce",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 32880198,
+        "edges": 215826804,
+        "loss": 19388,
+        "states": 37957920,
+        "win": 5058334
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "b43465006717f3c9f6836a9f50584e6a934e238cc31e0f6cc4a69c2d551314bf"
+      },
+      "primary": "knight",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "knight",
+        "--piece2",
+        "giant",
+        "--opposing",
+        "--output",
+        "tablebases/kknightkgiant.uftb",
+        "--checkpoint",
+        "/tmp/kknightkgiant.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kmagegiantk.uftb": {
+      "current_sha256": "cb818ab1353d97412601aa5aa770e54783ece724068effee931178ecc0021f8a",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 13811268,
+        "edges": 212650924,
+        "loss": 9720916,
+        "states": 37957920,
+        "win": 14425736
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "0fa141b1d7c138b5c45bf5a6a21c1cf43047a4b17282ae559aa1675cdf644660"
+      },
+      "primary": "mage",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "mage",
+        "--piece2",
+        "giant",
+        "--output",
+        "tablebases/kmagegiantk.uftb",
+        "--checkpoint",
+        "/tmp/kmagegiantk.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kmagekgiant.uftb": {
+      "current_sha256": "cf2dbfa1a1c73499fe682ee0a8a60f26b904382b6f59eb139bd7091ce5843fd7",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 33721028,
+        "edges": 182439080,
+        "loss": 11632,
+        "states": 37957920,
+        "win": 4225260
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "df1266d608e44e524d71b7ac5f599ae985a86931691f327e8aa996ed9aff9ba1"
+      },
+      "primary": "mage",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "mage",
+        "--piece2",
+        "giant",
+        "--opposing",
+        "--output",
+        "tablebases/kmagekgiant.uftb",
+        "--checkpoint",
+        "/tmp/kmagekgiant.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kninjagiantk.uftb": {
+      "current_sha256": "e2b422f8816df785d4a6e9644e65e5b73d5c3d15cb8ebf1d08aa767f8524e6a5",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 12268464,
+        "edges": 344953212,
+        "loss": 11260640,
+        "states": 37957920,
+        "win": 14428816
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "6350efdaa64f996a95b8113707401b661d4bfcef0963fd3e6284e016f2e61bcf"
+      },
+      "primary": "ninja",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "ninja",
+        "--piece2",
+        "giant",
+        "--output",
+        "tablebases/kninjagiantk.uftb",
+        "--checkpoint",
+        "/tmp/kninjagiantk.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kninjakgiant.uftb": {
+      "current_sha256": "c4b9a0a3ca1b5da47be4d557b2003d0a264c906a72c62d95ba1e0e219de42c85",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 13694458,
+        "edges": 306835628,
+        "loss": 7911120,
+        "states": 37957920,
+        "win": 16352342
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "53c37d6b9e79bc717612173c240ad0e695ac05ea702c60cb378e8fd14cb2be37"
+      },
+      "primary": "ninja",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "ninja",
+        "--piece2",
+        "giant",
+        "--opposing",
+        "--output",
+        "tablebases/kninjakgiant.uftb",
+        "--checkpoint",
+        "/tmp/kninjakgiant.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kparasitegiantk.uftb": {
+      "current_sha256": "5e0bb56139965b70efddd21aa7929f4d829c101abce197357b5fc76e282faaf6",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 11387676,
+        "edges": 243180684,
+        "loss": 12141428,
+        "states": 37957920,
+        "win": 14428816
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "86d8253422bdc1e7904a0b7811bb5ba8a8f2da848ce2a9d6e48683a10ef7f006"
+      },
+      "primary": "parasite",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "parasite",
+        "--piece2",
+        "giant",
+        "--output",
+        "tablebases/kparasitegiantk.uftb",
+        "--checkpoint",
+        "/tmp/kparasitegiantk.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kparasitekgiant.uftb": {
+      "current_sha256": "726d837a97ab80c74da4bfb4492dce77950c96351b36fbb6105b42e62171918f",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 16052032,
+        "edges": 227572076,
+        "loss": 6954740,
+        "states": 37957920,
+        "win": 14951148
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "e293e546dac17a6f4b363b09c09c5c127a4b5cb4a40c266e503a8e17b3751d98"
+      },
+      "primary": "parasite",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "parasite",
+        "--piece2",
+        "giant",
+        "--opposing",
+        "--output",
+        "tablebases/kparasitekgiant.uftb",
+        "--checkpoint",
+        "/tmp/kparasitekgiant.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kqueengiantk.uftb": {
+      "current_sha256": "a9b0135f35a657e5192f939a57f0f81a2af90cefaf34847d97e7b5e592550937",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 12272520,
+        "edges": 411446456,
+        "loss": 11256584,
+        "states": 37957920,
+        "win": 14428816
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "d36e24f427d8b26609f5e7c5993d17b52e3f4eb8c2a56b2ee5300d0ff2220313"
+      },
+      "primary": "queen",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "queen",
+        "--piece2",
+        "giant",
+        "--output",
+        "tablebases/kqueengiantk.uftb",
+        "--checkpoint",
+        "/tmp/kqueengiantk.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kqueenkgiant.uftb": {
+      "current_sha256": "34a72a3b8cf5660a35905e91dd4d311bf0738b035f3889c57f577d0a8606c93b",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 13696112,
+        "edges": 358244540,
+        "loss": 7912012,
+        "states": 37957920,
+        "win": 16349796
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "18d39e590e0362486fdc971ce227cc4f861eb4701c5b5c9fd60f9546670a7e12"
+      },
+      "primary": "queen",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "queen",
+        "--piece2",
+        "giant",
+        "--opposing",
+        "--output",
+        "tablebases/kqueenkgiant.uftb",
+        "--checkpoint",
+        "/tmp/kqueenkgiant.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "krookgiantk.uftb": {
+      "current_sha256": "0ac2b5d3a1ef4c6c0d39c2cf7b7b6fd857d38319dc4607e8183418f38979a4a8",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 12232690,
+        "edges": 321003062,
+        "loss": 11296414,
+        "states": 37957920,
+        "win": 14428816
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "8d6ed2375aa3739d5129fe9b5f8ed1c19e84bc63915c23cdc57b83e36e8a5dc7"
+      },
+      "primary": "rook",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "rook",
+        "--piece2",
+        "giant",
+        "--output",
+        "tablebases/krookgiantk.uftb",
+        "--checkpoint",
+        "/tmp/krookgiantk.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "krookkgiant.uftb": {
+      "current_sha256": "6e099716aa2a1115445af30f913b8e502f7e66ec8b63046da19b1f9f90c242fb",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 13747008,
+        "edges": 287592138,
+        "loss": 7909542,
+        "states": 37957920,
+        "win": 16301370
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "95920d3c2761a2db0809b877134b965bb61f549d2d15aa8307bf64875e2bbc43"
+      },
+      "primary": "rook",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "rook",
+        "--piece2",
+        "giant",
+        "--opposing",
+        "--output",
+        "tablebases/krookkgiant.uftb",
+        "--checkpoint",
+        "/tmp/krookkgiant.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kturtlegiantk.uftb": {
+      "current_sha256": "c613d3210037c0f9ba306e76e5e42531d0910c9ec7b0b387a9a9a73ab8d88eb8",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 19814756,
+        "edges": 210345328,
+        "loss": 6387316,
+        "states": 37957920,
+        "win": 11755848
+      },
+      "opposing": false,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "92c3ffefd9d75ef3d8fc4c669cc071265bf95699b0b573d2ef4e8a5f77fc2aca"
+      },
+      "primary": "turtle",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "turtle",
+        "--piece2",
+        "giant",
+        "--output",
+        "tablebases/kturtlegiantk.uftb",
+        "--checkpoint",
+        "/tmp/kturtlegiantk.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    },
+    "kturtlekgiant.uftb": {
+      "current_sha256": "5e013243f6e49a8a2db0c969d117709183d2c8e0c95ce720cb19b4a23f2210a4",
+      "generation_certificate": {
+        "bellman_residual": 0,
+        "draw": 33134076,
+        "edges": 201853704,
+        "loss": 23994,
+        "states": 37957920,
+        "win": 4799850
+      },
+      "opposing": true,
+      "packaging_certificate": {
+        "format_version": 7,
+        "giant_anchor_tag": "0x32474e4149474655",
+        "logical_payload_sha256": "1c9c62fd57d237b61e49e8ac18a3218673dcef415b8cf2f1433e0777e249f399"
+      },
+      "primary": "turtle",
+      "regeneration_command": [
+        "src/ultimate_tablebase",
+        "--piece",
+        "turtle",
+        "--piece2",
+        "giant",
+        "--opposing",
+        "--output",
+        "tablebases/kturtlekgiant.uftb",
+        "--checkpoint",
+        "/tmp/kturtlekgiant.anchor-v2.checkpoint"
+      ],
+      "secondary": "giant",
+      "status": "verified-anchor-v2"
+    }
+  },
+  "folded_counts": {
+    "stale": 26,
+    "total": 28,
+    "verified": 2
+  },
+  "reason": "Folded four-model codecs must reflect a Giant lower-left 2x2 anchor from file f to 6-f. Payloads generated with the former point-square mapping (7-f) are not valid under the corrected codec and must never be summarized or probed as corrected data.",
+  "unfolded_three_model": {
+    "kgiantk.uftb": {
+      "current_sha256": "eb52f2c08cf88e1e3682d0c72dfde191d9009e79779ad7eee23ca82fdcade591",
+      "status": "unaffected-no-horizontal-fold"
+    }
+  },
+  "version": 1
+}

@@ -134,7 +134,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             self.assertEqual(info.solver_domain(filename), domain)
             counts[domain] = counts.get(domain, 0) + 1
         self.assertEqual(counts, {
-            "primary-jester": 25,
+            "primary-jester": 23,
+            "primary-jester-giant": 2,
             "ghost": 1,
             "double-jester": 1,
             "joint-jester": 1,
@@ -153,9 +154,41 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                 info.SummaryValidationError, "unsupported information class"):
             info.validate_summary(self.document, root=self.root)
 
+    def test_primary_jester_transitive_probe_dependencies_are_complete(self):
+        forcing = {
+            "queen": "kqk.uftb", "rook": "krk.uftb",
+            "bomb": "kbombk.uftb", "ninja": "kninjak.uftb",
+            "parasite": "kparasitek.uftb", "giant": "kgiantk.uftb",
+            "dragon": "kdragonk.uftb",
+        }
+        records = {str(record["filename"]): record for record in
+                   info.affected_inventory(root=ROOT, require_files=False)}
+        for filename in (*info.PRIMARY_JESTER_FILENAMES,
+                         *info.PRIMARY_JESTER_GIANT_FILENAMES):
+            dependencies = info.solver_concrete_dependencies(filename)
+            if filename == "kjesterk.uftb":
+                self.assertEqual(dependencies, ())
+                continue
+            secondary = str(records[filename]["secondary"])
+            expected = ("kjesterk.uftb",) + (
+                (forcing[secondary],) if secondary in forcing else ())
+            self.assertEqual(dependencies, expected)
+            for dependency in dependencies:
+                self.assertTrue((ROOT / "tablebases" / dependency).exists())
+
+        # The owner-Bomb AWS run originally built millions of information
+        # nodes before discovering this unstaged lower table.
+        self.assertEqual(
+            info.solver_concrete_dependencies("kjesterbombk.uftb"),
+            ("kjesterk.uftb", "kbombk.uftb"))
+        self.assertEqual(
+            info.solver_concrete_dependencies("kjesterkbomb.uftb"),
+            ("kjesterk.uftb", "kbombk.uftb"))
+
     def test_solver_fingerprints_are_isolated_by_implementation_domain(self):
         representatives = {
             "primary-jester": "kjesterk.uftb",
+            "primary-jester-giant": "kjestergiantk.uftb",
             "ghost": "kghostk.uftb",
             "double-jester": "kjesterjesterk.uftb",
             "joint-jester": "kjesterkjester.uftb",
@@ -175,6 +208,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                 domain: info.solver_model_fingerprint(filename, root=source_root)
                 for domain, filename in representatives.items()
             }
+            self.assertNotEqual(before["primary-jester"],
+                                before["primary-jester-giant"])
 
             ghost_source = (source_root /
                             info.GHOST_SOLVER_SOURCES[-1].relative_to(ROOT))
@@ -186,7 +221,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             self.assertNotEqual(after_ghost["ghost"], before["ghost"])
             self.assertNotEqual(after_ghost["bishop-ghost"],
                                 before["bishop-ghost"])
-            for domain in ("primary-jester", "double-jester", "joint-jester"):
+            for domain in ("primary-jester", "primary-jester-giant",
+                           "double-jester", "joint-jester"):
                 self.assertEqual(after_ghost[domain], before[domain])
 
             shared_source = (source_root /
@@ -209,6 +245,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             }
             self.assertNotEqual(after_probe["primary-jester"],
                                 after_shared["primary-jester"])
+            self.assertNotEqual(after_probe["primary-jester-giant"],
+                                after_shared["primary-jester-giant"])
             for domain in ("ghost", "double-jester", "joint-jester",
                            "bishop-ghost"):
                 self.assertEqual(after_probe[domain], after_shared[domain])

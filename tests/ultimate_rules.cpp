@@ -5,7 +5,11 @@
 #include "../src/ultimate/tablebase_probe.h"
 
 #include <algorithm>
+#include <array>
+#include <cstring>
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <iterator>
 #include <set>
@@ -1880,6 +1884,53 @@ void test_exact_tablebase_probing() {
         position.piece(id).moved = true;
         return id;
     };
+    const std::filesystem::path ownerGiant =
+      std::filesystem::path("../tablebases/kjestergiantk.uftb");
+    expect(TablebaseProbe::uses_compatible_codec(ownerGiant.string()),
+           "corrected folded-Giant tablebase carries the v7 anchor marker");
+    const bool queenGiantInstalled = TablebaseProbe::uses_compatible_codec(
+      "../tablebases/kqueengiantk.uftb");
+    {
+        std::array<char, 64> header{};
+        std::ifstream source(ownerGiant, std::ios::binary);
+        source.read(header.data(), header.size());
+        expect(source.gcount() == static_cast<std::streamsize>(header.size()),
+               "folded-Giant v7 header is available for corruption tests");
+        const std::filesystem::path temporary =
+          std::filesystem::temp_directory_path() /
+          "ultimatefish-malformed-giant-codec.uftb";
+        const auto write = [&](const std::array<char, 64>& bytes) {
+            std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+            output.write(bytes.data(), bytes.size());
+        };
+        auto malformed = header;
+        malformed[56] ^= 1;
+        write(malformed);
+        expect(!TablebaseProbe::uses_compatible_codec(temporary.string()),
+               "runtime rejects a malformed GiantAnchorV2 marker");
+        auto stale = header;
+        const std::uint32_t version5 = 5;
+        std::memcpy(stale.data() + 8, &version5, sizeof(version5));
+        write(stale);
+        expect(!TablebaseProbe::uses_compatible_codec(temporary.string()),
+               "runtime rejects a pre-v7 folded-Giant payload");
+        auto nonGiant = header;
+        const std::uint32_t bishop = static_cast<std::uint32_t>(PieceType::Bishop);
+        std::memcpy(nonGiant.data() + 40, &bishop, sizeof(bishop));
+        write(nonGiant);
+        expect(!TablebaseProbe::uses_compatible_codec(temporary.string()),
+               "runtime rejects v7 on a non-Giant material class");
+        std::error_code removeError;
+        std::filesystem::remove(temporary, removeError);
+    }
+    Position staleGiantQueen;
+    moved(staleGiantQueen, PieceType::King, Color::White, "a1");
+    moved(staleGiantQueen, PieceType::Queen, Color::White, "c3");
+    moved(staleGiantQueen, PieceType::Giant, Color::White, "f4");
+    moved(staleGiantQueen, PieceType::King, Color::Black, "h10");
+    expect(TablebaseProbe::probe(staleGiantQueen).has_value() ==
+             queenGiantInstalled,
+           "runtime indexes a folded-Giant payload iff it authenticates as v7");
     Position queen;
     moved(queen, PieceType::King, Color::White, "a1");
     moved(queen, PieceType::Queen, Color::White, "b1");
@@ -2008,6 +2059,27 @@ void test_exact_tablebase_probing() {
     moved(twoKnights, PieceType::King, Color::Black, "h10");
     expect(TablebaseProbe::probe(twoKnights).has_value(),
            "horizontally canonical identical-extra K+NN+K tablebase is probeable");
+
+    for (const Color giantColor : {Color::White, Color::Black}) {
+        Position giantJester;
+        moved(giantJester, PieceType::King, Color::White, "a1");
+        moved(giantJester, PieceType::King, Color::Black, "c1");
+        moved(giantJester, PieceType::Jester, Color::White, "f1");
+        moved(giantJester, PieceType::Giant, giantColor, "g1");
+        const auto left = TablebaseProbe::probe(giantJester);
+
+        Position mirroredGiantJester;
+        moved(mirroredGiantJester, PieceType::King, Color::White, "h1");
+        moved(mirroredGiantJester, PieceType::King, Color::Black, "f1");
+        moved(mirroredGiantJester, PieceType::Jester, Color::White, "c1");
+        moved(mirroredGiantJester, PieceType::Giant, giantColor, "a1");
+        const auto right = TablebaseProbe::probe(mirroredGiantJester);
+        expect(left && right && left->wdl == right->wdl &&
+                 left->dtw == right->dtw,
+               std::string("Giant/Jester tablebase reflects the 2x2 anchor for ") +
+                 (giantColor == Color::White ? "owner" : "opponent") +
+                 " material");
+    }
 
     Position sameColorBishops;
     moved(sameColorBishops, PieceType::King, Color::White, "a1");

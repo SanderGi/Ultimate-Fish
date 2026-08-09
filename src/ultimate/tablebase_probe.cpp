@@ -28,6 +28,20 @@ constexpr std::uint32_t FourStateCount =
 constexpr std::uint32_t IdenticalFourStateCount = FourStateCount / 2;
 constexpr std::uint32_t CompoundCopycatStateCount =
   2 * SquareCount * (SquareCount - 1) * (SquareCount - 2) * (SquareCount - 3);
+constexpr std::uint64_t GiantAnchorV2Tag = 0x32474e4149474655ULL;
+
+bool compatible_codec(std::uint32_t version, PieceType primary,
+                      PieceType secondary, std::uint64_t codecTag) {
+    if (version < 2 || version > 7)
+        return false;
+    const bool foldedGiant = secondary != PieceType::Count &&
+      (primary == PieceType::Giant || secondary == PieceType::Giant);
+    // v7 is reserved for a folded four-model Giant payload whose horizontal
+    // symmetry reflects the lower-left 2x2 anchor. Earlier versions cannot
+    // authenticate that codec and are rejected before they are indexed.
+    return version == 7 ? foldedGiant && codecTag == GiantAnchorV2Tag
+                        : !foldedGiant;
+}
 
 struct PackedStorage {
     std::string path;
@@ -103,6 +117,12 @@ std::uint8_t reflect_horizontal(std::uint8_t square) {
     return static_cast<std::uint8_t>((square / 8) * 8 + 7 - square % 8);
 }
 
+std::uint8_t reflect_giant_anchor_horizontal(std::uint8_t square) {
+    const int file = square % 8;
+    return file == 7 ? square
+                     : static_cast<std::uint8_t>((square / 8) * 8 + 6 - file);
+}
+
 std::uint32_t rank_excluding(std::uint8_t square,
                              std::initializer_list<std::uint8_t> used) {
     std::uint32_t rank = square;
@@ -113,12 +133,15 @@ std::uint32_t rank_excluding(std::uint8_t square,
 
 std::uint32_t encode_four(Color side, std::uint8_t whiteKing,
                           std::uint8_t blackKing, std::uint8_t first,
-                          std::uint8_t second) {
+                          std::uint8_t second, bool firstGiant,
+                          bool secondGiant) {
     if (whiteKing % 8 >= 4) {
         whiteKing = reflect_horizontal(whiteKing);
         blackKing = reflect_horizontal(blackKing);
-        first = reflect_horizontal(first);
-        second = reflect_horizontal(second);
+        first = firstGiant ? reflect_giant_anchor_horizontal(first)
+                           : reflect_horizontal(first);
+        second = secondGiant ? reflect_giant_anchor_horizontal(second)
+                             : reflect_horizontal(second);
     }
     const std::uint32_t whiteRank = (whiteKing / 8) * 4 + whiteKing % 8;
     const std::uint32_t blackRank = rank_excluding(blackKing, {whiteKing});
@@ -147,12 +170,14 @@ std::uint32_t encode_compound_copycat(Color side, std::uint8_t whiteKing,
 
 std::uint32_t encode_identical_four(Color side, std::uint8_t whiteKing,
                                     std::uint8_t blackKing, std::uint8_t first,
-                                    std::uint8_t second) {
+                                    std::uint8_t second, bool giant) {
     if (whiteKing % 8 >= 4) {
         whiteKing = reflect_horizontal(whiteKing);
         blackKing = reflect_horizontal(blackKing);
-        first = reflect_horizontal(first);
-        second = reflect_horizontal(second);
+        first = giant ? reflect_giant_anchor_horizontal(first)
+                      : reflect_horizontal(first);
+        second = giant ? reflect_giant_anchor_horizontal(second)
+                       : reflect_horizontal(second);
     }
     const std::uint32_t whiteRank = (whiteKing / 8) * 4 + whiteKing % 8;
     const std::uint32_t blackRank = rank_excluding(blackKing, {whiteKing});
@@ -310,7 +335,7 @@ std::vector<Database> load_databases() {
         std::uint32_t substates = 1;
         if (version >= 3)
             stream.read(reinterpret_cast<char*>(&substates), sizeof(substates));
-        if (!stream || magic != expected || (version < 2 || version > 6) ||
+        if (!stream || magic != expected || (version < 2 || version > 7) ||
             !substates || (version < 5 && count != StateCount * substates) ||
             piece >= static_cast<std::uint32_t>(PieceType::Count))
             continue;
@@ -351,10 +376,19 @@ std::vector<Database> load_databases() {
             if (version >= 6) {
                 std::uint64_t exactEdges = 0;
                 stream.read(reinterpret_cast<char*>(&exactEdges), sizeof(exactEdges));
-                if (exactEdges <= std::numeric_limits<std::uint32_t>::max()) {
+                if (version == 6 &&
+                    exactEdges <= std::numeric_limits<std::uint32_t>::max()) {
                     database.count = 0;
                     continue;
                 }
+            }
+            std::uint64_t codecTag = 0;
+            if (version >= 7)
+                stream.read(reinterpret_cast<char*>(&codecTag), sizeof(codecTag));
+            if (!compatible_codec(version, database.attacker,
+                                  database.secondary, codecTag)) {
+                database.count = 0;
+                continue;
             }
             if (!stream || wdlBytes != (count + 3) / 4 || dtwBytes != count) {
                 database.count = 0;
@@ -392,6 +426,9 @@ std::vector<Database> load_databases() {
                 database.count = 0;
         }
         else {
+            if (!compatible_codec(version, database.attacker,
+                                  PieceType::Count, 0))
+                continue;
             database.records.resize(count);
             for (TablebaseResult& record : database.records) {
                 std::uint16_t packed = 0;
@@ -423,6 +460,58 @@ const std::vector<Database>& databases() {
 }  // namespace
 
 void TablebaseProbe::preload() { (void) databases(); }
+
+bool TablebaseProbe::uses_compatible_codec(const std::string& path) {
+    const std::string logicalPath = materialize_shards(path);
+    std::ifstream stream(logicalPath, std::ios::binary);
+    if (!stream)
+        return false;
+    std::array<char, 8> magic{};
+    std::uint32_t version = 0, piece = 0, count = 0, edges = 0;
+    stream.read(magic.data(), magic.size());
+    stream.read(reinterpret_cast<char*>(&version), sizeof(version));
+    stream.read(reinterpret_cast<char*>(&piece), sizeof(piece));
+    stream.read(reinterpret_cast<char*>(&count), sizeof(count));
+    stream.read(reinterpret_cast<char*>(&edges), sizeof(edges));
+    const std::array<char, 8> expected{{'U','F','T','B','1','\0','\0','\0'}};
+    if (!stream || magic != expected || version < 2 || version > 7 ||
+        piece >= static_cast<std::uint32_t>(PieceType::Count))
+        return false;
+    std::uint32_t substates = 1;
+    if (version >= 3)
+        stream.read(reinterpret_cast<char*>(&substates), sizeof(substates));
+    PieceType secondary = PieceType::Count;
+    std::uint64_t codecTag = 0;
+    if (version >= 4) {
+        std::uint32_t wdlBytes = 0, dtwBytes = 0, exceptionCount = 0;
+        stream.read(reinterpret_cast<char*>(&wdlBytes), sizeof(wdlBytes));
+        stream.read(reinterpret_cast<char*>(&dtwBytes), sizeof(dtwBytes));
+        stream.read(reinterpret_cast<char*>(&exceptionCount), sizeof(exceptionCount));
+        if (version >= 5) {
+            std::uint32_t encodedSecondary = 0, secondaryColor = 0;
+            stream.read(reinterpret_cast<char*>(&encodedSecondary), sizeof(encodedSecondary));
+            stream.read(reinterpret_cast<char*>(&secondaryColor), sizeof(secondaryColor));
+            if (encodedSecondary >= static_cast<std::uint32_t>(PieceType::Count) ||
+                secondaryColor > static_cast<std::uint32_t>(Color::Black))
+                return false;
+            secondary = static_cast<PieceType>(encodedSecondary);
+        }
+        if (version >= 6) {
+            std::uint64_t exactEdges = 0;
+            stream.read(reinterpret_cast<char*>(&exactEdges), sizeof(exactEdges));
+            if (version == 6 &&
+                exactEdges <= std::numeric_limits<std::uint32_t>::max())
+                return false;
+        }
+        if (version >= 7)
+            stream.read(reinterpret_cast<char*>(&codecTag), sizeof(codecTag));
+        if (!stream || !substates || wdlBytes != (count + 3) / 4 ||
+            dtwBytes != count)
+            return false;
+    }
+    return stream && compatible_codec(version, static_cast<PieceType>(piece),
+                                      secondary, codecTag);
+}
 
 std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
     if (position.forcedTimeoutWinner_ >= 0)
@@ -649,19 +738,27 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                     if (wk % 8 >= 4) {
                         wk = reflect_horizontal(wk);
                         bk = reflect_horizontal(bk);
-                        firstSquare = reflect_horizontal(firstSquare);
-                        secondSquare = reflect_horizontal(secondSquare);
+                        const bool giant = database.attacker == PieceType::Giant;
+                        firstSquare = giant
+                          ? reflect_giant_anchor_horizontal(firstSquare)
+                          : reflect_horizontal(firstSquare);
+                        secondSquare = giant
+                          ? reflect_giant_anchor_horizontal(secondSquare)
+                          : reflect_horizontal(secondSquare);
                     }
                     if (rank_excluding(firstSquare, {wk, bk}) >
                         rank_excluding(secondSquare, {wk, bk}))
                         std::swap(*primarySubstate, *secondarySubstate);
                     placement = encode_identical_four(
                       side, position.pieces_[canonicalWhite].square,
-                      position.pieces_[canonicalBlack].square, primary.square, secondary.square);
+                      position.pieces_[canonicalBlack].square, primary.square,
+                      secondary.square, database.attacker == PieceType::Giant);
                 }
                 else placement = encode_four(
                   side, position.pieces_[canonicalWhite].square,
-                  position.pieces_[canonicalBlack].square, primary.square, secondary.square);
+                  position.pieces_[canonicalBlack].square, primary.square,
+                  secondary.square, database.attacker == PieceType::Giant,
+                  database.secondary == PieceType::Giant);
                 const std::uint32_t secondaryFactor = represented_substates(database.secondary);
                 if (*primarySubstate >= represented_substates(database.attacker) ||
                     *secondarySubstate >= secondaryFactor)

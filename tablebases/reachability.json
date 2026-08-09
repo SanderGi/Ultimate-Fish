@@ -120,21 +120,35 @@
       "sha256": "61bc4f9865d4c217868da670e27e16e9a493f31ca15ae6a68f91469b8c48dcf2"
     },
     "kbishopgiantk.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           4150080,
           0,
-          0
+          5692260
         ],
         [
           0,
           1142116,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "f7bed858352d77238adb64d894d2e2ce4bc716703aa4354fa16f288708bd658c"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4150080,
+          0,
+          5692260
+        ],
+        [
+          0,
+          1142116,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "b0b370a4128b71835d8c55c149ad1e88ab6003e62c0eab1e96596d4361086fd7"
     },
     "kbishopkbomb.uftb": {
       "ordinary_predecessor_safety": [
@@ -188,21 +202,35 @@
       "sha256": "0649b7859ba72c8534929a902f18b3ca1a74cd7d7b3713ac109633e83a85ac15"
     },
     "kbishopkgiant.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           2519718,
           0,
-          0
+          5692260
         ],
         [
           0,
           3051612,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "0693144e84471959edad34705a14dbef0685df3b60bc6d83960b904001133bb2"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2519718,
+          0,
+          5692260
+        ],
+        [
+          0,
+          3051612,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "996ff93dba83521f5d211c03639b30c68caeb96a662a181e78f9b7e30127d2ad"
     },
     "kbishopkninja.uftb": {
       "ordinary_predecessor_safety": [
@@ -460,21 +488,35 @@
       "sha256": "25fc8d85b05c1104b50118cc7486bd3cfb8bb853eeedbb748cc81d29b95fa86b"
     },
     "kbombgiantk.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           4350174,
           0,
-          0
+          5692260
         ],
         [
           0,
           1142116,
           48420,
-          0
+          5692260
         ]
       ],
-      "sha256": "50ad69316185c89f66f3f15d61ce3f6f969419eea73b5dbd331cc6d831cbae5e"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4350174,
+          0,
+          5692260
+        ],
+        [
+          0,
+          1142116,
+          48420,
+          5692260
+        ]
+      ],
+      "sha256": "560dcad95f6939eebb225e0f1751b0315a94a4b7bc1e2eb1a48d93229059956a"
     },
     "kbombk.uftb": {
       "ordinary_predecessor_safety": [
@@ -562,21 +604,35 @@
       "sha256": "29305aa38fce6a02b0ca1dca724388c02d6e8a4ec5002edc123248c59850bfd0"
     },
     "kbombkgiant.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          2726186,
+          0,
+          5692268
+        ],
+        [
+          0,
+          3121728,
+          43188,
+          5693316
+        ]
+      ],
       "ordinary_predecessor_safety": [
         [
           0,
           2726186,
           0,
-          8
+          5692268
         ],
         [
           0,
           3121728,
-          43224,
-          1020
+          43188,
+          5693316
         ]
       ],
-      "sha256": "b504391775e091cd8ca49bca0763e9359262ad794a7f9b6cd79d80d66a6fb9f1"
+      "sha256": "a933018cdcc7a230eb2613e12b512bc36063a672cd33188fb8d7f30ae727dace"
     },
     "kbombkmage.uftb": {
       "ordinary_predecessor_safety": [
@@ -1018,7 +1074,21 @@
           11384520
         ]
       ],
-      "sha256": "5261c5a3d62f8711e2d6e007b89788701a7cdd2ab2afda0edea5607514e4c793"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5948400,
+          0,
+          11384520
+        ],
+        [
+          0,
+          2284232,
+          0,
+          11384520
+        ]
+      ],
+      "sha256": "cd18051587a58abc21c84828ca05ff901967b8e42a6c4f694ba3066fab657b7d"
     },
     "kghostk.uftb": {
       "necessary_reachability": [
@@ -1086,7 +1156,21 @@
           11384520
         ]
       ],
-      "sha256": "452b47d680ae8c40b4136d33c3398145909c68119a9fe1c53cde0e7c4c5e7a63"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2284232,
+          0,
+          11384520
+        ],
+        [
+          0,
+          6103224,
+          0,
+          11384520
+        ]
+      ],
+      "sha256": "aecce77c512fb3427cbb00b147650b4f95777e41b325e024d2720f7fcf2869cd"
     },
     "kghostkmage.uftb": {
       "necessary_reachability": [
@@ -1157,55 +1241,97 @@
       "sha256": "1bb1c977b7af34b2295dd6c693d8a79006e69ab2f4291a828b930515742222ca"
     },
     "kgiantdragonk.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          4840992,
+          0,
+          5692260
+        ],
+        [
+          0,
+          1142116,
+          0,
+          5692260
+        ]
+      ],
       "ordinary_predecessor_safety": [
         [
           0,
           4840992,
           0,
-          0
+          5692260
         ],
         [
           0,
           1142116,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "12c16784095c23ca9aefd21ebb6322477be1659d36001e459b534d9713af9fab"
+      "sha256": "2a53fa8edbbc5a68bce7f1e66a52867626fda3ecb474f177377afd2fc4579015"
     },
     "kgiantfishermank.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          3097480,
+          0,
+          5692260
+        ],
+        [
+          0,
+          1142116,
+          0,
+          5692260
+        ]
+      ],
       "ordinary_predecessor_safety": [
         [
           0,
           3097480,
           0,
-          0
+          5692260
         ],
         [
           0,
           1142116,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "d6322a6a99b4876cb25e05b88317a7b32cd762065c54c9415bfbd3ce01127ffe"
+      "sha256": "56728fb7a48b9dd7dc0652050521c168d1023d6da2160a34158b0c7b3b256217"
     },
     "kgiantgiantk.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           1555208,
           0,
-          0
+          5024148
         ],
         [
           0,
           389094,
           0,
-          0
+          5024148
         ]
       ],
-      "sha256": "1c737dec95c4c28c2127edf5bf190aa000687d95d19360175b9aa8c561906b59"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1555208,
+          0,
+          5024148
+        ],
+        [
+          0,
+          389094,
+          0,
+          5024148
+        ]
+      ],
+      "sha256": "9cfc00607ab58e3be4b4312c6eef4abd6a5f95cf427316d5802bf290284847a7"
     },
     "kgiantk.uftb": {
       "ordinary_predecessor_safety": [
@@ -1225,55 +1351,97 @@
       "sha256": "eb52f2c08cf88e1e3682d0c72dfde191d9009e79779ad7eee23ca82fdcade591"
     },
     "kgiantkdragon.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           3051612,
           0,
-          0
+          5692260
         ],
         [
           0,
           3346434,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "bf638c7b6b3082eb9c9899a67c6e3a7cb25dfd80ac2a7ba251b184fc0edc4a80"
-    },
-    "kgiantkfisherman.uftb": {
       "ordinary_predecessor_safety": [
         [
           0,
           3051612,
           0,
-          0
+          5692260
+        ],
+        [
+          0,
+          3346434,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "88b1b6bc867d11eb78cab27c599bbe94db8a32d97edb1a250624982d09a02c72"
+    },
+    "kgiantkfisherman.uftb": {
+      "necessary_reachability": [
+        [
+          0,
+          3051612,
+          0,
+          5692260
         ],
         [
           0,
           1313848,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "2e999ecfec7aa2dd0f604edc406ec77e79f39a5251f13a65065181486522a64d"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3051612,
+          0,
+          5692260
+        ],
+        [
+          0,
+          1313848,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "547b564ac58fff439ed090a9f765563f764228be6ae05b6434313707fe49aa32"
     },
     "kgiantkgiant.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           2060572,
           0,
-          0
+          10048296
         ],
         [
           0,
           2060572,
           0,
-          0
+          10048296
         ]
       ],
-      "sha256": "d5503ba4bfd875b28958d3ffc5f7a6c5b77ebe0cd9b952a37dd7923126df4302"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2060572,
+          0,
+          10048296
+        ],
+        [
+          0,
+          2060572,
+          0,
+          10048296
+        ]
+      ],
+      "sha256": "192e190c240441b5c1d461b39fe3f93f44377ba8f03391df6c2dfba230f42893"
     },
     "kjesterbishopk.uftb": {
       "ordinary_predecessor_safety": [
@@ -1361,21 +1529,35 @@
       "sha256": "ad82489372318a7561a43a7c2d0cbc1fdc3e5a840c67470c5eb25704fdfecf7e"
     },
     "kjestergiantk.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           3939164,
           0,
-          0
+          5692260
         ],
         [
           0,
           0,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "9cee141bd1bc8cd2e0427a95d6b96683e24e5096d2bafce7390750918a5eb1f8"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3939164,
+          0,
+          5692260
+        ],
+        [
+          0,
+          0,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "36fce15f18bf2d78f16e9599dc351b2cecf66b9147ccb315eb1e10af364ffebc"
     },
     "kjesterjesterk.uftb": {
       "ordinary_predecessor_safety": [
@@ -1497,21 +1679,35 @@
       "sha256": "d9b75b6aa4d4cad713206e18f12efb1c4781adea0cc5f99a4a77fd58eca92cc3"
     },
     "kjesterkgiant.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           2193308,
           0,
-          0
+          5692260
         ],
         [
           0,
           0,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "67a539cfcbeeb53837a6b7c07c497aed513aa9d12260a7588213eee783a204e6"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2193308,
+          0,
+          5692260
+        ],
+        [
+          0,
+          0,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "0c0d2aa723badd35e14708cfecfaeeb0c8039ef4c76f741a43b60709ff08c615"
     },
     "kjesterkjester.uftb": {
       "ordinary_predecessor_safety": [
@@ -1820,21 +2016,35 @@
       "sha256": "5a186985b6ca6e024562e2a0cff6dbe34003e30903761bae751400135abeb01c"
     },
     "kknightgiantk.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           3665112,
           0,
-          0
+          5692260
         ],
         [
           0,
           1142116,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "2aecb1ceed4793a173c917fda61cb26bd622bf4dfec8e66d61c0e837f5cba541"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3665112,
+          0,
+          5692260
+        ],
+        [
+          0,
+          1142116,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "190eeb250445920f4027a7d8a20421c5200b26bd44972d94b5a489d246a87f32"
     },
     "kknightkbomb.uftb": {
       "ordinary_predecessor_safety": [
@@ -1871,21 +2081,35 @@
       "sha256": "22a14009f6d4f456eddcb659d3a5c1d99170ff4c706a517b786357abaecddabb"
     },
     "kknightkgiant.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           1968832,
           0,
-          0
+          5692260
         ],
         [
           0,
           3051612,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "c3c8ceb56c11bbd52c3316e8dbb786e4fbe573382b6190b0e2596bf49ffda8fc"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1968832,
+          0,
+          5692260
+        ],
+        [
+          0,
+          3051612,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "79d484eae6e15ed424647a3c1e1501ab06bb88d502be6b98b3a6c62cd2bc38ce"
     },
     "kknightknightk.uftb": {
       "ordinary_predecessor_safety": [
@@ -2075,21 +2299,35 @@
       "sha256": "d3733f70585208428185796973f80c171dc0f6b83adcc9923f46832f6fb73150"
     },
     "kmagegiantk.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           3939164,
           0,
-          0
+          5692260
         ],
         [
           0,
           1142116,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "84c017bbc31770a08feee5bc2c35d57783594af5b11916178076314a963ffb22"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3939164,
+          0,
+          5692260
+        ],
+        [
+          0,
+          1142116,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "cb818ab1353d97412601aa5aa770e54783ece724068effee931178ecc0021f8a"
     },
     "kmagekdragon.uftb": {
       "ordinary_predecessor_safety": [
@@ -2109,21 +2347,35 @@
       "sha256": "37521b0c37cfcd7cfb313f0532649eb0e9d4007a15c6d2524d34295b0c3790ae"
     },
     "kmagekgiant.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           1142116,
           0,
-          0
+          5692260
         ],
         [
           0,
           3051612,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "c456f597bd6c281aa69b447da488e97cc9b7f274bc8ecba4e243ad676f66b959"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1142116,
+          0,
+          5692260
+        ],
+        [
+          0,
+          3051612,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "cf2dbfa1a1c73499fe682ee0a8a60f26b904382b6f59eb139bd7091ce5843fd7"
     },
     "kmagekparasite.uftb": {
       "ordinary_predecessor_safety": [
@@ -2194,21 +2446,35 @@
       "sha256": "2adcd8f6d511a359b43a9dbb89650b0e2492d338d6d98538208796a182df0763"
     },
     "kninjagiantk.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           5198536,
           0,
-          0
+          5692260
         ],
         [
           0,
           1142116,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "b43c74ea48ece9cbba5c344193b2db26044735da0f7a32f70b86f734206fb1df"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5198536,
+          0,
+          5692260
+        ],
+        [
+          0,
+          1142116,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "e2b422f8816df785d4a6e9644e65e5b73d5c3d15cb8ebf1d08aa767f8524e6a5"
     },
     "kninjak.uftb": {
       "ordinary_predecessor_safety": [
@@ -2262,21 +2528,35 @@
       "sha256": "de5c29df362dc35024077e4dcd380fffe6836e469d863e3871a7a1b52549be09"
     },
     "kninjakgiant.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           3695184,
           0,
-          0
+          5692260
         ],
         [
           0,
           3051612,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "3a41d7ff3cd4906c814bf8e6bd3af56ec30079cbdd4e43b8ed7c523edff4225b"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3695184,
+          0,
+          5692260
+        ],
+        [
+          0,
+          3051612,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "c4b9a0a3ca1b5da47be4d557b2003d0a264c906a72c62d95ba1e0e219de42c85"
     },
     "kninjakmage.uftb": {
       "ordinary_predecessor_safety": [
@@ -2449,21 +2729,35 @@
       "sha256": "6b18865fd3c4e670c68a7ad5845239dece0fabbcbb3fad83c456018b5e274a03"
     },
     "kparasitegiantk.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           3939164,
           0,
-          0
+          5692260
         ],
         [
           0,
           1142116,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "7b0536386bd6b8525b9054578edba1331f8daabadb6089a555e05001572b926a"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3939164,
+          0,
+          5692260
+        ],
+        [
+          0,
+          1142116,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "5e0bb56139965b70efddd21aa7929f4d829c101abce197357b5fc76e282faaf6"
     },
     "kparasitek.uftb": {
       "ordinary_predecessor_safety": [
@@ -2500,21 +2794,35 @@
       "sha256": "5259021302823eed33bf757a63b2c32caf8f07a45ad619e0fa9ab52af20df75e"
     },
     "kparasitekgiant.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           2193308,
           0,
-          0
+          5692260
         ],
         [
           0,
           3051612,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "93b215613d5bd0322ec937aac8f875aa62f4642d913a6f5bf5c43abe0461d434"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          2193308,
+          0,
+          5692260
+        ],
+        [
+          0,
+          3051612,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "726d837a97ab80c74da4bfb4492dce77950c96351b36fbb6105b42e62171918f"
     },
     "kparasitekparasite.uftb": {
       "ordinary_predecessor_safety": [
@@ -2704,21 +3012,35 @@
       "sha256": "d8999ba65bae1875637e5cc4e5b7ad857bb178533a7f41751cbdadce731f1c38"
     },
     "kqueengiantk.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           6215686,
           0,
-          0
+          5692260
         ],
         [
           0,
           1142116,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "b1e6c719cd0a03774e09c3bb700b63e54f1b6ad940780498c0d5ae3169302d85"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          6215686,
+          0,
+          5692260
+        ],
+        [
+          0,
+          1142116,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "a9b0135f35a657e5192f939a57f0f81a2af90cefaf34847d97e7b5e592550937"
     },
     "kqueenkbishop.uftb": {
       "ordinary_predecessor_safety": [
@@ -2789,21 +3111,35 @@
       "sha256": "c321eebe57da1b0b119a42001f06b98d1353528567fc9c6dffcd09b95c27e3b2"
     },
     "kqueenkgiant.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           4821246,
           0,
-          0
+          5692260
         ],
         [
           0,
           3051612,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "e9ce180e7176f25be6857375977f5c4f56fc5b5b5805fa1c60a22e6a15510baa"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          4821246,
+          0,
+          5692260
+        ],
+        [
+          0,
+          3051612,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "34a72a3b8cf5660a35905e91dd4d311bf0738b035f3889c57f577d0a8606c93b"
     },
     "kqueenkmage.uftb": {
       "ordinary_predecessor_safety": [
@@ -3095,21 +3431,35 @@
       "sha256": "093944252b6b71ad34c31a006493a6bb6ab46fef02238e6f1d4714dacf0e6707"
     },
     "krookgiantk.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           5039806,
           0,
-          0
+          5692260
         ],
         [
           0,
           1142116,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "36b212cd1ac7cc12ad2773453e30d9baef52b691488e5ffe777698708b8d0bc6"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          5039806,
+          0,
+          5692260
+        ],
+        [
+          0,
+          1142116,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "0ac2b5d3a1ef4c6c0d39c2cf7b7b6fd857d38319dc4607e8183418f38979a4a8"
     },
     "krookkbishop.uftb": {
       "ordinary_predecessor_safety": [
@@ -3180,21 +3530,35 @@
       "sha256": "bd7c952e4779e7b9fd1e035dc1e9eabcd2202c51f0e96b0dfbe38bdd20b713a9"
     },
     "krookkgiant.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           3443644,
           0,
-          0
+          5692260
         ],
         [
           0,
           3051612,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "82ef14d4804794e0aba2a3d0faec6441e261f5200546f726f28e50bc1bbc72d6"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3443644,
+          0,
+          5692260
+        ],
+        [
+          0,
+          3051612,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "6e099716aa2a1115445af30f913b8e502f7e66ec8b63046da19b1f9f90c242fb"
     },
     "krookkmage.uftb": {
       "ordinary_predecessor_safety": [
@@ -3401,21 +3765,35 @@
       "sha256": "5a40d96d2a1f2747a0e246d52add88cd99496a7a6d3e796fc1e11c0bec5a4f36"
     },
     "kturtlegiantk.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           3504624,
           0,
-          0
+          5692260
         ],
         [
           0,
           1142116,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "f84a9bc0224441dbb0d78d0fac8fbad6a92ff7159cc9bab1772ccece4f03911a"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          3504624,
+          0,
+          5692260
+        ],
+        [
+          0,
+          1142116,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "c613d3210037c0f9ba306e76e5e42531d0910c9ec7b0b387a9a9a73ab8d88eb8"
     },
     "kturtlekdragon.uftb": {
       "ordinary_predecessor_safety": [
@@ -3435,21 +3813,35 @@
       "sha256": "15fd11a4865807c48c1d47b508b5073f78efdf12332b34ab8ff7fd062d567fca"
     },
     "kturtlekgiant.uftb": {
-      "ordinary_predecessor_safety": [
+      "necessary_reachability": [
         [
           0,
           1705440,
           0,
-          0
+          5692260
         ],
         [
           0,
           3051612,
           0,
-          0
+          5692260
         ]
       ],
-      "sha256": "08adee4b8b5903dac5038a2d70abed1be2b75773f1ae0b64d5d432d63ef21cc6"
+      "ordinary_predecessor_safety": [
+        [
+          0,
+          1705440,
+          0,
+          5692260
+        ],
+        [
+          0,
+          3051612,
+          0,
+          5692260
+        ]
+      ],
+      "sha256": "5e013243f6e49a8a2db0c969d117709183d2c8e0c95ce720cb19b4a23f2210a4"
     },
     "kturtlekparasite.uftb": {
       "ordinary_predecessor_safety": [

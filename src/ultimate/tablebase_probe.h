@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <string>
 
 namespace Stockfish::Ultimate {
 
@@ -20,6 +21,10 @@ struct TablebaseResult {
 class TablebaseProbe {
    public:
     static void preload();
+    // Checks the packed-table codec contract without loading its WDL planes.
+    // This is intentionally public so packaging/tests can fail closed before
+    // a stale folded-Giant payload reaches position indexing.
+    [[nodiscard]] static bool uses_compatible_codec(const std::string& path);
     [[nodiscard]] static std::optional<TablebaseResult> probe(const Position& position);
 };
 

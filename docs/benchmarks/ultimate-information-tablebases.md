@@ -202,6 +202,8 @@ concrete perfect-information WDL. Their certified legal-root results are:
 | K+Jester+Queen vs K | 10,877,572 / 0 / 0 | 611,994 / 17,307,456 / 1,059,510 | first: 8,101,388 / 0 / 0; second: 0 / 0 / 0 |
 | K+Jester vs K+Queen | 2,489,288 / 7,339,356 / 6,057,072 | 16,116,718 / 2,682 / 2,859,560 | first: 3,093,244 / 0 / 0; second: 0 / 0 / 0 |
 | K+Jester+Rook vs K | 12,797,700 / 0 / 0 | 425,372 / 17,360,968 / 1,192,620 | first: 6,181,260 / 0 / 0; second: 0 / 0 / 0 |
+| K+Jester+Giant vs K | 9,347,536 / 0 / 0 | 260,316 / 11,300,932 / 1,725,452 | first: 3,939,164 / 0 / 5,692,260; second: 0 / 0 / 5,692,260 |
+| K+Jester vs K+Giant | 10,988,108 / 32 / 105,252 | 516,144 / 7,775,374 / 4,995,182 | first: 2,193,308 / 0 / 5,692,260; second: 0 / 0 / 5,692,260 |
 
 The owner-Knight, owner-Bishop, owner-Queen, and owner-Rook graphs respectively
 exercised 650,906, 673,462, 650,826, and 656,846 canonical lower royal pairs
@@ -226,6 +228,40 @@ itself was independently recomputed after the terminal-group correction; its
 payload was then rebound to `af8d6187...` because the only further change was
 adding the already-linked, unchanged `tablebase_probe.{h,cpp}` dependency to
 the certificate's source inventory.
+
+The two Giant strata use the corrected lower-left-anchor horizontal codec and
+its fail-closed packed v7 marker. `K+Jester+Giant versus K` has 4,673,768
+first-side root sets and 6,876,032 second-side root sets; 465,364 of the latter
+are legal-dot-refined singletons produced by 215,332 split royal pairs. Its
+graph contains 204,578,430 observations and exercises 1,265,908 paired lower
+K+Jester probes, no singleton lower probes, and no terminal groups. The two
+force systems contain 22,168,872/11,084,436 variables and 200,412,444 edges
+per side; all uniform-action, Bellman, and rank residuals are zero.
+
+`K+Jester versus K+Giant` has 5,546,696 first-side and 6,875,740 second-side
+root sets, including 464,780 legal-dot-refined second-side singletons from
+229,432 split royal pairs. Its graph contains 246,710,082 observations,
+2,519,828 paired and 2,688 singleton lower probes, and 3,004 same-public-winner
+terminal groups. The force systems contain 23,915,312/11,957,656 variables
+and 236,083,748 edges per side; empty uniform-action sets, owner-overlay
+differences, Bellman residuals, and rank residuals are all zero.
+
+The concrete v7 source SHA-256 values are
+`36fce15f18bf2d78f16e9599dc351b2cecf66b9147ccb315eb1e10af364ffebc`
+and
+`0c0d2aa723badd35e14708cfecfaeeb0c8039ef4c76f741a43b60709ff08c615`.
+Both exact information overlays are bound to Giant-domain model
+`0ac0778d21ee158dbe41c1953c0d03aa4224768681134099c6da88de243afc5d`.
+Their full/payload SHA-256 pairs are respectively
+`5e8cc1fea587a331c51f2f344bc83361ac7c33772266b0cebfedf5699e26f38d` /
+`d973183a17de7e4210f8bad27313699ae498de0dcc80eaff16d7cc61ce666cfe`
+and
+`49b050f8770b04e861e79baa72147a68753ba7c8839bc73d1aa934c6ca2b46f5` /
+`5fbaefe88a758f5a483048c6adfa51073b372f6d55ccfe43e1661aaa01cf8e47`.
+The non-Giant primary-Jester domain is separately authenticated as
+`0ed6d361e313623234c21f9a1c800947014ce47320b4a71fca4fb20a255587c2`;
+the Giant-only branch and v7 header gate are unreachable there, so its audited
+header-only migration preserves every previously certified payload byte.
 
 ## First exact Ghost stratum
 

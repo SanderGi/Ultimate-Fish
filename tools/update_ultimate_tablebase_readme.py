@@ -60,6 +60,7 @@ def dependency_mtime(information_summary: Path = information.DEFAULT_SUMMARY) ->
                Path(information.__file__).stat().st_mtime_ns,
                Path(shards.__file__).stat().st_mtime_ns,
                summarize.REACHABILITY.stat().st_mtime_ns,
+               summarize.GIANT_CODEC_STATUS.stat().st_mtime_ns,
                information_summary.stat().st_mtime_ns)
 
 
@@ -196,6 +197,9 @@ def main() -> None:
     ]
     for record in ordered:
         path = ROOT / "tablebases" / str(record["filename"])
+        # Cached rows must not preserve counts produced by the former
+        # point-square reflection of a Giant's 2x2 lower-left anchor.
+        summarize.require_current_giant_codec(path)
         cached = old_rows.get(path.name)
         if (not args.full and logic_mtime <= readme_mtime and cached is not None
                 and path.stat().st_mtime_ns <= readme_mtime):

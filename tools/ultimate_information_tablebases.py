@@ -171,12 +171,37 @@ PRIMARY_JESTER_FILENAMES = (
     "kjesterturtlek.uftb", "kjesterkturtle.uftb",
     "kjestermagek.uftb", "kjesterkmage.uftb",
     "kjesterparasitek.uftb", "kjesterkparasite.uftb",
-    "kjestergiantk.uftb", "kjesterkgiant.uftb",
     "kjesterfishermank.uftb", "kjesterkfisherman.uftb",
     "kjesterdragonk.uftb", "kjesterkdragon.uftb",
 )
+PRIMARY_JESTER_GIANT_FILENAMES = (
+    "kjestergiantk.uftb", "kjesterkgiant.uftb",
+)
+
+# Capturing the Jester from a primary K+Jester+X-v-K information stratum can
+# leave K+X-v-K. The exact solver probes that concrete child through
+# TablebaseProbe, so remote/batch deployments must stage these transitive
+# inputs in addition to the stratum source and the K+Jester-v-K lower overlay.
+# Pieces absent here are native insufficient-material draws and are resolved
+# before TablebaseProbe is called.
+PRIMARY_JESTER_EXTRA_LOWER_TABLES = {
+    "queen": "kqk.uftb",
+    "rook": "krk.uftb",
+    "bomb": "kbombk.uftb",
+    "ninja": "kninjak.uftb",
+    "parasite": "kparasitek.uftb",
+    "giant": "kgiantk.uftb",
+    "dragon": "kdragonk.uftb",
+}
+PRIMARY_JESTER_INSUFFICIENT_EXTRAS = frozenset({
+    "knight", "bishop", "turtle", "mage", "fisherman",
+})
 SOLVER_DOMAIN_FILENAMES = {
     "primary-jester": PRIMARY_JESTER_FILENAMES,
+    # Giant's 2x2 lower-left anchor has a material-specific horizontal
+    # reflection. Keep these proofs in a separate hash domain so a future
+    # Giant-codec correction cannot silently authenticate point-piece strata.
+    "primary-jester-giant": PRIMARY_JESTER_GIANT_FILENAMES,
     "ghost": ("kghostk.uftb",),
     "double-jester": ("kjesterjesterk.uftb",),
     "joint-jester": ("kjesterkjester.uftb",),
@@ -184,6 +209,7 @@ SOLVER_DOMAIN_FILENAMES = {
 }
 SOLVER_DOMAIN_SOURCES = {
     "primary-jester": PRIMARY_JESTER_SOLVER_SOURCES,
+    "primary-jester-giant": PRIMARY_JESTER_SOLVER_SOURCES,
     "ghost": GHOST_SOLVER_SOURCES,
     "double-jester": DOUBLE_JESTER_SOLVER_SOURCES,
     "joint-jester": JOINT_JESTER_SOLVER_SOURCES,
@@ -361,6 +387,34 @@ def solver_model_fingerprint(filename: str, *, root: Path = ROOT) -> str:
     return _source_fingerprint(
         SOLVER_DOMAIN_SOURCES[domain], domain=f"solver-model:{domain}",
         root=root)
+
+
+def solver_concrete_dependencies(filename: str) -> tuple[str, ...]:
+    """Return every transitive ``.uftb`` required by an exact solver.
+
+    This is a deployment manifest, not a search hint. Missing dependencies
+    must fail before a costly graph build rather than surfacing hours later at
+    the first lower-material probe.
+    """
+    domain = solver_domain(filename)
+    if domain not in {"primary-jester", "primary-jester-giant"}:
+        return ()
+    if filename == "kjesterk.uftb":
+        return ()
+    records = {str(record["filename"]): record
+               for record in affected_inventory(root=ROOT,
+                                                require_files=False)}
+    record = records[filename]
+    secondary = str(record["secondary"])
+    dependencies = ["kjesterk.uftb"]
+    lower = PRIMARY_JESTER_EXTRA_LOWER_TABLES.get(secondary)
+    if lower:
+        dependencies.append(lower)
+    elif secondary not in PRIMARY_JESTER_INSUFFICIENT_EXTRAS:
+        raise SummaryValidationError(
+            f"{filename}: primary-Jester lower dependency for {secondary} "
+            "is not classified")
+    return tuple(dependencies)
 
 
 def states_per_side(record: Mapping[str, object]) -> int:

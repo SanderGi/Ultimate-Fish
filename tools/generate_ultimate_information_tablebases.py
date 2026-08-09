@@ -249,7 +249,7 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
         "--information-source-sha256", source_sha256,
         "--information-model-sha256", model_sha256,
     ]
-    if domain == "primary-jester":
+    if domain in {"primary-jester", "primary-jester-giant"}:
         command = [
             str(args.binary), "--piece", "jester",
             "--solve-jester-information", str(table),
@@ -262,6 +262,15 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             command[3:3] = ["--piece2", secondary]
             if bool(record["opposing"]):
                 command[5:5] = ["--opposing"]
+            lower_table = ROOT / "tablebases" / "kjesterk.uftb"
+            command.extend([
+                "--lower-information-overlay",
+                str(args.overlays / "kjesterk.ufiw"),
+                "--lower-information-source-sha256",
+                shards.logical_sha256(lower_table),
+                "--lower-information-model-sha256",
+                information.solver_model_fingerprint("kjesterk.uftb"),
+            ])
         return command
     if domain == "ghost":
         return [
@@ -318,8 +327,18 @@ def solve_one(args: argparse.Namespace) -> None:
         domain = information.solver_domain(args.filename)
     except information.SummaryValidationError as error:
         raise RuntimeError(str(error)) from error
+    missing_dependencies = [
+        dependency for dependency in
+        information.solver_concrete_dependencies(args.filename)
+        if not (ROOT / "tablebases" / dependency).exists()
+    ]
+    if missing_dependencies:
+        raise RuntimeError(
+            f"{args.filename}: missing exact transitive concrete "
+            f"dependencies: {', '.join(missing_dependencies)}")
 
     args.overlays.mkdir(parents=True, exist_ok=True)
+    args.scratch.mkdir(parents=True, exist_ok=True)
     overlay = args.overlays / f"{Path(args.filename).stem}.ufiw"
     source_sha256 = shards.logical_sha256(
         ROOT / "tablebases" / args.filename)
@@ -336,18 +355,14 @@ def solve_one(args: argparse.Namespace) -> None:
         return
     command = solver_command(
         args, record, overlay, source_sha256, model_sha256)
-    if domain in {"primary-jester", "double-jester", "joint-jester"} and (
-            str(record["secondary"]) or domain != "primary-jester"):
+    if domain in {"primary-jester", "primary-jester-giant",
+                  "double-jester", "joint-jester"} and (
+            str(record["secondary"]) or
+            domain not in {"primary-jester", "primary-jester-giant"}):
         lower = args.overlays / "kjesterk.ufiw"
         if not lower.exists():
             raise RuntimeError(
                 f"{lower} is required; solve kjesterk.uftb first")
-        if domain == "primary-jester":
-            command.extend(["--lower-information-overlay", str(lower)])
-            command.extend([
-                "--lower-information-source-sha256",
-                shards.logical_sha256(
-                    ROOT / "tablebases" / "kjesterk.uftb")])
 
     summaries = run_solver(command, label=args.filename)
     document = merge_checkpoint_entry(
