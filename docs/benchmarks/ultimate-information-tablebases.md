@@ -200,15 +200,18 @@ concrete perfect-information WDL. Their certified legal-root results are:
 | K+Jester+Bishop vs K | 13,965,588 / 0 / 0 | 316,578 / 16,113,394 / 2,548,988 | first: 5,013,372 / 0 / 0; second: 0 / 0 / 0 |
 | K+Jester vs K+Bishop | 2,506,936 / 0 / 13,378,780 | 488,456 / 10,706 / 18,479,798 | first: 3,093,244 / 0 / 0; second: 0 / 0 / 0 |
 | K+Jester+Queen vs K | 10,877,572 / 0 / 0 | 611,994 / 17,307,456 / 1,059,510 | first: 8,101,388 / 0 / 0; second: 0 / 0 / 0 |
+| K+Jester vs K+Queen | 2,489,288 / 7,339,356 / 6,057,072 | 16,116,718 / 2,682 / 2,859,560 | first: 3,093,244 / 0 / 0; second: 0 / 0 / 0 |
 | K+Jester+Rook vs K | 12,797,700 / 0 / 0 | 425,372 / 17,360,968 / 1,192,620 | first: 6,181,260 / 0 / 0; second: 0 / 0 / 0 |
 
 The owner-Knight, owner-Bishop, owner-Queen, and owner-Rook graphs respectively
 exercised 650,906, 673,462, 650,826, and 656,846 canonical lower royal pairs
-and no singleton lower transitions. Both opposing Knight and opposing Bishop exercised
-1,353,848 pair probes and 5,216 singleton probes. Every completed graph has
-zero owner-overlay-versus-concrete differences, empty uniform-action sets,
-Bellman residuals, and rank residuals. Results that happen to match a withdrawn
-run are accepted only from this cardinality-correct recomputation.
+and no singleton lower transitions. Both opposing Knight and opposing Bishop
+exercised 1,353,848 pair probes and 5,216 singleton probes. Opposing Queen
+exercised 1,353,780 pair probes, 5,216 singleton probes, and 3,426 two-world
+same-public-winner terminal groups. Every completed graph has zero
+owner-overlay-versus-concrete differences, empty uniform-action sets, Bellman
+residuals, and rank residuals. Results that happen to match a withdrawn run are
+accepted only from this cardinality-correct recomputation.
 
 The Knight, Bishop, Queen-owner, and Rook-owner payloads were first completed
 under model `095d2301...`, whose exhaustive graph construction threw on every
