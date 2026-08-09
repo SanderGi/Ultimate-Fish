@@ -548,6 +548,11 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
             result.mateActions = rootTablebase->wdl == TablebaseWdl::Win
                                ? distance : -distance;
         }
+        result.nodes = nodes_;
+        result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - start_);
+        if (limits_.onIteration)
+            limits_.onIteration(result);
         if (rootTablebase)
             break;
         if (std::abs(score) >= Mate - 128)

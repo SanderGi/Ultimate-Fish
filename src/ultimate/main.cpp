@@ -56,6 +56,15 @@ void print_score(int score, const std::optional<int>& exactMateActions = std::nu
         std::cout << "cp " << score;
 }
 
+void print_search_info(const Position& position, const SearchResult& result) {
+    std::cout << "info depth " << result.completedDepth << " score ";
+    print_score(result.score, result.mateActions);
+    std::cout << " nodes " << result.nodes << " time " << result.elapsed.count() << " pv";
+    for (const Move& move : result.principalVariation)
+        std::cout << ' ' << position.move_to_string(move);
+    std::cout << '\n';
+}
+
 SearchLimits parse_limits(std::istringstream& input, const Position* position = nullptr,
                           int moveOverhead = 50) {
     SearchLimits limits;
@@ -308,14 +317,16 @@ int main() {
             std::istringstream input(line);
             std::string token;
             input >> token;
-            const SearchLimits limits = parse_limits(input, &position, configuredMoveOverhead);
+            SearchLimits limits = parse_limits(input, &position, configuredMoveOverhead);
+            const bool streamIterations = line.find(" stream") != std::string::npos;
+            if (streamIterations)
+                limits.onIteration = [&position](const SearchResult& iteration) {
+                    print_search_info(position, iteration);
+                    std::cout.flush();
+                };
             const SearchResult result = search.think(position, limits);
-            std::cout << "info depth " << result.completedDepth << " score ";
-            print_score(result.score, result.mateActions);
-            std::cout << " nodes " << result.nodes << " time " << result.elapsed.count() << " pv";
-            for (const Move& move : result.principalVariation)
-                std::cout << ' ' << position.move_to_string(move);
-            std::cout << '\n';
+            if (!streamIterations)
+                print_search_info(position, result);
             std::cout << "bestmove "
                       << (result.bestMove ? position.move_to_string(*result.bestMove) : "(none)") << '\n';
             continue;

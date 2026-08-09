@@ -377,7 +377,8 @@ export function UltimateWorkbench() {
   const [selected, setSelected] = useState<number | null>(null);
   const [draggedUid, setDraggedUid] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [depth, setDepth] = useState(6);
+  const [analysisMaxDepth, setAnalysisMaxDepth] = useState(16);
+  const [playDepth, setPlayDepth] = useState(7);
   const [analysis, setAnalysis] = useState<EngineAnalysis | null>(null);
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const [engineStatus, setEngineStatus] = useState<"offline" | "thinking" | "ready" | "error">("offline");
@@ -488,6 +489,41 @@ export function UltimateWorkbench() {
     return result;
   }, []);
 
+  const streamEngineAnalysis = useCallback(async (
+    payload: Record<string, unknown>, signal: AbortSignal,
+    onIteration: (iteration: EngineAnalysis) => void,
+  ) => {
+    const response = await fetch("http://127.0.0.1:3001/analyze-stream", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload), signal,
+    });
+    if (!response.ok || !response.body) {
+      const failure = await response.json().catch(() => ({})) as { error?: string };
+      throw new Error(failure.error ?? "Engine analysis stream failed");
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffered = "";
+    let completed: EngineAnalysis | null = null;
+    while (true) {
+      const { done, value } = await reader.read();
+      buffered += decoder.decode(value, { stream: !done });
+      const lines = buffered.split("\n");
+      buffered = done ? "" : (lines.pop() ?? "");
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const event = JSON.parse(line) as { type: "iteration" | "result" | "error"; analysis?: EngineAnalysis; error?: string };
+        if (event.type === "error") throw new Error(event.error ?? "Engine analysis failed");
+        if (!event.analysis) continue;
+        if (event.type === "iteration") onIteration(event.analysis);
+        else completed = event.analysis;
+      }
+      if (done) break;
+    }
+    if (!completed) throw new Error("Engine analysis ended without a result");
+    return completed;
+  }, []);
+
   const loadEnginePosition = useCallback((result: EngineAnalysis) => {
     if (!result.upn) return;
     const loaded = parseUpn(result.upn);
@@ -509,9 +545,14 @@ export function UltimateWorkbench() {
     analysisAbort.current?.abort();
     const controller = new AbortController();
     analysisAbort.current = controller;
-    setEngineStatus("thinking"); setEngineMessage("Searching…");
+    setAnalysis(null); setEngineStatus("thinking"); setEngineMessage("Searching…");
     try {
-      const result = await engineRequest("/analyze", { upn, depth }, controller.signal);
+      const result = await streamEngineAnalysis({ upn, depth: analysisMaxDepth }, controller.signal, (iteration) => {
+        if (sequence !== requestSequence.current) return;
+        setAnalysis(iteration); setLegalMoves(iteration.moves);
+        setGameResult({ result: iteration.result, reason: iteration.resultReason });
+        setEngineMessage(`${iteration.moves.length} legal moves · ${iteration.nodes.toLocaleString()} nodes in ${iteration.time} ms`);
+      });
       if (sequence !== requestSequence.current) return;
       setAnalysis(result); setLegalMoves(result.moves); setEngineStatus("ready");
       setEngineMessage(`${result.moves.length} legal moves · ${result.nodes.toLocaleString()} nodes in ${result.time} ms`);
@@ -521,7 +562,7 @@ export function UltimateWorkbench() {
       setEngineStatus("error");
       setEngineMessage(error instanceof Error ? error.message : "Could not reach the engine bridge.");
     }
-  }, [depth, engineRequest, upn]);
+  }, [analysisMaxDepth, streamEngineAnalysis, upn]);
 
   useEffect(() => {
     if (!analysisRunning || view !== "analysis") return;
@@ -747,7 +788,7 @@ export function UltimateWorkbench() {
       }
       setEngineStatus("thinking"); setEngineMessage("Ultimate Fish is thinking…");
       const result = await engineRequest("/computer", {
-        upn: humanResult.upn, player: playerSide, depth, movetime: 1500,
+        upn: humanResult.upn, player: playerSide, depth: playDepth, movetime: 1500,
       });
       loadEnginePosition(result);
       if (result.upn) liveGameUpn.current = result.upn;
@@ -774,7 +815,7 @@ export function UltimateWorkbench() {
       const playerCode = playerSide === "white" ? "w" : "b";
       if (result.upn?.[0] !== playerCode && result.result === "ongoing") {
         setEngineMessage("Ultimate Fish is thinking…");
-        result = await engineRequest("/computer", { upn: result.upn, player: playerSide, depth, movetime: 1500 });
+        result = await engineRequest("/computer", { upn: result.upn, player: playerSide, depth: playDepth, movetime: 1500 });
       }
       loadEnginePosition(result);
       if (result.upn) liveGameUpn.current = result.upn;
@@ -1068,9 +1109,9 @@ export function UltimateWorkbench() {
                 <div className="panel-heading"><div><p className="eyebrow">{view === "play" ? "GAME" : "ENGINE"}</p><h2>{view === "play" ? (gameActive ? "Ultimate game" : "Game setup") : "Analysis"}</h2></div>{showEvaluation && <span className="eval-score">{score.label}</span>}</div>
                 {showEvaluation && <><div className="eval-track" aria-label={`Ivory evaluation ${score.label}`}><span style={{ width: `${score.percent}%` }} /></div><div className="engine-line"><strong>{analysis?.pv.slice(0, 8).join(" ") || "No engine line yet"}</strong></div></>}
                 <div className="move-history"><div className="history-head"><span>#</span><span>Ivory</span><span>Onyx</span></div>{historyRows.length ? historyRows.map((row, index) => <div className="history-row" key={index}><span>{index + 1}.</span>{historyCell(row.white)}{historyCell(row.black)}</div>) : <p className="empty-state">Moves will appear here as the game is played.</p>}</div>
-                <div className="engine-settings"><label>Depth <output>{depth}</output><input type="range" min="1" max="16" value={depth} onChange={(event) => setDepth(Number(event.target.value))} /></label></div>
+                <div className="engine-settings">{view === "analysis" ? <label>Max depth <output>{analysisMaxDepth}</output><input type="range" min="1" max="50" value={analysisMaxDepth} onChange={(event) => setAnalysisMaxDepth(Number(event.target.value))} /></label> : <label>Depth <output>{playDepth}</output><input type="range" min="1" max="16" value={playDepth} onChange={(event) => setPlayDepth(Number(event.target.value))} /></label>}</div>
                 {view === "analysis" ? <button className={`primary-button ${analysisRunning ? "stop-button" : ""}`} onClick={() => { if (analysisRunning) { setAnalysisRunning(false); analysisAbort.current?.abort(); setEngineStatus("ready"); setEngineMessage(`${legalMoves.length} legal moves · ${(analysis?.nodes ?? 0).toLocaleString()} nodes in ${analysis?.time ?? 0} ms`); } else setAnalysisRunning(true); }}>{analysisRunning ? "Stop Ultimate Analysis" : "Start Ultimate Analysis"}</button> : <button className={`primary-button ${gameActive ? "stop-button" : ""}`} onClick={() => gameActive ? stopGame() : void startGame()}>{gameActive ? "Stop Ultimate Game" : "Start Ultimate Game"}</button>}
-                <p className="disabled-note">{engineStatus === "thinking" ? "Ultimate Fish is thinking…" : engineMessage}</p>
+                <p className="disabled-note">{engineStatus === "thinking" ? view === "analysis" ? `Ultimate Fish is thinking… (current depth: ${analysis?.depth ?? 0})` : "Ultimate Fish is thinking…" : engineMessage}</p>
               </section>
               <section className="panel inspector-panel">
                 <div className="panel-heading"><div><p className="eyebrow">INSPECTOR</p><h2>{selected === null ? "Select a square" : squareName(selected)}</h2></div></div>

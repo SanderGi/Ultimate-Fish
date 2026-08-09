@@ -51,6 +51,16 @@ async function post(endpoint, body) {
   return result;
 }
 
+async function streamAnalysis(body) {
+  const response = await fetch(`${base}/analyze-stream`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  assert.equal(response.status, 200);
+  return (await response.text()).trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
+}
+
 test("bridge exposes state, mate scores, results, continuations, and the complete AI draft", async () => {
   const health = await fetch(`${base}/health`).then((response) => response.json());
   assert.equal(health.ok, true);
@@ -102,6 +112,13 @@ test("bridge exposes state, mate scores, results, continuations, and the complet
 
 test("aborting auto-analysis leaves the bridge responsive", async () => {
   const analysisUpn = "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,e1;jester,w,d1;ninja,w,b2;penguin,w,c2;devil,w,f2;sniper,w,g2;checker,w,h2;sludge,w,a2;king,b,e10;jester,b,d10;ninja,b,b9;penguin,b,c9;devil,b,f9;sniper,b,g9;checker,b,h9;sludge,b,a9";
+  const streamed = await streamAnalysis({ upn: analysisUpn, depth: 3 });
+  const iterations = streamed.filter((event) => event.type === "iteration");
+  assert.deepEqual(iterations.map((event) => event.analysis.depth), [1, 2, 3]);
+  assert.ok(iterations.every((event) => event.analysis.pv.length > 0));
+  assert.equal(streamed.at(-1).type, "result");
+  assert.equal(streamed.at(-1).analysis.depth, 3);
+
   const controller = new AbortController();
   const pending = fetch(`${base}/analyze`, {
     method: "POST",

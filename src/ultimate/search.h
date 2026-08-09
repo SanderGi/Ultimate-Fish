@@ -11,11 +11,14 @@
 
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
 
 namespace Stockfish::Ultimate {
+
+struct SearchResult;
 
 struct SearchLimits {
     int depth = 10;
@@ -29,6 +32,9 @@ struct SearchLimits {
     // Roots which immediately complete a public threefold repetition. They
     // remain legal candidates but must score as draws inside native search.
     std::vector<std::string> rootDrawMoveStrings;
+    // Optional reporting hook invoked after each fully completed iterative-
+    // deepening pass. Callers that do not opt in retain the single final result.
+    std::function<void(const SearchResult&)> onIteration;
 };
 
 struct SearchResult {

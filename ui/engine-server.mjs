@@ -9,10 +9,11 @@ const engineBinary = process.env.ULTIMATE_FISH_BINARY
   : path.resolve(uiDirectory, "../src/ultimatefish");
 const port = Number(process.env.ULTIMATE_FISH_PORT ?? 3001);
 
-function runEngine(commands, signal) {
+function runEngine(commands, signal, onLine) {
   return new Promise((resolve, reject) => {
     const child = spawn(engineBinary, [], { stdio: ["pipe", "pipe", "pipe"] });
-    let stdout = "";
+    const lines = [];
+    let pending = "";
     let stderr = "";
     let settled = false;
     const finish = (callback, value) => {
@@ -31,15 +32,28 @@ function runEngine(commands, signal) {
     signal?.addEventListener("abort", abort, { once: true });
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
-    child.stdout.on("data", (chunk) => { stdout += chunk; });
+    child.stdout.on("data", (chunk) => {
+      pending += chunk;
+      const complete = pending.split(/\r?\n/);
+      pending = complete.pop() ?? "";
+      for (const line of complete) {
+        if (!line) continue;
+        lines.push(line);
+        onLine?.(line, lines);
+      }
+    });
     child.stderr.on("data", (chunk) => { stderr += chunk; });
     child.on("error", (error) => finish(reject, error));
     child.on("close", (code) => {
+      if (pending) {
+        lines.push(pending);
+        onLine?.(pending, lines);
+      }
       if (code !== 0) {
         finish(reject, new Error(stderr.trim() || `engine exited with status ${code}`));
         return;
       }
-      finish(resolve, stdout.split(/\r?\n/).filter(Boolean));
+      finish(resolve, lines);
     });
     child.stdin.end(`${commands.join("\n")}\nquit\n`);
   });
@@ -78,14 +92,10 @@ async function applyMove(upn, move, signal) {
   return positionLine.slice(9);
 }
 
-async function analyze(upn, requestedDepth, requestedTime, signal) {
-  const depth = Math.max(1, Math.min(16, Number(requestedDepth) || 6));
-  const moveTime = Math.max(0, Math.min(120_000, Number(requestedTime) || 0));
-  const go = moveTime ? `go depth ${depth} movetime ${moveTime}` : `go depth ${depth}`;
-  const lines = await runEngine([`position upn ${upn}`, "d", go], signal);
+function parseAnalysis(lines, infoLine) {
   const result = parseState(lines);
-  const info = lines.find((line) => line.startsWith("info depth ")) ?? "";
-  const best = lines.find((line) => line.startsWith("bestmove "))?.slice(9) ?? null;
+  const info = infoLine ?? [...lines].reverse().find((line) => line.startsWith("info depth ")) ?? "";
+  const best = [...lines].reverse().find((line) => line.startsWith("bestmove "))?.slice(9) ?? null;
   const match = info.match(/^info depth (\d+) score (cp|mate) (-?\d+) nodes (\d+) time (\d+) pv(?: (.*))?$/);
   return {
     ...result,
@@ -97,6 +107,17 @@ async function analyze(upn, requestedDepth, requestedTime, signal) {
     time: match ? Number(match[5]) : 0,
     pv: match?.[6]?.split(" ").filter(Boolean) ?? [],
   };
+}
+
+async function analyze(upn, requestedDepth, requestedTime, signal, maximumDepth = 50, onIteration) {
+  const depth = Math.max(1, Math.min(maximumDepth, Number(requestedDepth) || 6));
+  const moveTime = Math.max(0, Math.min(120_000, Number(requestedTime) || 0));
+  const baseGo = moveTime ? `go depth ${depth} movetime ${moveTime}` : `go depth ${depth}`;
+  const go = onIteration ? `${baseGo} stream` : baseGo;
+  const lines = await runEngine([`position upn ${upn}`, "d", go], signal, (line, currentLines) => {
+    if (line.startsWith("info depth ")) onIteration?.(parseAnalysis(currentLines, line));
+  });
+  return parseAnalysis(lines);
 }
 
 async function draftAuto(history, signal) {
@@ -124,7 +145,7 @@ async function computerTurn(upn, player, requestedDepth, requestedTime, signal) 
   let engine = null;
   const engineMoves = [];
   for (let action = 0; action < 16 && current[0] !== playerCode && currentState.result === "ongoing"; ++action) {
-    engine = await analyze(current, requestedDepth, requestedTime, signal);
+    engine = await analyze(current, requestedDepth, requestedTime, signal, 16);
     if (!engine.bestmove) break;
     engineMoves.push(engine.bestmove);
     current = await applyMove(current, engine.bestmove, signal);
@@ -155,7 +176,7 @@ const server = createServer(async (request, response) => {
     send(response, 200, { ok: true, engineBinary });
     return;
   }
-  if (request.method !== "POST" || !["/state", "/analyze", "/move", "/play", "/computer", "/draft-ai"].includes(request.url)) {
+  if (request.method !== "POST" || !["/state", "/analyze", "/analyze-stream", "/move", "/play", "/computer", "/draft-ai"].includes(request.url)) {
     send(response, 404, { error: "Not found" });
     return;
   }
@@ -181,6 +202,18 @@ const server = createServer(async (request, response) => {
       send(response, 200, await analyze(body.upn, body.depth, body.movetime, cancellation.signal));
       return;
     }
+    if (request.url === "/analyze-stream") {
+      response.writeHead(200, {
+        "access-control-allow-origin": "*",
+        "access-control-allow-headers": "content-type",
+        "content-type": "application/x-ndjson; charset=utf-8",
+        "cache-control": "no-store",
+      });
+      const result = await analyze(body.upn, body.depth, body.movetime, cancellation.signal, 50,
+        (iteration) => response.write(`${JSON.stringify({ type: "iteration", analysis: iteration })}\n`));
+      response.end(`${JSON.stringify({ type: "result", analysis: result })}\n`);
+      return;
+    }
     if (request.url === "/move") {
       const upn = await applyMove(body.upn, String(body.move ?? ""), cancellation.signal);
       send(response, 200, await state(upn, cancellation.signal));
@@ -202,6 +235,11 @@ const server = createServer(async (request, response) => {
     send(response, 200, await computerTurn(afterHuman, body.player, body.depth, body.movetime, cancellation.signal));
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") return;
+    if (response.headersSent) {
+      if (!response.writableEnded)
+        response.end(`${JSON.stringify({ type: "error", error: error instanceof Error ? error.message : "Engine request failed" })}\n`);
+      return;
+    }
     send(response, 400, { error: error instanceof Error ? error.message : "Engine request failed" });
   }
 });
