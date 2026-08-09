@@ -46,23 +46,25 @@ class GhostPairAwsBundleTests(unittest.TestCase):
     def test_manifest_has_exact_authenticated_balanced_cover(self):
         manifest = package.build_manifest()
         self.assertEqual(manifest["schema"],
-                         "ultimate-ghost-pair-aws-v2")
-        self.assertEqual(manifest["active_jobs"], 32)
+                         "ultimate-ghost-pair-aws-v3")
+        self.assertEqual(manifest["active_jobs"], 60)
+        self.assertEqual(manifest["long_jobs"], 30)
+        self.assertEqual(manifest["tail_jobs"], 30)
         self.assertEqual(manifest["zero_bootstrap_jobs"], 24)
-        self.assertEqual(manifest["merge_inputs"], 56)
+        self.assertEqual(manifest["merge_inputs"], 84)
         self.assertEqual(manifest["parallelism"], 30)
         self.assertEqual(manifest["raw_per_shard"], 1_217_390)
         self.assertEqual(manifest["side_half_boundary"], 19_478_240)
         zero_commands = manifest["commands"]["zero_shards"]
         active_commands = manifest["commands"]["shards"]
         self.assertEqual(len(zero_commands), 24)
-        self.assertEqual(len(active_commands), 32)
+        self.assertEqual(len(active_commands), 60)
         ranges = {
             name: (begin, count)
             for name, begin, count in map(
                 self.command_range, zero_commands + active_commands)
         }
-        self.assertEqual(len(ranges), 56)
+        self.assertEqual(len(ranges), 84)
         expected_zero = {
             *(f"shard-{index:02d}" for index in
               (*range(8, 16), *range(24, 32))),
@@ -76,17 +78,49 @@ class GhostPairAwsBundleTests(unittest.TestCase):
             for label in package.DENSE_HALVES for quarter in range(2)
         }
         expected_halves = {
-            "resume-00bh", "resume-01bh", "resume-02ah", "resume-03ah",
-            "resume-04bh", "resume-05bh", "resume-06ah", "resume-07ah",
+            "resume-00bh", "resume-03ah", "resume-04bh", "resume-05bh",
+            "resume-06ah", "resume-07ah",
             "resume-16bh", "resume-17bh", "resume-18ah", "resume-19ah",
             "resume-20bh", "resume-21bh", "resume-22ah", "resume-23ah",
         }
+        tail_names = {
+            f"tail-{label}-{part:02d}"
+            for label in package.TAIL_HALVES
+            for part in range(package.TAIL_PARTS)
+        }
         self.assertEqual(
             {self.command_range(command)[0] for command in active_commands},
-            dense_names | expected_halves)
+            dense_names | expected_halves | tail_names)
         self.assertEqual(Counter(count for _, count in ranges.values()),
-                         Counter({1_217_390: 16, 608_695: 24,
-                                  304_347: 8, 304_348: 8}))
+                         Counter({1_217_390: 16, 608_695: 22,
+                                  304_347: 8, 304_348: 8,
+                                  40_580: 20, 40_579: 10}))
+        active_names = [self.command_range(command)[0]
+                        for command in active_commands]
+        expected_long_order = [
+            "resume-00aq0", "resume-00aq1", "resume-00bh",
+            "resume-03ah", "resume-03bq0", "resume-03bq1",
+            "resume-04bh", "resume-05aq0", "resume-05aq1",
+            "resume-05bh", "resume-06ah", "resume-06bq0",
+            "resume-06bq1", "resume-07ah", "resume-16aq0",
+            "resume-16aq1", "resume-16bh", "resume-17bh",
+            "resume-18ah", "resume-19ah", "resume-19bq0",
+            "resume-19bq1", "resume-20bh", "resume-21aq0",
+            "resume-21aq1", "resume-21bh", "resume-22ah",
+            "resume-22bq0", "resume-22bq1", "resume-23ah",
+        ]
+        expected_tail_order = [
+            *(f"tail-01b-{part:02d}" for part in range(15)),
+            *(f"tail-02a-{part:02d}" for part in range(15)),
+        ]
+        self.assertEqual(active_names,
+                         expected_long_order + expected_tail_order)
+        self.assertEqual(set(active_names[:30]), dense_names | expected_halves)
+        self.assertEqual(set(active_names[30:]), tail_names)
+        self.assertFalse(any(name.startswith("tail-")
+                             for name in active_names[:30]))
+        self.assertTrue(all(name.startswith("tail-")
+                            for name in active_names[30:]))
         cursor = 0
         for begin, count in sorted(ranges.values()):
             self.assertEqual(begin, cursor)
@@ -97,7 +131,7 @@ class GhostPairAwsBundleTests(unittest.TestCase):
         merge_prefixes = [Path(merge[index + 1]).name
                           for index, argument in enumerate(merge)
                           if argument == "--shard"]
-        self.assertEqual(len(merge_prefixes), 56)
+        self.assertEqual(len(merge_prefixes), 84)
         self.assertEqual(merge_prefixes,
                          [name for name, _, _ in package.balanced_ranges()[2]])
         for command in zero_commands + active_commands:

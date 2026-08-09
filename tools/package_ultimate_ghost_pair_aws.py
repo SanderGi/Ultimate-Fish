@@ -27,6 +27,8 @@ ZERO_HALVES = frozenset((
     "01a", "02b", "04a", "07b", "17a", "18b", "20a", "23b"))
 DENSE_HALVES = frozenset((
     "00a", "03b", "05a", "06b", "16a", "19b", "21a", "22b"))
+TAIL_HALVES = {"01b": 1_826_085, "02a": 2_434_780}
+TAIL_PARTS = 15
 SOURCE_SHA256 = (
     "204f4de6d0f9ff6da111d3d0c0a08c3562493cdec2130cc946b4eae7183012ee")
 LOWER_SHA256 = (
@@ -107,7 +109,8 @@ def balanced_ranges() -> tuple[list[RangeSpec], list[RangeSpec],
                                list[RangeSpec]]:
     """Return zero/bootstrap, active, and raw-ordered merge ranges."""
     zero: list[RangeSpec] = []
-    active: list[RangeSpec] = []
+    longer: list[RangeSpec] = []
+    tails: list[RangeSpec] = []
     merged: list[RangeSpec] = []
     for index in range(ORIGINAL_SHARDS):
         original_begin = index * RAW_PER_SHARD
@@ -130,13 +133,30 @@ def balanced_ranges() -> tuple[list[RangeSpec], list[RangeSpec],
                 first = (f"resume-{label}q0", half_begin, QUARTER_A)
                 second = (f"resume-{label}q1",
                           half_begin + QUARTER_A, QUARTER_B)
-                active.extend((first, second))
+                longer.extend((first, second))
                 merged.extend((first, second))
+            elif label in TAIL_HALVES:
+                if TAIL_HALVES[label] != half_begin:
+                    raise RuntimeError("Ghost-pair tail-half begin drift")
+                base, extra = divmod(HALF_SHARD, TAIL_PARTS)
+                cursor = half_begin
+                split = []
+                for part in range(TAIL_PARTS):
+                    count = base + (1 if part < extra else 0)
+                    split.append((f"tail-{label}-{part:02d}", cursor, count))
+                    cursor += count
+                if cursor != half_begin + HALF_SHARD:
+                    raise RuntimeError("Ghost-pair tail split is not exact")
+                tails.extend(split)
+                merged.extend(split)
             else:
                 spec = (f"resume-{label}h", half_begin, HALF_SHARD)
-                active.append(spec)
+                longer.append(spec)
                 merged.append(spec)
-    return zero, active, merged
+    # ThreadPoolExecutor consumes this list in order.  The 30 substantial jobs
+    # fill all workers first; the 30 short tail chunks are queued behind them
+    # and backfill cores as the first wave completes.
+    return zero, longer + tails, merged
 
 
 def compile_command(spec: RangeSpec, binding: list[str]) -> list[str]:
@@ -185,7 +205,7 @@ def build_manifest() -> dict[str, object]:
                 f"Ghost-pair balanced ranges are not gap-free at {name}")
         cursor += count
     if (cursor != RAW_GEOMETRIES or len(zero_ranges) != 24 or
-            len(active_ranges) != 32 or len(merge_ranges) != 56 or
+            len(active_ranges) != 60 or len(merge_ranges) != 84 or
             len({item[0] for item in merge_ranges}) != len(merge_ranges)):
         raise RuntimeError("Ghost-pair balanced range inventory is invalid")
     zero_commands = [compile_command(spec, binding) for spec in zero_ranges]
@@ -208,7 +228,7 @@ def build_manifest() -> dict[str, object]:
         "work/logs/solve.log",
     ]
     return {
-        "schema": "ultimate-ghost-pair-aws-v2",
+        "schema": "ultimate-ghost-pair-aws-v3",
         "source_sha256": SOURCE_SHA256,
         "model_sha256": model,
         "observation_sha256": observation,
@@ -218,6 +238,8 @@ def build_manifest() -> dict[str, object]:
         "lower_observation_sha256": lower[2],
         "raw_geometries": RAW_GEOMETRIES,
         "active_jobs": len(active_ranges),
+        "long_jobs": 30,
+        "tail_jobs": 30,
         "zero_bootstrap_jobs": len(zero_ranges),
         "merge_inputs": len(merge_ranges),
         "raw_per_shard": RAW_PER_SHARD,

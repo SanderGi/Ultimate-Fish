@@ -126,10 +126,12 @@ def main() -> None:
     root = args.manifest.resolve().parent
     manifest = json.loads(args.manifest.read_text())
     verify_inputs(root, manifest)
-    if (manifest.get("schema") != "ultimate-ghost-pair-aws-v2" or
-            manifest.get("active_jobs") != 32 or
+    if (manifest.get("schema") != "ultimate-ghost-pair-aws-v3" or
+            manifest.get("active_jobs") != 60 or
+            manifest.get("long_jobs") != 30 or
+            manifest.get("tail_jobs") != 30 or
             manifest.get("zero_bootstrap_jobs") != 24 or
-            manifest.get("merge_inputs") != 56 or
+            manifest.get("merge_inputs") != 84 or
             manifest.get("parallelism") != 30):
         raise RuntimeError("invalid load-balanced Ghost-pair manifest")
     work = root / "work"
@@ -139,7 +141,7 @@ def main() -> None:
     zero_shards = manifest["commands"].get("zero_shards")
     shards = manifest["commands"].get("shards")
     if (not isinstance(zero_shards, list) or len(zero_shards) != 24 or
-            not isinstance(shards, list) or len(shards) != 32):
+            not isinstance(shards, list) or len(shards) != 60):
         raise RuntimeError("invalid load-balanced transition inventory")
     # Existing complete ranges are preserved.  The native merge later
     # authenticates every extent, payload, binding, and regeneration marker;
