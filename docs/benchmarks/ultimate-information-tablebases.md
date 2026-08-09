@@ -82,13 +82,24 @@ It must:
 5. filter worlds with the native necessary-reachability predicate before
    grouping them;
 6. cross-probe exact lower-material information tables after captures;
-7. emit a SHA-256-bound summary and a zero-residual Bellman certificate; and
+7. emit a summary SHA-256-bound to the concrete tables, observation projection,
+   move generator, and proof-kernel sources, plus zero Bellman/rank residuals;
 8. conserve the admitted concrete-world count independently for both starting
    sides.
 
 The checked-in summary catalog is small and reproducible. Temporary belief
 graphs, predecessor files, and checkpoints are local generation artifacts and
-are not committed.
+are not committed. Lower-stratum `.ufiw` overlays carry both the logical source
+table SHA-256 and the complete solver/move-generation model SHA-256; a larger
+stratum refuses a stale overlay before constructing its graph.
+
+The four-model concrete codec folds horizontal reflections according to the
+real Ivory King's square. Swapping a hidden King/Jester assignment can therefore
+change the encoded reflection even though the physical public board did not
+flip. The information solver reconstructs both hypotheses in one shared
+physical coordinate frame before comparing actions and observations, then maps
+successors back through the folded codec. A 20,000-state involution/round-trip
+self-test guards this boundary.
 
 ## First exact stratum
 
@@ -110,3 +121,11 @@ swapped hypothesis it captures the Jester and would land next to the real King
 on a2, so that move is illegal there and cannot be selected as a uniform public-
 information action. This is a rules-derived information effect, not a belief
 cap or heuristic reclassification.
+
+There are also 124 paired bare-King-to-move sets with no action legal under
+both royal assignments. The first is concrete index 492,967: the public royal
+silhouettes are a1 and b2 and the bare King is b1. If a1 is the King, `b1-a1`
+is its only move; if b2 is the King, `b1-b2` is its only move. Under the same
+uniform-action rule used by the live belief search, the information set has no
+legal action and is a forced timeout/soft-lock loss. This convention is tested
+explicitly because vacuous AND semantics here materially affects W/L/D.

@@ -56,7 +56,7 @@ OBJS = $(notdir $(SRCS:.cpp=.o))
 ULTIMATE_SRCS = ultimate/main.cpp ultimate/position.cpp ultimate/search.cpp ultimate/draft.cpp \
 	ultimate/tablebase_probe.cpp ultimate/information.cpp ultimate/nnue.cpp
 
-.PHONY: ultimatefish ultimate-test ultimate-tablebase ultimate-nnue-reference
+.PHONY: ultimatefish ultimate-test ultimate-information-test ultimate-tablebase ultimate-nnue-reference
 ultimatefish:
 	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic $(ULTIMATE_SRCS) -o ultimatefish
 
@@ -67,7 +67,14 @@ ultimate-nnue-reference:
 ultimate-tablebase:
 	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic \
 		ultimate/tablebase.cpp ultimate/position.cpp ultimate/tablebase_probe.cpp \
-		ultimate/information.cpp ultimate/nnue.cpp -o ultimate_tablebase
+		ultimate/information.cpp ultimate/information_solver.cpp ultimate/nnue.cpp \
+		-o ultimate_tablebase
+
+ultimate-information-test:
+	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
+		../tests/ultimate_information_solver.cpp ultimate/information_solver.cpp \
+		-o ultimate_information_solver_test
+	./ultimate_information_solver_test
 
 ultimate-test:
 	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror ../tests/ultimate_rules.cpp \

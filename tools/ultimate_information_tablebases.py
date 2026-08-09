@@ -53,11 +53,21 @@ CERTIFICATE_RESIDUALS = (
     "partition_residual",
     "conservation_residual",
     "bellman_residual",
+    "rank_residual",
     "observation_residual",
 )
 OBSERVATION_MODEL_SOURCES = (
     ROOT / "src" / "ultimate" / "information.h",
     ROOT / "src" / "ultimate" / "information.cpp",
+)
+PRIMARY_JESTER_SOLVER_SOURCES = (
+    ROOT / "src" / "ultimate" / "position.h",
+    ROOT / "src" / "ultimate" / "position.cpp",
+    ROOT / "src" / "ultimate" / "information.h",
+    ROOT / "src" / "ultimate" / "information.cpp",
+    ROOT / "src" / "ultimate" / "information_solver.h",
+    ROOT / "src" / "ultimate" / "information_solver.cpp",
+    ROOT / "src" / "ultimate" / "tablebase.cpp",
 )
 
 # This tuple is intentionally explicit.  If planner ordering, storage-budget
@@ -194,10 +204,9 @@ def inventory_fingerprint(records: Sequence[Mapping[str, object]] | None = None)
     return hashlib.sha256(payload).hexdigest()
 
 
-def observation_model_fingerprint() -> str:
-    """Bind certificates to the collision-free view/transition projection."""
+def _source_fingerprint(paths: Sequence[Path]) -> str:
     digest = hashlib.sha256()
-    for path in OBSERVATION_MODEL_SOURCES:
+    for path in paths:
         relative = path.relative_to(ROOT).as_posix().encode()
         payload = path.read_bytes()
         digest.update(len(relative).to_bytes(4, "little"))
@@ -205,6 +214,23 @@ def observation_model_fingerprint() -> str:
         digest.update(len(payload).to_bytes(8, "little"))
         digest.update(payload)
     return digest.hexdigest()
+
+
+def observation_model_fingerprint() -> str:
+    """Bind certificates to the collision-free view/transition projection."""
+    return _source_fingerprint(OBSERVATION_MODEL_SOURCES)
+
+
+def solver_model_fingerprint(filename: str | None = None) -> str:
+    """Bind one class to the move generator and exact proof kernel it used.
+
+    The filename argument deliberately makes this a per-class contract. Ghost
+    and two-sided-information solvers can add their own source sets without
+    invalidating completed one-primary-Jester proofs.
+    """
+    if filename is not None and filename not in AFFECTED_FILENAMES:
+        raise SummaryValidationError(f"unknown information class {filename}")
+    return _source_fingerprint(PRIMARY_JESTER_SOLVER_SOURCES)
 
 
 def states_per_side(record: Mapping[str, object]) -> int:
@@ -297,7 +323,7 @@ def validate_summary(document: object, *, root: Path = ROOT,
         filename = str(record["filename"])
         location = f"$.files.{filename}"
         entry = _object(files[filename], location, {
-            "tablebase_sha256", "states_per_side", "sides",
+            "tablebase_sha256", "solver_model_sha256", "states_per_side", "sides",
         })
         digest = entry["tablebase_sha256"]
         if not isinstance(digest, str) or not _SHA256.fullmatch(digest):
@@ -308,6 +334,10 @@ def validate_summary(document: object, *, root: Path = ROOT,
             if digest != actual_digest:
                 _fail(f"{location}.tablebase_sha256",
                       f"source mismatch; expected {actual_digest}")
+        expected_solver = solver_model_fingerprint(filename)
+        if entry["solver_model_sha256"] != expected_solver:
+            _fail(f"{location}.solver_model_sha256",
+                  f"expected {expected_solver}")
 
         expected_states = states_per_side(record)
         states = _natural(entry["states_per_side"], f"{location}.states_per_side")

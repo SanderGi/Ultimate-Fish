@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
+#include <iterator>
 #include <set>
 #include <string>
 
@@ -3118,6 +3119,22 @@ void test_public_information_projection() {
     expect(actualActions.count("b1-a1") == 1 &&
              swappedActions.count("b1-a1") == 0,
            "a hidden royal assignment can remove a concretely winning action");
+
+    const Position onlyCaptureA1 = parses(
+      "b;king,w,a1;king,b,b1;jester,w,b2");
+    const Position onlyCaptureB2 = parses(
+      "b;jester,w,a1;king,b,b1;king,w,b2");
+    expect(view_key(onlyCaptureA1, onyx) == view_key(onlyCaptureB2, onyx),
+           "uniform-action soft-lock witness starts in one public view");
+    const auto captureA1Actions = action_strings(onlyCaptureA1);
+    const auto captureB2Actions = action_strings(onlyCaptureB2);
+    std::vector<std::string> commonActions;
+    std::set_intersection(captureA1Actions.begin(), captureA1Actions.end(),
+                          captureB2Actions.begin(), captureB2Actions.end(),
+                          std::back_inserter(commonActions));
+    expect(!captureA1Actions.empty() && !captureB2Actions.empty() &&
+             commonActions.empty(),
+           "each royal world has a move but the public information set has none");
 }
 
 }  // namespace

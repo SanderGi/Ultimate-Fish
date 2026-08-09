@@ -49,6 +49,7 @@ Run commands from the repository root unless noted otherwise:
 ```bash
 make -C src ultimatefish
 make -C src ultimate-test
+make -C src ultimate-information-test
 python3 tests/test_ultimate_phone.py
 python3 tests/test_conform_ultimate_local.py
 python3 tests/test_evolve_ultimate_army.py

@@ -1,0 +1,234 @@
+#!/usr/bin/env python3
+"""Run and checkpoint exact public-information tablebase strata.
+
+The C++ solver emits proof counters and a per-concrete-world ``.ufiw`` overlay.
+This driver binds a completed run to its logical ``.uftb`` SHA-256 and records
+the strict JSON schema consumed by the README updater. Partial checkpoints live
+outside the repository by default; only a complete 45-row, fully validated
+catalog may be promoted to ``tablebases/information_summary.json``.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+from pathlib import Path
+import re
+import subprocess
+import sys
+from typing import Mapping
+
+
+ROOT = Path(__file__).resolve().parents[1]
+TOOLS = Path(__file__).resolve().parent
+sys.path.insert(0, str(TOOLS))
+
+import plan_ultimate_tablebases as plan  # noqa: E402
+import ultimate_information_tablebases as information  # noqa: E402
+import ultimate_tablebase_shards as shards  # noqa: E402
+
+
+DEFAULT_CHECKPOINT = Path("/tmp/ultimatefish-information-summary.partial.json")
+DEFAULT_OVERLAYS = Path("/tmp/ultimatefish-information-overlays")
+SUMMARY_RE = re.compile(
+    r"^information_summary side (?P<side>[01]) "
+    r"win (?P<win>\d+) loss (?P<loss>\d+) draw (?P<draw>\d+) "
+    r"unreachable_win (?P<uwin>\d+) "
+    r"unreachable_loss (?P<uloss>\d+) "
+    r"unreachable_draw (?P<udraw>\d+) "
+    r"sets (?P<sets>\d+) concrete (?P<concrete>\d+) "
+    r"bellman_residual (?P<bellman>\d+) rank_residual (?P<rank>\d+) "
+    r"belief_cap none exhaustive 1$")
+FIXED_RE = re.compile(
+    r"^information_fixed_point .* bellman_residual (?P<bellman>\d+) "
+    r"rank_residual (?P<rank>\d+)$")
+
+
+def _records() -> dict[str, Mapping[str, object]]:
+    return {str(record["filename"]): record for record in plan.inventory()}
+
+
+def _empty_document() -> dict[str, object]:
+    records = information.affected_inventory()
+    return {
+        "schema_version": information.SCHEMA_VERSION,
+        "semantics": dict(information.SEMANTICS),
+        "inventory_sha256": information.inventory_fingerprint(records),
+        "solver": {
+            "name": "ultimatefish-exact-observation-game",
+            "version": "1",
+            "observation_model_sha256":
+                information.observation_model_fingerprint(),
+            "exhaustive": True,
+            "belief_cap": None,
+        },
+        "files": {},
+    }
+
+
+def load_checkpoint(path: Path) -> dict[str, object]:
+    if not path.exists():
+        return _empty_document()
+    document = json.loads(path.read_text())
+    expected = _empty_document()
+    for key in ("schema_version", "semantics", "inventory_sha256", "solver"):
+        if document.get(key) != expected[key]:
+            raise RuntimeError(
+                f"{path}: stale {key}; start a new checkpoint for this solver")
+    if not isinstance(document.get("files"), dict):
+        raise RuntimeError(f"{path}: files must be an object")
+    for filename, entry in document["files"].items():
+        if (not isinstance(entry, dict) or
+                entry.get("solver_model_sha256") !=
+                information.solver_model_fingerprint(filename)):
+            raise RuntimeError(
+                f"{path}: stale solver model for completed {filename}")
+    return document
+
+
+def save_checkpoint(path: Path, document: Mapping[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n")
+    temporary.replace(path)
+
+
+def run_solver(command: list[str]) -> dict[int, dict[str, int]]:
+    process = subprocess.Popen(
+        command, cwd=ROOT, text=True, stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT, bufsize=1)
+    assert process.stdout is not None
+    summaries: dict[int, dict[str, int]] = {}
+    fixed_seen = False
+    for raw in process.stdout:
+        print(raw, end="", flush=True)
+        line = raw.rstrip("\n")
+        if match := FIXED_RE.match(line):
+            fixed_seen = True
+            if int(match["bellman"]) or int(match["rank"]):
+                raise RuntimeError("fixed-point solver reported a residual")
+        if match := SUMMARY_RE.match(line):
+            values = {key: int(value) for key, value in match.groupdict().items()
+                      if key != "side"}
+            summaries[int(match["side"])] = values
+    return_code = process.wait()
+    if return_code:
+        raise RuntimeError(f"information solver exited with status {return_code}")
+    if not fixed_seen or set(summaries) != {0, 1}:
+        raise RuntimeError("information solver output lacks its exact certificate")
+    return summaries
+
+
+def entry_from_run(record: Mapping[str, object],
+                   summaries: Mapping[int, Mapping[str, int]]) -> dict[str, object]:
+    path = ROOT / "tablebases" / str(record["filename"])
+    states = information.states_per_side(record)
+    sides: dict[str, object] = {}
+    for side_index, side_name in enumerate(information.SIDES):
+        summary = summaries[side_index]
+        if summary["concrete"] != states:
+            raise RuntimeError(
+                f"{path.name}: solver counted {summary['concrete']}, expected {states}")
+        outcomes = {}
+        for outcome, unreachable in (("win", "uwin"),
+                                     ("loss", "uloss"),
+                                     ("draw", "udraw")):
+            outcomes[outcome] = {
+                "legal": summary[outcome],
+                "unreachable": summary[unreachable],
+            }
+        legal = sum(summary[outcome] for outcome in information.OUTCOMES)
+        unreachable = sum(summary[f"u{outcome}"]
+                          for outcome in information.OUTCOMES)
+        if legal + unreachable != states:
+            raise RuntimeError(f"{path.name}: run does not conserve its domain")
+        sides[side_name] = {
+            "outcomes": outcomes,
+            "certificate": {
+                "information_sets": summary["sets"],
+                "concrete_realizations": states,
+                "legal_realizations": legal,
+                "unreachable_realizations": unreachable,
+                "unresolved_information_sets": 0,
+                "partition_residual": 0,
+                "conservation_residual": 0,
+                "bellman_residual": summary["bellman"],
+                "rank_residual": summary["rank"],
+                "observation_residual": 0,
+            },
+        }
+    return {
+        "tablebase_sha256": shards.logical_sha256(path),
+        "solver_model_sha256":
+            information.solver_model_fingerprint(str(record["filename"])),
+        "states_per_side": states,
+        "sides": sides,
+    }
+
+
+def solve_one(args: argparse.Namespace) -> None:
+    records = _records()
+    if args.filename not in information.AFFECTED_FILENAMES:
+        raise RuntimeError(f"{args.filename}: not a Jester/Ghost table")
+    record = records[args.filename]
+    if (str(record["primary"]) != "jester" or
+            str(record["secondary"]) == "jester"):
+        raise RuntimeError(
+            f"{args.filename}: compact one-primary-Jester solver is not applicable")
+
+    args.overlays.mkdir(parents=True, exist_ok=True)
+    overlay = args.overlays / f"{Path(args.filename).stem}.ufiw"
+    source_sha256 = shards.logical_sha256(
+        ROOT / "tablebases" / args.filename)
+    model_sha256 = information.solver_model_fingerprint(args.filename)
+    command = [
+        str(args.binary), "--piece", "jester",
+        "--solve-jester-information",
+        str(ROOT / "tablebases" / args.filename),
+        "--information-overlay", str(overlay),
+        "--information-scratch", str(args.scratch),
+        "--information-source-sha256", source_sha256,
+        "--information-model-sha256", model_sha256,
+    ]
+    secondary = str(record["secondary"])
+    if secondary:
+        command[3:3] = ["--piece2", secondary]
+        if bool(record["opposing"]):
+            command[5:5] = ["--opposing"]
+        lower = args.overlays / "kjesterk.ufiw"
+        if not lower.exists():
+            raise RuntimeError(
+                f"{lower} is required; solve kjesterk.uftb first")
+        command.extend(["--lower-information-overlay", str(lower)])
+        command.extend([
+            "--lower-information-source-sha256",
+            shards.logical_sha256(ROOT / "tablebases" / "kjesterk.uftb")])
+
+    summaries = run_solver(command)
+    document = load_checkpoint(args.checkpoint)
+    files = document["files"]
+    assert isinstance(files, dict)
+    files[args.filename] = entry_from_run(record, summaries)
+    save_checkpoint(args.checkpoint, document)
+    print(f"checkpointed {args.filename} in {args.checkpoint}")
+
+    if len(files) == len(information.AFFECTED_FILENAMES):
+        information.validate_summary(document, root=ROOT, verify_source_hashes=True)
+        save_checkpoint(information.DEFAULT_SUMMARY, document)
+        print(f"promoted complete exact catalog to {information.DEFAULT_SUMMARY}")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("filename", choices=information.AFFECTED_FILENAMES)
+    parser.add_argument("--binary", type=Path,
+                        default=ROOT / "src" / "ultimate_tablebase")
+    parser.add_argument("--checkpoint", type=Path, default=DEFAULT_CHECKPOINT)
+    parser.add_argument("--overlays", type=Path, default=DEFAULT_OVERLAYS)
+    parser.add_argument("--scratch", type=Path, default=Path("/tmp"))
+    args = parser.parse_args()
+    solve_one(args)
+
+
+if __name__ == "__main__":
+    main()

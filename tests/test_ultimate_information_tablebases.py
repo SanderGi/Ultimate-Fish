@@ -68,11 +68,13 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                     "partition_residual": 0,
                     "conservation_residual": 0,
                     "bellman_residual": 0,
+                    "rank_residual": 0,
                     "observation_residual": 0,
                 },
             }
             self.document["files"][filename] = {
                 "tablebase_sha256": hashlib.sha256(payload).hexdigest(),
+                "solver_model_sha256": info.solver_model_fingerprint(filename),
                 "states_per_side": states,
                 "sides": {"first": copy.deepcopy(side),
                           "second": copy.deepcopy(side)},
@@ -135,6 +137,13 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             lambda document: document["solver"].update(
                 {"observation_model_sha256": "0" * 64}),
             "observation_model_sha256.*expected")
+
+    def test_rejects_stale_solver_or_move_generation(self):
+        filename = info.AFFECTED_FILENAMES[0]
+        self.assert_invalid(
+            lambda document: document["files"][filename].update(
+                {"solver_model_sha256": "0" * 64}),
+            "solver_model_sha256.*expected")
 
     def test_requires_all_45_rows(self):
         missing = info.AFFECTED_FILENAMES[-1]
