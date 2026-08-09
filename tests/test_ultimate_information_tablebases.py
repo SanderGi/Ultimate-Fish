@@ -125,8 +125,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         supported = info.supported_solver_inventory()
         unsupported = info.unsupported_solver_inventory()
         names = [filename for filename, _ in supported] + list(unsupported)
-        self.assertEqual(len(supported), 29)
-        self.assertEqual(len(unsupported), 16)
+        self.assertEqual(len(supported), 30)
+        self.assertEqual(len(unsupported), 15)
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(set(names), set(info.AFFECTED_FILENAMES))
         counts = {}
@@ -140,6 +140,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "double-jester": 1,
             "joint-jester": 1,
             "bishop-ghost": 1,
+            "ghost-pair": 1,
         })
 
     def test_unsupported_and_unknown_solver_domains_fail_closed(self):
@@ -184,6 +185,10 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         self.assertEqual(
             info.solver_concrete_dependencies("kjesterkbomb.uftb"),
             ("kjesterk.uftb", "kbombk.uftb"))
+        self.assertEqual(
+            info.solver_sidecar_dependencies("kghostghostk.uftb"),
+            ("kghostk.ufgm",))
+        self.assertTrue((ROOT / "tablebases" / "kghostk.ufgm").exists())
 
     def test_solver_fingerprints_are_isolated_by_implementation_domain(self):
         representatives = {
@@ -193,6 +198,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "double-jester": "kjesterjesterk.uftb",
             "joint-jester": "kjesterkjester.uftb",
             "bishop-ghost": "kbishopghostk.uftb",
+            "ghost-pair": "kghostghostk.uftb",
         }
         with tempfile.TemporaryDirectory() as directory:
             source_root = Path(directory)
@@ -221,6 +227,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             self.assertNotEqual(after_ghost["ghost"], before["ghost"])
             self.assertNotEqual(after_ghost["bishop-ghost"],
                                 before["bishop-ghost"])
+            self.assertNotEqual(after_ghost["ghost-pair"],
+                                before["ghost-pair"])
             for domain in ("primary-jester", "primary-jester-giant",
                            "double-jester", "joint-jester"):
                 self.assertEqual(after_ghost[domain], before[domain])
@@ -248,8 +256,27 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             self.assertNotEqual(after_probe["primary-jester-giant"],
                                 after_shared["primary-jester-giant"])
             for domain in ("ghost", "double-jester", "joint-jester",
-                           "bishop-ghost"):
+                           "bishop-ghost", "ghost-pair"):
                 self.assertEqual(after_probe[domain], after_shared[domain])
+
+            pair_relative = info.GHOST_PAIR_SOLVER_SOURCES[-1].relative_to(ROOT)
+            pair_source = source_root / pair_relative
+            pair_source.write_bytes(pair_source.read_bytes() +
+                                    b"\n// pair-only drift\n")
+            after_pair = {
+                domain: info.solver_model_fingerprint(filename,
+                                                      root=source_root)
+                for domain, filename in representatives.items()
+            }
+            self.assertNotEqual(after_pair["ghost-pair"],
+                                after_probe["ghost-pair"])
+            for domain in representatives:
+                if domain != "ghost-pair":
+                    self.assertEqual(after_pair[domain], after_probe[domain])
+
+        self.assertEqual(
+            info.solver_model_fingerprint("kbishopghostk.uftb"),
+            "d59736789155c52d9b697f6e3f05c2fd0c565beba5d5cce49e3648719289da91")
 
     def test_semantics_documents_fresh_maximal_public_view(self):
         self.assertEqual(info.SEMANTICS["id"],

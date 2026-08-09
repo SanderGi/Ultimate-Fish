@@ -14,6 +14,7 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 import fcntl
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -157,6 +158,44 @@ def overlay_is_current(path: Path, record: Mapping[str, object],
         return False
 
 
+def arbitrary_is_current(path: Path, source_sha256: str,
+                         model_sha256: str) -> bool:
+    """Authenticate the permanent KGhostGhost all-beliefs UFGG1 artifact."""
+    try:
+        with path.open("rb") as stream:
+            header = stream.read(928)
+            if len(header) != 928:
+                return False
+            payload_bytes = struct.unpack_from("<Q", header, 152)[0]
+            digest = hashlib.sha256()
+            remaining = payload_bytes
+            while remaining:
+                chunk = stream.read(min(1 << 20, remaining))
+                if not chunk:
+                    return False
+                digest.update(chunk)
+                remaining -= len(chunk)
+            if stream.read(1):
+                return False
+        return (
+            header[:8] == b"UFGG1\0\0\0" and
+            struct.unpack_from("<I", header, 8)[0] == 1 and
+            struct.unpack_from("<I", header, 12)[0] == 928 and
+            struct.unpack_from("<Q", header, 104)[0] == 928 and
+            header[160:224].decode() == source_sha256 and
+            header[224:288].decode() == model_sha256 and
+            header[288:352].decode() ==
+                information.observation_model_fingerprint() and
+            header[544:608].decode() ==
+                "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b" and
+            header[800:864].decode() == digest.hexdigest() and
+            header[864:928].split(b"\0", 1)[0] ==
+                b"correlated-unordered-pair-public-view-v1" and
+            path.stat().st_size == 928 + payload_bytes)
+    except (OSError, UnicodeDecodeError, struct.error):
+        return False
+
+
 def run_solver(command: list[str], *, label: str = "") -> dict[int, dict[str, int]]:
     process = subprocess.Popen(
         command, cwd=ROOT, text=True, stdout=subprocess.PIPE,
@@ -289,6 +328,37 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             information.observation_model_fingerprint(),
             *common,
         ]
+    if domain == "ghost-pair":
+        lower = ROOT / "tablebases" / "kghostk.ufgm"
+        payload = lower.read_bytes()
+        if (len(payload) < 320 or payload[:8] != b"UFGM1\0\0\0" or
+                struct.unpack_from("<I", payload, 12)[0] != 320):
+            raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
+        lower_sha = hashlib.sha256(payload).hexdigest()
+        lower_source = payload[96:160].decode()
+        lower_model = payload[160:224].decode()
+        lower_observation = payload[224:288].decode()
+        expected_lower_sha = (
+            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        if lower_sha != expected_lower_sha:
+            raise RuntimeError(
+                f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
+        return [
+            str(args.ghost_pair_binary), "--solve",
+            "--transition-prefix", str(args.ghost_pair_transitions),
+            "--input", str(table), "--lower-ghost-sidecar", str(lower),
+            "--scratch", str(args.scratch / "kghostghostk-exact"),
+            "--output", str(overlay), "--output-arbitrary",
+            str(args.overlays / "kghostghostk.ufgg"),
+            "--source-sha256", source_sha256,
+            "--model-sha256", model_sha256,
+            "--observation-sha256",
+            information.observation_model_fingerprint(),
+            "--lower-sidecar-sha256", lower_sha,
+            "--lower-source-sha256", lower_source,
+            "--lower-model-sha256", lower_model,
+            "--lower-observation-sha256", lower_observation,
+        ]
 
     lower_overlay = args.overlays / "kjesterk.ufiw"
     lower_table = ROOT / "tablebases" / "kjesterk.uftb"
@@ -336,6 +406,15 @@ def solve_one(args: argparse.Namespace) -> None:
         raise RuntimeError(
             f"{args.filename}: missing exact transitive concrete "
             f"dependencies: {', '.join(missing_dependencies)}")
+    missing_sidecars = [
+        dependency for dependency in
+        information.solver_sidecar_dependencies(args.filename)
+        if not (ROOT / "tablebases" / dependency).exists()
+    ]
+    if missing_sidecars:
+        raise RuntimeError(
+            f"{args.filename}: missing authenticated lower information "
+            f"dependencies: {', '.join(missing_sidecars)}")
 
     args.overlays.mkdir(parents=True, exist_ok=True)
     args.scratch.mkdir(parents=True, exist_ok=True)
@@ -347,10 +426,13 @@ def solve_one(args: argparse.Namespace) -> None:
     files = document["files"]
     assert isinstance(files, dict)
     entry = files.get(args.filename)
+    arbitrary = args.overlays / "kghostghostk.ufgg"
     if (isinstance(entry, dict) and
             entry.get("tablebase_sha256") == source_sha256 and
             entry.get("solver_model_sha256") == model_sha256 and
-            overlay_is_current(overlay, record, source_sha256, model_sha256)):
+            overlay_is_current(overlay, record, source_sha256, model_sha256) and
+            (domain != "ghost-pair" or arbitrary_is_current(
+                arbitrary, source_sha256, model_sha256))):
         print(f"already complete and verified: {args.filename}")
         return
     command = solver_command(
@@ -365,6 +447,10 @@ def solve_one(args: argparse.Namespace) -> None:
                 f"{lower} is required; solve kjesterk.uftb first")
 
     summaries = run_solver(command, label=args.filename)
+    if domain == "ghost-pair" and not arbitrary_is_current(
+            arbitrary, source_sha256, model_sha256):
+        raise RuntimeError(
+            f"{arbitrary}: missing/stale authenticated all-beliefs artifact")
     document = merge_checkpoint_entry(
         args.checkpoint, args.filename, entry_from_run(record, summaries))
     files = document["files"]
@@ -395,6 +481,12 @@ def main() -> None:
     parser.add_argument("--ghost-extra-binary", type=Path,
                         default=ROOT / "src" /
                         "ultimate_ghost_extra_information_preflight")
+    parser.add_argument("--ghost-pair-binary", type=Path,
+                        default=ROOT / "src" /
+                        "ultimate_ghost_pair_information_tablebase")
+    parser.add_argument("--ghost-pair-transitions", type=Path,
+                        default=Path(
+                          "/tmp/kghostghostk-exact-transitions"))
     parser.add_argument("--ghost-extra-transitions", type=Path,
                         default=Path(
                           "/tmp/kbishopghostk-exact-transitions"))

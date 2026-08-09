@@ -1,10 +1,12 @@
 import importlib.util
 import argparse
+import hashlib
 from pathlib import Path
 import struct
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +31,8 @@ class InformationGenerationDriverTests(unittest.TestCase):
             joint_jester_binary=root / "joint",
             ghost_extra_binary=root / "ghost-extra",
             ghost_extra_transitions=root / "ghost-extra-transitions",
+            ghost_pair_binary=root / "ghost-pair",
+            ghost_pair_transitions=root / "ghost-pair-transitions",
             overlays=root / "overlays",
             scratch=root / "scratch",
         )
@@ -134,6 +138,35 @@ class InformationGenerationDriverTests(unittest.TestCase):
             self.assertFalse(generate.overlay_is_current(
                 path, record, source, model))
 
+    def test_arbitrary_reuse_requires_complete_authenticated_ufgg(self):
+        source = "1" * 64
+        model = "2" * 64
+        payload = b"exact-correlated-roots"
+        header = bytearray(928)
+        header[:8] = b"UFGG1\0\0\0"
+        struct.pack_into("<II", header, 8, 1, 928)
+        struct.pack_into("<Q", header, 104, 928)
+        struct.pack_into("<Q", header, 152, len(payload))
+        header[160:224] = source.encode()
+        header[224:288] = model.encode()
+        header[288:352] = (
+            generate.information.observation_model_fingerprint().encode())
+        header[544:608] = (
+            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        header[800:864] = hashlib.sha256(payload).hexdigest().encode()
+        semantics = b"correlated-unordered-pair-public-view-v1"
+        header[864:864 + len(semantics)] = semantics
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "pair.ufgg"
+            path.write_bytes(header + payload)
+            self.assertTrue(generate.arbitrary_is_current(path, source, model))
+            self.assertFalse(generate.arbitrary_is_current(
+                path, "0" * 64, model))
+            with path.open("r+b") as stream:
+                stream.seek(928)
+                stream.write(b"X")
+            self.assertFalse(generate.arbitrary_is_current(path, source, model))
+
     def test_checkpoint_merge_preserves_independent_completed_rows(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "partial.json"
@@ -174,6 +207,8 @@ class InformationGenerationDriverTests(unittest.TestCase):
                     str(args.joint_jester_binary), "--semantics-id"),
                 "kbishopghostk.uftb": (
                     str(args.ghost_extra_binary), "--solve-external"),
+                "kghostghostk.uftb": (
+                    str(args.ghost_pair_binary), "--output-arbitrary"),
             }
             for filename, (binary, required) in cases.items():
                 with self.subTest(filename=filename):
@@ -198,6 +233,21 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 double[lower_index],
                 generate.information.solver_model_fingerprint(
                     "kjesterjesterk.uftb"))
+
+            ghost_pair = generate.solver_command(
+                args, records["kghostghostk.uftb"], root / "pair.ufiw",
+                "204f4de6d0f9ff6da111d3d0c0a08c3562493cdec2130cc946b4eae7183012ee",
+                generate.information.solver_model_fingerprint(
+                    "kghostghostk.uftb"))
+            self.assertEqual(ghost_pair[0], str(args.ghost_pair_binary))
+            self.assertEqual(
+                ghost_pair[ghost_pair.index("--lower-sidecar-sha256") + 1],
+                "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            self.assertEqual(
+                ghost_pair[ghost_pair.index("--transition-prefix") + 1],
+                str(args.ghost_pair_transitions))
+            self.assertIn(str(args.overlays / "kghostghostk.ufgg"),
+                          ghost_pair)
 
     def test_primary_jester_secondary_routing_preserves_material_layout(self):
         records = generate._records()  # pylint: disable=protected-access
@@ -229,6 +279,25 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 generate.information.solver_model_fingerprint(
                     "kjestergiantk.uftb"),
                 generate.information.solver_model_fingerprint("kjesterk.uftb"))
+
+    def test_ghost_pair_route_rejects_stale_lower_sidecar(self):
+        records = generate._records()  # pylint: disable=protected-access
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            lower = root / "tablebases" / "kghostk.ufgm"
+            lower.parent.mkdir(parents=True)
+            header = bytearray((ROOT / "tablebases" /
+                                "kghostk.ufgm").read_bytes()[:320])
+            header[-1] ^= 1
+            lower.write_bytes(header)
+            with mock.patch.object(generate, "ROOT", root):
+                with self.assertRaisesRegex(RuntimeError,
+                                            "stale lower UFGM SHA-256"):
+                    generate.solver_command(
+                        self._args(root), records["kghostghostk.uftb"],
+                        root / "bad.ufiw", "1" * 64,
+                        generate.information.solver_model_fingerprint(
+                            "kghostghostk.uftb"))
 
     def test_unsupported_material_never_routes_to_a_nearby_solver(self):
         records = generate._records()  # pylint: disable=protected-access

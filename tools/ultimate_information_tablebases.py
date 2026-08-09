@@ -104,6 +104,19 @@ BISHOP_GHOST_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "external_robdd.cpp",
     ROOT / "src" / "ultimate" / "ghost_extra_information_tablebase.cpp",
 )
+GHOST_PAIR_SOLVER_SOURCES = (
+    ROOT / "src" / "ultimate" / "position.h",
+    ROOT / "src" / "ultimate" / "position.cpp",
+    ROOT / "src" / "ultimate" / "information.h",
+    ROOT / "src" / "ultimate" / "information.cpp",
+    ROOT / "src" / "ultimate" / "ghost_information_probe.h",
+    ROOT / "src" / "ultimate" / "ghost_information_probe.cpp",
+    ROOT / "src" / "ultimate" / "ghost_pair_information_model.h",
+    ROOT / "src" / "ultimate" / "ghost_pair_information_model.cpp",
+    ROOT / "src" / "ultimate" / "ghost_pair_information_solver.h",
+    ROOT / "src" / "ultimate" / "ghost_pair_information_solver.cpp",
+    ROOT / "src" / "ultimate" / "ghost_pair_information_tablebase.cpp",
+)
 
 # This tuple is intentionally explicit.  If planner ordering, storage-budget
 # selection, or filenames change, a test must consciously update the public-
@@ -206,6 +219,7 @@ SOLVER_DOMAIN_FILENAMES = {
     "double-jester": ("kjesterjesterk.uftb",),
     "joint-jester": ("kjesterkjester.uftb",),
     "bishop-ghost": ("kbishopghostk.uftb",),
+    "ghost-pair": ("kghostghostk.uftb",),
 }
 SOLVER_DOMAIN_SOURCES = {
     "primary-jester": PRIMARY_JESTER_SOLVER_SOURCES,
@@ -214,6 +228,10 @@ SOLVER_DOMAIN_SOURCES = {
     "double-jester": DOUBLE_JESTER_SOLVER_SOURCES,
     "joint-jester": JOINT_JESTER_SOLVER_SOURCES,
     "bishop-ghost": BISHOP_GHOST_SOLVER_SOURCES,
+    "ghost-pair": GHOST_PAIR_SOLVER_SOURCES,
+}
+SOLVER_SIDECAR_DEPENDENCIES = {
+    "ghost-pair": ("kghostk.ufgm",),
 }
 _ROUTED_FILENAMES = tuple(
     filename for filenames in SOLVER_DOMAIN_FILENAMES.values()
@@ -415,6 +433,11 @@ def solver_concrete_dependencies(filename: str) -> tuple[str, ...]:
             f"{filename}: primary-Jester lower dependency for {secondary} "
             "is not classified")
     return tuple(dependencies)
+
+
+def solver_sidecar_dependencies(filename: str) -> tuple[str, ...]:
+    """Return every authenticated lower information artifact required."""
+    return SOLVER_SIDECAR_DEPENDENCIES.get(solver_domain(filename), ())
 
 
 def states_per_side(record: Mapping[str, object]) -> int:
