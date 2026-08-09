@@ -11,6 +11,7 @@ catalog may be promoted to ``tablebases/information_summary.json``.
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 import fcntl
 import json
@@ -284,17 +285,35 @@ def main() -> None:
     parser.add_argument("--checkpoint", type=Path, default=DEFAULT_CHECKPOINT)
     parser.add_argument("--overlays", type=Path, default=DEFAULT_OVERLAYS)
     parser.add_argument("--scratch", type=Path, default=Path("/tmp"))
+    parser.add_argument(
+        "--jobs", type=int, default=1,
+        help="exact class solves to run concurrently in all-one-jester mode")
     args = parser.parse_args()
+    if args.jobs < 1:
+        parser.error("--jobs must be at least 1")
     if args.filename == "all-one-jester":
         records = _records()
+        filenames = []
         for filename in information.AFFECTED_FILENAMES:
             record = records[filename]
             if (str(record["primary"]) == "jester" and
                     str(record["secondary"]) not in {"jester", "ghost"}):
-                child = argparse.Namespace(**vars(args))
-                child.filename = filename
-                solve_one(child)
+                filenames.append(filename)
+
+        def solve_filename(filename: str) -> None:
+            child = argparse.Namespace(**vars(args))
+            child.filename = filename
+            solve_one(child)
+
+        if args.jobs == 1:
+            for filename in filenames:
+                solve_filename(filename)
+        else:
+            with ThreadPoolExecutor(max_workers=args.jobs) as executor:
+                list(executor.map(solve_filename, filenames))
     else:
+        if args.jobs != 1:
+            parser.error("--jobs is only valid with all-one-jester")
         solve_one(args)
 
 
