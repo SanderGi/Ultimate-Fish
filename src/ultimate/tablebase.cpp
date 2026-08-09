@@ -2107,7 +2107,8 @@ class TablebaseGenerator {
     // general relationship canonicalizer and text formatting saves billions
     // of allocations during the large exact solves while retaining a complete
     // fixed-width public serialization.
-    static std::string primary_jester_view_key(const Position& position) {
+    static std::string primary_jester_view_key(const Position& position,
+                                               bool* terminalOut = nullptr) {
         using Record = std::array<std::int32_t, 13>;
         std::vector<Record> records;
         records.reserve(position.piece_count());
@@ -2155,7 +2156,10 @@ class TablebaseGenerator {
         append_information_word(output, timeout
           ? static_cast<std::int32_t>(*timeout) : -1);
         std::int32_t terminal = 0;
-        if (position.game_over()) {
+        const bool gameOver = position.game_over();
+        if (terminalOut)
+            *terminalOut = gameOver;
+        if (gameOver) {
             const auto winner = position.winner();
             terminal = winner ? 2 + static_cast<std::int32_t>(*winner) : 1;
         }
@@ -2209,13 +2213,14 @@ class TablebaseGenerator {
         append_information_word(output, move.kind == MoveKind::Pass ? -1 : move.from);
         append_information_word(output, move.kind == MoveKind::Pass ? -1 : move.to);
         append_information_word(output, static_cast<std::int32_t>(move.promotion));
-        output += primary_jester_view_key(after);
+        bool terminal = false;
+        output += primary_jester_view_key(after, &terminal);
         // Public animation/result observations remain shared. If the result is
         // Black's decision boundary, append only Black's private exhaustive
         // legal-dot signature so its own successor belief is refined before
         // action selection. White never receives this private observation (and
         // already knows its own concrete royal identity in this stratum).
-        if (!after.game_over() && after.side_to_move() == Color::Black) {
+        if (!terminal && after.side_to_move() == Color::Black) {
             const std::string decision =
               primary_jester_decision_markers(after);
             append_information_word(output,
