@@ -76,6 +76,29 @@ class InformationGenerationDriverTests(unittest.TestCase):
             self.assertFalse(generate.overlay_is_current(
                 path, record, source, model))
 
+    def test_checkpoint_merge_preserves_independent_completed_rows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "partial.json"
+            first = {
+                "solver_model_sha256":
+                    generate.information.solver_model_fingerprint(
+                        "kjesterk.uftb"),
+                "marker": "first",
+            }
+            second = {
+                "solver_model_sha256":
+                    generate.information.solver_model_fingerprint(
+                        "kjesterknightk.uftb"),
+                "marker": "second",
+            }
+            generate.merge_checkpoint_entry(path, "kjesterk.uftb", first)
+            document = generate.merge_checkpoint_entry(
+                path, "kjesterknightk.uftb", second)
+            self.assertEqual(
+                document["files"]["kjesterk.uftb"]["marker"], "first")
+            self.assertEqual(
+                document["files"]["kjesterknightk.uftb"]["marker"], "second")
+
 
 if __name__ == "__main__":
     unittest.main()

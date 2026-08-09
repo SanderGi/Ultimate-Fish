@@ -11,6 +11,8 @@ catalog may be promoted to ``tablebases/information_summary.json``.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
+import fcntl
 import json
 from pathlib import Path
 import re
@@ -92,6 +94,31 @@ def save_checkpoint(path: Path, document: Mapping[str, object]) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n")
     temporary.replace(path)
+
+
+@contextmanager
+def checkpoint_lock(path: Path):
+    """Serialize read/modify/write updates from concurrent exact solves."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_suffix(path.suffix + ".lock")
+    with lock_path.open("a+b") as stream:
+        fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+
+def merge_checkpoint_entry(path: Path, filename: str,
+                           entry: Mapping[str, object]) -> dict[str, object]:
+    """Atomically merge one completed proof without losing parallel results."""
+    with checkpoint_lock(path):
+        document = load_checkpoint(path)
+        files = document["files"]
+        assert isinstance(files, dict)
+        files[filename] = dict(entry)
+        save_checkpoint(path, document)
+        return document
 
 
 def overlay_is_current(path: Path, record: Mapping[str, object],
@@ -236,8 +263,10 @@ def solve_one(args: argparse.Namespace) -> None:
             shards.logical_sha256(ROOT / "tablebases" / "kjesterk.uftb")])
 
     summaries = run_solver(command)
-    files[args.filename] = entry_from_run(record, summaries)
-    save_checkpoint(args.checkpoint, document)
+    document = merge_checkpoint_entry(
+        args.checkpoint, args.filename, entry_from_run(record, summaries))
+    files = document["files"]
+    assert isinstance(files, dict)
     print(f"checkpointed {args.filename} in {args.checkpoint}")
 
     if len(files) == len(information.AFFECTED_FILENAMES):
