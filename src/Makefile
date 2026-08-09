@@ -69,6 +69,9 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cp
 	ultimate-ghost-public-extra-model-test \
 	ultimate-reciprocal-bishop-ghost-information-test \
 	ultimate-reciprocal-bishop-ghost-information-self-test \
+	ultimate-ghost-dragon-information-tablebase \
+	ultimate-ghost-dragon-information-test \
+	ultimate-ghost-dragon-information-self-test \
 	ultimate-ghost-pair-information-tablebase \
 	ultimate-ghost-pair-information-test \
 	ultimate-ghost-pair-information-self-test \
@@ -165,6 +168,31 @@ ultimate-reciprocal-bishop-ghost-information-self-test: \
 	ultimate-reciprocal-bishop-ghost-information-tablebase
 	./ultimate_reciprocal_bishop_ghost_information_tablebase --self-test \
 		--scratch /tmp/ultimate-reciprocal-bishop-ghost-cli
+
+ULTIMATE_GHOST_DRAGON_SRCS = \
+	ultimate/ghost_dragon_information_tablebase.cpp \
+	ultimate/ghost_dragon_information_solver.cpp \
+	ultimate/ghost_public_extra_model.cpp ultimate/external_robdd.cpp \
+	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+	ultimate/position.cpp ultimate/nnue.cpp
+
+ultimate-ghost-dragon-information-tablebase:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		$(ULTIMATE_GHOST_DRAGON_SRCS) \
+		-o ultimate_ghost_dragon_information_tablebase
+
+ultimate-ghost-dragon-information-test:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate ../tests/ultimate_ghost_dragon_information_solver.cpp \
+		$(filter-out ultimate/ghost_dragon_information_tablebase.cpp, \
+			$(ULTIMATE_GHOST_DRAGON_SRCS)) \
+		-o ultimate_ghost_dragon_information_solver_test
+	./ultimate_ghost_dragon_information_solver_test
+
+ultimate-ghost-dragon-information-self-test: \
+	ultimate-ghost-dragon-information-tablebase
+	./ultimate_ghost_dragon_information_tablebase --self-test \
+		--scratch /tmp/ultimate-ghost-dragon-cli
 
 ULTIMATE_GHOST_PAIR_SRCS = ultimate/ghost_pair_information_tablebase.cpp \
 	ultimate/ghost_pair_information_solver.cpp \

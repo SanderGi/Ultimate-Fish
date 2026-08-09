@@ -189,9 +189,16 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 semantics_offset = 924
                 semantics = b"fresh-maximal-public-view-v2:reciprocal-bishop-ghost"
                 expected_version = 2
+            elif magic == b"UFGD1\0\0\0":
+                expected_header, payload_offset = 1248, 152
+                first_section_offset = 96
+                source_offset, model_offset, payload_sha_offset = 160, 288, 1120
+                semantics_offset = 1184
+                semantics = b"fresh-maximal-public-view-v2:dragon-ghost-generic"
+                expected_version = 1
             else:
                 return False
-            if magic != b"UFGX2\0\0\0":
+            if magic not in {b"UFGX2\0\0\0", b"UFGD1\0\0\0"}:
                 expected_version = 1
             if header_bytes != expected_header:
                 return False
@@ -226,6 +233,19 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                     lower_jester_overlay_sha256 and
                 header[624:688].decode() ==
                     "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        elif magic == b"UFGD1\0\0\0":
+            lower_dragon_sha = shards.logical_sha256(
+                ROOT / "tablebases" / "kdragonk.uftb")
+            dependencies_current = (
+                header[352:416].decode() ==
+                    information.observation_model_fingerprint() and
+                header[416:480].decode() ==
+                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b" and
+                header[480:544].decode() == lower_dragon_sha and
+                header[544:608].decode() == lower_dragon_sha and
+                header[608:672].decode() ==
+                    information.concrete_tablebase_model_fingerprint(
+                        "kdragonk.uftb"))
         else:
             dependencies_current = (
                 header[284:348].decode() ==
@@ -408,6 +428,48 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             "--lower-model-sha256", payload[160:224].decode(),
             "--lower-observation-sha256", payload[224:288].decode(),
         ]
+    if domain in {"dragon-ghost-same", "dragon-ghost-opposing"}:
+        lower = ROOT / "tablebases" / "kghostk.ufgm"
+        payload = lower.read_bytes()
+        if (len(payload) < 320 or payload[:8] != b"UFGM1\0\0\0" or
+                struct.unpack_from("<I", payload, 12)[0] != 320):
+            raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
+        lower_sha = hashlib.sha256(payload).hexdigest()
+        expected_lower_sha = (
+            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        if lower_sha != expected_lower_sha:
+            raise RuntimeError(f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
+        orientation = ("same" if domain == "dragon-ghost-same"
+                       else "opposing")
+        transitions = (args.dragon_ghost_same_transitions
+                       if orientation == "same"
+                       else args.dragon_ghost_opposing_transitions)
+        lower_dragon = ROOT / "tablebases" / "kdragonk.uftb"
+        lower_dragon_sha = shards.logical_sha256(lower_dragon)
+        return [
+            str(args.dragon_ghost_binary), "--solve",
+            "--orientation", orientation,
+            "--transition-prefix", str(transitions),
+            "--input", str(table), "--lower-ghost-sidecar", str(lower),
+            "--lower-dragon-table", str(lower_dragon),
+            "--scratch", str(args.scratch / f"{Path(table).stem}-exact"),
+            "--output", str(overlay), "--output-arbitrary",
+            str(args.overlays / f"{Path(table).stem}.ufgd"),
+            "--source-sha256", source_sha256,
+            "--model-sha256", model_sha256,
+            "--observation-sha256",
+            information.observation_model_fingerprint(),
+            "--lower-sidecar-sha256", lower_sha,
+            "--lower-source-sha256", payload[96:160].decode(),
+            "--lower-model-sha256", payload[160:224].decode(),
+            "--lower-observation-sha256", payload[224:288].decode(),
+            "--lower-dragon-sha256", lower_dragon_sha,
+            "--lower-dragon-source-sha256", lower_dragon_sha,
+            "--lower-dragon-model-sha256",
+            information.concrete_tablebase_model_fingerprint(
+                "kdragonk.uftb"),
+            "--compact-every", "1",
+        ]
     if domain == "ghost-pair":
         lower = ROOT / "tablebases" / "kghostk.ufgm"
         payload = lower.read_bytes()
@@ -536,6 +598,9 @@ def solve_one(args: argparse.Namespace) -> None:
     arbitrary = (args.overlays / "kghostghostk.ufgg" if domain == "ghost-pair"
                  else args.overlays / "kbishopkghost.ufgx"
                  if domain == "reciprocal-bishop-ghost"
+                 else args.overlays / f"{Path(args.filename).stem}.ufgd"
+                 if domain in {"dragon-ghost-same",
+                               "dragon-ghost-opposing"}
                  else args.overlays / "kjesterghostk.ufjg")
     lower_jester_arbitrary_sha = None
     if domain == "jester-ghost":
@@ -548,7 +613,8 @@ def solve_one(args: argparse.Namespace) -> None:
             entry.get("solver_model_sha256") == model_sha256 and
             overlay_is_current(overlay, record, source_sha256, model_sha256) and
             (domain not in {"ghost-pair", "jester-ghost",
-                            "reciprocal-bishop-ghost"} or arbitrary_is_current(
+                            "reciprocal-bishop-ghost", "dragon-ghost-same",
+                            "dragon-ghost-opposing"} or arbitrary_is_current(
                 arbitrary, source_sha256, model_sha256,
                 lower_jester_overlay_sha256=lower_jester_arbitrary_sha))):
         print(f"already complete and verified: {args.filename}")
@@ -566,7 +632,8 @@ def solve_one(args: argparse.Namespace) -> None:
 
     summaries = run_solver(command, label=args.filename)
     if domain in {"ghost-pair", "jester-ghost",
-                  "reciprocal-bishop-ghost"} and not arbitrary_is_current(
+                  "reciprocal-bishop-ghost", "dragon-ghost-same",
+                  "dragon-ghost-opposing"} and not arbitrary_is_current(
             arbitrary, source_sha256, model_sha256,
             lower_jester_overlay_sha256=lower_jester_arbitrary_sha):
         raise RuntimeError(
@@ -607,6 +674,15 @@ def main() -> None:
     parser.add_argument("--reciprocal-ghost-extra-transitions", type=Path,
                         default=Path(
                           "/tmp/kbishopkghost-exact-transitions"))
+    parser.add_argument("--dragon-ghost-binary", type=Path,
+                        default=ROOT / "src" /
+                        "ultimate_ghost_dragon_information_tablebase")
+    parser.add_argument("--dragon-ghost-same-transitions", type=Path,
+                        default=Path(
+                          "/tmp/kghostdragonk-exact-transitions"))
+    parser.add_argument("--dragon-ghost-opposing-transitions", type=Path,
+                        default=Path(
+                          "/tmp/kghostkdragon-exact-transitions"))
     parser.add_argument("--ghost-pair-binary", type=Path,
                         default=ROOT / "src" /
                         "ultimate_ghost_pair_information_tablebase")

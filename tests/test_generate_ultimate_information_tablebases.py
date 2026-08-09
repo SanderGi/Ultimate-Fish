@@ -34,6 +34,9 @@ class InformationGenerationDriverTests(unittest.TestCase):
             reciprocal_ghost_extra_binary=root / "reciprocal-ghost-extra",
             reciprocal_ghost_extra_transitions=
                 root / "reciprocal-ghost-extra-transitions",
+            dragon_ghost_binary=root / "dragon-ghost",
+            dragon_ghost_same_transitions=root / "dragon-ghost-same",
+            dragon_ghost_opposing_transitions=root / "dragon-ghost-opposing",
             ghost_pair_binary=root / "ghost-pair",
             ghost_pair_transitions=root / "ghost-pair-transitions",
             jester_ghost_binary=root / "jester-ghost",
@@ -242,6 +245,37 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 stream.write(b"X")
             self.assertFalse(generate.arbitrary_is_current(path, source, model))
 
+    def test_arbitrary_reuse_authenticates_dragon_ufgd(self):
+        source, model = "1" * 64, "2" * 64
+        payload = b"exact-dragon-ghost-roots"
+        header = bytearray(1248)
+        header[:8] = b"UFGD1\0\0\0"
+        struct.pack_into("<II", header, 8, 1, 1248)
+        struct.pack_into("<Q", header, 96, 1248)
+        struct.pack_into("<Q", header, 152, len(payload))
+        header[160:224] = source.encode()
+        header[288:352] = model.encode()
+        header[352:416] = (
+            generate.information.observation_model_fingerprint().encode())
+        header[416:480] = (
+            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        lower_dragon = (
+            b"28d3cbeba82d02611a48bf2d0a6a527d11ff4cd3049f04bf2b4b929a05ed86c6")
+        header[480:544] = lower_dragon
+        header[544:608] = lower_dragon
+        header[608:672] = generate.information.concrete_tablebase_model_fingerprint(
+            "kdragonk.uftb").encode()
+        header[1120:1184] = hashlib.sha256(payload).hexdigest().encode()
+        semantics = b"fresh-maximal-public-view-v2:dragon-ghost-generic"
+        header[1184:1184 + len(semantics)] = semantics
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "dragon.ufgd"
+            path.write_bytes(header + payload)
+            self.assertTrue(generate.arbitrary_is_current(path, source, model))
+            with path.open("r+b") as stream:
+                stream.seek(416); stream.write(b"0" * 64)
+            self.assertFalse(generate.arbitrary_is_current(path, source, model))
+
     def test_checkpoint_merge_preserves_independent_completed_rows(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "partial.json"
@@ -287,6 +321,10 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 "kbishopkghost.uftb": (
                     str(args.reciprocal_ghost_extra_binary),
                     "--output-arbitrary"),
+                "kghostdragonk.uftb": (
+                    str(args.dragon_ghost_binary), "--orientation"),
+                "kghostkdragon.uftb": (
+                    str(args.dragon_ghost_binary), "--orientation"),
                 "kghostghostk.uftb": (
                     str(args.ghost_pair_binary), "--output-arbitrary"),
                 "kjesterghostk.uftb": (
@@ -343,6 +381,30 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 str(args.reciprocal_ghost_extra_transitions))
             self.assertIn(str(args.overlays / "kbishopkghost.ufgx"),
                           reciprocal)
+
+            for filename, orientation, transitions in (
+                    ("kghostdragonk.uftb", "same",
+                     args.dragon_ghost_same_transitions),
+                    ("kghostkdragon.uftb", "opposing",
+                     args.dragon_ghost_opposing_transitions)):
+                dragon = generate.solver_command(
+                    args, records[filename], root / f"{filename}.ufiw",
+                    "1" * 64,
+                    generate.information.solver_model_fingerprint(filename))
+                self.assertEqual(dragon[0], str(args.dragon_ghost_binary))
+                self.assertEqual(
+                    dragon[dragon.index("--orientation") + 1], orientation)
+                self.assertEqual(
+                    dragon[dragon.index("--transition-prefix") + 1],
+                    str(transitions))
+                self.assertIn(
+                    str(args.overlays / f"{Path(filename).stem}.ufgd"),
+                    dragon)
+                self.assertIn(str(ROOT / "tablebases" / "kdragonk.uftb"),
+                              dragon)
+                self.assertEqual(
+                    dragon[dragon.index("--lower-dragon-sha256") + 1],
+                    "28d3cbeba82d02611a48bf2d0a6a527d11ff4cd3049f04bf2b4b929a05ed86c6")
 
     def test_primary_jester_secondary_routing_preserves_material_layout(self):
         records = generate._records()  # pylint: disable=protected-access
@@ -401,7 +463,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,
                                         "unsupported information class"):
                 generate.solver_command(
-                    self._args(root), records["kghostdragonk.uftb"],
+                    self._args(root), records["kghostfishermank.uftb"],
                     root / "bad.ufiw", "1" * 64, "2" * 64)
 
 
