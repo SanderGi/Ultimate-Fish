@@ -175,9 +175,18 @@ bare-King wins.
 The overlay is SHA-256-bound to concrete table
 `3d896b07c0f7ee97da5aabefee6551c90732bbc200343a4af51a08b678e236aa`
 and legal-dot-v2 solver model
-`095d2301b1cda56e6aa75db7663d7a4b811d36cf837c1482a6c491940b63d831`.
+`e117f7356b01dab8cbd57e5ab78a8fd763ecf13955968bf82a3ae2375cd8a06c`.
 It contains all 985,920 dense concrete records; unreachable records remain
 zero-valued and are accounted for separately rather than silently dropped.
+
+The `e117f735...` model also treats an observation bucket containing two
+different residual material worlds as a terminal constant when both worlds
+have ended with the same publicly announced winner. A terminal/ongoing mix or
+different winners remains a hard projection error. This case arises when
+capturing an indistinguishable royal silhouette leaves a Jester in one
+hypothesis and a King in the other, but both hypotheses have already awarded
+the same win. It must not be mistaken for a continuing canonical
+`K+Jester versus K` pair.
 
 The completed K+K+2 primary-Jester strata are regenerated with an explicit
 lower-class cardinality split. A still-ambiguous two-world royal pair probes
@@ -191,14 +200,25 @@ concrete perfect-information WDL. Their certified legal-root results are:
 | K+Jester+Bishop vs K | 13,965,588 / 0 / 0 | 316,578 / 16,113,394 / 2,548,988 | first: 5,013,372 / 0 / 0; second: 0 / 0 / 0 |
 | K+Jester vs K+Bishop | 2,506,936 / 0 / 13,378,780 | 488,456 / 10,706 / 18,479,798 | first: 3,093,244 / 0 / 0; second: 0 / 0 / 0 |
 | K+Jester+Queen vs K | 10,877,572 / 0 / 0 | 611,994 / 17,307,456 / 1,059,510 | first: 8,101,388 / 0 / 0; second: 0 / 0 / 0 |
+| K+Jester+Rook vs K | 12,797,700 / 0 / 0 | 425,372 / 17,360,968 / 1,192,620 | first: 6,181,260 / 0 / 0; second: 0 / 0 / 0 |
 
-The owner-Knight, owner-Bishop, and owner-Queen graphs respectively exercised
-650,906, 673,462, and 650,826 canonical lower royal pairs and no singleton
-lower transitions. Both opposing Knight and opposing Bishop exercised
+The owner-Knight, owner-Bishop, owner-Queen, and owner-Rook graphs respectively
+exercised 650,906, 673,462, 650,826, and 656,846 canonical lower royal pairs
+and no singleton lower transitions. Both opposing Knight and opposing Bishop exercised
 1,353,848 pair probes and 5,216 singleton probes. Every completed graph has
 zero owner-overlay-versus-concrete differences, empty uniform-action sets,
 Bellman residuals, and rank residuals. Results that happen to match a withdrawn
 run are accepted only from this cardinality-correct recomputation.
+
+The Knight, Bishop, Queen-owner, and Rook-owner payloads were first completed
+under model `095d2301...`, whose exhaustive graph construction threw on every
+two-world lower bucket that was not the exact continuing royal pair. Successful
+completion therefore proves that the new same-winner terminal branch had zero
+executions in those strata. Migration to `e117f735...` changed only UFIW2
+header bytes 96 through 159; bytes 0 through 95 and every payload byte from 160
+onward are identical, all payload SHA-256 values are preserved, and every
+source/model/header/count/conservation check was rerun. `K+Jester versus K`
+itself was independently recomputed under `e117f735...` rather than rebound.
 
 ## First exact Ghost stratum
 
