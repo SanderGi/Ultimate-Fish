@@ -388,6 +388,17 @@ and remaps every relationship so captures cannot corrupt a round trip.
   confirmed in Ranked when a public linked CopyCat move was accepted while its
   owner's real King remained attacked. Check filtering resumes in the first
   resulting position without a living Jester.
+- Legal-move dots are private pre-decision observations. The active player may
+  select each of their own characters and inspect the destinations the native
+  UI offers before committing an action; the nonmoving opponent does not see
+  those dots. Consequently, hidden royal identity can be disclosed without a
+  move. With the active King on `e7` and enemy royal silhouettes on `e6/e5`,
+  the `e6` dot is present when `e6` is the real King, but absent when `e6` is
+  the Jester and the real King is on `e5`: the latter capture would land the
+  active King adjacent to the real King. Information-set play must refine the
+  mover's belief by the complete displayed dot frontier before choosing a
+  move; it must not require one action across hypotheses whose dot frontiers
+  the player can distinguish.
 - The native insufficient-material table is implemented, including its special
   minor/color-bound/support combinations. With both real kings present and
   neither team sufficient, the result is a draw.
@@ -424,14 +435,16 @@ invisible in the engine state because enemy rays must pass through it. This is
 essential when an enemy Sniper has the real King as its first visible target.
 
 Engine play represents public state as an information set of those concrete
-positions. The native `belief clear` / `belief add <upn>` / `belief go` protocol
-intersects legal action notation across every retained belief. It audits every
-common root at depth two across the complete set, preserving immediate hidden-
-Ghost recaptures even outside the deep sample, and then deep-searches a robust
-shortlist across up to eight beliefs in parallel. The sample begins evenly
-spaced, and each root's worst shallow belief replaces one representative when
-necessary. Root utility is maximin, with complete-set shallow safety and mean
-score as deterministic tie-breaks. The phone controller
+positions. At the start of a decision it must first partition that set by the
+active player's private legal-dot observation, then intersects action notation
+only within the observed partition. The native `belief clear` / `belief add
+<upn>` / `belief go` protocol audits every resulting common root at depth two
+across the complete set, preserving immediate hidden-Ghost recaptures even
+outside the deep sample, and then deep-searches a robust shortlist across up to
+eight beliefs in parallel. The sample begins evenly spaced, and each root's
+worst shallow belief replaces one representative when necessary. Root utility
+is maximin, with complete-set shallow safety and mean score as deterministic
+tie-breaks. The phone controller
 only supplies public observations and verifies the returned root; it contains
 no piece-value, Ghost-adjacency, plurality, or repetition move override.
 
