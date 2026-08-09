@@ -967,7 +967,7 @@ export function UltimateWorkbench() {
 
   const gameBanner = gameResult.result === "ongoing" ? null : gameResult.result === "draw"
     ? `Draw · ${(gameResult.reason ?? "game complete").replaceAll("-", " ")}`
-    : gameResult.result === playerSide ? "You win · opposing King captured" : "Ultimate Fish wins · your King was captured";
+    : gameResult.result === playerSide ? `You win · ${(gameResult.reason ?? "game complete").replaceAll("-", " ")}` : `Ultimate Fish wins · ${(gameResult.reason ?? "game complete").replaceAll("-", " ")}`;
 
   const historyCell = (records: MoveRecord[]) => {
     const label = records.map((record) => record.notation).join(" · ") || "—";
