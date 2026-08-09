@@ -58,9 +58,11 @@ ULTIMATE_SRCS = ultimate/main.cpp ultimate/position.cpp ultimate/search.cpp ulti
 ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cpp \
 	ultimate/information_solver.cpp ultimate/nnue.cpp
 
-.PHONY: ultimatefish ultimate-test ultimate-information-test ultimate-tablebase \
+.PHONY: ultimatefish ultimate-test ultimate-information-test \
+	ultimate-ghost-information-probe-test ultimate-tablebase \
 	ultimate-nnue-reference ultimate-information-solvers \
 	ultimate-ghost-information-tablebase ultimate-double-jester-information-tablebase \
+	ultimate-ghost-extra-information-preflight \
 	ultimate-joint-jester-information-tablebase ultimate-information-solvers-self-test \
 	ultimate-information-solvers-clean
 ultimatefish:
@@ -76,16 +78,31 @@ ultimate-tablebase:
 		ultimate/information.cpp ultimate/information_solver.cpp ultimate/nnue.cpp \
 		-o ultimate_tablebase
 
-ultimate-information-test:
+ultimate-information-test: ultimate-ghost-information-probe-test
 	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
 		../tests/ultimate_information_solver.cpp ultimate/information_solver.cpp \
 		-o ultimate_information_solver_test
 	./ultimate_information_solver_test
 
+ultimate-ghost-information-probe-test:
+	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
+		../tests/ultimate_ghost_information_probe.cpp \
+		ultimate/ghost_information_probe.cpp \
+		-o ultimate_ghost_information_probe_test
+	./ultimate_ghost_information_probe_test
+
 ultimate-ghost-information-tablebase:
 	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		ultimate/ghost_information_tablebase.cpp $(ULTIMATE_INFORMATION_COMMON_SRCS) \
+		ultimate/ghost_information_tablebase.cpp ultimate/ghost_information_probe.cpp \
+		$(ULTIMATE_INFORMATION_COMMON_SRCS) \
 		-o ultimate_ghost_information_tablebase
+
+ultimate-ghost-extra-information-preflight:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		ultimate/ghost_extra_information_tablebase.cpp \
+		ultimate/ghost_information_probe.cpp ultimate/position.cpp \
+		ultimate/information.cpp ultimate/nnue.cpp \
+		-o ultimate_ghost_extra_information_preflight
 
 ultimate-double-jester-information-tablebase:
 	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
@@ -109,7 +126,8 @@ ultimate-information-solvers-self-test: ultimate-information-solvers
 ultimate-information-solvers-clean:
 	@rm -f ultimate_ghost_information_tablebase \
 		ultimate_double_jester_information_tablebase \
-		ultimate_joint_jester_information_tablebase
+		ultimate_joint_jester_information_tablebase \
+		ultimate_ghost_information_probe_test
 
 ultimate-test:
 	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror ../tests/ultimate_rules.cpp \

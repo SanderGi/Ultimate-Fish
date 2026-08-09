@@ -80,6 +80,8 @@ PRIMARY_JESTER_SOLVER_SOURCES = (
 GHOST_SOLVER_SOURCES = (
     *SHARED_SOLVER_SOURCES,
     ROOT / "src" / "ultimate" / "ghost_information_tablebase.cpp",
+    ROOT / "src" / "ultimate" / "ghost_information_probe.h",
+    ROOT / "src" / "ultimate" / "ghost_information_probe.cpp",
 )
 DOUBLE_JESTER_SOLVER_SOURCES = (
     *SHARED_SOLVER_SOURCES,

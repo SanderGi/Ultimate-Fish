@@ -218,12 +218,27 @@ symmetries reduce the 913,872 physical initial information sets to 228,468
 canonical set orbits (114,234 per starting side) without changing their
 realization weights.
 
-The committed proof kernel is bound to model
-`9c3700a9fab27c9971300db6f7d7f3af8edb16ed9af0f33753f4b5bf957de6ba`;
+The committed proof kernel and arbitrary-belief probe are bound to model
+`4a2d9d7b503b29204cf9af08985345771b9046c07bd2116e592fab40ee12e430`;
 the concrete table SHA-256 is
 `3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31`.
-The generated UFIW2 overlay is 1,972,000 bytes with SHA-256
-`53c313acae8207f4569b03082367589abd820ce4be4a6c1d11631c5b1cad6f66`.
+The bundled UFIW2 fresh-root overlay is 1,972,000 bytes with SHA-256
+`8b16fe51e279b031510dda47347b391a64306c193e5f4c2734b8028cdb384144`.
+
+The bundled UFGM1 sidecar retains all 5,477,899 reduced decision nodes plus
+the force roots for 6,320 public geometries and 12,790 mover-private legal-dot
+strata. It therefore probes an exact history-preserving Ghost-location mask
+after a larger tablebase captures down into this class; it never replaces that
+mask with the fresh maximal README root. The 54,865,711-byte sidecar has
+SHA-256
+`400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b`
+and observation-model SHA-256
+`af09ebab834599de83d546f8729b8329dbe5ba8ff1cc7f24be3ac63086273adf`.
+Its independent loader rejects stale hashes, malformed or non-reduced nodes,
+beliefs crossing a private dot stratum, visible non-singleton beliefs, and
+terminal masks mixing different public winner observations. The export was
+round-tripped against all 1,971,840 concrete singleton worlds and 492,952
+non-singleton masks with zero residuals.
 
 ## Invalidated v1 results
 

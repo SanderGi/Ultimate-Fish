@@ -42,6 +42,7 @@
 
 #include "information.h"
 #include "information_solver.h"
+#include "ghost_information_probe.h"
 #include "position.h"
 
 #include <algorithm>
@@ -761,6 +762,10 @@ class Robdd {
     }
 
     [[nodiscard]] std::size_t node_count() const { return nodes_.size(); }
+    [[nodiscard]] std::tuple<std::uint32_t, Id, Id> node(Id id) const {
+        const Node& value = nodes_.at(id);
+        return {value.variable, value.low, value.high};
+    }
 
   private:
     struct Node {
@@ -2552,6 +2557,11 @@ class GhostSymbolicFixedPoint {
         return solved;
     }
 
+    void write_arbitrary_mask_sidecar(
+      const std::string& path, const std::string& sourceSha256,
+      const std::string& modelSha256,
+      const std::string& observationSha256) const;
+
   private:
     [[nodiscard]] const std::vector<std::pair<std::uint8_t, Robdd::Id>>&
     relation_image(std::uint32_t relation) {
@@ -2812,9 +2822,15 @@ class GhostSymbolicFixedPoint {
 };
 
 [[nodiscard]] SolvedInformation solve_symbolic(
-  const GhostSymbolicModel& model, const PackedTable& concrete) {
+  const GhostSymbolicModel& model, const PackedTable& concrete,
+  const std::string& arbitraryMaskOutput,
+  const std::string& sourceSha256, const std::string& modelSha256,
+  const std::string& observationSha256) {
     GhostSymbolicFixedPoint solver(model, concrete);
-    return solver.solve();
+    SolvedInformation solved = solver.solve();
+    solver.write_arbitrary_mask_sidecar(
+      arbitraryMaskOutput, sourceSha256, modelSha256, observationSha256);
+    return solved;
 }
 
 [[nodiscard]] SolvedInformation solve_graph(GhostInformationGraph& graph,
@@ -3054,11 +3070,229 @@ void write_u32(std::ofstream& output, std::uint32_t value) {
     output.write(reinterpret_cast<const char*>(&value), sizeof(value));
 }
 
+void write_u16(std::ofstream& output, std::uint16_t value) {
+    const std::array<char, 2> bytes{{
+      static_cast<char>(value & 0xff),
+      static_cast<char>((value >> 8) & 0xff)}};
+    output.write(bytes.data(), bytes.size());
+}
+
+void write_u32_le(std::ofstream& output, std::uint32_t value) {
+    const std::array<char, 4> bytes{{
+      static_cast<char>(value & 0xff),
+      static_cast<char>((value >> 8) & 0xff),
+      static_cast<char>((value >> 16) & 0xff),
+      static_cast<char>((value >> 24) & 0xff)}};
+    output.write(bytes.data(), bytes.size());
+}
+
+void write_u64_le(std::ofstream& output, std::uint64_t value) {
+    write_u32_le(output, static_cast<std::uint32_t>(value));
+    write_u32_le(output, static_cast<std::uint32_t>(value >> 32));
+}
+
+void write_mask(std::ofstream& output, const Mask80& mask) {
+    write_u64_le(output, mask.low);
+    write_u16(output, mask.high);
+}
+
 [[nodiscard]] bool valid_sha256(const std::string& text) {
     return text.size() == 64 && std::all_of(text.begin(), text.end(), [](char character) {
         return (character >= '0' && character <= '9') ||
                (character >= 'a' && character <= 'f');
     });
+}
+
+void GhostSymbolicFixedPoint::write_arbitrary_mask_sidecar(
+  const std::string& path, const std::string& sourceSha256,
+  const std::string& modelSha256,
+  const std::string& observationSha256) const {
+    if (path.empty())
+        return;
+    if (!valid_sha256(sourceSha256) || !valid_sha256(modelSha256) ||
+        !valid_sha256(observationSha256))
+        throw std::runtime_error(
+          "arbitrary-mask output requires source, model, and observation SHA-256 values");
+    if (sourceSha256 != hex_digest(concrete_.sha))
+        throw std::runtime_error(
+          "arbitrary-mask source SHA-256 does not match kghostk.uftb");
+
+    constexpr std::uint32_t HeaderBytes = 320;
+    constexpr std::uint32_t NodeBytes = 9;
+    constexpr std::uint32_t GeometryBytes = 844;
+    constexpr std::uint32_t StratumBytes = 18;
+    const std::uint32_t nodeCount = static_cast<std::uint32_t>(bdd_.node_count());
+    const std::uint32_t geometryCount = static_cast<std::uint32_t>(
+      model_.geometries().size());
+    const std::uint32_t stratumCount = static_cast<std::uint32_t>(
+      model_.strata().size());
+    const std::uint64_t nodeOffset = HeaderBytes;
+    const std::uint64_t geometryOffset =
+      nodeOffset + std::uint64_t(nodeCount) * NodeBytes;
+    const std::uint64_t stratumOffset =
+      geometryOffset + std::uint64_t(geometryCount) * GeometryBytes;
+
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    if (!output)
+        throw std::runtime_error(
+          "cannot create arbitrary-mask Ghost sidecar: " + path);
+    const std::array<char, 8> magic{{'U','F','G','M','1','\0','\0','\0'}};
+    output.write(magic.data(), magic.size());
+    write_u32_le(output, 1);
+    write_u32_le(output, HeaderBytes);
+    write_u32_le(output, static_cast<std::uint32_t>(PieceType::Ghost));
+    write_u32_le(output, static_cast<std::uint32_t>(Color::White));
+    write_u32_le(output, Position::BoardFiles);
+    write_u32_le(output, Position::BoardRanks);
+    write_u32_le(output, Squares);
+    write_u32_le(output, ConcreteStateCount);
+    write_u32_le(output, GhostSubstates);
+    write_u32_le(output, geometryCount);
+    write_u32_le(output, stratumCount);
+    write_u32_le(output, nodeCount);
+    write_u32_le(output, NodeBytes);
+    write_u32_le(output, GeometryBytes);
+    write_u32_le(output, StratumBytes);
+    write_u32_le(output, 0);
+    write_u64_le(output, nodeOffset);
+    write_u64_le(output, geometryOffset);
+    write_u64_le(output, stratumOffset);
+    output.write(sourceSha256.data(), sourceSha256.size());
+    output.write(modelSha256.data(), modelSha256.size());
+    output.write(observationSha256.data(), observationSha256.size());
+    std::array<char, 32> semantics{};
+    static constexpr char Semantics[] = "history-mask-public-view-v2";
+    std::memcpy(semantics.data(), Semantics, sizeof(Semantics));
+    output.write(semantics.data(), semantics.size());
+    if (static_cast<std::uint64_t>(output.tellp()) != nodeOffset)
+        throw std::runtime_error("arbitrary-mask sidecar header-size mismatch");
+
+    for (std::uint32_t id = 0; id < nodeCount; ++id) {
+        const auto [variable, low, high] = bdd_.node(id);
+        output.put(static_cast<char>(variable));
+        write_u32_le(output, low);
+        write_u32_le(output, high);
+    }
+    if (static_cast<std::uint64_t>(output.tellp()) != geometryOffset)
+        throw std::runtime_error("arbitrary-mask sidecar node-size mismatch");
+
+    for (std::uint32_t geometryId = 0; geometryId < geometryCount;
+         ++geometryId) {
+        const SymbolicGeometryModel& geometry =
+          model_.geometries()[geometryId];
+        output.put(static_cast<char>(geometry.geometry.side));
+        output.put(static_cast<char>(geometry.geometry.whiteKing));
+        output.put(static_cast<char>(geometry.geometry.blackKing));
+        output.put(static_cast<char>(geometry.geometry.visible));
+        write_mask(output, geometry.liveSources);
+        write_mask(output, geometry.terminalSources);
+        write_mask(output, geometry.terminalWhiteSources);
+        write_mask(output, geometry.terminalBlackSources);
+        for (const std::uint32_t stratum : geometry.actualStratum)
+            write_u32_le(output, stratum);
+        for (const Robdd::Id root : white_[geometryId])
+            write_u32_le(output, root);
+        output.write(reinterpret_cast<const char*>(
+          visibleWhite_[geometryId].data()), Squares);
+        output.write(reinterpret_cast<const char*>(
+          visibleBlack_[geometryId].data()), Squares);
+    }
+    if (static_cast<std::uint64_t>(output.tellp()) != stratumOffset)
+        throw std::runtime_error("arbitrary-mask sidecar geometry-size mismatch");
+
+    for (std::uint32_t stratum = 0; stratum < stratumCount; ++stratum) {
+        write_u32_le(output, model_.strata()[stratum].geometry);
+        write_mask(output, model_.strata()[stratum].liveSources);
+        write_u32_le(output, black_[stratum]);
+    }
+    output.close();
+    if (!output)
+        throw std::runtime_error("failed writing arbitrary-mask Ghost sidecar");
+
+    // The independent loader collision-checks every serialized node and every
+    // geometry/stratum reference.  Compare every concrete singleton and two
+    // arbitrary masks per hidden (geometry, actual) force root.  Since the
+    // immediately preceding solve established exact symbolic Bellman equality,
+    // exact root/node round trips preserve that zero residual.
+    const GhostInformationProbe probe(
+      path, sourceSha256, modelSha256, observationSha256);
+    if (probe.node_count() != nodeCount ||
+        probe.geometry_count() != geometryCount ||
+        probe.stratum_count() != stratumCount)
+        throw std::runtime_error("arbitrary-mask sidecar count round trip failed");
+    std::uint64_t singletonResidual = 0;
+    for (std::uint32_t index = 0; index < ConcreteStateCount; ++index) {
+        const LegacyState state = decode_index(index);
+        GhostInformationMask singleton;
+        if (state.ghost < 64)
+            singleton.low = std::uint64_t(1) << state.ghost;
+        else
+            singleton.high = std::uint16_t(1) << (state.ghost - 64);
+        const GhostInformationProbeResult result = probe.probe(
+          static_cast<std::uint8_t>(state.side), state.whiteKing,
+          state.blackKing, state.ghost, state.visible, singleton);
+        const Wdl exact = concrete_.result(index);
+        const bool expectedWhite =
+          (state.side == Color::White && exact == Wdl::Win) ||
+          (state.side == Color::Black && exact == Wdl::Loss);
+        const bool expectedBlack =
+          (state.side == Color::Black && exact == Wdl::Win) ||
+          (state.side == Color::White && exact == Wdl::Loss);
+        singletonResidual += result.ownerForce != expectedWhite ||
+                             result.observerForce != expectedBlack;
+    }
+
+    std::uint64_t arbitraryResidual = 0;
+    std::uint64_t arbitraryTests = 0;
+    for (std::uint32_t geometryId = 0; geometryId < geometryCount;
+         ++geometryId) {
+        const SymbolicGeometryModel& geometry =
+          model_.geometries()[geometryId];
+        if (geometry.geometry.visible)
+            continue;
+        for (unsigned actual = 0; actual < Squares; ++actual) {
+            const std::uint32_t stratum = geometry.actualStratum[actual];
+            if (stratum == NoBelief)
+                continue;
+            const Mask80 full = model_.strata()[stratum].liveSources;
+            Mask80 subset;
+            for (unsigned square = 0; square < Squares; ++square)
+                if (mask_test(full, square) &&
+                    (square == actual ||
+                     ((square * 0x9e37u + geometryId * 17u + actual) & 3u)))
+                    mask_set(subset, square);
+            for (const Mask80 mask : {full, subset}) {
+                const GhostInformationProbeResult result = probe.probe(
+                  geometry.geometry.side, geometry.geometry.whiteKing,
+                  geometry.geometry.blackKing, static_cast<std::uint8_t>(actual),
+                  false, {mask.low, mask.high});
+                arbitraryResidual += result.ownerForce !=
+                  bdd_.evaluate(white_[geometryId][actual], mask);
+                arbitraryResidual += result.observerForce !=
+                  bdd_.evaluate(black_[stratum], mask);
+                ++arbitraryTests;
+            }
+        }
+    }
+    if (singletonResidual || arbitraryResidual)
+        throw std::runtime_error(
+          "arbitrary-mask Ghost sidecar force-root round trip failed");
+    const std::uint64_t bytes = stratumOffset +
+      std::uint64_t(stratumCount) * StratumBytes;
+    std::cout << "information_arbitrary_mask_sidecar " << path
+              << " bytes " << bytes
+              << " nodes " << nodeCount
+              << " geometries " << geometryCount
+              << " strata " << stratumCount
+              << " singleton_tests " << ConcreteStateCount
+              << " arbitrary_mask_tests " << arbitraryTests
+              << " bellman_roundtrip_residual 0"
+              << " singleton_roundtrip_residual " << singletonResidual
+              << " arbitrary_mask_roundtrip_residual " << arbitraryResidual
+              << " concrete_sha256 " << sourceSha256
+              << " solver_model_sha256 " << modelSha256
+              << " observation_model_sha256 " << observationSha256 << '\n'
+              << std::flush;
 }
 
 void write_overlay(const std::string& path,
@@ -3133,9 +3367,11 @@ int main(int argc, char** argv) {
     try {
         std::string input = "tablebases/kghostk.uftb";
         std::string output;
+        std::string arbitraryMaskOutput;
         std::string scratch = "/tmp";
         std::string sourceSha256;
         std::string modelSha256;
+        std::string observationSha256;
         bool selfTestOnly = false;
         bool explicitClosure = false;
         for (int i = 1; i < argc; ++i) {
@@ -3149,12 +3385,16 @@ int main(int argc, char** argv) {
                 input = value("--input");
             else if (argument == "--output")
                 output = value("--output");
+            else if (argument == "--arbitrary-mask-output")
+                arbitraryMaskOutput = value("--arbitrary-mask-output");
             else if (argument == "--scratch")
                 scratch = value("--scratch");
             else if (argument == "--information-source-sha256")
                 sourceSha256 = value("--information-source-sha256");
             else if (argument == "--information-model-sha256")
                 modelSha256 = value("--information-model-sha256");
+            else if (argument == "--information-observation-sha256")
+                observationSha256 = value("--information-observation-sha256");
             else if (argument == "--self-test")
                 selfTestOnly = true;
             else if (argument == "--explicit-closure")
@@ -3176,13 +3416,18 @@ int main(int argc, char** argv) {
         graph.build_roots();
         SolvedInformation solved;
         if (explicitClosure) {
+            if (!arbitraryMaskOutput.empty())
+                throw std::runtime_error(
+                  "arbitrary-mask output requires the exact symbolic solver");
             graph.expand_all();
             solved = solve_graph(graph, scratch);
         }
         else {
             const GhostSymbolicModel symbolic(oracle);
             verify_symbolic_roots(symbolic, graph);
-            solved = solve_symbolic(symbolic, concrete);
+            solved = solve_symbolic(symbolic, concrete, arbitraryMaskOutput,
+                                    sourceSha256, modelSha256,
+                                    observationSha256);
         }
         report_results(graph, concrete, solved);
         write_overlay(output, concrete, graph, solved, sourceSha256, modelSha256);
