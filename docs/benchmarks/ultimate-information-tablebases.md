@@ -179,18 +179,13 @@ and legal-dot-v2 solver model
 It contains all 985,920 dense concrete records; unreachable records remain
 zero-valued and are accounted for separately rather than silently dropped.
 
-The first two K+K+2 primary-Jester strata reuse that overlay and the same
-authenticated solver model. Their exact legal-root results are:
-
-| Material class | First material owner starts W / L / D | Second material owner / bare King starts W / L / D | Concrete unreachable W / L / D by starting side |
-| --- | ---: | ---: | ---: |
-| K+Jester+Knight vs K | 14,798,084 / 0 / 0 | 242,136 / 16,055,072 / 2,681,752 | first: 4,180,876 / 0 / 0; second: 0 / 0 / 0 |
-| K+Jester vs K+Knight | 2,898,404 / 0 / 12,987,312 | 334,432 / 121,472 / 18,523,056 | first: 3,093,244 / 0 / 0; second: 0 / 0 / 0 |
-
-The owner-Knight graph contains 16,680,210 ambiguous pairs and 368,828,812
-transition observations. The opposing-Knight graph contains 17,233,738 pairs
-and 400,132,808 transition observations. Both have zero empty uniform-action
-sets and zero Bellman/rank residuals after their legal-dot root splits.
+K+K+2 primary-Jester results are temporarily withheld while their lower-class
+transition is being regenerated. The first v2 implementation probed the dense
+K+Jester overlay per concrete child after the extra piece was captured. That is
+valid for a still-ambiguous two-world royal pair, but not for a history-refined
+singleton, which must use the concrete perfect-information WDL. The solver now
+distinguishes those cardinalities explicitly; all affected larger results are
+treated as stale even when their earlier Bellman residual was zero.
 
 ## First exact Ghost stratum
 
