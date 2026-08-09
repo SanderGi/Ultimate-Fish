@@ -1654,6 +1654,7 @@ class TablebaseGenerator {
         std::uint64_t emptyCommonActionSets = 0;
         std::uint64_t lowerPairProbes = 0;
         std::uint64_t lowerSingletonProbes = 0;
+        std::uint64_t lowerTerminalGroups = 0;
         std::uint64_t lowerOwnerOverlayDifferences = 0;
         std::uint32_t firstEmptyCommonActionSet =
           std::numeric_limits<std::uint32_t>::max();
@@ -1764,15 +1765,37 @@ class TablebaseGenerator {
                           *external.front(), Color::Black);
                     }
                     else if (external.size() == 2) {
-                        // The only two-world lower-material observation in a
-                        // one-Jester class is the exact canonical KJ-v-K royal
-                        // pair.  Preserve that narrowed belief and cross-probe
-                        // its exact information overlay.  Never probe either
-                        // member separately through the dense fresh-root map.
-                        ++lowerPairProbes;
-                        lowerPairForces = lower.pair_forces(
-                          *external[0], *external[1], Color::Black);
-                        blackForces = lowerPairForces->uninformed;
+                        const bool firstTerminal = external[0]->game_over();
+                        const bool secondTerminal = external[1]->game_over();
+                        if (firstTerminal || secondTerminal) {
+                            // Capturing an indistinguishable royal silhouette
+                            // can leave different concrete material in the two
+                            // assignments while both outcomes are already the
+                            // same publicly announced terminal result. Such a
+                            // bucket is a constant, not a fresh K+Jester-v-K
+                            // belief. A terminal/ongoing mix or distinct winner
+                            // would have different transition observations and
+                            // is therefore a projection defect.
+                            if (!firstTerminal || !secondTerminal ||
+                                external[0]->winner() != external[1]->winner())
+                                throw std::runtime_error(
+                                  "one lower Jester observation mixes public terminal outcomes");
+                            ++lowerTerminalGroups;
+                            const auto winner = external[0]->winner();
+                            blackForces = winner && *winner == Color::Black;
+                        }
+                        else {
+                            // The only continuing two-world lower-material
+                            // observation in a one-Jester class is the exact
+                            // canonical KJ-v-K royal pair. Preserve that
+                            // narrowed belief and cross-probe its information
+                            // overlay; never reset either member separately to
+                            // a fresh maximal root.
+                            ++lowerPairProbes;
+                            lowerPairForces = lower.pair_forces(
+                              *external[0], *external[1], Color::Black);
+                            blackForces = lowerPairForces->uninformed;
+                        }
                     }
                     else
                         throw std::runtime_error(
@@ -1876,7 +1899,8 @@ class TablebaseGenerator {
         std::cout << "information_lower_jester pair_probes "
                   << lowerPairProbes << " singleton_probes "
                   << lowerSingletonProbes << " owner_overlay_differences "
-                  << lowerOwnerOverlayDifferences << '\n';
+                  << lowerOwnerOverlayDifferences << " terminal_groups "
+                  << lowerTerminalGroups << '\n';
 
         const InformationSolveSummary ivorySummary = ivory->solve();
         std::vector<std::uint8_t> ivoryForce(pairs.size() * 2);
