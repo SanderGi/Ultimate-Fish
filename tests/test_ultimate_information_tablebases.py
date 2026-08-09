@@ -7,6 +7,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,7 @@ assert SPEC and SPEC.loader
 info = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = info
 SPEC.loader.exec_module(info)
+ORIGINAL_SOLVER_FINGERPRINT = info.solver_model_fingerprint
 README_SPEC = importlib.util.spec_from_file_location(
     "update_ultimate_tablebase_readme",
     TOOLS / "update_ultimate_tablebase_readme.py")
@@ -74,7 +76,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             }
             self.document["files"][filename] = {
                 "tablebase_sha256": hashlib.sha256(payload).hexdigest(),
-                "solver_model_sha256": info.solver_model_fingerprint(filename),
+                "solver_model_sha256": self._future_solver_fingerprint(filename),
                 "states_per_side": states,
                 "sides": {"first": copy.deepcopy(side),
                           "second": copy.deepcopy(side)},
@@ -86,7 +88,27 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
     def assert_invalid(self, mutate, pattern):
         document = copy.deepcopy(self.document)
         mutate(document)
-        with self.assertRaisesRegex(info.SummaryValidationError, pattern):
+        with mock.patch.object(
+                info, "solver_model_fingerprint",
+                side_effect=self._future_solver_fingerprint):
+            with self.assertRaisesRegex(info.SummaryValidationError, pattern):
+                info.validate_summary(document, root=self.root)
+
+    @staticmethod
+    def _future_solver_fingerprint(filename, **kwargs):
+        try:
+            return ORIGINAL_SOLVER_FINGERPRINT(filename, **kwargs)
+        except info.SummaryValidationError as error:
+            if "unsupported information class" not in str(error):
+                raise
+            # Synthetic schema tests model a future material-correct solver.
+            # Production validation never receives this test-only sentinel.
+            return "f" * 64
+
+    def validate_future_complete(self, document):
+        with mock.patch.object(
+                info, "solver_model_fingerprint",
+                side_effect=self._future_solver_fingerprint):
             info.validate_summary(document, root=self.root)
 
     def test_inventory_is_exactly_all_stored_jester_or_ghost_rows(self):
@@ -98,6 +120,80 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             pieces = {record["primary"], record["secondary"]}
             self.assertTrue(pieces & {"jester", "ghost"})
             self.assertTrue((ROOT / "tablebases" / record["filename"]).exists())
+
+    def test_solver_inventory_classifies_all_45_exactly_once(self):
+        supported = info.supported_solver_inventory()
+        unsupported = info.unsupported_solver_inventory()
+        names = [filename for filename, _ in supported] + list(unsupported)
+        self.assertEqual(len(supported), 28)
+        self.assertEqual(len(unsupported), 17)
+        self.assertEqual(len(names), len(set(names)))
+        self.assertEqual(set(names), set(info.AFFECTED_FILENAMES))
+        counts = {}
+        for filename, domain in supported:
+            self.assertEqual(info.solver_domain(filename), domain)
+            counts[domain] = counts.get(domain, 0) + 1
+        self.assertEqual(counts, {
+            "primary-jester": 25,
+            "ghost": 1,
+            "double-jester": 1,
+            "joint-jester": 1,
+        })
+
+    def test_unsupported_and_unknown_solver_domains_fail_closed(self):
+        filename = info.unsupported_solver_inventory()[0]
+        with self.assertRaisesRegex(
+                info.SummaryValidationError, "unsupported information class"):
+            info.solver_model_fingerprint(filename)
+        with self.assertRaisesRegex(
+                info.SummaryValidationError, "unknown information class"):
+            info.solver_model_fingerprint("not-a-table.uftb")
+        with self.assertRaisesRegex(
+                info.SummaryValidationError, "unsupported information class"):
+            info.validate_summary(self.document, root=self.root)
+
+    def test_solver_fingerprints_are_isolated_by_implementation_domain(self):
+        representatives = {
+            "primary-jester": "kjesterk.uftb",
+            "ghost": "kghostk.uftb",
+            "double-jester": "kjesterjesterk.uftb",
+            "joint-jester": "kjesterkjester.uftb",
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            source_root = Path(directory)
+            all_sources = {
+                path for paths in info.SOLVER_DOMAIN_SOURCES.values()
+                for path in paths
+            }
+            for source in all_sources:
+                destination = source_root / source.relative_to(ROOT)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(source.read_bytes())
+            before = {
+                domain: info.solver_model_fingerprint(filename, root=source_root)
+                for domain, filename in representatives.items()
+            }
+
+            ghost_source = (source_root /
+                            info.GHOST_SOLVER_SOURCES[-1].relative_to(ROOT))
+            ghost_source.write_bytes(ghost_source.read_bytes() + b"\n// drift\n")
+            after_ghost = {
+                domain: info.solver_model_fingerprint(filename, root=source_root)
+                for domain, filename in representatives.items()
+            }
+            self.assertNotEqual(after_ghost["ghost"], before["ghost"])
+            for domain in ("primary-jester", "double-jester", "joint-jester"):
+                self.assertEqual(after_ghost[domain], before[domain])
+
+            shared_source = (source_root /
+                             info.SHARED_SOLVER_SOURCES[0].relative_to(ROOT))
+            shared_source.write_bytes(shared_source.read_bytes() + b"\n// drift\n")
+            after_shared = {
+                domain: info.solver_model_fingerprint(filename, root=source_root)
+                for domain, filename in representatives.items()
+            }
+            for domain in representatives:
+                self.assertNotEqual(after_shared[domain], after_ghost[domain])
 
     def test_semantics_documents_fresh_maximal_public_view(self):
         self.assertEqual(info.SEMANTICS["id"],
@@ -153,7 +249,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             int(records["kjesterknightk.uftb"]["states"]) // 2)
 
     def test_complete_exact_sha_bound_document_validates(self):
-        info.validate_summary(self.document, root=self.root)
+        self.validate_future_complete(self.document)
 
     def test_rejects_any_belief_cap(self):
         self.assert_invalid(
@@ -249,7 +345,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         states = self.document["files"][filename]["states_per_side"]
         self._set_side_counts(
             filename, "first", (5, 7, states - 18), (2, 3, 1))
-        info.validate_summary(self.document, root=self.root)
+        self.validate_future_complete(self.document)
         totals = [[0, 999, 888, 777], [0, 0, 0, states]]
         # The exact admission additionally rejects one win, two losses, and one
         # draw beyond the older concrete audit.
@@ -274,7 +370,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         states = self.document["files"][filename]["states_per_side"]
         self._set_side_counts(filename, "first", (0, 0, states - 6),
                               (2, 3, 1))
-        info.validate_summary(self.document, root=self.root)
+        self.validate_future_complete(self.document)
         with self.assertRaisesRegex(
                 info.SummaryValidationError,
                 "native-audited unreachable"):

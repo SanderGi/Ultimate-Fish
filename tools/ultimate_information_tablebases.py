@@ -65,14 +65,29 @@ OBSERVATION_MODEL_SOURCES = (
     ROOT / "src" / "ultimate" / "information.h",
     ROOT / "src" / "ultimate" / "information.cpp",
 )
-PRIMARY_JESTER_SOLVER_SOURCES = (
+SHARED_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "position.h",
     ROOT / "src" / "ultimate" / "position.cpp",
     ROOT / "src" / "ultimate" / "information.h",
     ROOT / "src" / "ultimate" / "information.cpp",
     ROOT / "src" / "ultimate" / "information_solver.h",
     ROOT / "src" / "ultimate" / "information_solver.cpp",
+)
+PRIMARY_JESTER_SOLVER_SOURCES = (
+    *SHARED_SOLVER_SOURCES,
     ROOT / "src" / "ultimate" / "tablebase.cpp",
+)
+GHOST_SOLVER_SOURCES = (
+    *SHARED_SOLVER_SOURCES,
+    ROOT / "src" / "ultimate" / "ghost_information_tablebase.cpp",
+)
+DOUBLE_JESTER_SOLVER_SOURCES = (
+    *SHARED_SOLVER_SOURCES,
+    ROOT / "src" / "ultimate" / "double_jester_information_tablebase.cpp",
+)
+JOINT_JESTER_SOLVER_SOURCES = (
+    *SHARED_SOLVER_SOURCES,
+    ROOT / "src" / "ultimate" / "joint_jester_information_tablebase.cpp",
 )
 
 # This tuple is intentionally explicit.  If planner ordering, storage-budget
@@ -125,6 +140,45 @@ AFFECTED_FILENAMES = (
     "kjesterghostk.uftb",
     "kjesterkghost.uftb",
 )
+
+# Exact source domains currently implemented by the repository.  Keep this
+# list explicit: similarity of a filename is not proof that a solver's state
+# model is closed for that material.  In particular, the symbolic Ghost kernel
+# is K+Ghost-v-K only and must never authenticate a Ghost-plus-extra table.
+PRIMARY_JESTER_FILENAMES = (
+    "kjesterk.uftb",
+    "kjesterknightk.uftb", "kjesterkknight.uftb",
+    "kjesterqueenk.uftb", "kjesterkqueen.uftb",
+    "kjesterrookk.uftb", "kjesterkrook.uftb",
+    "kjesterbishopk.uftb", "kjesterkbishop.uftb",
+    "kjesterbombk.uftb", "kjesterkbomb.uftb",
+    "kjesterninjak.uftb", "kjesterkninja.uftb",
+    "kjesterturtlek.uftb", "kjesterkturtle.uftb",
+    "kjestermagek.uftb", "kjesterkmage.uftb",
+    "kjesterparasitek.uftb", "kjesterkparasite.uftb",
+    "kjestergiantk.uftb", "kjesterkgiant.uftb",
+    "kjesterfishermank.uftb", "kjesterkfisherman.uftb",
+    "kjesterdragonk.uftb", "kjesterkdragon.uftb",
+)
+SOLVER_DOMAIN_FILENAMES = {
+    "primary-jester": PRIMARY_JESTER_FILENAMES,
+    "ghost": ("kghostk.uftb",),
+    "double-jester": ("kjesterjesterk.uftb",),
+    "joint-jester": ("kjesterkjester.uftb",),
+}
+SOLVER_DOMAIN_SOURCES = {
+    "primary-jester": PRIMARY_JESTER_SOLVER_SOURCES,
+    "ghost": GHOST_SOLVER_SOURCES,
+    "double-jester": DOUBLE_JESTER_SOLVER_SOURCES,
+    "joint-jester": JOINT_JESTER_SOLVER_SOURCES,
+}
+_ROUTED_FILENAMES = tuple(
+    filename for filenames in SOLVER_DOMAIN_FILENAMES.values()
+    for filename in filenames)
+if (len(_ROUTED_FILENAMES) != len(set(_ROUTED_FILENAMES)) or
+        not set(_ROUTED_FILENAMES) <= set(AFFECTED_FILENAMES) or
+        set(SOLVER_DOMAIN_FILENAMES) != set(SOLVER_DOMAIN_SOURCES)):
+    raise RuntimeError("information solver-domain inventory is inconsistent")
 
 SEMANTICS = {
     "id": SEMANTICS_ID,
@@ -221,7 +275,8 @@ def semantics_fingerprint() -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def _source_fingerprint(paths: Sequence[Path], *, domain: str) -> str:
+def _source_fingerprint(paths: Sequence[Path], *, domain: str,
+                        root: Path = ROOT) -> str:
     digest = hashlib.sha256()
     # UFIW2 has no separate semantics field, so its model SHA must bind the
     # epistemic contract as well as C++ source bytes.  This makes every v1
@@ -234,7 +289,7 @@ def _source_fingerprint(paths: Sequence[Path], *, domain: str) -> str:
     digest.update(contract)
     for path in paths:
         relative = path.relative_to(ROOT).as_posix().encode()
-        payload = path.read_bytes()
+        payload = (root / path.relative_to(ROOT)).read_bytes()
         digest.update(len(relative).to_bytes(4, "little"))
         digest.update(relative)
         digest.update(len(payload).to_bytes(8, "little"))
@@ -248,17 +303,47 @@ def observation_model_fingerprint() -> str:
         OBSERVATION_MODEL_SOURCES, domain="observation-model")
 
 
-def solver_model_fingerprint(filename: str | None = None) -> str:
+def supported_solver_inventory() -> tuple[tuple[str, str], ...]:
+    """Return every currently solvable affected filename and exact domain."""
+    by_filename = {
+        filename: domain
+        for domain, filenames in SOLVER_DOMAIN_FILENAMES.items()
+        for filename in filenames
+    }
+    return tuple((filename, by_filename[filename])
+                 for filename in AFFECTED_FILENAMES if filename in by_filename)
+
+
+def unsupported_solver_inventory() -> tuple[str, ...]:
+    """Return affected classes lacking a material-correct exact solver."""
+    supported = {filename for filename, _ in supported_solver_inventory()}
+    return tuple(filename for filename in AFFECTED_FILENAMES
+                 if filename not in supported)
+
+
+def solver_domain(filename: str) -> str:
+    """Return the exact implementation domain, rejecting every open class."""
+    if filename not in AFFECTED_FILENAMES:
+        raise SummaryValidationError(f"unknown information class {filename}")
+    for domain, filenames in SOLVER_DOMAIN_FILENAMES.items():
+        if filename in filenames:
+            return domain
+    raise SummaryValidationError(
+        f"unsupported information class {filename}; no material-correct "
+        "exact solver is implemented")
+
+
+def solver_model_fingerprint(filename: str, *, root: Path = ROOT) -> str:
     """Bind one class to the move generator and exact proof kernel it used.
 
     The filename argument deliberately makes this a per-class contract. Ghost
     and two-sided-information solvers can add their own source sets without
     invalidating completed one-primary-Jester proofs.
     """
-    if filename is not None and filename not in AFFECTED_FILENAMES:
-        raise SummaryValidationError(f"unknown information class {filename}")
+    domain = solver_domain(filename)
     return _source_fingerprint(
-        PRIMARY_JESTER_SOLVER_SOURCES, domain="solver-model")
+        SOLVER_DOMAIN_SOURCES[domain], domain=f"solver-model:{domain}",
+        root=root)
 
 
 def states_per_side(record: Mapping[str, object]) -> int:

@@ -175,9 +175,22 @@ bare-King wins.
 The overlay is SHA-256-bound to concrete table
 `3d896b07c0f7ee97da5aabefee6551c90732bbc200343a4af51a08b678e236aa`
 and legal-dot-v2 solver model
-`4c8261f49e59597e287ea03f0ccb50118d1f5fc2f320b3804f091279da6919b3`.
+`c880b06438be746b7acd128ab93bf7b3c68f0f5f8ba624943535e392161b2843`.
 It contains all 985,920 dense concrete records; unreachable records remain
 zero-valued and are accounted for separately rather than silently dropped.
+
+The first two K+K+2 primary-Jester strata reuse that overlay and the same
+authenticated solver model. Their exact legal-root results are:
+
+| Material class | First material owner starts W / L / D | Second material owner / bare King starts W / L / D | Concrete unreachable W / L / D by starting side |
+| --- | ---: | ---: | ---: |
+| K+Jester+Knight vs K | 14,798,084 / 0 / 0 | 242,136 / 16,055,072 / 2,681,752 | first: 4,180,876 / 0 / 0; second: 0 / 0 / 0 |
+| K+Jester vs K+Knight | 2,898,404 / 0 / 12,987,312 | 334,432 / 121,472 / 18,523,056 | first: 3,093,244 / 0 / 0; second: 0 / 0 / 0 |
+
+The owner-Knight graph contains 16,680,210 ambiguous pairs and 368,828,812
+transition observations. The opposing-Knight graph contains 17,233,738 pairs
+and 400,132,808 transition observations. Both have zero empty uniform-action
+sets and zero Bellman/rank residuals after their legal-dot root splits.
 
 ## Invalidated v1 results
 

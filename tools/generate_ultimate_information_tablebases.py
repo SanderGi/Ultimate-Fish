@@ -52,6 +52,12 @@ SUMMARY_RE = re.compile(
 FIXED_RE = re.compile(
     r"^information_fixed_point .* bellman_residual (?P<bellman>\d+) "
     r"rank_residual (?P<rank>\d+)$")
+SYMBOLIC_RE = re.compile(
+    r"^information_symbolic_certificate .* "
+    r"bellman_residual (?P<bellman>\d+) "
+    r"monotonicity_residual (?P<monotonicity>\d+) "
+    r"singleton_residual (?P<singleton>\d+) "
+    r"belief_cap none powerset_exact 1$")
 
 
 def _records() -> dict[str, Mapping[str, object]]:
@@ -88,9 +94,12 @@ def load_checkpoint(path: Path) -> dict[str, object]:
     if not isinstance(document.get("files"), dict):
         raise RuntimeError(f"{path}: files must be an object")
     for filename, entry in document["files"].items():
+        try:
+            expected_model = information.solver_model_fingerprint(filename)
+        except information.SummaryValidationError as error:
+            raise RuntimeError(f"{path}: {error}") from error
         if (not isinstance(entry, dict) or
-                entry.get("solver_model_sha256") !=
-                information.solver_model_fingerprint(filename)):
+                entry.get("solver_model_sha256") != expected_model):
             raise RuntimeError(
                 f"{path}: stale solver model for completed {filename}")
     return document
@@ -162,6 +171,11 @@ def run_solver(command: list[str], *, label: str = "") -> dict[int, dict[str, in
             fixed_seen = True
             if int(match["bellman"]) or int(match["rank"]):
                 raise RuntimeError("fixed-point solver reported a residual")
+        if match := SYMBOLIC_RE.match(line):
+            fixed_seen = True
+            if any(int(match[field]) for field in
+                   ("bellman", "monotonicity", "singleton")):
+                raise RuntimeError("symbolic solver reported a residual")
         if match := SUMMARY_RE.match(line):
             values = {key: int(value) for key, value in match.groupdict().items()
                       if key != "side"}
@@ -221,15 +235,78 @@ def entry_from_run(record: Mapping[str, object],
     }
 
 
+def solver_command(args: argparse.Namespace, record: Mapping[str, object],
+                   overlay: Path, source_sha256: str,
+                   model_sha256: str) -> list[str]:
+    """Build the exact material-domain command, rejecting open models."""
+    filename = str(record["filename"])
+    try:
+        domain = information.solver_domain(filename)
+    except information.SummaryValidationError as error:
+        raise RuntimeError(str(error)) from error
+    table = ROOT / "tablebases" / filename
+    common = [
+        "--information-source-sha256", source_sha256,
+        "--information-model-sha256", model_sha256,
+    ]
+    if domain == "primary-jester":
+        command = [
+            str(args.binary), "--piece", "jester",
+            "--solve-jester-information", str(table),
+            "--information-overlay", str(overlay),
+            "--information-scratch", str(args.scratch),
+            *common,
+        ]
+        secondary = str(record["secondary"])
+        if secondary:
+            command[3:3] = ["--piece2", secondary]
+            if bool(record["opposing"]):
+                command[5:5] = ["--opposing"]
+        return command
+    if domain == "ghost":
+        return [
+            str(args.ghost_binary), "--input", str(table),
+            "--output", str(overlay), "--scratch", str(args.scratch),
+            *common,
+        ]
+
+    lower_overlay = args.overlays / "kjesterk.ufiw"
+    lower_table = ROOT / "tablebases" / "kjesterk.uftb"
+    lower_source = shards.logical_sha256(lower_table)
+    lower_model = information.solver_model_fingerprint("kjesterk.uftb")
+    if domain == "double-jester":
+        return [
+            str(args.double_jester_binary), "--input", str(table),
+            "--lower-information-overlay", str(lower_overlay),
+            "--lower-concrete", str(lower_table),
+            "--lower-information-source-sha256", lower_source,
+            "--lower-information-model-sha256", lower_model,
+            "--output", str(overlay), "--scratch", str(args.scratch),
+            *common,
+        ]
+    if domain == "joint-jester":
+        return [
+            str(args.joint_jester_binary), "--input", str(table),
+            "--lower-table", str(lower_table),
+            "--lower-overlay", str(lower_overlay),
+            "--source-sha256", source_sha256,
+            "--model-sha256", model_sha256,
+            "--lower-model-sha256", lower_model,
+            "--semantics-id", information.SEMANTICS_ID,
+            "--output", str(overlay), "--scratch", str(args.scratch),
+        ]
+    raise AssertionError(f"unhandled information solver domain {domain}")
+
+
 def solve_one(args: argparse.Namespace) -> None:
     records = _records()
     if args.filename not in information.AFFECTED_FILENAMES:
         raise RuntimeError(f"{args.filename}: not a Jester/Ghost table")
     record = records[args.filename]
-    if (str(record["primary"]) != "jester" or
-            str(record["secondary"]) in {"jester", "ghost"}):
-        raise RuntimeError(
-            f"{args.filename}: compact one-primary-Jester solver is not applicable")
+    try:
+        domain = information.solver_domain(args.filename)
+    except information.SummaryValidationError as error:
+        raise RuntimeError(str(error)) from error
 
     args.overlays.mkdir(parents=True, exist_ok=True)
     overlay = args.overlays / f"{Path(args.filename).stem}.ufiw"
@@ -246,28 +323,20 @@ def solve_one(args: argparse.Namespace) -> None:
             overlay_is_current(overlay, record, source_sha256, model_sha256)):
         print(f"already complete and verified: {args.filename}")
         return
-    command = [
-        str(args.binary), "--piece", "jester",
-        "--solve-jester-information",
-        str(ROOT / "tablebases" / args.filename),
-        "--information-overlay", str(overlay),
-        "--information-scratch", str(args.scratch),
-        "--information-source-sha256", source_sha256,
-        "--information-model-sha256", model_sha256,
-    ]
-    secondary = str(record["secondary"])
-    if secondary:
-        command[3:3] = ["--piece2", secondary]
-        if bool(record["opposing"]):
-            command[5:5] = ["--opposing"]
+    command = solver_command(
+        args, record, overlay, source_sha256, model_sha256)
+    if domain in {"primary-jester", "double-jester", "joint-jester"} and (
+            str(record["secondary"]) or domain != "primary-jester"):
         lower = args.overlays / "kjesterk.ufiw"
         if not lower.exists():
             raise RuntimeError(
                 f"{lower} is required; solve kjesterk.uftb first")
-        command.extend(["--lower-information-overlay", str(lower)])
-        command.extend([
-            "--lower-information-source-sha256",
-            shards.logical_sha256(ROOT / "tablebases" / "kjesterk.uftb")])
+        if domain == "primary-jester":
+            command.extend(["--lower-information-overlay", str(lower)])
+            command.extend([
+                "--lower-information-source-sha256",
+                shards.logical_sha256(
+                    ROOT / "tablebases" / "kjesterk.uftb")])
 
     summaries = run_solver(command, label=args.filename)
     document = merge_checkpoint_entry(
@@ -288,6 +357,15 @@ def main() -> None:
         "filename", choices=(*information.AFFECTED_FILENAMES, "all-one-jester"))
     parser.add_argument("--binary", type=Path,
                         default=ROOT / "src" / "ultimate_tablebase")
+    parser.add_argument("--ghost-binary", type=Path,
+                        default=ROOT / "src" /
+                        "ultimate_ghost_information_tablebase")
+    parser.add_argument("--double-jester-binary", type=Path,
+                        default=ROOT / "src" /
+                        "ultimate_double_jester_information_tablebase")
+    parser.add_argument("--joint-jester-binary", type=Path,
+                        default=ROOT / "src" /
+                        "ultimate_joint_jester_information_tablebase")
     parser.add_argument("--checkpoint", type=Path, default=DEFAULT_CHECKPOINT)
     parser.add_argument("--overlays", type=Path, default=DEFAULT_OVERLAYS)
     parser.add_argument("--scratch", type=Path, default=Path("/tmp"))

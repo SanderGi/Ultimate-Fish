@@ -1,4 +1,5 @@
 import importlib.util
+import argparse
 from pathlib import Path
 import struct
 import sys
@@ -19,6 +20,17 @@ SPEC.loader.exec_module(generate)
 
 
 class InformationGenerationDriverTests(unittest.TestCase):
+    @staticmethod
+    def _args(root):
+        return argparse.Namespace(
+            binary=root / "primary",
+            ghost_binary=root / "ghost",
+            double_jester_binary=root / "double",
+            joint_jester_binary=root / "joint",
+            overlays=root / "overlays",
+            scratch=root / "scratch",
+        )
+
     def test_summary_line_requires_exact_uncapped_certificate(self):
         line = (
             "information_summary side 1 win 120 loss 417496 draw 75344 "
@@ -34,6 +46,22 @@ class InformationGenerationDriverTests(unittest.TestCase):
             line.replace("belief_cap none", "belief_cap 64")))
         self.assertIsNone(generate.SUMMARY_RE.fullmatch(
             line.replace("exhaustive 1", "exhaustive 0")))
+
+    def test_symbolic_ghost_certificate_requires_zero_exactness_residuals(self):
+        line = (
+            "information_symbolic_certificate iterations 17 bdd_nodes 1234 "
+            "bellman_residual 0 monotonicity_residual 0 "
+            "singleton_residual 0 belief_cap none powerset_exact 1")
+        match = generate.SYMBOLIC_RE.fullmatch(line)
+        self.assertIsNotNone(match)
+        assert match is not None
+        self.assertTrue(all(int(match[field]) == 0 for field in
+                            ("bellman", "monotonicity", "singleton")))
+        bad = generate.SYMBOLIC_RE.fullmatch(
+            line.replace("singleton_residual 0", "singleton_residual 1"))
+        self.assertIsNotNone(bad)
+        assert bad is not None
+        self.assertEqual(int(bad["singleton"]), 1)
 
     def test_checkpoint_is_bound_to_current_solver_sources(self):
         document = generate._empty_document()  # pylint: disable=protected-access
@@ -126,6 +154,67 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 document["files"]["kjesterk.uftb"]["marker"], "first")
             self.assertEqual(
                 document["files"]["kjesterknightk.uftb"]["marker"], "second")
+
+    def test_commands_route_to_each_exact_solver_domain(self):
+        records = generate._records()  # pylint: disable=protected-access
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            args = self._args(root)
+            cases = {
+                "kjesterk.uftb": (str(args.binary), "--solve-jester-information"),
+                "kghostk.uftb": (str(args.ghost_binary), "--input"),
+                "kjesterjesterk.uftb": (
+                    str(args.double_jester_binary),
+                    "--lower-information-model-sha256"),
+                "kjesterkjester.uftb": (
+                    str(args.joint_jester_binary), "--semantics-id"),
+            }
+            for filename, (binary, required) in cases.items():
+                with self.subTest(filename=filename):
+                    command = generate.solver_command(
+                        args, records[filename], root / f"{filename}.ufiw",
+                        "1" * 64,
+                        generate.information.solver_model_fingerprint(filename))
+                    self.assertEqual(command[0], binary)
+                    self.assertIn(required, command)
+                    self.assertIn("1" * 64, command)
+
+            double = generate.solver_command(
+                args, records["kjesterjesterk.uftb"], root / "double.ufiw",
+                "1" * 64,
+                generate.information.solver_model_fingerprint(
+                    "kjesterjesterk.uftb"))
+            lower_index = double.index("--lower-information-model-sha256") + 1
+            self.assertEqual(
+                double[lower_index],
+                generate.information.solver_model_fingerprint("kjesterk.uftb"))
+            self.assertNotEqual(
+                double[lower_index],
+                generate.information.solver_model_fingerprint(
+                    "kjesterjesterk.uftb"))
+
+    def test_primary_jester_secondary_routing_preserves_material_layout(self):
+        records = generate._records()  # pylint: disable=protected-access
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            args = self._args(root)
+            command = generate.solver_command(
+                args, records["kjesterkknight.uftb"], root / "out.ufiw",
+                "1" * 64,
+                generate.information.solver_model_fingerprint(
+                    "kjesterkknight.uftb"))
+            self.assertEqual(command[command.index("--piece2") + 1], "knight")
+            self.assertIn("--opposing", command)
+
+    def test_unsupported_material_never_routes_to_a_nearby_solver(self):
+        records = generate._records()  # pylint: disable=protected-access
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with self.assertRaisesRegex(RuntimeError,
+                                        "unsupported information class"):
+                generate.solver_command(
+                    self._args(root), records["kghostdragonk.uftb"],
+                    root / "bad.ufiw", "1" * 64, "2" * 64)
 
 
 if __name__ == "__main__":

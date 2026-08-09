@@ -55,8 +55,14 @@ OBJS = $(notdir $(SRCS:.cpp=.o))
 # protocol binary while sharing the project's build/tooling conventions.
 ULTIMATE_SRCS = ultimate/main.cpp ultimate/position.cpp ultimate/search.cpp ultimate/draft.cpp \
 	ultimate/tablebase_probe.cpp ultimate/information.cpp ultimate/nnue.cpp
+ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cpp \
+	ultimate/information_solver.cpp ultimate/nnue.cpp
 
-.PHONY: ultimatefish ultimate-test ultimate-information-test ultimate-tablebase ultimate-nnue-reference
+.PHONY: ultimatefish ultimate-test ultimate-information-test ultimate-tablebase \
+	ultimate-nnue-reference ultimate-information-solvers \
+	ultimate-ghost-information-tablebase ultimate-double-jester-information-tablebase \
+	ultimate-joint-jester-information-tablebase ultimate-information-solvers-self-test \
+	ultimate-information-solvers-clean
 ultimatefish:
 	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic $(ULTIMATE_SRCS) -o ultimatefish
 
@@ -75,6 +81,35 @@ ultimate-information-test:
 		../tests/ultimate_information_solver.cpp ultimate/information_solver.cpp \
 		-o ultimate_information_solver_test
 	./ultimate_information_solver_test
+
+ultimate-ghost-information-tablebase:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		ultimate/ghost_information_tablebase.cpp $(ULTIMATE_INFORMATION_COMMON_SRCS) \
+		-o ultimate_ghost_information_tablebase
+
+ultimate-double-jester-information-tablebase:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		ultimate/double_jester_information_tablebase.cpp $(ULTIMATE_INFORMATION_COMMON_SRCS) \
+		-o ultimate_double_jester_information_tablebase
+
+ultimate-joint-jester-information-tablebase:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		ultimate/joint_jester_information_tablebase.cpp $(ULTIMATE_INFORMATION_COMMON_SRCS) \
+		-o ultimate_joint_jester_information_tablebase
+
+ultimate-information-solvers: ultimate-ghost-information-tablebase \
+	ultimate-double-jester-information-tablebase \
+	ultimate-joint-jester-information-tablebase
+
+ultimate-information-solvers-self-test: ultimate-information-solvers
+	./ultimate_ghost_information_tablebase --self-test
+	./ultimate_double_jester_information_tablebase --self-test
+	./ultimate_joint_jester_information_tablebase --self-test-only --scratch /tmp
+
+ultimate-information-solvers-clean:
+	@rm -f ultimate_ghost_information_tablebase \
+		ultimate_double_jester_information_tablebase \
+		ultimate_joint_jester_information_tablebase
 
 ultimate-test:
 	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror ../tests/ultimate_rules.cpp \
@@ -853,7 +888,7 @@ install:
 	-strip $(BINDIR)/$(EXE)
 
 # clean all
-clean: objclean profileclean
+clean: objclean profileclean ultimate-information-solvers-clean
 	@rm -f .depend *~ core
 
 # evaluation network (nnue)
