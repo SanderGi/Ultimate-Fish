@@ -31,6 +31,9 @@ class InformationGenerationDriverTests(unittest.TestCase):
             joint_jester_binary=root / "joint",
             ghost_extra_binary=root / "ghost-extra",
             ghost_extra_transitions=root / "ghost-extra-transitions",
+            reciprocal_ghost_extra_binary=root / "reciprocal-ghost-extra",
+            reciprocal_ghost_extra_transitions=
+                root / "reciprocal-ghost-extra-transitions",
             ghost_pair_binary=root / "ghost-pair",
             ghost_pair_transitions=root / "ghost-pair-transitions",
             jester_ghost_binary=root / "jester-ghost",
@@ -206,6 +209,39 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 path, source, model,
                 lower_jester_overlay_sha256=lower_jester))
 
+    def test_arbitrary_reuse_authenticates_reciprocal_ufgx(self):
+        source, model = "1" * 64, "2" * 64
+        payload = b"exact-reciprocal-public-extra-roots"
+        header = bytearray(988)
+        header[:8] = b"UFGX2\0\0\0"
+        struct.pack_into("<II", header, 8, 2, 988)
+        struct.pack_into("<Q", header, 92, 988)
+        struct.pack_into("<Q", header, 148, len(payload))
+        header[156:220] = source.encode()
+        header[220:284] = model.encode()
+        header[284:348] = (
+            generate.information.observation_model_fingerprint().encode())
+        header[348:412] = (
+            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        header[860:924] = hashlib.sha256(payload).hexdigest().encode()
+        semantics = b"fresh-maximal-public-view-v2:reciprocal-bishop-ghost"
+        header[924:924 + len(semantics)] = semantics
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "reciprocal.ufgx"
+            path.write_bytes(header + payload)
+            self.assertTrue(generate.arbitrary_is_current(path, source, model))
+            with path.open("r+b") as stream:
+                stream.seek(348)
+                stream.write(b"0" * 64)
+            self.assertFalse(generate.arbitrary_is_current(path, source, model))
+            with path.open("r+b") as stream:
+                stream.seek(348)
+                stream.write(
+                    b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+                stream.seek(988)
+                stream.write(b"X")
+            self.assertFalse(generate.arbitrary_is_current(path, source, model))
+
     def test_checkpoint_merge_preserves_independent_completed_rows(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "partial.json"
@@ -248,6 +284,9 @@ class InformationGenerationDriverTests(unittest.TestCase):
                     str(args.joint_jester_binary), "--semantics-id"),
                 "kbishopghostk.uftb": (
                     str(args.ghost_extra_binary), "--solve-external"),
+                "kbishopkghost.uftb": (
+                    str(args.reciprocal_ghost_extra_binary),
+                    "--output-arbitrary"),
                 "kghostghostk.uftb": (
                     str(args.ghost_pair_binary), "--output-arbitrary"),
                 "kjesterghostk.uftb": (
@@ -291,6 +330,19 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 str(args.ghost_pair_transitions))
             self.assertIn(str(args.overlays / "kghostghostk.ufgg"),
                           ghost_pair)
+
+            reciprocal = generate.solver_command(
+                args, records["kbishopkghost.uftb"], root / "reciprocal.ufiw",
+                "0649b7859ba72c8534929a902f18b3ca1a74cd7d7b3713ac109633e83a85ac15",
+                generate.information.solver_model_fingerprint(
+                    "kbishopkghost.uftb"))
+            self.assertEqual(
+                reciprocal[0], str(args.reciprocal_ghost_extra_binary))
+            self.assertEqual(
+                reciprocal[reciprocal.index("--transition-prefix") + 1],
+                str(args.reciprocal_ghost_extra_transitions))
+            self.assertIn(str(args.overlays / "kbishopkghost.ufgx"),
+                          reciprocal)
 
     def test_primary_jester_secondary_routing_preserves_material_layout(self):
         records = generate._records()  # pylint: disable=protected-access

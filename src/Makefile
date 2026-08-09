@@ -65,6 +65,10 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cp
 	ultimate-ghost-extra-information-preflight \
 	ultimate-ghost-extra-information-preflight-self-test \
 	ultimate-ghost-extra-information-preflight-sample \
+	ultimate-reciprocal-bishop-ghost-information-tablebase \
+	ultimate-ghost-public-extra-model-test \
+	ultimate-reciprocal-bishop-ghost-information-test \
+	ultimate-reciprocal-bishop-ghost-information-self-test \
 	ultimate-ghost-pair-information-tablebase \
 	ultimate-ghost-pair-information-test \
 	ultimate-ghost-pair-information-self-test \
@@ -126,6 +130,41 @@ ultimate-ghost-extra-information-preflight-sample: \
 	./ultimate_ghost_extra_information_preflight --material opposing \
 		--input ../tablebases/kbishopkghost.uftb \
 		--lower-ghost-sidecar ../tablebases/kghostk.ufgm --samples 5000
+
+ULTIMATE_RECIPROCAL_BISHOP_GHOST_SRCS = \
+	ultimate/ghost_public_extra_information_tablebase.cpp \
+	ultimate/ghost_public_extra_information_solver.cpp \
+	ultimate/ghost_public_extra_model.cpp ultimate/external_robdd.cpp \
+	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+	ultimate/position.cpp ultimate/nnue.cpp
+
+ultimate-reciprocal-bishop-ghost-information-tablebase:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		$(ULTIMATE_RECIPROCAL_BISHOP_GHOST_SRCS) \
+		-o ultimate_reciprocal_bishop_ghost_information_tablebase
+
+ultimate-ghost-public-extra-model-test:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate ../tests/ultimate_ghost_public_extra_model.cpp \
+		ultimate/ghost_public_extra_model.cpp ultimate/information.cpp \
+		ultimate/position.cpp ultimate/nnue.cpp \
+		-o ultimate_ghost_public_extra_model_test
+	./ultimate_ghost_public_extra_model_test
+
+ultimate-reciprocal-bishop-ghost-information-test: \
+	ultimate-ghost-public-extra-model-test
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate \
+		../tests/ultimate_ghost_public_extra_information_solver.cpp \
+		$(filter-out ultimate/ghost_public_extra_information_tablebase.cpp, \
+			$(ULTIMATE_RECIPROCAL_BISHOP_GHOST_SRCS)) \
+		-o ultimate_reciprocal_bishop_ghost_information_solver_test
+	./ultimate_reciprocal_bishop_ghost_information_solver_test
+
+ultimate-reciprocal-bishop-ghost-information-self-test: \
+	ultimate-reciprocal-bishop-ghost-information-tablebase
+	./ultimate_reciprocal_bishop_ghost_information_tablebase --self-test \
+		--scratch /tmp/ultimate-reciprocal-bishop-ghost-cli
 
 ULTIMATE_GHOST_PAIR_SRCS = ultimate/ghost_pair_information_tablebase.cpp \
 	ultimate/ghost_pair_information_solver.cpp \
@@ -196,7 +235,8 @@ ultimate-information-solvers: ultimate-ghost-information-tablebase \
 	ultimate-double-jester-information-tablebase \
 	ultimate-joint-jester-information-tablebase \
 	ultimate-ghost-pair-information-tablebase \
-	ultimate-jester-ghost-information-tablebase
+	ultimate-jester-ghost-information-tablebase \
+	ultimate-reciprocal-bishop-ghost-information-tablebase
 
 ultimate-information-solvers-self-test: ultimate-information-solvers
 	./ultimate_ghost_information_tablebase --self-test
@@ -206,6 +246,8 @@ ultimate-information-solvers-self-test: ultimate-information-solvers
 		--scratch /tmp/ultimate-ghost-pair-cli
 	./ultimate_jester_ghost_information_tablebase --self-test \
 		--scratch /tmp/ultimate-jester-ghost-cli
+	./ultimate_reciprocal_bishop_ghost_information_tablebase --self-test \
+		--scratch /tmp/ultimate-reciprocal-bishop-ghost-cli
 
 ultimate-information-solvers-clean:
 	@rm -f ultimate_ghost_information_tablebase \
@@ -215,6 +257,9 @@ ultimate-information-solvers-clean:
 		ultimate_ghost_pair_information_solver_test \
 		ultimate_jester_ghost_information_tablebase \
 		ultimate_jester_ghost_information_solver_test \
+		ultimate_reciprocal_bishop_ghost_information_tablebase \
+		ultimate_reciprocal_bishop_ghost_information_solver_test \
+		ultimate_ghost_public_extra_model_test \
 		ultimate_ghost_information_probe_test
 
 ultimate-test:

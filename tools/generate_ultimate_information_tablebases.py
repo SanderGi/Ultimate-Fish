@@ -181,8 +181,18 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 source_offset, model_offset, payload_sha_offset = 176, 240, 688
                 semantics_offset = 752
                 semantics = b"king-jester-x-hidden-ghost-correlated-v1"
+                expected_version = 1
+            elif magic == b"UFGX2\0\0\0":
+                expected_header, payload_offset = 988, 148
+                first_section_offset = 92
+                source_offset, model_offset, payload_sha_offset = 156, 220, 860
+                semantics_offset = 924
+                semantics = b"fresh-maximal-public-view-v2:reciprocal-bishop-ghost"
+                expected_version = 2
             else:
                 return False
+            if magic != b"UFGX2\0\0\0":
+                expected_version = 1
             if header_bytes != expected_header:
                 return False
             stream.seek(0)
@@ -207,7 +217,7 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                     information.observation_model_fingerprint() and
                 header[544:608].decode() ==
                     "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
-        else:
+        elif magic == b"UFJG1\0\0\0":
             dependencies_current = (
                 header[304:368].decode() ==
                     information.observation_model_fingerprint() and
@@ -216,9 +226,15 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                     lower_jester_overlay_sha256 and
                 header[624:688].decode() ==
                     "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        else:
+            dependencies_current = (
+                header[284:348].decode() ==
+                    information.observation_model_fingerprint() and
+                header[348:412].decode() ==
+                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
         return (
             header[:8] == magic and
-            struct.unpack_from("<I", header, 8)[0] == 1 and
+            struct.unpack_from("<I", header, 8)[0] == expected_version and
             struct.unpack_from("<Q", header,
                                first_section_offset)[0] == expected_header and
             header[source_offset:source_offset+64].decode() == source_sha256 and
@@ -365,6 +381,33 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             information.observation_model_fingerprint(),
             *common,
         ]
+    if domain == "reciprocal-bishop-ghost":
+        lower = ROOT / "tablebases" / "kghostk.ufgm"
+        payload = lower.read_bytes()
+        if (len(payload) < 320 or payload[:8] != b"UFGM1\0\0\0" or
+                struct.unpack_from("<I", payload, 12)[0] != 320):
+            raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
+        lower_sha = hashlib.sha256(payload).hexdigest()
+        expected_lower_sha = (
+            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        if lower_sha != expected_lower_sha:
+            raise RuntimeError(f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
+        return [
+            str(args.reciprocal_ghost_extra_binary), "--solve",
+            "--transition-prefix", str(args.reciprocal_ghost_extra_transitions),
+            "--input", str(table), "--lower-ghost-sidecar", str(lower),
+            "--scratch", str(args.scratch / "kbishopkghost-exact"),
+            "--output", str(overlay), "--output-arbitrary",
+            str(args.overlays / "kbishopkghost.ufgx"),
+            "--source-sha256", source_sha256,
+            "--model-sha256", model_sha256,
+            "--observation-sha256",
+            information.observation_model_fingerprint(),
+            "--lower-sidecar-sha256", lower_sha,
+            "--lower-source-sha256", payload[96:160].decode(),
+            "--lower-model-sha256", payload[160:224].decode(),
+            "--lower-observation-sha256", payload[224:288].decode(),
+        ]
     if domain == "ghost-pair":
         lower = ROOT / "tablebases" / "kghostk.ufgm"
         payload = lower.read_bytes()
@@ -491,6 +534,8 @@ def solve_one(args: argparse.Namespace) -> None:
     assert isinstance(files, dict)
     entry = files.get(args.filename)
     arbitrary = (args.overlays / "kghostghostk.ufgg" if domain == "ghost-pair"
+                 else args.overlays / "kbishopkghost.ufgx"
+                 if domain == "reciprocal-bishop-ghost"
                  else args.overlays / "kjesterghostk.ufjg")
     lower_jester_arbitrary_sha = None
     if domain == "jester-ghost":
@@ -502,7 +547,8 @@ def solve_one(args: argparse.Namespace) -> None:
             entry.get("tablebase_sha256") == source_sha256 and
             entry.get("solver_model_sha256") == model_sha256 and
             overlay_is_current(overlay, record, source_sha256, model_sha256) and
-            (domain not in {"ghost-pair", "jester-ghost"} or arbitrary_is_current(
+            (domain not in {"ghost-pair", "jester-ghost",
+                            "reciprocal-bishop-ghost"} or arbitrary_is_current(
                 arbitrary, source_sha256, model_sha256,
                 lower_jester_overlay_sha256=lower_jester_arbitrary_sha))):
         print(f"already complete and verified: {args.filename}")
@@ -519,7 +565,8 @@ def solve_one(args: argparse.Namespace) -> None:
                 f"{lower} is required; solve kjesterk.uftb first")
 
     summaries = run_solver(command, label=args.filename)
-    if domain in {"ghost-pair", "jester-ghost"} and not arbitrary_is_current(
+    if domain in {"ghost-pair", "jester-ghost",
+                  "reciprocal-bishop-ghost"} and not arbitrary_is_current(
             arbitrary, source_sha256, model_sha256,
             lower_jester_overlay_sha256=lower_jester_arbitrary_sha):
         raise RuntimeError(
@@ -554,6 +601,12 @@ def main() -> None:
     parser.add_argument("--ghost-extra-binary", type=Path,
                         default=ROOT / "src" /
                         "ultimate_ghost_extra_information_preflight")
+    parser.add_argument("--reciprocal-ghost-extra-binary", type=Path,
+                        default=ROOT / "src" /
+                        "ultimate_reciprocal_bishop_ghost_information_tablebase")
+    parser.add_argument("--reciprocal-ghost-extra-transitions", type=Path,
+                        default=Path(
+                          "/tmp/kbishopkghost-exact-transitions"))
     parser.add_argument("--ghost-pair-binary", type=Path,
                         default=ROOT / "src" /
                         "ultimate_ghost_pair_information_tablebase")

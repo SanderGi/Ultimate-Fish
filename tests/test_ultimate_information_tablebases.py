@@ -125,8 +125,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         supported = info.supported_solver_inventory()
         unsupported = info.unsupported_solver_inventory()
         names = [filename for filename, _ in supported] + list(unsupported)
-        self.assertEqual(len(supported), 31)
-        self.assertEqual(len(unsupported), 14)
+        self.assertEqual(len(supported), 32)
+        self.assertEqual(len(unsupported), 13)
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(set(names), set(info.AFFECTED_FILENAMES))
         counts = {}
@@ -140,6 +140,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "double-jester": 1,
             "joint-jester": 1,
             "bishop-ghost": 1,
+            "reciprocal-bishop-ghost": 1,
             "ghost-pair": 1,
             "jester-ghost": 1,
         })
@@ -195,6 +196,9 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         self.assertEqual(
             info.solver_sidecar_dependencies("kjesterghostk.uftb"),
             ("kghostk.ufgm",))
+        self.assertEqual(
+            info.solver_sidecar_dependencies("kbishopkghost.uftb"),
+            ("kghostk.ufgm",))
         self.assertTrue((ROOT / "tablebases" / "kghostk.ufgm").exists())
 
     def test_solver_fingerprints_are_isolated_by_implementation_domain(self):
@@ -205,6 +209,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "double-jester": "kjesterjesterk.uftb",
             "joint-jester": "kjesterkjester.uftb",
             "bishop-ghost": "kbishopghostk.uftb",
+            "reciprocal-bishop-ghost": "kbishopkghost.uftb",
             "ghost-pair": "kghostghostk.uftb",
             "jester-ghost": "kjesterghostk.uftb",
         }
@@ -235,6 +240,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             self.assertNotEqual(after_ghost["ghost"], before["ghost"])
             self.assertNotEqual(after_ghost["bishop-ghost"],
                                 before["bishop-ghost"])
+            self.assertNotEqual(after_ghost["reciprocal-bishop-ghost"],
+                                before["reciprocal-bishop-ghost"])
             self.assertNotEqual(after_ghost["ghost-pair"],
                                 before["ghost-pair"])
             self.assertNotEqual(after_ghost["jester-ghost"],
@@ -266,7 +273,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             self.assertNotEqual(after_probe["primary-jester-giant"],
                                 after_shared["primary-jester-giant"])
             for domain in ("ghost", "double-jester", "joint-jester",
-                           "bishop-ghost", "ghost-pair", "jester-ghost"):
+                           "bishop-ghost", "reciprocal-bishop-ghost",
+                           "ghost-pair", "jester-ghost"):
                 self.assertEqual(after_probe[domain], after_shared[domain])
 
             pair_relative = info.GHOST_PAIR_SOLVER_SOURCES[-1].relative_to(ROOT)
@@ -283,6 +291,25 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             for domain in representatives:
                 if domain != "ghost-pair":
                     self.assertEqual(after_pair[domain], after_probe[domain])
+
+            reciprocal_relative = (
+                info.RECIPROCAL_BISHOP_GHOST_SOLVER_SOURCES[-1]
+                .relative_to(ROOT))
+            reciprocal_source = source_root / reciprocal_relative
+            reciprocal_source.write_bytes(
+                reciprocal_source.read_bytes() + b"\n// reciprocal-only drift\n")
+            after_reciprocal = {
+                domain: info.solver_model_fingerprint(filename,
+                                                      root=source_root)
+                for domain, filename in representatives.items()
+            }
+            self.assertNotEqual(
+                after_reciprocal["reciprocal-bishop-ghost"],
+                after_pair["reciprocal-bishop-ghost"])
+            for domain in representatives:
+                if domain != "reciprocal-bishop-ghost":
+                    self.assertEqual(after_reciprocal[domain],
+                                     after_pair[domain])
 
         self.assertEqual(
             info.solver_model_fingerprint("kbishopghostk.uftb"),

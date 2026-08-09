@@ -104,6 +104,26 @@ BISHOP_GHOST_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "external_robdd.cpp",
     ROOT / "src" / "ultimate" / "ghost_extra_information_tablebase.cpp",
 )
+RECIPROCAL_BISHOP_GHOST_SOLVER_SOURCES = (
+    ROOT / "src" / "ultimate" / "position.h",
+    ROOT / "src" / "ultimate" / "position.cpp",
+    ROOT / "src" / "ultimate" / "information.h",
+    ROOT / "src" / "ultimate" / "information.cpp",
+    ROOT / "src" / "ultimate" / "ghost_information_probe.h",
+    ROOT / "src" / "ultimate" / "ghost_information_probe.cpp",
+    ROOT / "src" / "ultimate" / "external_robdd.h",
+    ROOT / "src" / "ultimate" / "external_robdd.cpp",
+    # Textually included read-only by the reciprocal adapter. Keeping it in
+    # this distinct source domain authenticates the dependency without adding
+    # the new reciprocal files to the frozen d597 same-side fingerprint.
+    ROOT / "src" / "ultimate" / "ghost_extra_information_tablebase.cpp",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_model.h",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_model.cpp",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_information_solver.h",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_information_solver.cpp",
+    ROOT / "src" / "ultimate" /
+        "ghost_public_extra_information_tablebase.cpp",
+)
 GHOST_PAIR_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "position.h",
     ROOT / "src" / "ultimate" / "position.cpp",
@@ -234,6 +254,7 @@ SOLVER_DOMAIN_FILENAMES = {
     "double-jester": ("kjesterjesterk.uftb",),
     "joint-jester": ("kjesterkjester.uftb",),
     "bishop-ghost": ("kbishopghostk.uftb",),
+    "reciprocal-bishop-ghost": ("kbishopkghost.uftb",),
     "ghost-pair": ("kghostghostk.uftb",),
     "jester-ghost": ("kjesterghostk.uftb",),
 }
@@ -244,10 +265,12 @@ SOLVER_DOMAIN_SOURCES = {
     "double-jester": DOUBLE_JESTER_SOLVER_SOURCES,
     "joint-jester": JOINT_JESTER_SOLVER_SOURCES,
     "bishop-ghost": BISHOP_GHOST_SOLVER_SOURCES,
+    "reciprocal-bishop-ghost": RECIPROCAL_BISHOP_GHOST_SOLVER_SOURCES,
     "ghost-pair": GHOST_PAIR_SOLVER_SOURCES,
     "jester-ghost": JESTER_GHOST_SOLVER_SOURCES,
 }
 SOLVER_SIDECAR_DEPENDENCIES = {
+    "reciprocal-bishop-ghost": ("kghostk.ufgm",),
     "ghost-pair": ("kghostk.ufgm",),
     "jester-ghost": ("kghostk.ufgm",),
 }
