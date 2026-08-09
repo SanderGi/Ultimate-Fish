@@ -175,11 +175,11 @@ bare-King wins.
 The overlay is SHA-256-bound to concrete table
 `3d896b07c0f7ee97da5aabefee6551c90732bbc200343a4af51a08b678e236aa`
 and legal-dot-v2 solver model
-`e117f7356b01dab8cbd57e5ab78a8fd763ecf13955968bf82a3ae2375cd8a06c`.
+`af8d6187577e6c0fedc0b9643020f843e9b61cab03af63ef2cd2138e0ca41c7b`.
 It contains all 985,920 dense concrete records; unreachable records remain
 zero-valued and are accounted for separately rather than silently dropped.
 
-The `e117f735...` model also treats an observation bucket containing two
+The `af8d6187...` model also treats an observation bucket containing two
 different residual material worlds as a terminal constant when both worlds
 have ended with the same publicly announced winner. A terminal/ongoing mix or
 different winners remains a hard projection error. This case arises when
@@ -214,11 +214,15 @@ The Knight, Bishop, Queen-owner, and Rook-owner payloads were first completed
 under model `095d2301...`, whose exhaustive graph construction threw on every
 two-world lower bucket that was not the exact continuing royal pair. Successful
 completion therefore proves that the new same-winner terminal branch had zero
-executions in those strata. Migration to `e117f735...` changed only UFIW2
+executions in those strata. Migration through `e117f735...` and then to the
+complete `af8d6187...` source inventory changed only UFIW2
 header bytes 96 through 159; bytes 0 through 95 and every payload byte from 160
 onward are identical, all payload SHA-256 values are preserved, and every
 source/model/header/count/conservation check was rerun. `K+Jester versus K`
-itself was independently recomputed under `e117f735...` rather than rebound.
+itself was independently recomputed after the terminal-group correction; its
+payload was then rebound to `af8d6187...` because the only further change was
+adding the already-linked, unchanged `tablebase_probe.{h,cpp}` dependency to
+the certificate's source inventory.
 
 ## First exact Ghost stratum
 

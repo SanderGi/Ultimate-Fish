@@ -199,6 +199,20 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             for domain in representatives:
                 self.assertNotEqual(after_shared[domain], after_ghost[domain])
 
+            probe_source = (source_root / "src" / "ultimate" /
+                            "tablebase_probe.cpp")
+            probe_source.write_bytes(
+                probe_source.read_bytes() + b"\n// probe drift\n")
+            after_probe = {
+                domain: info.solver_model_fingerprint(filename, root=source_root)
+                for domain, filename in representatives.items()
+            }
+            self.assertNotEqual(after_probe["primary-jester"],
+                                after_shared["primary-jester"])
+            for domain in ("ghost", "double-jester", "joint-jester",
+                           "bishop-ghost"):
+                self.assertEqual(after_probe[domain], after_shared[domain])
+
     def test_semantics_documents_fresh_maximal_public_view(self):
         self.assertEqual(info.SEMANTICS["id"],
                          "fresh-maximal-public-view-v2")
