@@ -14,7 +14,9 @@ src/-lstdc++.res
 
 # Neural network for the NNUE evaluation
 **/*.nnue
-
+networks/*pilot*.ufnn
+networks/*pilot*.ufnn.json
+training/*.jsonl
 
 # Build/test artifacts
 *.exe
@@ -49,12 +51,9 @@ src/*.txt
 *.xapk
 reverse-engineering/input/
 reverse-engineering/output/
-tablebases/*.checkpoint
-tablebases/*.tmp
-training/*.jsonl
-networks/*pilot*.ufnn
-networks/*pilot*.ufnn.json
 
 # Cache etc.
 .DS_Store
 tsconfig.tsbuildinfo
+tablebases/*.checkpoint
+tablebases/*.tmp
