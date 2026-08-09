@@ -1,6 +1,8 @@
 import importlib.util
+import copy
 from pathlib import Path
 import sys
+import struct
 import tarfile
 import tempfile
 import unittest
@@ -13,6 +15,11 @@ SPEC = importlib.util.spec_from_file_location(
     TOOLS / "package_ultimate_jester_ghost_aws.py")
 assert SPEC and SPEC.loader
 package = importlib.util.module_from_spec(SPEC); SPEC.loader.exec_module(package)
+RUN_SPEC = importlib.util.spec_from_file_location(
+    "run_ultimate_jester_ghost_aws",
+    TOOLS / "run_ultimate_jester_ghost_aws.py")
+assert RUN_SPEC and RUN_SPEC.loader
+runner = importlib.util.module_from_spec(RUN_SPEC); RUN_SPEC.loader.exec_module(runner)
 
 
 class JesterGhostAwsTests(unittest.TestCase):
@@ -25,19 +32,34 @@ class JesterGhostAwsTests(unittest.TestCase):
 
     def test_manifest_is_gap_free_visibility_aligned_and_bound(self):
         manifest = package.build_manifest(self.lower)
-        self.assertEqual(manifest["schema"], "ultimate-jester-ghost-aws-v1")
-        self.assertEqual(manifest["active_jobs"], 60)
-        self.assertEqual(manifest["parallelism"], 30)
+        runner.validate_manifest(manifest)
+        self.assertEqual(manifest["schema"], "ultimate-jester-ghost-aws-v2")
+        self.assertEqual(manifest["active_jobs"], 40)
+        self.assertEqual(manifest["parallelism"], 29)
+        self.assertEqual(manifest["bootstrap_inputs"], 40)
+        self.assertEqual(manifest["merge_inputs"], 80)
         self.assertEqual(manifest["raw_per_shard"] % 78, 0)
+        self.assertEqual(manifest["half_raw"], 320_424)
         commands = manifest["commands"]["shards"]
-        self.assertEqual(len(commands), 60)
+        self.assertEqual(len(commands), 40)
+        self.assertEqual(len(manifest["commands"]["bootstrap"]), 40)
         cursor = 0
-        for command in commands:
-            begin = int(command[command.index("--raw-begin") + 1])
-            count = int(command[command.index("--raw-count") + 1])
-            self.assertEqual(begin, cursor); self.assertEqual(count, 640_848)
+        counts = {320_424: 0, 640_848: 0}
+        names = []
+        for name, begin, count in manifest["merge_ranges"]:
+            self.assertEqual(begin, cursor)
+            self.assertEqual(begin % 78, 0); self.assertEqual(count % 78, 0)
+            names.append(name); counts[count] += 1
             cursor += count
         self.assertEqual(cursor, package.RAW_GEOMETRIES)
+        self.assertEqual(counts, {320_424: 40, 640_848: 40})
+        self.assertEqual(len(names), len(set(names)))
+        self.assertEqual(
+          [item[0] for item in manifest["active_ranges"][:4]],
+          ["shard-00a", "shard-00b", "shard-01a", "shard-01b"])
+        for command in manifest["commands"]["bootstrap"]:
+            self.assertIn("--verify-transitions", command)
+            self.assertIn("--allow-partial-merge", command)
         self.assertIn("--output-arbitrary", manifest["commands"]["solve"])
         self.assertIn("work/results/kjesterghostk.ufjg", manifest["artifacts"])
         self.assertEqual(
@@ -46,6 +68,34 @@ class JesterGhostAwsTests(unittest.TestCase):
         self.assertEqual(
           package.information.solver_model_fingerprint("kghostghostk.uftb"),
           package.GHOST_PAIR_FINGERPRINT)
+        self.assertEqual(manifest["model_sha256"],
+          package.information.solver_model_fingerprint("kjesterghostk.uftb"))
+
+    def test_runner_rejects_range_drift_and_missing_bootstrap(self):
+        manifest = package.build_manifest(self.lower)
+        corrupt = copy.deepcopy(manifest)
+        corrupt["active_ranges"][0][2] -= 78
+        with self.assertRaisesRegex(RuntimeError, "range inventory drift"):
+            runner.validate_manifest(corrupt)
+        with tempfile.TemporaryDirectory() as directory:
+            with self.assertRaisesRegex(RuntimeError,
+                                         "bootstrap transition ranges are missing"):
+                runner.authenticate_bootstrap(
+                  manifest["commands"]["bootstrap"], Path(directory), 1)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            command = manifest["commands"]["bootstrap"][0]
+            base = root / runner.prefix(command)
+            base.parent.mkdir(parents=True)
+            for suffix in runner.SUFFIXES:
+                Path(f"{base}{suffix}").write_bytes(b"")
+            Path(f"{base}.header").write_bytes(struct.pack(
+              "<8sIIII", b"UFJGT2\0\0", 2, 0,
+              int(runner.option(command, "--raw-begin")) + 78,
+              int(runner.option(command, "--raw-count"))))
+            with self.assertRaisesRegex(RuntimeError,
+                                         "bootstrap range mismatch"):
+                runner.authenticate_bootstrap([command], root, 1)
 
     def test_tar_is_deterministic_and_contains_authenticated_lower(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -14,9 +14,15 @@ import ultimate_information_tablebases as information
 
 ROOT = Path(__file__).resolve().parents[1]
 RAW_GEOMETRIES = 38_450_880
-SHARDS = 60
+BASE_SHARDS = 60
 RAW_PER_SHARD = 640_848  # exactly 8,216 complete 78-visibility cycles
-PARALLELISM = 30
+HALF_RAW = 320_424       # exactly 4,108 complete visibility cycles
+PARALLELISM = 29         # reserve three cores for AWS/system proof work
+ZERO_SHARDS = (
+    2, 5, 8, 11, *range(14, 30), 32, 35, 38, 41, *range(44, 60),
+)
+HEAVY_SHARDS = tuple(index for index in range(BASE_SHARDS)
+                     if index not in ZERO_SHARDS)
 SOURCE_SHA256 = "ad82489372318a7561a43a7c2d0cbc1fdc3e5a840c67470c5eb25704fdfecf7e"
 LOWER_JESTER_SOURCE_SHA256 = "3d896b07c0f7ee97da5aabefee6551c90732bbc200343a4af51a08b678e236aa"
 LOWER_JESTER_MODEL_SHA256 = "0ed6d361e313623234c21f9a1c800947014ce47320b4a71fca4fb20a255587c2"
@@ -53,7 +59,10 @@ def record(path: str, payload: bytes | None = None) -> dict[str, object]:
 
 
 def build_manifest(lower_overlay: Path) -> dict[str, object]:
-    if SHARDS * RAW_PER_SHARD != RAW_GEOMETRIES or RAW_PER_SHARD % 78:
+    if (BASE_SHARDS * RAW_PER_SHARD != RAW_GEOMETRIES or
+            RAW_PER_SHARD % 78 or 2 * HALF_RAW != RAW_PER_SHARD or
+            HALF_RAW % 78 or len(ZERO_SHARDS) != 40 or
+            len(HEAVY_SHARDS) != 20):
         raise RuntimeError("Jester/Ghost visibility-cycle shard drift")
     if information.solver_model_fingerprint("kbishopghostk.uftb") != BISHOP_GHOST_FINGERPRINT:
         raise RuntimeError("active Bishop+Ghost fingerprint changed")
@@ -92,34 +101,57 @@ def build_manifest(lower_overlay: Path) -> dict[str, object]:
         "--max-resident-bytes", str(170 << 30),
         "--min-free-disk-bytes", str(50 << 30),
     ]
-    ranges = [(f"shard-{index:02d}", index * RAW_PER_SHARD, RAW_PER_SHARD)
-              for index in range(SHARDS)]
+    bootstrap_ranges = [
+        (f"shard-{index:02d}", index * RAW_PER_SHARD, RAW_PER_SHARD)
+        for index in ZERO_SHARDS]
+    active_ranges = [
+        (f"shard-{index:02d}{suffix}",
+         index * RAW_PER_SHARD + half * HALF_RAW, HALF_RAW)
+        for index in HEAVY_SHARDS
+        for half, suffix in enumerate(("a", "b"))]
+    merge_ranges = sorted(bootstrap_ranges + active_ranges,
+                          key=lambda item: item[1])
+    bootstrap_commands = [["./ultimate_jester_ghost_information_tablebase",
+        "--verify-transitions", "--transition-prefix",
+        f"work/transitions/{name}", "--raw-begin", str(begin),
+        "--raw-count", str(count), "--allow-partial-merge", *binding]
+        for name, begin, count in bootstrap_ranges]
     shard_commands = [["./ultimate_jester_ghost_information_tablebase",
         "--compile-transitions", "--transition-prefix",
         f"work/transitions/{name}", "--raw-begin", str(begin),
-        "--raw-count", str(count), *binding] for name, begin, count in ranges]
+        "--raw-count", str(count), *binding]
+        for name, begin, count in active_ranges]
     merge = ["./ultimate_jester_ghost_information_tablebase",
              "--merge-transitions", "--transition-prefix",
              "work/transitions/kjesterghostk"]
-    for name, _, _ in ranges:
+    for name, _, _ in merge_ranges:
         merge += ["--shard", f"work/transitions/{name}"]
     merge += binding
     files = [record(path) for path in BUILD_INPUTS]
     files.append(record("tablebases/kjesterk.ufiw", overlay))
     transition = "work/transitions/kjesterghostk"
     return {
-        "schema": "ultimate-jester-ghost-aws-v1",
+        "schema": "ultimate-jester-ghost-aws-v2",
         "source_sha256": SOURCE_SHA256, "model_sha256": model,
         "observation_sha256": observation,
         "lower_jester_overlay_sha256": lower_overlay_sha,
         "lower_ghost_sidecar_sha256": LOWER_GHOST_SHA256,
         "raw_geometries": RAW_GEOMETRIES, "raw_per_shard": RAW_PER_SHARD,
-        "active_jobs": SHARDS, "parallelism": PARALLELISM,
+        "half_raw": HALF_RAW, "base_shards": BASE_SHARDS,
+        "bootstrap_inputs": len(bootstrap_ranges),
+        "merge_inputs": len(merge_ranges),
+        "active_jobs": len(active_ranges), "parallelism": PARALLELISM,
+        "zero_shards": list(ZERO_SHARDS),
+        "heavy_shards": list(HEAVY_SHARDS),
+        "bootstrap_ranges": [list(item) for item in bootstrap_ranges],
+        "active_ranges": [list(item) for item in active_ranges],
+        "merge_ranges": [list(item) for item in merge_ranges],
         "visibility_cycle": 78, "files": files,
         "commands": {
             "build": ["c++", "-std=c++17", "-O3", "-DNDEBUG", "-Wall",
                       "-Wextra", "-Wpedantic", "-Isrc/ultimate", *CPP_SOURCES,
                       "-o", "ultimate_jester_ghost_information_tablebase"],
+            "bootstrap": bootstrap_commands,
             "shards": shard_commands, "merge": merge,
             "measure": ["./ultimate_jester_ghost_information_tablebase",
                         "--measure", "1", *common],
