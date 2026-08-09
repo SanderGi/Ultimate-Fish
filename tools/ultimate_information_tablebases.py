@@ -8,7 +8,7 @@ knows.  This module deliberately contains no solver; it defines the immutable
 input inventory and validates the solver's future
 ``tablebases/information_summary.json`` certificate.
 
-``fresh-maximal-public-view-v1`` means:
+``fresh-maximal-public-view-v2`` means:
 
 * analysis begins with no private draft chronology or prior observations;
 * King/Jester identities are maximally ambiguous among the royal silhouettes
@@ -17,8 +17,12 @@ input inventory and validates the solver's future
   board is retained, while a visible Ghost is a singleton;
 * play uses pure, observation-based strategies and an outcome is a win or loss
   only when that result can be forced for every retained realization;
-* beliefs retain their complete observation history and are narrowed only by
-  public rule behavior, never by inference from a preferred strategy;
+* before choosing an action, the mover may select each owned piece and
+  privately observe the complete UI-visible legal destination/action markers;
+  the non-mover does not observe those markers;
+* beliefs retain their complete public and owned-private observation history
+  and are narrowed only by rule behavior, never by inference from a preferred
+  strategy;
 * each actual world is classified using both players' information; an owner may
   condition on its own private facts while an uninformed player must use one
   uniform strategy over every retained opponent world;
@@ -44,8 +48,9 @@ from typing import Any, Mapping, Sequence
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SUMMARY = ROOT / "tablebases" / "information_summary.json"
-SCHEMA_VERSION = 1
-SEMANTICS_ID = "fresh-maximal-public-view-v1"
+SCHEMA_VERSION = 2
+SEMANTICS_ID = "fresh-maximal-public-view-v2"
+SOLVER_VERSION = "2"
 SIDES = ("first", "second")
 OUTCOMES = ("win", "loss", "draw")
 REACHABILITY = ("legal", "unreachable")
@@ -128,9 +133,13 @@ SEMANTICS = {
     "royal_identity": "all-publicly-indistinguishable-king-jester-assignments",
     "hidden_ghosts": "all-causally-reachable-publicly-compatible-locations",
     "visible_ghosts": "singleton",
-    "strategy": "pure-observation-based-sure-outcome",
+    "strategy": "pure-owned-observation-based-sure-outcome",
     "private_strategy": "conditioned-on-owned-private-facts-only",
-    "belief_update": "history-preserving-public-observations-only",
+    "pre_decision_legal_markers":
+        "mover-private-all-selectable-owned-piece-destination-action-markers",
+    "legal_marker_observer": "side-to-move-only",
+    "belief_update":
+        "history-preserving-public-and-owned-private-observations",
     "policy_inference": "none-non-signaling",
     "admission_domain": "native-necessary-reachability-audit",
     "outcome_weighting": "concrete-realizations",
@@ -204,8 +213,25 @@ def inventory_fingerprint(records: Sequence[Mapping[str, object]] | None = None)
     return hashlib.sha256(payload).hexdigest()
 
 
-def _source_fingerprint(paths: Sequence[Path]) -> str:
+def semantics_fingerprint() -> str:
+    """Hash the complete epistemic contract independently of source layout."""
+    payload = json.dumps(
+        {"schema_version": SCHEMA_VERSION, "semantics": SEMANTICS},
+        sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _source_fingerprint(paths: Sequence[Path], *, domain: str) -> str:
     digest = hashlib.sha256()
+    # UFIW2 has no separate semantics field, so its model SHA must bind the
+    # epistemic contract as well as C++ source bytes.  This makes every v1
+    # overlay fail closed even when its concrete table is unchanged.
+    contract = json.dumps(
+        {"domain": domain, "schema_version": SCHEMA_VERSION,
+         "semantics": SEMANTICS}, sort_keys=True,
+        separators=(",", ":")).encode()
+    digest.update(len(contract).to_bytes(8, "little"))
+    digest.update(contract)
     for path in paths:
         relative = path.relative_to(ROOT).as_posix().encode()
         payload = path.read_bytes()
@@ -217,8 +243,9 @@ def _source_fingerprint(paths: Sequence[Path]) -> str:
 
 
 def observation_model_fingerprint() -> str:
-    """Bind certificates to the collision-free view/transition projection."""
-    return _source_fingerprint(OBSERVATION_MODEL_SOURCES)
+    """Bind certificates to projection code and the v2 observation contract."""
+    return _source_fingerprint(
+        OBSERVATION_MODEL_SOURCES, domain="observation-model")
 
 
 def solver_model_fingerprint(filename: str | None = None) -> str:
@@ -230,7 +257,8 @@ def solver_model_fingerprint(filename: str | None = None) -> str:
     """
     if filename is not None and filename not in AFFECTED_FILENAMES:
         raise SummaryValidationError(f"unknown information class {filename}")
-    return _source_fingerprint(PRIMARY_JESTER_SOLVER_SOURCES)
+    return _source_fingerprint(
+        PRIMARY_JESTER_SOLVER_SOURCES, domain="solver-model")
 
 
 def states_per_side(record: Mapping[str, object]) -> int:
@@ -299,8 +327,8 @@ def validate_summary(document: object, *, root: Path = ROOT,
     })
     if not isinstance(solver["name"], str) or not solver["name"]:
         _fail("$.solver.name", "expected a non-empty string")
-    if not isinstance(solver["version"], str) or not solver["version"]:
-        _fail("$.solver.version", "expected a non-empty string")
+    if solver["version"] != SOLVER_VERSION:
+        _fail("$.solver.version", f"expected {SOLVER_VERSION}")
     expected_observation = observation_model_fingerprint()
     if solver["observation_model_sha256"] != expected_observation:
         _fail("$.solver.observation_model_sha256",

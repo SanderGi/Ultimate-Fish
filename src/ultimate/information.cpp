@@ -12,6 +12,7 @@
 #include <map>
 #include <optional>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -295,6 +296,44 @@ std::string view_key(const Position& position,
         << "|pieces=" << records.size();
     for (const std::string& record : records)
         out << '|' << record.size() << ':' << record;
+    return out.str();
+}
+
+std::string decision_observation_key(
+  const Position& position,
+  const DisclosureContext& disclosure) {
+    if (disclosure.observer != position.side_to_move())
+        throw std::invalid_argument(
+          "legal-dot decision observation is private to the side to move");
+
+    // Native Character.GetAvailableMoves/SetUpDot exposes one marker at a
+    // board destination after selecting its source model.  It does not expose
+    // Move::auxiliary, promotion choice, or a second internal action identity
+    // when those produce the same rendered dot.  Deduplicating by endpoints is
+    // therefore exact UI semantics, not a lossy engine-action projection.
+    using Marker = std::pair<int, int>;
+    constexpr Marker PassMarker{-1, -1};
+    std::vector<Marker> markers;
+    for (const Move& move : position.legal_moves()) {
+        if (move.kind == MoveKind::Pass)
+            markers.push_back(PassMarker);
+        else
+            markers.emplace_back(move.from, move.to);
+    }
+    std::sort(markers.begin(), markers.end());
+    markers.erase(std::unique(markers.begin(), markers.end()), markers.end());
+
+    const std::string ordinary = view_key(position, disclosure);
+    std::ostringstream out;
+    out << "UFDECISION1|view=" << ordinary.size() << ':' << ordinary
+        << "|markers=" << markers.size();
+    for (const auto [source, destination] : markers) {
+        if (source < 0)
+            out << "|pass";
+        else
+            out << '|' << Position::square_name(source)
+                << '>' << Position::square_name(destination);
+    }
     return out.str();
 }
 

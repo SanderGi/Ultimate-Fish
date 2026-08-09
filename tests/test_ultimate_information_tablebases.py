@@ -41,7 +41,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "inventory_sha256": info.inventory_fingerprint(records),
             "solver": {
                 "name": "test-exact-information-solver",
-                "version": "1",
+                "version": info.SOLVER_VERSION,
                 "observation_model_sha256": info.observation_model_fingerprint(),
                 "exhaustive": True,
                 "belief_cap": None,
@@ -101,12 +101,45 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
 
     def test_semantics_documents_fresh_maximal_public_view(self):
         self.assertEqual(info.SEMANTICS["id"],
-                         "fresh-maximal-public-view-v1")
+                         "fresh-maximal-public-view-v2")
         self.assertEqual(info.SEMANTICS["outcome_weighting"],
                          "concrete-realizations")
         self.assertIn("all-causally-reachable",
                       info.SEMANTICS["hidden_ghosts"])
         self.assertIn("king-jester", info.SEMANTICS["royal_identity"])
+        self.assertIn("mover-private",
+                      info.SEMANTICS["pre_decision_legal_markers"])
+        self.assertEqual(info.SEMANTICS["legal_marker_observer"],
+                         "side-to-move-only")
+        self.assertIn("owned-private", info.SEMANTICS["belief_update"])
+
+    def test_rejects_every_v1_catalog_contract(self):
+        self.assert_invalid(
+            lambda document: document.update({"schema_version": 1}),
+            r"schema_version.*expected 2")
+        self.assert_invalid(
+            lambda document: document["semantics"].update(
+                {"id": "fresh-maximal-public-view-v1"}),
+            r"semantics.*fresh-maximal-public-view-v2")
+        self.assert_invalid(
+            lambda document: document["solver"].update({"version": "1"}),
+            r"solver.version.*expected 2")
+
+    def test_model_hashes_bind_private_legal_marker_semantics(self):
+        # Reconstruct the v1 source-only digest.  Even unchanged C++ bytes must
+        # not authenticate a v2 catalog or UFIW2 overlay.
+        digest = hashlib.sha256()
+        for path in info.PRIMARY_JESTER_SOLVER_SOURCES:
+            relative = path.relative_to(ROOT).as_posix().encode()
+            payload = path.read_bytes()
+            digest.update(len(relative).to_bytes(4, "little"))
+            digest.update(relative)
+            digest.update(len(payload).to_bytes(8, "little"))
+            digest.update(payload)
+        self.assertNotEqual(
+            info.solver_model_fingerprint("kjesterk.uftb"),
+            digest.hexdigest())
+        self.assertEqual(len(info.semantics_fingerprint()), 64)
 
     def test_single_extra_legacy_codec_keeps_both_reflections(self):
         records = {record["filename"]: record for record in

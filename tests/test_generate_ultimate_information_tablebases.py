@@ -43,6 +43,17 @@ class InformationGenerationDriverTests(unittest.TestCase):
             generate.information.observation_model_fingerprint())
         self.assertTrue(solver["exhaustive"])
         self.assertIsNone(solver["belief_cap"])
+        self.assertEqual(solver["version"], "2")
+        self.assertEqual(document["schema_version"], 2)
+        self.assertEqual(document["semantics"]["id"],
+                         "fresh-maximal-public-view-v2")
+
+    def test_v2_defaults_never_reuse_preserved_v1_artifacts(self):
+        self.assertIn("legal-dots-v2", str(generate.DEFAULT_CHECKPOINT))
+        self.assertIn("legal-dots-v2", str(generate.DEFAULT_OVERLAYS))
+        self.assertNotIn("pre-legal-dots-v1",
+                         str(generate.DEFAULT_CHECKPOINT))
+        self.assertNotIn("pre-legal-dots-v1", str(generate.DEFAULT_OVERLAYS))
 
     def test_partial_checkpoint_rejects_source_drift(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -53,6 +64,17 @@ class InformationGenerationDriverTests(unittest.TestCase):
             }
             generate.save_checkpoint(path, document)
             with self.assertRaisesRegex(RuntimeError, "stale solver"):
+                generate.load_checkpoint(path)
+
+    def test_partial_checkpoint_rejects_v1_semantics_before_entries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "pre-legal-dots-v1.partial.json"
+            document = generate._empty_document()  # pylint: disable=protected-access
+            document["schema_version"] = 1
+            document["semantics"]["id"] = "fresh-maximal-public-view-v1"
+            document["solver"]["version"] = "1"
+            generate.save_checkpoint(path, document)
+            with self.assertRaisesRegex(RuntimeError, "stale schema_version"):
                 generate.load_checkpoint(path)
 
     def test_overlay_reuse_requires_both_hashes_and_exact_domain(self):
@@ -71,6 +93,12 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 path, record, source, model))
             self.assertFalse(generate.overlay_is_current(
                 path, record, "0" * 64, model))
+            # A valid v1 source hash cannot rescue an overlay whose model hash
+            # predates the private pre-decision legal-marker semantics.
+            self.assertFalse(generate.overlay_is_current(
+                path, record, source,
+                generate.information.solver_model_fingerprint(
+                    "kjesterk.uftb")))
             with path.open("r+b") as stream:
                 stream.truncate(159 + count)
             self.assertFalse(generate.overlay_is_current(

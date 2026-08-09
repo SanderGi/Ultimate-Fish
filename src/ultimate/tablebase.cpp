@@ -598,13 +598,29 @@ class TablebaseGenerator {
                     if (!make_position_at(index, concrete) ||
                         !make_position_at(alternative, concreteAlternative))
                         continue;
-                    Position physicalAlternative;
+                    Position physical, physicalAlternative;
                     if (primary_jester_alternative(alternative) != index ||
+                        !make_primary_jester_world(index, false, physical) ||
                         !make_primary_jester_world(
                           index, true, physicalAlternative) ||
                         child_index(physicalAlternative) != alternative)
                         throw std::runtime_error(
                           "Jester royal-swap codec is not an involution");
+                    if (physical.side_to_move() == Color::Black) {
+                        const DisclosureContext onyx{Color::Black, false};
+                        const bool compactEqual =
+                          primary_jester_view_key(physical) ==
+                            primary_jester_view_key(physicalAlternative) &&
+                          primary_jester_decision_markers(physical) ==
+                            primary_jester_decision_markers(physicalAlternative);
+                        const bool generalEqual =
+                          decision_observation_key(physical, onyx) ==
+                          decision_observation_key(physicalAlternative, onyx);
+                        if (compactEqual != generalEqual)
+                            throw std::runtime_error(
+                              "compact Jester legal-dot partition diverges from "
+                              "the public-information model");
+                    }
                 }
                 std::cout << "jesterroyalswapcodecok samples " << samples << '\n';
             }
@@ -1363,7 +1379,9 @@ class TablebaseGenerator {
     // Compact exact solver for every closed class with one primary Ivory
     // Jester.  It compiles the observation game into two monotone systems:
     // one variable per actual world for the informed Jester owner, and one
-    // variable per public royal pair for the uninformed opponent.  The fixed-
+    // variable per royal pair that remains indistinguishable after the mover's
+    // private pre-decision legal-dot observation. Black-to-move pairs whose
+    // UI marker frontiers differ are exact singleton information states. The fixed-
     // point backend stores its CSR and queue in anonymous scratch mappings, so
     // the 38-million-state K+K+2 classes do not materialize a heap vector for
     // every move.
@@ -1430,6 +1448,7 @@ class TablebaseGenerator {
         std::vector<std::uint32_t> pairs;
         pairs.reserve(stateCount_ / 2);
         std::vector<std::int32_t> pairForIndex(stateCount_, -1);
+        std::array<std::uint64_t, 2> dotSplitPairs{};
         const auto frontierStart = std::chrono::steady_clock::now();
         for (std::uint32_t index = 0; index < stateCount_; ++index) {
             const std::uint32_t other = primary_jester_alternative(index);
@@ -1441,6 +1460,13 @@ class TablebaseGenerator {
                 throw std::runtime_error("admitted royal assignment failed reconstruction");
             if (primary_jester_view_key(first) != primary_jester_view_key(second))
                 continue;
+            if (first.side_to_move() == Color::Black) {
+                if (primary_jester_decision_markers(first) !=
+                    primary_jester_decision_markers(second)) {
+                    ++dotSplitPairs[static_cast<std::size_t>(Color::Black)];
+                    continue;
+                }
+            }
             if (pairs.size() >= static_cast<std::size_t>(InformationTrue))
                 throw std::runtime_error("too many information pairs for token encoding");
             const std::int32_t pair = static_cast<std::int32_t>(pairs.size());
@@ -1457,8 +1483,61 @@ class TablebaseGenerator {
         }
         if (pairs.size() > InformationTrue / 2)
             throw std::runtime_error("too many actual-world variables for token encoding");
+        std::array<std::uint64_t, 2> pairedSets{};
+        std::array<std::uint64_t, 2> singletonSets{};
+        std::array<std::uint64_t, 2> admittedWorlds{};
+        for (std::uint32_t index = 0; index < stateCount_; ++index) {
+            if (!admitted(index))
+                continue;
+            const std::size_t side = static_cast<std::size_t>(encoded_side(index));
+            ++admittedWorlds[side];
+            if (pairForIndex[index] < 0)
+                ++singletonSets[side];
+            else if (index == pairs[static_cast<std::size_t>(pairForIndex[index])])
+                ++pairedSets[side];
+        }
+        for (std::size_t side = 0; side < 2; ++side)
+            if (admittedWorlds[side] != singletonSets[side] + 2 * pairedSets[side])
+                throw std::runtime_error(
+                  "legal-dot root partition does not conserve admitted worlds");
         std::cout << "information_frontier concrete " << stateCount_
-                  << " paired_sets " << pairs.size() << '\n' << std::flush;
+                  << " paired_sets " << pairs.size()
+                  << " white_pairs " << pairedSets[0]
+                  << " black_pairs " << pairedSets[1]
+                  << " white_singletons " << singletonSets[0]
+                  << " black_singletons " << singletonSets[1]
+                  << " black_dot_split_pairs " << dotSplitPairs[1]
+                  << " partition_residual 0\n" << std::flush;
+
+        // The v1 solver incorrectly forced concrete index 492966 to share an
+        // action with its swapped royal assignment. Native pre-decision dots
+        // distinguish those two Black-to-move worlds, so both must now be
+        // singleton roots before any action gate is constructed.
+        if (!fourModels_ && stateCount_ == PlacementStateCount) {
+            constexpr std::uint32_t LegalDotWitness = 492'966;
+            const std::uint32_t other =
+              primary_jester_alternative(LegalDotWitness);
+            if (admitted(LegalDotWitness) && admitted(other)) {
+                Position first, second;
+                if (!make_primary_jester_world(
+                      LegalDotWitness, false, first) ||
+                    !make_primary_jester_world(
+                      LegalDotWitness, true, second))
+                    throw std::runtime_error(
+                      "legal-dot witness reconstruction failed");
+                if (primary_jester_view_key(first) !=
+                      primary_jester_view_key(second) ||
+                    primary_jester_decision_markers(first) ==
+                      primary_jester_decision_markers(second) ||
+                    pairForIndex[LegalDotWitness] >= 0 ||
+                    pairForIndex[other] >= 0)
+                    throw std::runtime_error(
+                      "index 492966 was not split by its private legal dots");
+                std::cout << "information_legal_dot_witness index "
+                          << LegalDotWitness << " alternative " << other
+                          << " paired 0\n";
+            }
+        }
 
         const auto white_variable = [&](std::uint32_t index) -> InformationToken {
             const std::int32_t pair = pairForIndex.at(index);
@@ -2088,6 +2167,35 @@ class TablebaseGenerator {
         return output;
     }
 
+    // Fixed-width specialization of decision_observation_key() for the same
+    // closed primary-Jester strata. The compact transition/root key already
+    // carries the ordinary public view, so this suffix contains only the
+    // mover-private rendered dot frontier. One dot is identified solely by
+    // source/destination; auxiliary IDs, promotion choices, and internal kinds
+    // sharing that dot remain intentionally indistinguishable.
+    static std::string primary_jester_decision_markers(
+      const Position& position) {
+        if (position.side_to_move() != Color::Black)
+            throw std::runtime_error(
+              "primary-Jester private dot projection called for non-Onyx turn");
+        std::vector<std::uint32_t> markers;
+        for (const Move& move : position.legal_moves()) {
+            const std::uint32_t marker = move.kind == MoveKind::Pass ? 0u
+              : 1u + static_cast<std::uint32_t>(move.from) * SquareCount +
+                  static_cast<std::uint32_t>(move.to);
+            markers.push_back(marker);
+        }
+        std::sort(markers.begin(), markers.end());
+        markers.erase(std::unique(markers.begin(), markers.end()), markers.end());
+        std::string output;
+        output.reserve((2 + markers.size()) * sizeof(std::uint32_t));
+        append_information_word(output, 2);  // legal-dot schema version
+        append_information_word(output, static_cast<std::int32_t>(markers.size()));
+        for (const std::uint32_t marker : markers)
+            append_information_word(output, static_cast<std::int32_t>(marker));
+        return output;
+    }
+
     static std::string primary_jester_transition_key(
       const Position& before, const Move& move, const Position& after) {
         std::string output;
@@ -2102,6 +2210,20 @@ class TablebaseGenerator {
         append_information_word(output, move.kind == MoveKind::Pass ? -1 : move.to);
         append_information_word(output, static_cast<std::int32_t>(move.promotion));
         output += primary_jester_view_key(after);
+        // Public animation/result observations remain shared. If the result is
+        // Black's decision boundary, append only Black's private exhaustive
+        // legal-dot signature so its own successor belief is refined before
+        // action selection. White never receives this private observation (and
+        // already knows its own concrete royal identity in this stratum).
+        if (!after.game_over() && after.side_to_move() == Color::Black) {
+            const std::string decision =
+              primary_jester_decision_markers(after);
+            append_information_word(output,
+              static_cast<std::int32_t>(decision.size()));
+            output += decision;
+        }
+        else
+            append_information_word(output, -1);
         return output;
     }
 

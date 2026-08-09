@@ -9,6 +9,7 @@
 #include <iostream>
 #include <iterator>
 #include <set>
+#include <stdexcept>
 #include <string>
 
 using namespace Stockfish::Ultimate;
@@ -2978,6 +2979,34 @@ void test_public_information_projection() {
              view_key(swappedRoyal, disclosedOnyx),
            "draft/history disclosure makes the enemy King assignment public");
 
+    // Native legal-dot oracle: the mover may select/cancel pieces repeatedly
+    // before committing an action. With the Onyx King on e7, capturing the
+    // e6 silhouette is displayed when it is the real King (the capture ends
+    // play), but omitted when it is the Jester because landing on e6 would be
+    // adjacent to the real King on e5. The board presentation remains the
+    // same while the mover-private pre-decision observation distinguishes it.
+    const Position dotKingE6 = parses(
+      "b;king,b,e7;king,w,e6;jester,w,e5");
+    const Position dotJesterE6 = parses(
+      "b;king,b,e7;jester,w,e6;king,w,e5");
+    expect(view_key(dotKingE6, onyx) == view_key(dotJesterE6, onyx),
+           "legal-dot witness keeps one ordinary royal-silhouette view");
+    expect(dotKingE6.move_from_string("e7-e6").has_value() &&
+             !dotJesterE6.move_from_string("e7-e6").has_value(),
+           "native King/Jester assignment changes the displayed e7-e6 dot");
+    expect(decision_observation_key(dotKingE6, onyx) !=
+             decision_observation_key(dotJesterE6, onyx),
+           "mover-private legal dots disclose the hidden royal assignment");
+    bool rejectedNonMoverDots = false;
+    try {
+        (void)decision_observation_key(dotKingE6, ivory);
+    }
+    catch (const std::invalid_argument&) {
+        rejectedNonMoverDots = true;
+    }
+    expect(rejectedNonMoverDots,
+           "legal-dot frontier is never exposed to the non-moving observer");
+
     const Position hiddenC3 = parses(
       "w;king,w,a1;ghost,w,c3,0,0,0,0,0,0,-1,1,-1,0;king,b,h10");
     const Position hiddenF6 = parses(
@@ -3099,9 +3128,10 @@ void test_public_information_projection() {
            "continuation after a royal capture eliminates the King-on-target world");
 
     // Exact K+Jester-v-K information index 492966: capturing a1 wins if a1 is
-    // the King, but the identical public action is illegal if a1 is the Jester
-    // because the Black King would land next to the real King on a2. The bare
-    // King therefore cannot select the perfect-information winning action.
+    // the King, but that dot is absent if a1 is the Jester because the Black
+    // King would land next to the real King on a2. The v2 information model
+    // splits these worlds before Black chooses; they are not a uniform-action
+    // pair or a soft lock.
     const Position royalA1 = parses(
       "b;king,w,a1;king,b,b1;jester,w,a2");
     const Position royalA2 = parses(
@@ -3119,22 +3149,22 @@ void test_public_information_projection() {
     expect(actualActions.count("b1-a1") == 1 &&
              swappedActions.count("b1-a1") == 0,
            "a hidden royal assignment can remove a concretely winning action");
+    expect(decision_observation_key(royalA1, onyx) !=
+             decision_observation_key(royalA2, onyx),
+           "index 492966 is split by the mover's private legal dots");
 
     const Position onlyCaptureA1 = parses(
       "b;king,w,a1;king,b,b1;jester,w,b2");
     const Position onlyCaptureB2 = parses(
       "b;jester,w,a1;king,b,b1;king,w,b2");
     expect(view_key(onlyCaptureA1, onyx) == view_key(onlyCaptureB2, onyx),
-           "uniform-action soft-lock witness starts in one public view");
+           "former soft-lock witness starts in one ordinary public view");
     const auto captureA1Actions = action_strings(onlyCaptureA1);
     const auto captureB2Actions = action_strings(onlyCaptureB2);
-    std::vector<std::string> commonActions;
-    std::set_intersection(captureA1Actions.begin(), captureA1Actions.end(),
-                          captureB2Actions.begin(), captureB2Actions.end(),
-                          std::back_inserter(commonActions));
     expect(!captureA1Actions.empty() && !captureB2Actions.empty() &&
-             commonActions.empty(),
-           "each royal world has a move but the public information set has none");
+             decision_observation_key(onlyCaptureA1, onyx) !=
+               decision_observation_key(onlyCaptureB2, onyx),
+           "private legal dots eliminate the obsolete uniform-action soft lock");
 }
 
 }  // namespace

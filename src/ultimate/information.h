@@ -46,6 +46,26 @@ struct DisclosureContext {
 [[nodiscard]] std::string view_key(const Position& position,
                                    const DisclosureContext& disclosure);
 
+// Return the mover-private observation available before choosing an action.
+// The shipping client lets the player select each of their pieces, inspect all
+// rendered legal-move dots, cancel, and repeat.  Consequently the complete dot
+// frontier is information available to the side to move even when the
+// ordinary board view still hides a King/Jester assignment or Ghost square.
+//
+// Each marker is the rendered source/destination pair. Multiple engine Moves
+// that share one UI dot (promotion choices, auxiliary model IDs, or distinct
+// internal action kinds) deliberately collapse to that one marker: those
+// fields are not separately displayed before the dot is chosen. The ordinary
+// view is embedded in the key, so equality means equality of both the board
+// presentation and every inspectable dot. Pass is represented explicitly.
+//
+// This observation is private to the mover. Calling it for a non-moving
+// observer is a logic error and throws std::invalid_argument rather than
+// accidentally disclosing the mover's frontier to the opponent.
+[[nodiscard]] std::string decision_observation_key(
+  const Position& position,
+  const DisclosureContext& disclosure);
+
 // Return the complete public observation of one legal transition.  The key
 // includes the public action animation and the resulting view.  In particular,
 // an already-invisible enemy Ghost's quiet move exposes neither endpoint; a

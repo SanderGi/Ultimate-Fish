@@ -8,7 +8,7 @@ for the information-tablebase layer; they are not rewritten or weakened.
 ## Canonical starting information
 
 README W/L/D statistics for every material class containing a Jester or Ghost
-use the `fresh-maximal-public-view-v1` convention:
+use the `fresh-maximal-public-view-v2` convention:
 
 - Each counted root is a fresh analysis snapshot. No move or draft history is
   assumed beyond state that is itself represented in UPN.
@@ -38,8 +38,15 @@ not separate roots in the README population.
 
 ## Observations and strategy
 
-Strategies use perfect recall of public observations and each player's own
-private facts. Beliefs are updated only by shipping-game observations:
+Strategies use perfect recall of public observations, each player's own
+private facts, and UI observations visible only to that player. Beliefs are
+updated only by shipping-game observations:
+
+- before choosing an action, the mover may select every selectable owned piece
+  and privately inspect the complete set of legal destination/action markers
+  (the UI's legal dots); this inspection does not consume the turn;
+- the non-mover does not see those markers and must not refine its information
+  set from the mover's private inspection;
 
 - visible moves and actions expose their public actor and source plus any
   target that remains public; when a previously visible Ghost makes a quiet
@@ -57,7 +64,21 @@ world because an observed action or result is impossible there, but it may not
 eliminate a world merely because a chosen strategy would have preferred a
 different legal move there. This matches the controller: private information
 is learned from game behavior, never from an assumption about the opponent's
-evaluation or policy.
+evaluation or policy. A legal-dot difference is rule-generated private
+evidence, not policy inference, and therefore does refine the mover's
+information before its action is chosen.
+
+The smallest confirmed King/Jester witness has the observer to move with its
+King on e7 and indistinguishable enemy royal silhouettes on e6 and e5. If e6
+is the real enemy King and e5 the Jester, selecting e7 shows an e6 destination
+dot: `e7-e6` legally captures the King. If e6 is the Jester and e5 the real
+King, the same move would capture the Jester and leave the moving King adjacent
+to the real King on e5, so the e6 dot is absent. The ordinary hidden public
+board is identical in both worlds, but the mover's pre-decision private marker
+observation distinguishes them. The shipping-game experiment included six
+Penguins per side plus Player 2's Turtle on b1 and Pawns on b2/b3; exhaustive
+regression fixtures retain sufficient surrounding material so terminal or
+insufficient-material handling cannot erase the local distinction.
 
 For each concrete root and its two player-specific information sets, a side
 wins only if it has a pure observation-based strategy that forces victory with
@@ -74,17 +95,22 @@ The offline solver is separate from the latency-bounded live engine search.
 It must:
 
 1. enumerate every admitted initial royal/Ghost hypothesis;
-2. retain every successor consistent with each public observation;
-3. use no belief limit, representative sampling, depth limit, probability, or
+2. before every mover decision, partition that mover's information set by the
+   exhaustive per-owned-piece legal-marker signature, without exposing the
+   signature to the non-mover;
+3. retain every successor consistent with each public and owned-private
+   observation;
+4. use no belief limit, representative sampling, depth limit, probability, or
    evaluation cutoff;
-4. solve cycles by retrograde fixed point/SCC analysis rather than a search
+5. solve cycles by retrograde fixed point/SCC analysis rather than a search
    horizon;
-5. filter worlds with the native necessary-reachability predicate and any
+6. filter worlds with the native necessary-reachability predicate and any
    stronger causal hidden-state audit before grouping them;
-6. cross-probe exact lower-material information tables after captures;
-7. emit a summary SHA-256-bound to the concrete tables, observation projection,
+7. cross-probe exact lower-material information tables after captures;
+8. emit a summary SHA-256-bound to the semantic contract, concrete tables,
+   observation projection,
    move generator, and proof-kernel sources, plus zero Bellman/rank residuals;
-8. conserve the admitted concrete-world count independently for both starting
+9. conserve the admitted concrete-world count independently for both starting
    sides.
 
 README parentheses come from that exact admission certificate, bucketed by the
@@ -98,6 +124,13 @@ graphs, predecessor files, and checkpoints are local generation artifacts and
 are not committed. Lower-stratum `.ufiw` overlays carry both the logical source
 table SHA-256 and the complete solver/move-generation model SHA-256; a larger
 stratum refuses a stale overlay before constructing its graph.
+
+Schema version 2 and solver version 2 bind `fresh-maximal-public-view-v2` into
+both the catalog's observation SHA and every UFIW2 model SHA. Consequently, a
+v1 catalog, partial checkpoint, or overlay is rejected even when its concrete
+`.uftb` SHA is unchanged. Preserved v1 artifacts use the
+`*pre-legal-dots-v1*` namespace; new generation defaults use disjoint
+`*legal-dots-v2*` paths and never resume them.
 
 The four-model concrete codec folds horizontal reflections according to the
 real Ivory King's square. Swapping a hidden King/Jester assignment can therefore
@@ -116,31 +149,42 @@ observation-graph construction from about 84 seconds to 17 seconds on the same
 machine. The general projection remains the semantic oracle and regression
 baseline.
 
-## First exact stratum
+## First corrected v2 stratum
 
-The exhaustive `K+Jester versus K` solve is the lower-material oracle for the
-larger Jester classes. It contains 452,668 paired information sets and checked
-8,239,208 transition observations without a belief cap or sampling. Its fixed
-point has zero Bellman residual:
+The exhaustive `K+Jester versus K` solve is the first lower-material oracle
+regenerated with the mover-private legal-dot channel. Its fresh roots contain
+450,272 still-ambiguous royal pairs: 206,308 with the Jester owner to move and
+243,964 with the bare King to move. A further 2,396 bare-King-to-move royal
+pairs have different private dot frontiers and split into singletons before an
+action is selected. The resulting action graph has no empty uniform-action
+sets. Both force fixed points have zero Bellman and rank residuals.
 
 | Side to move | Public-information W / L / D | Concrete unreachable W / L / D |
 | --- | ---: | ---: |
 | Jester owner | 412,616 / 0 / 0 | 80,344 / 0 / 0 |
-| Bare King | 120 / 417,496 / 75,344 | 0 / 0 / 0 |
+| Bare King | 3,272 / 414,344 / 75,344 | 0 / 0 / 0 |
 
-The bare-King result differs substantially from perfect information because a
-move must be legal under every retained royal assignment. For example, at
-concrete index 492,966 (`King a1, Jester a2 versus King b1`, bare King to move),
-`b1-a1` captures the real King and wins with perfect information. In the
-swapped hypothesis it captures the Jester and would land next to the real King
-on a2, so that move is illegal there and cannot be selected as a uniform public-
-information action. This is a rules-derived information effect, not a belief
-cap or heuristic reclassification.
+Concrete index 492,966 is a compact regression witness. In one world the
+bare King on b1 can capture the real King on a1; in the swapped world a1 is the
+Jester and the real King is on a2, so `b1-a1` is absent but `b1-a2` is offered.
+Version 1 incorrectly intersected these actions and created a soft lock.
+Version 2 first observes the distinct dot frontiers, chooses the winning dot in
+the resulting singleton, and therefore classifies both concrete realizations as
+bare-King wins.
 
-There are also 124 paired bare-King-to-move sets with no action legal under
-both royal assignments. The first is concrete index 492,967: the public royal
-silhouettes are a1 and b2 and the bare King is b1. If a1 is the King, `b1-a1`
-is its only move; if b2 is the King, `b1-b2` is its only move. Under the same
-uniform-action rule used by the live belief search, the information set has no
-legal action and is a forced timeout/soft-lock loss. This convention is tested
-explicitly because vacuous AND semantics here materially affects W/L/D.
+The overlay is SHA-256-bound to concrete table
+`3d896b07c0f7ee97da5aabefee6551c90732bbc200343a4af51a08b678e236aa`
+and legal-dot-v2 solver model
+`16ca76c1cacd119c1115394a0d0b763d627d74f081ff84f2df126762bcbcc92b`.
+It contains all 985,920 dense concrete records; unreachable records remain
+zero-valued and are accounted for separately rather than silently dropped.
+
+## Invalidated v1 results
+
+The earlier `K+Jester versus K` overlay intersected legal actions before giving
+the mover its private legal-dot observation. Its published W/L/D counts and
+its claimed uniform-action soft locks therefore solve a strictly less informed
+game and are not v2 results. They are retained only in the archived
+`pre-legal-dots-v1` artifacts for provenance. No Jester/Ghost row may be
+published as exact public-information W/L/D until it has a complete v2
+certificate; validation never falls back to the old counts.

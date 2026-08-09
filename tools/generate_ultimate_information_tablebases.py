@@ -32,8 +32,14 @@ import ultimate_information_tablebases as information  # noqa: E402
 import ultimate_tablebase_shards as shards  # noqa: E402
 
 
-DEFAULT_CHECKPOINT = Path("/tmp/ultimatefish-information-summary.partial.json")
-DEFAULT_OVERLAYS = Path("/tmp/ultimatefish-information-overlays")
+# v1 artifacts are intentionally preserved under ``*pre-legal-dots-v1*``.
+# New defaults use a disjoint namespace in addition to strict semantic/model
+# hash validation, so a pre-decision-legal-marker solve can never resume or
+# reuse an old observation game accidentally.
+DEFAULT_CHECKPOINT = Path(
+    "/tmp/ultimatefish-information-summary.legal-dots-v2.partial.json")
+DEFAULT_OVERLAYS = Path(
+    "/tmp/ultimatefish-information-overlays.legal-dots-v2")
 SUMMARY_RE = re.compile(
     r"^information_summary side (?P<side>[01]) "
     r"win (?P<win>\d+) loss (?P<loss>\d+) draw (?P<draw>\d+) "
@@ -60,7 +66,7 @@ def _empty_document() -> dict[str, object]:
         "inventory_sha256": information.inventory_fingerprint(records),
         "solver": {
             "name": "ultimatefish-exact-observation-game",
-            "version": "1",
+            "version": information.SOLVER_VERSION,
             "observation_model_sha256":
                 information.observation_model_fingerprint(),
             "exhaustive": True,
