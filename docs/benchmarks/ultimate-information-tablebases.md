@@ -175,7 +175,7 @@ bare-King wins.
 The overlay is SHA-256-bound to concrete table
 `3d896b07c0f7ee97da5aabefee6551c90732bbc200343a4af51a08b678e236aa`
 and legal-dot-v2 solver model
-`c880b06438be746b7acd128ab93bf7b3c68f0f5f8ba624943535e392161b2843`.
+`095d2301b1cda56e6aa75db7663d7a4b811d36cf837c1482a6c491940b63d831`.
 It contains all 985,920 dense concrete records; unreachable records remain
 zero-valued and are accounted for separately rather than silently dropped.
 
