@@ -125,8 +125,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         supported = info.supported_solver_inventory()
         unsupported = info.unsupported_solver_inventory()
         names = [filename for filename, _ in supported] + list(unsupported)
-        self.assertEqual(len(supported), 34)
-        self.assertEqual(len(unsupported), 11)
+        self.assertEqual(len(supported), 36)
+        self.assertEqual(len(unsupported), 9)
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(set(names), set(info.AFFECTED_FILENAMES))
         counts = {}
@@ -143,6 +143,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "reciprocal-bishop-ghost": 1,
             "dragon-ghost-same": 1,
             "dragon-ghost-opposing": 1,
+            "bomb-ghost-same": 1,
+            "bomb-ghost-opposing": 1,
             "ghost-pair": 1,
             "jester-ghost": 1,
         })
@@ -213,8 +215,15 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         self.assertEqual(
             info.solver_concrete_dependencies("kghostkdragon.uftb"),
             ("kdragonk.uftb",))
+        for filename in ("kbombghostk.uftb", "kbombkghost.uftb"):
+            self.assertEqual(info.solver_sidecar_dependencies(filename),
+                             ("kghostk.ufgm",))
+            self.assertEqual(info.solver_concrete_dependencies(filename),
+                             ("kbombk.uftb",))
         self.assertEqual(len(info.concrete_tablebase_model_fingerprint(
             "kdragonk.uftb")), 64)
+        self.assertEqual(len(info.concrete_tablebase_model_fingerprint(
+            "kbombk.uftb")), 64)
         self.assertTrue((ROOT / "tablebases" / "kghostk.ufgm").exists())
 
     def test_solver_fingerprints_are_isolated_by_implementation_domain(self):
@@ -228,6 +237,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "reciprocal-bishop-ghost": "kbishopkghost.uftb",
             "dragon-ghost-same": "kghostdragonk.uftb",
             "dragon-ghost-opposing": "kghostkdragon.uftb",
+            "bomb-ghost-same": "kbombghostk.uftb",
+            "bomb-ghost-opposing": "kbombkghost.uftb",
             "ghost-pair": "kghostghostk.uftb",
             "jester-ghost": "kjesterghostk.uftb",
         }
@@ -268,6 +279,10 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                                 before["dragon-ghost-same"])
             self.assertNotEqual(after_ghost["dragon-ghost-opposing"],
                                 before["dragon-ghost-opposing"])
+            self.assertNotEqual(after_ghost["bomb-ghost-same"],
+                                before["bomb-ghost-same"])
+            self.assertNotEqual(after_ghost["bomb-ghost-opposing"],
+                                before["bomb-ghost-opposing"])
             for domain in ("primary-jester", "primary-jester-giant",
                            "double-jester", "joint-jester"):
                 self.assertEqual(after_ghost[domain], before[domain])
@@ -297,7 +312,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             for domain in ("ghost", "double-jester", "joint-jester",
                            "bishop-ghost", "reciprocal-bishop-ghost",
                            "ghost-pair", "jester-ghost",
-                           "dragon-ghost-same", "dragon-ghost-opposing"):
+                           "dragon-ghost-same", "dragon-ghost-opposing",
+                           "bomb-ghost-same", "bomb-ghost-opposing"):
                 self.assertEqual(after_probe[domain], after_shared[domain])
 
             pair_relative = info.GHOST_PAIR_SOLVER_SOURCES[-1].relative_to(ROOT)

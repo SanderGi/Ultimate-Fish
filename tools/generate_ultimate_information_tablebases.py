@@ -59,6 +59,14 @@ SYMBOLIC_RE = re.compile(
     r"monotonicity_residual (?P<monotonicity>\d+) "
     r"singleton_residual (?P<singleton>\d+) "
     r"belief_cap none powerset_exact 1$")
+PIECE_TYPE_IDS = {
+    "": 30, "jester": 1, "knight": 2, "pawn": 3, "queen": 4,
+    "rook": 5, "bishop": 6, "berserker": 7, "bomb": 8,
+    "ninja": 9, "turtle": 10, "ghost": 11, "mage": 12,
+    "penguin": 14, "parasite": 15, "devil": 16, "sludge": 18,
+    "sniper": 19, "prince": 20, "checker": 21, "giant": 23,
+    "copycat": 24, "angel": 26, "fisherman": 28, "dragon": 29,
+}
 
 
 def _records() -> dict[str, Mapping[str, object]]:
@@ -146,10 +154,13 @@ def overlay_is_current(path: Path, record: Mapping[str, object],
             header = stream.read(160)
         if len(header) != 160:
             return False
-        (magic, version, _primary, _secondary, _color, count,
+        (magic, version, primary, secondary, color, count,
          _substates) = struct.unpack_from("<8s6I", header)
         expected_count = information.states_per_side(record) * 2
         return (magic == b"UFIW2\0\0\0" and version == 2 and
+                primary == PIECE_TYPE_IDS[str(record["primary"])] and
+                secondary == PIECE_TYPE_IDS[str(record["secondary"])] and
+                color == int(bool(record["opposing"])) and
                 count == expected_count and
                 header[32:96].decode() == source_sha256 and
                 header[96:160].decode() == model_sha256 and
@@ -196,9 +207,17 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 semantics_offset = 1184
                 semantics = b"fresh-maximal-public-view-v2:dragon-ghost-generic"
                 expected_version = 1
+            elif magic == b"UFGB1\0\0\0":
+                expected_header, payload_offset = 1248, 152
+                first_section_offset = 96
+                source_offset, model_offset, payload_sha_offset = 160, 288, 1120
+                semantics_offset = 1184
+                semantics = b"fresh-maximal-public-view-v2:bomb-ghost-generic"
+                expected_version = 1
             else:
                 return False
-            if magic not in {b"UFGX2\0\0\0", b"UFGD1\0\0\0"}:
+            if magic not in {b"UFGX2\0\0\0", b"UFGD1\0\0\0",
+                             b"UFGB1\0\0\0"}:
                 expected_version = 1
             if header_bytes != expected_header:
                 return False
@@ -246,6 +265,19 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 header[608:672].decode() ==
                     information.concrete_tablebase_model_fingerprint(
                         "kdragonk.uftb"))
+        elif magic == b"UFGB1\0\0\0":
+            lower_bomb_sha = shards.logical_sha256(
+                ROOT / "tablebases" / "kbombk.uftb")
+            dependencies_current = (
+                header[352:416].decode() ==
+                    information.observation_model_fingerprint() and
+                header[416:480].decode() ==
+                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b" and
+                header[480:544].decode() == lower_bomb_sha and
+                header[544:608].decode() == lower_bomb_sha and
+                header[608:672].decode() ==
+                    information.concrete_tablebase_model_fingerprint(
+                        "kbombk.uftb"))
         else:
             dependencies_current = (
                 header[284:348].decode() ==
@@ -470,6 +502,47 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
                 "kdragonk.uftb"),
             "--compact-every", "1",
         ]
+    if domain in {"bomb-ghost-same", "bomb-ghost-opposing"}:
+        lower = ROOT / "tablebases" / "kghostk.ufgm"
+        payload = lower.read_bytes()
+        if (len(payload) < 320 or payload[:8] != b"UFGM1\0\0\0" or
+                struct.unpack_from("<I", payload, 12)[0] != 320):
+            raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
+        lower_sha = hashlib.sha256(payload).hexdigest()
+        expected_lower_sha = (
+            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        if lower_sha != expected_lower_sha:
+            raise RuntimeError(f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
+        orientation = ("same" if domain == "bomb-ghost-same"
+                       else "opposing")
+        transitions = (args.bomb_ghost_same_transitions
+                       if orientation == "same"
+                       else args.bomb_ghost_opposing_transitions)
+        lower_bomb = ROOT / "tablebases" / "kbombk.uftb"
+        lower_bomb_sha = shards.logical_sha256(lower_bomb)
+        return [
+            str(args.bomb_ghost_binary), "--solve",
+            "--orientation", orientation,
+            "--transition-prefix", str(transitions),
+            "--input", str(table), "--lower-ghost-sidecar", str(lower),
+            "--lower-bomb-table", str(lower_bomb),
+            "--scratch", str(args.scratch / f"{Path(table).stem}-exact"),
+            "--output", str(overlay), "--output-arbitrary",
+            str(args.overlays / f"{Path(table).stem}.ufgb"),
+            "--source-sha256", source_sha256,
+            "--model-sha256", model_sha256,
+            "--observation-sha256",
+            information.observation_model_fingerprint(),
+            "--lower-sidecar-sha256", lower_sha,
+            "--lower-source-sha256", payload[96:160].decode(),
+            "--lower-model-sha256", payload[160:224].decode(),
+            "--lower-observation-sha256", payload[224:288].decode(),
+            "--lower-bomb-sha256", lower_bomb_sha,
+            "--lower-bomb-source-sha256", lower_bomb_sha,
+            "--lower-bomb-model-sha256",
+            information.concrete_tablebase_model_fingerprint("kbombk.uftb"),
+            "--compact-every", "1",
+        ]
     if domain == "ghost-pair":
         lower = ROOT / "tablebases" / "kghostk.ufgm"
         payload = lower.read_bytes()
@@ -601,6 +674,8 @@ def solve_one(args: argparse.Namespace) -> None:
                  else args.overlays / f"{Path(args.filename).stem}.ufgd"
                  if domain in {"dragon-ghost-same",
                                "dragon-ghost-opposing"}
+                 else args.overlays / f"{Path(args.filename).stem}.ufgb"
+                 if domain in {"bomb-ghost-same", "bomb-ghost-opposing"}
                  else args.overlays / "kjesterghostk.ufjg")
     lower_jester_arbitrary_sha = None
     if domain == "jester-ghost":
@@ -614,7 +689,8 @@ def solve_one(args: argparse.Namespace) -> None:
             overlay_is_current(overlay, record, source_sha256, model_sha256) and
             (domain not in {"ghost-pair", "jester-ghost",
                             "reciprocal-bishop-ghost", "dragon-ghost-same",
-                            "dragon-ghost-opposing"} or arbitrary_is_current(
+                            "dragon-ghost-opposing", "bomb-ghost-same",
+                            "bomb-ghost-opposing"} or arbitrary_is_current(
                 arbitrary, source_sha256, model_sha256,
                 lower_jester_overlay_sha256=lower_jester_arbitrary_sha))):
         print(f"already complete and verified: {args.filename}")
@@ -633,7 +709,8 @@ def solve_one(args: argparse.Namespace) -> None:
     summaries = run_solver(command, label=args.filename)
     if domain in {"ghost-pair", "jester-ghost",
                   "reciprocal-bishop-ghost", "dragon-ghost-same",
-                  "dragon-ghost-opposing"} and not arbitrary_is_current(
+                  "dragon-ghost-opposing", "bomb-ghost-same",
+                  "bomb-ghost-opposing"} and not arbitrary_is_current(
             arbitrary, source_sha256, model_sha256,
             lower_jester_overlay_sha256=lower_jester_arbitrary_sha):
         raise RuntimeError(
@@ -683,6 +760,15 @@ def main() -> None:
     parser.add_argument("--dragon-ghost-opposing-transitions", type=Path,
                         default=Path(
                           "/tmp/kghostkdragon-exact-transitions"))
+    parser.add_argument("--bomb-ghost-binary", type=Path,
+                        default=ROOT / "src" /
+                        "ultimate_ghost_bomb_information_tablebase")
+    parser.add_argument("--bomb-ghost-same-transitions", type=Path,
+                        default=Path(
+                          "/tmp/kbombghostk-exact-transitions"))
+    parser.add_argument("--bomb-ghost-opposing-transitions", type=Path,
+                        default=Path(
+                          "/tmp/kbombkghost-exact-transitions"))
     parser.add_argument("--ghost-pair-binary", type=Path,
                         default=ROOT / "src" /
                         "ultimate_ghost_pair_information_tablebase")

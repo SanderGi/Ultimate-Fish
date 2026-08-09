@@ -37,6 +37,9 @@ class InformationGenerationDriverTests(unittest.TestCase):
             dragon_ghost_binary=root / "dragon-ghost",
             dragon_ghost_same_transitions=root / "dragon-ghost-same",
             dragon_ghost_opposing_transitions=root / "dragon-ghost-opposing",
+            bomb_ghost_binary=root / "bomb-ghost",
+            bomb_ghost_same_transitions=root / "bomb-ghost-same",
+            bomb_ghost_opposing_transitions=root / "bomb-ghost-opposing",
             ghost_pair_binary=root / "ghost-pair",
             ghost_pair_transitions=root / "ghost-pair-transitions",
             jester_ghost_binary=root / "jester-ghost",
@@ -141,10 +144,44 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 path, record, source,
                 generate.information.solver_model_fingerprint(
                     "kjesterk.uftb")))
+            for offset in (12, 16, 20):
+                with path.open("r+b") as stream:
+                    stream.seek(offset)
+                    original = stream.read(4)
+                    stream.seek(offset)
+                    stream.write(struct.pack("<I",
+                                             struct.unpack("<I", original)[0] ^ 1))
+                self.assertFalse(generate.overlay_is_current(
+                    path, record, source, model))
+                with path.open("r+b") as stream:
+                    stream.seek(offset); stream.write(original)
             with path.open("r+b") as stream:
                 stream.truncate(159 + count)
             self.assertFalse(generate.overlay_is_current(
                 path, record, source, model))
+
+    def test_bomb_overlay_headers_preserve_source_order_and_ghost_color(self):
+        records = generate._records()  # pylint: disable=protected-access
+        source, model = "5" * 64, "6" * 64
+        for filename, color in (("kbombghostk.uftb", 0),
+                                ("kbombkghost.uftb", 1)):
+            record = records[filename]
+            count = generate.information.states_per_side(record) * 2
+            header = (struct.pack("<8s6I", b"UFIW2\0\0\0", 2, 8, 11,
+                                  color, count, 2) + source.encode() +
+                      model.encode())
+            with self.subTest(filename=filename), \
+                 tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "bomb.ufiw"
+                with path.open("wb") as stream:
+                    stream.write(header); stream.truncate(160 + count)
+                self.assertTrue(generate.overlay_is_current(
+                    path, record, source, model))
+                with path.open("r+b") as stream:
+                    stream.seek(12); stream.write(struct.pack("<I", 11))
+                    stream.seek(16); stream.write(struct.pack("<I", 8))
+                self.assertFalse(generate.overlay_is_current(
+                    path, record, source, model))
 
     def test_arbitrary_reuse_requires_complete_authenticated_ufgg(self):
         source = "1" * 64
@@ -276,6 +313,37 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 stream.seek(416); stream.write(b"0" * 64)
             self.assertFalse(generate.arbitrary_is_current(path, source, model))
 
+    def test_arbitrary_reuse_authenticates_bomb_ufgb(self):
+        source, model = "3" * 64, "4" * 64
+        payload = b"exact-bomb-ghost-roots"
+        header = bytearray(1248)
+        header[:8] = b"UFGB1\0\0\0"
+        struct.pack_into("<II", header, 8, 1, 1248)
+        struct.pack_into("<Q", header, 96, 1248)
+        struct.pack_into("<Q", header, 152, len(payload))
+        header[160:224] = source.encode()
+        header[288:352] = model.encode()
+        header[352:416] = (
+            generate.information.observation_model_fingerprint().encode())
+        header[416:480] = (
+            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        lower_bomb = (
+            b"3d4f44035652e486cbd72c59e8247cfbba355b748107ee2b9d06abfe4674b864")
+        header[480:544] = lower_bomb
+        header[544:608] = lower_bomb
+        header[608:672] = generate.information.concrete_tablebase_model_fingerprint(
+            "kbombk.uftb").encode()
+        header[1120:1184] = hashlib.sha256(payload).hexdigest().encode()
+        semantics = b"fresh-maximal-public-view-v2:bomb-ghost-generic"
+        header[1184:1184 + len(semantics)] = semantics
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "bomb.ufgb"
+            path.write_bytes(header + payload)
+            self.assertTrue(generate.arbitrary_is_current(path, source, model))
+            with path.open("r+b") as stream:
+                stream.seek(480); stream.write(b"0" * 64)
+            self.assertFalse(generate.arbitrary_is_current(path, source, model))
+
     def test_checkpoint_merge_preserves_independent_completed_rows(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "partial.json"
@@ -325,6 +393,10 @@ class InformationGenerationDriverTests(unittest.TestCase):
                     str(args.dragon_ghost_binary), "--orientation"),
                 "kghostkdragon.uftb": (
                     str(args.dragon_ghost_binary), "--orientation"),
+                "kbombghostk.uftb": (
+                    str(args.bomb_ghost_binary), "--orientation"),
+                "kbombkghost.uftb": (
+                    str(args.bomb_ghost_binary), "--orientation"),
                 "kghostghostk.uftb": (
                     str(args.ghost_pair_binary), "--output-arbitrary"),
                 "kjesterghostk.uftb": (
@@ -405,6 +477,29 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 self.assertEqual(
                     dragon[dragon.index("--lower-dragon-sha256") + 1],
                     "28d3cbeba82d02611a48bf2d0a6a527d11ff4cd3049f04bf2b4b929a05ed86c6")
+
+            for filename, orientation, transitions in (
+                    ("kbombghostk.uftb", "same",
+                     args.bomb_ghost_same_transitions),
+                    ("kbombkghost.uftb", "opposing",
+                     args.bomb_ghost_opposing_transitions)):
+                bomb = generate.solver_command(
+                    args, records[filename], root / f"{filename}.ufiw",
+                    "1" * 64,
+                    generate.information.solver_model_fingerprint(filename))
+                self.assertEqual(bomb[0], str(args.bomb_ghost_binary))
+                self.assertEqual(
+                    bomb[bomb.index("--orientation") + 1], orientation)
+                self.assertEqual(
+                    bomb[bomb.index("--transition-prefix") + 1],
+                    str(transitions))
+                self.assertIn(
+                    str(args.overlays / f"{Path(filename).stem}.ufgb"), bomb)
+                self.assertIn(str(ROOT / "tablebases" / "kbombk.uftb"),
+                              bomb)
+                self.assertEqual(
+                    bomb[bomb.index("--lower-bomb-sha256") + 1],
+                    "3d4f44035652e486cbd72c59e8247cfbba355b748107ee2b9d06abfe4674b864")
 
     def test_primary_jester_secondary_routing_preserves_material_layout(self):
         records = generate._records()  # pylint: disable=protected-access

@@ -65,6 +65,9 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cp
 	ultimate-ghost-extra-information-preflight \
 	ultimate-ghost-extra-information-preflight-self-test \
 	ultimate-ghost-extra-information-preflight-sample \
+	ultimate-bishop-ghost-information-preserver \
+	ultimate-bishop-ghost-information-preserver-self-test \
+	ultimate-bishop-ghost-information-preserver-test \
 	ultimate-reciprocal-bishop-ghost-information-tablebase \
 	ultimate-ghost-public-extra-model-test \
 	ultimate-reciprocal-bishop-ghost-information-test \
@@ -72,6 +75,9 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cp
 	ultimate-ghost-dragon-information-tablebase \
 	ultimate-ghost-dragon-information-test \
 	ultimate-ghost-dragon-information-self-test \
+	ultimate-ghost-bomb-information-tablebase \
+	ultimate-ghost-bomb-information-test \
+	ultimate-ghost-bomb-information-self-test \
 	ultimate-ghost-pair-information-tablebase \
 	ultimate-ghost-pair-information-test \
 	ultimate-ghost-pair-information-self-test \
@@ -134,6 +140,22 @@ ultimate-ghost-extra-information-preflight-sample: \
 		--input ../tablebases/kbishopkghost.uftb \
 		--lower-ghost-sidecar ../tablebases/kghostk.ufgm --samples 5000
 
+ultimate-bishop-ghost-information-preserver:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=range-loop-construct -include sstream -Iultimate \
+		ultimate/bishop_ghost_information_preserver.cpp \
+		ultimate/external_robdd.cpp ultimate/ghost_information_probe.cpp \
+		ultimate/information.cpp ultimate/position.cpp ultimate/nnue.cpp \
+		-o ultimate_bishop_ghost_information_preserver
+
+ultimate-bishop-ghost-information-preserver-self-test: \
+	ultimate-bishop-ghost-information-preserver
+	./ultimate_bishop_ghost_information_preserver --self-test
+
+ultimate-bishop-ghost-information-preserver-test: \
+	ultimate-bishop-ghost-information-preserver-self-test
+	python3 ../tests/test_package_ultimate_bishop_ghost_preservation.py
+
 ULTIMATE_RECIPROCAL_BISHOP_GHOST_SRCS = \
 	ultimate/ghost_public_extra_information_tablebase.cpp \
 	ultimate/ghost_public_extra_information_solver.cpp \
@@ -193,6 +215,31 @@ ultimate-ghost-dragon-information-self-test: \
 	ultimate-ghost-dragon-information-tablebase
 	./ultimate_ghost_dragon_information_tablebase --self-test \
 		--scratch /tmp/ultimate-ghost-dragon-cli
+
+ULTIMATE_GHOST_BOMB_SRCS = \
+	ultimate/ghost_bomb_information_tablebase.cpp \
+	ultimate/ghost_bomb_information_solver.cpp \
+	ultimate/ghost_public_extra_model.cpp ultimate/external_robdd.cpp \
+	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+	ultimate/position.cpp ultimate/nnue.cpp
+
+ultimate-ghost-bomb-information-tablebase:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		$(ULTIMATE_GHOST_BOMB_SRCS) \
+		-o ultimate_ghost_bomb_information_tablebase
+
+ultimate-ghost-bomb-information-test:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate ../tests/ultimate_ghost_bomb_information_solver.cpp \
+		$(filter-out ultimate/ghost_bomb_information_tablebase.cpp, \
+			$(ULTIMATE_GHOST_BOMB_SRCS)) \
+		-o ultimate_ghost_bomb_information_solver_test
+	./ultimate_ghost_bomb_information_solver_test
+
+ultimate-ghost-bomb-information-self-test: \
+	ultimate-ghost-bomb-information-tablebase
+	./ultimate_ghost_bomb_information_tablebase --self-test \
+		--scratch /tmp/ultimate-ghost-bomb-cli
 
 ULTIMATE_GHOST_PAIR_SRCS = ultimate/ghost_pair_information_tablebase.cpp \
 	ultimate/ghost_pair_information_solver.cpp \
@@ -264,6 +311,7 @@ ultimate-information-solvers: ultimate-ghost-information-tablebase \
 	ultimate-joint-jester-information-tablebase \
 	ultimate-ghost-pair-information-tablebase \
 	ultimate-jester-ghost-information-tablebase \
+	ultimate-ghost-bomb-information-tablebase \
 	ultimate-reciprocal-bishop-ghost-information-tablebase
 
 ultimate-information-solvers-self-test: ultimate-information-solvers
@@ -285,6 +333,8 @@ ultimate-information-solvers-clean:
 		ultimate_ghost_pair_information_solver_test \
 		ultimate_jester_ghost_information_tablebase \
 		ultimate_jester_ghost_information_solver_test \
+		ultimate_ghost_bomb_information_tablebase \
+		ultimate_ghost_bomb_information_solver_test \
 		ultimate_reciprocal_bishop_ghost_information_tablebase \
 		ultimate_reciprocal_bishop_ghost_information_solver_test \
 		ultimate_ghost_public_extra_model_test \

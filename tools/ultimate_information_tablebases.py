@@ -145,6 +145,24 @@ DRAGON_GHOST_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "ghost_dragon_information_solver.cpp",
     ROOT / "src" / "ultimate" / "ghost_dragon_information_tablebase.cpp",
 )
+BOMB_GHOST_SOLVER_SOURCES = (
+    ROOT / "src" / "ultimate" / "position.h",
+    ROOT / "src" / "ultimate" / "position.cpp",
+    ROOT / "src" / "ultimate" / "information.h",
+    ROOT / "src" / "ultimate" / "information.cpp",
+    ROOT / "src" / "ultimate" / "ghost_information_probe.h",
+    ROOT / "src" / "ultimate" / "ghost_information_probe.cpp",
+    ROOT / "src" / "ultimate" / "external_robdd.h",
+    ROOT / "src" / "ultimate" / "external_robdd.cpp",
+    ROOT / "src" / "ultimate" / "ghost_extra_information_tablebase.cpp",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_model.h",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_model.cpp",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_information_solver.h",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_information_solver.cpp",
+    ROOT / "src" / "ultimate" / "ghost_bomb_information_solver.h",
+    ROOT / "src" / "ultimate" / "ghost_bomb_information_solver.cpp",
+    ROOT / "src" / "ultimate" / "ghost_bomb_information_tablebase.cpp",
+)
 GHOST_PAIR_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "position.h",
     ROOT / "src" / "ultimate" / "position.cpp",
@@ -278,6 +296,8 @@ SOLVER_DOMAIN_FILENAMES = {
     "reciprocal-bishop-ghost": ("kbishopkghost.uftb",),
     "dragon-ghost-same": ("kghostdragonk.uftb",),
     "dragon-ghost-opposing": ("kghostkdragon.uftb",),
+    "bomb-ghost-same": ("kbombghostk.uftb",),
+    "bomb-ghost-opposing": ("kbombkghost.uftb",),
     "ghost-pair": ("kghostghostk.uftb",),
     "jester-ghost": ("kjesterghostk.uftb",),
 }
@@ -291,6 +311,8 @@ SOLVER_DOMAIN_SOURCES = {
     "reciprocal-bishop-ghost": RECIPROCAL_BISHOP_GHOST_SOLVER_SOURCES,
     "dragon-ghost-same": DRAGON_GHOST_SOLVER_SOURCES,
     "dragon-ghost-opposing": DRAGON_GHOST_SOLVER_SOURCES,
+    "bomb-ghost-same": BOMB_GHOST_SOLVER_SOURCES,
+    "bomb-ghost-opposing": BOMB_GHOST_SOLVER_SOURCES,
     "ghost-pair": GHOST_PAIR_SOLVER_SOURCES,
     "jester-ghost": JESTER_GHOST_SOLVER_SOURCES,
 }
@@ -298,6 +320,8 @@ SOLVER_SIDECAR_DEPENDENCIES = {
     "reciprocal-bishop-ghost": ("kghostk.ufgm",),
     "dragon-ghost-same": ("kghostk.ufgm",),
     "dragon-ghost-opposing": ("kghostk.ufgm",),
+    "bomb-ghost-same": ("kghostk.ufgm",),
+    "bomb-ghost-opposing": ("kghostk.ufgm",),
     "ghost-pair": ("kghostk.ufgm",),
     "jester-ghost": ("kghostk.ufgm",),
 }
@@ -485,6 +509,8 @@ def solver_concrete_dependencies(filename: str) -> tuple[str, ...]:
     domain = solver_domain(filename)
     if domain in {"dragon-ghost-same", "dragon-ghost-opposing"}:
         return ("kdragonk.uftb",)
+    if domain in {"bomb-ghost-same", "bomb-ghost-opposing"}:
+        return ("kbombk.uftb",)
     if domain == "jester-ghost":
         return ("kjesterk.uftb",)
     if domain not in {"primary-jester", "primary-jester-giant"}:
@@ -510,7 +536,7 @@ def solver_concrete_dependencies(filename: str) -> tuple[str, ...]:
 def concrete_tablebase_model_fingerprint(filename: str,
                                          *, root: Path = ROOT) -> str:
     """Bind a probed concrete lower table to its native generator model."""
-    if filename != "kdragonk.uftb":
+    if filename not in {"kdragonk.uftb", "kbombk.uftb"}:
         raise SummaryValidationError(
             f"unsupported concrete dependency model {filename}")
     sources = (
