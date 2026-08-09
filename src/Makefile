@@ -63,6 +63,8 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cp
 	ultimate-nnue-reference ultimate-information-solvers \
 	ultimate-ghost-information-tablebase ultimate-double-jester-information-tablebase \
 	ultimate-ghost-extra-information-preflight \
+	ultimate-ghost-extra-information-preflight-self-test \
+	ultimate-ghost-extra-information-preflight-sample \
 	ultimate-joint-jester-information-tablebase ultimate-information-solvers-self-test \
 	ultimate-information-solvers-clean
 ultimatefish:
@@ -103,6 +105,20 @@ ultimate-ghost-extra-information-preflight:
 		ultimate/ghost_information_probe.cpp ultimate/position.cpp \
 		ultimate/information.cpp ultimate/nnue.cpp \
 		-o ultimate_ghost_extra_information_preflight
+
+ultimate-ghost-extra-information-preflight-self-test: \
+	ultimate-ghost-extra-information-preflight
+	./ultimate_ghost_extra_information_preflight --material same --self-test
+	./ultimate_ghost_extra_information_preflight --material opposing --self-test
+
+ultimate-ghost-extra-information-preflight-sample: \
+	ultimate-ghost-extra-information-preflight
+	./ultimate_ghost_extra_information_preflight --material same \
+		--input ../tablebases/kbishopghostk.uftb \
+		--lower-ghost-sidecar ../tablebases/kghostk.ufgm --samples 5000
+	./ultimate_ghost_extra_information_preflight --material opposing \
+		--input ../tablebases/kbishopkghost.uftb \
+		--lower-ghost-sidecar ../tablebases/kghostk.ufgm --samples 5000
 
 ultimate-double-jester-information-tablebase:
 	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
