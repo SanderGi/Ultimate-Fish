@@ -125,8 +125,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         supported = info.supported_solver_inventory()
         unsupported = info.unsupported_solver_inventory()
         names = [filename for filename, _ in supported] + list(unsupported)
-        self.assertEqual(len(supported), 36)
-        self.assertEqual(len(unsupported), 9)
+        self.assertEqual(len(supported), 38)
+        self.assertEqual(len(unsupported), 7)
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(set(names), set(info.AFFECTED_FILENAMES))
         counts = {}
@@ -145,6 +145,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "dragon-ghost-opposing": 1,
             "bomb-ghost-same": 1,
             "bomb-ghost-opposing": 1,
+            "fisherman-ghost-same": 1,
+            "fisherman-ghost-opposing": 1,
             "ghost-pair": 1,
             "jester-ghost": 1,
         })
@@ -220,6 +222,11 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                              ("kghostk.ufgm",))
             self.assertEqual(info.solver_concrete_dependencies(filename),
                              ("kbombk.uftb",))
+        for filename in ("kghostfishermank.uftb",
+                         "kghostkfisherman.uftb"):
+            self.assertEqual(info.solver_sidecar_dependencies(filename),
+                             ("kghostk.ufgm",))
+            self.assertEqual(info.solver_concrete_dependencies(filename), ())
         self.assertEqual(len(info.concrete_tablebase_model_fingerprint(
             "kdragonk.uftb")), 64)
         self.assertEqual(len(info.concrete_tablebase_model_fingerprint(
@@ -239,6 +246,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "dragon-ghost-opposing": "kghostkdragon.uftb",
             "bomb-ghost-same": "kbombghostk.uftb",
             "bomb-ghost-opposing": "kbombkghost.uftb",
+            "fisherman-ghost-same": "kghostfishermank.uftb",
+            "fisherman-ghost-opposing": "kghostkfisherman.uftb",
             "ghost-pair": "kghostghostk.uftb",
             "jester-ghost": "kjesterghostk.uftb",
         }
@@ -283,6 +292,10 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                                 before["bomb-ghost-same"])
             self.assertNotEqual(after_ghost["bomb-ghost-opposing"],
                                 before["bomb-ghost-opposing"])
+            self.assertNotEqual(after_ghost["fisherman-ghost-same"],
+                                before["fisherman-ghost-same"])
+            self.assertNotEqual(after_ghost["fisherman-ghost-opposing"],
+                                before["fisherman-ghost-opposing"])
             for domain in ("primary-jester", "primary-jester-giant",
                            "double-jester", "joint-jester"):
                 self.assertEqual(after_ghost[domain], before[domain])
@@ -313,7 +326,9 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                            "bishop-ghost", "reciprocal-bishop-ghost",
                            "ghost-pair", "jester-ghost",
                            "dragon-ghost-same", "dragon-ghost-opposing",
-                           "bomb-ghost-same", "bomb-ghost-opposing"):
+                           "bomb-ghost-same", "bomb-ghost-opposing",
+                           "fisherman-ghost-same",
+                           "fisherman-ghost-opposing"):
                 self.assertEqual(after_probe[domain], after_shared[domain])
 
             pair_relative = info.GHOST_PAIR_SOLVER_SOURCES[-1].relative_to(ROOT)
@@ -356,6 +371,9 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         self.assertEqual(
             info.solver_model_fingerprint("kghostghostk.uftb"),
             "2280445ed5c6f024b0cd8d00fca45dd48e5359cd591d4e3d28ee0259f74ff286")
+        self.assertNotEqual(
+            info.double_jester_capture_model_fingerprint(),
+            info.solver_model_fingerprint("kjesterjesterk.uftb"))
 
     def test_semantics_documents_fresh_maximal_public_view(self):
         self.assertEqual(info.SEMANTICS["id"],

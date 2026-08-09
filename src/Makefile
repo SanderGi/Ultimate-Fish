@@ -78,6 +78,9 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cp
 	ultimate-ghost-bomb-information-tablebase \
 	ultimate-ghost-bomb-information-test \
 	ultimate-ghost-bomb-information-self-test \
+	ultimate-ghost-fisherman-information-tablebase \
+	ultimate-ghost-fisherman-information-test \
+	ultimate-ghost-fisherman-information-self-test \
 	ultimate-ghost-pair-information-tablebase \
 	ultimate-ghost-pair-information-test \
 	ultimate-ghost-pair-information-self-test \
@@ -85,7 +88,10 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cp
 	ultimate-jester-ghost-information-test \
 	ultimate-jester-ghost-information-self-test \
 	ultimate-external-robdd-test \
-	ultimate-joint-jester-information-tablebase ultimate-information-solvers-self-test \
+	ultimate-joint-jester-information-tablebase \
+	ultimate-joint-jester-information-preserver \
+	ultimate-joint-jester-information-preserver-self-test \
+	ultimate-information-solvers-self-test \
 	ultimate-information-solvers-clean
 ultimatefish:
 	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic $(ULTIMATE_SRCS) -o ultimatefish
@@ -241,6 +247,31 @@ ultimate-ghost-bomb-information-self-test: \
 	./ultimate_ghost_bomb_information_tablebase --self-test \
 		--scratch /tmp/ultimate-ghost-bomb-cli
 
+ULTIMATE_GHOST_FISHERMAN_SRCS = \
+	ultimate/ghost_fisherman_information_tablebase.cpp \
+	ultimate/ghost_fisherman_information_solver.cpp \
+	ultimate/ghost_public_extra_model.cpp ultimate/external_robdd.cpp \
+	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+	ultimate/position.cpp ultimate/nnue.cpp
+
+ultimate-ghost-fisherman-information-tablebase:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		$(ULTIMATE_GHOST_FISHERMAN_SRCS) \
+		-o ultimate_ghost_fisherman_information_tablebase
+
+ultimate-ghost-fisherman-information-test:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate ../tests/ultimate_ghost_fisherman_information_solver.cpp \
+		$(filter-out ultimate/ghost_fisherman_information_tablebase.cpp, \
+			$(ULTIMATE_GHOST_FISHERMAN_SRCS)) \
+		-o ultimate_ghost_fisherman_information_solver_test
+	./ultimate_ghost_fisherman_information_solver_test
+
+ultimate-ghost-fisherman-information-self-test: \
+	ultimate-ghost-fisherman-information-tablebase
+	./ultimate_ghost_fisherman_information_tablebase --self-test \
+		--scratch /tmp/ultimate-ghost-fisherman-cli
+
 ULTIMATE_GHOST_PAIR_SRCS = ultimate/ghost_pair_information_tablebase.cpp \
 	ultimate/ghost_pair_information_solver.cpp \
 	ultimate/ghost_pair_information_model.cpp \
@@ -306,12 +337,22 @@ ultimate-joint-jester-information-tablebase:
 		ultimate/joint_jester_information_tablebase.cpp $(ULTIMATE_INFORMATION_COMMON_SRCS) \
 		-o ultimate_joint_jester_information_tablebase
 
+ultimate-joint-jester-information-preserver:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		ultimate/joint_jester_information_preserver.cpp $(ULTIMATE_INFORMATION_COMMON_SRCS) \
+		-o ultimate_joint_jester_information_preserver
+
+ultimate-joint-jester-information-preserver-self-test: \
+	ultimate-joint-jester-information-preserver
+	./ultimate_joint_jester_information_preserver --self-test --scratch /tmp
+
 ultimate-information-solvers: ultimate-ghost-information-tablebase \
 	ultimate-double-jester-information-tablebase \
 	ultimate-joint-jester-information-tablebase \
 	ultimate-ghost-pair-information-tablebase \
 	ultimate-jester-ghost-information-tablebase \
 	ultimate-ghost-bomb-information-tablebase \
+	ultimate-ghost-fisherman-information-tablebase \
 	ultimate-reciprocal-bishop-ghost-information-tablebase
 
 ultimate-information-solvers-self-test: ultimate-information-solvers
@@ -322,6 +363,8 @@ ultimate-information-solvers-self-test: ultimate-information-solvers
 		--scratch /tmp/ultimate-ghost-pair-cli
 	./ultimate_jester_ghost_information_tablebase --self-test \
 		--scratch /tmp/ultimate-jester-ghost-cli
+	./ultimate_ghost_fisherman_information_tablebase --self-test \
+		--scratch /tmp/ultimate-ghost-fisherman-cli
 	./ultimate_reciprocal_bishop_ghost_information_tablebase --self-test \
 		--scratch /tmp/ultimate-reciprocal-bishop-ghost-cli
 
@@ -329,12 +372,15 @@ ultimate-information-solvers-clean:
 	@rm -f ultimate_ghost_information_tablebase \
 		ultimate_double_jester_information_tablebase \
 		ultimate_joint_jester_information_tablebase \
+		ultimate_joint_jester_information_preserver \
 		ultimate_ghost_pair_information_tablebase \
 		ultimate_ghost_pair_information_solver_test \
 		ultimate_jester_ghost_information_tablebase \
 		ultimate_jester_ghost_information_solver_test \
 		ultimate_ghost_bomb_information_tablebase \
 		ultimate_ghost_bomb_information_solver_test \
+		ultimate_ghost_fisherman_information_tablebase \
+		ultimate_ghost_fisherman_information_solver_test \
 		ultimate_reciprocal_bishop_ghost_information_tablebase \
 		ultimate_reciprocal_bishop_ghost_information_solver_test \
 		ultimate_ghost_public_extra_model_test \

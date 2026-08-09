@@ -89,6 +89,20 @@ DOUBLE_JESTER_SOLVER_SOURCES = (
     *SHARED_SOLVER_SOURCES,
     ROOT / "src" / "ultimate" / "double_jester_information_tablebase.cpp",
 )
+# Capture preservation is a separate, post-solve artifact domain.  Its model
+# must never rebind or replace the normal kjesterjesterk UFIW proof.
+DOUBLE_JESTER_CAPTURE_SOLVER_SOURCES = (
+    ROOT / "src" / "ultimate" / "double_jester_information_capture.cpp",
+    ROOT / "src" / "ultimate" / "double_jester_information_tablebase.cpp",
+    ROOT / "src" / "ultimate" / "information_solver.h",
+    ROOT / "src" / "ultimate" / "information_solver.cpp",
+    ROOT / "src" / "ultimate" / "position.h",
+    ROOT / "src" / "ultimate" / "position.cpp",
+    ROOT / "src" / "ultimate" / "information.h",
+    ROOT / "src" / "ultimate" / "information.cpp",
+    ROOT / "src" / "ultimate" / "nnue.h",
+    ROOT / "src" / "ultimate" / "nnue.cpp",
+)
 JOINT_JESTER_SOLVER_SOURCES = (
     *SHARED_SOLVER_SOURCES,
     ROOT / "src" / "ultimate" / "joint_jester_information_tablebase.cpp",
@@ -162,6 +176,24 @@ BOMB_GHOST_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "ghost_bomb_information_solver.h",
     ROOT / "src" / "ultimate" / "ghost_bomb_information_solver.cpp",
     ROOT / "src" / "ultimate" / "ghost_bomb_information_tablebase.cpp",
+)
+FISHERMAN_GHOST_SOLVER_SOURCES = (
+    ROOT / "src" / "ultimate" / "position.h",
+    ROOT / "src" / "ultimate" / "position.cpp",
+    ROOT / "src" / "ultimate" / "information.h",
+    ROOT / "src" / "ultimate" / "information.cpp",
+    ROOT / "src" / "ultimate" / "ghost_information_probe.h",
+    ROOT / "src" / "ultimate" / "ghost_information_probe.cpp",
+    ROOT / "src" / "ultimate" / "external_robdd.h",
+    ROOT / "src" / "ultimate" / "external_robdd.cpp",
+    ROOT / "src" / "ultimate" / "ghost_extra_information_tablebase.cpp",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_model.h",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_model.cpp",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_information_solver.h",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_information_solver.cpp",
+    ROOT / "src" / "ultimate" / "ghost_fisherman_information_solver.h",
+    ROOT / "src" / "ultimate" / "ghost_fisherman_information_solver.cpp",
+    ROOT / "src" / "ultimate" / "ghost_fisherman_information_tablebase.cpp",
 )
 GHOST_PAIR_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "position.h",
@@ -298,6 +330,8 @@ SOLVER_DOMAIN_FILENAMES = {
     "dragon-ghost-opposing": ("kghostkdragon.uftb",),
     "bomb-ghost-same": ("kbombghostk.uftb",),
     "bomb-ghost-opposing": ("kbombkghost.uftb",),
+    "fisherman-ghost-same": ("kghostfishermank.uftb",),
+    "fisherman-ghost-opposing": ("kghostkfisherman.uftb",),
     "ghost-pair": ("kghostghostk.uftb",),
     "jester-ghost": ("kjesterghostk.uftb",),
 }
@@ -313,6 +347,8 @@ SOLVER_DOMAIN_SOURCES = {
     "dragon-ghost-opposing": DRAGON_GHOST_SOLVER_SOURCES,
     "bomb-ghost-same": BOMB_GHOST_SOLVER_SOURCES,
     "bomb-ghost-opposing": BOMB_GHOST_SOLVER_SOURCES,
+    "fisherman-ghost-same": FISHERMAN_GHOST_SOLVER_SOURCES,
+    "fisherman-ghost-opposing": FISHERMAN_GHOST_SOLVER_SOURCES,
     "ghost-pair": GHOST_PAIR_SOLVER_SOURCES,
     "jester-ghost": JESTER_GHOST_SOLVER_SOURCES,
 }
@@ -322,6 +358,8 @@ SOLVER_SIDECAR_DEPENDENCIES = {
     "dragon-ghost-opposing": ("kghostk.ufgm",),
     "bomb-ghost-same": ("kghostk.ufgm",),
     "bomb-ghost-opposing": ("kghostk.ufgm",),
+    "fisherman-ghost-same": ("kghostk.ufgm",),
+    "fisherman-ghost-opposing": ("kghostk.ufgm",),
     "ghost-pair": ("kghostk.ufgm",),
     "jester-ghost": ("kghostk.ufgm",),
 }
@@ -454,6 +492,13 @@ def observation_model_fingerprint() -> str:
     """Bind certificates to projection code and the v2 observation contract."""
     return _source_fingerprint(
         OBSERVATION_MODEL_SOURCES, domain="observation-model")
+
+
+def double_jester_capture_model_fingerprint(*, root: Path = ROOT) -> str:
+    """Bind the optional capture-preservation pass, not the primary solve."""
+    return _source_fingerprint(
+        DOUBLE_JESTER_CAPTURE_SOLVER_SOURCES,
+        domain="solver-model:double-jester-capture", root=root)
 
 
 def supported_solver_inventory() -> tuple[tuple[str, str], ...]:

@@ -40,6 +40,10 @@ class InformationGenerationDriverTests(unittest.TestCase):
             bomb_ghost_binary=root / "bomb-ghost",
             bomb_ghost_same_transitions=root / "bomb-ghost-same",
             bomb_ghost_opposing_transitions=root / "bomb-ghost-opposing",
+            fisherman_ghost_binary=root / "fisherman-ghost",
+            fisherman_ghost_same_transitions=root / "fisherman-ghost-same",
+            fisherman_ghost_opposing_transitions=
+                root / "fisherman-ghost-opposing",
             ghost_pair_binary=root / "ghost-pair",
             ghost_pair_transitions=root / "ghost-pair-transitions",
             jester_ghost_binary=root / "jester-ghost",
@@ -344,6 +348,41 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 stream.seek(480); stream.write(b"0" * 64)
             self.assertFalse(generate.arbitrary_is_current(path, source, model))
 
+    def test_arbitrary_reuse_authenticates_fisherman_ufgf_material(self):
+        source, model = "5" * 64, "6" * 64
+        payload = b"exact-fisherman-ghost-roots"
+        header = bytearray(1056)
+        header[:8] = b"UFGF1\0\0\0"
+        struct.pack_into("<14I", header, 8, 1, 1056, 0x01020304,
+                         generate.PIECE_TYPE_IDS["ghost"],
+                         generate.PIECE_TYPE_IDS["fisherman"], 0, 1,
+                         80, 75_915_840, 9, 392, 16, 4, 0)
+        struct.pack_into("<Q", header, 96, 1056)
+        struct.pack_into("<Q", header, 152, len(payload))
+        header[160:224] = source.encode()
+        header[288:352] = model.encode()
+        header[352:416] = (
+            generate.information.observation_model_fingerprint().encode())
+        header[416:480] = (
+            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        header[928:992] = hashlib.sha256(payload).hexdigest().encode()
+        semantics = b"fresh-maximal-public-view-v2:fisherman-ghost-generic"
+        header[992:992 + len(semantics)] = semantics
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "fisherman.ufgf"
+            path.write_bytes(header + payload)
+            self.assertTrue(generate.arbitrary_is_current(
+                path, source, model, fisherman_orientation=1))
+            with path.open("r+b") as stream:
+                stream.seek(24)
+                stream.write(struct.pack(
+                    "<I", generate.PIECE_TYPE_IDS["bomb"]))
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model, fisherman_orientation=1))
+            path.write_bytes(header + payload)
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model, fisherman_orientation=0))
+
     def test_checkpoint_merge_preserves_independent_completed_rows(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "partial.json"
@@ -501,6 +540,28 @@ class InformationGenerationDriverTests(unittest.TestCase):
                     bomb[bomb.index("--lower-bomb-sha256") + 1],
                     "3d4f44035652e486cbd72c59e8247cfbba355b748107ee2b9d06abfe4674b864")
 
+            for filename, orientation, transitions in (
+                    ("kghostfishermank.uftb", "same",
+                     args.fisherman_ghost_same_transitions),
+                    ("kghostkfisherman.uftb", "opposing",
+                     args.fisherman_ghost_opposing_transitions)):
+                fisherman = generate.solver_command(
+                    args, records[filename], root / f"{filename}.ufiw",
+                    "1" * 64,
+                    generate.information.solver_model_fingerprint(filename))
+                self.assertEqual(fisherman[0],
+                                 str(args.fisherman_ghost_binary))
+                self.assertEqual(
+                    fisherman[fisherman.index("--orientation") + 1],
+                    orientation)
+                self.assertEqual(
+                    fisherman[fisherman.index("--transition-prefix") + 1],
+                    str(transitions))
+                self.assertIn(
+                    str(args.overlays / f"{Path(filename).stem}.ufgf"),
+                    fisherman)
+                self.assertNotIn("--lower-fisherman-table", fisherman)
+
     def test_primary_jester_secondary_routing_preserves_material_layout(self):
         records = generate._records()  # pylint: disable=protected-access
         with tempfile.TemporaryDirectory() as directory:
@@ -558,7 +619,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,
                                         "unsupported information class"):
                 generate.solver_command(
-                    self._args(root), records["kghostfishermank.uftb"],
+                    self._args(root), records["kghostgiantk.uftb"],
                     root / "bad.ufiw", "1" * 64, "2" * 64)
 
 
