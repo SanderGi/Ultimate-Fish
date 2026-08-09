@@ -177,6 +177,7 @@ def build_manifest() -> dict[str, object]:
         "commands": {
             "build": ["clang++", "-std=c++17", "-O3", "-DNDEBUG",
                       "-Wall", "-Wextra", "-Wpedantic", "-Werror",
+                      "-Wno-error=range-loop-construct",
                       "-Isrc/ultimate", *CPP_SOURCES, "-o", executable[2:]],
             "self_test": [executable, "--self-test", "--scratch",
                           "work/self-test/kbishopkghost"],

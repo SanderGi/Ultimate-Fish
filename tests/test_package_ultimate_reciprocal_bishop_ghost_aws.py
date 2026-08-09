@@ -78,6 +78,10 @@ class ReciprocalBishopGhostAwsBundleTests(unittest.TestCase):
                       manifest["artifacts"])
         self.assertIn("--output-arbitrary", manifest["commands"]["solve"])
         self.assertEqual(manifest["commands"]["build"][0], "clang++")
+        build = manifest["commands"]["build"]
+        self.assertGreater(
+            build.index("-Wno-error=range-loop-construct"),
+            build.index("-Werror"))
         for command in (manifest["commands"]["measure"],
                         manifest["commands"]["solve"]):
             self.assertEqual(command[command.index("--compact-every") + 1],
