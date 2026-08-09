@@ -27,12 +27,13 @@ BISHOP_GHOST_FINGERPRINT = (
 GHOST_PAIR_FINGERPRINT = (
     "2280445ed5c6f024b0cd8d00fca45dd48e5359cd591d4e3d28ee0259f74ff286")
 RECIPROCAL_FINGERPRINT = (
-    "a88ffbb75d130563b7cd14801a9a36f6e35f99b336dc79e40477b0a268823c85")
+    "a9889978e2c217035a90c31d51c294b5c368ed06bc0b592ea82174c36cec58cc")
 
 BUILD_INPUTS = (
     "src/ultimate/ghost_public_extra_information_tablebase.cpp",
     "src/ultimate/ghost_public_extra_information_solver.cpp",
     "src/ultimate/ghost_public_extra_information_solver.h",
+    "src/ultimate/ghost_reciprocal_bishop_information_solver.cpp",
     "src/ultimate/ghost_public_extra_model.cpp",
     "src/ultimate/ghost_public_extra_model.h",
     # Included textually by the isolated reciprocal implementation. It is an
@@ -55,7 +56,8 @@ BUILD_INPUTS = (
 CPP_SOURCES = tuple(
     path for path in BUILD_INPUTS
     if path.startswith("src/") and path.endswith(".cpp") and
-    not path.endswith("ghost_extra_information_tablebase.cpp"))
+    not path.endswith("ghost_extra_information_tablebase.cpp") and
+    not path.endswith("ghost_public_extra_information_solver.cpp"))
 
 
 def sha256_bytes(payload: bytes) -> str:

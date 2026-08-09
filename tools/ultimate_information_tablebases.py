@@ -136,6 +136,8 @@ RECIPROCAL_BISHOP_GHOST_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "ghost_public_extra_information_solver.h",
     ROOT / "src" / "ultimate" / "ghost_public_extra_information_solver.cpp",
     ROOT / "src" / "ultimate" /
+        "ghost_reciprocal_bishop_information_solver.cpp",
+    ROOT / "src" / "ultimate" /
         "ghost_public_extra_information_tablebase.cpp",
 )
 DRAGON_GHOST_SOLVER_SOURCES = (

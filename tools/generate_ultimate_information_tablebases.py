@@ -172,6 +172,7 @@ def overlay_is_current(path: Path, record: Mapping[str, object],
 def arbitrary_is_current(path: Path, source_sha256: str,
                          model_sha256: str, *,
                          lower_jester_overlay_sha256: str | None = None,
+                         dragon_orientation: int | None = None,
                          fisherman_orientation: int | None = None) -> bool:
     """Authenticate a permanent exact arbitrary-belief artifact."""
     try:
@@ -298,16 +299,29 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                     information.observation_model_fingerprint() and
                 header[348:412].decode() ==
                     "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
-        material_current = (magic != b"UFGF1\0\0\0" or (
-            struct.unpack_from("<I", header, 20)[0] ==
-                PIECE_TYPE_IDS["ghost"] and
-            struct.unpack_from("<I", header, 24)[0] ==
-                PIECE_TYPE_IDS["fisherman"] and
-            struct.unpack_from("<I", header, 28)[0] == 0 and
-            struct.unpack_from("<I", header, 32)[0] in {0, 1} and
-            (fisherman_orientation is None or
-             struct.unpack_from("<I", header, 32)[0] ==
-                fisherman_orientation)))
+        material_current = True
+        if magic == b"UFGD1\0\0\0":
+            material_current = (
+                struct.unpack_from("<I", header, 20)[0] ==
+                    PIECE_TYPE_IDS["ghost"] and
+                struct.unpack_from("<I", header, 24)[0] ==
+                    PIECE_TYPE_IDS["dragon"] and
+                struct.unpack_from("<I", header, 28)[0] == 0 and
+                struct.unpack_from("<I", header, 32)[0] in {0, 1} and
+                (dragon_orientation is None or
+                 struct.unpack_from("<I", header, 32)[0] ==
+                    dragon_orientation))
+        elif magic == b"UFGF1\0\0\0":
+            material_current = (
+                struct.unpack_from("<I", header, 20)[0] ==
+                    PIECE_TYPE_IDS["ghost"] and
+                struct.unpack_from("<I", header, 24)[0] ==
+                    PIECE_TYPE_IDS["fisherman"] and
+                struct.unpack_from("<I", header, 28)[0] == 0 and
+                struct.unpack_from("<I", header, 32)[0] in {0, 1} and
+                (fisherman_orientation is None or
+                 struct.unpack_from("<I", header, 32)[0] ==
+                    fisherman_orientation))
         return (
             header[:8] == magic and
             struct.unpack_from("<I", header, 8)[0] == expected_version and
@@ -743,6 +757,8 @@ def solve_one(args: argparse.Namespace) -> None:
     fisherman_orientation = (0 if domain == "fisherman-ghost-same" else
                               1 if domain == "fisherman-ghost-opposing" else
                               None)
+    dragon_orientation = (0 if domain == "dragon-ghost-same" else
+                          1 if domain == "dragon-ghost-opposing" else None)
     if domain == "jester-ghost":
         lower_jester_arbitrary = args.overlays / "kjesterk.ufiw"
         if lower_jester_arbitrary.exists():
@@ -759,6 +775,7 @@ def solve_one(args: argparse.Namespace) -> None:
                             "fisherman-ghost-opposing"} or arbitrary_is_current(
                 arbitrary, source_sha256, model_sha256,
                 lower_jester_overlay_sha256=lower_jester_arbitrary_sha,
+                dragon_orientation=dragon_orientation,
                 fisherman_orientation=fisherman_orientation))):
         print(f"already complete and verified: {args.filename}")
         return
@@ -781,6 +798,7 @@ def solve_one(args: argparse.Namespace) -> None:
                   "fisherman-ghost-opposing"} and not arbitrary_is_current(
             arbitrary, source_sha256, model_sha256,
             lower_jester_overlay_sha256=lower_jester_arbitrary_sha,
+            dragon_orientation=dragon_orientation,
             fisherman_orientation=fisherman_orientation):
         raise RuntimeError(
             f"{arbitrary}: missing/stale authenticated all-beliefs artifact")

@@ -187,6 +187,31 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 self.assertFalse(generate.overlay_is_current(
                     path, record, source, model))
 
+    def test_dragon_overlay_headers_require_orientation_color(self):
+        records = generate._records()  # pylint: disable=protected-access
+        source, model = "7" * 64, "8" * 64
+        for filename, color in (("kghostdragonk.uftb", 0),
+                                ("kghostkdragon.uftb", 1)):
+            record = records[filename]
+            count = generate.information.states_per_side(record) * 2
+            header = (struct.pack(
+                "<8s6I", b"UFIW2\0\0\0", 2,
+                generate.PIECE_TYPE_IDS["ghost"],
+                generate.PIECE_TYPE_IDS["dragon"], color, count, 2) +
+                source.encode() + model.encode())
+            with self.subTest(filename=filename), \
+                 tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "dragon.ufiw"
+                with path.open("wb") as stream:
+                    stream.write(header); stream.truncate(160 + count)
+                self.assertTrue(generate.overlay_is_current(
+                    path, record, source, model))
+                with path.open("r+b") as stream:
+                    stream.seek(20)
+                    stream.write(struct.pack("<I", color ^ 1))
+                self.assertFalse(generate.overlay_is_current(
+                    path, record, source, model))
+
     def test_arbitrary_reuse_requires_complete_authenticated_ufgg(self):
         source = "1" * 64
         model = "2" * 64
@@ -291,7 +316,10 @@ class InformationGenerationDriverTests(unittest.TestCase):
         payload = b"exact-dragon-ghost-roots"
         header = bytearray(1248)
         header[:8] = b"UFGD1\0\0\0"
-        struct.pack_into("<II", header, 8, 1, 1248)
+        struct.pack_into("<14I", header, 8, 1, 1248, 0x01020304,
+                         generate.PIECE_TYPE_IDS["ghost"],
+                         generate.PIECE_TYPE_IDS["dragon"], 0, 1,
+                         80, 75_915_840, 9, 392, 16, 4, 0)
         struct.pack_into("<Q", header, 96, 1248)
         struct.pack_into("<Q", header, 152, len(payload))
         header[160:224] = source.encode()
@@ -312,10 +340,14 @@ class InformationGenerationDriverTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "dragon.ufgd"
             path.write_bytes(header + payload)
-            self.assertTrue(generate.arbitrary_is_current(path, source, model))
+            self.assertTrue(generate.arbitrary_is_current(
+                path, source, model, dragon_orientation=1))
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model, dragon_orientation=0))
             with path.open("r+b") as stream:
                 stream.seek(416); stream.write(b"0" * 64)
-            self.assertFalse(generate.arbitrary_is_current(path, source, model))
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model, dragon_orientation=1))
 
     def test_arbitrary_reuse_authenticates_bomb_ufgb(self):
         source, model = "3" * 64, "4" * 64

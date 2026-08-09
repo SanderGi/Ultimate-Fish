@@ -27,6 +27,7 @@
 #include <map>
 #include <optional>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -171,6 +172,59 @@ void copy_hash(std::array<char, 64>& target, const std::string& source,
     if (!valid_sha(source))
         throw std::invalid_argument(std::string(label) + " is not SHA-256");
     std::copy(source.begin(), source.end(), target.begin());
+}
+
+void write_overlay_header(std::ostream& output, Orientation orientation,
+                          const std::string& sourceSha,
+                          const std::string& modelSha) {
+    if (!valid_sha(sourceSha) || !valid_sha(modelSha))
+        throw std::invalid_argument("Dragon overlay header SHA is invalid");
+    output.write("UFIW2\0\0\0", 8);
+    const auto write32 = [&](std::uint32_t value) {
+        output.write(reinterpret_cast<const char*>(&value), 4);
+    };
+    write32(2);
+    write32(static_cast<std::uint32_t>(PieceType::Ghost));
+    write32(static_cast<std::uint32_t>(PieceType::Dragon));
+    write32(static_cast<std::uint32_t>(
+      orientation == Orientation::Same ? Color::White : Color::Black));
+    write32(StateCount);
+    write32(2);
+    output.write(sourceSha.data(), 64);
+    output.write(modelSha.data(), 64);
+    if (!output)
+        throw std::runtime_error("failed writing Dragon overlay header");
+}
+
+void overlay_header_self_test() {
+    for (const Orientation orientation : {Orientation::Same,
+                                           Orientation::Opposing}) {
+        std::ostringstream output(std::ios::binary);
+        write_overlay_header(output, orientation, std::string(64, 'a'),
+                             std::string(64, 'b'));
+        const std::string bytes = output.str();
+        const auto word = [&](std::size_t offset) {
+            std::uint32_t value = 0;
+            if (offset + 4 > bytes.size())
+                throw std::runtime_error("Dragon overlay header is truncated");
+            std::memcpy(&value, bytes.data() + offset, 4);
+            return value;
+        };
+        const Color dragonColor = orientation == Orientation::Same
+                                ? Color::White : Color::Black;
+        if (bytes.size() != 160 ||
+            std::memcmp(bytes.data(), "UFIW2\0\0\0", 8) ||
+            word(8) != 2 ||
+            word(12) != static_cast<std::uint32_t>(PieceType::Ghost) ||
+            word(16) != static_cast<std::uint32_t>(PieceType::Dragon) ||
+            word(20) != static_cast<std::uint32_t>(dragonColor) ||
+            word(24) != StateCount || word(28) != 2 ||
+            bytes.substr(32, 64) != std::string(64, 'a') ||
+            bytes.substr(96, 64) != std::string(64, 'b'))
+            throw std::runtime_error("Dragon UFIW2 header contract residual");
+    }
+    std::cout << "ghost_dragon_overlay_contract same Ghost/Dragon/White"
+                 " opposing Ghost/Dragon/Black residual 0\n";
 }
 
 [[nodiscard]] std::string transition_payload_sha(
@@ -793,18 +847,8 @@ FreshSummary report_fresh_roots(
 
     std::ofstream output(options.outputOverlay,
       std::ios::binary | std::ios::trunc);
-    output.write("UFIW2\0\0\0", 8);
-    const auto write32 = [&](std::uint32_t value) {
-        output.write(reinterpret_cast<const char*>(&value), 4);
-    };
-    write32(2);
-    write32(static_cast<std::uint32_t>(PieceType::Ghost));
-    write32(static_cast<std::uint32_t>(PieceType::Dragon));
-    write32(static_cast<std::uint32_t>(Color::White));
-    write32(StateCount);
-    write32(2);
-    output.write(options.sourceSha256.data(), 64);
-    output.write(options.modelSha256.data(), 64);
+    write_overlay_header(output, orientation, options.sourceSha256,
+                         options.modelSha256);
     output.write(reinterpret_cast<const char*>(flags.data()),
                  static_cast<std::streamsize>(flags.size()));
     output.close();
@@ -1208,6 +1252,7 @@ SolveCertificate solve_exact(const SolveOptions& options) {
 
 void exact_self_test(const std::string& scratchPrefix) {
     (void)scratchPrefix;
+    overlay_header_self_test();
     for (const Orientation orientation : {Orientation::Same,
                                            Orientation::Opposing}) {
         const GhostPublicExtra::MaterialSpec material =

@@ -164,7 +164,7 @@ ultimate-bishop-ghost-information-preserver-test: \
 
 ULTIMATE_RECIPROCAL_BISHOP_GHOST_SRCS = \
 	ultimate/ghost_public_extra_information_tablebase.cpp \
-	ultimate/ghost_public_extra_information_solver.cpp \
+	ultimate/ghost_reciprocal_bishop_information_solver.cpp \
 	ultimate/ghost_public_extra_model.cpp ultimate/external_robdd.cpp \
 	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
 	ultimate/position.cpp ultimate/nnue.cpp

@@ -26,13 +26,13 @@ FROZEN_FINGERPRINTS = {
     "kbishopghostk.uftb":
         "d59736789155c52d9b697f6e3f05c2fd0c565beba5d5cce49e3648719289da91",
     "kbishopkghost.uftb":
-        "a88ffbb75d130563b7cd14801a9a36f6e35f99b336dc79e40477b0a268823c85",
+        "a9889978e2c217035a90c31d51c294b5c368ed06bc0b592ea82174c36cec58cc",
     "kghostghostk.uftb":
         "2280445ed5c6f024b0cd8d00fca45dd48e5359cd591d4e3d28ee0259f74ff286",
     "kghostdragonk.uftb":
-        "379d3d98fd8feb43dd891a8dd9d190aafec6b715ff0265cf009607545a347c34",
+        "dfd0ce7f2a1127a7a15d62b8c8442b76d6e46c716a4d78fb3de6208ce6afdf5b",
     "kghostkdragon.uftb":
-        "c81b940e33c12068cb3e0cce8aa10c893f7a05ad29090de677121a2c9f1e1522",
+        "9432915f6a90cbad1cd5c2d16df0944de2fdc0c0d206dcc90dc0dda799953103",
     "kbombghostk.uftb":
         "87aeb201a1fe108f8787ea16671579b487e05597676fbdb6b914e73acb1aa68b",
     "kbombkghost.uftb":
