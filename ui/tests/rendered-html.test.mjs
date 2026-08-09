@@ -52,6 +52,8 @@ test("local server renders the Ultimate Fish workbench", async () => {
   assert.match(html, /<title>Ultimate Fish<\/title>/i);
   assert.match(html, /Ultimate Fish/);
   assert.match(html, /<img[^>]+src="\/ultimate-fish-logo\.png"/i);
+  assert.match(html, /<svg[^>]+piece-icon piece-icon-king white/i);
+  assert.match(html, /<svg[^>]+piece-icon piece-icon-king black/i);
   assert.match(html, /Board tools/);
   assert.ok(html.indexOf("Side to move") < html.indexOf("Place as"));
   assert.match(html, /Start Ultimate Analysis/);

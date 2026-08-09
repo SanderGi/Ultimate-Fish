@@ -93,9 +93,10 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
 .palette-item { min-height: 60px; padding: 6px 3px; border: 1px solid #273142; border-radius: 8px; background: #111822; cursor: pointer; transition: border-color .14s, background .14s, transform .14s; }
 .palette-item:hover:not(:disabled) { border-color: #536277; transform: translateY(-1px); }
 .palette-item.selected { border-color: var(--amber-deep); background: #2a2116; box-shadow: inset 0 0 0 1px rgba(241, 178, 79, .12); }
-.palette-item span { display: block; color: #dce2ec; font-family: Georgia, "Apple Symbols", serif; font-size: 24px; line-height: 1; }
+.palette-item .palette-mark { width: 34px; height: 34px; margin: 0 auto; display: grid; place-items: center; }
+.palette-item .palette-mark .piece-icon { width: 100%; height: 100%; }
 .palette-item small { display: block; margin-top: 6px; color: var(--muted); font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.palette-item.erase span { color: var(--red); }
+.palette-item.erase > span { display: block; color: var(--red); font-size: 24px; line-height: 1; }
 .rail-note { margin: 11px 2px 0; color: var(--faint); font-size: 9px; line-height: 1.5; }
 
 .board-stage { min-width: 0; }
@@ -135,20 +136,64 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
 .rank-label, .file-label { position: absolute; z-index: 7; color: rgba(24, 28, 27, .62); font-size: clamp(7px, .75vw, 10px); font-weight: 850; pointer-events: none; }
 .rank-label { left: 4px; top: 3px; }
 .file-label { right: 4px; bottom: 2px; }
-.board-piece { position: relative; z-index: 4; width: min(78%, 4.3rem); height: min(78%, 4.3rem); display: grid; place-items: center; border-radius: 50%; color: #f2e8d5; font: 800 clamp(22px, 4vw, 51px)/1 Georgia, "Apple Symbols", serif; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .3)); user-select: none; }
-.board-piece.black { color: #20262d; -webkit-text-stroke: .55px rgba(225, 229, 234, .34); }
-.board-piece.white { color: #f4ead8; -webkit-text-stroke: 1px rgba(32, 30, 26, .7); }
-.board-piece.concealed-analysis { opacity: .48; border: 2px dashed currentColor; filter: drop-shadow(0 2px 2px rgba(0,0,0,.2)); }
+.board-piece-wrap { position: relative; z-index: 4; width: 100%; height: 100%; display: grid; place-items: center; }
+.board-piece { position: relative; z-index: 4; width: min(88%, 4.7rem); height: min(88%, 4.7rem); display: grid; place-items: center; user-select: none; }
+.board-piece .piece-icon { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 3px 2px rgba(0, 0, 0, .34)); }
+.board-piece.concealed-analysis { opacity: .48; outline: 2px dashed currentColor; outline-offset: -3px; border-radius: 50%; filter: drop-shadow(0 2px 2px rgba(0,0,0,.2)); }
+
+/* Every character uses the same high-contrast team material. Team identity is
+   carried by a large solid field, never by a hairline outline alone. */
+.piece-icon.white {
+  --piece-base: #f5e7c9;
+  --piece-edge: #fff9ec;
+  --piece-ink: #493e30;
+  --piece-accent: #bd7628;
+}
+.piece-icon.black {
+  --piece-base: #172534;
+  --piece-edge: #47627c;
+  --piece-ink: #ecf2f7;
+  --piece-accent: #69a6d8;
+}
+.piece-icon.neutral {
+  --piece-base: #2b3949;
+  --piece-edge: #52667e;
+  --piece-ink: #e4ebf3;
+  --piece-accent: #e1a34c;
+}
+.piece-icon .piece-badge { fill: var(--piece-base); stroke: var(--piece-edge); stroke-width: 2.2; }
+.piece-icon .piece-fill { fill: var(--piece-ink); }
+.piece-icon .piece-fill.inverse, .piece-icon .piece-cut-dot { fill: var(--piece-base); }
+.piece-icon .piece-accent-fill { fill: var(--piece-accent); }
+.piece-icon .piece-cut, .piece-icon .piece-accent-stroke, .piece-icon .piece-ink-stroke {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.6;
+}
+.piece-icon .piece-cut { stroke: var(--piece-base); }
+.piece-icon .piece-accent-stroke { stroke: var(--piece-accent); }
+.piece-icon .piece-ink-stroke { stroke: var(--piece-ink); }
+.piece-icon .thick { stroke-width: 4; }
+.piece-icon .classic-outline { stroke-width: 3.4; }
+.piece-icon .wand-shaft { stroke-width: 6; }
+.piece-icon .piece-symbol-text {
+  fill: var(--piece-ink);
+  font-family: Georgia, "Apple Symbols", "Segoe UI Symbol", serif;
+  font-size: 52px;
+  font-weight: 700;
+  text-anchor: middle;
+  dominant-baseline: central;
+}
+.piece-icon .swords-symbol { font-size: 42px; }
 .move-dot { position: absolute; z-index: 6; width: 20%; aspect-ratio: 1; border-radius: 50%; background: rgba(31, 43, 39, .48); box-shadow: 0 0 0 3px rgba(255,255,255,.12); pointer-events: none; }
 .capture-ring { position: absolute; z-index: 6; inset: 12%; border: clamp(3px, .45vw, 6px) solid rgba(57, 72, 66, .55); border-radius: 50%; pointer-events: none; }
-.giant-piece { position: absolute; z-index: 5; border: 3px solid rgba(244, 234, 216, .86); border-radius: 18%; display: grid; place-items: center; background: radial-gradient(circle, rgba(241,178,79,.28), rgba(34,40,46,.26)); box-shadow: inset 0 0 0 3px rgba(26, 30, 32, .32), 0 8px 16px rgba(0,0,0,.23); transform: scale(.92); transform-origin: center; pointer-events: none; }
-.giant-piece.black { border-color: rgba(32, 38, 45, .88); }
+.giant-piece { position: absolute; z-index: 5; display: grid; place-items: center; background: transparent; transform: scale(.97); transform-origin: center; pointer-events: none; }
 .giant-drag-handle { width: 100%; height: 100%; padding: 0; display: grid; place-items: center; border: 0; background: transparent; color: inherit; cursor: pointer; pointer-events: auto; }
 .giant-drag-handle[draggable="true"] { cursor: grab; }
 .giant-drag-handle[draggable="true"]:active { cursor: grabbing; }
-.giant-piece .board-piece.large { width: 66%; height: 66%; font-size: clamp(42px, 8vw, 92px); }
-.giant-footprint-label { position: absolute; right: 8%; bottom: 6%; padding: 2px 5px; border-radius: 10px; background: rgba(14,18,22,.7); color: #e9d4ae; font-size: clamp(7px, .8vw, 10px); font-weight: 850; letter-spacing: .05em; }
-.giant-piece.analysis-enemy { border-style: dashed; }
+.giant-piece .board-piece.large { width: 94%; height: 94%; }
+.giant-piece .piece-icon-giant { filter: drop-shadow(0 7px 6px rgba(0, 0, 0, .35)); }
 
 .right-rail { display: grid; gap: 14px; }
 .right-rail .panel { padding: 15px; }
@@ -178,7 +223,7 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
 .evaluation-panel.game-only .move-history { margin-top: 14px; }
 .inspector-panel { min-height: 132px; }
 .piece-detail { gap: 12px; margin-top: 15px; }
-.piece-detail > .board-piece { width: 52px; height: 52px; flex: 0 0 auto; font-size: 38px; }
+.piece-detail > .board-piece { width: 56px; height: 56px; flex: 0 0 auto; }
 .piece-detail strong, .piece-detail small { display: block; }
 .piece-detail small, .empty-state { margin: 4px 0 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
 .state-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 7px; }
@@ -197,7 +242,8 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
 .draft-list { overflow: auto; display: grid; gap: 5px; padding-right: 2px; margin-top: 10px; }
 .draft-row { display: grid; grid-template-columns: 30px 1fr auto auto; align-items: center; gap: 7px; padding: 7px; border: 1px solid #252e3b; border-radius: 8px; background: #111720; }
 .draft-row.is-banned { opacity: .58; }
-.mini-mark { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 7px; background: #242d3a; font: 800 18px Georgia, "Apple Symbols", serif; }
+.mini-mark { width: 30px; height: 30px; display: grid; place-items: center; }
+.mini-mark .piece-icon { width: 100%; height: 100%; }
 .draft-row strong, .draft-row small { display: block; }
 .draft-row strong { font-size: 9px; }
 .draft-row small { margin-top: 2px; color: var(--faint); font-size: 7px; }
@@ -232,5 +278,5 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
   .board-meta { align-items: flex-end; }
   .player-card.opponent { min-width: 120px; }
   .board-actions button { padding: 5px 7px; font-size: 8px; }
-  .board-piece { font-size: clamp(22px, 9vw, 48px); }
+  .board-piece { width: 90%; height: 90%; }
 }

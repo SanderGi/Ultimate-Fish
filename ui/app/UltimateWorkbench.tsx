@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import PieceIcon from "./PieceIcon";
 
 type Color = "white" | "black";
 type View = "play" | "analysis" | "draft";
@@ -43,7 +44,6 @@ type PositionMeta = {
 type RosterPiece = {
   id: PieceId;
   name: string;
-  symbol: string;
   family: "Classic" | "Melee" | "Ranged" | "Support" | "Linked";
   summary: string;
 };
@@ -68,36 +68,36 @@ type EngineAnalysis = {
 type MoveRecord = { color: Color; notation: string; upn?: string };
 
 const roster: RosterPiece[] = [
-  { id: "king", name: "King", symbol: "♚", family: "Classic", summary: "Royal; one square in any direction." },
-  { id: "jester", name: "Jester", symbol: "♔", family: "Support", summary: "Appears to the opponent as a king." },
-  { id: "queen", name: "Queen", symbol: "♛", family: "Classic", summary: "Slides in every direction." },
-  { id: "rook", name: "Rook", symbol: "♜", family: "Classic", summary: "Slides orthogonally." },
-  { id: "bishop", name: "Bishop", symbol: "♝", family: "Classic", summary: "Slides diagonally." },
-  { id: "knight", name: "Knight", symbol: "♞", family: "Classic", summary: "Leaps in an L shape." },
-  { id: "pawn", name: "Pawn", symbol: "♟", family: "Classic", summary: "Advances, captures diagonally, and promotes." },
-  { id: "checker", name: "Checker", symbol: "●", family: "Ranged", summary: "Compulsory jumping captures can chain." },
-  { id: "checkerKing", name: "Checker King", symbol: "◉", family: "Ranged", summary: "A promoted checker that also moves backward." },
-  { id: "berserker", name: "Berserker", symbol: "⚔", family: "Melee", summary: "Leaps within a growing square radius after knockouts." },
-  { id: "bomb", name: "Bomb", symbol: "✹", family: "Melee", summary: "A lethal hit explodes the surrounding radius." },
-  { id: "ninja", name: "Ninja", symbol: "✣", family: "Melee", summary: "Moves up to three squares through characters." },
-  { id: "turtle", name: "Turtle", symbol: "⬢", family: "Melee", summary: "Moves one square orthogonally." },
-  { id: "parasite", name: "Parasite", symbol: "⌾", family: "Melee", summary: "Possesses pieces through combat." },
-  { id: "giant", name: "Giant", symbol: "▦", family: "Ranged", summary: "Occupies a 2×2 footprint and shifts one full footprint." },
-  { id: "dragon", name: "Dragon", symbol: "♨", family: "Melee", summary: "Diagonal slider plus knight leap." },
-  { id: "ghost", name: "Ghost", symbol: "☾", family: "Support", summary: "Hidden until attacking or near an enemy royal." },
-  { id: "mage", name: "Mage", symbol: "✦", family: "Support", summary: "Swaps locations with an ally." },
-  { id: "penguin", name: "Penguin", symbol: "❄", family: "Support", summary: "Maintains a freeze around itself." },
-  { id: "devil", name: "Devil", symbol: "♆", family: "Support", summary: "Spawns advancing minions, then sleeps." },
-  { id: "minion", name: "Minion", symbol: "†", family: "Support", summary: "Advances automatically at turn start." },
-  { id: "sludge", name: "Sludge", symbol: "≋", family: "Support", summary: "Leaves retaliating goop behind." },
-  { id: "goop", name: "Goop", symbol: "∿", family: "Support", summary: "Retaliates against melee attackers." },
-  { id: "prince", name: "Prince", symbol: "♕", family: "Melee", summary: "Can move twice if its first move does not attack." },
-  { id: "sniper", name: "Sniper", symbol: "⌖", family: "Ranged", summary: "Shoots forward, then reloads for a turn." },
-  { id: "fisherman", name: "Fisherman", symbol: "⚓", family: "Support", summary: "Slides on empty rays or pulls a distant character adjacent." },
-  { id: "copycat", name: "CopyCat", symbol: "⇄", family: "Linked", summary: "Moves with an available mirrored partner; both halves share death." },
-  { id: "copycatClone", name: "CopyCat Clone", symbol: "⇆", family: "Linked", summary: "Mirrors linked moves unless unavailable, and shares death." },
-  { id: "angel", name: "Angel", symbol: "⚜", family: "Linked", summary: "Saves a linked ally and returns it to a halo." },
-  { id: "halo", name: "Halo", symbol: "⊚", family: "Linked", summary: "Immobile return point linked to an angel." },
+  { id: "king", name: "King", family: "Classic", summary: "Royal; one square in any direction." },
+  { id: "jester", name: "Jester", family: "Support", summary: "Appears to the opponent as a king." },
+  { id: "queen", name: "Queen", family: "Classic", summary: "Slides in every direction." },
+  { id: "rook", name: "Rook", family: "Classic", summary: "Slides orthogonally." },
+  { id: "bishop", name: "Bishop", family: "Classic", summary: "Slides diagonally." },
+  { id: "knight", name: "Knight", family: "Classic", summary: "Leaps in an L shape." },
+  { id: "pawn", name: "Pawn", family: "Classic", summary: "Advances, captures diagonally, and promotes." },
+  { id: "checker", name: "Checker", family: "Ranged", summary: "Compulsory jumping captures can chain." },
+  { id: "checkerKing", name: "Checker King", family: "Ranged", summary: "A promoted checker that also moves backward." },
+  { id: "berserker", name: "Berserker", family: "Melee", summary: "Leaps within a growing square radius after knockouts." },
+  { id: "bomb", name: "Bomb", family: "Melee", summary: "A lethal hit explodes the surrounding radius." },
+  { id: "ninja", name: "Ninja", family: "Melee", summary: "Moves up to three squares through characters." },
+  { id: "turtle", name: "Turtle", family: "Melee", summary: "Moves one square orthogonally." },
+  { id: "parasite", name: "Parasite", family: "Melee", summary: "Possesses pieces through combat." },
+  { id: "giant", name: "Giant", family: "Ranged", summary: "Occupies a 2×2 footprint and shifts one full footprint." },
+  { id: "dragon", name: "Dragon", family: "Melee", summary: "Diagonal slider plus knight leap." },
+  { id: "ghost", name: "Ghost", family: "Support", summary: "Hidden until attacking or near an enemy royal." },
+  { id: "mage", name: "Mage", family: "Support", summary: "Swaps locations with an ally." },
+  { id: "penguin", name: "Penguin", family: "Support", summary: "Maintains a freeze around itself." },
+  { id: "devil", name: "Devil", family: "Support", summary: "Spawns advancing minions, then sleeps." },
+  { id: "minion", name: "Minion", family: "Support", summary: "Advances automatically at turn start." },
+  { id: "sludge", name: "Sludge", family: "Support", summary: "Leaves retaliating goop behind." },
+  { id: "goop", name: "Goop", family: "Support", summary: "Retaliates against melee attackers." },
+  { id: "prince", name: "Prince", family: "Melee", summary: "Can move twice if its first move does not attack." },
+  { id: "sniper", name: "Sniper", family: "Ranged", summary: "Shoots forward, then reloads for a turn." },
+  { id: "fisherman", name: "Fisherman", family: "Support", summary: "Slides on empty rays or pulls a distant character adjacent." },
+  { id: "copycat", name: "CopyCat", family: "Linked", summary: "Moves with an available mirrored partner; both halves share death." },
+  { id: "copycatClone", name: "CopyCat Clone", family: "Linked", summary: "Mirrors linked moves unless unavailable, and shares death." },
+  { id: "angel", name: "Angel", family: "Linked", summary: "Saves a linked ally and returns it to a halo." },
+  { id: "halo", name: "Halo", family: "Linked", summary: "Immobile return point linked to an angel." },
 ];
 
 const pieceById = new Map(roster.map((piece) => [piece.id, piece]));
@@ -273,7 +273,7 @@ function PieceToken({ piece, view, playerSide, large = false }: {
       title={disguised ? `${piece.color} royal` : `${piece.color} ${shown?.name}`}
       aria-label={disguised ? `${piece.color} concealed royal` : `${piece.color} ${shown?.name}`}
     >
-      {shown?.symbol ?? "?"}
+      <PieceIcon id={shown?.id ?? piece.id} color={piece.color} />
     </span>
   );
 }
@@ -971,7 +971,7 @@ export function UltimateWorkbench() {
             <button disabled={boardLocked || (view === "draft" && !draftPlacedUids.length)} className={`palette-item erase ${tool === "erase" ? "selected" : ""}`} onClick={() => { setTool("erase"); setEditing(true); }}><span>×</span><small>Erase</small></button>
             {filteredRoster.map((piece) => (
               <button key={piece.id} disabled={boardLocked || (view === "draft" && !draftPlacementPool.includes(piece.id))} className={`palette-item ${tool === piece.id ? "selected" : ""}`} onClick={() => { setTool(piece.id); setEditing(true); }} title={piece.summary}>
-                <span>{piece.symbol}</span><small>{piece.name}</small>
+                <span className="palette-mark"><PieceIcon id={piece.id} color={toolColor} /></span><small>{piece.name}</small>
               </button>
             ))}
           </div>
@@ -1008,7 +1008,7 @@ export function UltimateWorkbench() {
                     {col === 0 && <span className="rank-label">{flipped ? row + 1 : 10 - row}</span>}
                     {row === 9 && <span className="file-label">{flipped ? files[7 - col] : files[col]}</span>}
                     {legalTargets.has(index) && <span className={mapped && !concealedTarget ? "capture-ring" : "move-dot"} />}
-                    {showPiece && <span draggable={!gameActive && (view === "analysis" || (draftPlacementActive && piece.color === playerSide && draftPlacedUids.includes(piece.id === "copycatClone" && piece.link ? piece.link : piece.uid)))} onDragStart={() => setDraggedUid(piece.uid)}><PieceToken piece={piece} view={view} playerSide={playerSide} /></span>}
+                    {showPiece && <span className="board-piece-wrap" draggable={!gameActive && (view === "analysis" || (draftPlacementActive && piece.color === playerSide && draftPlacedUids.includes(piece.id === "copycatClone" && piece.link ? piece.link : piece.uid)))} onDragStart={() => setDraggedUid(piece.uid)}><PieceToken piece={piece} view={view} playerSide={playerSide} /></span>}
                   </button>
                 );
               })}
@@ -1017,13 +1017,12 @@ export function UltimateWorkbench() {
                 if (displayed.length !== 4) return null;
                 const rows = displayed.map((index) => Math.floor(index / 8)); const cols = displayed.map((index) => index % 8);
                 return (
-                  <div key={piece.uid} className={`giant-piece ${piece.color} ${view === "analysis" && piece.color !== playerSide ? "analysis-enemy" : ""}`}
+                  <div key={piece.uid} className={`giant-piece ${piece.color}`}
                     style={{ top: `${Math.min(...rows) * 10}%`, left: `${Math.min(...cols) * 12.5}%`, width: "25%", height: "20%" }}>
                     <button type="button" className="giant-drag-handle" draggable={!gameActive && (view === "analysis" || (draftPlacementActive && piece.color === playerSide && draftPlacedUids.includes(piece.uid)))}
                       onDragStart={() => setDraggedUid(piece.uid)} onClick={() => handleSquare(piece.square)}>
                       <PieceToken piece={piece} view={view} playerSide={playerSide} large />
                     </button>
-                    <span className="giant-footprint-label">2×2</span>
                   </div>
                 );
               })}
@@ -1045,7 +1044,7 @@ export function UltimateWorkbench() {
                   const footprint = piece.id === "giant" ? 4 : piece.id === "copycat" ? 2 : 1;
                   const unavailable = !draftWindow || draftWindow.player !== playerSide || banned.includes(piece.id) || (draftWindow.action === "pick" && (draftPoints + draftCosts[piece.id] > draftWindow.max || deploymentSlots(draftTeam) + footprint > 24));
                   return <div className={`draft-row ${banned.includes(piece.id) ? "is-banned" : ""}`} key={piece.id}>
-                    <span className="mini-mark">{piece.symbol}</span><div><strong>{piece.name}</strong><small>{piece.family} · {draftCosts[piece.id]} pts · {footprint} cell{footprint > 1 ? "s" : ""}</small></div>
+                    <span className="mini-mark"><PieceIcon id={piece.id} /></span><div><strong>{piece.name}</strong><small>{piece.family} · {draftCosts[piece.id]} pts · {footprint} cell{footprint > 1 ? "s" : ""}</small></div>
                     <button className={pendingCount ? "picked" : ""} disabled={unavailable} onClick={() => chooseDraft(piece.id)}>{banned.includes(piece.id) ? "Banned" : draftWindow?.action === "ban" ? (pendingCount ? "Selected" : "Ban") : pendingCount ? `Add (${pendingCount})` : "Add"}</button>
                     <button disabled={!pendingCount || draftWindow?.player !== playerSide} onClick={() => unchooseDraft(piece.id)}>Remove</button>
                   </div>;
