@@ -33,6 +33,8 @@ class InformationGenerationDriverTests(unittest.TestCase):
             ghost_extra_transitions=root / "ghost-extra-transitions",
             ghost_pair_binary=root / "ghost-pair",
             ghost_pair_transitions=root / "ghost-pair-transitions",
+            jester_ghost_binary=root / "jester-ghost",
+            jester_ghost_transitions=root / "jester-ghost-transitions",
             overlays=root / "overlays",
             scratch=root / "scratch",
         )
@@ -167,6 +169,27 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 stream.write(b"X")
             self.assertFalse(generate.arbitrary_is_current(path, source, model))
 
+    def test_arbitrary_reuse_authenticates_ufjg_payload_and_dependencies(self):
+        source, model = "1" * 64, "2" * 64
+        payload = b"exact-product-roots"
+        header = bytearray(816); header[:8] = b"UFJG1\0\0\0"
+        struct.pack_into("<II", header, 8, 1, 816)
+        struct.pack_into("<Q", header, 120, 816)
+        struct.pack_into("<Q", header, 168, len(payload))
+        header[176:240] = source.encode(); header[240:304] = model.encode()
+        header[304:368] = generate.information.observation_model_fingerprint().encode()
+        header[624:688] = b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b"
+        header[688:752] = hashlib.sha256(payload).hexdigest().encode()
+        semantics = b"king-jester-x-hidden-ghost-correlated-v1"
+        header[752:752 + len(semantics)] = semantics
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "product.ufjg"
+            path.write_bytes(header + payload)
+            self.assertTrue(generate.arbitrary_is_current(path, source, model))
+            with path.open("r+b") as stream:
+                stream.seek(816); stream.write(b"X")
+            self.assertFalse(generate.arbitrary_is_current(path, source, model))
+
     def test_checkpoint_merge_preserves_independent_completed_rows(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "partial.json"
@@ -195,6 +218,8 @@ class InformationGenerationDriverTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             args = self._args(root)
+            args.overlays.mkdir(parents=True)
+            (args.overlays / "kjesterk.ufiw").write_bytes(b"lower")
             cases = {
                 "kjesterk.uftb": (str(args.binary), "--solve-jester-information"),
                 "kjestergiantk.uftb": (
@@ -209,6 +234,8 @@ class InformationGenerationDriverTests(unittest.TestCase):
                     str(args.ghost_extra_binary), "--solve-external"),
                 "kghostghostk.uftb": (
                     str(args.ghost_pair_binary), "--output-arbitrary"),
+                "kjesterghostk.uftb": (
+                    str(args.jester_ghost_binary), "--output-arbitrary"),
             }
             for filename, (binary, required) in cases.items():
                 with self.subTest(filename=filename):

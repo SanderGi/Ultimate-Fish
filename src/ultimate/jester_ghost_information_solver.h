@@ -55,6 +55,12 @@ class ProductRobdd {
         std::uint32_t high = 0;
     };
 
+    struct UpperNodeRecord {
+        std::uint8_t variable = Position::BoardSquares;
+        Id low = Invalid;
+        Id high = Invalid;
+    };
+
     ProductRobdd(const std::string& prefix, Limits limits, bool create);
     ~ProductRobdd();
     ProductRobdd(ProductRobdd&&) noexcept;
@@ -83,6 +89,8 @@ class ProductRobdd {
     [[nodiscard]] bool is_downward_closed(Id root);
     [[nodiscard]] std::uint64_t upper_node_count() const;
     [[nodiscard]] std::uint32_t lower_node_count() const;
+    [[nodiscard]] UpperNodeRecord upper_node_record(Id id) const;
+    [[nodiscard]] SuffixNode lower_node_record(std::uint32_t id) const;
 
     // Compaction is atomic at the caller level: the replacement is built at a
     // different prefix, all supplied roots are remapped and truth-checked, and
@@ -211,6 +219,9 @@ struct SolveOptions {
     std::string lowerGhostSidecar;
     std::string scratchPrefix;
     std::string outputOverlay;
+    // Permanent exact all-beliefs probe artifact. Unlike UFIW2, this retains
+    // every correlated 2 x 80 King/Jester/Ghost information-set result.
+    std::string outputArbitrarySidecar;
     std::string sourceSha256;
     std::string modelSha256;
     std::string observationSha256;
@@ -253,11 +264,65 @@ struct SolveCertificate {
     std::string transitionPayloadSha256;
     std::string lowerJesterOverlaySha256;
     std::string lowerGhostSidecarSha256;
+    std::string transitionHeaderSha256;
+    std::string transitionMarkerSha256;
+    std::string arbitrarySidecarSha256;
+    std::uint64_t arbitraryStructuralResidual = 0;
+    std::uint64_t arbitrarySingletonResidual = 0;
+    std::uint64_t arbitraryRootResidual = 0;
 };
 
 [[nodiscard]] SolveCertificate solve_exact(const SolveOptions& options);
 [[nodiscard]] SolveCertificate verify_exact_overlay(
   const SolveOptions& options);
+
+struct ArbitrarySidecarCertificate {
+    std::uint64_t upperNodes = 0;
+    std::uint64_t lowerNodes = 0;
+    std::uint64_t geometries = 0;
+    std::uint64_t strata = 0;
+    std::uint64_t ownerRoots = 0;
+    std::uint64_t bytes = 0;
+    std::uint64_t structuralResidual = 0;
+    std::string payloadSha256;
+    std::string fileSha256;
+    std::string transitionPayloadSha256;
+    std::string transitionHeaderSha256;
+    std::string transitionMarkerSha256;
+    std::string lowerJesterOverlaySha256;
+    std::string lowerGhostSidecarSha256;
+};
+
+// UFJG1 is a self-contained, mmap-friendly exact decision artifact. It stores
+// the compact two-level ROBDD, canonical public geometries, complete legal-dot
+// decision cells, informed-owner roots, and uninformed-observer roots. A query
+// must supply the full correlated ProductMask and one actual member; the probe
+// never caps, samples, marginalizes, or fresh-maximizes a history-refined set.
+[[nodiscard]] ArbitrarySidecarCertificate verify_arbitrary_sidecar(
+  const std::string& path, const SolveOptions& options);
+
+class ArbitrarySidecarProbe {
+  public:
+    ArbitrarySidecarProbe(const std::string& path,
+                          const SolveOptions& options);
+    ~ArbitrarySidecarProbe();
+    ArbitrarySidecarProbe(ArbitrarySidecarProbe&&) noexcept;
+    ArbitrarySidecarProbe& operator=(ArbitrarySidecarProbe&&) noexcept;
+    ArbitrarySidecarProbe(const ArbitrarySidecarProbe&) = delete;
+    ArbitrarySidecarProbe& operator=(const ArbitrarySidecarProbe&) = delete;
+
+    [[nodiscard]] bool owner_forces(const PublicFrame& frame,
+                                    const ProductWorld& actual,
+                                    const ProductMask& worlds) const;
+    [[nodiscard]] bool observer_forces(const PublicFrame& frame,
+                                       const ProductWorld& actual,
+                                       const ProductMask& worlds) const;
+    [[nodiscard]] const ArbitrarySidecarCertificate& certificate() const;
+
+  private:
+    class Impl;
+    Impl* impl_ = nullptr;
+};
 
 // Permanent standalone tests call this on a deliberately small, exhaustive
 // Boolean domain. It checks the product ROBDD truth table, composition,

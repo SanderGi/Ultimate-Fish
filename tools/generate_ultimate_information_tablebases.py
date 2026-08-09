@@ -160,13 +160,36 @@ def overlay_is_current(path: Path, record: Mapping[str, object],
 
 def arbitrary_is_current(path: Path, source_sha256: str,
                          model_sha256: str) -> bool:
-    """Authenticate the permanent KGhostGhost all-beliefs UFGG1 artifact."""
+    """Authenticate a permanent exact arbitrary-belief artifact."""
     try:
         with path.open("rb") as stream:
-            header = stream.read(928)
-            if len(header) != 928:
+            prefix = stream.read(16)
+            if len(prefix) != 16:
                 return False
-            payload_bytes = struct.unpack_from("<Q", header, 152)[0]
+            magic = prefix[:8]
+            header_bytes = struct.unpack_from("<I", prefix, 12)[0]
+            if magic == b"UFGG1\0\0\0":
+                expected_header, payload_offset = 928, 152
+                first_section_offset = 104
+                source_offset, model_offset, payload_sha_offset = 160, 224, 800
+                semantics_offset = 864
+                semantics = b"correlated-unordered-pair-public-view-v1"
+            elif magic == b"UFJG1\0\0\0":
+                expected_header, payload_offset = 816, 168
+                first_section_offset = 120
+                source_offset, model_offset, payload_sha_offset = 176, 240, 688
+                semantics_offset = 752
+                semantics = b"king-jester-x-hidden-ghost-correlated-v1"
+            else:
+                return False
+            if header_bytes != expected_header:
+                return False
+            stream.seek(0)
+            header = stream.read(expected_header)
+            if len(header) != expected_header:
+                return False
+            payload_bytes = struct.unpack_from("<Q", header,
+                                               payload_offset)[0]
             digest = hashlib.sha256()
             remaining = payload_bytes
             while remaining:
@@ -177,21 +200,31 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 remaining -= len(chunk)
             if stream.read(1):
                 return False
+        if magic == b"UFGG1\0\0\0":
+            dependencies_current = (
+                header[288:352].decode() ==
+                    information.observation_model_fingerprint() and
+                header[544:608].decode() ==
+                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        else:
+            dependencies_current = (
+                header[304:368].decode() ==
+                    information.observation_model_fingerprint() and
+                header[624:688].decode() ==
+                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
         return (
-            header[:8] == b"UFGG1\0\0\0" and
+            header[:8] == magic and
             struct.unpack_from("<I", header, 8)[0] == 1 and
-            struct.unpack_from("<I", header, 12)[0] == 928 and
-            struct.unpack_from("<Q", header, 104)[0] == 928 and
-            header[160:224].decode() == source_sha256 and
-            header[224:288].decode() == model_sha256 and
-            header[288:352].decode() ==
-                information.observation_model_fingerprint() and
-            header[544:608].decode() ==
-                "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b" and
-            header[800:864].decode() == digest.hexdigest() and
-            header[864:928].split(b"\0", 1)[0] ==
-                b"correlated-unordered-pair-public-view-v1" and
-            path.stat().st_size == 928 + payload_bytes)
+            struct.unpack_from("<Q", header,
+                               first_section_offset)[0] == expected_header and
+            header[source_offset:source_offset+64].decode() == source_sha256 and
+            header[model_offset:model_offset+64].decode() == model_sha256 and
+            header[payload_sha_offset:payload_sha_offset+64].decode() ==
+                digest.hexdigest() and
+            header[semantics_offset:semantics_offset+64].split(b"\0", 1)[0] ==
+                semantics and
+            dependencies_current and
+            path.stat().st_size == expected_header + payload_bytes)
     except (OSError, UnicodeDecodeError, struct.error):
         return False
 
@@ -359,6 +392,33 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             "--lower-model-sha256", lower_model,
             "--lower-observation-sha256", lower_observation,
         ]
+    if domain == "jester-ghost":
+        lower_ghost = ROOT / "tablebases" / "kghostk.ufgm"
+        lower_jester = ROOT / "tablebases" / "kjesterk.uftb"
+        lower_overlay = args.overlays / "kjesterk.ufiw"
+        if not lower_overlay.exists():
+            raise RuntimeError(f"{lower_overlay}: required exact lower overlay")
+        return [
+            str(args.jester_ghost_binary), "--solve",
+            "--transition-prefix", str(args.jester_ghost_transitions),
+            "--input", str(table),
+            "--lower-jester-table", str(lower_jester),
+            "--lower-jester-overlay", str(lower_overlay),
+            "--lower-jester-model-sha256",
+            information.solver_model_fingerprint("kjesterk.uftb"),
+            "--lower-jester-overlay-sha256",
+            hashlib.sha256(lower_overlay.read_bytes()).hexdigest(),
+            "--lower-ghost-sidecar", str(lower_ghost),
+            "--lower-ghost-sidecar-sha256",
+            hashlib.sha256(lower_ghost.read_bytes()).hexdigest(),
+            "--scratch", str(args.scratch / "kjesterghostk-exact"),
+            "--output", str(overlay), "--output-arbitrary",
+            str(args.overlays / "kjesterghostk.ufjg"),
+            "--source-sha256", source_sha256,
+            "--model-sha256", model_sha256,
+            "--observation-sha256",
+            information.observation_model_fingerprint(),
+        ]
 
     lower_overlay = args.overlays / "kjesterk.ufiw"
     lower_table = ROOT / "tablebases" / "kjesterk.uftb"
@@ -426,12 +486,13 @@ def solve_one(args: argparse.Namespace) -> None:
     files = document["files"]
     assert isinstance(files, dict)
     entry = files.get(args.filename)
-    arbitrary = args.overlays / "kghostghostk.ufgg"
+    arbitrary = (args.overlays / "kghostghostk.ufgg" if domain == "ghost-pair"
+                 else args.overlays / "kjesterghostk.ufjg")
     if (isinstance(entry, dict) and
             entry.get("tablebase_sha256") == source_sha256 and
             entry.get("solver_model_sha256") == model_sha256 and
             overlay_is_current(overlay, record, source_sha256, model_sha256) and
-            (domain != "ghost-pair" or arbitrary_is_current(
+            (domain not in {"ghost-pair", "jester-ghost"} or arbitrary_is_current(
                 arbitrary, source_sha256, model_sha256))):
         print(f"already complete and verified: {args.filename}")
         return
@@ -447,7 +508,7 @@ def solve_one(args: argparse.Namespace) -> None:
                 f"{lower} is required; solve kjesterk.uftb first")
 
     summaries = run_solver(command, label=args.filename)
-    if domain == "ghost-pair" and not arbitrary_is_current(
+    if domain in {"ghost-pair", "jester-ghost"} and not arbitrary_is_current(
             arbitrary, source_sha256, model_sha256):
         raise RuntimeError(
             f"{arbitrary}: missing/stale authenticated all-beliefs artifact")
@@ -487,6 +548,12 @@ def main() -> None:
     parser.add_argument("--ghost-pair-transitions", type=Path,
                         default=Path(
                           "/tmp/kghostghostk-exact-transitions"))
+    parser.add_argument("--jester-ghost-binary", type=Path,
+                        default=ROOT / "src" /
+                        "ultimate_jester_ghost_information_tablebase")
+    parser.add_argument("--jester-ghost-transitions", type=Path,
+                        default=Path(
+                          "/tmp/kjesterghostk-exact-transitions"))
     parser.add_argument("--ghost-extra-transitions", type=Path,
                         default=Path(
                           "/tmp/kbishopghostk-exact-transitions"))

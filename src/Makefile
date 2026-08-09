@@ -68,6 +68,9 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cp
 	ultimate-ghost-pair-information-tablebase \
 	ultimate-ghost-pair-information-test \
 	ultimate-ghost-pair-information-self-test \
+	ultimate-jester-ghost-information-tablebase \
+	ultimate-jester-ghost-information-test \
+	ultimate-jester-ghost-information-self-test \
 	ultimate-external-robdd-test \
 	ultimate-joint-jester-information-tablebase ultimate-information-solvers-self-test \
 	ultimate-information-solvers-clean
@@ -149,6 +152,30 @@ ultimate-ghost-pair-information-self-test: \
 	./ultimate_ghost_pair_information_tablebase --self-test \
 		--scratch /tmp/ultimate-ghost-pair-cli
 
+ULTIMATE_JESTER_GHOST_SRCS = ultimate/jester_ghost_information_tablebase.cpp \
+	ultimate/jester_ghost_information_solver.cpp \
+	ultimate/jester_ghost_information_model.cpp ultimate/external_robdd.cpp \
+	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+	ultimate/position.cpp ultimate/nnue.cpp
+
+ultimate-jester-ghost-information-tablebase:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		$(ULTIMATE_JESTER_GHOST_SRCS) \
+		-o ultimate_jester_ghost_information_tablebase
+
+ultimate-jester-ghost-information-test:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate ../tests/ultimate_jester_ghost_information_solver.cpp \
+		$(filter-out ultimate/jester_ghost_information_tablebase.cpp, \
+			$(ULTIMATE_JESTER_GHOST_SRCS)) \
+		-o ultimate_jester_ghost_information_solver_test
+	./ultimate_jester_ghost_information_solver_test
+
+ultimate-jester-ghost-information-self-test: \
+	ultimate-jester-ghost-information-tablebase
+	./ultimate_jester_ghost_information_tablebase --self-test \
+		--scratch /tmp/ultimate-jester-ghost-cli
+
 ultimate-external-robdd-test:
 	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
 		../tests/ultimate_external_robdd.cpp ultimate/external_robdd.cpp \
@@ -168,7 +195,8 @@ ultimate-joint-jester-information-tablebase:
 ultimate-information-solvers: ultimate-ghost-information-tablebase \
 	ultimate-double-jester-information-tablebase \
 	ultimate-joint-jester-information-tablebase \
-	ultimate-ghost-pair-information-tablebase
+	ultimate-ghost-pair-information-tablebase \
+	ultimate-jester-ghost-information-tablebase
 
 ultimate-information-solvers-self-test: ultimate-information-solvers
 	./ultimate_ghost_information_tablebase --self-test
@@ -176,6 +204,8 @@ ultimate-information-solvers-self-test: ultimate-information-solvers
 	./ultimate_joint_jester_information_tablebase --self-test-only --scratch /tmp
 	./ultimate_ghost_pair_information_tablebase --self-test \
 		--scratch /tmp/ultimate-ghost-pair-cli
+	./ultimate_jester_ghost_information_tablebase --self-test \
+		--scratch /tmp/ultimate-jester-ghost-cli
 
 ultimate-information-solvers-clean:
 	@rm -f ultimate_ghost_information_tablebase \
@@ -183,6 +213,8 @@ ultimate-information-solvers-clean:
 		ultimate_joint_jester_information_tablebase \
 		ultimate_ghost_pair_information_tablebase \
 		ultimate_ghost_pair_information_solver_test \
+		ultimate_jester_ghost_information_tablebase \
+		ultimate_jester_ghost_information_solver_test \
 		ultimate_ghost_information_probe_test
 
 ultimate-test:

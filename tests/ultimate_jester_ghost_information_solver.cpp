@@ -129,8 +129,13 @@ int main() {
         resources.maxDiskBytes = std::numeric_limits<std::uint64_t>::max();
         resources.maxResidentBytes = std::numeric_limits<std::uint64_t>::max();
         resources.maxBddNodes = 100'000;
+        TransitionCompileOptions cycle = compile;
+        cycle.prefix = prefix + ".transitions-visibility-cycle";
+        cycle.rawGeometryCount = 78;
+        const TransitionCertificate cycleWritten =
+          compile_transition_database(cycle);
         const ResourceEstimate estimate = sampled_resource_preflight(
-          written, 1, tiny_limits(), resources);
+          cycleWritten, 78, tiny_limits(), resources);
         require(estimate.canonicalGeometries >= written.canonicalGeometries &&
                 estimate.productWorlds >= written.worlds &&
                 estimate.transitionBytes && estimate.rootBytes &&
@@ -169,6 +174,15 @@ int main() {
                   << " peak_disk_bytes " << estimate.peakDiskBytes
                   << " peak_resident_bytes " << estimate.peakResidentBytes
                   << " admitted " << estimate.admitted << '\n';
+        std::cout << "visibility_cycle raw " << cycleWritten.rawGeometries
+                  << " canonical " << cycleWritten.canonicalGeometries
+                  << " worlds " << cycleWritten.worlds
+                  << " live " << cycleWritten.liveWorlds
+                  << " actions " << cycleWritten.actions
+                  << " observations " << cycleWritten.observations
+                  << " edges " << cycleWritten.edges
+                  << " payload_sha256 " << cycleWritten.payloadSha256
+                  << '\n';
 
         std::cout << "ultimate Jester/Ghost information solver tests passed\n";
         return 0;

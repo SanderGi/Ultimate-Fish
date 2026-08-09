@@ -212,6 +212,39 @@ class Sha256 {
     return hex_digest(hash.finish());
 }
 
+[[nodiscard]] std::string sha256_range(const std::string& path,
+                                       std::uint64_t offset,
+                                       std::uint64_t count) {
+    std::ifstream input(path, std::ios::binary);
+    input.seekg(static_cast<std::streamoff>(offset));
+    if (!input) throw std::runtime_error("cannot seek while hashing " + path);
+    Sha256 hash;
+    std::array<char, 1 << 20> buffer{};
+    while (count) {
+        const std::size_t take = static_cast<std::size_t>(
+          std::min<std::uint64_t>(count, buffer.size()));
+        input.read(buffer.data(), static_cast<std::streamsize>(take));
+        if (input.gcount() != static_cast<std::streamsize>(take))
+            throw std::runtime_error("truncated hash range " + path);
+        hash.update(buffer.data(), take);
+        count -= take;
+    }
+    return hex_digest(hash.finish());
+}
+
+void copy_digest(std::array<char,64>& output, const std::string& digest,
+                 const char* label) {
+    require_hash(digest, label);
+    std::copy(digest.begin(), digest.end(), output.begin());
+}
+
+[[nodiscard]] std::array<char,64> arbitrary_semantics() {
+    std::array<char,64> value{};
+    constexpr char text[] = "king-jester-x-hidden-ghost-correlated-v1";
+    std::copy(std::begin(text), std::end(text) - 1, value.begin());
+    return value;
+}
+
 [[nodiscard]] std::uint64_t mix64(std::uint64_t value) {
     value ^= value >> 30;
     value *= 0xbf58476d1ce4e5b9ULL;
@@ -633,6 +666,15 @@ std::uint64_t ProductRobdd::upper_node_count() const { return impl_->count; }
 std::uint32_t ProductRobdd::lower_node_count() const {
     return impl_->lower->node_count();
 }
+ProductRobdd::UpperNodeRecord ProductRobdd::upper_node_record(Id id) const {
+    const UpperNode& node = impl_->node(id);
+    return {node.variable, node.low, node.high};
+}
+ProductRobdd::SuffixNode ProductRobdd::lower_node_record(
+  std::uint32_t id) const {
+    const ExternalRobdd::Node node = impl_->lower->node(id);
+    return {node.variable, node.low, node.high};
+}
 
 std::uint64_t ProductRobdd::required_bytes(const Limits& limits) {
     const std::uint64_t upper = limits.maxUpperNodes * sizeof(UpperNode) +
@@ -803,7 +845,6 @@ canonical_geometry(const PublicFrame& frame) {
     return !winner ? 0 : *winner == Color::White ? 1 : 2;
 }
 
-#pragma pack(push, 1)
 struct TransitionHeaderDisk {
     std::array<char, 8> magic{};
     std::uint32_t version = TransitionVersion;
@@ -844,9 +885,11 @@ struct VerifiedDisk {
 
 struct GeometryDisk {
     std::uint32_t raw = 0;
+    std::uint32_t reserved = 0;
     std::uint64_t ownerBase = 0;
     std::uint8_t liveCount = 0;
     std::array<std::uint8_t, ProductVariables> ownerOrdinal{};
+    std::array<std::uint8_t, 7> alignment{};
     ProductMask live;
     ProductMask terminal;
     ProductMask terminalWhite;
@@ -857,6 +900,89 @@ struct GeometryDisk {
     std::array<std::uint32_t, ProductVariables> actualStratum{};
 };
 
+// The permanent catalog deliberately omits the dense ownerOrdinal and
+// actualStratum arrays: owner rank is popcount(live below actual), and the
+// decision-cell ordinal is recovered by scanning this geometry's disjoint
+// strata. This saves several GiB without losing any information.
+struct ArbitraryGeometryDisk {
+    std::uint32_t raw = 0;
+    std::uint32_t reserved = 0;
+    std::uint64_t ownerBase = 0;
+    std::uint64_t stratumBase = 0;
+    std::uint32_t stratumCount = 0;
+    std::uint8_t liveCount = 0;
+    std::array<std::uint8_t,3> alignment{};
+    ProductMask live;
+};
+
+struct ArbitraryUpperNodeDisk {
+    std::uint8_t variable = Squares;
+    std::array<std::uint8_t,7> reserved{};
+    ProductRobdd::Id low = ProductRobdd::Invalid;
+    ProductRobdd::Id high = ProductRobdd::Invalid;
+};
+
+struct ArbitraryLowerNodeDisk {
+    std::uint8_t variable = Squares;
+    std::array<std::uint8_t,3> reserved{};
+    std::uint32_t low = 0;
+    std::uint32_t high = 0;
+};
+
+struct ArbitraryHeaderDisk {
+    std::array<char,8> magic{{'U','F','J','G','1','\0','\0','\0'}};
+    std::uint32_t version = 1;
+    std::uint32_t headerBytes = sizeof(ArbitraryHeaderDisk);
+    std::uint32_t endian = 0x01020304;
+    std::uint32_t primary = static_cast<std::uint32_t>(PieceType::Jester);
+    std::uint32_t secondary = static_cast<std::uint32_t>(PieceType::Ghost);
+    std::uint32_t owner = static_cast<std::uint32_t>(Color::White);
+    std::uint32_t files = Position::BoardFiles;
+    std::uint32_t ranks = Position::BoardRanks;
+    std::uint32_t squares = Squares;
+    std::uint32_t variables = ProductVariables;
+    std::uint32_t stateCount = StateCount;
+    std::uint32_t upperNodeBytes = sizeof(ArbitraryUpperNodeDisk);
+    std::uint32_t lowerNodeBytes = sizeof(ArbitraryLowerNodeDisk);
+    std::uint32_t geometryBytes = sizeof(ArbitraryGeometryDisk);
+    std::uint32_t maskBytes = sizeof(ProductMask);
+    std::uint32_t rootBytes = sizeof(ProductRobdd::Id);
+    std::uint32_t reserved = 0;
+    std::uint32_t alignment = 0;
+    std::uint64_t upperNodes = 0;
+    std::uint64_t lowerNodes = 0;
+    std::uint64_t geometries = 0;
+    std::uint64_t strata = 0;
+    std::uint64_t ownerRoots = 0;
+    std::uint64_t upperOffset = 0;
+    std::uint64_t lowerOffset = 0;
+    std::uint64_t geometryOffset = 0;
+    std::uint64_t stratumOffset = 0;
+    std::uint64_t ownerOffset = 0;
+    std::uint64_t observerOffset = 0;
+    std::uint64_t payloadBytes = 0;
+    std::array<char,64> sourceSha{};
+    std::array<char,64> modelSha{};
+    std::array<char,64> observationSha{};
+    std::array<char,64> transitionPayloadSha{};
+    std::array<char,64> transitionHeaderSha{};
+    std::array<char,64> transitionMarkerSha{};
+    std::array<char,64> lowerJesterOverlaySha{};
+    std::array<char,64> lowerGhostSidecarSha{};
+    std::array<char,64> payloadSha{};
+    std::array<char,64> semantics{};
+};
+static_assert(sizeof(ArbitraryUpperNodeDisk) == 24);
+static_assert(offsetof(ArbitraryUpperNodeDisk, low) == 8);
+static_assert(sizeof(ArbitraryLowerNodeDisk) == 12);
+static_assert(offsetof(ArbitraryLowerNodeDisk, low) == 4);
+static_assert(sizeof(ArbitraryGeometryDisk) == 56);
+static_assert(offsetof(ArbitraryGeometryDisk, live) == 32);
+static_assert(sizeof(ArbitraryHeaderDisk) == 816);
+static_assert(offsetof(ArbitraryHeaderDisk, upperOffset) == 120);
+static_assert(offsetof(ArbitraryHeaderDisk, payloadBytes) == 168);
+static_assert(offsetof(ArbitraryHeaderDisk, sourceSha) == 176);
+
 struct ActionDisk {
     ActionKey key;
 };
@@ -864,8 +990,8 @@ struct ActionDisk {
 struct EdgeDisk {
     CompiledEdge edge;
     std::uint16_t sourceVariable = 0;
+    std::uint16_t reserved = 0;
 };
-#pragma pack(pop)
 
 struct GeometryBlockHeader {
     std::array<std::uint32_t, ProductVariables + 1> edgeOffsets{};
@@ -1575,9 +1701,21 @@ namespace {
     result.compactionBytes = checked_add(
       checked_mul(bdd.maxUpperNodes, sizeof(ProductRobdd::Id)),
       checked_mul(bdd.lowerMaxNodes, sizeof(std::uint32_t)));
+    const std::uint64_t arbitraryBytes = checked_add(
+      sizeof(ArbitraryHeaderDisk), checked_add(
+        checked_mul(bdd.maxUpperNodes, sizeof(ArbitraryUpperNodeDisk)),
+        checked_add(
+          checked_mul(bdd.lowerMaxNodes, sizeof(ArbitraryLowerNodeDisk)),
+          checked_add(
+            checked_mul(geometries, sizeof(ArbitraryGeometryDisk)),
+            checked_add(checked_mul(strata, sizeof(ProductMask)),
+              checked_add(checked_mul(ownerRoots, sizeof(ProductRobdd::Id)),
+                          checked_mul(strata,
+                                      sizeof(ProductRobdd::Id))))))));
     result.peakDiskBytes = checked_add(transitionBytes,
       checked_add(checked_mul(result.bddBytes, 2),
-        checked_add(result.compactionBytes, result.rootBytes)));
+        checked_add(result.compactionBytes,
+          checked_add(result.rootBytes, arbitraryBytes))));
     // The upper unique index and lower ExternalRobdd unique index are random
     // access. Root arrays and bounded caches are also conservatively resident;
     // sequential node/transition pages use a fixed 512 MiB window.
@@ -2226,6 +2364,129 @@ class ExactKernel {
     return *best;
 }
 
+template<typename Value, typename Getter>
+void write_sequence(std::ofstream& output, std::uint64_t count,
+                    Getter getter, const char* label) {
+    constexpr std::size_t Chunk = 1u << 15;
+    std::vector<Value> buffer;
+    buffer.reserve(Chunk);
+    for (std::uint64_t cursor = 0; cursor < count;) {
+        const std::size_t take = static_cast<std::size_t>(
+          std::min<std::uint64_t>(count - cursor, Chunk));
+        buffer.clear();
+        for (std::size_t offset = 0; offset < take; ++offset)
+            buffer.push_back(getter(cursor + offset));
+        output.write(reinterpret_cast<const char*>(buffer.data()),
+                     static_cast<std::streamsize>(take * sizeof(Value)));
+        if (!output)
+            throw std::runtime_error(std::string("cannot write ") + label);
+        cursor += take;
+    }
+}
+
+[[nodiscard]] ArbitrarySidecarCertificate write_arbitrary_sidecar(
+  const std::string& path, const SolveOptions& options,
+  const TransitionHeaderDisk& transition, TransitionDatabase& database,
+  ProductRobdd& bdd, MmapFile<ProductRobdd::Id>& owner,
+  MmapFile<ProductRobdd::Id>& observer) {
+    if (path.empty())
+        throw std::invalid_argument(
+          "exact Jester/Ghost solve requires outputArbitrarySidecar");
+    if (owner.size() != database.owner_roots() ||
+        observer.size() != database.strata())
+        throw std::runtime_error("arbitrary root extent residual");
+    owner.flush();
+    observer.flush();
+    ArbitraryHeaderDisk header;
+    header.upperNodes = bdd.upper_node_count();
+    header.lowerNodes = bdd.lower_node_count();
+    header.geometries = database.geometries();
+    header.strata = database.strata();
+    header.ownerRoots = database.owner_roots();
+    header.upperOffset = sizeof(header);
+    header.lowerOffset = checked_add(header.upperOffset, checked_mul(
+      header.upperNodes, sizeof(ArbitraryUpperNodeDisk)));
+    header.geometryOffset = checked_add(header.lowerOffset, checked_mul(
+      header.lowerNodes, sizeof(ArbitraryLowerNodeDisk)));
+    header.stratumOffset = checked_add(header.geometryOffset, checked_mul(
+      header.geometries, sizeof(ArbitraryGeometryDisk)));
+    header.ownerOffset = checked_add(header.stratumOffset, checked_mul(
+      header.strata, sizeof(ProductMask)));
+    header.observerOffset = checked_add(header.ownerOffset, checked_mul(
+      header.ownerRoots, sizeof(ProductRobdd::Id)));
+    const std::uint64_t extent = checked_add(header.observerOffset, checked_mul(
+      header.strata, sizeof(ProductRobdd::Id)));
+    header.payloadBytes = extent - sizeof(header);
+    header.semantics = arbitrary_semantics();
+    copy_digest(header.sourceSha, options.sourceSha256, "source SHA-256");
+    copy_digest(header.modelSha, options.modelSha256, "model SHA-256");
+    copy_digest(header.observationSha, options.observationSha256,
+                "observation SHA-256");
+    copy_digest(header.transitionPayloadSha,
+      std::string(transition.payloadSha.data(), 64),
+      "transition payload SHA-256");
+    copy_digest(header.transitionHeaderSha,
+      sha256_file(options.transitionPrefix + ".header"),
+      "transition header SHA-256");
+    copy_digest(header.transitionMarkerSha,
+      sha256_file(options.transitionPrefix + ".verified"),
+      "transition marker SHA-256");
+    copy_digest(header.lowerJesterOverlaySha,
+      options.lowerJesterOverlaySha256, "lower Jester overlay SHA-256");
+    copy_digest(header.lowerGhostSidecarSha,
+      options.lowerGhostSidecarSha256, "lower Ghost sidecar SHA-256");
+
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    write_value(output, header);
+    write_sequence<ArbitraryUpperNodeDisk>(output, header.upperNodes,
+      [&](std::uint64_t id) {
+          const auto node = bdd.upper_node_record(id);
+          ArbitraryUpperNodeDisk result; result.variable = node.variable;
+          result.low = node.low; result.high = node.high; return result;
+      }, "Jester/Ghost arbitrary upper nodes");
+    write_sequence<ArbitraryLowerNodeDisk>(output, header.lowerNodes,
+      [&](std::uint64_t id) {
+          const auto node = bdd.lower_node_record(
+            static_cast<std::uint32_t>(id));
+          ArbitraryLowerNodeDisk result; result.variable = node.variable;
+          result.low = node.low; result.high = node.high; return result;
+      }, "Jester/Ghost arbitrary lower nodes");
+    write_sequence<ArbitraryGeometryDisk>(output, header.geometries,
+      [&](std::uint64_t id) {
+          const GeometryDisk& source = database.meta(id);
+          ArbitraryGeometryDisk result; result.raw = source.raw;
+          result.ownerBase = source.ownerBase;
+          result.stratumBase = source.stratumBase;
+          result.stratumCount = source.stratumCount;
+          result.liveCount = source.liveCount; result.live = source.live;
+          return result;
+      }, "Jester/Ghost arbitrary geometries");
+    write_sequence<ProductMask>(output, header.strata,
+      [&](std::uint64_t id) { return database.stratum(id); },
+      "Jester/Ghost arbitrary strata");
+    write_sequence<ProductRobdd::Id>(output, header.ownerRoots,
+      [&](std::uint64_t id) { return owner[id]; },
+      "Jester/Ghost arbitrary owner roots");
+    write_sequence<ProductRobdd::Id>(output, header.strata,
+      [&](std::uint64_t id) { return observer[id]; },
+      "Jester/Ghost arbitrary observer roots");
+    output.close();
+    if (!output || file_bytes(path) != extent)
+        throw std::runtime_error("Jester/Ghost arbitrary extent residual");
+    const std::string payload = sha256_range(path, sizeof(header),
+                                             header.payloadBytes);
+    std::copy(payload.begin(), payload.end(), header.payloadSha.begin());
+    std::fstream rewrite(path, std::ios::binary | std::ios::in |
+                               std::ios::out);
+    rewrite.write(reinterpret_cast<const char*>(&header), sizeof(header));
+    rewrite.close();
+    if (!rewrite)
+        throw std::runtime_error("cannot finalize Jester/Ghost sidecar");
+    SolveOptions standalone = options;
+    standalone.transitionPrefix.clear();
+    return verify_arbitrary_sidecar(path, standalone);
+}
+
 } // namespace
 
 SolveCertificate solve_exact(const SolveOptions& options) {
@@ -2233,7 +2494,9 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     require_hash(options.modelSha256, "model SHA-256");
     require_hash(options.observationSha256, "observation SHA-256");
     if (options.scratchPrefix.empty() ||
-        (!options.measureIterations && options.outputOverlay.empty()))
+        (!options.measureIterations &&
+         (options.outputOverlay.empty() ||
+          options.outputArbitrarySidecar.empty())))
         throw std::invalid_argument("exact solve needs scratch and proof output");
     const TransitionHeaderDisk transitionHeader =
       authenticate_transition_database(options.transitionPrefix,
@@ -2277,6 +2540,10 @@ SolveCertificate solve_exact(const SolveOptions& options) {
 
     SolveCertificate certificate;
     certificate.transitionPayloadSha256 = transition.payloadSha256;
+    certificate.transitionHeaderSha256 =
+      sha256_file(options.transitionPrefix + ".header");
+    certificate.transitionMarkerSha256 =
+      sha256_file(options.transitionPrefix + ".verified");
     certificate.lowerJesterOverlaySha256 =
       options.lowerJesterOverlaySha256;
     certificate.lowerGhostSidecarSha256 =
@@ -2292,7 +2559,7 @@ SolveCertificate solve_exact(const SolveOptions& options) {
         const bool stable = same_arrays(owner, ownerNext) &&
                             same_arrays(observer, observerNext);
         if (options.measureIterations &&
-            certificate.iterations >= options.measureIterations) {
+            (stable || certificate.iterations >= options.measureIterations)) {
             certificate.upperBddNodes = bdd.upper_node_count();
             certificate.lowerBddNodes = bdd.lower_node_count();
             return certificate;
@@ -2369,6 +2636,58 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     if (certificate.rankResidual || certificate.singletonResidual)
         throw std::runtime_error("exact rank/singleton residual is nonzero");
 
+    // Discard construction-only domain and imported-lower roots from the
+    // permanent arena. The all-beliefs artifact retains exactly the force
+    // functions used by every live owner realization and observer cell.
+    {
+        std::vector<ProductRobdd::Id> roots;
+        roots.reserve(owner.size() + observer.size());
+        for (std::uint64_t id = 0; id < owner.size(); ++id)
+            roots.push_back(owner[id]);
+        for (std::uint64_t id = 0; id < observer.size(); ++id)
+            roots.push_back(observer[id]);
+        auto compacted = bdd.compact(options.scratchPrefix + ".bdd-final",
+          options.scratchPrefix + ".compact-final", roots);
+        if (compacted.second.rootResidual ||
+            compacted.second.structuralResidual)
+            throw std::runtime_error("final arbitrary compaction residual");
+        std::size_t cursor = 0;
+        for (std::uint64_t id = 0; id < owner.size(); ++id)
+            owner[id] = roots[cursor++];
+        for (std::uint64_t id = 0; id < observer.size(); ++id)
+            observer[id] = roots[cursor++];
+        bdd = std::move(compacted.first);
+        ++certificate.compactions;
+    }
+    const ArbitrarySidecarCertificate arbitrary = write_arbitrary_sidecar(
+      options.outputArbitrarySidecar, options, transitionHeader, database,
+      bdd, owner, observer);
+    certificate.arbitrarySidecarSha256 = arbitrary.fileSha256;
+    certificate.arbitraryStructuralResidual = arbitrary.structuralResidual;
+    ArbitrarySidecarProbe arbitraryProbe(options.outputArbitrarySidecar,
+                                          options);
+    for (std::uint32_t gid = 0; gid < database.geometries(); ++gid) {
+        const GeometryDisk& meta = database.meta(gid);
+        const PublicFrame frame = decode_geometry(meta.raw);
+        for (unsigned actual = 0; actual < ProductVariables; ++actual) {
+            if (!meta.live.test(actual)) continue;
+            ProductMask singleton;
+            singleton.set(actual);
+            const ProductWorld world = decode_product_variable(frame, actual);
+            const std::uint32_t stratum = meta.stratumBase +
+                                          meta.actualStratum[actual];
+            certificate.arbitrarySingletonResidual +=
+              arbitraryProbe.owner_forces(frame, world, singleton) !=
+              bdd.evaluate(owner[owner_root_index(meta, actual)], singleton);
+            certificate.arbitrarySingletonResidual +=
+              arbitraryProbe.observer_forces(frame, world, singleton) !=
+              bdd.evaluate(observer[stratum], singleton);
+        }
+    }
+    if (certificate.arbitraryStructuralResidual ||
+        certificate.arbitrarySingletonResidual)
+        throw std::runtime_error("arbitrary structural/singleton residual");
+
     std::vector<std::uint8_t> flags(StateCount, 0);
     std::array<std::set<std::string>, 2> rootSets;
     for (std::uint32_t index = 0; index < StateCount; ++index) {
@@ -2420,6 +2739,12 @@ SolveCertificate solve_exact(const SolveOptions& options) {
               canonical.value.worlds);
             const bool black = bdd.evaluate(observer[stratum],
                                              canonical.value.worlds);
+            certificate.arbitraryRootResidual +=
+              arbitraryProbe.owner_forces(physical.frame, physical.world,
+                                           root) != white;
+            certificate.arbitraryRootResidual +=
+              arbitraryProbe.observer_forces(physical.frame, physical.world,
+                                              root) != black;
             certificate.dualWinResidual += white && black;
             flags[index] = 4 | (white ? 1 : 0) | (black ? 2 : 0);
         }
@@ -2443,7 +2768,8 @@ SolveCertificate solve_exact(const SolveOptions& options) {
           certificate.unreachableRealizations[side] != StateCount / 2;
     }
     if (certificate.dualWinResidual || certificate.conservationResidual ||
-        certificate.partitionResidual || certificate.observationResidual)
+        certificate.partitionResidual || certificate.observationResidual ||
+        certificate.arbitraryRootResidual)
         throw std::runtime_error("root conservation/dual-win residual");
 
     std::ofstream output(options.outputOverlay,
@@ -2463,6 +2789,374 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     certificate.upperBddNodes = bdd.upper_node_count();
     certificate.lowerBddNodes = bdd.lower_node_count();
     return certificate;
+}
+
+ArbitrarySidecarCertificate verify_arbitrary_sidecar(
+  const std::string& path, const SolveOptions& options) {
+    require_hash(options.sourceSha256, "source SHA-256");
+    require_hash(options.modelSha256, "model SHA-256");
+    require_hash(options.observationSha256, "observation SHA-256");
+    require_hash(options.lowerJesterOverlaySha256,
+                 "lower Jester overlay SHA-256");
+    require_hash(options.lowerGhostSidecarSha256,
+                 "lower Ghost sidecar SHA-256");
+    std::ifstream input(path, std::ios::binary);
+    const ArbitraryHeaderDisk header = read_value<ArbitraryHeaderDisk>(input);
+    const auto text = [](const std::array<char,64>& value) {
+        return std::string(value.data(), value.size());
+    };
+    if (header.magic != std::array<char,8>{'U','F','J','G','1',0,0,0} ||
+        header.version != 1 || header.headerBytes != sizeof(header) ||
+        header.endian != 0x01020304 ||
+        header.primary != static_cast<std::uint32_t>(PieceType::Jester) ||
+        header.secondary != static_cast<std::uint32_t>(PieceType::Ghost) ||
+        header.owner != static_cast<std::uint32_t>(Color::White) ||
+        header.files != Position::BoardFiles ||
+        header.ranks != Position::BoardRanks || header.squares != Squares ||
+        header.variables != ProductVariables ||
+        header.stateCount != StateCount ||
+        header.upperNodeBytes != sizeof(ArbitraryUpperNodeDisk) ||
+        header.lowerNodeBytes != sizeof(ArbitraryLowerNodeDisk) ||
+        header.geometryBytes != sizeof(ArbitraryGeometryDisk) ||
+        header.maskBytes != sizeof(ProductMask) ||
+        header.rootBytes != sizeof(ProductRobdd::Id) || header.reserved ||
+        header.alignment ||
+        header.lowerNodes < 2 || !header.geometries || !header.strata ||
+        !header.ownerRoots || header.semantics != arbitrary_semantics() ||
+        text(header.sourceSha) != options.sourceSha256 ||
+        text(header.modelSha) != options.modelSha256 ||
+        text(header.observationSha) != options.observationSha256 ||
+        text(header.lowerJesterOverlaySha) !=
+          options.lowerJesterOverlaySha256 ||
+        text(header.lowerGhostSidecarSha) !=
+          options.lowerGhostSidecarSha256 ||
+        !valid_sha256(text(header.transitionPayloadSha)) ||
+        !valid_sha256(text(header.transitionHeaderSha)) ||
+        !valid_sha256(text(header.transitionMarkerSha)) ||
+        !valid_sha256(text(header.payloadSha)))
+        throw std::runtime_error("invalid Jester/Ghost arbitrary header");
+    std::uint64_t cursor = sizeof(header);
+    const auto section = [&](std::uint64_t declared, std::uint64_t count,
+                             std::uint64_t width) {
+        if (declared != cursor)
+            throw std::runtime_error("Jester/Ghost arbitrary offset residual");
+        cursor = checked_add(cursor, checked_mul(count, width));
+    };
+    section(header.upperOffset, header.upperNodes,
+            sizeof(ArbitraryUpperNodeDisk));
+    section(header.lowerOffset, header.lowerNodes,
+            sizeof(ArbitraryLowerNodeDisk));
+    section(header.geometryOffset, header.geometries,
+            sizeof(ArbitraryGeometryDisk));
+    section(header.stratumOffset, header.strata, sizeof(ProductMask));
+    section(header.ownerOffset, header.ownerRoots, sizeof(ProductRobdd::Id));
+    section(header.observerOffset, header.strata, sizeof(ProductRobdd::Id));
+    if (header.payloadBytes != cursor - sizeof(header) ||
+        file_bytes(path) != cursor ||
+        sha256_range(path, sizeof(header), header.payloadBytes) !=
+          text(header.payloadSha))
+        throw std::runtime_error("Jester/Ghost arbitrary payload residual");
+    if (!options.transitionPrefix.empty()) {
+        const TransitionHeaderDisk transition = authenticate_transition_database(
+          options.transitionPrefix, options.sourceSha256, options.modelSha256,
+          options.observationSha256, true);
+        if (text(header.transitionPayloadSha) !=
+              std::string(transition.payloadSha.data(), 64) ||
+            text(header.transitionHeaderSha) !=
+              sha256_file(options.transitionPrefix + ".header") ||
+            text(header.transitionMarkerSha) !=
+              sha256_file(options.transitionPrefix + ".verified"))
+            throw std::runtime_error(
+              "Jester/Ghost arbitrary transition provenance residual");
+    }
+    if (!options.lowerJesterOverlay.empty() &&
+        sha256_file(options.lowerJesterOverlay) !=
+          options.lowerJesterOverlaySha256)
+        throw std::runtime_error(
+          "Jester/Ghost arbitrary lower-Jester provenance residual");
+    if (!options.lowerGhostSidecar.empty() &&
+        sha256_file(options.lowerGhostSidecar) !=
+          options.lowerGhostSidecarSha256)
+        throw std::runtime_error(
+          "Jester/Ghost arbitrary lower-Ghost provenance residual");
+
+    std::ifstream upper(path, std::ios::binary);
+    upper.seekg(static_cast<std::streamoff>(header.upperOffset));
+    std::vector<std::uint8_t> upperLevels;
+    upperLevels.reserve(static_cast<std::size_t>(header.upperNodes));
+    std::set<std::tuple<std::uint8_t,ProductRobdd::Id,ProductRobdd::Id>>
+      upperTuples;
+    const auto validRoot = [&](ProductRobdd::Id root,
+                               std::uint64_t upperCount) {
+        if (root & LeafTag)
+            return (root & LeafPayload) < header.lowerNodes;
+        return root < upperCount;
+    };
+    for (std::uint64_t id = 0; id < header.upperNodes; ++id) {
+        const ArbitraryUpperNodeDisk node =
+          read_value<ArbitraryUpperNodeDisk>(upper);
+        if (node.variable >= Squares || node.reserved !=
+              std::array<std::uint8_t,7>{} || node.low == node.high ||
+            !validRoot(node.low, id) || !validRoot(node.high, id) ||
+            !upperTuples.emplace(node.variable,node.low,node.high).second)
+            throw std::runtime_error("bad Jester/Ghost arbitrary upper node");
+        const auto level = [&](ProductRobdd::Id child) {
+            return child & LeafTag ? Squares : upperLevels.at(child);
+        };
+        if (level(node.low) <= node.variable ||
+            level(node.high) <= node.variable)
+            throw std::runtime_error(
+              "unordered Jester/Ghost arbitrary upper node");
+        upperLevels.push_back(node.variable);
+    }
+    std::ifstream lower(path, std::ios::binary);
+    lower.seekg(static_cast<std::streamoff>(header.lowerOffset));
+    std::vector<std::uint8_t> lowerLevels;
+    lowerLevels.reserve(static_cast<std::size_t>(header.lowerNodes));
+    std::set<std::tuple<std::uint8_t,std::uint32_t,std::uint32_t>>
+      lowerTuples;
+    for (std::uint64_t id = 0; id < header.lowerNodes; ++id) {
+        const ArbitraryLowerNodeDisk node =
+          read_value<ArbitraryLowerNodeDisk>(lower);
+        if (id < 2) {
+            if (node.variable != Squares || node.reserved !=
+                  std::array<std::uint8_t,3>{} ||
+                node.low != id || node.high != id)
+                throw std::runtime_error(
+                  "bad Jester/Ghost arbitrary lower terminal");
+        } else if (node.variable >= Squares || node.reserved !=
+                     std::array<std::uint8_t,3>{} || node.low >= id ||
+                   node.high >= id || node.low == node.high ||
+                   !lowerTuples.emplace(node.variable,node.low,node.high).second ||
+                   lowerLevels[node.low] <= node.variable ||
+                   lowerLevels[node.high] <= node.variable) {
+            throw std::runtime_error("bad Jester/Ghost arbitrary lower node");
+        }
+        lowerLevels.push_back(node.variable);
+    }
+
+    std::ifstream geometries(path, std::ios::binary);
+    std::ifstream strata(path, std::ios::binary);
+    std::ifstream ownerRoots(path, std::ios::binary);
+    std::ifstream observerRoots(path, std::ios::binary);
+    geometries.seekg(static_cast<std::streamoff>(header.geometryOffset));
+    strata.seekg(static_cast<std::streamoff>(header.stratumOffset));
+    ownerRoots.seekg(static_cast<std::streamoff>(header.ownerOffset));
+    observerRoots.seekg(static_cast<std::streamoff>(header.observerOffset));
+    std::uint64_t ownerCursor = 0, stratumCursor = 0;
+    std::uint32_t previousRaw = 0;
+    for (std::uint64_t gid = 0; gid < header.geometries; ++gid) {
+        const ArbitraryGeometryDisk meta =
+          read_value<ArbitraryGeometryDisk>(geometries);
+        const PublicFrame frame = decode_geometry(meta.raw);
+        ProductMask geometric;
+        for (const ProductWorld& world : geometric_worlds(frame))
+            geometric.set(product_variable(frame, world));
+        if (meta.reserved || meta.alignment != std::array<std::uint8_t,3>{} ||
+            (gid && meta.raw <= previousRaw) ||
+            canonical_geometry(frame).first != meta.raw ||
+            meta.ownerBase != ownerCursor ||
+            meta.stratumBase != stratumCursor || !meta.stratumCount ||
+            !meta.liveCount || meta.live.count() != meta.liveCount)
+            throw std::runtime_error("bad Jester/Ghost arbitrary geometry");
+        for (unsigned word = 0; word < meta.live.words.size(); ++word)
+            if (meta.live.words[word] & ~geometric.words[word])
+                throw std::runtime_error(
+                  "Jester/Ghost arbitrary live-mask domain residual");
+        previousRaw = meta.raw;
+        ProductMask partition;
+        for (std::uint32_t local = 0; local < meta.stratumCount; ++local) {
+            const ProductMask cell = read_value<ProductMask>(strata);
+            const ProductRobdd::Id observerRoot =
+              read_value<ProductRobdd::Id>(observerRoots);
+            if (!cell.count() || !validRoot(observerRoot, header.upperNodes))
+                throw std::runtime_error(
+                  "bad Jester/Ghost arbitrary observer stratum");
+            for (unsigned word = 0; word < cell.words.size(); ++word) {
+                if ((cell.words[word] & ~meta.live.words[word]) ||
+                    (cell.words[word] & partition.words[word]))
+                    throw std::runtime_error(
+                      "Jester/Ghost arbitrary stratum partition residual");
+                partition.words[word] |= cell.words[word];
+            }
+        }
+        if (!(partition == meta.live))
+            throw std::runtime_error(
+              "Jester/Ghost arbitrary incomplete stratum partition");
+        for (unsigned local = 0; local < meta.liveCount; ++local)
+            if (!validRoot(read_value<ProductRobdd::Id>(ownerRoots),
+                           header.upperNodes))
+                throw std::runtime_error(
+                  "bad Jester/Ghost arbitrary owner root");
+        ownerCursor += meta.liveCount;
+        stratumCursor += meta.stratumCount;
+    }
+    if (ownerCursor != header.ownerRoots || stratumCursor != header.strata)
+        throw std::runtime_error(
+          "Jester/Ghost arbitrary catalog conservation residual");
+    ArbitrarySidecarCertificate result;
+    result.upperNodes = header.upperNodes;
+    result.lowerNodes = header.lowerNodes;
+    result.geometries = header.geometries;
+    result.strata = header.strata;
+    result.ownerRoots = header.ownerRoots;
+    result.bytes = cursor;
+    result.payloadSha256 = text(header.payloadSha);
+    result.fileSha256 = sha256_file(path);
+    result.transitionPayloadSha256 = text(header.transitionPayloadSha);
+    result.transitionHeaderSha256 = text(header.transitionHeaderSha);
+    result.transitionMarkerSha256 = text(header.transitionMarkerSha);
+    result.lowerJesterOverlaySha256 = text(header.lowerJesterOverlaySha);
+    result.lowerGhostSidecarSha256 = text(header.lowerGhostSidecarSha);
+    return result;
+}
+
+class ArbitrarySidecarProbe::Impl {
+  public:
+    Impl(const std::string& path, const SolveOptions& options)
+      : certificate_(verify_arbitrary_sidecar(path, options)) {
+        bytes_ = file_bytes(path);
+        if (bytes_ > std::numeric_limits<std::size_t>::max())
+            throw std::runtime_error("Jester/Ghost sidecar too large");
+        descriptor_ = ::open(path.c_str(), O_RDONLY);
+        if (descriptor_ < 0) system_error("cannot open", path);
+        void* mapping = ::mmap(nullptr, static_cast<std::size_t>(bytes_),
+          PROT_READ, MAP_SHARED, descriptor_, 0);
+        if (mapping == MAP_FAILED) {
+            ::close(descriptor_); descriptor_ = -1;
+            system_error("cannot mmap", path);
+        }
+        data_ = static_cast<const std::uint8_t*>(mapping);
+        header_ = read<ArbitraryHeaderDisk>(0);
+    }
+    ~Impl() {
+        if (data_) ::munmap(const_cast<std::uint8_t*>(data_),
+                            static_cast<std::size_t>(bytes_));
+        if (descriptor_ >= 0) ::close(descriptor_);
+    }
+    [[nodiscard]] bool forces(const PublicFrame& frame,
+                              const ProductWorld& actual,
+                              const ProductMask& worlds, bool owner) const {
+        const unsigned rawActual = product_variable(frame, actual);
+        if (!worlds.count() || !worlds.test(rawActual))
+            throw std::invalid_argument(
+              "Jester/Ghost belief does not contain actual world");
+        const CanonicalSet canonical = canonicalize_set(frame, worlds);
+        const FramedWorld mapped = transform_world(frame, actual,
+                                                   canonical.transform);
+        const std::uint32_t raw = encode_geometry(canonical.value.frame);
+        std::uint64_t low = 0, high = header_.geometries;
+        while (low < high) {
+            const std::uint64_t middle = (low + high) / 2;
+            if (geometry(middle).raw < raw) low = middle + 1;
+            else high = middle;
+        }
+        if (low >= header_.geometries || geometry(low).raw != raw)
+            throw std::runtime_error("Jester/Ghost probe geometry absent");
+        const ArbitraryGeometryDisk meta = geometry(low);
+        const unsigned variable = product_variable(canonical.value.frame,
+                                                   mapped.world);
+        if (!meta.live.test(variable))
+            throw std::invalid_argument(
+              "Jester/Ghost probe requested terminal/nonlive world");
+        std::uint32_t local = NoIndex;
+        for (std::uint32_t candidate = 0;
+             candidate < meta.stratumCount; ++candidate) {
+            const ProductMask cell = read<ProductMask>(header_.stratumOffset +
+              (meta.stratumBase + candidate) * sizeof(ProductMask));
+            if (cell.test(variable)) { local = candidate; break; }
+        }
+        if (local == NoIndex)
+            throw std::runtime_error("Jester/Ghost decision-cell residual");
+        const ProductMask cell = read<ProductMask>(header_.stratumOffset +
+          (meta.stratumBase + local) * sizeof(ProductMask));
+        for (unsigned word = 0; word < cell.words.size(); ++word)
+            if (canonical.value.worlds.words[word] & ~cell.words[word])
+                throw std::invalid_argument(
+                  "Jester/Ghost belief spans legal-dot decision cells");
+        ProductRobdd::Id root;
+        if (owner) {
+            unsigned rank = 0;
+            for (unsigned candidate = 0; candidate < variable; ++candidate)
+                rank += meta.live.test(candidate);
+            if (rank >= meta.liveCount)
+                throw std::runtime_error("Jester/Ghost owner rank residual");
+            root = read<ProductRobdd::Id>(header_.ownerOffset +
+              (meta.ownerBase + rank) * sizeof(ProductRobdd::Id));
+        } else {
+            root = read<ProductRobdd::Id>(header_.observerOffset +
+              (meta.stratumBase + local) * sizeof(ProductRobdd::Id));
+        }
+        while (!(root & LeafTag)) {
+            const ArbitraryUpperNodeDisk node = read<ArbitraryUpperNodeDisk>(
+              header_.upperOffset + root * sizeof(ArbitraryUpperNodeDisk));
+            root = canonical.value.worlds.test(node.variable) ?
+              node.high : node.low;
+        }
+        std::uint32_t lower = static_cast<std::uint32_t>(root & LeafPayload);
+        while (lower > 1) {
+            const ArbitraryLowerNodeDisk node = read<ArbitraryLowerNodeDisk>(
+              header_.lowerOffset + std::uint64_t(lower) *
+                                    sizeof(ArbitraryLowerNodeDisk));
+            lower = canonical.value.worlds.test(Squares + node.variable) ?
+              node.high : node.low;
+        }
+        return lower == 1;
+    }
+    [[nodiscard]] const ArbitrarySidecarCertificate& certificate() const {
+        return certificate_;
+    }
+  private:
+    template<typename Value>
+    [[nodiscard]] Value read(std::uint64_t offset) const {
+        if (offset > bytes_ || sizeof(Value) > bytes_ - offset)
+            throw std::runtime_error("Jester/Ghost mapped read overflow");
+        Value value;
+        std::memcpy(&value, data_ + offset, sizeof(value));
+        return value;
+    }
+    [[nodiscard]] ArbitraryGeometryDisk geometry(std::uint64_t id) const {
+        return read<ArbitraryGeometryDisk>(header_.geometryOffset +
+          id * sizeof(ArbitraryGeometryDisk));
+    }
+    int descriptor_ = -1;
+    const std::uint8_t* data_ = nullptr;
+    std::uint64_t bytes_ = 0;
+    ArbitraryHeaderDisk header_{};
+    ArbitrarySidecarCertificate certificate_;
+};
+
+ArbitrarySidecarProbe::ArbitrarySidecarProbe(
+  const std::string& path, const SolveOptions& options)
+  : impl_(new Impl(path, options)) {}
+ArbitrarySidecarProbe::~ArbitrarySidecarProbe() { delete impl_; }
+ArbitrarySidecarProbe::ArbitrarySidecarProbe(
+  ArbitrarySidecarProbe&& other) noexcept
+  : impl_(std::exchange(other.impl_, nullptr)) {}
+ArbitrarySidecarProbe& ArbitrarySidecarProbe::operator=(
+  ArbitrarySidecarProbe&& other) noexcept {
+    if (this != &other) {
+        delete impl_;
+        impl_ = std::exchange(other.impl_, nullptr);
+    }
+    return *this;
+}
+bool ArbitrarySidecarProbe::owner_forces(
+  const PublicFrame& frame, const ProductWorld& actual,
+  const ProductMask& worlds) const {
+    if (!impl_) throw std::runtime_error("moved-from Jester/Ghost probe");
+    return impl_->forces(frame, actual, worlds, true);
+}
+bool ArbitrarySidecarProbe::observer_forces(
+  const PublicFrame& frame, const ProductWorld& actual,
+  const ProductMask& worlds) const {
+    if (!impl_) throw std::runtime_error("moved-from Jester/Ghost probe");
+    return impl_->forces(frame, actual, worlds, false);
+}
+const ArbitrarySidecarCertificate&
+ArbitrarySidecarProbe::certificate() const {
+    if (!impl_) throw std::runtime_error("moved-from Jester/Ghost probe");
+    return impl_->certificate();
 }
 
 SolveCertificate verify_exact_overlay(const SolveOptions& options) {
@@ -2715,6 +3409,185 @@ void exact_small_domain_self_test(const std::string& scratchPrefix) {
        arenaBytes(scratchPrefix+".truth-compact")!=
        2*ProductRobdd::required_bytes(limits))
         throw std::runtime_error("two-arena compaction disk-extent residual");
+
+    // Serialize and mmap-query a genuine correlated, multi-world catalog.
+    // This exercises the production UFJG1 node coordinate split, compact
+    // owner rank, decision-cell containment, and whole-belief D2 transform.
+    bdd=std::move(compacted.first);
+    const PublicFrame sidecarFrame=decode_geometry(0);
+    const std::vector<ProductWorld> sidecarWorlds=
+      geometric_worlds(sidecarFrame);
+    const ProductWorld firstWorld=sidecarWorlds.at(0);
+    const ProductWorld secondWorld=sidecarWorlds.at(1);
+    const unsigned firstVariable=product_variable(sidecarFrame,firstWorld);
+    const unsigned secondVariable=product_variable(sidecarFrame,secondWorld);
+    ProductMask sidecarBelief;sidecarBelief.set(firstVariable);
+    sidecarBelief.set(secondVariable);
+    const ProductRobdd::Id firstRoot=bdd.variable(firstVariable);
+    const ProductRobdd::Id secondMember=bdd.variable(secondVariable);
+    const ProductRobdd::Id secondRoot=bdd.constant(false);
+    const ProductRobdd::Id observerRoot=bdd.logical_or(firstRoot,secondMember);
+    ArbitraryHeaderDisk sidecarHeader;
+    sidecarHeader.upperNodes=bdd.upper_node_count();
+    sidecarHeader.lowerNodes=bdd.lower_node_count();
+    sidecarHeader.geometries=1;sidecarHeader.strata=1;
+    sidecarHeader.ownerRoots=2;sidecarHeader.upperOffset=sizeof(sidecarHeader);
+    sidecarHeader.lowerOffset=sidecarHeader.upperOffset+
+      sidecarHeader.upperNodes*sizeof(ArbitraryUpperNodeDisk);
+    sidecarHeader.geometryOffset=sidecarHeader.lowerOffset+
+      sidecarHeader.lowerNodes*sizeof(ArbitraryLowerNodeDisk);
+    sidecarHeader.stratumOffset=sidecarHeader.geometryOffset+
+      sizeof(ArbitraryGeometryDisk);
+    sidecarHeader.ownerOffset=sidecarHeader.stratumOffset+sizeof(ProductMask);
+    sidecarHeader.observerOffset=sidecarHeader.ownerOffset+
+      2*sizeof(ProductRobdd::Id);
+    const std::uint64_t sidecarExtent=sidecarHeader.observerOffset+
+      sizeof(ProductRobdd::Id);
+    sidecarHeader.payloadBytes=sidecarExtent-sizeof(sidecarHeader);
+    sidecarHeader.semantics=arbitrary_semantics();
+    SolveOptions sidecarOptions;
+    sidecarOptions.sourceSha256=std::string(64,'1');
+    sidecarOptions.modelSha256=std::string(64,'2');
+    sidecarOptions.observationSha256=std::string(64,'3');
+    sidecarOptions.lowerJesterOverlaySha256=std::string(64,'4');
+    sidecarOptions.lowerGhostSidecarSha256=std::string(64,'5');
+    copy_digest(sidecarHeader.sourceSha,sidecarOptions.sourceSha256,"test");
+    copy_digest(sidecarHeader.modelSha,sidecarOptions.modelSha256,"test");
+    copy_digest(sidecarHeader.observationSha,
+                sidecarOptions.observationSha256,"test");
+    copy_digest(sidecarHeader.transitionPayloadSha,std::string(64,'6'),"test");
+    copy_digest(sidecarHeader.transitionHeaderSha,std::string(64,'7'),"test");
+    copy_digest(sidecarHeader.transitionMarkerSha,std::string(64,'8'),"test");
+    copy_digest(sidecarHeader.lowerJesterOverlaySha,
+                sidecarOptions.lowerJesterOverlaySha256,"test");
+    copy_digest(sidecarHeader.lowerGhostSidecarSha,
+                sidecarOptions.lowerGhostSidecarSha256,"test");
+    const std::string sidecarPath=scratchPrefix+".ufjg";
+    std::ofstream sidecar(sidecarPath,std::ios::binary|std::ios::trunc);
+    write_value(sidecar,sidecarHeader);
+    write_sequence<ArbitraryUpperNodeDisk>(sidecar,
+      sidecarHeader.upperNodes,[&](std::uint64_t id){const auto node=
+        bdd.upper_node_record(id);ArbitraryUpperNodeDisk result;
+        result.variable=node.variable;result.low=node.low;result.high=node.high;
+        return result;},"test upper nodes");
+    write_sequence<ArbitraryLowerNodeDisk>(sidecar,
+      sidecarHeader.lowerNodes,[&](std::uint64_t id){const auto node=
+        bdd.lower_node_record(static_cast<std::uint32_t>(id));
+        ArbitraryLowerNodeDisk result;result.variable=node.variable;
+        result.low=node.low;result.high=node.high;return result;},
+      "test lower nodes");
+    ArbitraryGeometryDisk sidecarGeometry;sidecarGeometry.raw=0;
+    sidecarGeometry.ownerBase=0;sidecarGeometry.stratumBase=0;
+    sidecarGeometry.stratumCount=1;sidecarGeometry.liveCount=2;
+    sidecarGeometry.live=sidecarBelief;write_value(sidecar,sidecarGeometry);
+    write_value(sidecar,sidecarBelief);write_value(sidecar,firstRoot);
+    write_value(sidecar,secondRoot);write_value(sidecar,observerRoot);
+    sidecar.close();
+    const std::string sidecarPayload=sha256_range(sidecarPath,
+      sizeof(sidecarHeader),sidecarHeader.payloadBytes);
+    std::copy(sidecarPayload.begin(),sidecarPayload.end(),
+              sidecarHeader.payloadSha.begin());
+    std::fstream rewrite(sidecarPath,std::ios::binary|std::ios::in|
+      std::ios::out);write_value(rewrite,sidecarHeader);rewrite.close();
+    const ArbitrarySidecarCertificate sidecarCertificate=
+      verify_arbitrary_sidecar(sidecarPath,sidecarOptions);
+    if(sidecarCertificate.structuralResidual||
+       sidecarCertificate.ownerRoots!=2)
+        throw std::runtime_error("UFJG1 structural test residual");
+    ArbitrarySidecarProbe probe(sidecarPath,sidecarOptions);
+    if(!probe.owner_forces(sidecarFrame,firstWorld,sidecarBelief)||
+       !probe.observer_forces(sidecarFrame,firstWorld,sidecarBelief)||
+       probe.owner_forces(sidecarFrame,secondWorld,sidecarBelief))
+        throw std::runtime_error("UFJG1 correlated multi-world query residual");
+    ProductMask spanning=sidecarBelief;
+    spanning.set(product_variable(sidecarFrame,sidecarWorlds.at(2)));
+    bool spanningRejected=false;try{(void)probe.owner_forces(
+      sidecarFrame,firstWorld,spanning);}catch(const std::invalid_argument&){
+        spanningRejected=true;}
+    if(!spanningRejected)
+        throw std::runtime_error("UFJG1 spanning legal-dot cell accepted");
+    ProductMask omittedSingleton;const ProductWorld omitted=sidecarWorlds.at(2);
+    omittedSingleton.set(product_variable(sidecarFrame,omitted));
+    bool omittedRejected=false;try{(void)probe.observer_forces(
+      sidecarFrame,omitted,omittedSingleton);}catch(const std::invalid_argument&){
+        omittedRejected=true;}
+    if(!omittedRejected)
+        throw std::runtime_error("UFJG1 terminal/nonlive actual accepted");
+    const ProductSet transformed=transform_set(sidecarFrame,sidecarBelief,
+      RectangleTransform::Both);
+    const FramedWorld transformedActual=transform_world(sidecarFrame,
+      firstWorld,RectangleTransform::Both);
+    if(!probe.owner_forces(transformed.frame,transformedActual.world,
+                           transformed.worlds)||
+       !probe.observer_forces(transformed.frame,transformedActual.world,
+                              transformed.worlds))
+        throw std::runtime_error("UFJG1 D2 query residual");
+    ArbitrarySidecarProbe moved(std::move(probe));
+    bool movedRejected=false;try{(void)probe.certificate();}
+    catch(const std::exception&){movedRejected=true;}
+    if(!movedRejected||!moved.certificate().bytes)
+        throw std::runtime_error("UFJG1 moved-from probe residual");
+    const std::string malformedPath=scratchPrefix+".malformed.ufjg";
+    {std::ifstream source(sidecarPath,std::ios::binary);std::ofstream target(
+       malformedPath,std::ios::binary|std::ios::trunc);
+     target<<source.rdbuf();}
+    {std::fstream corrupt(malformedPath,std::ios::binary|std::ios::in|
+       std::ios::out);corrupt.seekp(static_cast<std::streamoff>(
+         sizeof(ArbitraryHeaderDisk)));char byte=0;corrupt.read(&byte,1);
+       corrupt.seekp(static_cast<std::streamoff>(sizeof(ArbitraryHeaderDisk)));
+       byte^=1;corrupt.write(&byte,1);}
+    bool malformedRejected=false;try{(void)verify_arbitrary_sidecar(
+      malformedPath,sidecarOptions);}catch(const std::exception&){
+        malformedRejected=true;}
+    if(!malformedRejected)
+        throw std::runtime_error("malformed UFJG1 payload accepted");
+    const auto copySidecar=[&](const std::string&destination){
+        std::ifstream source(sidecarPath,std::ios::binary);
+        std::ofstream target(destination,std::ios::binary|std::ios::trunc);
+        target<<source.rdbuf();};
+    const auto resignPayload=[&](const std::string&path,
+                                 ArbitraryHeaderDisk&header){
+        const std::string digest=sha256_range(path,sizeof(header),
+                                              header.payloadBytes);
+        std::copy(digest.begin(),digest.end(),header.payloadSha.begin());
+        std::fstream output(path,std::ios::binary|std::ios::in|std::ios::out);
+        write_value(output,header);};
+    const std::string endianPath=scratchPrefix+".endian.ufjg";
+    copySidecar(endianPath);ArbitraryHeaderDisk endianHeader=sidecarHeader;
+    endianHeader.endian=0;{std::fstream output(endianPath,std::ios::binary|
+      std::ios::in|std::ios::out);write_value(output,endianHeader);}
+    bool endianRejected=false;try{(void)verify_arbitrary_sidecar(
+      endianPath,sidecarOptions);}catch(const std::exception&){
+        endianRejected=true;}
+    if(!endianRejected)throw std::runtime_error("UFJG1 endian drift accepted");
+    if(sidecarHeader.upperNodes<2)
+        throw std::runtime_error("UFJG1 uniqueness test lacks upper nodes");
+    const std::string duplicatePath=scratchPrefix+".duplicate.ufjg";
+    copySidecar(duplicatePath);ArbitraryHeaderDisk duplicateHeader=sidecarHeader;
+    {std::fstream file(duplicatePath,std::ios::binary|std::ios::in|
+       std::ios::out);ArbitraryUpperNodeDisk prior;
+     file.seekg(static_cast<std::streamoff>(duplicateHeader.upperOffset+
+       (duplicateHeader.upperNodes-2)*sizeof(prior)));
+     file.read(reinterpret_cast<char*>(&prior),sizeof(prior));
+     file.seekp(static_cast<std::streamoff>(duplicateHeader.upperOffset+
+       (duplicateHeader.upperNodes-1)*sizeof(prior)));
+     file.write(reinterpret_cast<const char*>(&prior),sizeof(prior));}
+    resignPayload(duplicatePath,duplicateHeader);
+    bool duplicateRejected=false;try{(void)verify_arbitrary_sidecar(
+      duplicatePath,sidecarOptions);}catch(const std::exception&){
+        duplicateRejected=true;}
+    if(!duplicateRejected)
+        throw std::runtime_error("duplicate UFJG1 node tuple accepted");
+    const std::string rootPath=scratchPrefix+".root-bound.ufjg";
+    copySidecar(rootPath);ArbitraryHeaderDisk rootHeader=sidecarHeader;
+    {std::fstream file(rootPath,std::ios::binary|std::ios::in|std::ios::out);
+     const ProductRobdd::Id invalidRoot=rootHeader.upperNodes;
+     file.seekp(static_cast<std::streamoff>(rootHeader.ownerOffset));
+     write_value(file,invalidRoot);}
+    resignPayload(rootPath,rootHeader);
+    bool rootRejected=false;try{(void)verify_arbitrary_sidecar(
+      rootPath,sidecarOptions);}catch(const std::exception&){rootRejected=true;}
+    if(!rootRejected)throw std::runtime_error("UFJG1 root bound accepted");
 }
 
 } // namespace Stockfish::Ultimate::JesterGhostInformation
