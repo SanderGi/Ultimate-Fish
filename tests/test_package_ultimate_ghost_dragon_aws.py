@@ -63,10 +63,13 @@ class DragonGhostAwsBundleTests(unittest.TestCase):
                     self.assertEqual(
                         command[command.index("--compact-every") + 1], "1")
                 build = manifest["commands"]["build"]
-                self.assertEqual(build[0], "clang++")
-                self.assertGreater(
-                    build.index("-Wno-error=range-loop-construct"),
-                    build.index("-Werror"))
+                self.assertEqual(build[:13], [
+                    "clang++", "-std=c++17", "-O3", "-DNDEBUG",
+                    "-Wall", "-Wextra", "-Wpedantic", "-Werror",
+                    "-Wno-error=range-loop-construct",
+                    "-include", "sstream", "-Isrc/ultimate",
+                    "src/ultimate/ghost_dragon_information_tablebase.cpp",
+                ])
                 stem = Path(filename).stem
                 self.assertIn(f"work/results/{stem}.ufgd",
                               manifest["artifacts"])

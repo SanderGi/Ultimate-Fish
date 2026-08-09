@@ -214,7 +214,8 @@ def build_manifest(filename: str) -> dict[str, object]:
         "commands": {
             "build": ["clang++", "-std=c++17", "-O3", "-DNDEBUG",
                       "-Wall", "-Wextra", "-Wpedantic", "-Werror",
-                      "-Wno-error=range-loop-construct", "-Isrc/ultimate",
+                      "-Wno-error=range-loop-construct",
+                      "-include", "sstream", "-Isrc/ultimate",
                       *cpp_sources, "-o", executable[2:]],
             "self_test": [executable, "--orientation", orientation,
                           "--self-test", "--scratch", f"work/self-test/{stem}",
