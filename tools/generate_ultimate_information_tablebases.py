@@ -14,6 +14,7 @@ import argparse
 import json
 from pathlib import Path
 import re
+import struct
 import subprocess
 import sys
 from typing import Mapping
@@ -91,6 +92,26 @@ def save_checkpoint(path: Path, document: Mapping[str, object]) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n")
     temporary.replace(path)
+
+
+def overlay_is_current(path: Path, record: Mapping[str, object],
+                       source_sha256: str, model_sha256: str) -> bool:
+    """Validate the small header and exact dense-domain size before reuse."""
+    try:
+        with path.open("rb") as stream:
+            header = stream.read(160)
+        if len(header) != 160:
+            return False
+        (magic, version, _primary, _secondary, _color, count,
+         _substates) = struct.unpack_from("<8s6I", header)
+        expected_count = information.states_per_side(record) * 2
+        return (magic == b"UFIW2\0\0\0" and version == 2 and
+                count == expected_count and
+                header[32:96].decode() == source_sha256 and
+                header[96:160].decode() == model_sha256 and
+                path.stat().st_size == 160 + expected_count)
+    except (OSError, UnicodeDecodeError, struct.error):
+        return False
 
 
 def run_solver(command: list[str]) -> dict[int, dict[str, int]]:
@@ -172,7 +193,7 @@ def solve_one(args: argparse.Namespace) -> None:
         raise RuntimeError(f"{args.filename}: not a Jester/Ghost table")
     record = records[args.filename]
     if (str(record["primary"]) != "jester" or
-            str(record["secondary"]) == "jester"):
+            str(record["secondary"]) in {"jester", "ghost"}):
         raise RuntimeError(
             f"{args.filename}: compact one-primary-Jester solver is not applicable")
 
@@ -181,6 +202,16 @@ def solve_one(args: argparse.Namespace) -> None:
     source_sha256 = shards.logical_sha256(
         ROOT / "tablebases" / args.filename)
     model_sha256 = information.solver_model_fingerprint(args.filename)
+    document = load_checkpoint(args.checkpoint)
+    files = document["files"]
+    assert isinstance(files, dict)
+    entry = files.get(args.filename)
+    if (isinstance(entry, dict) and
+            entry.get("tablebase_sha256") == source_sha256 and
+            entry.get("solver_model_sha256") == model_sha256 and
+            overlay_is_current(overlay, record, source_sha256, model_sha256)):
+        print(f"already complete and verified: {args.filename}")
+        return
     command = [
         str(args.binary), "--piece", "jester",
         "--solve-jester-information",
@@ -205,9 +236,6 @@ def solve_one(args: argparse.Namespace) -> None:
             shards.logical_sha256(ROOT / "tablebases" / "kjesterk.uftb")])
 
     summaries = run_solver(command)
-    document = load_checkpoint(args.checkpoint)
-    files = document["files"]
-    assert isinstance(files, dict)
     files[args.filename] = entry_from_run(record, summaries)
     save_checkpoint(args.checkpoint, document)
     print(f"checkpointed {args.filename} in {args.checkpoint}")
@@ -220,14 +248,25 @@ def solve_one(args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("filename", choices=information.AFFECTED_FILENAMES)
+    parser.add_argument(
+        "filename", choices=(*information.AFFECTED_FILENAMES, "all-one-jester"))
     parser.add_argument("--binary", type=Path,
                         default=ROOT / "src" / "ultimate_tablebase")
     parser.add_argument("--checkpoint", type=Path, default=DEFAULT_CHECKPOINT)
     parser.add_argument("--overlays", type=Path, default=DEFAULT_OVERLAYS)
     parser.add_argument("--scratch", type=Path, default=Path("/tmp"))
     args = parser.parse_args()
-    solve_one(args)
+    if args.filename == "all-one-jester":
+        records = _records()
+        for filename in information.AFFECTED_FILENAMES:
+            record = records[filename]
+            if (str(record["primary"]) == "jester" and
+                    str(record["secondary"]) not in {"jester", "ghost"}):
+                child = argparse.Namespace(**vars(args))
+                child.filename = filename
+                solve_one(child)
+    else:
+        solve_one(args)
 
 
 if __name__ == "__main__":

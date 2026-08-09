@@ -1,5 +1,6 @@
 import importlib.util
 from pathlib import Path
+import struct
 import sys
 import tempfile
 import unittest
@@ -53,6 +54,27 @@ class InformationGenerationDriverTests(unittest.TestCase):
             generate.save_checkpoint(path, document)
             with self.assertRaisesRegex(RuntimeError, "stale solver"):
                 generate.load_checkpoint(path)
+
+    def test_overlay_reuse_requires_both_hashes_and_exact_domain(self):
+        record = generate._records()["kjesterk.uftb"]  # pylint: disable=protected-access
+        source = "1" * 64
+        model = "2" * 64
+        count = generate.information.states_per_side(record) * 2
+        header = (struct.pack("<8s6I", b"UFIW2\0\0\0", 2, 1, 30, 0,
+                              count, 1) + source.encode() + model.encode())
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "overlay.ufiw"
+            with path.open("wb") as stream:
+                stream.write(header)
+                stream.truncate(160 + count)
+            self.assertTrue(generate.overlay_is_current(
+                path, record, source, model))
+            self.assertFalse(generate.overlay_is_current(
+                path, record, "0" * 64, model))
+            with path.open("r+b") as stream:
+                stream.truncate(159 + count)
+            self.assertFalse(generate.overlay_is_current(
+                path, record, source, model))
 
 
 if __name__ == "__main__":
