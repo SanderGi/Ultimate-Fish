@@ -125,8 +125,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         supported = info.supported_solver_inventory()
         unsupported = info.unsupported_solver_inventory()
         names = [filename for filename, _ in supported] + list(unsupported)
-        self.assertEqual(len(supported), 28)
-        self.assertEqual(len(unsupported), 17)
+        self.assertEqual(len(supported), 29)
+        self.assertEqual(len(unsupported), 16)
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(set(names), set(info.AFFECTED_FILENAMES))
         counts = {}
@@ -138,6 +138,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "ghost": 1,
             "double-jester": 1,
             "joint-jester": 1,
+            "bishop-ghost": 1,
         })
 
     def test_unsupported_and_unknown_solver_domains_fail_closed(self):
@@ -158,6 +159,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "ghost": "kghostk.uftb",
             "double-jester": "kjesterjesterk.uftb",
             "joint-jester": "kjesterkjester.uftb",
+            "bishop-ghost": "kbishopghostk.uftb",
         }
         with tempfile.TemporaryDirectory() as directory:
             source_root = Path(directory)
@@ -182,6 +184,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                 for domain, filename in representatives.items()
             }
             self.assertNotEqual(after_ghost["ghost"], before["ghost"])
+            self.assertNotEqual(after_ghost["bishop-ghost"],
+                                before["bishop-ghost"])
             for domain in ("primary-jester", "double-jester", "joint-jester"):
                 self.assertEqual(after_ghost[domain], before[domain])
 

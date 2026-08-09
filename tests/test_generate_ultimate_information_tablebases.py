@@ -27,6 +27,8 @@ class InformationGenerationDriverTests(unittest.TestCase):
             ghost_binary=root / "ghost",
             double_jester_binary=root / "double",
             joint_jester_binary=root / "joint",
+            ghost_extra_binary=root / "ghost-extra",
+            ghost_extra_transitions=root / "ghost-extra-transitions",
             overlays=root / "overlays",
             scratch=root / "scratch",
         )
@@ -168,6 +170,8 @@ class InformationGenerationDriverTests(unittest.TestCase):
                     "--lower-information-model-sha256"),
                 "kjesterkjester.uftb": (
                     str(args.joint_jester_binary), "--semantics-id"),
+                "kbishopghostk.uftb": (
+                    str(args.ghost_extra_binary), "--solve-external"),
             }
             for filename, (binary, required) in cases.items():
                 with self.subTest(filename=filename):

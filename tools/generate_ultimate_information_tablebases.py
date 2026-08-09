@@ -269,6 +269,17 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             "--output", str(overlay), "--scratch", str(args.scratch),
             *common,
         ]
+    if domain == "bishop-ghost":
+        return [
+            str(args.ghost_extra_binary), "--material", "same",
+            "--input", str(table),
+            "--solve-external", str(args.ghost_extra_transitions),
+            "--solve-scratch", str(args.scratch / "kbishopghostk-exact"),
+            "--information-output", str(overlay),
+            "--information-observation-sha256",
+            information.observation_model_fingerprint(),
+            *common,
+        ]
 
     lower_overlay = args.overlays / "kjesterk.ufiw"
     lower_table = ROOT / "tablebases" / "kjesterk.uftb"
@@ -366,6 +377,12 @@ def main() -> None:
     parser.add_argument("--joint-jester-binary", type=Path,
                         default=ROOT / "src" /
                         "ultimate_joint_jester_information_tablebase")
+    parser.add_argument("--ghost-extra-binary", type=Path,
+                        default=ROOT / "src" /
+                        "ultimate_ghost_extra_information_preflight")
+    parser.add_argument("--ghost-extra-transitions", type=Path,
+                        default=Path(
+                          "/tmp/kbishopghostk-exact-transitions"))
     parser.add_argument("--checkpoint", type=Path, default=DEFAULT_CHECKPOINT)
     parser.add_argument("--overlays", type=Path, default=DEFAULT_OVERLAYS)
     parser.add_argument("--scratch", type=Path, default=Path("/tmp"))

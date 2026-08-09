@@ -65,6 +65,7 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cp
 	ultimate-ghost-extra-information-preflight \
 	ultimate-ghost-extra-information-preflight-self-test \
 	ultimate-ghost-extra-information-preflight-sample \
+	ultimate-external-robdd-test \
 	ultimate-joint-jester-information-tablebase ultimate-information-solvers-self-test \
 	ultimate-information-solvers-clean
 ultimatefish:
@@ -102,7 +103,7 @@ ultimate-ghost-information-tablebase:
 ultimate-ghost-extra-information-preflight:
 	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
 		ultimate/ghost_extra_information_tablebase.cpp \
-		ultimate/ghost_information_probe.cpp ultimate/position.cpp \
+		ultimate/ghost_information_probe.cpp ultimate/external_robdd.cpp ultimate/position.cpp \
 		ultimate/information.cpp ultimate/nnue.cpp \
 		-o ultimate_ghost_extra_information_preflight
 
@@ -119,6 +120,12 @@ ultimate-ghost-extra-information-preflight-sample: \
 	./ultimate_ghost_extra_information_preflight --material opposing \
 		--input ../tablebases/kbishopkghost.uftb \
 		--lower-ghost-sidecar ../tablebases/kghostk.ufgm --samples 5000
+
+ultimate-external-robdd-test:
+	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
+		../tests/ultimate_external_robdd.cpp ultimate/external_robdd.cpp \
+		-o ultimate_external_robdd_test
+	./ultimate_external_robdd_test
 
 ultimate-double-jester-information-tablebase:
 	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
