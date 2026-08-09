@@ -211,16 +211,16 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         certificate["legal_realizations"] = sum(legal)
         certificate["unreachable_realizations"] = sum(unreachable)
 
-    def test_readme_uses_public_legal_counts_and_concrete_parentheses(self):
+    def test_readme_uses_exact_public_legal_and_unreachable_counts(self):
         filename = "kjesterjesterk.uftb"
         states = self.document["files"][filename]["states_per_side"]
-        # Deliberately classify catalog-unreachable worlds differently. README
-        # parentheses must retain the concrete table's 2/3/1 W/L/D buckets.
         self._set_side_counts(
-            filename, "first", (5, 7, states - 18), (0, 0, 6))
+            filename, "first", (5, 7, states - 18), (2, 3, 1))
         info.validate_summary(self.document, root=self.root)
         totals = [[0, 999, 888, 777], [0, 0, 0, states]]
-        concrete_unreachable = [[0, 2, 3, 1], [0, 0, 0, 0]]
+        # The exact admission additionally rejects one win, two losses, and one
+        # draw beyond the older concrete audit.
+        concrete_unreachable = [[0, 1, 1, 0], [0, 0, 0, 0]]
         first, second = readme.summary_cells(
             filename, totals, concrete_unreachable, self.document)
         self.assertEqual(first, f"5 (2) / 7 (3) / {states - 18:,} (1)")
@@ -236,7 +236,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                 filename, [[0] * 4, [0] * 4], [[0] * 4, [0] * 4],
                 self.document)
 
-    def test_readme_rejects_reachability_domain_mismatch(self):
+    def test_readme_rejects_native_unreachable_state_admitted_by_solver(self):
         filename = "kjesterjesterk.uftb"
         states = self.document["files"][filename]["states_per_side"]
         self._set_side_counts(filename, "first", (0, 0, states - 6),
@@ -244,9 +244,9 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         info.validate_summary(self.document, root=self.root)
         with self.assertRaisesRegex(
                 info.SummaryValidationError,
-                "public legal counts plus concrete unreachable"):
+                "native-audited unreachable"):
             readme.public_information_cell(
-                self.document, filename, "first", [0, 2, 3, 0])
+                self.document, filename, "first", [0, 3, 3, 0])
 
     def test_unaffected_readme_row_keeps_concrete_summary(self):
         totals = [[0, 10, 20, 30], [0, 40, 50, 60]]

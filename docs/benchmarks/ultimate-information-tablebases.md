@@ -79,13 +79,19 @@ It must:
    evaluation cutoff;
 4. solve cycles by retrograde fixed point/SCC analysis rather than a search
    horizon;
-5. filter worlds with the native necessary-reachability predicate before
-   grouping them;
+5. filter worlds with the native necessary-reachability predicate and any
+   stronger causal hidden-state audit before grouping them;
 6. cross-probe exact lower-material information tables after captures;
 7. emit a summary SHA-256-bound to the concrete tables, observation projection,
    move generator, and proof-kernel sources, plus zero Bellman/rank residuals;
 8. conserve the admitted concrete-world count independently for both starting
    sides.
+
+README parentheses come from that exact admission certificate, bucketed by the
+rejected concrete state's perfect-information W/L/D. The older native audit is
+required to be an outcome-by-outcome subset. This matters for histories that a
+dense codec can represent locally but that cannot occur in play—for example,
+an enemy Ghost cannot remain hidden while adjacent to the observing King.
 
 The checked-in summary catalog is small and reproducible. Temporary belief
 graphs, predecessor files, and checkpoints are local generation artifacts and

@@ -63,9 +63,9 @@ def dependency_mtime(information_summary: Path = information.DEFAULT_SUMMARY) ->
                information_summary.stat().st_mtime_ns)
 
 
-def _public_legal_counts(catalog: Mapping[str, object], filename: str,
-                         side: str) -> list[int]:
-    """Extract W/L/D legal realization counts from a validated catalog."""
+def _public_counts(catalog: Mapping[str, object], filename: str,
+                   side: str) -> tuple[list[int], list[int]]:
+    """Extract exact legal and unreachable W/L/D certificate buckets."""
     try:
         files = catalog["files"]
         if not isinstance(files, Mapping):
@@ -82,16 +82,21 @@ def _public_legal_counts(catalog: Mapping[str, object], filename: str,
         outcomes = side_entry["outcomes"]
         if not isinstance(outcomes, Mapping):
             raise TypeError("outcomes is not an object")
-        counts = [0]
+        legal = [0]
+        unreachable = [0]
         for outcome in information.OUTCOMES:
             result = outcomes[outcome]
             if not isinstance(result, Mapping):
                 raise TypeError(f"{outcome} is not an object")
-            value = result["legal"]
-            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-                raise TypeError(f"{outcome}.legal is not a non-negative integer")
-            counts.append(value)
-        return counts
+            for field, counts in (("legal", legal),
+                                  ("unreachable", unreachable)):
+                value = result[field]
+                if (isinstance(value, bool) or not isinstance(value, int) or
+                        value < 0):
+                    raise TypeError(
+                        f"{outcome}.{field} is not a non-negative integer")
+                counts.append(value)
+        return legal, unreachable
     except (KeyError, TypeError) as error:
         raise information.SummaryValidationError(
             f"{filename}: missing validated public-information result for "
@@ -100,13 +105,15 @@ def _public_legal_counts(catalog: Mapping[str, object], filename: str,
 
 def public_information_cell(catalog: Mapping[str, object], filename: str,
                             side: str, concrete_unreachable: list[int]) -> str:
-    """Merge public-information legal W/L/D with concrete unreachable buckets.
+    """Render exact public-information W/L/D and causal-unreachable buckets.
 
-    The public solver reclassifies reachable worlds through information-set
-    play. Parentheses keep the native concrete table's outcome-specific dense-
-    codec artifacts, so do not take them from the information solver.
+    The exhaustive solver can prove a stronger causal admission domain than an
+    older concrete audit (notably for impossible hidden-Ghost histories). Its
+    outcome-specific certificate therefore supplies the parentheses. The
+    native audit must remain a subset, guarding against accidental admission of
+    a position that the concrete generator already proved unreachable.
     """
-    legal = _public_legal_counts(catalog, filename, side)
+    legal, unreachable = _public_counts(catalog, filename, side)
     if len(concrete_unreachable) != 4 or any(
             isinstance(value, bool) or not isinstance(value, int) or value < 0
             for value in concrete_unreachable):
@@ -125,14 +132,20 @@ def public_information_cell(catalog: Mapping[str, object], filename: str,
     if isinstance(states, bool) or not isinstance(states, int) or states < 0:
         raise information.SummaryValidationError(
             f"{filename}: invalid validated states_per_side")
-    accounted = sum(legal[1:]) + sum(concrete_unreachable[1:])
+    for result in (1, 2, 3):
+        if concrete_unreachable[result] > unreachable[result]:
+            raise information.SummaryValidationError(
+                f"{filename}: exact information admission accepts "
+                f"{concrete_unreachable[result] - unreachable[result]} "
+                f"native-audited unreachable result-{result} states")
+    accounted = sum(legal[1:]) + sum(unreachable[1:])
     if accounted != states:
         raise information.SummaryValidationError(
-            f"{filename}: public legal counts plus concrete unreachable buckets "
+            f"{filename}: public legal counts plus exact unreachable buckets "
             f"account for {accounted} states, expected {states}")
     return " / ".join(
-        summarize.result_cell(legal[result] + concrete_unreachable[result],
-                              concrete_unreachable[result])
+        summarize.result_cell(legal[result] + unreachable[result],
+                              unreachable[result])
         for result in (1, 2, 3))
 
 
