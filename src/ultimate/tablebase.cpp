@@ -3,6 +3,7 @@
   GPLv3 or later
 */
 
+#include "information.h"
 #include "position.h"
 #include "tablebase_probe.h"
 
@@ -19,7 +20,9 @@
 #include <fcntl.h>
 #include <iostream>
 #include <limits>
+#include <map>
 #include <memory>
+#include <set>
 #include <stdexcept>
 #include <string>
 #include <sys/mman.h>
@@ -742,6 +745,485 @@ class TablebaseGenerator {
                                       << " index " << examples[side][result] << ' '
                                       << position.upn() << '\n';
                     }
+    }
+
+    // Exact, uncapped proof kernel for the first epistemic tablebase stratum.
+    // K+Jester-v-K has two concrete royal assignments for every public pair
+    // of Ivory silhouettes.  Onyx must use one action that is legal in both
+    // retained worlds; Ivory knows its own King and may choose a different
+    // action in each world.  Observations, rather than strategy inference,
+    // are the only way the pair can collapse to a singleton.
+    //
+    // The implementation deliberately starts with this closed three-model
+    // class.  Larger Jester classes use the same monotone gates but require
+    // cross-class information probes after captures; Ghost classes additionally
+    // need disk-backed arbitrary world-set interning.
+    void solve_jester_information(const std::string& input,
+                                  const std::string& overlayOutput) const {
+        if (attackerType_ != PieceType::Jester || fourModels_ || substates_ != 1)
+            throw std::runtime_error(
+              "--solve-jester-information currently requires K+Jester-v-K");
+
+        std::ifstream stream(input, std::ios::binary);
+        if (!stream)
+            throw std::runtime_error("cannot open concrete Jester tablebase");
+        std::array<std::uint8_t, 56> header{};
+        stream.read(reinterpret_cast<char*>(header.data()), header.size());
+        if (stream.gcount() < 40 || std::memcmp(header.data(), "UFTB1\0\0\0", 8) != 0)
+            throw std::runtime_error("invalid concrete Jester tablebase header");
+        const auto word = [&](std::size_t offset) {
+            std::uint32_t value = 0;
+            std::memcpy(&value, header.data() + offset, sizeof(value));
+            return value;
+        };
+        const std::uint32_t version = word(8);
+        const std::uint32_t count = word(16);
+        const std::uint32_t wdlBytes = word(28);
+        if (version != 4 || word(12) != static_cast<std::uint32_t>(PieceType::Jester) ||
+            count != stateCount_ || wdlBytes != (count + 3) / 4)
+            throw std::runtime_error("concrete Jester tablebase does not match codec");
+        stream.seekg(40);
+        std::vector<std::uint8_t> concreteWdl(wdlBytes);
+        stream.read(reinterpret_cast<char*>(concreteWdl.data()), concreteWdl.size());
+        if (static_cast<std::size_t>(stream.gcount()) != concreteWdl.size())
+            throw std::runtime_error("truncated concrete Jester WDL plane");
+
+        const auto concrete_result = [&](std::uint32_t index) {
+            return static_cast<Wdl>(
+              (concreteWdl[index / 4] >> (2 * (index % 4))) & 3);
+        };
+        const auto alternative = [&](std::uint32_t index) {
+            const State state = decode(index);
+            return encode({state.side, state.attacker, state.blackKing,
+                           state.whiteKing, state.substate});
+        };
+
+        std::vector<std::int8_t> admittedCache(stateCount_, -1);
+        const auto admitted = [&](std::uint32_t index) {
+            std::int8_t& cached = admittedCache[index];
+            if (cached >= 0)
+                return cached != 0;
+            Position position;
+            const bool value = make_position_at(index, position) &&
+                               !position.has_forced_action() &&
+                               position.ordinary_predecessor_king_safe();
+            cached = value ? 1 : 0;
+            return value;
+        };
+
+        const DisclosureContext onyxView{Color::Black, false};
+        const auto pair_representative = [&](std::uint32_t index)
+          -> std::optional<std::uint32_t> {
+            const std::uint32_t other = alternative(index);
+            if (other == index || !admitted(index) || !admitted(other))
+                return std::nullopt;
+            Position first, second;
+            if (!make_position_at(index, first) || !make_position_at(other, second))
+                throw std::runtime_error("admitted royal assignment failed reconstruction");
+            if (view_key(first, onyxView) != view_key(second, onyxView))
+                return std::nullopt;
+            return std::min(index, other);
+        };
+
+        std::vector<std::uint32_t> pairs;
+        pairs.reserve(stateCount_ / 2);
+        for (std::uint32_t index = 0; index < stateCount_; ++index) {
+            const std::uint32_t other = alternative(index);
+            if (index >= other)
+                continue;
+            const auto representative = pair_representative(index);
+            if (representative && *representative == index)
+                pairs.push_back(index);
+        }
+        std::cout << "information_frontier class kjesterk concrete " << stateCount_
+                  << " paired_sets " << pairs.size() << '\n' << std::flush;
+
+        std::vector<std::uint8_t> ivoryForce(stateCount_, 0);
+        std::vector<std::uint8_t> onyxForce(stateCount_, 0);
+        std::uint64_t observationChecks = 0;
+
+        const auto exact_index_forces = [&](std::uint32_t index, Color target) {
+            const Wdl result = concrete_result(index);
+            const Color side = decode(index).side;
+            return (result == Wdl::Win && target == side) ||
+                   (result == Wdl::Loss && target != side);
+        };
+        const auto exact_position_forces = [&](const Position& position, Color target) {
+            if (position.game_over()) {
+                const auto winner = position.winner();
+                return winner && *winner == target;
+            }
+            if (!position.is_checkmate_possible())
+                return false;
+            const auto result = TablebaseProbe::probe(position);
+            if (!result)
+                return false;
+            return (result->wdl == TablebaseWdl::Win &&
+                    target == position.side_to_move()) ||
+                   (result->wdl == TablebaseWdl::Loss &&
+                    target != position.side_to_move());
+        };
+
+        struct CachedSuccessor {
+            std::uint32_t information = std::numeric_limits<std::uint32_t>::max();
+            std::uint32_t actual = std::numeric_limits<std::uint32_t>::max();
+            bool exactIvory = false;
+            bool exactOnyx = false;
+        };
+        struct CachedNode {
+            Color mover = Color::White;
+            bool terminal = false;
+            std::array<bool, 2> terminalIvory{false, false};
+            bool terminalOnyx = false;
+            std::array<std::vector<CachedSuccessor>, 2> informedMoves;
+            std::vector<std::array<CachedSuccessor, 2>> commonMoves;
+        };
+        struct RawChild {
+            bool sameClass = false;
+            std::uint32_t index = 0;
+            Position external;
+        };
+        struct MoveEdge {
+            std::string action;
+            std::string observation;
+            RawChild child;
+            CachedSuccessor successor;
+        };
+
+        const auto classify_successors = [&](const std::vector<RawChild>& raw) {
+            std::vector<std::uint32_t> sameClass;
+            std::vector<Position> external;
+            for (const RawChild& child : raw) {
+                if (child.sameClass)
+                    sameClass.push_back(child.index);
+                else
+                    external.push_back(child.external);
+            }
+            std::sort(sameClass.begin(), sameClass.end());
+            sameClass.erase(std::unique(sameClass.begin(), sameClass.end()), sameClass.end());
+            std::sort(external.begin(), external.end(), [&](const Position& lhs,
+                                                            const Position& rhs) {
+                return lhs.upn() < rhs.upn();
+            });
+            external.erase(std::unique(external.begin(), external.end(),
+              [&](const Position& lhs, const Position& rhs) {
+                  return lhs.upn() == rhs.upn();
+              }), external.end());
+            if (sameClass.empty() && external.empty())
+                throw std::runtime_error("actual information successor disappeared");
+            if (!sameClass.empty() && !external.empty())
+                throw std::runtime_error(
+                  "one public observation mixed concrete material classes");
+
+            CachedSuccessor result;
+            if (!external.empty()) {
+                result.exactOnyx = std::all_of(
+                  external.begin(), external.end(), [&](const Position& child) {
+                      return exact_position_forces(child, Color::Black);
+                  });
+                return result;
+            }
+            if (sameClass.size() == 1) {
+                result.actual = sameClass.front();
+                result.exactIvory = exact_index_forces(
+                  sameClass.front(), Color::White);
+                result.exactOnyx = exact_index_forces(
+                  sameClass.front(), Color::Black);
+                return result;
+            }
+            if (sameClass.size() != 2)
+                throw std::runtime_error("Jester belief has more than two assignments");
+            const auto representative = pair_representative(sameClass.front());
+            if (!representative || *representative != sameClass.front() ||
+                alternative(sameClass.front()) != sameClass.back())
+                throw std::runtime_error(
+                  "observation produced a noncanonical two-royal belief");
+            result.information = *representative;
+            return result;
+        };
+
+        const auto graphStart = std::chrono::steady_clock::now();
+        std::vector<CachedNode> graph(pairs.size());
+        for (std::size_t nodeIndex = 0; nodeIndex < pairs.size(); ++nodeIndex) {
+            const std::uint32_t representative = pairs[nodeIndex];
+            const std::array<std::uint32_t, 2> worlds{
+              representative, alternative(representative)};
+            std::array<Position, 2> positions;
+            for (std::size_t world = 0; world < worlds.size(); ++world)
+                if (!make_position_at(worlds[world], positions[world]))
+                    throw std::runtime_error("paired information node is invalid");
+
+            CachedNode& node = graph[nodeIndex];
+            node.mover = positions.front().side_to_move();
+            if (positions.front().game_over()) {
+                node.terminal = true;
+                for (std::size_t world = 0; world < worlds.size(); ++world) {
+                    const auto winner = positions[world].winner();
+                    node.terminalIvory[world] = winner && *winner == Color::White;
+                }
+                node.terminalOnyx = std::all_of(
+                  positions.begin(), positions.end(), [](const Position& position) {
+                      const auto winner = position.winner();
+                      return winner && *winner == Color::Black;
+                  });
+                continue;
+            }
+
+            std::array<std::vector<MoveEdge>, 2> edges;
+            std::map<std::string, std::vector<std::pair<std::size_t, std::size_t>>>
+              byObservation;
+            for (std::size_t world = 0; world < worlds.size(); ++world) {
+                const auto moves = positions[world].legal_moves();
+                edges[world].reserve(moves.size());
+                for (const Move& move : moves) {
+                    Position after = positions[world];
+                    if (!after.apply_move_unchecked(move))
+                        throw std::runtime_error("information graph move failed");
+                    MoveEdge edge;
+                    edge.action = positions[world].move_to_string(move);
+                    edge.observation = transition_observation_key(
+                      positions[world], move, after, onyxView);
+                    edge.child.sameClass = in_class(after);
+                    if (edge.child.sameClass)
+                        edge.child.index = child_index(after);
+                    else
+                        edge.child.external = std::move(after);
+                    edges[world].push_back(std::move(edge));
+                    byObservation[edges[world].back().observation].push_back(
+                      {world, edges[world].size() - 1});
+                    ++observationChecks;
+                }
+            }
+            for (const auto& [observation, members] : byObservation) {
+                (void)observation;
+                std::vector<RawChild> raw;
+                raw.reserve(members.size());
+                for (const auto [world, edge] : members)
+                    raw.push_back(edges[world][edge].child);
+                const CachedSuccessor successor = classify_successors(raw);
+                for (const auto [world, edge] : members) {
+                    CachedSuccessor actualSuccessor = successor;
+                    const RawChild& actualChild = edges[world][edge].child;
+                    if (actualSuccessor.information !=
+                        std::numeric_limits<std::uint32_t>::max()) {
+                        if (!actualChild.sameClass)
+                            throw std::runtime_error(
+                              "paired information successor lost its actual world");
+                        actualSuccessor.actual = actualChild.index;
+                    }
+                    else if (actualChild.sameClass) {
+                        actualSuccessor.actual = actualChild.index;
+                        actualSuccessor.exactIvory = exact_index_forces(
+                          actualChild.index, Color::White);
+                    }
+                    else
+                        actualSuccessor.exactIvory = exact_position_forces(
+                          actualChild.external, Color::White);
+                    edges[world][edge].successor = actualSuccessor;
+                }
+            }
+
+            if (node.mover == Color::White) {
+                for (std::size_t world = 0; world < worlds.size(); ++world)
+                    for (const MoveEdge& edge : edges[world])
+                        node.informedMoves[world].push_back(edge.successor);
+            }
+            else {
+                std::array<std::map<std::string, CachedSuccessor>, 2> byAction;
+                for (std::size_t world = 0; world < worlds.size(); ++world)
+                    for (const MoveEdge& edge : edges[world])
+                        if (!byAction[world].emplace(edge.action, edge.successor).second)
+                            throw std::runtime_error(
+                              "duplicate public action in one concrete Jester world");
+                for (const auto& [action, successor] : byAction[0]) {
+                    const auto other = byAction[1].find(action);
+                    if (other != byAction[1].end())
+                        node.commonMoves.push_back({successor, other->second});
+                }
+            }
+            if ((nodeIndex + 1) % 20'000 == 0) {
+                const double elapsed = std::chrono::duration<double>(
+                  std::chrono::steady_clock::now() - graphStart).count();
+                std::cout << "information_graph nodes " << nodeIndex + 1 << '/'
+                          << pairs.size() << " observations " << observationChecks
+                          << " elapsed " << elapsed << "s\n" << std::flush;
+            }
+        }
+
+        const auto successor_forces_ivory = [&](const CachedSuccessor& successor,
+                                                const std::vector<std::uint8_t>& force) {
+            if (successor.information != std::numeric_limits<std::uint32_t>::max()) {
+                if (successor.actual == std::numeric_limits<std::uint32_t>::max())
+                    throw std::runtime_error("Ivory successor has no actual world");
+                return force[successor.actual] != 0;
+            }
+            return successor.exactIvory;
+        };
+        const auto successor_forces_onyx = [&](const CachedSuccessor& successor,
+                                               const std::vector<std::uint8_t>& force) {
+            if (successor.information != std::numeric_limits<std::uint32_t>::max())
+                return force[successor.information] != 0;
+            return successor.exactOnyx;
+        };
+        const auto ivory_satisfies = [&](const CachedNode& node,
+                                         std::size_t actualWorld,
+                                         const std::vector<std::uint8_t>& force) {
+            if (node.terminal)
+                return node.terminalIvory[actualWorld];
+            if (node.mover == Color::White)
+                return std::any_of(node.informedMoves[actualWorld].begin(),
+                                   node.informedMoves[actualWorld].end(),
+                  [&](const CachedSuccessor& successor) {
+                      return successor_forces_ivory(successor, force);
+                  });
+            return std::all_of(node.commonMoves.begin(), node.commonMoves.end(),
+              [&](const std::array<CachedSuccessor, 2>& action) {
+                  return successor_forces_ivory(action[actualWorld], force);
+              });
+        };
+        const auto onyx_satisfies = [&](const CachedNode& node,
+                                        const std::vector<std::uint8_t>& force) {
+            if (node.terminal)
+                return node.terminalOnyx;
+            if (node.mover == Color::White)
+                return std::all_of(node.informedMoves.begin(), node.informedMoves.end(),
+                  [&](const std::vector<CachedSuccessor>& worldMoves) {
+                      return std::all_of(worldMoves.begin(), worldMoves.end(),
+                        [&](const CachedSuccessor& successor) {
+                            return successor_forces_onyx(successor, force);
+                        });
+                  });
+            return std::any_of(node.commonMoves.begin(), node.commonMoves.end(),
+              [&](const std::array<CachedSuccessor, 2>& action) {
+                  return std::all_of(action.begin(), action.end(),
+                    [&](const CachedSuccessor& successor) {
+                        return successor_forces_onyx(successor, force);
+                    });
+              });
+        };
+
+        std::uint32_t iteration = 0;
+        for (;;) {
+            bool changed = false;
+            ++iteration;
+            for (std::size_t nodeIndex = 0; nodeIndex < pairs.size(); ++nodeIndex) {
+                const std::uint32_t representative = pairs[nodeIndex];
+                const std::array<std::uint32_t, 2> worlds{
+                  representative, alternative(representative)};
+                for (std::size_t world = 0; world < worlds.size(); ++world) {
+                    if (!ivoryForce[worlds[world]] &&
+                        ivory_satisfies(graph[nodeIndex], world, ivoryForce)) {
+                        ivoryForce[worlds[world]] = 1;
+                        changed = true;
+                    }
+                }
+                if (!onyxForce[representative] &&
+                    onyx_satisfies(graph[nodeIndex], onyxForce)) {
+                    onyxForce[representative] = 1;
+                    changed = true;
+                }
+            }
+            const auto ivoryCount = std::count(ivoryForce.begin(), ivoryForce.end(), 1);
+            const auto onyxCount = std::count(onyxForce.begin(), onyxForce.end(), 1);
+            std::cout << "information_propagate iteration " << iteration
+                      << " ivory " << ivoryCount << " onyx " << onyxCount
+                      << " observations " << observationChecks << '\n' << std::flush;
+            if (!changed)
+                break;
+        }
+
+        std::uint64_t bellmanResidual = 0;
+        for (std::size_t nodeIndex = 0; nodeIndex < pairs.size(); ++nodeIndex) {
+            const std::uint32_t representative = pairs[nodeIndex];
+            const std::array<std::uint32_t, 2> worlds{
+              representative, alternative(representative)};
+            for (std::size_t world = 0; world < worlds.size(); ++world)
+                bellmanResidual += (ivoryForce[worlds[world]] !=
+                  ivory_satisfies(graph[nodeIndex], world, ivoryForce));
+            bellmanResidual += (onyxForce[representative] !=
+              onyx_satisfies(graph[nodeIndex], onyxForce));
+            for (const std::uint32_t world : worlds)
+                if (ivoryForce[world] && onyxForce[representative])
+                    throw std::runtime_error(
+                      "both teams have a sure win in one actual information state");
+        }
+
+        using Counts = std::array<std::array<std::uint64_t, 4>, 2>;
+        Counts totals{};
+        Counts unreachable{};
+        std::vector<std::uint8_t> epistemicFlags(stateCount_, 0);
+        std::array<std::set<std::uint32_t>, 2> initialSets;
+        for (std::uint32_t index = 0; index < stateCount_; ++index) {
+            const std::size_t side = static_cast<std::size_t>(decode(index).side);
+            const Wdl concrete = concrete_result(index);
+            if (!admitted(index)) {
+                ++unreachable[side][static_cast<std::size_t>(concrete)];
+                continue;
+            }
+            const auto representative = pair_representative(index);
+            if (!representative) {
+                ++totals[side][static_cast<std::size_t>(concrete)];
+                initialSets[side].insert(index);
+                epistemicFlags[index] = 4 |
+                  (exact_index_forces(index, Color::White) ? 1 : 0) |
+                  (exact_index_forces(index, Color::Black) ? 2 : 0);
+                continue;
+            }
+            initialSets[side].insert(*representative);
+            epistemicFlags[index] = 4 |
+              (ivoryForce[index] ? 1 : 0) |
+              (onyxForce[*representative] ? 2 : 0);
+            const Color mover = decode(index).side;
+            const bool moverWins = mover == Color::White
+                                 ? ivoryForce[index]
+                                 : onyxForce[*representative];
+            const bool moverLoses = mover == Color::White
+                                  ? onyxForce[*representative]
+                                  : ivoryForce[index];
+            const Wdl result = moverWins ? Wdl::Win
+                             : moverLoses ? Wdl::Loss : Wdl::Draw;
+            ++totals[side][static_cast<std::size_t>(result)];
+        }
+        for (std::size_t side = 0; side < 2; ++side) {
+            std::uint64_t conserved = 0;
+            for (std::size_t result = 1; result < 4; ++result)
+                conserved += totals[side][result] + unreachable[side][result];
+            if (conserved != stateCount_ / 2)
+                throw std::runtime_error("information root counts do not conserve states");
+            std::cout << "information_summary side " << side
+                      << " win " << totals[side][1]
+                      << " loss " << totals[side][2]
+                      << " draw " << totals[side][3]
+                      << " unreachable_win " << unreachable[side][1]
+                      << " unreachable_loss " << unreachable[side][2]
+                      << " unreachable_draw " << unreachable[side][3]
+                      << " sets " << initialSets[side].size()
+                      << " concrete " << stateCount_ / 2
+                      << " bellman_residual " << bellmanResidual
+                      << " belief_cap none exhaustive 1\n";
+        }
+        if (!overlayOutput.empty()) {
+            std::ofstream output(overlayOutput, std::ios::binary | std::ios::trunc);
+            if (!output)
+                throw std::runtime_error("cannot create information overlay");
+            const std::array<char, 8> magic{{'U','F','I','W','1','\0','\0','\0'}};
+            const std::uint32_t overlayVersion = 1;
+            const std::uint32_t primary = static_cast<std::uint32_t>(attackerType_);
+            const std::uint32_t secondary = static_cast<std::uint32_t>(secondaryType_);
+            const std::uint32_t secondaryColor =
+              static_cast<std::uint32_t>(secondaryColor_);
+            output.write(magic.data(), magic.size());
+            for (const std::uint32_t value : {
+                   overlayVersion, primary, secondary, secondaryColor,
+                   stateCount_, substates_})
+                output.write(reinterpret_cast<const char*>(&value), sizeof(value));
+            output.write(reinterpret_cast<const char*>(epistemicFlags.data()),
+                         epistemicFlags.size());
+            if (!output)
+                throw std::runtime_error("failed writing information overlay");
+            std::cout << "information_overlay " << overlayOutput
+                      << " bytes " << epistemicFlags.size() + 32 << '\n';
+        }
     }
 
     void generate() {
@@ -1531,6 +2013,8 @@ int main(int argc, char** argv) {
     std::uint32_t inspect = std::numeric_limits<std::uint32_t>::max();
     std::string auditPredecessorSafety;
     std::string auditReachability;
+    std::string solveJesterInformation;
+    std::string informationOverlay;
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
         const auto value = [&](const char* option) -> std::string {
@@ -1567,6 +2051,10 @@ int main(int argc, char** argv) {
             auditPredecessorSafety = value("--audit-predecessor-safety");
         else if (argument == "--audit-reachability")
             auditReachability = value("--audit-reachability");
+        else if (argument == "--solve-jester-information")
+            solveJesterInformation = value("--solve-jester-information");
+        else if (argument == "--information-overlay")
+            informationOverlay = value("--information-overlay");
         else if (argument == "--self-test") selfTest = true;
         else if (argument == "--four-codec-self-test") fourCodecSelfTest = true;
         else throw std::runtime_error("unknown argument: " + argument);
@@ -1600,8 +2088,12 @@ int main(int argc, char** argv) {
             generator.audit_reachability(auditPredecessorSafety, false);
         if (!auditReachability.empty())
             generator.audit_reachability(auditReachability, true);
+        if (!solveJesterInformation.empty())
+            generator.solve_jester_information(solveJesterInformation,
+                                               informationOverlay);
         if (!selfTest && !dryRun && inspect == std::numeric_limits<std::uint32_t>::max() &&
-            auditPredecessorSafety.empty() && auditReachability.empty())
+            auditPredecessorSafety.empty() && auditReachability.empty() &&
+            solveJesterInformation.empty())
             generator.generate();
     }
     catch (const std::exception& error) {

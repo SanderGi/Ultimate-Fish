@@ -1,11 +1,13 @@
 #include "../src/ultimate/position.h"
 #include "../src/ultimate/draft.h"
+#include "../src/ultimate/information.h"
 #include "../src/ultimate/search.h"
 #include "../src/ultimate/tablebase_probe.h"
 
 #include <algorithm>
 #include <cstdlib>
 #include <iostream>
+#include <set>
 #include <string>
 
 using namespace Stockfish::Ultimate;
@@ -2951,6 +2953,173 @@ void test_turn_boundary_reachability() {
            "a Jester owned by the current mover does not protect the previous mover");
 }
 
+void test_public_information_projection() {
+    const auto parses = [](std::string_view upn) {
+        Position position;
+        std::string error;
+        expect(position.set_upn(upn, &error),
+               "public-information fixture parses: " + error);
+        return position;
+    };
+
+    const Position firstRoyal = parses(
+      "w;king,w,a1;jester,w,b1;king,b,h10");
+    const Position swappedRoyal = parses(
+      "w;king,w,b1;jester,w,a1;king,b,h10");
+    const DisclosureContext ivory{Color::White, false};
+    const DisclosureContext onyx{Color::Black, false};
+    const DisclosureContext disclosedOnyx{Color::Black, true};
+    expect(view_key(firstRoyal, onyx) == view_key(swappedRoyal, onyx),
+           "enemy King/Jester assignments share one royal-silhouette view");
+    expect(view_key(firstRoyal, ivory) != view_key(swappedRoyal, ivory),
+           "a player retains its own concrete King/Jester identity");
+    expect(view_key(firstRoyal, disclosedOnyx) !=
+             view_key(swappedRoyal, disclosedOnyx),
+           "draft/history disclosure makes the enemy King assignment public");
+
+    const Position hiddenC3 = parses(
+      "w;king,w,a1;ghost,w,c3,0,0,0,0,0,0,-1,1,-1,0;king,b,h10");
+    const Position hiddenF6 = parses(
+      "w;king,w,a1;ghost,w,f6,0,0,0,0,0,0,-1,1,-1,0;king,b,h10");
+    expect(view_key(hiddenC3, onyx) == view_key(hiddenF6, onyx),
+           "an invisible enemy Ghost square is absent from the public view");
+    expect(view_key(hiddenC3, ivory) != view_key(hiddenF6, ivory),
+           "a Ghost owner retains its exact private square");
+
+    Position visibleC3 = hiddenC3;
+    Position visibleF6 = hiddenF6;
+    visibleC3.piece(1).visible = true;
+    visibleF6.piece(1).visible = true;
+    expect(view_key(visibleC3, onyx) != view_key(visibleF6, onyx),
+           "a visible enemy Ghost square is public");
+
+    const Move firstQuiet = require_move(hiddenC3, "c3-d4");
+    const Move secondQuiet = require_move(hiddenF6, "f6-e5");
+    Position afterFirst = hiddenC3;
+    Position afterSecond = hiddenF6;
+    Undo firstUndo, secondUndo;
+    expect(afterFirst.make_move(firstQuiet, firstUndo) &&
+           afterSecond.make_move(secondQuiet, secondUndo),
+           "quiet hidden-Ghost observation fixtures apply");
+    expect(transition_observation_key(hiddenC3, firstQuiet, afterFirst, onyx) ==
+             transition_observation_key(hiddenF6, secondQuiet, afterSecond, onyx),
+           "quiet invisible-Ghost observations expose neither endpoint");
+
+    const Move firstVisibleQuiet = require_move(visibleC3, "c3-d4");
+    const Move secondVisibleQuiet = require_move(visibleF6, "f6-e5");
+    Position afterVisibleFirst = visibleC3;
+    Position afterVisibleSecond = visibleF6;
+    Undo visibleFirstUndo, visibleSecondUndo;
+    expect(afterVisibleFirst.make_move(firstVisibleQuiet, visibleFirstUndo) &&
+           afterVisibleSecond.make_move(secondVisibleQuiet, visibleSecondUndo),
+           "visible-Ghost observation fixtures apply");
+    expect(transition_observation_key(
+             visibleC3, firstVisibleQuiet, afterVisibleFirst, onyx) !=
+           transition_observation_key(
+             visibleF6, secondVisibleQuiet, afterVisibleSecond, onyx),
+           "a visible Ghost transition preserves its public source");
+
+    // A Ghost which was visible before a quiet move has a public source, but
+    // its new square disappears again.  Two destinations from that same
+    // source are consequently one observation when the resulting public state
+    // is otherwise identical.
+    const Move visibleToD4 = require_move(visibleC3, "c3-d4");
+    const Move visibleToC4 = require_move(visibleC3, "c3-c4");
+    Position afterVisibleD4 = visibleC3;
+    Position afterVisibleC4 = visibleC3;
+    Undo visibleD4Undo, visibleC4Undo;
+    expect(afterVisibleD4.make_move(visibleToD4, visibleD4Undo) &&
+           afterVisibleC4.make_move(visibleToC4, visibleC4Undo),
+           "same-source visible-Ghost quiet fixtures apply");
+    expect(transition_observation_key(
+             visibleC3, visibleToD4, afterVisibleD4, onyx) ==
+           transition_observation_key(
+             visibleC3, visibleToC4, afterVisibleC4, onyx),
+           "a quiet Ghost destination is concealed after it hides again");
+
+    const Position hiddenCaptureLeft = parses(
+      "w;king,w,a1;ghost,w,d4,0,0,0,0,1,0,-1,1,-1,0;"
+      "king,b,h10;rook,b,e5");
+    const Position hiddenCaptureRight = parses(
+      "w;king,w,a1;ghost,w,f4,0,0,0,0,1,0,-1,1,-1,0;"
+      "king,b,h10;rook,b,e5");
+    const Move captureFromLeft = require_move(hiddenCaptureLeft, "d4-e5");
+    const Move captureFromRight = require_move(hiddenCaptureRight, "f4-e5");
+    Position afterCaptureLeft = hiddenCaptureLeft;
+    Position afterCaptureRight = hiddenCaptureRight;
+    Undo captureLeftUndo, captureRightUndo;
+    expect(afterCaptureLeft.make_move(captureFromLeft, captureLeftUndo) &&
+           afterCaptureRight.make_move(captureFromRight, captureRightUndo),
+           "hidden-Ghost reveal-on-capture fixtures apply");
+    const std::string captureObservation = transition_observation_key(
+      hiddenCaptureLeft, captureFromLeft, afterCaptureLeft, onyx);
+    expect(captureObservation == transition_observation_key(
+             hiddenCaptureRight, captureFromRight, afterCaptureRight, onyx),
+           "a hidden Ghost attack conceals its source and exposes its destination");
+    expect(captureObservation.find("|from=?|to=e5|") != std::string::npos,
+           "the hidden-Ghost capture observation spells the public reveal boundary");
+
+    const Move firstRoyalMove = require_move(firstRoyal, "a1-a2");
+    const Move swappedRoyalMove = require_move(swappedRoyal, "a1-a2");
+    Position afterFirstRoyal = firstRoyal;
+    Position afterSwappedRoyal = swappedRoyal;
+    Undo firstRoyalUndo, swappedRoyalUndo;
+    expect(afterFirstRoyal.make_move(firstRoyalMove, firstRoyalUndo) &&
+           afterSwappedRoyal.make_move(swappedRoyalMove, swappedRoyalUndo),
+           "royal-silhouette action fixtures apply");
+    expect(transition_observation_key(
+             firstRoyal, firstRoyalMove, afterFirstRoyal, onyx) ==
+           transition_observation_key(
+             swappedRoyal, swappedRoyalMove, afterSwappedRoyal, onyx),
+           "a royal action does not disclose whether its actor is King or Jester");
+
+    const Position kingOnTarget = parses(
+      "b;king,w,c3;jester,w,d3;king,b,h10;rook,b,c10");
+    const Position jesterOnTarget = parses(
+      "b;jester,w,c3;king,w,d3;king,b,h10;rook,b,c10");
+    expect(view_key(kingOnTarget, onyx) == view_key(jesterOnTarget, onyx),
+           "a capturable royal target begins as one Onyx observation");
+    const Move captureKing = require_move(kingOnTarget, "c10-c3");
+    const Move captureJester = require_move(jesterOnTarget, "c10-c3");
+    Position afterKingCapture = kingOnTarget;
+    Position afterJesterCapture = jesterOnTarget;
+    Undo kingCaptureUndo, jesterCaptureUndo;
+    expect(afterKingCapture.make_move(captureKing, kingCaptureUndo) &&
+           afterJesterCapture.make_move(captureJester, jesterCaptureUndo),
+           "royal-capture terminal-observation fixtures apply");
+    expect(afterKingCapture.game_over() && !afterJesterCapture.game_over(),
+           "capturing the King ends play while capturing its Jester does not");
+    expect(view_key(afterKingCapture, onyx) != view_key(afterJesterCapture, onyx),
+           "the public terminal announcement distinguishes royal-capture outcomes");
+    expect(transition_observation_key(
+             kingOnTarget, captureKing, afterKingCapture, onyx) !=
+           transition_observation_key(
+             jesterOnTarget, captureJester, afterJesterCapture, onyx),
+           "continuation after a royal capture eliminates the King-on-target world");
+
+    // Exact K+Jester-v-K information index 492966: capturing a1 wins if a1 is
+    // the King, but the identical public action is illegal if a1 is the Jester
+    // because the Black King would land next to the real King on a2. The bare
+    // King therefore cannot select the perfect-information winning action.
+    const Position royalA1 = parses(
+      "b;king,w,a1;king,b,b1;jester,w,a2");
+    const Position royalA2 = parses(
+      "b;jester,w,a1;king,b,b1;king,w,a2");
+    expect(view_key(royalA1, onyx) == view_key(royalA2, onyx),
+           "nonuniform-legality witness starts in one public royal view");
+    const auto action_strings = [](const Position& position) {
+        std::set<std::string> actions;
+        for (const Move& move : position.legal_moves())
+            actions.insert(position.move_to_string(move));
+        return actions;
+    };
+    const auto actualActions = action_strings(royalA1);
+    const auto swappedActions = action_strings(royalA2);
+    expect(actualActions.count("b1-a1") == 1 &&
+             swappedActions.count("b1-a1") == 0,
+           "a hidden royal assignment can remove a concretely winning action");
+}
+
 }  // namespace
 
 int main() {
@@ -2975,6 +3144,7 @@ int main() {
     test_sniper_berserker_and_dragon();
     test_safe_ordinary_static_exchange();
     test_turn_boundary_reachability();
+    test_public_information_projection();
     test_native_draft_windows_and_costs();
     if (failures) {
         std::cerr << failures << " Ultimate rules test(s) failed\n";

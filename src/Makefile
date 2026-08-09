@@ -54,7 +54,7 @@ OBJS = $(notdir $(SRCS:.cpp=.o))
 # specialized state machine in this Fairy-Stockfish tree and expose a separate
 # protocol binary while sharing the project's build/tooling conventions.
 ULTIMATE_SRCS = ultimate/main.cpp ultimate/position.cpp ultimate/search.cpp ultimate/draft.cpp \
-	ultimate/tablebase_probe.cpp ultimate/nnue.cpp
+	ultimate/tablebase_probe.cpp ultimate/information.cpp ultimate/nnue.cpp
 
 .PHONY: ultimatefish ultimate-test ultimate-tablebase ultimate-nnue-reference
 ultimatefish:
@@ -67,12 +67,13 @@ ultimate-nnue-reference:
 ultimate-tablebase:
 	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic \
 		ultimate/tablebase.cpp ultimate/position.cpp ultimate/tablebase_probe.cpp \
-		ultimate/nnue.cpp -o ultimate_tablebase
+		ultimate/information.cpp ultimate/nnue.cpp -o ultimate_tablebase
 
 ultimate-test:
 	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror ../tests/ultimate_rules.cpp \
 		ultimate/position.cpp ultimate/search.cpp ultimate/draft.cpp \
-		ultimate/tablebase_probe.cpp ultimate/nnue.cpp -o ultimate_rules_test
+		ultimate/tablebase_probe.cpp ultimate/information.cpp ultimate/nnue.cpp \
+		-o ultimate_rules_test
 	./ultimate_rules_test
 
 VPATH = syzygy:nnue:nnue/features

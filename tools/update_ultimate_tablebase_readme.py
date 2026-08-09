@@ -7,9 +7,11 @@ import argparse
 import hashlib
 from pathlib import Path
 import struct
+from typing import Mapping
 
 import plan_ultimate_tablebases as plan
 import summarize_ultimate_tablebases as summarize
+import ultimate_information_tablebases as information
 import ultimate_tablebase_shards as shards
 
 
@@ -50,12 +52,118 @@ def cached_rows(text: str) -> dict[str, str]:
     return result
 
 
+def dependency_mtime(information_summary: Path = information.DEFAULT_SUMMARY) -> int:
+    """Return the newest input timestamp that invalidates cached README rows."""
+    return max(Path(__file__).stat().st_mtime_ns,
+               Path(summarize.__file__).stat().st_mtime_ns,
+               Path(plan.__file__).stat().st_mtime_ns,
+               Path(information.__file__).stat().st_mtime_ns,
+               Path(shards.__file__).stat().st_mtime_ns,
+               summarize.REACHABILITY.stat().st_mtime_ns,
+               information_summary.stat().st_mtime_ns)
+
+
+def _public_legal_counts(catalog: Mapping[str, object], filename: str,
+                         side: str) -> list[int]:
+    """Extract W/L/D legal realization counts from a validated catalog."""
+    try:
+        files = catalog["files"]
+        if not isinstance(files, Mapping):
+            raise TypeError("files is not an object")
+        entry = files[filename]
+        if not isinstance(entry, Mapping):
+            raise TypeError("file entry is not an object")
+        sides = entry["sides"]
+        if not isinstance(sides, Mapping):
+            raise TypeError("sides is not an object")
+        side_entry = sides[side]
+        if not isinstance(side_entry, Mapping):
+            raise TypeError("side entry is not an object")
+        outcomes = side_entry["outcomes"]
+        if not isinstance(outcomes, Mapping):
+            raise TypeError("outcomes is not an object")
+        counts = [0]
+        for outcome in information.OUTCOMES:
+            result = outcomes[outcome]
+            if not isinstance(result, Mapping):
+                raise TypeError(f"{outcome} is not an object")
+            value = result["legal"]
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise TypeError(f"{outcome}.legal is not a non-negative integer")
+            counts.append(value)
+        return counts
+    except (KeyError, TypeError) as error:
+        raise information.SummaryValidationError(
+            f"{filename}: missing validated public-information result for "
+            f"{side} side ({error})") from error
+
+
+def public_information_cell(catalog: Mapping[str, object], filename: str,
+                            side: str, concrete_unreachable: list[int]) -> str:
+    """Merge public-information legal W/L/D with concrete unreachable buckets.
+
+    The public solver reclassifies reachable worlds through information-set
+    play. Parentheses keep the native concrete table's outcome-specific dense-
+    codec artifacts, so do not take them from the information solver.
+    """
+    legal = _public_legal_counts(catalog, filename, side)
+    if len(concrete_unreachable) != 4 or any(
+            isinstance(value, bool) or not isinstance(value, int) or value < 0
+            for value in concrete_unreachable):
+        raise ValueError(f"{filename}: malformed concrete unreachable counts")
+    try:
+        files = catalog["files"]
+        if not isinstance(files, Mapping):
+            raise TypeError("files is not an object")
+        entry = files[filename]
+        if not isinstance(entry, Mapping):
+            raise TypeError("file entry is not an object")
+        states = entry["states_per_side"]
+    except (KeyError, TypeError) as error:
+        raise information.SummaryValidationError(
+            f"{filename}: missing validated states_per_side") from error
+    if isinstance(states, bool) or not isinstance(states, int) or states < 0:
+        raise information.SummaryValidationError(
+            f"{filename}: invalid validated states_per_side")
+    accounted = sum(legal[1:]) + sum(concrete_unreachable[1:])
+    if accounted != states:
+        raise information.SummaryValidationError(
+            f"{filename}: public legal counts plus concrete unreachable buckets "
+            f"account for {accounted} states, expected {states}")
+    return " / ".join(
+        summarize.result_cell(legal[result] + concrete_unreachable[result],
+                              concrete_unreachable[result])
+        for result in (1, 2, 3))
+
+
+def summary_cells(filename: str, totals: list[list[int]],
+                  concrete_unreachable: list[list[int]],
+                  catalog: Mapping[str, object]) -> tuple[str, str]:
+    """Render both starting-side cells, requiring information where hidden."""
+    if filename in information.AFFECTED_FILENAMES:
+        # Absence or a domain mismatch is fatal. Falling back to the concrete
+        # perfect-information W/L/D would silently publish the wrong claim.
+        first = public_information_cell(
+            catalog, filename, information.SIDES[0], concrete_unreachable[0])
+        second = public_information_cell(
+            catalog, filename, information.SIDES[1], concrete_unreachable[1])
+        return first, second
+    return (summarize.cell(totals[0], concrete_unreachable[0]),
+            summarize.cell(totals[1], concrete_unreachable[1]))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--full", action="store_true",
         help="reread, validate, summarize, and hash every packed table")
     args = parser.parse_args()
+
+    # Validate all 45 rows, their exact-solver certificates, and their logical
+    # table SHA-256 bindings before allowing even cached output to be reused.
+    # A missing, partial, capped, or stale catalog is an error by design.
+    information_catalog = information.load_and_validate(
+        information.DEFAULT_SUMMARY, root=ROOT, verify_source_hashes=True)
 
     records = {str(record["filename"]): record for record in plan.inventory()}
     # Copycat uses v5 because its one deployable character has a linked clone;
@@ -65,11 +173,7 @@ def main() -> None:
     text = README.read_text()
     old_rows = cached_rows(text)
     readme_mtime = README.stat().st_mtime_ns
-    logic_mtime = max(Path(__file__).stat().st_mtime_ns,
-                      Path(summarize.__file__).stat().st_mtime_ns,
-                      Path(plan.__file__).stat().st_mtime_ns,
-                      Path(shards.__file__).stat().st_mtime_ns,
-                      summarize.REACHABILITY.stat().st_mtime_ns)
+    logic_mtime = dependency_mtime(information.DEFAULT_SUMMARY)
     reused = 0
     lines = [
         START,
@@ -91,10 +195,11 @@ def main() -> None:
             edges = struct.unpack_from("<Q", data, 48)[0]
         digest = hashlib.sha256(data).hexdigest()
         totals, illegal = summarize.summary(path, data, digest)
+        first_cell, second_cell = summary_cells(
+            path.name, totals, illegal, information_catalog)
         lines.append(
             f"| `{path.name}` | {display_name(record)} | {edges:,} | "
-            f"{summarize.cell(totals[0], illegal[0])} | "
-            f"{summarize.cell(totals[1], illegal[1])} | `{digest}` |")
+            f"{first_cell} | {second_cell} | `{digest}` |")
     lines.append(END)
 
     begin = text.index(START)

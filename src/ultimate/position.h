@@ -169,6 +169,7 @@ class Position {
     [[nodiscard]] int forced_piece() const { return forcedPiece_; }
     [[nodiscard]] bool has_forced_action() const;
     [[nodiscard]] int en_passant_square() const { return enPassantSquare_; }
+    [[nodiscard]] int en_passant_victim() const { return enPassantVictim_; }
 
     [[nodiscard]] std::vector<Move> legal_moves() const;
     [[nodiscard]] std::vector<Move> legal_forcing_moves() const;
