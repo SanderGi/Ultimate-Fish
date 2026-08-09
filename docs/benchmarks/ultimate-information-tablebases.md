@@ -179,7 +179,7 @@ and legal-dot-v2 solver model
 It contains all 985,920 dense concrete records; unreachable records remain
 zero-valued and are accounted for separately rather than silently dropped.
 
-The first two K+K+2 primary-Jester strata were regenerated with an explicit
+The completed K+K+2 primary-Jester strata are regenerated with an explicit
 lower-class cardinality split. A still-ambiguous two-world royal pair probes
 the exact K+Jester information overlay; a history-refined singleton probes the
 concrete perfect-information WDL. Their certified legal-root results are:
@@ -188,13 +188,17 @@ concrete perfect-information WDL. Their certified legal-root results are:
 | --- | ---: | ---: | ---: |
 | K+Jester+Knight vs K | 14,798,084 / 0 / 0 | 242,136 / 16,055,072 / 2,681,752 | first: 4,180,876 / 0 / 0; second: 0 / 0 / 0 |
 | K+Jester vs K+Knight | 2,898,404 / 0 / 12,987,312 | 334,432 / 121,472 / 18,523,056 | first: 3,093,244 / 0 / 0; second: 0 / 0 / 0 |
+| K+Jester+Bishop vs K | 13,965,588 / 0 / 0 | 316,578 / 16,113,394 / 2,548,988 | first: 5,013,372 / 0 / 0; second: 0 / 0 / 0 |
+| K+Jester vs K+Bishop | 2,506,936 / 0 / 13,378,780 | 488,456 / 10,706 / 18,479,798 | first: 3,093,244 / 0 / 0; second: 0 / 0 / 0 |
+| K+Jester+Queen vs K | 10,877,572 / 0 / 0 | 611,994 / 17,307,456 / 1,059,510 | first: 8,101,388 / 0 / 0; second: 0 / 0 / 0 |
 
-The owner-Knight graph exercised 650,906 canonical lower royal pairs and no
-singleton lower transitions. The opposing-Knight graph exercised 1,353,848
-pair probes and 5,216 singleton probes. Both have zero owner-overlay versus
-concrete differences, empty uniform-action sets, Bellman residuals, and rank
-residuals. Their W/L/D happen to match the withdrawn run, but are accepted only
-from this cardinality-correct recomputation.
+The owner-Knight, owner-Bishop, and owner-Queen graphs respectively exercised
+650,906, 673,462, and 650,826 canonical lower royal pairs and no singleton
+lower transitions. Both opposing Knight and opposing Bishop exercised
+1,353,848 pair probes and 5,216 singleton probes. Every completed graph has
+zero owner-overlay-versus-concrete differences, empty uniform-action sets,
+Bellman residuals, and rank residuals. Results that happen to match a withdrawn
+run are accepted only from this cardinality-correct recomputation.
 
 ## First exact Ghost stratum
 
