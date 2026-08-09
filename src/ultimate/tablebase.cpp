@@ -340,6 +340,18 @@ State decode_placement(std::uint32_t index) {
 
 class JesterInformationOverlay {
    public:
+    struct ConcreteWorld {
+        std::uint32_t index = 0;
+        Color owner = Color::White;
+    };
+
+    struct PairForces {
+        std::array<std::uint32_t, 2> indices{};
+        std::array<bool, 2> owner{};
+        bool uninformed = false;
+        Color ownerColor = Color::White;
+    };
+
     explicit JesterInformationOverlay(const std::string& path,
                                       const std::string& expectedSourceSha256,
                                       const std::string& expectedModelSha256) {
@@ -380,8 +392,8 @@ class JesterInformationOverlay {
 
     [[nodiscard]] bool loaded() const { return !flags_.empty(); }
 
-    [[nodiscard]] std::optional<bool> forces(const Position& position,
-                                             Color target) const {
+    [[nodiscard]] std::optional<ConcreteWorld> concrete_world(
+      const Position& position) const {
         int jester = Position::NoPiece;
         std::array<int, 2> kings{{Position::NoPiece, Position::NoPiece}};
         int alive = 0;
@@ -403,10 +415,6 @@ class JesterInformationOverlay {
         if (alive != 3 || jester == Position::NoPiece ||
             kings[0] == Position::NoPiece || kings[1] == Position::NoPiece)
             return std::nullopt;
-        if (!loaded())
-            throw std::runtime_error(
-              "a K+Jester-v-K successor requires --lower-information-overlay");
-
         const Color owner = position.piece(jester).color;
         const Color mappedSide = owner == Color::White
                                ? position.side_to_move() : ~position.side_to_move();
@@ -418,12 +426,52 @@ class JesterInformationOverlay {
           position.piece(enemyKing).square,
           position.piece(jester).square,
           0});
-        const std::uint8_t flags = flags_.at(index);
-        if (!(flags & 4))
+        return ConcreteWorld{index, owner};
+    }
+
+    // Probe only an information set that is known to contain both canonical
+    // King/Jester assignments.  A singleton child must instead use the
+    // concrete .uftb WDL: probing one concrete world through this dense overlay
+    // would silently replace its history-refined belief with a fresh maximal
+    // public-view root.
+    [[nodiscard]] PairForces pair_forces(const Position& first,
+                                         const Position& second,
+                                         Color uninformedTarget) const {
+        const auto firstWorld = concrete_world(first);
+        const auto secondWorld = concrete_world(second);
+        if (!firstWorld || !secondWorld)
+            throw std::runtime_error(
+              "paired lower Jester successor is not K+Jester-v-K");
+        if (!loaded())
+            throw std::runtime_error(
+              "a paired K+Jester-v-K successor requires "
+              "--lower-information-overlay");
+        if (firstWorld->owner != secondWorld->owner ||
+            uninformedTarget == firstWorld->owner)
+            throw std::runtime_error(
+              "lower Jester pair must be probed for its uninformed side");
+
+        State decoded = decode_placement(firstWorld->index);
+        std::swap(decoded.whiteKing, decoded.attacker);
+        const std::uint32_t alternative = encode_placement(decoded);
+        if (alternative != secondWorld->index ||
+            firstWorld->index == secondWorld->index)
+            throw std::runtime_error(
+              "lower Jester successor is not the exact canonical royal pair");
+
+        const std::uint8_t firstFlags = flags_.at(firstWorld->index);
+        const std::uint8_t secondFlags = flags_.at(secondWorld->index);
+        if (!(firstFlags & 4) || !(secondFlags & 4))
             throw std::runtime_error(
               "lower Jester successor is outside the admitted overlay domain");
-        const bool targetIsOwner = target == owner;
-        return (flags & (targetIsOwner ? 1 : 2)) != 0;
+        const bool firstForces = (firstFlags & 2) != 0;
+        const bool secondForces = (secondFlags & 2) != 0;
+        if (firstForces != secondForces)
+            throw std::runtime_error(
+              "lower Jester pair has inconsistent uninformed-side flags");
+        return {{firstWorld->index, secondWorld->index},
+                {{(firstFlags & 1) != 0, (secondFlags & 1) != 0}},
+                firstForces, firstWorld->owner};
     }
 
    private:
@@ -1565,13 +1613,12 @@ class TablebaseGenerator {
               "exact information solve requires 64-digit source/model SHA-256 bindings");
         const JesterInformationOverlay lower(
           lowerOverlay, lowerSourceSha256, modelSha256);
-        const auto exact_position_forces = [&](const Position& position, Color target) {
+        const auto concrete_position_forces = [&](const Position& position,
+                                                  Color target) {
             if (position.game_over()) {
                 const auto winner = position.winner();
                 return winner && *winner == target;
             }
-            if (const auto result = lower.forces(position, target))
-                return *result;
             if (!position.is_checkmate_possible())
                 return false;
             const auto result = TablebaseProbe::probe(position);
@@ -1605,6 +1652,9 @@ class TablebaseGenerator {
 
         std::uint64_t observationChecks = 0;
         std::uint64_t emptyCommonActionSets = 0;
+        std::uint64_t lowerPairProbes = 0;
+        std::uint64_t lowerSingletonProbes = 0;
+        std::uint64_t lowerOwnerOverlayDifferences = 0;
         std::uint32_t firstEmptyCommonActionSet =
           std::numeric_limits<std::uint32_t>::max();
         const auto graphStart = std::chrono::steady_clock::now();
@@ -1687,6 +1737,8 @@ class TablebaseGenerator {
 
                 InformationToken groupOnyx = InformationFalse;
                 bool ambiguous = false;
+                std::optional<JesterInformationOverlay::PairForces>
+                  lowerPairForces;
                 if (!sameClass.empty()) {
                     if (sameClass.size() == 1)
                         groupOnyx = boolean_token(exact_index_forces(
@@ -1704,10 +1756,27 @@ class TablebaseGenerator {
                           "Jester belief has more than two royal assignments");
                 }
                 else {
-                    const bool blackForces = std::all_of(
-                      external.begin(), external.end(), [&](const Position* child) {
-                          return exact_position_forces(*child, Color::Black);
-                      });
+                    bool blackForces = false;
+                    if (external.size() == 1) {
+                        if (lower.concrete_world(*external.front()))
+                            ++lowerSingletonProbes;
+                        blackForces = concrete_position_forces(
+                          *external.front(), Color::Black);
+                    }
+                    else if (external.size() == 2) {
+                        // The only two-world lower-material observation in a
+                        // one-Jester class is the exact canonical KJ-v-K royal
+                        // pair.  Preserve that narrowed belief and cross-probe
+                        // its exact information overlay.  Never probe either
+                        // member separately through the dense fresh-root map.
+                        ++lowerPairProbes;
+                        lowerPairForces = lower.pair_forces(
+                          *external[0], *external[1], Color::Black);
+                        blackForces = lowerPairForces->uninformed;
+                    }
+                    else
+                        throw std::runtime_error(
+                          "lower Jester observation is neither singleton nor pair");
                     groupOnyx = boolean_token(blackForces);
                 }
 
@@ -1720,8 +1789,29 @@ class TablebaseGenerator {
                           : boolean_token(exact_index_forces(
                               edge.child.index, Color::White));
                     }
+                    else if (lowerPairForces) {
+                        const auto actual = lower.concrete_world(
+                          edge.child.external);
+                        if (!actual || actual->owner != Color::White)
+                            throw std::runtime_error(
+                              "paired lower Jester edge lost its Ivory owner");
+                        std::size_t member = lowerPairForces->indices.size();
+                        for (std::size_t candidate = 0;
+                             candidate < lowerPairForces->indices.size(); ++candidate)
+                            if (lowerPairForces->indices[candidate] == actual->index)
+                                member = candidate;
+                        if (member == lowerPairForces->indices.size())
+                            throw std::runtime_error(
+                              "lower Jester edge is outside its exact pair");
+                        if (lowerPairForces->owner[member] !=
+                            concrete_position_forces(
+                              edge.child.external, Color::White))
+                            ++lowerOwnerOverlayDifferences;
+                        edge.ivory = boolean_token(
+                          lowerPairForces->owner[member]);
+                    }
                     else
-                        edge.ivory = boolean_token(exact_position_forces(
+                        edge.ivory = boolean_token(concrete_position_forces(
                           edge.child.external, Color::White));
                 }
             }
@@ -1783,6 +1873,10 @@ class TablebaseGenerator {
             std::cout << "none\n";
         else
             std::cout << firstEmptyCommonActionSet << '\n';
+        std::cout << "information_lower_jester pair_probes "
+                  << lowerPairProbes << " singleton_probes "
+                  << lowerSingletonProbes << " owner_overlay_differences "
+                  << lowerOwnerOverlayDifferences << '\n';
 
         const InformationSolveSummary ivorySummary = ivory->solve();
         std::vector<std::uint8_t> ivoryForce(pairs.size() * 2);
