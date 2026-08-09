@@ -1427,7 +1427,6 @@ class TablebaseGenerator {
             return value;
         };
 
-        const DisclosureContext onyxView{Color::Black, false};
         std::vector<std::uint32_t> pairs;
         pairs.reserve(stateCount_ / 2);
         std::vector<std::int32_t> pairForIndex(stateCount_, -1);
@@ -1440,7 +1439,7 @@ class TablebaseGenerator {
             if (!make_primary_jester_world(index, false, first) ||
                 !make_primary_jester_world(index, true, second))
                 throw std::runtime_error("admitted royal assignment failed reconstruction");
-            if (view_key(first, onyxView) != view_key(second, onyxView))
+            if (primary_jester_view_key(first) != primary_jester_view_key(second))
                 continue;
             if (pairs.size() >= static_cast<std::size_t>(InformationTrue))
                 throw std::runtime_error("too many information pairs for token encoding");
@@ -1567,8 +1566,8 @@ class TablebaseGenerator {
                         throw std::runtime_error("information graph move failed");
                     MoveEdge edge;
                     edge.action = positions[world].move_to_string(move);
-                    edge.observation = transition_observation_key(
-                      positions[world], move, after, onyxView);
+                    edge.observation = primary_jester_transition_key(
+                      positions[world], move, after);
                     edge.child.sameClass = in_class(after);
                     if (edge.child.sameClass)
                         edge.child.index = child_index(after);
@@ -2010,6 +2009,102 @@ class TablebaseGenerator {
     }
 
    private:
+    static void append_information_word(std::string& output, std::int32_t value) {
+        const std::uint32_t word = static_cast<std::uint32_t>(value);
+        for (unsigned shift = 0; shift < 32; shift += 8)
+            output.push_back(static_cast<char>((word >> shift) & 0xff));
+    }
+
+    static std::int32_t primary_jester_public_type(const PieceState& piece) {
+        if (piece.color == Color::White &&
+            (piece.type == PieceType::King || piece.type == PieceType::Jester))
+            return static_cast<std::int32_t>(PieceType::Count) + 1;
+        return static_cast<std::int32_t>(piece.type);
+    }
+
+    // Collision-free compact projection specialized to the closed stateless
+    // one-primary-Jester strata.  These classes have no hidden Ghost, links,
+    // attachments, forced continuation, or en-passant state.  Avoiding the
+    // general relationship canonicalizer and text formatting saves billions
+    // of allocations during the large exact solves while retaining a complete
+    // fixed-width public serialization.
+    static std::string primary_jester_view_key(const Position& position) {
+        using Record = std::array<std::int32_t, 13>;
+        std::vector<Record> records;
+        records.reserve(position.piece_count());
+        for (int id = 0; id < position.piece_count(); ++id) {
+            const PieceState& piece = position.piece(id);
+            if (!piece.alive)
+                continue;
+            if (piece.link != Position::NoPiece || piece.host != Position::NoPiece)
+                throw std::runtime_error(
+                  "compact Jester projection encountered a relationship piece");
+            records.push_back({
+              primary_jester_public_type(piece),
+              static_cast<std::int32_t>(piece.color),
+              piece.square,
+              piece.onBoard,
+              piece.action,
+              piece.cooldown,
+              piece.freezeCount,
+              piece.power,
+              piece.moved,
+              piece.visible,
+              piece.attachmentOrder,
+              piece.link,
+              piece.host});
+        }
+        std::sort(records.begin(), records.end());
+
+        std::string output;
+        output.reserve((12 + records.size() * 13) * sizeof(std::uint32_t));
+        append_information_word(output, 1);  // compact schema version
+        append_information_word(output, static_cast<std::int32_t>(position.side_to_move()));
+        append_information_word(output, static_cast<std::int32_t>(position.continuation()));
+        const int forced = position.forced_piece();
+        append_information_word(output, forced == Position::NoPiece ? -1
+          : primary_jester_public_type(position.piece(forced)));
+        append_information_word(output, forced == Position::NoPiece ? -1
+          : position.piece(forced).square);
+        append_information_word(output, position.en_passant_square());
+        const int victim = position.en_passant_victim();
+        append_information_word(output, victim == Position::NoPiece ? -1
+          : primary_jester_public_type(position.piece(victim)));
+        append_information_word(output, victim == Position::NoPiece ? -1
+          : position.piece(victim).square);
+        const auto timeout = position.forced_timeout_winner();
+        append_information_word(output, timeout
+          ? static_cast<std::int32_t>(*timeout) : -1);
+        std::int32_t terminal = 0;
+        if (position.game_over()) {
+            const auto winner = position.winner();
+            terminal = winner ? 2 + static_cast<std::int32_t>(*winner) : 1;
+        }
+        append_information_word(output, terminal);
+        append_information_word(output, static_cast<std::int32_t>(records.size()));
+        for (const Record& record : records)
+            for (const std::int32_t field : record)
+                append_information_word(output, field);
+        return output;
+    }
+
+    static std::string primary_jester_transition_key(
+      const Position& before, const Move& move, const Position& after) {
+        std::string output;
+        output.reserve(32 + 13 * 4 * 4);
+        append_information_word(output, 1);  // compact transition schema
+        const int actor = move.kind == MoveKind::Pass
+                        ? Position::NoPiece : before.piece_on(move.from);
+        append_information_word(output, actor == Position::NoPiece ? -1
+          : primary_jester_public_type(before.piece(actor)));
+        append_information_word(output, static_cast<std::int32_t>(move.kind));
+        append_information_word(output, move.kind == MoveKind::Pass ? -1 : move.from);
+        append_information_word(output, move.kind == MoveKind::Pass ? -1 : move.to);
+        append_information_word(output, static_cast<std::int32_t>(move.promotion));
+        output += primary_jester_view_key(after);
+        return output;
+    }
+
     [[nodiscard]] Color encoded_side(std::uint32_t index) const {
         if (compoundCopycat_)
             return decode_compound_copycat(index / substates_).side;

@@ -101,6 +101,15 @@ physical coordinate frame before comparing actions and observations, then maps
 successors back through the folded codec. A 20,000-state involution/round-trip
 self-test guards this boundary.
 
+For the one-primary-Jester strata, a collision-free fixed-width projection
+specializes the general relationship-aware text serializer to these closed
+four-model classes (which contain no links, attachments, Ghosts, or forced
+continuations). On `K+Jester versus K`, it produced all 985,920 overlay flags
+byte-for-byte identical to the independent general projection while reducing
+observation-graph construction from about 84 seconds to 17 seconds on the same
+machine. The general projection remains the semantic oracle and regression
+baseline.
+
 ## First exact stratum
 
 The exhaustive `K+Jester versus K` solve is the lower-material oracle for the
