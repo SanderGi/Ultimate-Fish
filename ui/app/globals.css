@@ -113,7 +113,7 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
 .player-token.light { background: #e0d7c5; color: #29241d; }
 .material-total { margin-left: auto; color: #c8cfda; font: 750 11px ui-monospace, SFMono-Regular, Menlo, monospace; }
 .material-total.active { color: var(--amber); }
-.game-banner { margin: 0 0 9px; padding: 10px 14px; border: 1px solid #8d6230; border-radius: 9px; background: #2b2114; color: #ffd28d; text-align: center; font-size: 12px; font-weight: 800; text-transform: capitalize; }
+.game-banner { margin: 9px 0 0; padding: 10px 14px; border: 1px solid #8d6230; border-radius: 9px; background: #2b2114; color: #ffd28d; text-align: center; font-size: 12px; font-weight: 800; text-transform: capitalize; }
 .game-banner.draw { border-color: #536478; background: #19222d; color: #cad4e1; }
 .game-banner.white { border-color: #9a8b6f; background: #e7ddca; color: #27231e; }
 .game-banner.black { border-color: #434c59; background: #171c23; color: #e7ebf0; }

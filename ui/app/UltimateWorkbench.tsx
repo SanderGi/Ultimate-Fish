@@ -1041,7 +1041,6 @@ export function UltimateWorkbench() {
             </div>
           </div>
 
-          {gameBanner && <div className={`game-banner ${gameResult.result}`}>{gameBanner}</div>}
           <div className="board-shell">
             <div className="chessboard" role="grid" aria-label="Chess Ultimate board">
               {orderedSquares.map((index, displayIndex) => {
@@ -1080,6 +1079,7 @@ export function UltimateWorkbench() {
               })}
             </div>
           </div>
+          {gameBanner && <div className={`game-banner ${gameResult.result}`}>{gameBanner}</div>}
           <div className="player-card self"><span className={`player-token ${bottomColor === "white" ? "light" : ""}`}>{bottomColor === "white" ? "I" : "O"}</span><div><small>{bottomColor === "white" ? "IVORY" : "ONYX"}</small><strong>{playerSide === bottomColor ? "You" : "Ultimate Fish"}</strong></div><span className={`material-total ${turn === bottomColor ? "active" : ""}`}>{material[bottomColor]} pts</span></div>
         </section>
 
