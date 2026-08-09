@@ -12,6 +12,11 @@ import subprocess
 from typing import Sequence
 
 
+TRANSITION_SUFFIXES = (
+    ".header", ".meta", ".strata", ".actual", ".index", ".blocks",
+    ".verified")
+
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -41,6 +46,51 @@ def run(command: Sequence[str], root: Path, log: Path) -> None:
     if completed.returncode:
         raise RuntimeError(
             f"command failed ({completed.returncode}); inspect {log}")
+
+
+def transition_prefix(command: Sequence[str]) -> str:
+    try:
+        index = command.index("--transition-prefix")
+        prefix = command[index + 1]
+    except (ValueError, IndexError) as error:
+        raise RuntimeError("transition command lacks a prefix") from error
+    path = Path(prefix)
+    if (path.is_absolute() or len(path.parts) != 3 or
+            path.parts[:2] != ("work", "transitions") or
+            path.parts[2] in ("", ".", "..")):
+        raise RuntimeError("transition prefix escapes its authenticated root")
+    return prefix
+
+
+def transition_is_complete(root: Path, command: Sequence[str]) -> bool:
+    prefix = root / transition_prefix(command)
+    return all(Path(f"{prefix}{suffix}").is_file()
+               for suffix in TRANSITION_SUFFIXES)
+
+
+def run_ranges(commands: object, root: Path, parallelism: int) -> None:
+    if not isinstance(commands, list):
+        raise RuntimeError("transition command inventory must be a list")
+    pending = []
+    for command in commands:
+        if (not isinstance(command, list) or
+                not all(isinstance(argument, str) for argument in command)):
+            raise RuntimeError("invalid transition command")
+        if not transition_is_complete(root, command):
+            pending.append(command)
+    with ThreadPoolExecutor(max_workers=parallelism) as executor:
+        futures = []
+        for command in pending:
+            name = Path(transition_prefix(command)).name
+            futures.append(executor.submit(
+                run, command, root, root / "work" / "logs" / f"{name}.log"))
+        for future in futures:
+            future.result()
+
+
+def prepare_workdirs(root: Path) -> None:
+    for name in ("transitions", "solve", "results", "logs"):
+        (root / "work" / name).mkdir(parents=True, exist_ok=True)
 
 
 def artifact_manifest(root: Path, manifest: dict[str, object]) -> None:
@@ -76,19 +126,26 @@ def main() -> None:
     root = args.manifest.resolve().parent
     manifest = json.loads(args.manifest.read_text())
     verify_inputs(root, manifest)
+    if (manifest.get("schema") != "ultimate-ghost-pair-aws-v2" or
+            manifest.get("active_jobs") != 32 or
+            manifest.get("zero_bootstrap_jobs") != 24 or
+            manifest.get("merge_inputs") != 56 or
+            manifest.get("parallelism") != 30):
+        raise RuntimeError("invalid load-balanced Ghost-pair manifest")
     work = root / "work"
-    (work / "transitions").mkdir(parents=True, exist_ok=True)
-    (work / "results").mkdir(parents=True, exist_ok=True)
+    prepare_workdirs(root)
     run(manifest["commands"]["build"], root, work / "logs" / "build.log")
-    shards = manifest["commands"]["shards"]
-    if not isinstance(shards, list) or len(shards) != 32:
-        raise RuntimeError("bundle must contain exactly 32 transition shards")
-    with ThreadPoolExecutor(max_workers=32) as executor:
-        futures = [executor.submit(run, command, root,
-                                   work / "logs" / f"shard-{index:02d}.log")
-                   for index, command in enumerate(shards)]
-        for future in futures:
-            future.result()
+    parallelism = int(manifest["parallelism"])
+    zero_shards = manifest["commands"].get("zero_shards")
+    shards = manifest["commands"].get("shards")
+    if (not isinstance(zero_shards, list) or len(zero_shards) != 24 or
+            not isinstance(shards, list) or len(shards) != 32):
+        raise RuntimeError("invalid load-balanced transition inventory")
+    # Existing complete ranges are preserved.  The native merge later
+    # authenticates every extent, payload, binding, and regeneration marker;
+    # a stale or corrupt range can therefore never enter the merged proof.
+    run_ranges(zero_shards, root, parallelism)
+    run_ranges(shards, root, parallelism)
     run(manifest["commands"]["merge"], root, work / "logs" / "merge.log")
     run(manifest["commands"]["measure"], root,
         work / "logs" / "measure.log")

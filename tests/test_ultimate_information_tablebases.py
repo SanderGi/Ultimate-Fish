@@ -277,6 +277,9 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         self.assertEqual(
             info.solver_model_fingerprint("kbishopghostk.uftb"),
             "d59736789155c52d9b697f6e3f05c2fd0c565beba5d5cce49e3648719289da91")
+        self.assertEqual(
+            info.solver_model_fingerprint("kghostghostk.uftb"),
+            "2280445ed5c6f024b0cd8d00fca45dd48e5359cd591d4e3d28ee0259f74ff286")
 
     def test_semantics_documents_fresh_maximal_public_view(self):
         self.assertEqual(info.SEMANTICS["id"],
