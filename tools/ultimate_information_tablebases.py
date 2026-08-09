@@ -75,6 +75,8 @@ SHARED_SOLVER_SOURCES = (
 )
 PRIMARY_JESTER_SOLVER_SOURCES = (
     *SHARED_SOLVER_SOURCES,
+    ROOT / "src" / "ultimate" / "tablebase_probe.h",
+    ROOT / "src" / "ultimate" / "tablebase_probe.cpp",
     ROOT / "src" / "ultimate" / "tablebase.cpp",
 )
 GHOST_SOLVER_SOURCES = (
