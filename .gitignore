@@ -43,7 +43,6 @@ src/*.txt
 .idea
 
 # Local proprietary reference packages. These are inputs, never project source.
-.DS_Store
 *.apk
 *.apks
 *.ipa
@@ -55,3 +54,7 @@ tablebases/*.tmp
 training/*.jsonl
 networks/*pilot*.ufnn
 networks/*pilot*.ufnn.json
+
+# Cache etc.
+.DS_Store
+tsconfig.tsbuildinfo

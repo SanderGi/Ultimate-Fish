@@ -125,6 +125,11 @@ const draftWindows: Array<{ player: Color; action: DraftAction; addMin: number; 
   { player: "black", action: "pick", addMin: 0, max: 100 },
 ];
 
+const firstDraftPickPhase: Record<Color, number> = {
+  white: draftWindows.findIndex((window) => window.player === "white" && window.action === "pick"),
+  black: draftWindows.findIndex((window) => window.player === "black" && window.action === "pick"),
+};
+
 const generatedDraftPieces = new Set<PieceId>([
   "king", "goop", "minion", "checkerKing", "copycatClone", "halo",
 ]);
@@ -430,8 +435,15 @@ export function UltimateWorkbench() {
   const score = displayScore(analysis, turn);
   const showEvaluation = view === "analysis" || (view === "play" && !gameActive);
   const boardLocked = gameActive || (view === "draft" && !draftPlacementActive);
+  const initialDraftKingUnlocked = draftPlacementActive && draftPhase === firstDraftPickPhase[playerSide];
   const topColor: Color = flipped ? "white" : "black";
   const bottomColor: Color = topColor === "white" ? "black" : "white";
+
+  function draftPieceIsMovable(piece: PositionPiece): boolean {
+    if (!draftPlacementActive || piece.color !== playerSide) return false;
+    const hostUid = piece.id === "copycatClone" && piece.link ? piece.link : piece.uid;
+    return draftPlacedUids.includes(hostUid) || (piece.id === "king" && initialDraftKingUnlocked);
+  }
 
   const legalTargets = useMemo(() => {
     const targets = new Set<number>();
@@ -681,7 +693,7 @@ export function UltimateWorkbench() {
       if (moving.color !== playerSide) return;
       const host = moving.id === "copycatClone" ? pieces.find((piece) => piece.uid === moving.link) : moving;
       if (!host) return;
-      if (!draftPlacedUids.includes(host.uid)) {
+      if (!draftPieceIsMovable(host)) {
         setDraftMessage("Earlier pick groups are locked and cannot be moved."); return;
       }
       const pair = new Set([host.uid, host.link].filter(Boolean));
@@ -1008,7 +1020,7 @@ export function UltimateWorkbench() {
                     {col === 0 && <span className="rank-label">{flipped ? row + 1 : 10 - row}</span>}
                     {row === 9 && <span className="file-label">{flipped ? files[7 - col] : files[col]}</span>}
                     {legalTargets.has(index) && <span className={mapped && !concealedTarget ? "capture-ring" : "move-dot"} />}
-                    {showPiece && <span className="board-piece-wrap" draggable={!gameActive && (view === "analysis" || (draftPlacementActive && piece.color === playerSide && draftPlacedUids.includes(piece.id === "copycatClone" && piece.link ? piece.link : piece.uid)))} onDragStart={() => setDraggedUid(piece.uid)}><PieceToken piece={piece} view={view} playerSide={playerSide} /></span>}
+                    {showPiece && <span className="board-piece-wrap" draggable={!gameActive && (view === "analysis" || draftPieceIsMovable(piece))} onDragStart={() => setDraggedUid(piece.uid)}><PieceToken piece={piece} view={view} playerSide={playerSide} /></span>}
                   </button>
                 );
               })}
