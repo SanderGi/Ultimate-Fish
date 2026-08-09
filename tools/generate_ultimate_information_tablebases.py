@@ -142,7 +142,7 @@ def overlay_is_current(path: Path, record: Mapping[str, object],
         return False
 
 
-def run_solver(command: list[str]) -> dict[int, dict[str, int]]:
+def run_solver(command: list[str], *, label: str = "") -> dict[int, dict[str, int]]:
     process = subprocess.Popen(
         command, cwd=ROOT, text=True, stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT, bufsize=1)
@@ -150,7 +150,7 @@ def run_solver(command: list[str]) -> dict[int, dict[str, int]]:
     summaries: dict[int, dict[str, int]] = {}
     fixed_seen = False
     for raw in process.stdout:
-        print(raw, end="", flush=True)
+        print(f"[{label}] {raw}" if label else raw, end="", flush=True)
         line = raw.rstrip("\n")
         if match := FIXED_RE.match(line):
             fixed_seen = True
@@ -263,7 +263,7 @@ def solve_one(args: argparse.Namespace) -> None:
             "--lower-information-source-sha256",
             shards.logical_sha256(ROOT / "tablebases" / "kjesterk.uftb")])
 
-    summaries = run_solver(command)
+    summaries = run_solver(command, label=args.filename)
     document = merge_checkpoint_entry(
         args.checkpoint, args.filename, entry_from_run(record, summaries))
     files = document["files"]
