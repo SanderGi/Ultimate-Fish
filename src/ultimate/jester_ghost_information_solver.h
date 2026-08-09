@@ -155,6 +155,14 @@ struct TransitionCertificate {
     std::uint64_t lowerJester = 0;
     std::uint64_t lowerGhost = 0;
     std::uint64_t exactTerminal = 0;
+    // Successful semantic checks executed while proving every canonical
+    // block against all four D2 images.  Residuals remain zero in every
+    // accepted artifact; the builder throws on the first mismatch.
+    std::uint64_t codecChecks = 0;
+    std::uint64_t actionChecks = 0;
+    std::uint64_t decisionChecks = 0;
+    std::uint64_t transitionChecks = 0;
+    std::uint64_t symmetryChecks = 0;
     std::uint64_t codecResidual = 0;
     std::uint64_t actionResidual = 0;
     std::uint64_t decisionResidual = 0;

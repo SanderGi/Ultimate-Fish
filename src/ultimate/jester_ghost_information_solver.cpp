@@ -55,9 +55,9 @@ constexpr std::uint8_t Squares = Position::BoardSquares;
 constexpr std::uint32_t NoIndex = std::numeric_limits<std::uint32_t>::max();
 constexpr ProductRobdd::Id LeafTag = ProductRobdd::Id{1} << 63;
 constexpr ProductRobdd::Id LeafPayload = LeafTag - 1;
-constexpr char TransitionMagic[8] = {'U','F','J','G','T','1','\0','\0'};
+constexpr char TransitionMagic[8] = {'U','F','J','G','T','2','\0','\0'};
 constexpr char OverlayMagic[8] = {'U','F','I','W','2','\0','\0','\0'};
-constexpr std::uint32_t TransitionVersion = 1;
+constexpr std::uint32_t TransitionVersion = 2;
 
 [[noreturn]] void system_error(const std::string& operation,
                                const std::string& path) {
@@ -862,6 +862,11 @@ struct TransitionHeaderDisk {
     std::uint64_t actions = 0;
     std::uint64_t observations = 0;
     std::uint64_t edges = 0;
+    std::uint64_t codecChecks = 0;
+    std::uint64_t actionChecks = 0;
+    std::uint64_t decisionChecks = 0;
+    std::uint64_t transitionChecks = 0;
+    std::uint64_t symmetryChecks = 0;
     std::uint64_t strata = 0;
     std::uint64_t blockBytes = 0;
     std::array<char, 64> sourceSha{};
@@ -871,8 +876,8 @@ struct TransitionHeaderDisk {
 };
 
 struct VerifiedDisk {
-    std::array<char,8> magic{{'U','F','J','G','V','1','\0','\0'}};
-    std::uint32_t version=1;
+    std::array<char,8> magic{{'U','F','J','G','V','2','\0','\0'}};
+    std::uint32_t version=2;
     std::uint32_t bytes=0;
     std::uint32_t rawBegin=0;
     std::uint32_t rawCount=0;
@@ -1032,8 +1037,8 @@ void write_verified_marker(const std::string& prefix,
   const std::string& prefix,const TransitionHeaderDisk& header) {
     std::ifstream input(prefix+".verified",std::ios::binary);
     const VerifiedDisk marker=read_value<VerifiedDisk>(input);
-    if(marker.magic!=std::array<char,8>{'U','F','J','G','V','1',0,0}||
-       marker.version!=1||marker.bytes!=sizeof(marker)||
+    if(marker.magic!=std::array<char,8>{'U','F','J','G','V','2',0,0}||
+       marker.version!=2||marker.bytes!=sizeof(marker)||
        marker.rawBegin!=header.rawBegin||marker.rawCount!=header.rawCount||
        marker.sourceSha!=header.sourceSha||marker.modelSha!=header.modelSha||
        marker.observationSha!=header.observationSha||
@@ -1068,13 +1073,18 @@ void verify_transition_storage(const std::string&prefix,
   bool requireComplete){
     std::ifstream input(prefix+".header",std::ios::binary);
     const TransitionHeaderDisk header=read_value<TransitionHeaderDisk>(input);
-    if(header.magic!=std::array<char,8>{'U','F','J','G','T','1',0,0}||
+    if(header.magic!=std::array<char,8>{'U','F','J','G','T','2',0,0}||
        header.version!=TransitionVersion||header.headerBytes!=sizeof(header)||
        header.rawDomain!=RawGeometryCount||
        (requireComplete&&(!header.complete||header.rawBegin||header.rawCount!=RawGeometryCount))||
        std::string(header.sourceSha.data(),64)!=sourceSha||
        std::string(header.modelSha.data(),64)!=modelSha||
-       std::string(header.observationSha.data(),64)!=observationSha)
+       std::string(header.observationSha.data(),64)!=observationSha||
+       header.codecChecks != 4 * (header.worlds + header.geometries) ||
+       header.actionChecks != 4 * header.worlds ||
+       header.decisionChecks < 4 * (header.strata + header.geometries) ||
+       header.transitionChecks != 4 * header.edges ||
+       header.symmetryChecks != 4 * header.geometries)
         throw std::runtime_error("transition authenticated header mismatch");
     verify_transition_storage(prefix,header);
     (void)read_verified_marker(prefix,header);
@@ -1088,6 +1098,10 @@ void verify_transition_storage(const std::string&prefix,
     result.admittedFreshWorlds=header.admitted;result.terminalWorlds=header.terminal;
     result.actions=header.actions;result.observations=header.observations;
     result.edges=header.edges;result.payloadSha256.assign(header.payloadSha.data(),64);
+    result.codecChecks=header.codecChecks;result.actionChecks=header.actionChecks;
+    result.decisionChecks=header.decisionChecks;
+    result.transitionChecks=header.transitionChecks;
+    result.symmetryChecks=header.symmetryChecks;
     return result;}
 
 [[nodiscard]] std::optional<Move> find_action(const Position& position,
@@ -1146,8 +1160,30 @@ struct BuiltBlock {
     std::uint64_t observationCount = 0;
 };
 
+[[nodiscard]] ProductMask transform_mask_allow_empty(
+  const PublicFrame& frame, const ProductMask& mask,
+  RectangleTransform transform, const PublicFrame& expectedFrame) {
+    ProductMask result;
+    for (unsigned variable = 0; variable < ProductVariables; ++variable) {
+        if (!mask.test(variable)) continue;
+        const ProductWorld world = decode_product_variable(frame, variable);
+        const FramedWorld mapped = transform_world(frame, world, transform);
+        if (!(mapped.frame == expectedFrame))
+            throw std::runtime_error("D2 mask escaped its transformed frame");
+        result.set(product_variable(expectedFrame, mapped.world));
+    }
+    if (result.count() != mask.count())
+        throw std::runtime_error("D2 mask transform is not bijective");
+    return result;
+}
+
+[[nodiscard]] bool mask_less(const ProductMask& first,
+                             const ProductMask& second) {
+    return first.words < second.words;
+}
+
 [[nodiscard]] BuiltBlock build_block(const PublicFrame& frame,
-                                     bool symmetryCertificate,
+                                     bool /*symmetryCertificate*/,
                                      TransitionCertificate& certificate) {
     BuiltBlock result;
     result.meta.raw = encode_geometry(frame);
@@ -1212,21 +1248,6 @@ struct BuiltBlock {
         if (result.meta.terminal.test(variable)) continue;
         const Position position = make_position(frame, world);
         const std::vector<ActionKey> actions = legal_actions(position);
-        if (symmetryCertificate) {
-            for (std::uint8_t raw = 0; raw < 4; ++raw) {
-                const auto transform = static_cast<RectangleTransform>(raw);
-                const FramedWorld mapped = transform_world(frame, world, transform);
-                const std::vector<ActionKey> transformed = legal_actions(
-                  make_position(mapped.frame, mapped.world));
-                std::vector<ActionKey> expected;
-                expected.reserve(actions.size());
-                for (ActionKey action : actions)
-                    expected.push_back(transform_action(action, transform));
-                std::sort(expected.begin(), expected.end());
-                if (expected != transformed)
-                    throw std::runtime_error("D2 transformed legal-action residual");
-            }
-        }
         for (const ActionKey& action : actions) byAction[action].push_back(world);
     }
     std::uint32_t actionId = 0;
@@ -1329,6 +1350,397 @@ struct BuiltBlock {
     return result;
 }
 
+struct SemanticTransition {
+    unsigned source = 0;
+    ActionKey action;
+    std::string blackObservation;
+    std::string whiteObservation;
+    CompiledEdge encoded;
+    ClassifiedChild classified;
+    std::optional<FramedWorld> physical;
+};
+
+using SemanticTransitionKey = std::pair<unsigned, ActionKey>;
+
+[[nodiscard]] std::map<SemanticTransitionKey, SemanticTransition>
+semantic_transitions(const PublicFrame& frame, const BuiltBlock& block) {
+    if (block.header.actionCount != block.actions.size() ||
+        block.header.edgeCount != block.edges.size() ||
+        block.header.edgeOffsets[ProductVariables] != block.edges.size())
+        throw std::runtime_error(
+          "D2 certificate block cardinality/header residual");
+    std::map<SemanticTransitionKey, SemanticTransition> result;
+    std::map<std::string, std::uint32_t> observationToRelation;
+    std::map<std::uint32_t, std::string> relationToObservation;
+    std::vector<bool> usedActions(block.actions.size(), false);
+    std::array<std::optional<ProductWorld>, ProductVariables> nativeWorlds;
+    for (const ProductWorld& world : geometric_worlds(frame))
+        nativeWorlds[product_variable(frame, world)] = world;
+    for (unsigned source = 0; source < ProductVariables; ++source) {
+        if (block.header.edgeOffsets[source] >
+            block.header.edgeOffsets[source + 1] ||
+            block.header.edgeOffsets[source + 1] > block.edges.size())
+            throw std::runtime_error("D2 certificate found invalid edge offsets");
+        std::vector<ActionKey> storedLegal;
+        for (std::uint32_t ordinal = block.header.edgeOffsets[source];
+             ordinal < block.header.edgeOffsets[source + 1]; ++ordinal) {
+            const EdgeDisk& stored = block.edges[ordinal];
+            if (stored.sourceVariable != source ||
+                stored.edge.action >= block.actions.size())
+                throw std::runtime_error("D2 certificate found malformed edge");
+            const ActionKey action = block.actions[stored.edge.action].key;
+            usedActions[stored.edge.action] = true;
+            storedLegal.push_back(action);
+            const ProductWorld world = decode_product_variable(frame, source);
+            Position before = make_position(frame, world);
+            const std::optional<Move> move = find_action(before, action);
+            if (!move)
+                throw std::runtime_error("D2 certificate edge action is illegal");
+            Position child = before;
+            Undo undo;
+            if (!child.make_move(*move, undo))
+                throw std::runtime_error("D2 certificate edge failed to apply");
+            std::string blackObservation = transition_observation_key(
+              before, *move, child, {Color::Black, false});
+            if (!child.game_over() && child.side_to_move() == Color::Black)
+                blackObservation += decision_observation_key(
+                  child, {Color::Black, false});
+            const std::string whiteObservation = transition_observation_key(
+              before, *move, child, {Color::White, false});
+            const auto [byObservation, newObservation] =
+              observationToRelation.emplace(blackObservation,
+                                             stored.edge.relation);
+            const auto [byRelation, newRelation] =
+              relationToObservation.emplace(stored.edge.relation,
+                                             blackObservation);
+            if ((!newObservation && byObservation->second !=
+                                    stored.edge.relation) ||
+                (!newRelation && byRelation->second != blackObservation))
+                throw std::runtime_error(
+                  "compiled relation is not the exact Black observation partition");
+            const ClassifiedChild classified = classify_child(child);
+            std::optional<FramedWorld> physical;
+            if (classified.domain == ChildDomain::SameClass)
+                physical = same_class_product(child);
+            const CompiledEdge expected = encode_child(child, physical);
+            if (stored.edge.domain != expected.domain ||
+                stored.edge.childGeometry != expected.childGeometry ||
+                stored.edge.childConcrete != expected.childConcrete ||
+                stored.edge.childActual != expected.childActual ||
+                stored.edge.terminalForces != expected.terminalForces)
+                throw std::runtime_error(
+                  "compiled child differs from native classification");
+            SemanticTransition transition{source, action, blackObservation,
+              whiteObservation, stored.edge, classified, physical};
+            if (!result.emplace(SemanticTransitionKey{source, action},
+                                std::move(transition)).second)
+                throw std::runtime_error(
+                  "D2 certificate found duplicate source/action edge");
+        }
+        std::sort(storedLegal.begin(), storedLegal.end());
+        if (!nativeWorlds[source]) {
+            if (!storedLegal.empty())
+                throw std::runtime_error(
+                  "compiled edge originates at a nongeometric product variable");
+            continue;
+        }
+        const std::vector<ActionKey> nativeLegal = legal_actions(
+          make_position(frame, *nativeWorlds[source]));
+        if (storedLegal != nativeLegal)
+            throw std::runtime_error(
+              "compiled source edges are not the complete native legal-action set");
+    }
+    if (std::find(usedActions.begin(), usedActions.end(), false) !=
+          usedActions.end())
+        throw std::runtime_error("compiled global action table has an orphan");
+    if (observationToRelation.size() != block.observationCount ||
+        relationToObservation.size() != block.observationCount)
+        throw std::runtime_error(
+          "compiled observation relation cardinality residual");
+    std::uint32_t relation = 0;
+    for (const auto& [id, observation] : relationToObservation) {
+        (void)observation;
+        if (id != relation++)
+            throw std::runtime_error(
+              "compiled observation relation IDs are not dense");
+    }
+    if (result.size() != block.edges.size())
+        throw std::runtime_error("compiled transition edge coverage residual");
+    return result;
+}
+
+[[nodiscard]] std::uint32_t transformed_lower_jester(
+  std::uint32_t index, RectangleTransform transform) {
+    LowerJesterState state = decode_lower_jester(index);
+    state.whiteKing = transform_square(state.whiteKing, transform);
+    state.blackKing = transform_square(state.blackKing, transform);
+    state.jester = transform_square(state.jester, transform);
+    return encode_lower_jester(state);
+}
+
+[[nodiscard]] std::uint32_t transformed_lower_ghost(
+  std::uint32_t index, RectangleTransform transform) {
+    LowerGhostState state = decode_lower_ghost(index);
+    state.ownerKing = transform_square(state.ownerKing, transform);
+    state.observerKing = transform_square(state.observerKing, transform);
+    state.ghost = transform_square(state.ghost, transform);
+    return encode_lower_ghost(state);
+}
+
+template<typename First, typename Second>
+void require_partition_bijection(std::map<First, Second>& forward,
+                                 std::map<Second, First>& reverse,
+                                 const First& first, const Second& second,
+                                 std::uint64_t& residual,
+                                 const char* message) {
+    const auto [left, insertedLeft] = forward.emplace(first, second);
+    const auto [right, insertedRight] = reverse.emplace(second, first);
+    if ((!insertedLeft && left->second != second) ||
+        (!insertedRight && right->second != first)) {
+        ++residual;
+        throw std::runtime_error(message);
+    }
+}
+
+void certify_d2_block_unchecked(const PublicFrame& frame,
+                                const BuiltBlock& source,
+                                TransitionCertificate& certificate,
+                                bool perturbTransition) {
+    const std::vector<ProductWorld> sourceWorlds = geometric_worlds(frame);
+    std::map<SemanticTransitionKey, SemanticTransition> sourceTransitions;
+    try {
+        sourceTransitions = semantic_transitions(frame, source);
+    }
+    catch (...) {
+        ++certificate.transitionResidual;
+        throw;
+    }
+    for (std::uint8_t raw = 0; raw < 4; ++raw) {
+        const RectangleTransform transform =
+          static_cast<RectangleTransform>(raw);
+        const FramedWorld firstMapped = transform_world(
+          frame, sourceWorlds.front(), transform);
+        const PublicFrame& mappedFrame = firstMapped.frame;
+        TransitionCertificate ignored;
+        BuiltBlock mapped = build_block(mappedFrame, false, ignored);
+        if (perturbTransition && raw == 0 && !mapped.edges.empty()) {
+            mapped.edges.front().edge.domain =
+              mapped.edges.front().edge.domain == CompiledChildDomain::ExactTerminal
+                ? CompiledChildDomain::SameClass
+                : CompiledChildDomain::ExactTerminal;
+        }
+
+        if (!(decode_geometry(encode_geometry(mappedFrame)) == mappedFrame) ||
+            mapped.meta.raw != encode_geometry(mappedFrame)) {
+            ++certificate.codecResidual;
+            throw std::runtime_error("D2 public-frame codec residual");
+        }
+        std::set<unsigned> mappedVariables;
+        for (const ProductWorld& world : sourceWorlds) {
+            const unsigned sourceVariable = product_variable(frame, world);
+            const FramedWorld transformed = transform_world(frame, world,
+                                                             transform);
+            const unsigned targetVariable = product_variable(
+              mappedFrame, transformed.world);
+            const ProductWorld decoded = decode_product_variable(
+              mappedFrame, targetVariable);
+            const FramedWorld roundTrip = transform_world(
+              mappedFrame, transformed.world, transform);
+            if (!(transformed.frame == mappedFrame) ||
+                !(decoded == transformed.world) ||
+                !(roundTrip.frame == frame) || !(roundTrip.world == world) ||
+                !mappedVariables.insert(targetVariable).second) {
+                ++certificate.codecResidual;
+                throw std::runtime_error("D2 product codec/bijection residual");
+            }
+            ++certificate.codecChecks;
+
+            const Position position = make_position(frame, world);
+            std::vector<ActionKey> expected = legal_actions(position);
+            for (ActionKey& action : expected)
+                action = transform_action(action, transform);
+            std::sort(expected.begin(), expected.end());
+            const std::vector<ActionKey> actual = legal_actions(
+              make_position(mappedFrame, transformed.world));
+            if (expected != actual) {
+                ++certificate.actionResidual;
+                throw std::runtime_error("D2 complete legal-action residual");
+            }
+            ++certificate.actionChecks;
+            (void)sourceVariable;
+        }
+        if (mappedVariables.size() != sourceWorlds.size()) {
+            ++certificate.codecResidual;
+            throw std::runtime_error("D2 product variable coverage residual");
+        }
+
+        const auto mapMask = [&](const ProductMask& mask) {
+            return transform_mask_allow_empty(frame, mask, transform,
+                                              mappedFrame);
+        };
+        if (!(mapMask(source.meta.live) == mapped.meta.live) ||
+            !(mapMask(source.meta.terminal) == mapped.meta.terminal) ||
+            !(mapMask(source.meta.terminalWhite) == mapped.meta.terminalWhite) ||
+            !(mapMask(source.meta.terminalBlack) == mapped.meta.terminalBlack) ||
+            !(mapMask(source.meta.admittedFresh) == mapped.meta.admittedFresh)) {
+            ++certificate.codecResidual;
+            throw std::runtime_error("D2 native-state mask residual");
+        }
+        ++certificate.codecChecks;
+
+        std::vector<ProductMask> expectedStrata;
+        expectedStrata.reserve(source.strata.size());
+        for (const ProductMask& stratum : source.strata)
+            expectedStrata.push_back(mapMask(stratum));
+        std::sort(expectedStrata.begin(), expectedStrata.end(), mask_less);
+        std::vector<ProductMask> actualStrata = mapped.strata;
+        std::sort(actualStrata.begin(), actualStrata.end(), mask_less);
+        if (expectedStrata != actualStrata) {
+            ++certificate.decisionResidual;
+            throw std::runtime_error("D2 mover-private decision partition residual");
+        }
+        certificate.decisionChecks += expectedStrata.size() + 1;
+
+        std::vector<ProductWorld> sourceLive, mappedLive;
+        for (const ProductWorld& world : sourceWorlds)
+            if (source.meta.live.test(product_variable(frame, world))) {
+                sourceLive.push_back(world);
+                mappedLive.push_back(
+                  transform_world(frame, world, transform).world);
+            }
+        std::vector<ProductMask> expectedDecision, actualDecision;
+        for (const DecisionBucket& bucket :
+             decision_partition(frame, sourceLive))
+            expectedDecision.push_back(mapMask(bucket.worlds));
+        for (const DecisionBucket& bucket :
+             decision_partition(mappedFrame, mappedLive))
+            actualDecision.push_back(bucket.worlds);
+        std::sort(expectedDecision.begin(), expectedDecision.end(), mask_less);
+        std::sort(actualDecision.begin(), actualDecision.end(), mask_less);
+        if (expectedDecision != actualDecision) {
+            ++certificate.decisionResidual;
+            throw std::runtime_error(
+              "D2 native legal-dot decision-cell residual");
+        }
+        certificate.decisionChecks += expectedDecision.size() + 1;
+
+        std::map<SemanticTransitionKey, SemanticTransition> mappedTransitions;
+        try {
+            mappedTransitions = semantic_transitions(mappedFrame, mapped);
+        }
+        catch (...) {
+            ++certificate.transitionResidual;
+            throw;
+        }
+        if (mappedTransitions.size() != sourceTransitions.size()) {
+            ++certificate.transitionResidual;
+            throw std::runtime_error("D2 transition cardinality residual");
+        }
+        std::map<std::uint32_t, std::uint32_t> relationForward;
+        std::map<std::uint32_t, std::uint32_t> relationReverse;
+        std::map<std::string, std::string> blackForward, blackReverse;
+        std::map<std::string, std::string> whiteForward, whiteReverse;
+        for (const auto& [key, transition] : sourceTransitions) {
+            const ProductWorld sourceWorld = decode_product_variable(
+              frame, transition.source);
+            const FramedWorld transformedSource = transform_world(
+              frame, sourceWorld, transform);
+            const SemanticTransitionKey mappedKey{
+              product_variable(mappedFrame, transformedSource.world),
+              transform_action(transition.action, transform)};
+            const auto found = mappedTransitions.find(mappedKey);
+            if (found == mappedTransitions.end()) {
+                ++certificate.transitionResidual;
+                throw std::runtime_error("D2 transition image is absent");
+            }
+            const SemanticTransition& target = found->second;
+            require_partition_bijection(relationForward, relationReverse,
+              transition.encoded.relation, target.encoded.relation,
+              certificate.transitionResidual,
+              "D2 compiled Black-observation partition residual");
+            require_partition_bijection(blackForward, blackReverse,
+              transition.blackObservation, target.blackObservation,
+              certificate.transitionResidual,
+              "D2 complete Black-observation equivalence residual");
+            require_partition_bijection(whiteForward, whiteReverse,
+              transition.whiteObservation, target.whiteObservation,
+              certificate.transitionResidual,
+              "D2 complete White-observation equivalence residual");
+            if (transition.classified.domain != target.classified.domain) {
+                ++certificate.transitionResidual;
+                throw std::runtime_error("D2 child domain residual");
+            }
+            switch (transition.classified.domain) {
+              case ChildDomain::SameClass: {
+                if (!transition.physical || !target.physical) {
+                    ++certificate.transitionResidual;
+                    throw std::runtime_error("D2 same-class physical child absent");
+                }
+                const FramedWorld expected = transform_world(
+                  transition.physical->frame, transition.physical->world,
+                  transform);
+                if (!(expected.frame == target.physical->frame) ||
+                    !(expected.world == target.physical->world) ||
+                    transition.encoded.childGeometry !=
+                      target.encoded.childGeometry) {
+                    ++certificate.transitionResidual;
+                    throw std::runtime_error(
+                      "D2 same-class child frame/actual residual");
+                }
+                // semantic_transitions() independently proves each stored
+                // childActual equals encode_child() of its physical child.
+                // Do not compare the two raw actual IDs: when a D2 transform
+                // stabilizes the canonical public child frame, the deliberate
+                // no-stabilizer-fold convention may permute private product
+                // variables while preserving the exact physical mapping.
+                break;
+              }
+              case ChildDomain::LowerJester:
+                if (transformed_lower_jester(transition.classified.index,
+                                             transform) !=
+                    target.classified.index) {
+                    ++certificate.transitionResidual;
+                    throw std::runtime_error("D2 lower-Jester child residual");
+                }
+                break;
+              case ChildDomain::LowerGhost:
+                if (transformed_lower_ghost(transition.classified.index,
+                                            transform) !=
+                    target.classified.index) {
+                    ++certificate.transitionResidual;
+                    throw std::runtime_error("D2 lower-Ghost child residual");
+                }
+                break;
+              case ChildDomain::ExactTerminal:
+                if (transition.encoded.terminalForces !=
+                    target.encoded.terminalForces) {
+                    ++certificate.transitionResidual;
+                    throw std::runtime_error("D2 terminal-force residual");
+                }
+                break;
+              default:
+                ++certificate.transitionResidual;
+                throw std::runtime_error("D2 invalid child domain");
+            }
+            ++certificate.transitionChecks;
+        }
+        ++certificate.symmetryChecks;
+    }
+}
+
+void certify_d2_block(const PublicFrame& frame, const BuiltBlock& source,
+                      TransitionCertificate& certificate,
+                      bool perturbTransition = false) {
+    try {
+        certify_d2_block_unchecked(frame, source, certificate,
+                                   perturbTransition);
+    }
+    catch (...) {
+        ++certificate.symmetryResidual;
+        throw;
+    }
+}
+
 void write_block(std::ostream& output, const BuiltBlock& block) {
     write_value(output, block.header);
     if (!block.actions.empty())
@@ -1346,6 +1758,9 @@ TransitionCertificate compile_transition_database(
     require_hash(options.sourceSha256, "source SHA-256");
     require_hash(options.modelSha256, "model SHA-256");
     require_hash(options.observationSha256, "observation SHA-256");
+    if (!options.exhaustiveSymmetryCertificate)
+        throw std::invalid_argument(
+          "Jester/Ghost shards require the exhaustive D2 certificate");
     if (options.prefix.empty() || options.rawGeometryBegin >= RawGeometryCount)
         throw std::invalid_argument("invalid transition compile range");
     const std::uint32_t remaining = RawGeometryCount - options.rawGeometryBegin;
@@ -1367,8 +1782,9 @@ TransitionCertificate compile_transition_database(
         const std::uint32_t raw = options.rawGeometryBegin + offset;
         const PublicFrame frame = decode_geometry(raw);
         if (canonical_geometry(frame).first != raw) continue;
-        BuiltBlock block = build_block(frame,
-          options.exhaustiveSymmetryCertificate, certificate);
+        BuiltBlock block = build_block(frame, false, certificate);
+        if (options.exhaustiveSymmetryCertificate)
+            certify_d2_block(frame, block, certificate);
         if (stratumBase > std::numeric_limits<std::uint32_t>::max() ||
             block.strata.size() >
               std::numeric_limits<std::uint32_t>::max() - stratumBase)
@@ -1412,6 +1828,11 @@ TransitionCertificate compile_transition_database(
     header.actions = certificate.actions;
     header.observations = certificate.observations;
     header.edges = certificate.edges;
+    header.codecChecks = certificate.codecChecks;
+    header.actionChecks = certificate.actionChecks;
+    header.decisionChecks = certificate.decisionChecks;
+    header.transitionChecks = certificate.transitionChecks;
+    header.symmetryChecks = certificate.symmetryChecks;
     header.strata = stratumBase;
     header.blockBytes = blockOffset;
     std::copy(options.sourceSha256.begin(), options.sourceSha256.end(),
@@ -1434,6 +1855,11 @@ TransitionCertificate compile_transition_database(
       options.observationSha256, false);
     if (verified.canonicalGeometries != certificate.canonicalGeometries ||
         verified.edges != certificate.edges ||
+        verified.codecChecks != certificate.codecChecks ||
+        verified.actionChecks != certificate.actionChecks ||
+        verified.decisionChecks != certificate.decisionChecks ||
+        verified.transitionChecks != certificate.transitionChecks ||
+        verified.symmetryChecks != certificate.symmetryChecks ||
         verified.payloadSha256 != certificate.payloadSha256)
         throw std::runtime_error("transition compile/reload certificate mismatch");
     write_verified_marker(options.prefix,header);
@@ -1487,7 +1913,8 @@ TransitionCertificate verify_transition_database(
         if (ordinal >= header.geometries)
             throw std::runtime_error(
               "transition reload has too few canonical geometries");
-        BuiltBlock expected = build_block(frame, true, regenerated);
+        BuiltBlock expected = build_block(frame, false, regenerated);
+        certify_d2_block(frame, expected, regenerated);
         if (stratumBase > std::numeric_limits<std::uint32_t>::max() ||
             expected.strata.size() >
               std::numeric_limits<std::uint32_t>::max() - stratumBase)
@@ -1553,6 +1980,11 @@ TransitionCertificate verify_transition_database(
         regenerated.actions != header.actions ||
         regenerated.observations != header.observations ||
         regenerated.edges != header.edges ||
+        regenerated.codecChecks != header.codecChecks ||
+        regenerated.actionChecks != header.actionChecks ||
+        regenerated.decisionChecks != header.decisionChecks ||
+        regenerated.transitionChecks != header.transitionChecks ||
+        regenerated.symmetryChecks != header.symmetryChecks ||
         metas.peek() != std::char_traits<char>::eof() ||
         strata.peek() != std::char_traits<char>::eof() ||
         indices.peek() != std::char_traits<char>::eof())
@@ -1615,17 +2047,37 @@ TransitionCertificate merge_transition_databases(
           sourceStrata(shard.prefix+".strata",std::ios::binary),
           sourceIndex(shard.prefix+".index",std::ios::binary),
           sourceBlocks(shard.prefix+".blocks",std::ios::binary);
-        (void)read_value<std::uint64_t>(sourceIndex);
+        if (read_value<std::uint64_t>(sourceIndex) != 0)
+            throw std::runtime_error(
+              "transition shard rebase index does not start at zero");
+        std::uint64_t localStratumBase=0,localOwnerBase=0,localBlockBase=0;
         for(std::uint64_t id=0;id<shard.header.geometries;++id){
             GeometryDisk meta=read_value<GeometryDisk>(sourceMeta);
+            if(meta.stratumBase!=localStratumBase||
+               meta.ownerBase!=localOwnerBase)
+                throw std::runtime_error(
+                  "transition shard contains noncanonical local bases");
             if(stratumBase>std::numeric_limits<std::uint32_t>::max()||
                meta.stratumBase>std::numeric_limits<std::uint32_t>::max()-stratumBase)
                 throw std::overflow_error("merged transition stratum address exceeds the codec");
+            localStratumBase+=meta.stratumCount;
+            localOwnerBase+=meta.liveCount;
             meta.stratumBase=static_cast<std::uint32_t>(meta.stratumBase+stratumBase);
             meta.ownerBase+=ownerBase;write_value(metas,meta);
             const std::uint64_t localEnd=read_value<std::uint64_t>(sourceIndex);
+            if(localEnd<localBlockBase||localEnd>shard.header.blockBytes)
+                throw std::runtime_error(
+                  "transition shard index cannot be rebased exactly");
+            localBlockBase=localEnd;
             write_value(indices,blockBase+localEnd);
         }
+        if(localStratumBase!=shard.header.strata||
+           localOwnerBase!=shard.header.ownerRoots||
+           localBlockBase!=shard.header.blockBytes||
+           sourceMeta.peek()!=std::char_traits<char>::eof()||
+           sourceIndex.peek()!=std::char_traits<char>::eof())
+            throw std::runtime_error(
+              "transition shard rebase conservation residual");
         while(sourceStrata){sourceStrata.read(buffer.data(),buffer.size());
             if(sourceStrata.gcount()>0)strata.write(buffer.data(),sourceStrata.gcount());}
         while(sourceBlocks){sourceBlocks.read(buffer.data(),buffer.size());
@@ -1636,6 +2088,11 @@ TransitionCertificate merge_transition_databases(
         merged.admitted+=shard.header.admitted;merged.terminal+=shard.header.terminal;
         merged.actions+=shard.header.actions;merged.observations+=shard.header.observations;
         merged.edges+=shard.header.edges;
+        merged.codecChecks+=shard.header.codecChecks;
+        merged.actionChecks+=shard.header.actionChecks;
+        merged.decisionChecks+=shard.header.decisionChecks;
+        merged.transitionChecks+=shard.header.transitionChecks;
+        merged.symmetryChecks+=shard.header.symmetryChecks;
     }
     merged.strata=stratumBase;merged.ownerRoots=ownerBase;
     merged.blockBytes=blockBase;metas.close();strata.close();indices.close();blocks.close();
@@ -1643,10 +2100,15 @@ TransitionCertificate merge_transition_databases(
     std::copy(payload.begin(),payload.end(),merged.payloadSha.begin());
     std::ofstream headerFile(outputPrefix+".header",std::ios::binary|std::ios::trunc);
     write_value(headerFile,merged);if(!headerFile)throw std::runtime_error("failed writing merged transition header");headerFile.close();
-    const TransitionCertificate certificate=verify_transition_database(
-      outputPrefix,sourceSha256,modelSha256,observationSha256,requireComplete);
+    // Every input marker was issued only after exhaustive native+D2
+    // regeneration. Exact gap-free coverage plus the independently checked
+    // base/index rebasing above is therefore a compositional proof; repeating
+    // the full single-core native regeneration here is redundant. The public
+    // --verify-transitions command remains available for an optional audit.
     write_verified_marker(outputPrefix,merged);
-    return certificate;
+    const TransitionHeaderDisk authenticated=authenticate_transition_database(
+      outputPrefix,sourceSha256,modelSha256,observationSha256,requireComplete);
+    return transition_certificate(authenticated);
 }
 
 namespace {
@@ -2657,13 +3119,23 @@ SolveCertificate solve_exact(const SolveOptions& options) {
               != wdl_forces(exact, frame.side, Color::White);
             certificate.singletonResidual += bdd.evaluate(observer[stratum],
               singleton) != wdl_forces(exact, frame.side, Color::Black);
+            // These are complete force functions, not merely fresh-root
+            // samples.  owner[] already requires a nonempty domain mask that
+            // contains actual; observer[] is restricted to the identical
+            // mover-private decision cell. Their conjunction must therefore
+            // be identically false over every reachable history belief.
+            certificate.dualWinResidual += bdd.logical_and(
+              owner[owner_root_index(meta, actual)], observer[stratum]) !=
+              bdd.constant(false);
         }
         for (std::uint32_t local = 0; local < meta.stratumCount; ++local)
             certificate.rankResidual += !bdd.is_downward_closed(
               observer[meta.stratumBase + local]);
     }
-    if (certificate.rankResidual || certificate.singletonResidual)
-        throw std::runtime_error("exact rank/singleton residual is nonzero");
+    if (certificate.rankResidual || certificate.singletonResidual ||
+        certificate.dualWinResidual)
+        throw std::runtime_error(
+          "exact rank/singleton/arbitrary dual-force residual is nonzero");
 
     // Discard construction-only domain and imported-lower roots from the
     // permanent arena. The all-beliefs artifact retains exactly the force
@@ -3304,6 +3776,12 @@ void exact_small_domain_self_test(const std::string& scratchPrefix) {
     const auto domain=bdd.subset_of(allowed);ProductMask empty;
     if(!bdd.evaluate(domain,empty)||!bdd.is_downward_closed(domain))
         throw std::runtime_error("empty-belief/domain downward-closure residual");
+    const auto syntheticOwner=bdd.logical_and(domain,a);
+    const auto syntheticObserver=bdd.logical_and(domain,bdd.logical_not(a));
+    if(bdd.logical_and(syntheticOwner,syntheticObserver)!=bdd.constant(false)||
+       bdd.logical_and(syntheticOwner,syntheticOwner)==bdd.constant(false))
+        throw std::runtime_error(
+          "arbitrary owner/observer dual-force corruption regression");
 
     // A lower KGhost predicate is a suffix function. Its image is the union
     // of parent sources from both royal-assignment planes; mapping it into the
@@ -3434,6 +3912,86 @@ void exact_small_domain_self_test(const std::string& scratchPrefix) {
     }
     if(!policyUnionWitness)
         throw std::runtime_error("no global hidden-action observation-union witness");
+
+    // The production D2 certificate must execute every semantic layer and
+    // reject altered stored transition semantics, rather than merely proving
+    // deterministic regeneration of the same bytes.
+    bool d2Witness = false;
+    bool d2PerturbationRejected = false;
+    for (std::uint32_t raw = 0; raw < 20'000 && !d2Witness; ++raw) {
+        const PublicFrame frame = decode_geometry(raw);
+        if (canonical_geometry(frame).first != raw) continue;
+        TransitionCertificate ignored;
+        const BuiltBlock block = build_block(frame, false, ignored);
+        if (block.edges.empty()) continue;
+        TransitionCertificate checks;
+        certify_d2_block(frame, block, checks);
+        if (!checks.codecChecks || !checks.actionChecks ||
+            !checks.decisionChecks || !checks.transitionChecks ||
+            checks.symmetryChecks != 4 || checks.codecResidual ||
+            checks.actionResidual || checks.decisionResidual ||
+            checks.transitionResidual || checks.symmetryResidual)
+            throw std::runtime_error("D2 semantic check-execution residual");
+        try {
+            TransitionCertificate perturbed;
+            certify_d2_block(frame, block, perturbed, true);
+        }
+        catch (const std::exception&) {
+            d2PerturbationRejected = true;
+        }
+        d2Witness = true;
+    }
+    if (!d2Witness || !d2PerturbationRejected)
+        throw std::runtime_error(
+          "D2 stored-transition perturbation was not rejected");
+
+    // A reflected physical world generally has a different raw product
+    // variable even though it belongs to the same canonical public-frame
+    // orbit.  Each side must derive childActual from its own physical child;
+    // comparing the two pre-canonical/raw IDs would be invalid (and becomes
+    // especially important if a future material frame has a stabilizer).
+    bool permutedProductWitness = false;
+    for (std::uint32_t raw = 0; raw < 100 && !permutedProductWitness; ++raw) {
+        const PublicFrame frame = decode_geometry(raw);
+        for (const ProductWorld& world : geometric_worlds(frame)) {
+            const FramedWorld mapped = transform_world(
+              frame, world, RectangleTransform::Horizontal);
+            if (product_variable(frame, world) ==
+                product_variable(mapped.frame, mapped.world))
+                continue;
+            const Position sourcePosition = make_position(frame, world);
+            const Position targetPosition = make_position(mapped.frame,
+                                                          mapped.world);
+            if (classify_child(sourcePosition).domain != ChildDomain::SameClass ||
+                classify_child(targetPosition).domain != ChildDomain::SameClass)
+                continue;
+            const CompiledEdge sourceChild = encode_child(
+              sourcePosition, FramedWorld{frame, world});
+            const CompiledEdge targetChild = encode_child(
+              targetPosition, mapped);
+            const auto [sourceRaw, sourceTransform] =
+              canonical_geometry(frame);
+            const auto [targetRaw, targetTransform] =
+              canonical_geometry(mapped.frame);
+            const FramedWorld sourceCanonical = transform_world(
+              frame, world, sourceTransform);
+            const FramedWorld targetCanonical = transform_world(
+              mapped.frame, mapped.world, targetTransform);
+            if (sourceChild.childGeometry != sourceRaw ||
+                targetChild.childGeometry != targetRaw ||
+                sourceRaw != targetRaw ||
+                sourceChild.childActual != product_variable(
+                  sourceCanonical.frame, sourceCanonical.world) ||
+                targetChild.childActual != product_variable(
+                  targetCanonical.frame, targetCanonical.world))
+                throw std::runtime_error(
+                  "D2 canonical child-actual re-encoding residual");
+            permutedProductWitness = true;
+            break;
+        }
+    }
+    if (!permutedProductWitness)
+        throw std::runtime_error("no D2 product-variable permutation witness");
 
     bool rejectedTerminal=false;
     for(std::uint32_t raw=RawGeometryCount/2;

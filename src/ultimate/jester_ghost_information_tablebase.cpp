@@ -164,6 +164,10 @@ void print_transition(const TransitionCertificate& c) {
     std::cout<<"jester_ghost_transition raw "<<c.rawGeometries<<" canonical "<<c.canonicalGeometries
       <<" worlds "<<c.worlds<<" live "<<c.liveWorlds<<" actions "<<c.actions
       <<" observations "<<c.observations<<" edges "<<c.edges
+      <<" codec_checks "<<c.codecChecks<<" action_checks "<<c.actionChecks
+      <<" decision_checks "<<c.decisionChecks
+      <<" transition_checks "<<c.transitionChecks
+      <<" symmetry_checks "<<c.symmetryChecks
       <<" codec_residual "<<c.codecResidual<<" action_residual "<<c.actionResidual
       <<" decision_residual "<<c.decisionResidual<<" transition_residual "<<c.transitionResidual
       <<" symmetry_residual "<<c.symmetryResidual<<" payload_sha256 "<<c.payloadSha256<<'\n';

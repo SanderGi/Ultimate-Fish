@@ -12,6 +12,7 @@
 
 #include <array>
 #include <cstdint>
+#include <fstream>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -85,6 +86,10 @@ int main() {
                 written.transitionResidual == 0 &&
                 written.symmetryResidual == 0,
                 "transition semantic residual");
+        require(written.codecChecks && written.actionChecks &&
+                written.decisionChecks && written.transitionChecks &&
+                written.symmetryChecks,
+                "transition D2 semantic checks did not execute");
         require_failure([&] {
             (void)verify_transition_database(compile.prefix,
               std::string(64, '4'), compile.modelSha256,
@@ -121,9 +126,29 @@ int main() {
                 merged.actions==directWritten.actions&&
                 merged.observations==directWritten.observations&&
                 merged.edges==directWritten.edges&&
+                merged.codecChecks==directWritten.codecChecks&&
+                merged.actionChecks==directWritten.actionChecks&&
+                merged.decisionChecks==directWritten.decisionChecks&&
+                merged.transitionChecks==directWritten.transitionChecks&&
+                merged.symmetryChecks==directWritten.symmetryChecks&&
                 merged.payloadSha256==directWritten.payloadSha256&&
                 secondWritten.rawGeometries==1,
                 "positive shard merge/rebase/direct-compile certificate");
+        {
+            // GeometryDisk::ownerBase begins after raw+reserved (8 bytes).
+            // A rebasing corruption must invalidate the composition marker;
+            // it may never be accepted as an exhaustively certified shard.
+            std::fstream corrupt(prefix+".transitions-merged.meta",
+              std::ios::binary|std::ios::in|std::ios::out);
+            corrupt.seekg(8); char byte=0; corrupt.read(&byte,1);
+            byte=static_cast<char>(byte^1); corrupt.seekp(8);
+            corrupt.write(&byte,1); corrupt.close();
+            require_failure([&] {
+                (void)verify_transition_database(
+                  prefix+".transitions-merged",compile.sourceSha256,
+                  compile.modelSha256,compile.observationSha256,false);
+            }, "corrupted transition rebase was accepted");
+        }
 
         ResourceLimits resources;
         resources.maxDiskBytes = std::numeric_limits<std::uint64_t>::max();
