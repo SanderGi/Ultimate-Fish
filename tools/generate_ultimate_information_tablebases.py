@@ -159,7 +159,8 @@ def overlay_is_current(path: Path, record: Mapping[str, object],
 
 
 def arbitrary_is_current(path: Path, source_sha256: str,
-                         model_sha256: str) -> bool:
+                         model_sha256: str, *,
+                         lower_jester_overlay_sha256: str | None = None) -> bool:
     """Authenticate a permanent exact arbitrary-belief artifact."""
     try:
         with path.open("rb") as stream:
@@ -210,6 +211,9 @@ def arbitrary_is_current(path: Path, source_sha256: str,
             dependencies_current = (
                 header[304:368].decode() ==
                     information.observation_model_fingerprint() and
+                lower_jester_overlay_sha256 is not None and
+                header[560:624].decode() ==
+                    lower_jester_overlay_sha256 and
                 header[624:688].decode() ==
                     "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
         return (
@@ -488,12 +492,19 @@ def solve_one(args: argparse.Namespace) -> None:
     entry = files.get(args.filename)
     arbitrary = (args.overlays / "kghostghostk.ufgg" if domain == "ghost-pair"
                  else args.overlays / "kjesterghostk.ufjg")
+    lower_jester_arbitrary_sha = None
+    if domain == "jester-ghost":
+        lower_jester_arbitrary = args.overlays / "kjesterk.ufiw"
+        if lower_jester_arbitrary.exists():
+            lower_jester_arbitrary_sha = hashlib.sha256(
+                lower_jester_arbitrary.read_bytes()).hexdigest()
     if (isinstance(entry, dict) and
             entry.get("tablebase_sha256") == source_sha256 and
             entry.get("solver_model_sha256") == model_sha256 and
             overlay_is_current(overlay, record, source_sha256, model_sha256) and
             (domain not in {"ghost-pair", "jester-ghost"} or arbitrary_is_current(
-                arbitrary, source_sha256, model_sha256))):
+                arbitrary, source_sha256, model_sha256,
+                lower_jester_overlay_sha256=lower_jester_arbitrary_sha))):
         print(f"already complete and verified: {args.filename}")
         return
     command = solver_command(
@@ -509,7 +520,8 @@ def solve_one(args: argparse.Namespace) -> None:
 
     summaries = run_solver(command, label=args.filename)
     if domain in {"ghost-pair", "jester-ghost"} and not arbitrary_is_current(
-            arbitrary, source_sha256, model_sha256):
+            arbitrary, source_sha256, model_sha256,
+            lower_jester_overlay_sha256=lower_jester_arbitrary_sha):
         raise RuntimeError(
             f"{arbitrary}: missing/stale authenticated all-beliefs artifact")
     document = merge_checkpoint_entry(

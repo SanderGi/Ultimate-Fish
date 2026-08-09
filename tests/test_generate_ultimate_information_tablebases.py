@@ -178,6 +178,8 @@ class InformationGenerationDriverTests(unittest.TestCase):
         struct.pack_into("<Q", header, 168, len(payload))
         header[176:240] = source.encode(); header[240:304] = model.encode()
         header[304:368] = generate.information.observation_model_fingerprint().encode()
+        lower_jester = "4" * 64
+        header[560:624] = lower_jester.encode()
         header[624:688] = b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b"
         header[688:752] = hashlib.sha256(payload).hexdigest().encode()
         semantics = b"king-jester-x-hidden-ghost-correlated-v1"
@@ -185,10 +187,24 @@ class InformationGenerationDriverTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "product.ufjg"
             path.write_bytes(header + payload)
-            self.assertTrue(generate.arbitrary_is_current(path, source, model))
+            self.assertTrue(generate.arbitrary_is_current(
+                path, source, model,
+                lower_jester_overlay_sha256=lower_jester))
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model,
+                lower_jester_overlay_sha256="5" * 64))
+            with path.open("r+b") as stream:
+                stream.seek(560); stream.write(b"5" * 64)
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model,
+                lower_jester_overlay_sha256=lower_jester))
+            with path.open("r+b") as stream:
+                stream.seek(560); stream.write(lower_jester.encode())
             with path.open("r+b") as stream:
                 stream.seek(816); stream.write(b"X")
-            self.assertFalse(generate.arbitrary_is_current(path, source, model))
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model,
+                lower_jester_overlay_sha256=lower_jester))
 
     def test_checkpoint_merge_preserves_independent_completed_rows(self):
         with tempfile.TemporaryDirectory() as directory:

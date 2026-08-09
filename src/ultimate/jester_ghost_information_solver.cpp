@@ -2105,6 +2105,35 @@ struct RuntimeBlock{
     std::vector<RuntimeRelation> relations;std::vector<RuntimeAction>actions;
 };
 
+[[nodiscard]] bool lower_terminal_forces(
+  const LowerGhostSidecar::Geometry& geometry,
+  const LowerGhostState& child, Color target) {
+    if (!mask_test(geometry.terminal, child.ghost))
+        throw std::runtime_error("lower Ghost terminal specialization is live");
+    return mask_test(target == Color::White ? geometry.terminalOwner
+                                             : geometry.terminalObserver,
+                     child.ghost);
+}
+
+[[nodiscard]] ProductRobdd::Id lower_terminal_formula(
+  ProductRobdd& bdd, const RuntimeRelation& relation,
+  const LowerGhostSidecar::Geometry& geometry, Color target,
+  std::optional<std::uint32_t> actual) {
+    if (actual) {
+        if (relation.lowerChildren.find(*actual) ==
+              relation.lowerChildren.end())
+            throw std::runtime_error("actual absent from terminal lower Ghost image");
+        return bdd.constant(lower_terminal_forces(
+          geometry, decode_lower_ghost(*actual), target));
+    }
+    // The uninformed observer sees only the complete transition observation,
+    // so every retained source must force the target outcome. The informed
+    // owner branch above instead specializes to its concrete lower child.
+    const ProductMask& bad = target == Color::White ?
+      relation.badWhiteSources : relation.badBlackSources;
+    return bdd.logical_not(bdd.any(bad));
+}
+
 [[nodiscard]] std::uint64_t owner_root_index(const GeometryDisk& meta,
                                              unsigned actual) {
     if (actual >= ProductVariables || !meta.live.test(actual) ||
@@ -2247,8 +2276,8 @@ class ExactKernel {
         if(certificate_)++certificate_->lowerGhostMaskProbes;
         const LowerGhostState first=decode_lower_ghost(r.lowerChildren.begin()->first);
         const std::uint32_t geometry=lg_.geometry(first);const auto& g=lg_.geometry(geometry);
-        if(r.childTerminal){const ProductMask&bad=target==Color::White?r.badWhiteSources:r.badBlackSources;
-            return bdd_.logical_not(bdd_.any(bad));}
+        if(r.childTerminal)
+            return lower_terminal_formula(bdd_,r,g,target,actual);
         std::uint32_t root=0;
         if(actual){const LowerGhostState child=decode_lower_ghost(*actual);
             if(child.visible)return bdd_.constant(target==Color::White?g.visibleOwner[child.ghost]:g.visibleObserver[child.ghost]);
@@ -3291,6 +3320,51 @@ void exact_small_domain_self_test(const std::string& scratchPrefix) {
         if(bits&1)mask.set(2);if(bits&2)mask.set(82);
         if(bdd.evaluate(inherited,mask)!=(bits!=0))
             throw std::runtime_error("cross-assignment lower Ghost image residual");}
+
+    // A captured-Jester transition may leave a terminal lower KGhost child.
+    // White knows the concrete Ghost square and receives that child's exact
+    // owner result; Black must still force the result over every source in the
+    // indistinguishable transition observation.
+    LowerGhostSidecar::Geometry terminalGeometry;
+    const auto setLower=[](LowerGhostSidecar::Mask&mask,unsigned square){
+        if(square<64)mask.low|=std::uint64_t{1}<<square;
+        else mask.high|=std::uint16_t(1u<<(square-64));};
+    LowerGhostState ownerWin{Role::GhostOwner,0,1,5,false};
+    LowerGhostState observerWin{Role::GhostOwner,0,1,6,false};
+    setLower(terminalGeometry.terminal,ownerWin.ghost);
+    setLower(terminalGeometry.terminal,observerWin.ghost);
+    setLower(terminalGeometry.terminalOwner,ownerWin.ghost);
+    setLower(terminalGeometry.terminalObserver,observerWin.ghost);
+    RuntimeRelation terminalRelation;terminalRelation.childTerminal=true;
+    ProductMask ownerSource,observerSource,terminalBelief;
+    ownerSource.set(0);observerSource.set(1);
+    terminalBelief.set(0);terminalBelief.set(1);
+    terminalRelation.lowerChildren.emplace(encode_lower_ghost(ownerWin),
+                                            ownerSource);
+    terminalRelation.lowerChildren.emplace(encode_lower_ghost(observerWin),
+                                            observerSource);
+    terminalRelation.badWhiteSources=observerSource;
+    terminalRelation.badBlackSources=ownerSource;
+    const auto ownerWhite=lower_terminal_formula(bdd,terminalRelation,
+      terminalGeometry,Color::White,encode_lower_ghost(ownerWin));
+    const auto ownerWhiteLoss=lower_terminal_formula(bdd,terminalRelation,
+      terminalGeometry,Color::White,encode_lower_ghost(observerWin));
+    const auto observerWhite=lower_terminal_formula(bdd,terminalRelation,
+      terminalGeometry,Color::White,std::nullopt);
+    const auto ownerBlack=lower_terminal_formula(bdd,terminalRelation,
+      terminalGeometry,Color::Black,encode_lower_ghost(observerWin));
+    const auto ownerBlackLoss=lower_terminal_formula(bdd,terminalRelation,
+      terminalGeometry,Color::Black,encode_lower_ghost(ownerWin));
+    const auto observerBlack=lower_terminal_formula(bdd,terminalRelation,
+      terminalGeometry,Color::Black,std::nullopt);
+    if(!bdd.evaluate(ownerWhite,terminalBelief)||
+       bdd.evaluate(ownerWhiteLoss,terminalBelief)||
+       bdd.evaluate(observerWhite,terminalBelief)||
+       !bdd.evaluate(ownerBlack,terminalBelief)||
+       bdd.evaluate(ownerBlackLoss,terminalBelief)||
+       bdd.evaluate(observerBlack,terminalBelief))
+        throw std::runtime_error(
+          "terminal lower Ghost owner/observer specialization residual");
 
     // Find a native hidden-Ghost witness where two different private White
     // actions have the identical complete Black observation. The exact
