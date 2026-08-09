@@ -125,8 +125,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         supported = info.supported_solver_inventory()
         unsupported = info.unsupported_solver_inventory()
         names = [filename for filename, _ in supported] + list(unsupported)
-        self.assertEqual(len(supported), 38)
-        self.assertEqual(len(unsupported), 7)
+        self.assertEqual(len(supported), 40)
+        self.assertEqual(len(unsupported), 5)
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(set(names), set(info.AFFECTED_FILENAMES))
         counts = {}
@@ -147,6 +147,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "bomb-ghost-opposing": 1,
             "fisherman-ghost-same": 1,
             "fisherman-ghost-opposing": 1,
+            "mage-ghost-same": 1,
+            "mage-ghost-opposing": 1,
             "ghost-pair": 1,
             "jester-ghost": 1,
         })
@@ -227,6 +229,10 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             self.assertEqual(info.solver_sidecar_dependencies(filename),
                              ("kghostk.ufgm",))
             self.assertEqual(info.solver_concrete_dependencies(filename), ())
+        for filename in ("kghostmagek.uftb", "kghostkmage.uftb"):
+            self.assertEqual(info.solver_sidecar_dependencies(filename),
+                             ("kghostk.ufgm",))
+            self.assertEqual(info.solver_concrete_dependencies(filename), ())
         self.assertEqual(len(info.concrete_tablebase_model_fingerprint(
             "kdragonk.uftb")), 64)
         self.assertEqual(len(info.concrete_tablebase_model_fingerprint(
@@ -248,6 +254,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "bomb-ghost-opposing": "kbombkghost.uftb",
             "fisherman-ghost-same": "kghostfishermank.uftb",
             "fisherman-ghost-opposing": "kghostkfisherman.uftb",
+            "mage-ghost-same": "kghostmagek.uftb",
+            "mage-ghost-opposing": "kghostkmage.uftb",
             "ghost-pair": "kghostghostk.uftb",
             "jester-ghost": "kjesterghostk.uftb",
         }
@@ -296,6 +304,10 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                                 before["fisherman-ghost-same"])
             self.assertNotEqual(after_ghost["fisherman-ghost-opposing"],
                                 before["fisherman-ghost-opposing"])
+            self.assertNotEqual(after_ghost["mage-ghost-same"],
+                                before["mage-ghost-same"])
+            self.assertNotEqual(after_ghost["mage-ghost-opposing"],
+                                before["mage-ghost-opposing"])
             for domain in ("primary-jester", "primary-jester-giant",
                            "double-jester", "joint-jester"):
                 self.assertEqual(after_ghost[domain], before[domain])
@@ -328,7 +340,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                            "dragon-ghost-same", "dragon-ghost-opposing",
                            "bomb-ghost-same", "bomb-ghost-opposing",
                            "fisherman-ghost-same",
-                           "fisherman-ghost-opposing"):
+                           "fisherman-ghost-opposing", "mage-ghost-same",
+                           "mage-ghost-opposing"):
                 self.assertEqual(after_probe[domain], after_shared[domain])
 
             pair_relative = info.GHOST_PAIR_SOLVER_SOURCES[-1].relative_to(ROOT)
@@ -365,12 +378,35 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                     self.assertEqual(after_reciprocal[domain],
                                      after_pair[domain])
 
+            mage_relative = info.MAGE_GHOST_SOLVER_SOURCES[-1].relative_to(ROOT)
+            mage_source = source_root / mage_relative
+            mage_source.write_bytes(mage_source.read_bytes() +
+                                    b"\n// mage-only drift\n")
+            after_mage = {
+                domain: info.solver_model_fingerprint(filename,
+                                                      root=source_root)
+                for domain, filename in representatives.items()
+            }
+            for domain in representatives:
+                if domain in {"mage-ghost-same", "mage-ghost-opposing"}:
+                    self.assertNotEqual(after_mage[domain],
+                                        after_reciprocal[domain])
+                else:
+                    self.assertEqual(after_mage[domain],
+                                     after_reciprocal[domain])
+
         self.assertEqual(
             info.solver_model_fingerprint("kbishopghostk.uftb"),
             "d59736789155c52d9b697f6e3f05c2fd0c565beba5d5cce49e3648719289da91")
         self.assertEqual(
             info.solver_model_fingerprint("kghostghostk.uftb"),
             "2280445ed5c6f024b0cd8d00fca45dd48e5359cd591d4e3d28ee0259f74ff286")
+        self.assertEqual(
+            info.solver_model_fingerprint("kghostmagek.uftb"),
+            "21e04690c947749e1bcc044513f22fc66a6882688e066cd5a2b500c74f52d205")
+        self.assertEqual(
+            info.solver_model_fingerprint("kghostkmage.uftb"),
+            "7071380483a55c200a6e33cb47819e234ef735070533b137483e16969ff2053c")
         self.assertNotEqual(
             info.double_jester_capture_model_fingerprint(),
             info.solver_model_fingerprint("kjesterjesterk.uftb"))

@@ -44,6 +44,9 @@ class InformationGenerationDriverTests(unittest.TestCase):
             fisherman_ghost_same_transitions=root / "fisherman-ghost-same",
             fisherman_ghost_opposing_transitions=
                 root / "fisherman-ghost-opposing",
+            mage_ghost_binary=root / "mage-ghost",
+            mage_ghost_same_transitions=root / "mage-ghost-same",
+            mage_ghost_opposing_transitions=root / "mage-ghost-opposing",
             ghost_pair_binary=root / "ghost-pair",
             ghost_pair_transitions=root / "ghost-pair-transitions",
             jester_ghost_binary=root / "jester-ghost",
@@ -415,6 +418,41 @@ class InformationGenerationDriverTests(unittest.TestCase):
             self.assertFalse(generate.arbitrary_is_current(
                 path, source, model, fisherman_orientation=0))
 
+    def test_arbitrary_reuse_authenticates_mage_ufmg_material(self):
+        source, model = "7" * 64, "8" * 64
+        payload = b"exact-mage-ghost-roots"
+        header = bytearray(1056)
+        header[:8] = b"UFMG1\0\0\0"
+        struct.pack_into("<14I", header, 8, 1, 1056, 0x01020304,
+                         generate.PIECE_TYPE_IDS["ghost"],
+                         generate.PIECE_TYPE_IDS["mage"], 0, 1,
+                         80, 75_915_840, 9, 392, 16, 4, 0)
+        struct.pack_into("<Q", header, 96, 1056)
+        struct.pack_into("<Q", header, 152, len(payload))
+        header[160:224] = source.encode()
+        header[288:352] = model.encode()
+        header[352:416] = (
+            generate.information.observation_model_fingerprint().encode())
+        header[416:480] = (
+            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        header[928:992] = hashlib.sha256(payload).hexdigest().encode()
+        semantics = b"fresh-maximal-public-view-v2:mage-ghost-generic"
+        header[992:992 + len(semantics)] = semantics
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "mage.ufmg"
+            path.write_bytes(header + payload)
+            self.assertTrue(generate.arbitrary_is_current(
+                path, source, model, mage_orientation=1))
+            with path.open("r+b") as stream:
+                stream.seek(24)
+                stream.write(struct.pack(
+                    "<I", generate.PIECE_TYPE_IDS["bomb"]))
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model, mage_orientation=1))
+            path.write_bytes(header + payload)
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model, mage_orientation=0))
+
     def test_checkpoint_merge_preserves_independent_completed_rows(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "partial.json"
@@ -593,6 +631,25 @@ class InformationGenerationDriverTests(unittest.TestCase):
                     str(args.overlays / f"{Path(filename).stem}.ufgf"),
                     fisherman)
                 self.assertNotIn("--lower-fisherman-table", fisherman)
+
+            for filename, orientation, transitions in (
+                    ("kghostmagek.uftb", "same",
+                     args.mage_ghost_same_transitions),
+                    ("kghostkmage.uftb", "opposing",
+                     args.mage_ghost_opposing_transitions)):
+                mage = generate.solver_command(
+                    args, records[filename], root / f"{filename}.ufiw",
+                    "1" * 64,
+                    generate.information.solver_model_fingerprint(filename))
+                self.assertEqual(mage[0], str(args.mage_ghost_binary))
+                self.assertEqual(mage[mage.index("--orientation") + 1],
+                                 orientation)
+                self.assertEqual(
+                    mage[mage.index("--transition-prefix") + 1],
+                    str(transitions))
+                self.assertIn(
+                    str(args.overlays / f"{Path(filename).stem}.ufmg"), mage)
+                self.assertNotIn("--lower-mage-table", mage)
 
     def test_primary_jester_secondary_routing_preserves_material_layout(self):
         records = generate._records()  # pylint: disable=protected-access
