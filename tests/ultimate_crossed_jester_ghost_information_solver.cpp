@@ -2,6 +2,8 @@
 
 #include "crossed_jester_ghost_information_solver.h"
 
+#include <algorithm>
+#include <array>
 #include <iostream>
 #include <stdexcept>
 
@@ -147,13 +149,16 @@ void solver_arena_test() {
     Solver::Arena externalArena;
     const Solver::NodeId externalId = externalArena.intern(
       external_fixture());
+    const Solver::NodeExpansion externalExpansion = externalArena.regenerate(
+      externalId, true);
     const Solver::TargetBellmanPlan external = externalArena.bellman_plan(
-      externalId, Color::Black, true);
+      externalId, Color::Black, false);
     require(external.certificate.externalReferences > 0 &&
              external.certificate.internalReferences > 0,
             "crossed external fixture did not retain mixed child domains");
     std::uint64_t lowerGhost = 0;
     std::uint64_t exactTerminal = 0;
+    std::uint64_t blackTerminalForces = 0;
     for (const Solver::ActionGatePlan& gate : external.gates)
         for (const Solver::ChildReference& child : gate.children) {
             if (child.domain == Model::ChildDomain::SameClass)
@@ -169,12 +174,46 @@ void solver_arena_test() {
                 if (child.domain == Model::ChildDomain::ExactTerminal)
                     require(child.child.winner.has_value(),
                             "crossed terminal reference lost its winner");
+                const Solver::ExternalForceQuery query =
+                  Solver::external_force_query(
+                    externalExpansion, Color::Black, child);
+                require(!query.belief.empty() &&
+                          query.domain == child.domain &&
+                          query.actual.domain == child.domain,
+                        "crossed external force query lost its inherited cell");
+                if (child.domain == Model::ChildDomain::ExactTerminal)
+                    blackTerminalForces +=
+                      Solver::exact_terminal_force(query);
             }
         }
     require(lowerGhost > 0 && exactTerminal > 0,
             "crossed Bellman plan lost lower-Ghost or terminal references");
+    require(blackTerminalForces == exactTerminal,
+            "crossed Black terminal force did not reproduce the public winner");
+    const Solver::TargetBellmanPlan externalWhite =
+      externalArena.bellman_plan(externalId, Color::White, false);
+    std::size_t largestWhiteLowerBelief = 0;
+    for (const Solver::AtomEquationPlan& equation : externalWhite.atoms)
+        for (const Solver::ChildReference& child : equation.children)
+            if (child.domain == Model::ChildDomain::LowerGhost) {
+                const Solver::ExternalForceQuery query =
+                  Solver::external_force_query(
+                    externalExpansion, Color::White, child);
+                largestWhiteLowerBelief = std::max(
+                  largestWhiteLowerBelief, query.belief.size());
+            }
+            else if (child.domain == Model::ChildDomain::ExactTerminal) {
+                const Solver::ExternalForceQuery query =
+                  Solver::external_force_query(
+                    externalExpansion, Color::White, child);
+                require(!Solver::exact_terminal_force(query),
+                        "crossed White force accepted a Black terminal win");
+            }
+    require(largestWhiteLowerBelief == 8,
+            "crossed lower-Ghost query freshened or singletonized the White belief");
     std::cout << "crossed_solver_external lower_ghost " << lowerGhost
               << " exact_terminal " << exactTerminal
+              << " inherited_white_belief " << largestWhiteLowerBelief
               << " unresolved_as_draw 0 residual 0\n";
 }
 

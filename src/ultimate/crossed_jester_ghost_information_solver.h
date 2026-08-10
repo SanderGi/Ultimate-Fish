@@ -99,6 +99,29 @@ struct TargetBellmanPlan {
     BellmanCertificate certificate;
 };
 
+struct ExternalForceQuery {
+    Color target = Color::White;
+    CrossedJesterGhostInformation::ChildDomain domain =
+      CrossedJesterGhostInformation::ChildDomain::Invalid;
+    std::uint32_t bucket = 0;
+    std::uint32_t childAtom = 0;
+    CrossedJesterGhostInformation::ClassifiedChild actual;
+    // Exact successor histories in the target player's inherited private
+    // knowledge cell. Duplicates are preserved here; a lower-domain adapter
+    // may project/deduplicate physical coordinates only after authenticating
+    // the complete history cell.
+    std::vector<CrossedJesterGhostInformation::ClassifiedChild> belief;
+};
+
+[[nodiscard]] ExternalForceQuery external_force_query(
+  const NodeExpansion& expansion, Color target,
+  const ChildReference& reference);
+
+// ExactTerminal is the only external domain resolved without a dependency.
+// The public observation must make its winner (or draw) uniform throughout
+// the inherited target cell; mixed outcomes are a certificate failure.
+[[nodiscard]] bool exact_terminal_force(const ExternalForceQuery& query);
+
 // Collision-free in-memory reference arena. Production graph capture will
 // stream the same portable keys to named scratch; this implementation is the
 // deterministic oracle used by focused tests and restore verification.

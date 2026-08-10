@@ -232,6 +232,84 @@ TargetBellmanPlan Arena::bellman_plan(NodeId id, Color target,
     return plan;
 }
 
+ExternalForceQuery external_force_query(const NodeExpansion& expansion,
+                                         Color target,
+                                         const ChildReference& reference) {
+    if (reference.domain == Model::ChildDomain::SameClass || reference.node ||
+        reference.domain == Model::ChildDomain::Invalid)
+        throw std::invalid_argument(
+          "crossed external query requires an unresolved certified child");
+    if (reference.bucket >= expansion.transitions.buckets.size())
+        throw std::out_of_range(
+          "crossed external query bucket is outside the expansion");
+    const Model::SuccessorBucket& bucket =
+      expansion.transitions.buckets[reference.bucket];
+    if (bucket.domain != reference.domain ||
+        reference.childAtom >= bucket.atoms.size() ||
+        bucket.atoms[reference.childAtom].child.domain != reference.domain ||
+        bucket.atoms[reference.childAtom].child.index != reference.child.index ||
+        bucket.atoms[reference.childAtom].child.winner !=
+          reference.child.winner)
+        throw std::runtime_error(
+          "crossed external query reference has a residual");
+
+    const Model::KnowledgePartition& partition = target == Color::White
+                                               ? bucket.white : bucket.black;
+    const Model::KnowledgeCell* knowledge = nullptr;
+    for (const Model::KnowledgeCell& cell : partition.cells)
+        if (std::binary_search(cell.begin(), cell.end(), reference.childAtom)) {
+            if (knowledge)
+                throw std::runtime_error(
+                  "crossed external atom appears in multiple knowledge cells");
+            knowledge = &cell;
+        }
+    if (!knowledge || knowledge->empty())
+        throw std::runtime_error(
+          "crossed external atom is absent from the target knowledge partition");
+
+    ExternalForceQuery query;
+    query.target = target;
+    query.domain = reference.domain;
+    query.bucket = reference.bucket;
+    query.childAtom = reference.childAtom;
+    query.actual = reference.child;
+    query.belief.reserve(knowledge->size());
+    for (const std::uint32_t childAtom : *knowledge) {
+        if (childAtom >= bucket.atoms.size() ||
+            bucket.atoms[childAtom].child.domain != reference.domain)
+            throw std::runtime_error(
+              "crossed external knowledge cell mixes child domains");
+        query.belief.push_back(bucket.atoms[childAtom].child);
+    }
+    if (std::none_of(query.belief.begin(), query.belief.end(),
+          [&](const Model::ClassifiedChild& child) {
+              return child.domain == query.actual.domain &&
+                     child.index == query.actual.index &&
+                     child.winner == query.actual.winner;
+          }))
+        throw std::runtime_error(
+          "crossed external actual is absent from its inherited belief");
+    return query;
+}
+
+bool exact_terminal_force(const ExternalForceQuery& query) {
+    if (query.domain != Model::ChildDomain::ExactTerminal ||
+        query.actual.domain != Model::ChildDomain::ExactTerminal ||
+        query.belief.empty())
+        throw std::invalid_argument(
+          "crossed terminal resolver requires a nonempty terminal query");
+    const std::optional<Color> winner = query.belief.front().winner;
+    for (const Model::ClassifiedChild& child : query.belief)
+        if (child.domain != Model::ChildDomain::ExactTerminal ||
+            child.winner != winner)
+            throw std::runtime_error(
+              "crossed terminal knowledge cell mixes public outcomes");
+    if (query.actual.winner != winner)
+        throw std::runtime_error(
+          "crossed terminal actual disagrees with its public outcome");
+    return winner && *winner == query.target;
+}
+
 const Model::KnowledgeState& Arena::node(NodeId id) const {
     if (id >= nodes_.size())
         throw std::out_of_range("crossed solver node is outside the arena");
