@@ -1,12 +1,16 @@
 /* Exact crossed Jester/Ghost solver-core regression. GPLv3+. */
 
 #include "crossed_jester_ghost_information_fixed_point.h"
+#include "crossed_jester_ghost_information_lower_oracle.h"
 
 #include <algorithm>
 #include <array>
+#include <cstdio>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <unistd.h>
 
 namespace Stockfish::Ultimate {
 namespace {
@@ -44,6 +48,139 @@ class CountingLowerOracle final : public Solver::LowerForceOracle {
     mutable std::uint64_t jesterQueries = 0;
     mutable std::uint64_t ghostQueries = 0;
 };
+
+void put_u32(std::ostream& output, std::uint32_t value) {
+    for (unsigned byte = 0; byte < 4; ++byte)
+        output.put(static_cast<char>(value >> (8 * byte)));
+}
+
+void put_u64(std::ostream& output, std::uint64_t value) {
+    put_u32(output, static_cast<std::uint32_t>(value));
+    put_u32(output, static_cast<std::uint32_t>(value >> 32));
+}
+
+void put_mask(std::ostream& output, std::uint64_t low,
+              std::uint16_t high = 0) {
+    put_u64(output, low);
+    output.put(static_cast<char>(high));
+    output.put(static_cast<char>(high >> 8));
+}
+
+void authenticated_lower_oracle_test() {
+    const std::string prefix = "/tmp/ultimate-crossed-lower-" +
+      std::to_string(static_cast<unsigned long>(::getpid()));
+    const std::string table = prefix + ".uftb";
+    const std::string overlay = prefix + ".ufiw";
+    const std::string ghost = prefix + ".ufgm";
+    const std::string jesterModel(64, 'a');
+    const std::string ghostSource(64, 'b');
+    const std::string ghostModel(64, 'c');
+    const std::string observation(64, 'd');
+    const std::uint32_t count = Model::LowerJesterStateCount;
+    {
+        std::ofstream output(table, std::ios::binary);
+        output.write("UFTB1\0\0\0", 8);
+        for (const std::uint32_t value : {4u,
+              static_cast<std::uint32_t>(PieceType::Jester), count, 0u, 1u,
+              (count + 3) / 4})
+            put_u32(output, value);
+        put_u64(output, 0);
+        std::vector<char> wins((count + 3) / 4, char(0x55));
+        output.write(wins.data(), wins.size());
+    }
+    const std::string tableSha = Solver::authenticated_file_sha256(table);
+    {
+        std::ofstream output(overlay, std::ios::binary);
+        output.write("UFIW2\0\0\0", 8);
+        for (const std::uint32_t value : {2u,
+              static_cast<std::uint32_t>(PieceType::Jester),
+              static_cast<std::uint32_t>(PieceType::Count),
+              static_cast<std::uint32_t>(Color::White), count, 1u})
+            put_u32(output, value);
+        output.write(tableSha.data(), tableSha.size());
+        output.write(jesterModel.data(), jesterModel.size());
+        std::vector<char> flags(count, char(7));
+        output.write(flags.data(), flags.size());
+    }
+    {
+        std::ofstream output(ghost, std::ios::binary);
+        output.write("UFGM1\0\0\0", 8);
+        for (const std::uint32_t value : {1u,320u,
+              static_cast<std::uint32_t>(PieceType::Ghost),
+              static_cast<std::uint32_t>(Color::White),8u,10u,80u,
+              Model::LowerGhostStateCount,2u,1u,1u,3u,9u,844u,18u,0u})
+            put_u32(output, value);
+        put_u64(output, 320);
+        put_u64(output, 320 + 3 * 9);
+        put_u64(output, 320 + 3 * 9 + 844);
+        output.write(ghostSource.data(), ghostSource.size());
+        output.write(ghostModel.data(), ghostModel.size());
+        output.write(observation.data(), observation.size());
+        std::array<char,32> semantics{};
+        std::memcpy(semantics.data(), "history-mask-public-view-v2", 27);
+        output.write(semantics.data(), semantics.size());
+        output.put(char(80)); put_u32(output,0); put_u32(output,0);
+        output.put(char(80)); put_u32(output,1); put_u32(output,1);
+        output.put(char(2)); put_u32(output,0); put_u32(output,1);
+        output.put(char(0));output.put(char(0));output.put(char(1));output.put(char(0));
+        put_mask(output, (std::uint64_t(1)<<2)|(std::uint64_t(1)<<3));
+        put_mask(output,0);put_mask(output,0);put_mask(output,0);
+        for (unsigned square = 0; square < 80; ++square)
+            put_u32(output, square == 2 || square == 3 ? 0u :
+                                                    std::uint32_t(-1));
+        for (unsigned square = 0; square < 80; ++square)
+            put_u32(output, square == 2 || square == 3 ? 2u : 0u);
+        std::array<char,80> visible{};
+        output.write(visible.data(), visible.size());
+        output.write(visible.data(), visible.size());
+        put_u32(output,0);
+        put_mask(output,(std::uint64_t(1)<<2)|(std::uint64_t(1)<<3));
+        put_u32(output,2);
+    }
+    Solver::LowerOracleOptions options;
+    options.jesterTable=table;
+    options.jesterTableSha256=tableSha;
+    options.jesterOverlay=overlay;
+    options.jesterOverlaySha256=Solver::authenticated_file_sha256(overlay);
+    options.jesterModelSha256=jesterModel;
+    options.ghostSidecar=ghost;
+    options.ghostSidecarSha256=Solver::authenticated_file_sha256(ghost);
+    options.ghostSourceSha256=ghostSource;
+    options.ghostModelSha256=ghostModel;
+    options.ghostObservationSha256=observation;
+    Solver::AuthenticatedLowerForceOracle oracle(options);
+    const Model::LowerJesterState first = Model::decode_lower_jester(0);
+    Model::LowerJesterState swapped = first;
+    std::swap(swapped.whiteKing, swapped.jester);
+    const std::uint32_t second = Model::encode_lower_jester(swapped);
+    Solver::LowerJesterForceQuery jester;
+    jester.target=Color::White;jester.targetOwnsJester=true;jester.actual=0;
+    jester.belief=Model::inherited_lower_jester_set({
+      {Model::ChildDomain::LowerJester,0,{}},
+      {Model::ChildDomain::LowerJester,second,{}}});
+    require(oracle.force(jester), "authenticated lower Jester pair failed");
+    Solver::LowerGhostForceQuery lowerGhost;
+    lowerGhost.target=Color::Black;
+    lowerGhost.targetRole=Model::Role::GhostOwner;
+    lowerGhost.actual={Model::Role::GhostOwner,0,1,2,false};
+    lowerGhost.belief={Model::Role::GhostOwner,0,1,false,{}};
+    lowerGhost.belief.locations.set(2);lowerGhost.belief.locations.set(3);
+    require(oracle.force(lowerGhost),
+            "authenticated lower Ghost arbitrary mask failed");
+    bool rejected=false;
+    lowerGhost.belief.locations.set(4);
+    try{(void)oracle.force(lowerGhost);}catch(const std::runtime_error&){rejected=true;}
+    require(rejected,"authenticated lower Ghost accepted a stratum-spanning mask");
+    const auto& certificate=oracle.certificate();
+    require(certificate.jesterStates==Model::LowerJesterStateCount&&
+              certificate.ghostGeometries==1&&certificate.ghostStrata==1&&
+              certificate.ghostNodes==3,
+            "authenticated lower oracle certificate mismatch");
+    std::remove(table.c_str());std::remove(overlay.c_str());std::remove(ghost.c_str());
+    std::cout << "crossed_lower_oracle jester_states " << certificate.jesterStates
+              << " ghost_nodes " << certificate.ghostNodes
+              << " arbitrary_mask 1 stratum_reject 1 residual 0\n";
+}
 
 void public_frame_codec_test() {
     require(Model::RawPublicFrameCount == 38'450'880,
@@ -626,6 +763,7 @@ void solver_arena_test() {
 int main() {
     try {
         Stockfish::Ultimate::public_frame_codec_test();
+        Stockfish::Ultimate::authenticated_lower_oracle_test();
         Stockfish::Ultimate::solver_arena_test();
         return 0;
     }
