@@ -6,7 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -29,6 +29,7 @@ class Artifact:
     s3_bucket: str
     s3_key: str
     version_id: str
+    preserved_copies: int = 1
 
 
 @dataclass(frozen=True)
@@ -75,7 +76,6 @@ def certificate_paths(root: Path) -> tuple[Path, ...]:
 
 def load_report(root: Path) -> Report:
     artifacts: list[Artifact] = []
-    filenames: set[str] = set()
     models: set[str] = set()
     inventories: set[str] = set()
     paths = certificate_paths(root)
@@ -107,10 +107,8 @@ def load_report(root: Path) -> Report:
                     entry.get("status") == "generated-preserved",
                     f"{path}: artifact was not generated and preserved")
             filename = entry.get("filename")
-            require(isinstance(filename, str) and filename.endswith(".uftb") and
-                    filename not in filenames,
-                    f"{path}: invalid or duplicate output filename")
-            filenames.add(filename)
+            require(isinstance(filename, str) and filename.endswith(".uftb"),
+                    f"{path}: invalid output filename")
             output = entry.get("output")
             archive = entry.get("archive")
             s3 = entry.get("s3")
@@ -163,7 +161,26 @@ def load_report(root: Path) -> Report:
             ))
     require(len(models) == 1, "certificates span multiple generator models")
     require(len(inventories) == 1, "certificates span multiple inventories")
-    ordered = tuple(sorted(artifacts, key=lambda artifact: artifact.filename))
+    grouped: dict[str, list[Artifact]] = {}
+    for artifact in artifacts:
+        grouped.setdefault(artifact.filename, []).append(artifact)
+    selected: list[Artifact] = []
+    for filename, copies in grouped.items():
+        reference = copies[0]
+        semantic = (
+            reference.states, reference.win, reference.loss, reference.draw,
+            reference.raw_bytes, reference.output_sha256,
+        )
+        require(all((copy.states, copy.win, copy.loss, copy.draw,
+                     copy.raw_bytes, copy.output_sha256) == semantic
+                    for copy in copies),
+                f"conflicting duplicate output for {filename}")
+        canonical = min(copies, key=lambda copy: (
+            copy.compressed_bytes, copy.archive_sha256, copy.s3_key,
+            copy.version_id,
+        ))
+        selected.append(replace(canonical, preserved_copies=len(copies)))
+    ordered = tuple(sorted(selected, key=lambda artifact: artifact.filename))
     return Report(
         schema="ultimate-concrete-certificate-summary-v1",
         generator_model_sha256=next(iter(models)),

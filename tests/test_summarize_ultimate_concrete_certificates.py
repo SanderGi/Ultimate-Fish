@@ -99,18 +99,39 @@ class CertificateSummaryTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "not versioned"):
                 SUMMARY.load_report(root)
 
-    def test_duplicate_filename_is_rejected(self) -> None:
+    def test_identical_duplicate_uses_smallest_verified_archive(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             self.write_certificate(root, certificate())
             duplicate = certificate()
             duplicate["completed"][0]["archive"]["sha256"] = "e" * 64
+            duplicate["completed"][0]["archive"]["bytes"] = 70
             duplicate["completed"][0]["s3"]["sha256"] = "e" * 64
+            duplicate["completed"][0]["s3"]["bytes"] = 70
             duplicate["completed"][0]["s3"]["key"] = (
                 "concrete/v2/sha256/" + "e" * 64 + "/duplicate.tar.zst"
             )
             self.write_certificate(root, duplicate)
-            with self.assertRaisesRegex(ValueError, "duplicate output filename"):
+            report = SUMMARY.load_report(root)
+            self.assertEqual(2, report.certificates)
+            self.assertEqual(1, len(report.artifacts))
+            self.assertEqual(2, report.artifacts[0].preserved_copies)
+            self.assertEqual(70, report.compressed_bytes)
+            self.assertEqual("e" * 64, report.artifacts[0].archive_sha256)
+
+    def test_conflicting_duplicate_filename_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.write_certificate(root, certificate())
+            duplicate = certificate()
+            duplicate["completed"][0]["output"]["sha256"] = "e" * 64
+            duplicate["completed"][0]["archive"]["sha256"] = "f" * 64
+            duplicate["completed"][0]["s3"]["sha256"] = "f" * 64
+            duplicate["completed"][0]["s3"]["key"] = (
+                "concrete/v2/sha256/" + "f" * 64 + "/duplicate.tar.zst"
+            )
+            self.write_certificate(root, duplicate)
+            with self.assertRaisesRegex(ValueError, "conflicting duplicate"):
                 SUMMARY.load_report(root)
 
 
