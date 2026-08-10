@@ -280,6 +280,11 @@ struct SolveCertificate {
     std::uint64_t arbitraryRootResidual = 0;
 };
 
+// Authenticates and loads every immutable solve input through the same native
+// codecs used by solve_exact, and applies the complete resource gates without
+// allocating solve arrays or writing scratch state.
+[[nodiscard]] ResourceEstimate verify_solve_inputs(
+  const SolveOptions& options);
 [[nodiscard]] SolveCertificate solve_exact(const SolveOptions& options);
 [[nodiscard]] SolveCertificate verify_exact_overlay(
   const SolveOptions& options);

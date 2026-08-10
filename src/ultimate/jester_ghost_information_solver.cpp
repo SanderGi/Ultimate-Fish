@@ -2293,12 +2293,13 @@ struct PackedTable {
 }
 
 [[nodiscard]] PackedTable load_concrete(const std::string& path,
-  std::uint32_t expectedCount, PieceType primary, PieceType secondary) {
+  std::uint32_t expectedCount, std::uint32_t expectedSubstates,
+  PieceType primary, PieceType secondary) {
     std::ifstream input(path, std::ios::binary);
     if (!input) throw std::runtime_error("cannot open concrete table " + path);
     input.seekg(0, std::ios::end);
     const std::streamoff end = input.tellg();
-    if (end < 56) throw std::runtime_error("concrete table is truncated");
+    if (end < 40) throw std::runtime_error("concrete table is truncated");
     PackedTable result;
     result.bytes.resize(static_cast<std::size_t>(end));
     input.seekg(0);
@@ -2308,12 +2309,17 @@ struct PackedTable {
     const std::uint32_t version = little_u32(result.bytes.data() + 8);
     result.count = little_u32(result.bytes.data() + 16);
     const std::uint32_t wdlBytes = little_u32(result.bytes.data() + 28);
-    if (version < 5 || version > 7 ||
+    if (version < 4 || version > 7 ||
         little_u32(result.bytes.data() + 12) != static_cast<std::uint32_t>(primary) ||
-        result.count != expectedCount || little_u32(result.bytes.data() + 24) != 1 ||
+        result.count != expectedCount ||
+        little_u32(result.bytes.data() + 24) != expectedSubstates ||
         wdlBytes != (expectedCount + 3) / 4 ||
-        little_u32(result.bytes.data() + 40) != static_cast<std::uint32_t>(secondary) ||
-        little_u32(result.bytes.data() + 44) != static_cast<std::uint32_t>(Color::White))
+        (version < 5 && secondary != PieceType::Count) ||
+        (version >= 5 &&
+          (little_u32(result.bytes.data() + 40) !=
+             static_cast<std::uint32_t>(secondary) ||
+           little_u32(result.bytes.data() + 44) !=
+             static_cast<std::uint32_t>(Color::White))))
         throw std::runtime_error("concrete table material/codec mismatch");
     result.plane = 40 + (version >= 5 ? 8 : 0) +
                    (version >= 6 ? 8 : 0) + (version >= 7 ? 8 : 0);
@@ -2333,7 +2339,7 @@ class LowerJesterOracle {
     LowerJesterOracle(const std::string& tablePath,
       const std::string& overlayPath, const std::string& expectedModel,
       const std::string& expectedOverlaySha)
-      : concrete_(load_concrete(tablePath, LowerJesterStateCount,
+      : concrete_(load_concrete(tablePath, LowerJesterStateCount, 1,
           PieceType::Jester, PieceType::Count)) {
         require_hash(expectedModel, "lower Jester model SHA-256");
         require_hash(expectedOverlaySha, "lower Jester overlay SHA-256");
@@ -2982,6 +2988,36 @@ void write_sequence(std::ofstream& output, std::uint64_t count,
 
 } // namespace
 
+ResourceEstimate verify_solve_inputs(const SolveOptions& options) {
+    require_hash(options.sourceSha256, "source SHA-256");
+    require_hash(options.modelSha256, "model SHA-256");
+    require_hash(options.observationSha256, "observation SHA-256");
+    if (options.scratchPrefix.empty())
+        throw std::invalid_argument("solve input preflight needs scratch path");
+    (void)authenticate_transition_database(options.transitionPrefix,
+      options.sourceSha256, options.modelSha256,
+      options.observationSha256, true);
+    const ResourceEstimate estimate = full_domain_preflight(
+      options.transitionPrefix, options.bdd, options.resources,
+      options.scratchPrefix);
+    const PackedTable concrete = load_concrete(options.sourceTable,
+      StateCount, 2, PieceType::Jester, PieceType::Ghost);
+    if (concrete.sha != options.sourceSha256)
+        throw std::runtime_error("source UFTB SHA mismatch");
+    const LowerJesterOracle lowerJester(options.lowerJesterTable,
+      options.lowerJesterOverlay, options.lowerJesterModelSha256,
+      options.lowerJesterOverlaySha256);
+    const LowerGhostSidecar lowerGhost(options);
+    const GhostInformationProbe independentLowerProbe(
+      options.lowerGhostSidecar, options.lowerGhostSourceSha256,
+      options.lowerGhostModelSha256,
+      options.lowerGhostObservationSha256);
+    (void)lowerJester;
+    (void)lowerGhost;
+    (void)independentLowerProbe;
+    return estimate;
+}
+
 SolveCertificate solve_exact(const SolveOptions& options) {
     require_hash(options.sourceSha256, "source SHA-256");
     require_hash(options.modelSha256, "model SHA-256");
@@ -3000,7 +3036,7 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     (void)full_domain_preflight(options.transitionPrefix, options.bdd,
       options.resources, options.scratchPrefix);
     const PackedTable concrete = load_concrete(options.sourceTable,
-      StateCount, PieceType::Jester, PieceType::Ghost);
+      StateCount, 2, PieceType::Jester, PieceType::Ghost);
     if (concrete.sha != options.sourceSha256)
         throw std::runtime_error("source UFTB SHA mismatch");
     LowerJesterOracle lowerJester(options.lowerJesterTable,
@@ -3664,7 +3700,7 @@ ArbitrarySidecarProbe::certificate() const {
 
 SolveCertificate verify_exact_overlay(const SolveOptions& options) {
     const PackedTable concrete = load_concrete(options.sourceTable,
-      StateCount, PieceType::Jester, PieceType::Ghost);
+      StateCount, 2, PieceType::Jester, PieceType::Ghost);
     std::ifstream input(options.outputOverlay, std::ios::binary);
     std::array<char, 160> header{};
     input.read(header.data(), header.size());
@@ -3749,6 +3785,44 @@ SolveCertificate verify_exact_overlay(const SolveOptions& options) {
 }
 
 void exact_small_domain_self_test(const std::string& scratchPrefix) {
+    const auto concreteFixture = [&](const std::string& path,
+      std::uint32_t version, std::uint32_t substates, PieceType secondary) {
+        std::ofstream output(path, std::ios::binary | std::ios::trunc);
+        output.write("UFTB1\0\0\0", 8);
+        for (const std::uint32_t value : {
+               version, static_cast<std::uint32_t>(PieceType::Jester), 4u,
+               0u, substates, 1u, 4u, 0u})
+            write_value(output, value);
+        if (version >= 5) {
+            write_value(output, static_cast<std::uint32_t>(secondary));
+            write_value(output, static_cast<std::uint32_t>(Color::White));
+        }
+        write_value(output, std::uint8_t{0x55});
+        output.close();
+        if (!output)
+            throw std::runtime_error("concrete codec fixture write failed");
+    };
+    const std::string legacy = scratchPrefix + ".lower-v4.uftb";
+    concreteFixture(legacy, 4, 1, PieceType::Count);
+    if (load_concrete(legacy, 4, 1, PieceType::Jester,
+                      PieceType::Count).plane != 40)
+        throw std::runtime_error("legacy lower Jester v4 codec residual");
+    const std::string source = scratchPrefix + ".source-v5.uftb";
+    concreteFixture(source, 5, 2, PieceType::Ghost);
+    if (load_concrete(source, 4, 2, PieceType::Jester,
+                      PieceType::Ghost).plane != 48)
+        throw std::runtime_error("Jester/Ghost visibility codec residual");
+    bool wrongSubstatesRejected = false;
+    try {
+        (void)load_concrete(source, 4, 1, PieceType::Jester,
+                            PieceType::Ghost);
+    }
+    catch (const std::exception&) {
+        wrongSubstatesRejected = true;
+    }
+    if (!wrongSubstatesRejected)
+        throw std::runtime_error("concrete substate mismatch was accepted");
+
     ProductRobdd::Limits limits;
     limits.maxUpperNodes=10'000; limits.upperUniqueSlots=32'768;
     limits.upperCacheEntries=20'000; limits.budgetBytes=1ULL<<30;

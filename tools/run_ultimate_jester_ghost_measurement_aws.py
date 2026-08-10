@@ -88,6 +88,31 @@ def compatibility_inputs(args: argparse.Namespace,
     return str(table["sha256"]), str(overlay["sha256"]), certificate_sha
 
 
+def authenticate_binary_compatibility(args: argparse.Namespace,
+                                      manifest: dict[str, Any]) -> str:
+    if args.binary_compatibility_certificate is None:
+        return ""
+    certificate = load_json(args.binary_compatibility_certificate)
+    digest = sha256_file(args.binary_compatibility_certificate)
+    if (digest != args.binary_compatibility_certificate_sha256 or
+            certificate.get("schema") !=
+            "ultimate-jester-ghost-measurement-binary-compatibility-v1" or
+            certificate.get("status") !=
+            "codec-loader-only-transition-semantics-unchanged" or
+            certificate.get("new_binary", {}).get("sha256") !=
+            args.binary_sha256 or
+            certificate.get("source_sha256") != manifest["source_sha256"] or
+            certificate.get("semantic_transition_model_sha256") !=
+            manifest["model_sha256"] or
+            certificate.get("observation_sha256") !=
+            manifest["observation_sha256"] or
+            certificate.get("residuals") != {
+                "bundle": 0, "loader_patch": 0, "build": 0,
+                "selftest": 0, "transition_semantics": 0}):
+        raise ValueError("measurement binary compatibility mismatch")
+    return digest
+
+
 def write_exclusive_json(path: Path, value: object) -> None:
     with path.open("x", encoding="utf-8") as stream:
         json.dump(value, stream, indent=2, sort_keys=True)
@@ -152,6 +177,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     if (not args.binary.is_file() or
             sha256_file(args.binary) != args.binary_sha256):
         raise ValueError("measurement binary SHA-256 mismatch")
+    binary_compatibility_sha = authenticate_binary_compatibility(
+        args, manifest)
     for suffix, record in merge_evidence["components"].items():
         path = args.transition_prefix.parent / suffix
         if (not path.is_file() or path.stat().st_size != record["bytes"] or
@@ -223,6 +250,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "observation_sha256": manifest["observation_sha256"],
         "runner_sha256": args.runner_sha256,
         "binary_sha256": args.binary_sha256,
+        "binary_compatibility_certificate_sha256":
+            binary_compatibility_sha,
         "merge_evidence_sha256": args.merge_evidence_sha256,
         "lower_compatibility_certificate_sha256": compatibility_sha,
         "lower_jester_table_sha256": lower_table_sha,
@@ -252,6 +281,9 @@ def main() -> None:
     parser.add_argument("--merge-evidence-sha256", required=True)
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--binary-sha256", required=True)
+    parser.add_argument("--binary-compatibility-certificate", type=Path)
+    parser.add_argument("--binary-compatibility-certificate-sha256",
+                        default="")
     parser.add_argument("--transition-prefix", type=Path, required=True)
     parser.add_argument("--source-table", type=Path, required=True)
     parser.add_argument("--lower-jester-table", type=Path, required=True)

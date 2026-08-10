@@ -30,7 +30,8 @@ constexpr char ObservationSha[] =
 
 struct Arguments {
     enum class Command { None, SelfTest, Compile, Merge, VerifyTransitions,
-                         Measure, Solve, VerifyOverlay, VerifyArbitrary };
+                         Preflight, Measure, Solve, VerifyOverlay,
+                         VerifyArbitrary };
     Command command = Command::None;
     std::string transitionPrefix;
     std::vector<std::string> shards;
@@ -95,6 +96,7 @@ Arguments parse(int count, char** values) {
         else if (option == "--compile-transitions") command(out, Arguments::Command::Compile);
         else if (option == "--merge-transitions") command(out, Arguments::Command::Merge);
         else if (option == "--verify-transitions") command(out, Arguments::Command::VerifyTransitions);
+        else if (option == "--verify-solve-inputs") command(out, Arguments::Command::Preflight);
         else if (option == "--solve") command(out, Arguments::Command::Solve);
         else if (option == "--verify-overlay") command(out, Arguments::Command::VerifyOverlay);
         else if (option == "--verify-arbitrary") command(out, Arguments::Command::VerifyArbitrary);
@@ -134,11 +136,12 @@ Arguments parse(int count, char** values) {
         throw std::invalid_argument("--model-sha256 is required");
     if ((out.command==Arguments::Command::Compile||out.command==Arguments::Command::Merge||
          out.command==Arguments::Command::VerifyTransitions||out.command==Arguments::Command::Measure||
-         out.command==Arguments::Command::Solve) && out.transitionPrefix.empty())
+         out.command==Arguments::Command::Solve||out.command==Arguments::Command::Preflight) && out.transitionPrefix.empty())
         throw std::invalid_argument("--transition-prefix is required");
     if (out.command==Arguments::Command::Compile&&!out.rawCount) throw std::invalid_argument("--raw-count must be positive");
     if (out.command==Arguments::Command::Merge&&out.shards.empty()) throw std::invalid_argument("--shard is required");
     if ((out.command==Arguments::Command::Solve||out.command==Arguments::Command::Measure||
+         out.command==Arguments::Command::Preflight||
          out.command==Arguments::Command::VerifyArbitrary) &&
         (out.lowerJesterOverlay.empty()||out.lowerJesterOverlaySha.empty()))
         throw std::invalid_argument("lower Jester overlay path and SHA are required");
@@ -192,6 +195,17 @@ void print_solve(const SolveCertificate& c) {
       <<" arbitrary_root_residual "<<c.arbitraryRootResidual<<'\n';
 }
 
+void print_preflight(const ResourceEstimate& estimate) {
+    std::cout << "jester_ghost_solve_input_preflight canonical "
+      << estimate.canonicalGeometries << " worlds " << estimate.productWorlds
+      << " transition_bytes " << estimate.transitionBytes
+      << " peak_disk_bytes " << estimate.peakDiskBytes
+      << " peak_resident_bytes " << estimate.peakResidentBytes
+      << " admitted " << estimate.admitted
+      << " source_codec_residual 0 lower_jester_residual 0"
+      << " lower_ghost_residual 0 transition_residual 0\n";
+}
+
 } // namespace
 } // namespace Stockfish::Ultimate::JesterGhostInformation
 
@@ -202,6 +216,7 @@ int main(int argc,char**argv){
       case Arguments::Command::Compile: print_transition(compile_transition_database({a.transitionPrefix,a.sourceSha,a.modelSha,a.observationSha,a.rawBegin,a.rawCount,true}));break;
       case Arguments::Command::Merge: print_transition(merge_transition_databases(a.shards,a.transitionPrefix,a.sourceSha,a.modelSha,a.observationSha,a.requireComplete));break;
       case Arguments::Command::VerifyTransitions: print_transition(verify_transition_database(a.transitionPrefix,a.sourceSha,a.modelSha,a.observationSha,a.requireComplete));break;
+      case Arguments::Command::Preflight: print_preflight(verify_solve_inputs(solve_options(a)));break;
       case Arguments::Command::Measure: case Arguments::Command::Solve: print_solve(solve_exact(solve_options(a)));break;
       case Arguments::Command::VerifyOverlay: print_solve(verify_exact_overlay(solve_options(a)));break;
       case Arguments::Command::VerifyArbitrary:{const auto c=verify_arbitrary_sidecar(a.arbitrary,solve_options(a));
