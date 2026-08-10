@@ -93,6 +93,7 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cp
 	ultimate-jester-ghost-information-tablebase \
 	ultimate-jester-ghost-information-test \
 	ultimate-jester-ghost-information-self-test \
+	ultimate-reciprocal-jester-ghost-information-model-test \
 	ultimate-external-robdd-test \
 	ultimate-joint-jester-information-tablebase \
 	ultimate-joint-jester-information-preserver \
@@ -506,6 +507,15 @@ ultimate-belief-benchmark:
 		../tools/benchmark_ultimate_beliefs.cpp ultimate/position.cpp \
 		ultimate/search.cpp ultimate/tablebase_probe.cpp ultimate/information.cpp \
 		ultimate/nnue.cpp -o ultimate_belief_benchmark
+
+ultimate-reciprocal-jester-ghost-information-model-test:
+	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror -Iultimate \
+		../tests/ultimate_reciprocal_jester_ghost_information_model.cpp \
+		ultimate/reciprocal_jester_ghost_information_model.cpp \
+		ultimate/jester_ghost_information_model.cpp ultimate/position.cpp \
+		ultimate/information.cpp ultimate/nnue.cpp \
+		-o ultimate_reciprocal_jester_ghost_information_model_test
+	./ultimate_reciprocal_jester_ghost_information_model_test
 
 VPATH = syzygy:nnue:nnue/features
 
