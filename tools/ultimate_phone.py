@@ -2150,12 +2150,23 @@ class EngineClient:
         self.send("belief clear")
         if self.until(("beliefok", "info string")) != "beliefok":
             raise RuntimeError("engine could not clear its belief set")
+        # Phone play is normalized so the local army is always White. Install
+        # that disclosure before adding worlds, allowing the shared engine to
+        # validate one exact public view and the mover-private decision cell.
+        self.send("belief observer white 0")
+        disclosure = self.until(("beliefok", "info string invalid belief"))
+        if disclosure != "beliefok":
+            raise RuntimeError(f"engine rejected belief disclosure: {disclosure}")
         for position in positions:
             self.send("belief add " + position)
             result = self.until(("beliefok", "info string invalid belief"))
             if result != "beliefok":
                 raise ValueError(f"engine rejected belief: {result}\n{position}")
-        limits = ["belief", "go", "depth", str(depth)]
+        # The Android bridge does not yet identify which highlighted legal-dot
+        # cell the app disclosed. Until it does, ignore that extra private
+        # information conservatively: require one root action across all exact
+        # cells instead of sampling a cell or leaking a hidden world.
+        limits = ["belief", "go", "conservative", "depth", str(depth)]
         if nodes:
             limits += ["nodes", str(nodes)]
         if movetime_ms:
@@ -2163,8 +2174,11 @@ class EngineClient:
         if draw_moves:
             limits += ["drawmoves", *draw_moves]
         self.send(" ".join(limits))
-        info = self.until("info depth ")
+        info = self.until(("info depth ",
+                           "info string invalid belief decision cell"))
         best = self.until("bestmove ").split(" ", 1)[1]
+        if info.startswith("info string invalid belief decision cell"):
+            raise RuntimeError(info.removeprefix("info string "))
         score_match = re.search(r" score (cp|mate) (-?\d+)", info)
         score = int(score_match.group(2)) if score_match else 0
         if score_match and score_match.group(1) == "mate":
@@ -2507,7 +2521,7 @@ def giant_anchors(footprint_squares: Iterable[str]) -> list[str]:
 
 
 class BeliefSet:
-    def __init__(self, engine: EngineClient, positions: Iterable[str], limit: int = 64):
+    def __init__(self, engine: EngineClient, positions: Iterable[str], limit: int = 0):
         self.engine = engine
         self.limit = limit
         self.positions = self._bounded(positions)
@@ -2516,8 +2530,12 @@ class BeliefSet:
 
     def _bounded(self, positions: Iterable[str]) -> list[str]:
         unique = sorted(set(positions))
+        if self.limit <= 0:
+            return unique
         if len(unique) <= self.limit:
             return unique
+        if self.limit == 1:
+            return unique[:1]
         # Evenly retain the lexicographic range instead of biasing toward the
         # first files when the initial hidden-Ghost combination count is large.
         return [unique[round(i * (len(unique) - 1) / (self.limit - 1))]
@@ -2533,10 +2551,11 @@ class BeliefSet:
     def apply_known(self, move: str) -> None:
         next_positions = []
         for position in self.positions:
-            if move in self.engine.legal_moves(position):
-                next_positions.append(self.engine.apply(position, move))
-        if not next_positions:
-            raise RuntimeError(f"known move is inconsistent with every belief: {move}")
+            if move not in self.engine.legal_moves(position):
+                raise RuntimeError(
+                    f"known move is not legal in every retained belief: {move}"
+                )
+            next_positions.append(self.engine.apply(position, move))
         self.positions = self._bounded(next_positions)
 
     @staticmethod
@@ -3292,7 +3311,7 @@ def ranked_public_roster(
 
 def initial_beliefs(own_team: Sequence[tuple[str, str]],
                     probed_enemy: Sequence[tuple[str, str]],
-                    enemy_material: int | None, limit: int = 64,
+                    enemy_material: int | None, limit: int = 0,
                     side: str = "w",
                     piece_states: dict[
                         tuple[str, str], ModelPieceRecord
@@ -3403,9 +3422,9 @@ def initial_beliefs(own_team: Sequence[tuple[str, str]],
                     )
                 upn = ";".join(fields)
             positions.append(upn)
-            if len(positions) >= limit * 8:
+            if limit > 0 and len(positions) >= limit * 8:
                 break
-        if len(positions) >= limit * 8:
+        if limit > 0 and len(positions) >= limit * 8:
             break
         # itertools iterators are exhausted; rebuild for the next royal branch.
         combinations = itertools.combinations(ghost_squares, ghost_count)
@@ -3490,7 +3509,7 @@ def infer_online_local_team(
 def sanitize_online_start(
     state: OnlineStartState,
     local_team: int,
-    belief_limit: int = 64,
+    belief_limit: int = 0,
     side: str = "w",
 ) -> tuple[list[tuple[str, str]], list[str]]:
     """Apply the public-information boundary before creating engine UPN.
@@ -8609,7 +8628,11 @@ def main() -> None:
         help=("hard iterative-deepening budget per move; omitted or zero is "
               "unlimited"),
     )
-    parser.add_argument("--belief-limit", type=int, default=64)
+    parser.add_argument(
+        "--belief-limit", type=int, default=0,
+        help=("maximum retained public worlds; 0 (the default) is exact and "
+              "uncapped; a positive value is an explicit diagnostic approximation"),
+    )
     parser.add_argument("--enemy-material", type=int,
                         help="public red material total; enables hidden-Ghost beliefs")
     parser.add_argument("--position", action="append", default=[],

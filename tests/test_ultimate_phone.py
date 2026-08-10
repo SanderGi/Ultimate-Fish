@@ -3280,6 +3280,41 @@ class ControllerActionTests(unittest.TestCase):
 
 
 class BeliefConstructionTests(unittest.TestCase):
+    def test_default_belief_set_is_exact_beyond_former_phone_cap(self):
+        positions = [f"world-{index:03d}" for index in range(71)]
+        beliefs = MODULE.BeliefSet(object(), reversed(positions + positions[:3]))
+        self.assertEqual(positions, beliefs.positions)
+
+        sampled = MODULE.BeliefSet(object(), positions, limit=64)
+        self.assertEqual(64, len(sampled.positions))
+
+    def test_known_move_must_be_legal_in_every_retained_world(self):
+        class LegalEngine:
+            @staticmethod
+            def legal_moves(position):
+                return ["a1-a2"] if position == "compatible" else []
+
+            @staticmethod
+            def apply(position, _move):
+                return position + "-after"
+
+        beliefs = MODULE.BeliefSet(
+            LegalEngine(), ("compatible", "incompatible")
+        )
+        with self.assertRaisesRegex(RuntimeError, "not legal in every"):
+            beliefs.apply_known("a1-a2")
+        self.assertEqual(["compatible", "incompatible"], beliefs.positions)
+
+    def test_default_initial_beliefs_enumerate_every_hidden_ghost_pair(self):
+        positions = MODULE.initial_beliefs(
+            (("king", "a1"),), (("king", "a10"),), 30
+        )
+        # One occupied deployment square leaves 23 legal hidden-Ghost cells.
+        self.assertEqual(253, len(positions))
+        self.assertEqual(253, len(set(positions)))
+        self.assertTrue(all(position.count(";ghost,b,") == 2
+                            for position in positions))
+
     def test_bomb_resolution_is_derived_from_engine_transition(self):
         before = (
             "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"

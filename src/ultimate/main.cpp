@@ -225,11 +225,23 @@ int main() {
             continue;
         }
         if (line == "belief go" || line.rfind("belief go ", 0) == 0) {
+            const bool conservativeMergedCells =
+              line == "belief go conservative" ||
+              line.rfind("belief go conservative ", 0) == 0;
             std::istringstream input(line);
             std::string token;
             input >> token >> token;
+            if (conservativeMergedCells)
+                input >> token;
             const SearchLimits limits = parse_limits(input, nullptr, configuredMoveOverhead);
-            const BeliefSearchResult result = search.think_beliefs(beliefs, limits);
+            // A controller which has not yet mapped the app's highlighted
+            // legal dots to an exact decision cell may deliberately ignore
+            // that private information. Searching the union is conservative:
+            // one move must be legal across every retained cell, and no world
+            // is sampled or discarded. Ordinary `belief go` remains strict.
+            const BeliefSearchResult result = conservativeMergedCells
+              ? search.think_beliefs(beliefs.positions(), limits)
+              : search.think_beliefs(beliefs, limits);
             if (!result.validInformationCell) {
                 std::cout << "info string invalid belief decision cell spans "
                           << beliefs.decision_partitions()
@@ -244,6 +256,9 @@ int main() {
                       << " common " << result.commonMoves << " candidates " << result.candidates
                       << " beliefmode root-only historyplies "
                       << result.historyPreservingPlies
+                      << " decisionmode "
+                      << (conservativeMergedCells
+                            ? "merged-conservative" : "exact-cell")
                       << " decisionpartitions " << beliefs.decision_partitions()
                       << " beliefworst " << result.worstScore
                       << " beliefmean " << result.meanScore << " pv";
