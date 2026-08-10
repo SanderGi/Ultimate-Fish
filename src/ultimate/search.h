@@ -173,13 +173,7 @@ class Search {
     SearchResult think(Position& position, const SearchLimits& limits);
     BeliefSearchResult think_beliefs(const PublicBeliefState& beliefs,
                                      const SearchLimits& limits,
-                                     std::size_t maximumDeepBeliefs = 8,
-                                     std::size_t maximumCandidates = 8,
                                      bool legalDotObservations = true);
-    BeliefSearchResult think_beliefs(const std::vector<Position>& beliefs,
-                                     const SearchLimits& limits,
-                                     std::size_t maximumDeepBeliefs = 8,
-                                     std::size_t maximumCandidates = 8);
     void clear();
 
    private:

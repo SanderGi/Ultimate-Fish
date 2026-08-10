@@ -2192,9 +2192,13 @@ void test_native_information_set_search() {
     };
     Position adjacentOne = winningFixture(Position::square_from_name("g9"));
     Position adjacentTwo = winningFixture(Position::square_from_name("g10"));
+    PublicBeliefState adjacentBeliefs({Color::White, false});
+    expect(adjacentBeliefs.add(adjacentOne, &beliefError) &&
+             adjacentBeliefs.add(adjacentTwo, &beliefError),
+           "forced-win worlds form one exact public belief: " + beliefError);
     Search forcedWin(2);
     const BeliefSearchResult mate = forcedWin.think_beliefs(
-      {adjacentOne, adjacentTwo}, limits);
+      adjacentBeliefs, limits, false);
     expect(mate.bestMove && *mate.bestMove == "h9-h10" && mate.score >= 29900,
            "Ghost uncertainty never hard-filters a high-value move that captures the real king");
 }
@@ -2302,7 +2306,7 @@ void test_public_belief_state_core() {
     Search mergedConservative(1);
     const BeliefSearchResult mergedConservativeResult =
       mergedConservative.think_beliefs(
-        forward, benchmarkLimits, 8, 8, false);
+        forward, benchmarkLimits, false);
     expect(mergedConservativeResult.validInformationCell &&
              mergedConservativeResult.bestMove &&
              mergedConservativeResult.beliefs == worlds.size() &&
@@ -2431,11 +2435,11 @@ void test_public_belief_state_core() {
     splitLimits.rootMoves = {*forcedSplit};
     Search exactHistory(1);
     const BeliefSearchResult exactHistoryResult = exactHistory.think_beliefs(
-      blackToMove, splitLimits, 8, 8, true);
+      blackToMove, splitLimits, true);
     Search conservativeHistory(1);
     const BeliefSearchResult conservativeHistoryResult =
       conservativeHistory.think_beliefs(
-        blackToMove, splitLimits, 8, 8, false);
+        blackToMove, splitLimits, false);
     expect(exactHistoryResult.bestMove &&
              *exactHistoryResult.bestMove == splitAction &&
              exactHistoryResult.historyPreservingPlies == 2 &&

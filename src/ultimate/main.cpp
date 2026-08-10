@@ -259,7 +259,7 @@ int main() {
             // one move must be legal across every retained cell, and no world
             // is sampled or discarded. Ordinary `belief go` remains strict.
             const BeliefSearchResult result = search.think_beliefs(
-              beliefs, limits, 8, 8, !conservativeMergedCells);
+              beliefs, limits, !conservativeMergedCells);
             if (!result.validInformationCell) {
                 std::cout << "info string invalid belief decision cell spans "
                           << beliefs.decision_partitions()
