@@ -20,6 +20,30 @@ retains complete Ultimate King-safety and special-interaction legality while
 validating each ordered pseudo-legal action on the same child that search will
 visit. These are deterministic development measurements, not an Elo claim.
 
+## Exact public-belief search
+
+`tools/benchmark_ultimate_beliefs.cpp` plays a color-balanced hidden-Ghost trap
+from both compatible concrete worlds. The production player retains the full
+public belief and branches on every public/private observation; its deliberately
+weak opponent searches one canonical determinization. At depth 3 and 3,000
+nodes per move, exact belief search scores **3.0/4.0** (2 wins, 2 draws) against
+the determinization baseline's **2.0/4.0** (2 wins, 2 losses). The result is
+color symmetric and the exact player chooses the robust `d4-d7`/`d7-d4`
+action instead of the unsafe determinized `d4-e5`/`d7-e6` action.
+
+Reusing the previous completed belief score as an aspiration window does not
+change any world, action, legal-dot cell, or successor-observation quantifier;
+a failed probe is repeated at full width. It preserves the 3.0/4.0 depth-3
+result while reducing exact focal nodes from 49,129 to 47,774 (**2.76%**). At
+depth 4 and 12,000 nodes per move, it preserves the same four draws while
+reducing exact focal nodes from 186,715 to 181,298 (**2.90%**). These small
+matches are deterministic regression and pruning evidence, not an Elo claim.
+
+Rejected belief-search experiments are kept out of production. Ordering the
+opponent's observation buckets from the previous PV increased nodes by 5.7%.
+A tactical action-ordering trial reduced the measured tree but changed the
+depth-4 color-balanced score from 2.5 to 2.0 points, so it was reverted.
+
 ## Recovered Unranked loss fixture
 
 The exact 99-vs-100 opening from the two failed Unranked games is now a fixed

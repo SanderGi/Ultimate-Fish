@@ -1250,12 +1250,23 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
     };
 
     const int maxDepth = std::clamp(limits.depth, 1, MaxPly - 2);
+    int previousScore = 0;
     for (int depth = 1; depth <= maxDepth; ++depth) {
         currentIterationDepth = depth;
         BeliefPv pv;
-        const int score = solve(beliefs, depth, -Infinity, Infinity, 0, pv);
+        // A failed narrow probe is always repeated with the full window, so
+        // aspiration changes pruning only, never belief/observation semantics.
+        const bool aspirate = depth >= 3;
+        int alpha = aspirate ? std::max(-Infinity, previousScore - 120) : -Infinity;
+        int beta = aspirate ? std::min(Infinity, previousScore + 120) : Infinity;
+        int score = solve(beliefs, depth, alpha, beta, 0, pv);
+        if (!stop_ && (score <= alpha || score >= beta)) {
+            pv.clear();
+            score = solve(beliefs, depth, -Infinity, Infinity, 0, pv);
+        }
         if (stop_)
             break;
+        previousScore = score;
         result.score = result.worstScore = result.meanScore = score;
         result.completedDepth = depth;
         result.historyPreservingPlies = depth;
