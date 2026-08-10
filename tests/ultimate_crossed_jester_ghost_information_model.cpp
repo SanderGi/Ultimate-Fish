@@ -247,6 +247,52 @@ void perfect_recall_convergence_test() {
               << " physical_worlds 2 white_cells 2 black_cells 2 residual 0\n";
 }
 
+void complete_transition_enumeration_test() {
+    const Model::KnowledgeState source = four_world_state(Color::Black);
+    const Model::CompleteTransitions generated =
+      Model::enumerate_complete_transitions(source);
+    const Model::KnowledgePartition& mover = generated.decisionState.black;
+    expect(!generated.actions.empty() && !generated.buckets.empty(),
+           "complete crossed transition enumeration is empty");
+    std::uint64_t expectedOutcomes = 0;
+    std::uint64_t actualOutcomes = 0;
+    for (const Model::CellActionOutcomes& action : generated.actions) {
+        expect(action.choice.cell < mover.cells.size(),
+               "complete crossed action references an invalid private cell");
+        expectedOutcomes += mover.cells[action.choice.cell].size();
+        actualOutcomes += action.outcomes.size();
+        std::vector<std::uint32_t> sources;
+        for (const Model::AtomOutcome& outcome : action.outcomes) {
+            expect(outcome.bucket < generated.buckets.size() &&
+                     outcome.childAtom <
+                       generated.buckets[outcome.bucket].atoms.size(),
+                   "complete crossed outcome references an invalid child");
+            expect(generated.buckets[outcome.bucket]
+                     .atoms[outcome.childAtom].sourceAtom == outcome.sourceAtom,
+                   "complete crossed outcome/child mapping has a residual");
+            sources.push_back(outcome.sourceAtom);
+        }
+        std::sort(sources.begin(), sources.end());
+        expect(sources == mover.cells[action.choice.cell],
+               "complete crossed action does not cover its exact cell");
+    }
+    expect(expectedOutcomes == actualOutcomes,
+           "complete crossed transition outcome conservation residual");
+    for (const Model::SuccessorBucket& bucket : generated.buckets) {
+        expect(!bucket.atoms.empty(),
+               "complete crossed transition produced an empty bucket");
+        if (bucket.domain == Model::ChildDomain::SameClass) {
+            expect(bucket.sameClass.has_value(),
+                   "same-class complete bucket has no knowledge state");
+            Model::validate_knowledge_state(*bucket.sameClass);
+        }
+    }
+    std::cout << "crossed_complete_transitions actions "
+              << generated.actions.size() << " observations "
+              << generated.buckets.size() << " outcomes " << actualOutcomes
+              << " residual 0\n";
+}
+
 void folded_physical_successor_test() {
     Model::KnowledgeState state;
     state.frame = {Color::Black, square("d10"), square("b2"),
@@ -468,6 +514,7 @@ int main() {
         fresh_partition_test();
         decision_refinement_test();
         perfect_recall_convergence_test();
+        complete_transition_enumeration_test();
         folded_physical_successor_test();
         symmetry_and_action_test();
         lower_projection_and_terminal_test();

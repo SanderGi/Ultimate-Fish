@@ -943,6 +943,126 @@ LowerGhostImage inherited_lower_ghost_image(
     return result;
 }
 
+CompleteTransitions enumerate_complete_transitions(
+  const KnowledgeState& state) {
+    CompleteTransitions result;
+    result.decisionState = refine_mover_decisions(state);
+    const KnowledgeState& decision = result.decisionState;
+    const Color mover = decision.frame.side;
+    const KnowledgePartition& moverPartition = partition_for(
+      decision, mover);
+
+    struct Candidate {
+        std::uint32_t action = 0;
+        std::string publicObservation;
+        TransitionAtom transition;
+    };
+    std::vector<Candidate> candidates;
+    for (std::uint32_t cell = 0; cell < moverPartition.cells.size(); ++cell) {
+        for (const ActionKey& action : uniform_actions(decision, cell)) {
+            const std::uint32_t actionIndex =
+              static_cast<std::uint32_t>(result.actions.size());
+            result.actions.push_back({{cell, action}, {}});
+            for (const std::uint32_t atom : moverPartition.cells[cell]) {
+                const Position position = make_position(
+                  decision.frame, decision.atoms[atom].world);
+                const std::optional<Move> move = locate_action(
+                  position, action);
+                if (!move)
+                    throw std::runtime_error(
+                      "uniform crossed action disappeared in one history");
+                Position child = position;
+                Undo undo;
+                if (!child.make_move(*move, undo))
+                    throw std::runtime_error(
+                      "uniform crossed transition failed to apply");
+                const ClassifiedChild classified = classify_child(child);
+                if (classified.domain == ChildDomain::Invalid)
+                    throw std::runtime_error(
+                      "complete crossed transition left the certified domains");
+                std::optional<FramedWorld> physical;
+                if (classified.domain == ChildDomain::SameClass) {
+                    physical = same_class_product(child);
+                    if (!physical)
+                        throw std::runtime_error(
+                          "same-class crossed child lost physical coordinate");
+                }
+                candidates.push_back({actionIndex,
+                  common_transition_key(position, *move, child),
+                  {atom, decision.atoms[atom].world, classified, physical,
+                   transition_observation_key(
+                     position, *move, child, {Color::White, false}),
+                   transition_observation_key(
+                     position, *move, child, {Color::Black, false})}});
+            }
+        }
+    }
+
+    std::map<std::string, std::vector<std::uint32_t>> grouped;
+    for (std::uint32_t candidate = 0; candidate < candidates.size(); ++candidate)
+        grouped[candidates[candidate].publicObservation].push_back(candidate);
+
+    for (const auto& [observation, members] : grouped) {
+        const std::uint32_t bucketIndex =
+          static_cast<std::uint32_t>(result.buckets.size());
+        SuccessorBucket bucket;
+        bucket.publicObservation = observation;
+        bucket.domain = candidates[members.front()].transition.child.domain;
+        for (const std::uint32_t candidate : members) {
+            const Candidate& item = candidates[candidate];
+            if (item.transition.child.domain != bucket.domain)
+                throw std::runtime_error(
+                  "one complete crossed observation mixes child domains");
+            const std::uint32_t childAtom =
+              static_cast<std::uint32_t>(bucket.atoms.size());
+            bucket.atoms.push_back(item.transition);
+            result.actions[item.action].outcomes.push_back({
+              item.transition.sourceAtom, bucketIndex, childAtom,
+              item.transition.child});
+        }
+        bucket.white = successor_partition(
+          decision, Color::White, bucket.atoms);
+        bucket.black = successor_partition(
+          decision, Color::Black, bucket.atoms);
+        if (bucket.domain == ChildDomain::SameClass) {
+            KnowledgeState child;
+            for (const TransitionAtom& transition : bucket.atoms) {
+                if (!transition.sameClassProduct)
+                    throw std::runtime_error(
+                      "same-class complete transition lacks a physical child");
+                if (child.atoms.empty())
+                    child.frame = transition.sameClassProduct->frame;
+                else if (!(child.frame == transition.sameClassProduct->frame))
+                    throw std::runtime_error(
+                      "one complete observation mixes physical child frames");
+                child.atoms.push_back({transition.sameClassProduct->world});
+            }
+            child.worlds = projected_worlds(child.frame, child.atoms);
+            child.white = bucket.white;
+            child.black = bucket.black;
+            validate_knowledge_state(child);
+            bucket.sameClass = std::move(child);
+        }
+        result.buckets.push_back(std::move(bucket));
+    }
+
+    for (const CellActionOutcomes& action : result.actions) {
+        const KnowledgeCell& cell = moverPartition.cells[action.choice.cell];
+        if (action.outcomes.size() != cell.size())
+            throw std::runtime_error(
+              "complete crossed cell/action does not conserve histories");
+        std::vector<std::uint32_t> sources;
+        sources.reserve(action.outcomes.size());
+        for (const AtomOutcome& outcome : action.outcomes)
+            sources.push_back(outcome.sourceAtom);
+        std::sort(sources.begin(), sources.end());
+        if (sources != cell)
+            throw std::runtime_error(
+              "complete crossed cell/action source coverage residual");
+    }
+    return result;
+}
+
 std::vector<SuccessorBucket> apply_uniform_policy(
   const KnowledgeState& decisionState,
   const std::vector<CellAction>& policy) {

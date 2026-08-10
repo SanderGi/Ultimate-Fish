@@ -311,6 +311,33 @@ struct SuccessorBucket {
     std::optional<KnowledgeState> sameClass;
 };
 
+struct AtomOutcome {
+    std::uint32_t sourceAtom = 0;
+    std::uint32_t bucket = 0;
+    std::uint32_t childAtom = 0;
+    ClassifiedChild child;
+};
+
+struct CellActionOutcomes {
+    CellAction choice;
+    std::vector<AtomOutcome> outcomes;
+};
+
+struct CompleteTransitions {
+    KnowledgeState decisionState;
+    std::vector<SuccessorBucket> buckets;
+    std::vector<CellActionOutcomes> actions;
+};
+
+// Enumerate every full action available in every mover-private decision cell.
+// Successor buckets are built from all cell/action candidates sharing one
+// public observation, so the nonmover cannot infer an undisclosed private cell
+// or hidden action.  AtomOutcome identifies the exact successor history for
+// each source atom.  This is the solver-facing Bellman transition system; it
+// does not sample policies or Cartesian-product their private choices.
+[[nodiscard]] CompleteTransitions enumerate_complete_transitions(
+  const KnowledgeState& state);
+
 // Apply a complete policy containing exactly one uniform full ActionKey for
 // every mover cell. Results are partitioned by the common/public transition
 // observation. Both successor partitions refine their own prior cell by that
