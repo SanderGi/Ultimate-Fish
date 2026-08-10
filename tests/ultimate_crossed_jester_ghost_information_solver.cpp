@@ -25,6 +25,25 @@ void require(bool condition, const char* message) {
         throw std::runtime_error(message);
 }
 
+class CountingLowerOracle final : public Solver::LowerForceOracle {
+   public:
+    [[nodiscard]] bool force(
+      const Solver::LowerJesterForceQuery& query) const override {
+        ++jesterQueries;
+        return query.targetOwnsJester && query.belief.cardinality == 1;
+    }
+
+    [[nodiscard]] bool force(
+      const Solver::LowerGhostForceQuery& query) const override {
+        ++ghostQueries;
+        return query.targetRole == Model::Role::GhostOwner &&
+               query.belief.locations.count() == 1;
+    }
+
+    mutable std::uint64_t jesterQueries = 0;
+    mutable std::uint64_t ghostQueries = 0;
+};
+
 Model::KnowledgeState fixture() {
     Model::KnowledgeState state;
     state.frame = {Color::Black, square("h10"), square("a1"),
@@ -174,6 +193,7 @@ void solver_arena_test() {
     std::uint64_t exactTerminal = 0;
     std::uint64_t blackTerminalForces = 0;
     std::size_t largestBlackLowerBelief = 0;
+    CountingLowerOracle oracle;
     for (const Solver::ActionGatePlan& gate : external.gates)
         for (const Solver::ChildReference& child : gate.children) {
             if (child.domain == Model::ChildDomain::SameClass)
@@ -198,7 +218,7 @@ void solver_arena_test() {
                         "crossed external force query lost its inherited cell");
                 if (child.domain == Model::ChildDomain::ExactTerminal)
                     blackTerminalForces +=
-                      Solver::exact_terminal_force(query);
+                      Solver::resolve_external_force(query, oracle);
                 else if (child.domain == Model::ChildDomain::LowerGhost) {
                     const Solver::LowerGhostForceQuery lower =
                       Solver::lower_ghost_force_query(query);
@@ -207,6 +227,8 @@ void solver_arena_test() {
                     largestBlackLowerBelief = std::max(
                       largestBlackLowerBelief,
                       static_cast<std::size_t>(lower.belief.locations.count()));
+                    require(Solver::resolve_external_force(query, oracle),
+                            "crossed lower-Ghost edge bypassed its owner oracle");
                 }
             }
         }
@@ -232,12 +254,14 @@ void solver_arena_test() {
                 require(lower.targetRole == Model::Role::Observer &&
                           lower.belief.locations.count() == 8,
                         "crossed White lower query lost the arbitrary Ghost mask");
+                require(!Solver::resolve_external_force(query, oracle),
+                        "crossed lower-Ghost observer query used an owner result");
             }
             else if (child.domain == Model::ChildDomain::ExactTerminal) {
                 const Solver::ExternalForceQuery query =
                   Solver::external_force_query(
                     externalExpansion, Color::White, child);
-                require(!Solver::exact_terminal_force(query),
+                require(!Solver::resolve_external_force(query, oracle),
                         "crossed White force accepted a Black terminal win");
             }
     require(largestWhiteLowerBelief == 8,
@@ -265,6 +289,10 @@ void solver_arena_test() {
                 require(lower.targetOwnsJester &&
                           lower.belief.cardinality == 1,
                         "crossed Jester owner did not retain its singleton assignment");
+                require(Solver::resolve_external_force(
+                          Solver::external_force_query(
+                            jesterExpansion, Color::White, child), oracle),
+                        "crossed lower-Jester edge bypassed its owner oracle");
                 ++whiteSingletons;
             }
     const Solver::TargetBellmanPlan blackJester = jesterArena.bellman_plan(
@@ -280,10 +308,17 @@ void solver_arena_test() {
                 require(!lower.targetOwnsJester &&
                           lower.belief.cardinality == 2,
                         "crossed Jester observer lost the inherited royal pair");
+                require(!Solver::resolve_external_force(
+                          Solver::external_force_query(
+                            jesterExpansion, Color::Black, child), oracle),
+                        "crossed lower-Jester observer used an owner result");
                 ++blackPairs;
             }
     require(whiteSingletons > 0 && blackPairs > 0,
             "crossed Bellman plan did not expose lower-Jester queries");
+    require(oracle.jesterQueries == whiteSingletons + blackPairs &&
+             oracle.ghostQueries > 0,
+            "crossed lower oracle dispatch did not cover every tested edge");
     std::cout << "crossed_solver_lower_jester owner_singletons "
               << whiteSingletons << " observer_pairs " << blackPairs
               << " fresh_remaximized 0 residual 0\n";

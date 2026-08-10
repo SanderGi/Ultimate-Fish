@@ -142,6 +142,20 @@ struct LowerGhostForceQuery {
 [[nodiscard]] LowerGhostForceQuery lower_ghost_force_query(
   const ExternalForceQuery& query);
 
+class LowerForceOracle {
+   public:
+    virtual ~LowerForceOracle() = default;
+    [[nodiscard]] virtual bool force(
+      const LowerJesterForceQuery& query) const = 0;
+    [[nodiscard]] virtual bool force(
+      const LowerGhostForceQuery& query) const = 0;
+};
+
+// There is intentionally no fallback branch. A lower material edge must pass
+// through the supplied authenticated oracle; unsupported domains fail closed.
+[[nodiscard]] bool resolve_external_force(
+  const ExternalForceQuery& query, const LowerForceOracle& oracle);
+
 // Collision-free in-memory reference arena. Production graph capture will
 // stream the same portable keys to named scratch; this implementation is the
 // deterministic oracle used by focused tests and restore verification.

@@ -356,6 +356,23 @@ LowerGhostForceQuery lower_ghost_force_query(
     return result;
 }
 
+bool resolve_external_force(const ExternalForceQuery& query,
+                            const LowerForceOracle& oracle) {
+    switch (query.domain) {
+      case Model::ChildDomain::LowerJester:
+        return oracle.force(lower_jester_force_query(query));
+      case Model::ChildDomain::LowerGhost:
+        return oracle.force(lower_ghost_force_query(query));
+      case Model::ChildDomain::ExactTerminal:
+        return exact_terminal_force(query);
+      case Model::ChildDomain::SameClass:
+      case Model::ChildDomain::Invalid:
+        throw std::invalid_argument(
+          "crossed external resolver received a non-external domain");
+    }
+    throw std::invalid_argument("unknown crossed external child domain");
+}
+
 const Model::KnowledgeState& Arena::node(NodeId id) const {
     if (id >= nodes_.size())
         throw std::out_of_range("crossed solver node is outside the arena");
