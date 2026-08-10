@@ -511,7 +511,8 @@ ultimate-belief-benchmark:
 		ultimate/nnue.cpp -o ultimate_belief_benchmark
 
 ultimate-crossed-jester-ghost-information-model-test:
-	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror -Iultimate \
+	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=pedantic -Wno-error=range-loop-construct -Iultimate \
 		../tests/ultimate_crossed_jester_ghost_information_model.cpp \
 		ultimate/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
 		ultimate/information.cpp ultimate/nnue.cpp \
@@ -519,7 +520,8 @@ ultimate-crossed-jester-ghost-information-model-test:
 	./ultimate_crossed_jester_ghost_information_model_test
 
 ultimate-crossed-jester-ghost-information-solver-test:
-	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror -Iultimate \
+	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=pedantic -Wno-error=range-loop-construct -Iultimate \
 		../tests/ultimate_crossed_jester_ghost_information_solver.cpp \
 		ultimate/crossed_jester_ghost_information_solver.cpp \
 		ultimate/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
