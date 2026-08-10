@@ -31,6 +31,8 @@ class HiddenParallelAwsTests(unittest.TestCase):
             self.assertIn("Nice=10", unit)
             self.assertIn("IOSchedulingClass=idle", unit)
             self.assertIn("PrivateTmp=true", unit)
+            self.assertIn("ExecStartPre=/usr/bin/mkdir -p ", unit)
+            self.assertIn("Environment=TMPDIR=", unit)
             self.assertNotIn("--full", unit)
             runner = ("tools/run_ultimate_ghost_parasite_aws.py"
                       if "parasite" in job["id"] else

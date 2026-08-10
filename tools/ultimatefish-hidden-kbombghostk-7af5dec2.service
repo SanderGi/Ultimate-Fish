@@ -6,8 +6,10 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 WorkingDirectory=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2
+ExecStartPre=/usr/bin/mkdir -p /mnt/ultimatefish/hidden-kbombghostk-7af5dec2/tmp
 ExecStart=/usr/bin/python3 tools/run_ultimate_ghost_bomb_aws.py --manifest bundle-manifest.json
 Environment=PYTHONUNBUFFERED=1
+Environment=TMPDIR=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/tmp
 Nice=10
 IOSchedulingClass=idle
 AllowedCPUs=2-31
