@@ -964,6 +964,8 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
     };
 
     using BeliefPv = std::vector<std::string>;
+    BeliefPv previousIterationPv;
+    int currentIterationDepth = 0;
     std::function<int(const PublicBeliefState&, int, int, int, int, BeliefPv&)>
       solve = [&](const PublicBeliefState& state, int depth, int alpha, int beta,
                   int ply, BeliefPv& pv) -> int {
@@ -1010,7 +1012,20 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
         const bool maximizing = *side == observer;
         int best = maximizing ? -Infinity : Infinity;
         BeliefPv bestPv;
-        for (const std::string& action : actionSet) {
+        std::vector<std::string> orderedActions(actionSet.begin(), actionSet.end());
+        // One- and two-ply information searches are deliberately cheap, and
+        // their horizon move is often a poor guide.  From depth four onward,
+        // the completed PV is valuable enough to pay for ordering every
+        // observation branch before alpha-beta expansion.
+        if (currentIterationDepth >= 4 &&
+            static_cast<std::size_t>(ply) < previousIterationPv.size()) {
+            const auto pvAction = std::find(
+              orderedActions.begin(), orderedActions.end(),
+              previousIterationPv[static_cast<std::size_t>(ply)]);
+            if (pvAction != orderedActions.end())
+                std::rotate(orderedActions.begin(), pvAction, pvAction + 1);
+        }
+        for (const std::string& action : orderedActions) {
             int actionWorst = ply == 0 && rootDraws.count(action)
                             ? 0 : Infinity;
             BeliefPv actionPv;
@@ -1071,6 +1086,7 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
 
     const int maxDepth = std::clamp(limits.depth, 1, MaxPly - 2);
     for (int depth = 1; depth <= maxDepth; ++depth) {
+        currentIterationDepth = depth;
         BeliefPv pv;
         const int score = solve(beliefs, depth, -Infinity, Infinity, 0, pv);
         if (stop_)
@@ -1079,6 +1095,7 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
         result.completedDepth = depth;
         result.historyPreservingPlies = depth;
         result.principalVariation = std::move(pv);
+        previousIterationPv = result.principalVariation;
         result.bestMove = result.principalVariation.empty()
                         ? std::nullopt
                         : std::optional<std::string>(
