@@ -528,7 +528,8 @@ ultimate-crossed-jester-ghost-information-solver-test:
 	./ultimate_crossed_jester_ghost_information_solver_test
 
 ultimate-crossed-jester-ghost-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror -Iultimate \
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=pedantic -Wno-error=range-loop-construct -Iultimate \
 		ultimate/crossed_jester_ghost_information_tablebase.cpp \
 		ultimate/crossed_jester_ghost_information_solver.cpp \
 		ultimate/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
