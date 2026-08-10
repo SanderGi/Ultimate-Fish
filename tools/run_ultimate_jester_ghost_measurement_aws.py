@@ -113,6 +113,29 @@ def authenticate_binary_compatibility(args: argparse.Namespace,
     return digest
 
 
+def authenticate_production_preflight(args: argparse.Namespace) -> str:
+    digest = sha256_file(args.production_preflight_log)
+    lines = args.production_preflight_log.read_text().splitlines()
+    if digest != args.production_preflight_log_sha256 or len(lines) != 1:
+        raise ValueError("production input preflight log mismatch")
+    line = lines[0]
+    if not line.startswith("jester_ghost_solve_input_preflight "):
+        raise ValueError("production input preflight certificate missing")
+    fields = dict(re.findall(r"([a-z_]+) ([0-9]+)", line))
+    expected = {
+        "canonical": "9612720", "worlds": "37957920", "admitted": "1",
+        "source_codec_residual": "0", "lower_jester_residual": "0",
+        "lower_ghost_residual": "0", "transition_residual": "0",
+    }
+    if any(fields.get(name) != value for name, value in expected.items()):
+        raise ValueError("production input preflight residual mismatch")
+    for required in ("transition_bytes", "peak_disk_bytes",
+                     "peak_resident_bytes"):
+        if int(fields.get(required, "0")) <= 0:
+            raise ValueError("production input preflight estimate missing")
+    return digest
+
+
 def write_exclusive_json(path: Path, value: object) -> None:
     with path.open("x", encoding="utf-8") as stream:
         json.dump(value, stream, indent=2, sort_keys=True)
@@ -179,6 +202,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         raise ValueError("measurement binary SHA-256 mismatch")
     binary_compatibility_sha = authenticate_binary_compatibility(
         args, manifest)
+    production_preflight_sha = authenticate_production_preflight(args)
     for suffix, record in merge_evidence["components"].items():
         path = args.transition_prefix.parent / suffix
         if (not path.is_file() or path.stat().st_size != record["bytes"] or
@@ -252,6 +276,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "binary_sha256": args.binary_sha256,
         "binary_compatibility_certificate_sha256":
             binary_compatibility_sha,
+        "production_preflight_log_sha256": production_preflight_sha,
         "merge_evidence_sha256": args.merge_evidence_sha256,
         "lower_compatibility_certificate_sha256": compatibility_sha,
         "lower_jester_table_sha256": lower_table_sha,
@@ -284,6 +309,9 @@ def main() -> None:
     parser.add_argument("--binary-compatibility-certificate", type=Path)
     parser.add_argument("--binary-compatibility-certificate-sha256",
                         default="")
+    parser.add_argument("--production-preflight-log", type=Path,
+                        required=True)
+    parser.add_argument("--production-preflight-log-sha256", required=True)
     parser.add_argument("--transition-prefix", type=Path, required=True)
     parser.add_argument("--source-table", type=Path, required=True)
     parser.add_argument("--lower-jester-table", type=Path, required=True)

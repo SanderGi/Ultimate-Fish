@@ -107,6 +107,36 @@ class MeasurementBinaryCompatibilityTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "compatibility"):
                 measurement.authenticate_binary_compatibility(args, manifest)
 
+    def test_runner_authenticates_exact_production_preflight(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "preflight.log"
+            path.write_text(
+                "jester_ghost_solve_input_preflight canonical 9612720 "
+                "worlds 37957920 transition_bytes 1 peak_disk_bytes 2 "
+                "peak_resident_bytes 3 admitted 1 source_codec_residual 0 "
+                "lower_jester_residual 0 lower_ghost_residual 0 "
+                "transition_residual 0\n")
+            args = argparse.Namespace(
+                production_preflight_log=path,
+                production_preflight_log_sha256=measurement.sha256_file(path))
+            self.assertEqual(measurement.sha256_file(path),
+                             measurement.authenticate_production_preflight(args))
+
+    def test_runner_rejects_failed_production_preflight(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "preflight.log"
+            path.write_text(
+                "jester_ghost_solve_input_preflight canonical 9612720 "
+                "worlds 37957920 transition_bytes 1 peak_disk_bytes 2 "
+                "peak_resident_bytes 3 admitted 1 source_codec_residual 1 "
+                "lower_jester_residual 0 lower_ghost_residual 0 "
+                "transition_residual 0\n")
+            args = argparse.Namespace(
+                production_preflight_log=path,
+                production_preflight_log_sha256=measurement.sha256_file(path))
+            with self.assertRaisesRegex(ValueError, "residual"):
+                measurement.authenticate_production_preflight(args)
+
 
 if __name__ == "__main__":
     unittest.main()
