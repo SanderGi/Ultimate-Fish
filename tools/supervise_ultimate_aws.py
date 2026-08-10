@@ -36,6 +36,9 @@ DEFAULT_CONFIG = ROOT / "tools/ultimate_aws_supervision.json"
 SCHEMA = "ultimate-aws-supervision-v1"
 STATE_SCHEMA = "ultimate-aws-supervision-state-v1"
 REMOTE_PREFIX = "ULTIMATE_SUPERVISION_JSON="
+# Run Command truncates StandardOutputContent at roughly 24 KiB.  Keep a
+# deliberate margin for the sentinel and any provider-side decoration.
+REMOTE_OUTPUT_BUDGET = 20_000
 TERMINAL_OK = {"CERTIFIED"}
 TERMINAL_BAD = {"FAILED", "SOURCE_MISMATCH", "RESOURCE_LIMIT"}
 UNIT = re.compile(r"[A-Za-z0-9_.@-]+\.service")
@@ -133,6 +136,9 @@ def validate_config(config: dict[str, Any]) -> None:
             raise RuntimeError(f"{identifier} requires an explicit service unit")
         for source in job.get("source_bindings", []):
             validate_sha(source.get("sha256"), f"{identifier} source binding")
+            if glob_magic(str(source.get("path", ""))):
+                raise RuntimeError(
+                    f"{identifier} source binding must be one explicit path")
         if job.get("advanceable") and not job.get("source_bindings"):
             raise RuntimeError(
                 f"{identifier} is advanceable but has no source binding")
@@ -147,6 +153,10 @@ def validate_config(config: dict[str, Any]) -> None:
         for dependency in job.get("dependencies", []):
             if dependency not in job_ids or dependency == job["id"]:
                 raise RuntimeError(f"{job['id']} has an invalid dependency")
+
+
+def glob_magic(path: str) -> bool:
+    return any(character in path for character in "*?[")
 
 
 def remote_script(instance: dict[str, Any], jobs: list[dict[str, Any]]) -> str:
@@ -170,37 +180,57 @@ def command(argv):
 def props(unit):
  names=['LoadState','ActiveState','SubState','Result','ExecMainCode',
         'ExecMainStatus','MemoryCurrent','MemoryPeak','StateChangeTimestamp']
- rc,out,err=command(['systemctl','show',unit,*sum((['-p',n] for n in names),[])])
+ try:
+  rc,out,err=command(['systemctl','show',unit,*sum((['-p',n] for n in names),[])])
+ except OSError as error:
+  return {'probe_error':str(error)}
  if rc: return {'probe_error':err or out or f'systemctl rc={rc}'}
  result={}
  for line in out.splitlines():
   if '=' in line:
    key,value=line.split('=',1); result[key]=value
  return result
-def files(patterns,hashes=False):
+def aggregate(patterns):
  result=[]
  for pattern in patterns:
   matches=sorted(glob.glob(pattern))
   if not matches: result.append({'path':pattern,'exists':False}); continue
+  digest=hashlib.sha256(); total=0; newest=0
   for path in matches:
-   item={'path':path,'exists':True}
-   stat=os.stat(path); item.update(size=stat.st_size,mtime_ns=stat.st_mtime_ns)
-   if hashes:
-    if stat.st_size>16*1024*1024:
-     item['hash_error']='source binding exceeds 16 MiB'
-    else:
-     digest=hashlib.sha256()
-     with open(path,'rb') as stream:
-      for block in iter(lambda:stream.read(1024*1024),b''): digest.update(block)
-     item['sha256']=digest.hexdigest()
-   result.append(item)
+   stat=os.stat(path); total+=stat.st_size; newest=max(newest,stat.st_mtime_ns)
+   record=json.dumps([path,stat.st_size,stat.st_mtime_ns],
+                     separators=(',',':')).encode()
+   digest.update(len(record).to_bytes(8,'big')); digest.update(record)
+  result.append({'path':pattern,'exists':True,'match_count':len(matches),
+                 'total_size':total,'newest_mtime_ns':newest,
+                 'metadata_sha256':digest.hexdigest()})
+ return result
+def sources(paths):
+ result=[]
+ for path in paths:
+  if not os.path.exists(path):
+   result.append({'path':path,'exists':False}); continue
+  stat=os.stat(path); item={'path':path,'exists':True,'size':stat.st_size,
+                            'mtime_ns':stat.st_mtime_ns}
+  if stat.st_size>16*1024*1024:
+   item['hash_error']='source binding exceeds 16 MiB'
+  else:
+   digest=hashlib.sha256()
+   with open(path,'rb') as stream:
+    for block in iter(lambda:stream.read(1024*1024),b''): digest.update(block)
+   item['sha256']=digest.hexdigest()
+  result.append(item)
  return result
 memory={}
-with open('/proc/meminfo',encoding='ascii') as stream:
- for line in stream:
-  key,value,*_=line.replace(':','').split()
-  if key in {'MemTotal','MemAvailable','SwapTotal','SwapFree'}:
-   memory[key]=int(value)*1024
+try:
+ stream=open('/proc/meminfo',encoding='ascii')
+except FileNotFoundError:
+ stream=[]
+for line in stream:
+ key,value,*_=line.replace(':','').split()
+ if key in {'MemTotal','MemAvailable','SwapTotal','SwapFree'}:
+  memory[key]=int(value)*1024
+if hasattr(stream,'close'): stream.close()
 mounts=[]
 for path in payload['mounts']:
  stat=os.statvfs(path)
@@ -210,12 +240,18 @@ jobs=[]
 for job in payload['jobs']:
  source_paths=[binding['path'] for binding in job['source_bindings']]
  jobs.append({'id':job['id'],'unit':props(job['unit']),
-             'checkpoints':files(job['checkpoint_paths']),
-             'completion':files(job['completion_paths']),
-             'sources':files(source_paths,True)})
-print('ULTIMATE_SUPERVISION_JSON='+json.dumps(
- {'memory':memory,'mounts':mounts,'jobs':jobs},sort_keys=True,separators=(',',':')))
+             'checkpoints':aggregate(job['checkpoint_paths']),
+             'completion':aggregate(job['completion_paths']),
+             'sources':sources(source_paths)})
+document={'memory':memory,'mounts':mounts,'jobs':jobs}
+encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
+ encoded=json.dumps({'probe_error':'bounded remote output budget exceeded',
+                     'jobs':[]},sort_keys=True,separators=(',',':'))
+print('ULTIMATE_SUPERVISION_JSON='+encoded)
 '''
+    program = program.replace(
+        "__REMOTE_OUTPUT_BUDGET__", str(REMOTE_OUTPUT_BUDGET))
     # The wrapper imports only the modules used by the embedded program.  The
     # source is immutable local text; no remote shell interpolation is used.
     encoded_program = base64.b64encode(program.encode()).decode()
@@ -374,6 +410,9 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                 remote = (local_probe(command)
                           if definition.get("transport", "ssm") == "local"
                           else ssm_probe(config["region"], identifier, command))
+                if remote.get("probe_error"):
+                    errors.append({"instance": identifier,
+                                   "error": str(remote["probe_error"])})
             except Exception as error:  # one host must not hide the other four
                 errors.append({"instance": identifier, "error": str(error)})
         warnings = resource_warnings(definition, remote) if remote else []
@@ -493,10 +532,12 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
             "unit_result": jobs[identifier]["unit"].get("Result", ""),
             "exit_status": jobs[identifier]["unit"].get("ExecMainStatus", ""),
             "checkpoint_files": sum(
-                bool(record.get("exists"))
+                int(record.get("match_count",
+                               bool(record.get("exists"))))
                 for record in jobs[identifier]["checkpoints"]),
             "completion_files": sum(
-                bool(record.get("exists"))
+                int(record.get("match_count",
+                               bool(record.get("exists"))))
                 for record in jobs[identifier]["completion"]),
             "certificates": [{
                 "key": certificate["key"],

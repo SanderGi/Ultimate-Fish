@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 import shlex
 import subprocess
+import tempfile
 import unittest
 from unittest import mock
 
@@ -126,6 +127,32 @@ class SupervisionTests(unittest.TestCase):
         payload = json.loads(base64.b64decode(arguments[4]))
         self.assertIn("sys.argv[2]", program)
         self.assertEqual("first", payload["jobs"][0]["id"])
+
+    def test_large_checkpoint_glob_has_bounded_valid_remote_output(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            checkpoint = root / "checkpoints"
+            checkpoint.mkdir()
+            for index in range(2_000):
+                (checkpoint /
+                 (f"checkpoint-{index:05d}-" + "x" * 96)).touch()
+            definition = config()["instances"][0]
+            jobs = config()["jobs"]
+            jobs[0]["checkpoint_paths"] = [str(checkpoint / "*")]
+            result = SUPERVISOR.local_probe(
+                SUPERVISOR.remote_script(definition, jobs))
+            encoded = SUPERVISOR.canonical_json(result).encode()
+            self.assertLessEqual(len(encoded), SUPERVISOR.REMOTE_OUTPUT_BUDGET)
+            record = result["jobs"][0]["checkpoints"][0]
+            self.assertEqual(2_000, record["match_count"])
+            self.assertRegex(record["metadata_sha256"], r"^[0-9a-f]{64}$")
+            self.assertNotIn("checkpoint-00000", encoded.decode())
+
+    def test_source_binding_globs_are_rejected(self) -> None:
+        invalid = config()
+        invalid["jobs"][0]["source_bindings"][0]["path"] = "/tmp/source-*"
+        with self.assertRaisesRegex(RuntimeError, "one explicit path"):
+            SUPERVISOR.validate_config(invalid)
 
     @mock.patch.object(SUPERVISOR, "head_certificate")
     @mock.patch.object(SUPERVISOR, "local_probe")
