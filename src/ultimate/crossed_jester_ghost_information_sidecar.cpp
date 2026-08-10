@@ -179,7 +179,8 @@ SidecarCertificate write_arbitrary_sidecar(
                     if(value)byte|=std::uint8_t(1u<<bit);
                     if(++bit==8){emit(byte);byte=0;bit=0;}
                 }}
-            if(bit)emit(byte);if(used)output.write(reinterpret_cast<const char*>(buffer.data()),used);
+            if(bit)emit(byte);
+            if(used)output.write(reinterpret_cast<const char*>(buffer.data()),used);
         };
         bits(white,true);bits(black,false);
         output.flush();if(!output)throw std::runtime_error("failed writing crossed sidecar payload");
@@ -262,7 +263,10 @@ class CrossedSidecarProbe::Impl {
     std::uint32_t find(const std::vector<std::uint8_t>& key)const{
         std::uint32_t low=0,high=nodes_;
         while(low<high){const std::uint32_t mid=low+(high-low)/2;const IndexRecord r=index(mid);const auto*begin=mapping_+keyOffset_+r.keyOffset;const int cmp=std::lexicographical_compare(begin,begin+r.keyLength,key.begin(),key.end())?-1:std::lexicographical_compare(key.begin(),key.end(),begin,begin+r.keyLength)?1:0;if(cmp<0)low=mid+1;else high=mid;}
-        if(low>=nodes_)throw std::out_of_range("crossed arbitrary belief absent from solved graph");const IndexRecord r=index(low);if(r.keyLength!=key.size()||!std::equal(key.begin(),key.end(),mapping_+keyOffset_+r.keyOffset))throw std::out_of_range("crossed arbitrary belief absent from solved graph");return low;
+        if(low>=nodes_)throw std::out_of_range("crossed arbitrary belief absent from solved graph");
+        const IndexRecord r=index(low);
+        if(r.keyLength!=key.size()||!std::equal(key.begin(),key.end(),mapping_+keyOffset_+r.keyOffset))throw std::out_of_range("crossed arbitrary belief absent from solved graph");
+        return low;
     }
     bool force(const Model::KnowledgeState& state,std::uint32_t actual,Color target)const{
         if(target!=Color::White&&target!=Color::Black)throw std::invalid_argument("crossed force target");

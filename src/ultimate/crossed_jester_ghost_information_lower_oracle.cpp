@@ -394,7 +394,8 @@ class AuthenticatedLowerForceOracle::Impl {
         input.seekg(geometryOffset);geometries_.resize(geometryCount);
         for(std::uint32_t id=0;id<geometryCount;++id){Geometry&g=geometries_[id];g.side=byte();g.ownerKing=byte();g.observerKing=byte();g.visible=byte();
             g.live=mask();g.terminal=mask();g.terminalOwner=mask();g.terminalObserver=mask();
-            for(auto&v:g.actualStratum)v=word();for(auto&v:g.ownerRoot)v=word();
+            for(auto&v:g.actualStratum)v=word();
+            for(auto&v:g.ownerRoot)v=word();
             input.read(reinterpret_cast<char*>(g.visibleOwner.data()),Squares);input.read(reinterpret_cast<char*>(g.visibleObserver.data()),Squares);
             if(!input||g.side>1||g.ownerKing>=Squares||g.observerKing>=Squares||g.ownerKing==g.observerKing||g.visible>1)throw std::runtime_error("bad UFGM geometry");
             for(unsigned square=0;square<Squares;++square)if(g.ownerRoot[square]>=nodeCount||g.visibleOwner[square]>1||g.visibleObserver[square]>1||(g.live.test(square)&&g.terminal.test(square)))throw std::runtime_error("bad UFGM geometry roots");
