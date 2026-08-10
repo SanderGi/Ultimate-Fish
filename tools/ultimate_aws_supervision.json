@@ -1,0 +1,247 @@
+{
+  "schema": "ultimate-aws-supervision-v1",
+  "region": "us-west-2",
+  "budget_usd": 5000,
+  "budget_warning_fraction": 0.9,
+  "regular_report_seconds": 7200,
+  "state_path": ".git/ultimate-aws-supervision.json",
+  "instances": [
+    {
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "name": "hidden-primary",
+      "hourly_usd": 2.35136,
+      "transport": "ssm",
+      "mounts": ["/", "/mnt/ultimatefish"],
+      "minimum_memory_available_bytes": 17179869184,
+      "minimum_disk_free_bytes": {"/": 2147483648, "/mnt/ultimatefish": 53687091200}
+    },
+    {
+      "instance_id": "i-0986ed3d272721f02",
+      "name": "giant-ghost-same",
+      "hourly_usd": 1.56768,
+      "transport": "ssm",
+      "mounts": ["/", "/mnt/ultimatefish"],
+      "minimum_memory_available_bytes": 8589934592,
+      "minimum_disk_free_bytes": {"/": 2147483648, "/mnt/ultimatefish": 53687091200}
+    },
+    {
+      "instance_id": "i-024a2073283e4336e",
+      "name": "giant-ghost-opposing",
+      "hourly_usd": 1.56768,
+      "transport": "ssm",
+      "mounts": ["/", "/mnt/ultimatefish"],
+      "minimum_memory_available_bytes": 8589934592,
+      "minimum_disk_free_bytes": {"/": 2147483648, "/mnt/ultimatefish": 53687091200}
+    },
+    {
+      "instance_id": "i-08c0f44a1776cb34a",
+      "name": "crossed-and-jester-ghost",
+      "hourly_usd": 1.56768,
+      "transport": "ssm",
+      "mounts": ["/", "/mnt/ultimatefish"],
+      "minimum_memory_available_bytes": 8589934592,
+      "minimum_disk_free_bytes": {"/": 2147483648, "/mnt/ultimatefish": 483183820800}
+    },
+    {
+      "instance_id": "i-0b4523116b2f7765c",
+      "name": "concrete-primary",
+      "hourly_usd": 2.35136,
+      "transport": "ssm",
+      "mounts": ["/", "/mnt/ultimatefish", "/mnt/ultimatefish-overflow"],
+      "minimum_memory_available_bytes": 17179869184,
+      "minimum_disk_free_bytes": {
+        "/": 2147483648,
+        "/mnt/ultimatefish": 322122547200,
+        "/mnt/ultimatefish-overflow": 429496729600
+      }
+    }
+  ],
+  "jobs": [
+    {
+      "id": "bishop-ghost-same-full",
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "unit": "ultimatefish-solve-v2-compact.service",
+      "dependencies": [],
+      "checkpoint_paths": ["/mnt/ultimatefish/work-v2/solve.log", "/mnt/ultimatefish/work-v2/run.bdd-*.nodes"],
+      "completion_paths": ["/mnt/ultimatefish/work-v2/results/*.ufiw"],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "ghost-pair-full",
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "unit": "ultimatefish-kghostghost-tail-2280445e.service",
+      "dependencies": [],
+      "checkpoint_paths": ["/mnt/ultimatefish/kghostghost-2280445e/work/logs/*.log"],
+      "completion_paths": ["/mnt/ultimatefish/kghostghost-2280445e/work/results/*.ufgg"],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "double-jester-authoritative",
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "unit": "ultimatefish-double-jester-authoritative-7a753e4b-v1.service",
+      "dependencies": [],
+      "checkpoint_paths": ["/mnt/ultimatefish/double-jester-authoritative-7a753e4b-v2/full-authoritative/raw/*"],
+      "completion_paths": [
+        "/mnt/ultimatefish/double-jester-authoritative-7a753e4b-v2/full-authoritative/results/kjesterjesterk.ufiw",
+        "/mnt/ultimatefish/double-jester-authoritative-7a753e4b-v2/full-authoritative/results/kjesterjesterk.uficapture"
+      ],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "giant-ghost-same-full",
+      "instance_id": "i-0986ed3d272721f02",
+      "unit": "ultimatefish-giant-ghost-same-31ca4c39-full-v1.service",
+      "dependencies": [],
+      "checkpoint_paths": ["/mnt/ultimatefish/giant-ghost-same-31ca4c39/work/logs/*.log"],
+      "completion_paths": ["/mnt/ultimatefish/giant-ghost-same-31ca4c39/work/results/*"],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "giant-ghost-opposing-full",
+      "instance_id": "i-024a2073283e4336e",
+      "unit": "ultimatefish-giant-ghost-opposing-8be6f990-full-v1.service",
+      "dependencies": [],
+      "checkpoint_paths": ["/mnt/ultimatefish/giant-ghost-opposing-8be6f990/work/logs/*.log"],
+      "completion_paths": ["/mnt/ultimatefish/giant-ghost-opposing-8be6f990/work/results/*"],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "crossed-jester-ghost-closure",
+      "instance_id": "i-08c0f44a1776cb34a",
+      "unit": "ultimatefish-crossed-jester-ghost-closurefull-e39ccd0a.service",
+      "dependencies": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/crossed-jester-ghost-e39ccd0a/work/graph.chk",
+        "/mnt/ultimatefish/crossed-jester-ghost-e39ccd0a/work/closure-full.log"
+      ],
+      "completion_paths": ["/mnt/ultimatefish/crossed-jester-ghost-e39ccd0a/work/graph.chk"],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "jester-ghost-transition-rebind",
+      "instance_id": "i-08c0f44a1776cb34a",
+      "unit": "ultimatefish-jg7328-transition-rebind-v2.service",
+      "dependencies": [],
+      "checkpoint_paths": ["/mnt/ultimatefish/jester-ghost-migration-7328-prep/rebind-v2.log"],
+      "completion_paths": ["/mnt/ultimatefish/jester-ghost-migration-7328-prep/rebound-7328/work/transitions/rebind-manifest.json"],
+      "source_bindings": [],
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/jester-ghost/migration/11120e7c-to-732852b8/transitions/sha256/d426fb68de7a9254e334e6b0f0b603b3c785c5273bb821680ba207cf1ab5e778/jester-ghost-transitions-11120e7c.tar.zst",
+          "version_id": "mXrwfzJV1Ro.6Bl7DVLBu7p7dKSm3a6_",
+          "sha256": "d426fb68de7a9254e334e6b0f0b603b3c785c5273bb821680ba207cf1ab5e778",
+          "size": 2980009846
+        }
+      ]
+    },
+    {
+      "id": "jester-ghost-verify-shards",
+      "instance_id": "i-08c0f44a1776cb34a",
+      "unit": "ultimatefish-jg7328-verify-shards.service",
+      "dependencies": ["jester-ghost-transition-rebind"],
+      "queue_stage": true,
+      "checkpoint_paths": [],
+      "completion_paths": [],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "jester-ghost-merge",
+      "instance_id": "i-08c0f44a1776cb34a",
+      "unit": "ultimatefish-jg7328-merge.service",
+      "dependencies": ["jester-ghost-verify-shards"],
+      "queue_stage": true,
+      "checkpoint_paths": [],
+      "completion_paths": [],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "jester-ghost-measure",
+      "instance_id": "i-08c0f44a1776cb34a",
+      "unit": "ultimatefish-jg7328-measure.service",
+      "dependencies": ["jester-ghost-merge"],
+      "queue_stage": true,
+      "checkpoint_paths": [],
+      "completion_paths": [],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "concrete-ghost-kchecker-certified",
+      "instance_id": "i-08c0f44a1776cb34a",
+      "unit": "ultimatefish-concrete-ghost-kchecker-ac9b2d32-v2.service",
+      "dependencies": [],
+      "checkpoint_paths": [],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-penguin-1083b6f8/ghost-kchecker-full-v2/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-penguin-1083b6f8/ghost-kchecker-full-v2/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/6166644c99032ca52ace548abc168ff8e7e202b42cc50c5269b72d185b93311c/kghostkchecker-6166644c99032ca52ace548abc168ff8e7e202b42cc50c5269b72d185b93311c.tar.zst",
+          "version_id": "g2ZfdZC3PS4PAyhGElYcMa0TKWDoa4AZ",
+          "sha256": "6166644c99032ca52ace548abc168ff8e7e202b42cc50c5269b72d185b93311c",
+          "size": 17599091
+        }
+      ]
+    },
+    {
+      "id": "concrete-wave0-018",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave0-018-ac9b2d32-v3.service",
+      "dependencies": [],
+      "checkpoint_paths": ["/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-018-full-v3/scratch/*"],
+      "completion_paths": ["/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-018-full-v3/certificates/wave-certificate.json"],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/concrete-penguin-1083b6f8/repo/tools/run_ultimate_concrete_tablebase_shard_aws.py",
+          "sha256": "1acf8d13ffa465fc6f6372554d495646df5020f2685c1a59bbf4105753862578"
+        }
+      ],
+      "s3_certificates": []
+    },
+    {
+      "id": "concrete-wave0-remaining",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave0-next.service",
+      "dependencies": ["concrete-ghost-kchecker-certified", "concrete-wave0-018"],
+      "queue_stage": true,
+      "checkpoint_paths": [],
+      "completion_paths": [],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "concrete-wave1",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave1-next.service",
+      "dependencies": ["concrete-wave0-remaining"],
+      "queue_stage": true,
+      "checkpoint_paths": [],
+      "completion_paths": [],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "concrete-wave2",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave2-next.service",
+      "dependencies": ["concrete-wave1"],
+      "queue_stage": true,
+      "checkpoint_paths": [],
+      "completion_paths": [],
+      "source_bindings": [],
+      "s3_certificates": []
+    }
+  ]
+}
