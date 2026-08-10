@@ -179,6 +179,25 @@ class SupervisionTests(unittest.TestCase):
 
     @mock.patch.object(SUPERVISOR, "local_probe")
     @mock.patch.object(SUPERVISOR, "ec2_inventory")
+    def test_garbage_collected_transient_cannot_fake_clean_exit(
+            self, inventory: mock.Mock, probe: mock.Mock) -> None:
+        inventory.return_value = self.ec2
+        missing = remote(first="inactive")
+        missing["jobs"][0]["unit"].update({
+            "LoadState": "not-found", "Result": "success",
+            "ExecMainCode": "0", "ExecMainStatus": "0",
+        })
+        probe.return_value = missing
+        previous = {"report": {"jobs": {"first": {"status": "RUNNING"}}}}
+        output, state = SUPERVISOR.supervise(config(), previous, self.now)
+        self.assertEqual("FAILED", state["report"]["jobs"]["first"]["status"])
+        self.assertEqual("FAILED", output["report"]["jobs"]["first"]["status"])
+        self.assertTrue(output["delegate_sol"])
+        self.assertIn("disappeared", state["report"]["jobs"]["first"]
+                      ["unit"]["SupervisionFailure"])
+
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    @mock.patch.object(SUPERVISOR, "ec2_inventory")
     def test_host_probe_error_never_fabricates_job_failures(
             self, inventory: mock.Mock, probe: mock.Mock) -> None:
         inventory.return_value = self.ec2

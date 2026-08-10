@@ -396,6 +396,19 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         if remote and not source_exact(definition, remote):
             status = "SOURCE_MISMATCH"
         completion = all_paths_exist(remote.get("completion", []))
+        previous_status = previous.get("report", {}).get("jobs", {}).get(
+            identifier, {}).get("status")
+        # systemd garbage-collects successful and failed transient units.  Once
+        # gone, `systemctl show` fabricates innocuous-looking defaults
+        # (LoadState=not-found, Result=success, ExecMainStatus=0).  A tracked
+        # RUNNING job may therefore look like a clean inactive exit even though
+        # its journal records failure.  Completion evidence may still certify
+        # it below; without that evidence, fail closed and delegate diagnosis.
+        if (remote.get("unit", {}).get("LoadState") == "not-found" and
+                previous_status == "RUNNING" and not completion):
+            status = "FAILED"
+            remote["unit"]["SupervisionFailure"] = (
+                "transient unit disappeared after RUNNING without completion")
         certificates: list[dict[str, Any]] = []
         if completion and definition.get("s3_certificates"):
             try:

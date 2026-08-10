@@ -1,0 +1,74 @@
+{
+  "schema": "ultimate-concrete-frontier-resume-v1",
+  "status": "resource-gated-frontier-preserved",
+  "source_work_directory": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-018-full-v3",
+  "generator_model_sha256": "ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6",
+  "inventory_sha256": "b82a3d87a42ba342b5b611d068783876e3ecf2701e7684400534b937bbda4fd0",
+  "binary_sha256": "09113a356cae6b2cb91801d2113d88dff98226b27fd0f0841774db7a89c7cf50",
+  "dependency_manifest_sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504",
+  "states": 759158400,
+  "substates": 20,
+  "last_frontier_marker": "frontier states 758000000/759158400",
+  "resource_violation": "resident resource limit exceeded: 13251276800 > 12884901888",
+  "record": {
+    "filename": "kberserkerkprince.uftb",
+    "primary": "berserker",
+    "secondary": "prince",
+    "opposing": true,
+    "states": 759158400,
+    "packed_bytes": 948948000,
+    "shards": 10,
+    "phase": "kings+2-stateful"
+  },
+  "run_plan": {
+    "relative_path": "run-plan.json",
+    "bytes": 18355,
+    "sha256": "3acd8222a0e1da527ad8376f15f438b43d78235c47f2945096b103dd17d26ee0"
+  },
+  "generator_log": {
+    "relative_path": "logs/generate/kberserkerkprince.log",
+    "bytes": 19990,
+    "sha256": "d3985590b6812b78c12a11a5b9a274a5d323163b6b340a286ffb876f66bb02f2"
+  },
+  "resource_certificate": {
+    "relative_path": "logs/generate/kberserkerkprince.resources.json",
+    "bytes": 308,
+    "sha256": "878df7777eae8ccfbdc171f84a4a85ce545e873eaf02e9f1661798c5379adbdc"
+  },
+  "binary": {
+    "relative_path": "binary/ultimate_tablebase",
+    "bytes": 644032,
+    "sha256": "09113a356cae6b2cb91801d2113d88dff98226b27fd0f0841774db7a89c7cf50"
+  },
+  "dependency_manifest": {
+    "relative_path": "dependencies/manifest.json",
+    "bytes": 28281,
+    "sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504"
+  },
+  "planes": {
+    "degrees": {
+      "relative_path": "scratch/kberserkerkprince.degrees",
+      "bytes": 3036633600,
+      "allocated_bytes": 2878435328,
+      "sha256": "3065c7dd90bd07685864f59357b733a67dadfbbcde7e30f35efd05065d0ee678"
+    },
+    "nodes": {
+      "relative_path": "scratch/kberserkerkprince.nodes",
+      "bytes": 6073267200,
+      "allocated_bytes": 6073438208,
+      "sha256": "e990691a94d9f3ce22c739ed0e8122fe9ea2ba64b021cbe53d0285ce35edf950"
+    },
+    "offsets": {
+      "relative_path": "scratch/kberserkerkprince.offsets",
+      "bytes": 6073267208,
+      "allocated_bytes": 6073270272,
+      "sha256": "71b82c0ca5d466dd02ff54262a13f750c3103db9c05e46ce37285a2589f97f6f"
+    },
+    "predecessors": {
+      "relative_path": "scratch/kberserkerkprince.predecessors",
+      "bytes": 45736387112,
+      "allocated_bytes": 197222400,
+      "sha256": "2c7a2db410317193c8fd375289d3efa518dcf4e6df1465c078214bc1b85f2021"
+    }
+  }
+}
