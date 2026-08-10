@@ -682,13 +682,16 @@ def solver_sidecar_dependencies(filename: str) -> tuple[str, ...]:
 def states_per_side(record: Mapping[str, object]) -> int:
     """Return the concrete codec representatives in one side-to-move half.
 
-    The legacy K+K+1 codec retains both horizontal reflections, so its packed
-    header has twice the planner's symmetry-budget state estimate and one
-    side-to-move half equals ``record['states']``. Four-model codecs apply the
-    planned reflection fold and split the planner count evenly by turn.
+    Inventory rows now count both side-to-move halves for every codec.  The
+    legacy K+K+1 codec retains both horizontal reflections while four-model
+    codecs apply their material-specific reflection fold, but in both cases
+    the side bit remains the outer factor of two.
     """
     states = int(record["states"])
-    return states if record["phase"] == "kings+1" else states // 2
+    if states % 2:
+        raise SummaryValidationError(
+            f"{record.get('filename', '<unknown>')}: odd concrete state count")
+    return states // 2
 
 
 def _fail(location: str, message: str) -> None:
