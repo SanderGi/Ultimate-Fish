@@ -18,6 +18,9 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <sys/resource.h>
+#include <sys/stat.h>
+#include <sys/statvfs.h>
 #include <unistd.h>
 #include <utility>
 
@@ -88,8 +91,61 @@ struct Options {
     std::uint64_t expansionBatch = 10'000;
     std::uint64_t maximumExpansions =
       std::numeric_limits<std::uint64_t>::max();
+    std::uint64_t maximumResidentBytes =
+      std::numeric_limits<std::uint64_t>::max();
+    std::uint64_t maximumCheckpointBytes =
+      std::numeric_limits<std::uint64_t>::max();
+    std::uint64_t minimumFreeBytes = 0;
     bool verifyOnly = false;
 };
+
+struct Resources {
+    std::uint64_t peakResidentBytes = 0;
+    std::uint64_t checkpointBytes = 0;
+    std::uint64_t freeBytes = 0;
+};
+
+[[nodiscard]] Resources resources(const std::string& checkpoint) {
+    Resources result;
+    struct rusage usage {};
+    if (::getrusage(RUSAGE_SELF, &usage) != 0)
+        throw std::runtime_error("cannot read crossed graph peak RSS");
+#if defined(__APPLE__)
+    result.peakResidentBytes = static_cast<std::uint64_t>(usage.ru_maxrss);
+#else
+    result.peakResidentBytes = static_cast<std::uint64_t>(usage.ru_maxrss) * 1024;
+#endif
+    struct stat status {};
+    if (::stat(checkpoint.c_str(), &status) != 0 || status.st_size < 0)
+        throw std::runtime_error("cannot stat crossed graph checkpoint");
+    result.checkpointBytes = static_cast<std::uint64_t>(status.st_size);
+    struct statvfs volume {};
+    if (::statvfs(checkpoint.c_str(), &volume) != 0)
+        throw std::runtime_error("cannot stat crossed graph volume");
+    if (volume.f_bavail && volume.f_frsize >
+          std::numeric_limits<std::uint64_t>::max() / volume.f_bavail)
+        result.freeBytes = std::numeric_limits<std::uint64_t>::max();
+    else
+        result.freeBytes = static_cast<std::uint64_t>(volume.f_bavail) *
+                           volume.f_frsize;
+    return result;
+}
+
+void resource_gate(const Options& options) {
+    const Resources current = resources(options.checkpoint);
+    std::cout << "crossed_graph_resources peak_rss_bytes "
+              << current.peakResidentBytes << " checkpoint_bytes "
+              << current.checkpointBytes << " free_bytes "
+              << current.freeBytes << '\n';
+    if (current.peakResidentBytes > options.maximumResidentBytes)
+        throw std::runtime_error(
+          "crossed graph resident resource gate exceeded");
+    if (current.checkpointBytes > options.maximumCheckpointBytes)
+        throw std::runtime_error(
+          "crossed graph checkpoint resource gate exceeded");
+    if (current.freeBytes < options.minimumFreeBytes)
+        throw std::runtime_error("crossed graph free-disk gate failed");
+}
 
 [[nodiscard]] Options parse(int argc, char** argv) {
     Options options;
@@ -114,6 +170,15 @@ struct Options {
         else if (argument == "--maximum-expansions")
             options.maximumExpansions = number(
               value("maximum expansions"), "maximum expansions");
+        else if (argument == "--maximum-resident-bytes")
+            options.maximumResidentBytes = number(
+              value("maximum resident bytes"), "maximum resident bytes");
+        else if (argument == "--maximum-checkpoint-bytes")
+            options.maximumCheckpointBytes = number(
+              value("maximum checkpoint bytes"), "maximum checkpoint bytes");
+        else if (argument == "--minimum-free-bytes")
+            options.minimumFreeBytes = number(
+              value("minimum free bytes"), "minimum free bytes");
         else if (argument == "--verify-checkpoint")
             options.verifyOnly = true;
         else
@@ -192,6 +257,7 @@ int run(const Options& options) {
         if (!exists)
             throw std::runtime_error(
               "cannot verify a missing crossed graph checkpoint");
+        resource_gate(options);
         return 0;
     }
 
@@ -210,6 +276,7 @@ int run(const Options& options) {
                   << " duplicate " << seeded.duplicate
                   << " residual " << seeded.codecResidual << '\n';
         save(discovery, options.checkpoint);
+        resource_gate(options);
     }
 
     std::uint64_t invocationExpanded = 0;
@@ -232,6 +299,7 @@ int run(const Options& options) {
                   << " closed " << unsigned(progress.closed)
                   << " residual " << progress.residual << '\n';
         save(discovery, options.checkpoint);
+        resource_gate(options);
         if (!progress.expanded)
             throw std::runtime_error(
               "crossed graph discovery made no closure progress");
