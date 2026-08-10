@@ -49,6 +49,7 @@ class TablebasePlanTests(unittest.TestCase):
             penguin, four_models=True, other=penguin))
         self.assertEqual(8, tb.pair_state_factor(penguin, pieces["bomb"]))
         self.assertEqual(16, tb.pair_state_factor(penguin, penguin))
+        self.assertEqual(3_943_680, tb.single_material_states(penguin))
 
     def test_all_decisive_single_material_is_planned(self):
         planned = {record["class"] for record in tb.inventory()

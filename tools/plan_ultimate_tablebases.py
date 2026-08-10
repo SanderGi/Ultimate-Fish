@@ -139,6 +139,11 @@ def pair_state_factor(first: Piece, second: Piece) -> int:
             material_state_factor(second, four_models=True, other=first))
 
 
+def single_material_states(piece: Piece) -> int:
+    """Exact K+piece-v-K codec size; this codec retains both reflections."""
+    return 2 * placement_states(piece.models) * material_state_factor(piece)
+
+
 def split_plane_bytes(states: int) -> int:
     # Two-bit WDL plus one-byte DTW. Rare DTW>=255 exceptions are placed in a
     # separate shard and intentionally excluded from this baseline estimate.
@@ -266,7 +271,7 @@ def inventory(budget: int = DEFAULT_BUDGET) -> list[dict[str, object]]:
     for piece in PIECES:
         if not piece.decisive:
             continue
-        states = placement_states(piece.models) * material_state_factor(piece)
+        states = single_material_states(piece)
         single_filename = {"queen": "kqk.uftb", "rook": "krk.uftb"}.get(
             piece.name, f"k{piece.name}k.uftb")
         result.append(class_record(f"K{piece.name}vK", states, "kings+1", piece.note,

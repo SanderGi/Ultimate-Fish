@@ -80,6 +80,40 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
         self.assertFalse(runner.parse_args(arguments).full)
         self.assertTrue(runner.parse_args([*arguments, "--full"]).full)
 
+    def test_penguin_bootstrap_is_exact_and_range_exclusive(self) -> None:
+        selected, measurement = runner.penguin_bootstrap_plan()
+        self.assertEqual("kpenguink.uftb", selected[0]["filename"])
+        self.assertEqual(3_943_680, selected[0]["states"])
+        self.assertEqual("bootstrap-penguin", measurement["wave"])
+        args = runner.parse_args([
+            "--work-directory", "work", "--dependencies", "dependencies",
+            "--dependency-manifest", "manifest", "--bootstrap-penguin",
+        ])
+        self.assertTrue(args.bootstrap_penguin)
+        with self.assertRaisesRegex(RuntimeError, "exclusive"):
+            runner.main([
+                "--work-directory", "work", "--dependencies", "dependencies",
+                "--dependency-manifest", "manifest", "--bootstrap-penguin",
+                "--wave", "0", "--range-begin", "0", "--range-end", "1",
+            ])
+
+    def test_penguin_bootstrap_v4_header_uses_four_causal_states(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "kpenguink.uftb"
+            record = dict(runner.penguin_bootstrap_plan()[0][0])
+            record["states"] = 4
+            header = struct.pack(
+                "<8sIIIIIIII", b"UFTB1\0\0\0", 4,
+                runner.PIECE_INDEX["penguin"], 4, 7, 4, 1, 4, 0)
+            output.write_bytes(header + bytes([0b_11_10_01_01]) + bytes(4))
+            log = root / "proof.log"
+            log.write_text(
+                f"verifyok states 4\noutput outputs/{output.name} edges 7 "
+                "win 1 loss 1 draw 2\ncomplete states 4/4 elapsed 1s\n")
+            self.assertEqual(4, runner.parse_uftb(
+                output, record, log)["substates"])
+
     def test_aws_source_preserves_named_scratch(self) -> None:
         source = (ROOT / "src/ultimate/tablebase.cpp").read_text()
         self.assertIn("ULTIMATE_TABLEBASE_PRESERVE_SCRATCH", source)

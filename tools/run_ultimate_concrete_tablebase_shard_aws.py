@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan or run one AWS shard of the supported K+K+2 inventory.
+"""Plan or run one AWS shard of the supported concrete inventory.
 
 Default execution is plan/preflight-only and never launches a tablebase solve.
 ``--full`` is Linux/AWS-only, requires explicit disk/RSS/reverse-edge limits and
@@ -15,6 +15,8 @@ Pawn promotion creates a strict dependency DAG:
 * wave 2: two Pawns (depends on complete waves 0 and 1).
 
 Ranges are half-open indices into the filename-sorted inventory for one wave.
+``--bootstrap-penguin`` regenerates the exact K+Penguin-v-K dependency before
+any K+K+2 class containing Penguin is admitted.
 """
 
 from __future__ import annotations
@@ -389,8 +391,9 @@ def class_command(record: Mapping[str, object], *, dry_run: int = 0,
     name = str(record["filename"])
     command = [
         "binary/ultimate_tablebase", "--piece", str(record["primary"]),
-        "--piece2", str(record["secondary"]),
     ]
+    if record["secondary"]:
+        command.extend(["--piece2", str(record["secondary"])])
     if record["opposing"]:
         command.append("--opposing")
     if dry_run:
@@ -414,12 +417,15 @@ def parse_uftb(path: Path, record: Mapping[str, object],
             raise RuntimeError("truncated generated UFTB header")
         (magic, version, primary, states, legacy_edges, substates,
          wdl_bytes, dtw_bytes, exceptions) = base.unpack(header)
-        if magic != b"UFTB1\0\0\0" or version not in (5, 6, 7):
+        if magic != b"UFTB1\0\0\0" or version not in (4, 5, 6, 7):
             raise RuntimeError("generated UFTB magic/version residual")
-        secondary_data = stream.read(8)
-        if len(secondary_data) != 8:
-            raise RuntimeError("truncated generated UFTB secondary header")
-        secondary, secondary_color = struct.unpack("<II", secondary_data)
+        secondary = -1
+        secondary_color = 0
+        if version >= 5:
+            secondary_data = stream.read(8)
+            if len(secondary_data) != 8:
+                raise RuntimeError("truncated generated UFTB secondary header")
+            secondary, secondary_color = struct.unpack("<II", secondary_data)
         exact_edges = legacy_edges
         if version >= 6:
             payload = stream.read(8)
@@ -432,25 +438,31 @@ def parse_uftb(path: Path, record: Mapping[str, object],
             if len(payload) != 8:
                 raise RuntimeError("truncated generated UFTB codec tag")
             codec_tag = struct.unpack("<Q", payload)[0]
-        expected_extent = (40 + 8 + (8 if version >= 6 else 0) +
+        expected_extent = (40 + (8 if version >= 5 else 0) +
+                           (8 if version >= 6 else 0) +
                            (8 if version >= 7 else 0) + wdl_bytes +
                            dtw_bytes + exceptions * 6)
         if path.stat().st_size != expected_extent:
             raise RuntimeError("generated UFTB extent residual")
         expected_states = int(record["states"])
         primary_piece = PIECE_INDEX[str(record["primary"])]
-        secondary_piece = PIECE_INDEX[str(record["secondary"])]
-        giant = "giant" in {record["primary"], record["secondary"]}
         primary_spec = next(
             piece for piece in plan.PIECES
             if piece.name == record["primary"])
-        secondary_spec = next(
-            piece for piece in plan.PIECES
-            if piece.name == record["secondary"])
-        expected_substates = plan.pair_state_factor(
-            primary_spec, secondary_spec)
-        if (primary != primary_piece or secondary != secondary_piece or
-                secondary_color != int(bool(record["opposing"])) or
+        if record["secondary"]:
+            secondary_piece = PIECE_INDEX[str(record["secondary"])]
+            secondary_spec = next(
+                piece for piece in plan.PIECES
+                if piece.name == record["secondary"])
+            expected_substates = plan.pair_state_factor(
+                primary_spec, secondary_spec)
+            material_residual = (version < 5 or secondary != secondary_piece or
+                                 secondary_color != int(bool(record["opposing"])))
+        else:
+            expected_substates = plan.material_state_factor(primary_spec)
+            material_residual = version != 4
+        giant = "giant" in {record["primary"], record["secondary"]}
+        if (primary != primary_piece or material_residual or
                 states != expected_states or substates != expected_substates or
                 wdl_bytes != (states + 3) // 4 or dtw_bytes != states or
                 (version == 7) != giant or (giant and codec_tag != GIANT_TAG) or
@@ -669,10 +681,25 @@ def selection_plan(wave: int, begin: int, end: int) -> tuple[
     }
 
 
+def penguin_bootstrap_plan() -> tuple[
+        tuple[dict[str, object], ...], dict[str, object]]:
+    record = next(row for row in plan.inventory(0)
+                  if row["filename"] == "kpenguink.uftb")
+    states = int(record["states"])
+    packed = int(record["packed_bytes"])
+    return (record,), {
+        "wave": "bootstrap-penguin", "begin": 0, "end": 1,
+        "classes": 1, "states": states, "packed_bytes": packed,
+        "max_states": states,
+        "static_scratch_floor_bytes": states * (8 + 4 + 8) + packed,
+        "resident_floor_bytes": states * 4 + (2 << 30),
+    }
+
+
 def require_aws_full(args: argparse.Namespace, measurement: Mapping[str, object],
                      work: Path) -> None:
     if sys.platform == "darwin":
-        raise RuntimeError("full concrete K+K+2 generation is forbidden on macOS")
+        raise RuntimeError("full concrete generation is forbidden on macOS")
     if args.aws_execution_ack != "EC2" or not args.s3_prefix:
         raise RuntimeError("--full requires --aws-execution-ack EC2 and --s3-prefix")
     if args.scratch_limit <= 0 or args.resident_limit <= 0 or \
@@ -699,9 +726,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--work-directory", type=Path, required=True)
     parser.add_argument("--dependencies", type=Path, required=True)
     parser.add_argument("--dependency-manifest", type=Path, required=True)
-    parser.add_argument("--wave", type=int, choices=(0, 1, 2), required=True)
-    parser.add_argument("--range-begin", type=int, required=True)
-    parser.add_argument("--range-end", type=int, required=True)
+    parser.add_argument("--wave", type=int, choices=(0, 1, 2))
+    parser.add_argument("--range-begin", type=int)
+    parser.add_argument("--range-end", type=int)
+    parser.add_argument("--bootstrap-penguin", action="store_true")
     parser.add_argument("--full", action="store_true")
     parser.add_argument("--aws-execution-ack")
     parser.add_argument("--scratch-limit", type=int, default=0)
@@ -718,22 +746,34 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     if args.monitor_interval <= 0:
         raise RuntimeError("--monitor-interval must be positive")
-    selected, measurement = selection_plan(
-        args.wave, args.range_begin, args.range_end)
+    if args.bootstrap_penguin:
+        if any(value is not None for value in
+               (args.wave, args.range_begin, args.range_end)):
+            raise RuntimeError("--bootstrap-penguin is exclusive with wave/range")
+        selected, measurement = penguin_bootstrap_plan()
+        required: tuple[str, ...] = ()
+        wave_label = "bootstrap-penguin"
+    else:
+        if any(value is None for value in
+               (args.wave, args.range_begin, args.range_end)):
+            raise RuntimeError("wave/range are required without --bootstrap-penguin")
+        selected, measurement = selection_plan(
+            args.wave, args.range_begin, args.range_end)
+        required = required_dependency_filenames(args.wave)
+        wave_label = str(args.wave)
     model = generator_model_sha256()
     costs = wave_costs()
     dependency_records = load_dependency_manifest(args.dependency_manifest)
-    required = required_dependency_filenames(args.wave)
     missing_dependencies = sorted(set(required) - set(dependency_records))
     plan_document = {
         "schema": SCHEMA, "status": "plan-only-full-not-launched",
         "generator_model_sha256": model,
         "inventory_sha256": inventory_sha256(),
-        "closed_classes": 232, "closed_packed_bytes": 65_951_886_000,
+        "closed_classes": 232, "closed_packed_bytes": 87_872_584_800,
         "copycat_mirror_classes": 36,
         "copycat_mirror_packed_bytes": 6_784_978_200,
         "supported_classes": 268,
-        "supported_packed_bytes": 72_736_864_200,
+        "supported_packed_bytes": 94_657_563_000,
         "stateless_classes_complete": 160,
         "deferred_dynamic": deferred_domain_plan(),
         "wave_costs": costs,
@@ -745,7 +785,7 @@ def main(argv: list[str] | None = None) -> int:
     }
     if missing_dependencies:
         raise RuntimeError(
-            f"dependency manifest is incomplete for wave {args.wave}: "
+            f"dependency manifest is incomplete for {wave_label}: "
             f"{len(missing_dependencies)} missing")
     if not args.full:
         print(json.dumps(plan_document, indent=2, sort_keys=True))
@@ -833,7 +873,7 @@ def main(argv: list[str] | None = None) -> int:
             restored[f"proof/{log.name}"])
         if restored_verification["sha256"] != verification["sha256"]:
             raise RuntimeError("locally restored UFTB full-SHA residual")
-        key = (f"concrete/v2/model/{model}/wave-{args.wave}/sha256/"
+        key = (f"concrete/v2/model/{model}/wave-{wave_label}/sha256/"
                f"{archive_sha}/{archive_path.name}")
         remote = preservation.upload_head_download_verify(
             source=archive_path, digest=archive_sha,
