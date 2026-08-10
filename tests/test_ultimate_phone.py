@@ -8,6 +8,8 @@ from unittest.mock import Mock, patch
 
 
 ROOT = Path(__file__).parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 SPEC = importlib.util.spec_from_file_location(
     "ultimate_phone", ROOT / "tools/ultimate_phone.py")
 MODULE = importlib.util.module_from_spec(SPEC)
