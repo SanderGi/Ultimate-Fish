@@ -12,6 +12,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
@@ -282,6 +283,40 @@ struct Node {
     std::uint16_t longestWinChild = 0;
 };
 
+template<typename Edge>
+constexpr Edge predecessor_same_side_mask() {
+    static_assert(std::is_unsigned_v<Edge>);
+    return Edge{1} << (std::numeric_limits<Edge>::digits - 1);
+}
+
+template<typename Edge>
+constexpr Edge pack_predecessor(std::uint32_t index, bool sameSide) {
+    const Edge mask = predecessor_same_side_mask<Edge>();
+    return static_cast<Edge>(index) | (sameSide ? mask : Edge{0});
+}
+
+template<typename Edge>
+constexpr std::uint32_t predecessor_index(Edge packed) {
+    return static_cast<std::uint32_t>(
+      packed & ~predecessor_same_side_mask<Edge>());
+}
+
+template<typename Edge>
+constexpr bool predecessor_same_side(Edge packed) {
+    return (packed & predecessor_same_side_mask<Edge>()) != 0;
+}
+
+static_assert(predecessor_index(
+                pack_predecessor<std::uint64_t>(3'795'791'999U, false)) ==
+              3'795'791'999U);
+static_assert(predecessor_index(
+                pack_predecessor<std::uint64_t>(3'795'791'999U, true)) ==
+              3'795'791'999U);
+static_assert(predecessor_same_side(
+                pack_predecessor<std::uint64_t>(3'795'791'999U, true)));
+static_assert(!predecessor_same_side(
+                pack_predecessor<std::uint64_t>(3'795'791'999U, false)));
+
 template<typename T>
 class MappedArray {
    public:
@@ -305,9 +340,12 @@ class MappedArray {
             throw std::runtime_error("cannot map tablebase scratch file");
         }
         data_ = static_cast<T*>(mapping);
-        // The live mapping keeps the inode and disk allocation alive. Removing
-        // the directory entry here guarantees cleanup if generation is killed.
-        ::unlink(path.c_str());
+        // The ordinary local generator keeps its historical kill-safe cleanup
+        // behavior. Audited AWS preservation runs opt in to named scratch so
+        // resource-limit stops and successful proofs retain every byte.
+        const char* preserve = std::getenv("ULTIMATE_TABLEBASE_PRESERVE_SCRATCH");
+        if (!preserve || std::strcmp(preserve, "1") != 0)
+            ::unlink(path.c_str());
     }
 
     MappedArray(const MappedArray&) = delete;
@@ -2135,19 +2173,20 @@ class TablebaseGenerator {
             edgeCount += predecessorCounts_[index];
         const auto solve_arrays = [&](auto& offsets, auto& predecessors) {
             using Offset = std::remove_reference_t<decltype(offsets[0])>;
+            using Edge = std::remove_reference_t<decltype(predecessors[0])>;
             offsets[0] = 0;
             for (std::uint32_t index = 0; index < stateCount_; ++index)
                 offsets[index + 1] = static_cast<Offset>(offsets[index] +
                                                          predecessorCounts_[index]);
-            constexpr std::uint32_t SameSideMask = std::uint32_t{1} << 31;
-            if (stateCount_ >= SameSideMask)
+            constexpr Edge SameSideMask = predecessor_same_side_mask<Edge>();
+            if (std::uint64_t(stateCount_) >= std::uint64_t(SameSideMask))
                 throw std::runtime_error("tablebase state index exceeds packed edge capacity");
             scan("reverse", 0, [&](std::uint32_t index, bool atomic) {
                 analyze_node(index, false, [&](std::uint32_t child, bool sameSide) {
                     const Offset cursor = atomic
                       ? __atomic_fetch_add(&offsets[child], Offset{1}, __ATOMIC_RELAXED)
                       : offsets[child]++;
-                    predecessors[cursor] = index | (sameSide ? SameSideMask : 0);
+                    predecessors[cursor] = pack_predecessor<Edge>(index, sameSide);
                 });
             });
 
@@ -2188,9 +2227,9 @@ class TablebaseGenerator {
                               << " elapsed " << elapsed << "s\n";
                 }
                 for (Offset edge = offsets[child]; edge < offsets[child + 1]; ++edge) {
-                    const std::uint32_t packedParent = predecessors[edge];
-                    const std::uint32_t parentIndex = packedParent & ~SameSideMask;
-                    const bool sameSide = (packedParent & SameSideMask) != 0;
+                    const Edge packedParent = predecessors[edge];
+                    const std::uint32_t parentIndex = predecessor_index(packedParent);
+                    const bool sameSide = predecessor_same_side(packedParent);
                     Node& parent = nodes_[parentIndex];
                     const Wdl outcome = parent_wdl(childNode.wdl, sameSide);
                     if (parent.wdl == Wdl::Win && outcome == Wdl::Win) {
@@ -2229,24 +2268,33 @@ class TablebaseGenerator {
                 if (nodes_[index].wdl == Wdl::Unknown)
                     nodes_[index].wdl = Wdl::Draw;
         };
-        const auto solve = [&](auto offsetZero) {
+        const auto solve = [&](auto offsetZero, auto edgeZero) {
             using Offset = decltype(offsetZero);
+            using Edge = decltype(edgeZero);
             if (diskBacked_ || stateCount_ >= 300'000'000) {
                 MappedArray<Offset> offsets(checkpoint_ + ".offsets", stateCount_ + 1ULL);
-                MappedArray<std::uint32_t> predecessors(
+                MappedArray<Edge> predecessors(
                   checkpoint_ + ".predecessors", edgeCount);
                 solve_arrays(offsets, predecessors);
             }
             else {
                 std::vector<Offset> offsets(stateCount_ + 1);
-                std::vector<std::uint32_t> predecessors(edgeCount);
+                std::vector<Edge> predecessors(edgeCount);
                 solve_arrays(offsets, predecessors);
             }
         };
-        if (edgeCount <= std::numeric_limits<std::uint32_t>::max())
-            solve(std::uint32_t{});
+        const bool wideOffsets =
+          edgeCount > std::numeric_limits<std::uint32_t>::max();
+        const bool wideEdges =
+          stateCount_ >= predecessor_same_side_mask<std::uint32_t>();
+        if (!wideOffsets && !wideEdges)
+            solve(std::uint32_t{}, std::uint32_t{});
+        else if (!wideOffsets)
+            solve(std::uint32_t{}, std::uint64_t{});
+        else if (!wideEdges)
+            solve(std::uint64_t{}, std::uint32_t{});
         else
-            solve(std::uint64_t{});
+            solve(std::uint64_t{}, std::uint64_t{});
         verify_solution();
         write_output(edgeCount);
         progress("complete", stateCount_, start);
@@ -3144,8 +3192,10 @@ class TablebaseGenerator {
           4, std::max(1u, std::thread::hardware_concurrency()));
         std::vector<std::future<void>> tasks;
         for (std::uint32_t worker = 0; worker < workers; ++worker) {
-            const std::uint32_t begin = stateCount_ * worker / workers;
-            const std::uint32_t end = stateCount_ * (worker + 1) / workers;
+            const std::uint32_t begin = static_cast<std::uint32_t>(
+              std::uint64_t(stateCount_) * worker / workers);
+            const std::uint32_t end = static_cast<std::uint32_t>(
+              std::uint64_t(stateCount_) * (worker + 1) / workers);
             tasks.push_back(std::async(std::launch::async, [this, begin, end] {
                 verify_range(begin, end);
             }));
