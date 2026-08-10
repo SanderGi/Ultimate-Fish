@@ -22,6 +22,16 @@ def digest(payload: bytes) -> str:
 
 
 class VerifyReboundTest(unittest.TestCase):
+    def test_production_unit_is_bounded_and_read_only(self):
+        unit = (ROOT / "tools/ultimatefish-jg7328-verify-shards.service").read_text()
+        self.assertIn("--jobs 29", unit)
+        self.assertIn("AllowedCPUs=1-31", unit)
+        self.assertIn("MemoryMax=44G", unit)
+        self.assertIn("Restart=no", unit)
+        self.assertIn("ProtectSystem=strict", unit)
+        self.assertIn("ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/rebound-7328", unit)
+        self.assertIn("978fdf69362577c824d9e456a28a51d133cca4b6823fcab9e8e7555e2c11a147", unit)
+
     def manifests(self, root: Path):
         source, model, observation = digest(b"source"), digest(b"model"), digest(b"observation")
         ranges = []

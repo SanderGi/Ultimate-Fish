@@ -1,0 +1,45 @@
+[Unit]
+Description=Ultimate Fish exact Jester/Ghost 732852b8 shard verification
+After=network-online.target
+Wants=network-online.target
+ConditionPathIsRegular=/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/bundle-manifest.json
+ConditionPathIsRegular=/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/ultimate_jester_ghost_information_tablebase
+ConditionPathIsRegular=/mnt/ultimatefish/jester-ghost-migration-7328-prep/rebound-7328/work/transitions/rebind-manifest.json
+ConditionPathIsRegular=/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/bin/verify_ultimate_jester_ghost_rebound_aws.py
+
+[Service]
+Type=oneshot
+WorkingDirectory=/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 /mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/bin/verify_ultimate_jester_ghost_rebound_aws.py \
+  --bundle-manifest /mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/bundle-manifest.json \
+  --rebind-manifest /mnt/ultimatefish/jester-ghost-migration-7328-prep/rebound-7328/work/transitions/rebind-manifest.json \
+  --transition-tree /mnt/ultimatefish/jester-ghost-migration-7328-prep/rebound-7328/work/transitions \
+  --binary /mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/ultimate_jester_ghost_information_tablebase \
+  --binary-sha256 978fdf69362577c824d9e456a28a51d133cca4b6823fcab9e8e7555e2c11a147 \
+  --state-dir /mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/state \
+  --jobs 29
+Nice=15
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+AllowedCPUs=1-31
+CPUWeight=10
+MemoryHigh=40G
+MemoryMax=44G
+OOMPolicy=stop
+TasksMax=96
+LimitNOFILE=65536
+Restart=no
+TimeoutStartSec=infinity
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/rebound-7328
+ReadWritePaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/state
+StandardOutput=append:/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/state/service.log
+StandardError=append:/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/state/service.log

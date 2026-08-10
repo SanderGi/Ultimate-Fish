@@ -147,9 +147,24 @@
       "unit": "ultimatefish-jg7328-verify-shards.service",
       "dependencies": ["jester-ghost-transition-rebind"],
       "queue_stage": true,
-      "checkpoint_paths": [],
-      "completion_paths": [],
-      "source_bindings": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/state/service.log",
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/state/logs/*.log",
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/state/completed/*.json"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/state/verification-summary.json"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/bin/verify_ultimate_jester_ghost_rebound_aws.py",
+          "sha256": "4238b837a1478fe8c68f2d5434839244a5f37dee8117b4a54a1aaae64bbe38ba"
+        },
+        {
+          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/ultimate_jester_ghost_information_tablebase",
+          "sha256": "978fdf69362577c824d9e456a28a51d133cca4b6823fcab9e8e7555e2c11a147"
+        }
+      ],
       "s3_certificates": []
     },
     {
