@@ -11,6 +11,7 @@
 #include <limits>
 #include <numeric>
 #include <set>
+#include <stdexcept>
 
 namespace Stockfish::Ultimate {
 namespace {
@@ -292,6 +293,58 @@ BeliefSuccessorPartitions PublicBeliefState::successor_partitions(
             (void)upn;
             bucket.worlds.push_back(std::move(position));
         }
+        result.buckets.push_back(std::move(bucket));
+    }
+    return result;
+}
+
+BeliefSuccessorPartitions PublicBeliefState::adversarial_successor_partitions(
+  bool includeDecisionObservation,
+  const std::vector<std::string>& allowedActions) const {
+    BeliefSuccessorPartitions result;
+    result.before = worlds_.size();
+    const std::set<std::string> allowed(
+      allowedActions.begin(), allowedActions.end());
+    struct Observation {
+        std::map<std::string, Position> worlds;
+        std::set<std::string> actions;
+    };
+    std::map<std::string, Observation> observations;
+    for (const auto& [upn, before] : worlds_) {
+        (void)upn;
+        for (const Move& move : before.legal_moves()) {
+            const std::string notation = before.move_to_string(move);
+            if (!allowed.empty() && !allowed.count(notation))
+                continue;
+            Position after = before;
+            Undo undo;
+            if (!after.make_move(move, undo))
+                continue;
+            std::string observation = transition_observation_key(
+              before, move, after, disclosure_);
+            if (includeDecisionObservation && !after.game_over() &&
+                after.side_to_move() == disclosure_.observer) {
+                const std::string decision = decision_observation_key(
+                  after, disclosure_);
+                observation += "|nextDecision=" +
+                               std::to_string(decision.size()) + ':' + decision;
+            }
+            Observation& bucket = observations[observation];
+            bucket.actions.insert(notation);
+            bucket.worlds.emplace(after.upn(), std::move(after));
+        }
+    }
+    result.buckets.reserve(observations.size());
+    for (auto& [observation, contents] : observations) {
+        BeliefSuccessorBucket bucket;
+        bucket.observation = std::move(observation);
+        bucket.worlds.reserve(contents.worlds.size());
+        for (auto& [upn, position] : contents.worlds) {
+            (void)upn;
+            bucket.worlds.push_back(std::move(position));
+        }
+        bucket.actions.assign(
+          contents.actions.begin(), contents.actions.end());
         result.buckets.push_back(std::move(bucket));
     }
     return result;
@@ -1033,7 +1086,7 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
               std::inserter(restricted, restricted.begin()));
             actionSet = std::move(restricted);
         }
-        if (actionSet.empty())
+        if (actionSet.empty() && *side == observer)
             return observer_evaluate(state, ply);
 
         const bool maximizing = *side == observer;
@@ -1051,6 +1104,53 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
               previousIterationPv[static_cast<std::size_t>(ply)]);
             if (pvAction != orderedActions.end())
                 std::rotate(orderedActions.begin(), pvAction, pvAction + 1);
+        }
+        if (!maximizing) {
+            const std::vector<std::string> allowed =
+              ply == 0 && !rootRestriction.empty()
+                ? std::vector<std::string>(
+                    rootRestriction.begin(), rootRestriction.end())
+                : std::vector<std::string>{};
+            const BeliefSuccessorPartitions partitions =
+              state.adversarial_successor_partitions(
+                legalDotObservations, allowed);
+            for (const BeliefSuccessorBucket& bucket : partitions.buckets) {
+                PublicBeliefState child(state.disclosure());
+                std::string error;
+                bool valid = true;
+                for (const Position& world : bucket.worlds)
+                    valid = valid && child.add(world, &error);
+                if (!valid || child.empty())
+                    throw std::runtime_error(
+                      "one adversarial observation bucket crosses public views");
+                const bool changedSide = child.side_to_move() &&
+                                         *child.side_to_move() != *side;
+                BeliefPv childPv;
+                int score = solve(
+                  child, depth - (changedSide ? 1 : 0),
+                  alpha, beta, ply + 1, childPv);
+                if (ply == 0 && std::any_of(
+                      bucket.actions.begin(), bucket.actions.end(),
+                      [&](const std::string& action) {
+                          return rootDraws.count(action) != 0;
+                      }))
+                    score = std::min(score, 0);
+                if (score < best) {
+                    best = score;
+                    bestPv.clear();
+                    if (!bucket.actions.empty())
+                        bestPv.push_back(bucket.actions.front());
+                    bestPv.insert(
+                      bestPv.end(), childPv.begin(), childPv.end());
+                }
+                beta = std::min(beta, best);
+                if (alpha >= beta || stopped())
+                    break;
+            }
+            if (best == Infinity)
+                return observer_evaluate(state, ply);
+            pv = std::move(bestPv);
+            return best;
         }
         for (const std::string& action : orderedActions) {
             int actionWorst = ply == 0 && rootDraws.count(action)
@@ -1112,7 +1212,8 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
                     for (const Position& world : bucket.worlds)
                         valid = valid && child.add(world, &error);
                     if (!valid || child.empty())
-                        continue;
+                        throw std::runtime_error(
+                          "one known-action observation bucket crosses public views");
                     const bool changedSide = child.side_to_move() &&
                                              *child.side_to_move() != *side;
                     BeliefPv childPv;

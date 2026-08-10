@@ -2420,6 +2420,17 @@ void test_public_belief_state_core() {
              conservativePartitions.incompatible == 0 &&
              conservativePartitions.buckets.size() < exactPartitions.buckets.size(),
            "search can retain all compatible worlds when legal dots are unavailable");
+    const BeliefSuccessorPartitions adversarialPartitions =
+      blackToMove.adversarial_successor_partitions(false);
+    expect(adversarialPartitions.before == blackToMove.size() &&
+             adversarialPartitions.incompatible == 0 &&
+             std::any_of(adversarialPartitions.buckets.begin(),
+                         adversarialPartitions.buckets.end(),
+                         [](const BeliefSuccessorBucket& bucket) {
+                             return bucket.actions.size() > 1 &&
+                                    bucket.worlds.size() > 1;
+                         }),
+           "indistinguishable opponent actions share one observation bucket");
     const std::size_t decisionBefore = blackToMove.size();
     const BeliefTransitionResult decisionResult = blackToMove.apply_known(
       splitAction, &error);

@@ -91,6 +91,10 @@ struct BeliefTransitionResult {
 struct BeliefSuccessorBucket {
     std::string observation;
     std::vector<Position> worlds;
+    // Distinct protocol spellings whose concrete outcomes contributed to this
+    // observation. Multiple entries are expected for indistinguishable hidden
+    // actions and are diagnostic only; they never condition the belief.
+    std::vector<std::string> actions;
 };
 
 struct BeliefSuccessorPartitions {
@@ -148,6 +152,16 @@ class PublicBeliefState {
     [[nodiscard]] BeliefSuccessorPartitions successor_partitions(
       std::string_view move,
       bool includeDecisionObservation = true) const;
+
+    // Enumerate every concrete action in every retained world and group them
+    // solely by what the configured observer can distinguish. This is the
+    // opponent/nature expansion used by history-preserving search: a quiet
+    // hidden action cannot leak its source, destination, or protocol spelling.
+    // When allowedActions is nonempty it is a root-search restriction, not an
+    // observation, and all full Moves with an allowed spelling remain.
+    [[nodiscard]] BeliefSuccessorPartitions adversarial_successor_partitions(
+      bool includeDecisionObservation = true,
+      const std::vector<std::string>& allowedActions = {}) const;
 
     // Apply one concretely spelled action only if it is legal in every world.
     // If any world is incompatible, or if the
