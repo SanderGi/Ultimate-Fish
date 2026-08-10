@@ -286,7 +286,12 @@ Regenerate them with `tools/generate_ultimate_tablebases.sh`; checkpoints are
 piece-tagged and resumable. After generation,
 `tools/audit_ultimate_tablebase_reachability.py` records the
 native turn-boundary audit against each immutable table SHA-256 before
-`tools/update_ultimate_tablebase_readme.py --full` rebuilds this summary.
+`tools/update_ultimate_tablebase_readme.py --full` rebuilds this summary. The
+final publication pass additionally uses
+`--concrete-certificates RESTORED_CERTIFICATES --require-certified-compression`.
+That mode accepts sizes only from content-addressed, versioned-S3 certificates
+whose HEAD, fresh download, full SHA-256, and archive restore checks passed,
+and binds each compressed byte count back to the logical table SHA and extent.
 Lone Bishop, Knight, Turtle, Mage, Devil, Sludge,
 Checker, Angel, and Fisherman classes are not bundled because the recovered
 native insufficient-material rule makes each an immediate draw.
