@@ -122,6 +122,26 @@ struct ExternalForceQuery {
 // the inherited target cell; mixed outcomes are a certificate failure.
 [[nodiscard]] bool exact_terminal_force(const ExternalForceQuery& query);
 
+struct LowerJesterForceQuery {
+    Color target = Color::White;
+    bool targetOwnsJester = false;
+    std::uint32_t actual = 0;
+    CrossedJesterGhostInformation::LowerJesterSet belief;
+};
+
+struct LowerGhostForceQuery {
+    Color target = Color::White;
+    CrossedJesterGhostInformation::Role targetRole =
+      CrossedJesterGhostInformation::Role::Observer;
+    CrossedJesterGhostInformation::LowerGhostState actual;
+    CrossedJesterGhostInformation::LowerGhostImage belief;
+};
+
+[[nodiscard]] LowerJesterForceQuery lower_jester_force_query(
+  const ExternalForceQuery& query);
+[[nodiscard]] LowerGhostForceQuery lower_ghost_force_query(
+  const ExternalForceQuery& query);
+
 // Collision-free in-memory reference arena. Production graph capture will
 // stream the same portable keys to named scratch; this implementation is the
 // deterministic oracle used by focused tests and restore verification.

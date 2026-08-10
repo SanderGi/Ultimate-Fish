@@ -310,6 +310,52 @@ bool exact_terminal_force(const ExternalForceQuery& query) {
     return winner && *winner == query.target;
 }
 
+LowerJesterForceQuery lower_jester_force_query(
+  const ExternalForceQuery& query) {
+    if (query.domain != Model::ChildDomain::LowerJester ||
+        query.actual.domain != Model::ChildDomain::LowerJester ||
+        query.belief.empty())
+        throw std::invalid_argument(
+          "crossed lower-Jester adapter requires a nonempty Jester query");
+    LowerJesterForceQuery result;
+    result.target = query.target;
+    result.targetOwnsJester = query.target == Color::White;
+    result.actual = query.actual.index;
+    result.belief = Model::inherited_lower_jester_set(query.belief);
+    bool actualPresent = false;
+    for (std::uint8_t index = 0; index < result.belief.cardinality; ++index)
+        actualPresent |= result.belief.concrete[index] == result.actual;
+    if (!actualPresent)
+        throw std::runtime_error(
+          "crossed lower-Jester actual is absent from projected belief");
+    return result;
+}
+
+LowerGhostForceQuery lower_ghost_force_query(
+  const ExternalForceQuery& query) {
+    if (query.domain != Model::ChildDomain::LowerGhost ||
+        query.actual.domain != Model::ChildDomain::LowerGhost ||
+        query.belief.empty())
+        throw std::invalid_argument(
+          "crossed lower-Ghost adapter requires a nonempty Ghost query");
+    LowerGhostForceQuery result;
+    result.target = query.target;
+    // In crossed K+Jester-v-K+Ghost, Black is always the Ghost owner and
+    // White the observer, even though the lower UFGM normalizes those roles.
+    result.targetRole = query.target == Color::Black
+                      ? Model::Role::GhostOwner : Model::Role::Observer;
+    result.actual = Model::decode_lower_ghost(query.actual.index);
+    result.belief = Model::inherited_lower_ghost_image(query.belief);
+    if (result.actual.side != result.belief.side ||
+        result.actual.ownerKing != result.belief.ownerKing ||
+        result.actual.observerKing != result.belief.observerKing ||
+        result.actual.visible != result.belief.visible ||
+        !result.belief.locations.test(result.actual.ghost))
+        throw std::runtime_error(
+          "crossed lower-Ghost actual is absent from projected belief");
+    return result;
+}
+
 const Model::KnowledgeState& Arena::node(NodeId id) const {
     if (id >= nodes_.size())
         throw std::out_of_range("crossed solver node is outside the arena");

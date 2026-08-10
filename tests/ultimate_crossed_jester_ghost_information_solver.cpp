@@ -64,6 +64,20 @@ Model::KnowledgeState external_fixture() {
     return state;
 }
 
+Model::KnowledgeState lower_jester_fixture() {
+    Model::KnowledgeState state;
+    state.frame = {Color::White, square("h10"), square("a1"),
+                   square("e4"), square("e5")};
+    state.atoms = {{{true, square("e5")}},
+                   {{false, square("e5")}}};
+    for (const Model::HistoryAtom& atom : state.atoms)
+        state.worlds.set(Model::world_variable(state.frame, atom.world));
+    state.white.cells = {{0}, {1}};
+    state.black.cells = {{0, 1}};
+    Model::validate_knowledge_state(state);
+    return state;
+}
+
 void solver_arena_test() {
     Solver::Arena arena;
     const Model::KnowledgeState root = fixture();
@@ -159,6 +173,7 @@ void solver_arena_test() {
     std::uint64_t lowerGhost = 0;
     std::uint64_t exactTerminal = 0;
     std::uint64_t blackTerminalForces = 0;
+    std::size_t largestBlackLowerBelief = 0;
     for (const Solver::ActionGatePlan& gate : external.gates)
         for (const Solver::ChildReference& child : gate.children) {
             if (child.domain == Model::ChildDomain::SameClass)
@@ -184,12 +199,23 @@ void solver_arena_test() {
                 if (child.domain == Model::ChildDomain::ExactTerminal)
                     blackTerminalForces +=
                       Solver::exact_terminal_force(query);
+                else if (child.domain == Model::ChildDomain::LowerGhost) {
+                    const Solver::LowerGhostForceQuery lower =
+                      Solver::lower_ghost_force_query(query);
+                    require(lower.targetRole == Model::Role::GhostOwner,
+                            "crossed Black lower query lost Ghost ownership");
+                    largestBlackLowerBelief = std::max(
+                      largestBlackLowerBelief,
+                      static_cast<std::size_t>(lower.belief.locations.count()));
+                }
             }
         }
     require(lowerGhost > 0 && exactTerminal > 0,
             "crossed Bellman plan lost lower-Ghost or terminal references");
     require(blackTerminalForces == exactTerminal,
             "crossed Black terminal force did not reproduce the public winner");
+    require(largestBlackLowerBelief == 1,
+            "crossed Ghost owner did not retain its singleton lower location");
     const Solver::TargetBellmanPlan externalWhite =
       externalArena.bellman_plan(externalId, Color::White, false);
     std::size_t largestWhiteLowerBelief = 0;
@@ -201,6 +227,11 @@ void solver_arena_test() {
                     externalExpansion, Color::White, child);
                 largestWhiteLowerBelief = std::max(
                   largestWhiteLowerBelief, query.belief.size());
+                const Solver::LowerGhostForceQuery lower =
+                  Solver::lower_ghost_force_query(query);
+                require(lower.targetRole == Model::Role::Observer &&
+                          lower.belief.locations.count() == 8,
+                        "crossed White lower query lost the arbitrary Ghost mask");
             }
             else if (child.domain == Model::ChildDomain::ExactTerminal) {
                 const Solver::ExternalForceQuery query =
@@ -215,6 +246,47 @@ void solver_arena_test() {
               << " exact_terminal " << exactTerminal
               << " inherited_white_belief " << largestWhiteLowerBelief
               << " unresolved_as_draw 0 residual 0\n";
+
+    Solver::Arena jesterArena;
+    const Solver::NodeId jesterId = jesterArena.intern(
+      lower_jester_fixture());
+    const Solver::NodeExpansion jesterExpansion = jesterArena.regenerate(
+      jesterId, true);
+    const Solver::TargetBellmanPlan whiteJester = jesterArena.bellman_plan(
+      jesterId, Color::White, false);
+    std::uint64_t whiteSingletons = 0;
+    for (const Solver::ActionGatePlan& gate : whiteJester.gates)
+        for (const Solver::ChildReference& child : gate.children)
+            if (child.domain == Model::ChildDomain::LowerJester) {
+                const Solver::LowerJesterForceQuery lower =
+                  Solver::lower_jester_force_query(
+                    Solver::external_force_query(
+                      jesterExpansion, Color::White, child));
+                require(lower.targetOwnsJester &&
+                          lower.belief.cardinality == 1,
+                        "crossed Jester owner did not retain its singleton assignment");
+                ++whiteSingletons;
+            }
+    const Solver::TargetBellmanPlan blackJester = jesterArena.bellman_plan(
+      jesterId, Color::Black, false);
+    std::uint64_t blackPairs = 0;
+    for (const Solver::AtomEquationPlan& equation : blackJester.atoms)
+        for (const Solver::ChildReference& child : equation.children)
+            if (child.domain == Model::ChildDomain::LowerJester) {
+                const Solver::LowerJesterForceQuery lower =
+                  Solver::lower_jester_force_query(
+                    Solver::external_force_query(
+                      jesterExpansion, Color::Black, child));
+                require(!lower.targetOwnsJester &&
+                          lower.belief.cardinality == 2,
+                        "crossed Jester observer lost the inherited royal pair");
+                ++blackPairs;
+            }
+    require(whiteSingletons > 0 && blackPairs > 0,
+            "crossed Bellman plan did not expose lower-Jester queries");
+    std::cout << "crossed_solver_lower_jester owner_singletons "
+              << whiteSingletons << " observer_pairs " << blackPairs
+              << " fresh_remaximized 0 residual 0\n";
 }
 
 }  // namespace
