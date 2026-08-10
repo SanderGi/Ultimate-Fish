@@ -159,6 +159,8 @@ struct KnowledgeState {
 // Construct the exact fresh maximal public state after native/causal
 // admission. White cells group by royal assignment; Black cells group by its
 // exact Ghost square. No legal-dot observation is applied until requested.
+[[nodiscard]] std::optional<KnowledgeState> admitted_fresh_state(
+  const PublicFrame& frame);
 [[nodiscard]] KnowledgeState fresh_state(const PublicFrame& frame);
 void validate_knowledge_state(const KnowledgeState& state);
 [[nodiscard]] const KnowledgePartition& partition_for(

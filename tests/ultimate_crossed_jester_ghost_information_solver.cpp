@@ -151,16 +151,43 @@ Model::KnowledgeState lower_jester_fixture() {
 
 void solver_arena_test() {
     Solver::Arena arena;
+    const std::uint32_t seedBegin = Model::encode_public_frame(fixture().frame);
+    const Solver::FreshSeedResult seeded = arena.seed_fresh_range(seedBegin, 512);
+    require(seeded.roots.size() == 512 &&
+             seeded.certificate.rawBegin == seedBegin &&
+             seeded.certificate.rawCount == 512 &&
+             seeded.certificate.admitted > 0 &&
+             seeded.certificate.admitted + seeded.certificate.empty == 512 &&
+             seeded.certificate.unique == arena.size() &&
+             seeded.certificate.codecResidual == 0,
+            "crossed fresh root seed certificate has a residual");
+    const Solver::FreshSeedResult replaySeed = arena.seed_fresh_range(
+      seedBegin, 512);
+    require(replaySeed.roots == seeded.roots &&
+             replaySeed.certificate.unique == 0 &&
+             replaySeed.certificate.duplicate ==
+               replaySeed.certificate.admitted,
+            "crossed fresh root seed replay changed stable IDs");
+    bool badSeedRange = false;
+    try {
+        (void)arena.seed_fresh_range(Model::RawPublicFrameCount, 1);
+    }
+    catch (const std::out_of_range&) {
+        badSeedRange = true;
+    }
+    require(badSeedRange, "crossed fresh root seed accepted a bad range");
+
+    Solver::Arena focused;
     const Model::KnowledgeState root = fixture();
-    const Solver::NodeId rootId = arena.intern(root);
-    require(rootId == 0 && arena.intern(root) == rootId && arena.size() == 1,
+    const Solver::NodeId rootId = focused.intern(root);
+    require(rootId == 0 && focused.intern(root) == rootId && focused.size() == 1,
             "crossed solver interner is not collision-free/idempotent");
     const Model::KnowledgeState reflected = Model::transform_state(
       root, Model::RectangleTransform::Both);
-    require(arena.intern(reflected) == rootId,
+    require(focused.intern(reflected) == rootId,
             "crossed solver did not D2-canonicalize a root");
 
-    const Solver::NodeExpansion first = arena.regenerate(rootId, true);
+    const Solver::NodeExpansion first = focused.regenerate(rootId, true);
     require(first.certificate.actions == 19 &&
              first.certificate.observations == 4 &&
              first.certificate.outcomes == 38 &&
@@ -168,9 +195,9 @@ void solver_arena_test() {
              first.certificate.newlyInterned > 0 &&
              first.certificate.keyRoundtripResidual == 0,
             "crossed solver first expansion certificate has a residual");
-    const std::size_t discovered = arena.size();
-    const Solver::NodeExpansion replay = arena.regenerate(rootId, false);
-    require(arena.size() == discovered &&
+    const std::size_t discovered = focused.size();
+    const Solver::NodeExpansion replay = focused.regenerate(rootId, false);
+    require(focused.size() == discovered &&
              replay.certificate.actions == first.certificate.actions &&
              replay.certificate.observations ==
                first.certificate.observations &&
@@ -180,7 +207,7 @@ void solver_arena_test() {
             "crossed solver closed replay differs from discovery");
 
     std::ostringstream archive(std::ios::binary);
-    const Solver::GraphArchiveCertificate written = arena.write(archive);
+    const Solver::GraphArchiveCertificate written = focused.write(archive);
     const std::string graphBytes = archive.str();
     std::istringstream restoredInput(graphBytes, std::ios::binary);
     auto [restoredArena, restored] = Solver::Arena::read(restoredInput);
@@ -191,10 +218,10 @@ void solver_arena_test() {
              restored.keyRoundtripResidual == 0 &&
              restored.canonicalResidual == 0 &&
              restored.duplicateResidual == 0 &&
-             restoredArena.size() == arena.size(),
+             restoredArena.size() == focused.size(),
             "crossed graph archive round-trip has a residual");
     for (Solver::NodeId node = 0; node < discovered; ++node)
-        require(restoredArena.node(node) == arena.node(node),
+        require(restoredArena.node(node) == focused.node(node),
                 "crossed graph archive changed a stable node ID");
     bool rejected = false;
     try {
@@ -250,7 +277,7 @@ void solver_arena_test() {
     require(rejected, "crossed graph archive accepted a duplicate node key");
     rejected = false;
     try {
-        const Model::KnowledgeState& canonical = arena.node(rootId);
+        const Model::KnowledgeState& canonical = focused.node(rootId);
         std::optional<Model::KnowledgeState> noncanonical;
         for (const Model::RectangleTransform transform : {
                Model::RectangleTransform::Horizontal,
@@ -288,7 +315,7 @@ void solver_arena_test() {
                   first.sameClassChildren[bucket].has_value(),
                 "crossed solver bucket/child domain mapping is incomplete");
     }
-    const Solver::TargetBellmanPlan black = arena.bellman_plan(
+    const Solver::TargetBellmanPlan black = focused.bellman_plan(
       rootId, Color::Black, false);
     require(black.mover == Color::Black &&
              black.certificate.atoms == root.atoms.size() &&
@@ -309,7 +336,7 @@ void solver_arena_test() {
         require(!gate.children.empty(),
                 "crossed informed action gate lacks cell outcomes");
 
-    const Solver::TargetBellmanPlan white = arena.bellman_plan(
+    const Solver::TargetBellmanPlan white = focused.bellman_plan(
       rootId, Color::White, false);
     require(white.mover == Color::Black && white.gates.empty() &&
              white.certificate.atoms == root.atoms.size() &&
@@ -326,7 +353,7 @@ void solver_arena_test() {
         require(equation.kind == Solver::EquationKind::And &&
                   equation.gates.empty() && !equation.children.empty(),
                 "crossed opponent atom is not an AND of compatible outcomes");
-    std::cout << "crossed_solver_arena nodes " << arena.size()
+    std::cout << "crossed_solver_arena nodes " << focused.size()
               << " actions " << first.certificate.actions
               << " observations " << first.certificate.observations
               << " outcomes " << first.certificate.outcomes

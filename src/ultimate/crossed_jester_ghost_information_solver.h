@@ -39,6 +39,21 @@ struct GraphArchiveCertificate {
     std::uint64_t duplicateResidual = 0;
 };
 
+struct FreshSeedCertificate {
+    std::uint32_t rawBegin = 0;
+    std::uint32_t rawCount = 0;
+    std::uint64_t admitted = 0;
+    std::uint64_t empty = 0;
+    std::uint64_t unique = 0;
+    std::uint64_t duplicate = 0;
+    std::uint64_t codecResidual = 0;
+};
+
+struct FreshSeedResult {
+    std::vector<std::optional<NodeId>> roots;
+    FreshSeedCertificate certificate;
+};
+
 struct NodeExpansion {
     CrossedJesterGhostInformation::CompleteTransitions transitions;
     // SameClass buckets name their exact canonical child. External buckets
@@ -171,6 +186,8 @@ class LowerForceOracle {
 // deterministic oracle used by focused tests and restore verification.
 class Arena {
    public:
+    [[nodiscard]] FreshSeedResult seed_fresh_range(
+      std::uint32_t rawBegin, std::uint32_t rawCount);
     [[nodiscard]] NodeId intern(
       const CrossedJesterGhostInformation::KnowledgeState& state);
     [[nodiscard]] std::optional<NodeId> find(

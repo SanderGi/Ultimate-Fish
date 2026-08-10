@@ -589,17 +589,27 @@ void validate_knowledge_state(const KnowledgeState& state) {
     }
 }
 
-KnowledgeState fresh_state(const PublicFrame& frame) {
+std::optional<KnowledgeState> admitted_fresh_state(const PublicFrame& frame) {
     KnowledgeState result;
     result.frame = frame;
     for (const ProductWorld& world : geometric_worlds(frame))
         if (fresh_world_admission(frame, world) == AdmissionVerdict::Admit)
             result.atoms.push_back({world});
+    if (result.atoms.empty())
+        return std::nullopt;
     result.worlds = projected_worlds(frame, result.atoms);
     result.white = build_owned_partition(result.atoms, Color::White);
     result.black = build_owned_partition(result.atoms, Color::Black);
     validate_knowledge_state(result);
     return result;
+}
+
+KnowledgeState fresh_state(const PublicFrame& frame) {
+    std::optional<KnowledgeState> result = admitted_fresh_state(frame);
+    if (!result)
+        throw std::invalid_argument(
+          "crossed public frame has no admitted fresh world");
+    return std::move(*result);
 }
 
 const KnowledgePartition& partition_for(const KnowledgeState& state,

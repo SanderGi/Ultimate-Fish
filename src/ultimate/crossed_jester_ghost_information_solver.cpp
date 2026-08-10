@@ -48,6 +48,40 @@ std::vector<std::uint8_t> Arena::key(const Model::KnowledgeState& state) {
     return Model::serialize_state(Model::canonicalize_state(state).value);
 }
 
+FreshSeedResult Arena::seed_fresh_range(std::uint32_t rawBegin,
+                                        std::uint32_t rawCount) {
+    if (rawBegin > Model::RawPublicFrameCount ||
+        rawCount > Model::RawPublicFrameCount - rawBegin)
+        throw std::out_of_range("crossed fresh seed range");
+    FreshSeedResult result;
+    result.certificate.rawBegin = rawBegin;
+    result.certificate.rawCount = rawCount;
+    result.roots.reserve(rawCount);
+    const std::size_t before = size();
+    for (std::uint32_t offset = 0; offset < rawCount; ++offset) {
+        const std::uint32_t raw = rawBegin + offset;
+        const Model::PublicFrame frame = Model::decode_public_frame(raw);
+        if (Model::encode_public_frame(frame) != raw)
+            ++result.certificate.codecResidual;
+        std::optional<Model::KnowledgeState> state =
+          Model::admitted_fresh_state(frame);
+        if (!state) {
+            ++result.certificate.empty;
+            result.roots.push_back(std::nullopt);
+            continue;
+        }
+        ++result.certificate.admitted;
+        result.roots.push_back(intern(*state));
+    }
+    result.certificate.unique = size() - before;
+    result.certificate.duplicate =
+      result.certificate.admitted - result.certificate.unique;
+    if (result.certificate.admitted + result.certificate.empty != rawCount ||
+        result.certificate.codecResidual)
+        throw std::runtime_error("crossed fresh seed certificate residual");
+    return result;
+}
+
 NodeId Arena::intern(const Model::KnowledgeState& state) {
     Model::KnowledgeState canonical = Model::canonicalize_state(state).value;
     std::vector<std::uint8_t> encoded = Model::serialize_state(canonical);
