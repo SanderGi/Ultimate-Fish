@@ -52,7 +52,7 @@
       "minimum_disk_free_bytes": {
         "/": 2147483648,
         "/mnt/ultimatefish": 322122547200,
-        "/mnt/ultimatefish-overflow": 354334801920
+        "/mnt/ultimatefish-overflow": 285615325184
       }
     }
   ],
@@ -246,7 +246,10 @@
       "unit": "ultimatefish-concrete-wave0-018-ac9b2d32-resume-v5.service",
       "dependencies": [],
       "checkpoint_paths": ["/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-018-resume-v5/work/scratch/*"],
-      "completion_paths": ["/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-018-resume-v5/work/certificates/wave-certificate.json"],
+      "completion_paths": [
+        "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-018-resume-v5/work/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-018-resume-v5/work/s3-verify/wave-certificate.json"
+      ],
       "source_bindings": [
         {
           "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-018-resume-v5/source/ultimatefish/tools/resume_ultimate_concrete_frontier_aws.py",
@@ -257,13 +260,59 @@
           "sha256": "628c979cdac33d534ddbf5cc84b526aa9a25c9aa770c45f49bf631232aa7b294"
         }
       ],
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62/kberserkerkprince-e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62.tar.zst",
+          "version_id": "vp9jH5pdw2s8jBiiSTeI5WqtSfvHhytf",
+          "sha256": "e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62",
+          "size": 24382892
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/3f42b04c42b9558f63dbe2caf32e564f423ee83dec2864916fbbb756289b7afc/wave-certificate.json",
+          "version_id": "SzeWdEjBf8KHGfw_S14K1HqFwgE6955v",
+          "sha256": "3f42b04c42b9558f63dbe2caf32e564f423ee83dec2864916fbbb756289b7afc",
+          "size": 2565
+        }
+      ]
+    },
+    {
+      "id": "concrete-wave0-020",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave0-020-ac9b2d32-v1.service",
+      "dependencies": ["concrete-ghost-kchecker-certified", "concrete-wave0-018"],
+      "advanceable": true,
+      "checkpoint_paths": ["/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/work/scratch/*"],
+      "completion_paths": [
+        "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/work/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/work/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/source/ultimatefish/tools/run_ultimate_concrete_checkpointed_aws.py",
+          "sha256": "e0db6d472a921f5de7445c46f7e2f63d26dc0bf99899fd3cbeb393fa96fa5c46"
+        },
+        {
+          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/source/ultimatefish/tools/run_ultimate_concrete_tablebase_shard_aws.py",
+          "sha256": "1acf8d13ffa465fc6f6372554d495646df5020f2685c1a59bbf4105753862578"
+        },
+        {
+          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/source/ultimatefish/tools/ultimatefish-concrete-wave0-020-ac9b2d32-v1.service",
+          "sha256": "63268e53ff86a0ed18af6fcd4b5cbe1310a0d5d5f24c3691cf2fe4ff9fec5e02"
+        },
+        {
+          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-018-full-v3/dependencies/manifest.json",
+          "sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504"
+        }
+      ],
       "s3_certificates": []
     },
     {
       "id": "concrete-wave0-remaining",
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-concrete-wave0-next.service",
-      "dependencies": ["concrete-ghost-kchecker-certified", "concrete-wave0-018"],
+      "dependencies": ["concrete-wave0-020"],
       "queue_stage": true,
       "checkpoint_paths": [],
       "completion_paths": [],

@@ -74,6 +74,28 @@ class AssembleConcreteWaveDependenciesTest(unittest.TestCase):
             self.assertEqual(set(records), {
                 str(record["filename"]) for record in runner.wave_inventory(0)})
 
+    def test_preserved_frontier_resume_is_accepted_with_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            items = self.complete_items()
+            items[18]["status"] = "resumed-frontier-preserved"
+            document = certificate(items)
+            document["original_scratch_retained"] = True
+            self.write_certificate(root, "complete", document)
+            records = assemble.collect_results(
+                root, 0, model=MODEL, inventory=INVENTORY)
+            self.assertEqual(records["kberserkerkprince.uftb"]["status"],
+                             "resumed-frontier-preserved")
+
+    def test_preserved_frontier_resume_without_provenance_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            items = self.complete_items()
+            items[18]["status"] = "resumed-frontier-preserved"
+            self.write_certificate(root, "complete", certificate(items))
+            with self.assertRaisesRegex(RuntimeError, "malformed preserved"):
+                assemble.collect_results(root, 0, model=MODEL, inventory=INVENTORY)
+
     def test_missing_output_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

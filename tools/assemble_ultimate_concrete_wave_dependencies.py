@@ -80,8 +80,12 @@ def collect_results(directory: Path, completed_wave: int, *,
             s3 = item.get("s3", {})
             output = item.get("output", {})
             archive = item.get("archive", {})
+            preserved_status = item.get("status")
+            resumed = preserved_status == "resumed-frontier-preserved"
             if (name not in expected or expected[name] != wave or
-                    item.get("status") != "generated-preserved" or
+                    preserved_status not in (
+                        "generated-preserved", "resumed-frontier-preserved") or
+                    (resumed and not document.get("original_scratch_retained")) or
                     not isinstance(s3, dict) or not isinstance(output, dict) or
                     not isinstance(archive, dict) or
                     any(int(s3.get(key, -1)) != 0 for key in (
