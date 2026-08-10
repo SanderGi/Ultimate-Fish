@@ -76,6 +76,20 @@ class JesterGhostMeasurementTest(unittest.TestCase):
         self.assertEqual(["jester-ghost-merge"],
                          jobs["jester-ghost-measure"]["dependencies"])
 
+    def test_production_unit_is_measurement_only_and_resource_bounded(self):
+        unit = (ROOT / "tools/ultimatefish-jg7328-measure.service").read_text()
+        self.assertIn("--merge-evidence-sha256 "
+                      "83f4ee24c9c19672bb62899f55aacdf230e6d4848684e96322211d04add2fcdd",
+                      unit)
+        self.assertIn("--maximum-resident-bytes 47244640256", unit)
+        self.assertIn("--maximum-disk-bytes 483183820800", unit)
+        self.assertIn("MemoryMax=46G", unit)
+        self.assertIn("AllowedCPUs=1", unit)
+        self.assertIn("Restart=no", unit)
+        self.assertNotIn("--solve", unit)
+        self.assertNotIn("--full", unit)
+        self.assertIn("ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work", unit)
+
 
 if __name__ == "__main__":
     unittest.main()

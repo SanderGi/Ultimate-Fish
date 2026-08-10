@@ -1,0 +1,58 @@
+[Unit]
+Description=Ultimate Fish measurement-only Jester/Ghost 732852b8 sweep
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-certification-7328/evidence/merge-evidence-certificate.json
+ConditionPathExists=/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328/bin/run_ultimate_jester_ghost_measurement_aws.py
+
+[Service]
+Type=oneshot
+WorkingDirectory=/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 /mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328/bin/run_ultimate_jester_ghost_measurement_aws.py \
+  --runner-source /mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328/bin/run_ultimate_jester_ghost_measurement_aws.py \
+  --runner-sha256 b8cfa0c3c822a96cb32fa8404d147f24890f9deea764723a1f15da71842761c0 \
+  --bundle-manifest /mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/bundle-manifest.json \
+  --merge-evidence /mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-certification-7328/evidence/merge-evidence-certificate.json \
+  --merge-evidence-sha256 83f4ee24c9c19672bb62899f55aacdf230e6d4848684e96322211d04add2fcdd \
+  --binary /mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/ultimate_jester_ghost_information_tablebase \
+  --binary-sha256 978fdf69362577c824d9e456a28a51d133cca4b6823fcab9e8e7555e2c11a147 \
+  --transition-prefix /mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work/output/kjesterghostk \
+  --source-table /mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/tablebases/kjesterghostk.uftb \
+  --lower-jester-table /mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/tablebases/kjesterk.uftb \
+  --lower-jester-overlay /mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/tablebases/kjesterk.ufiw \
+  --lower-jester-model-sha256 0ed6d361e313623234c21f9a1c800947014ce47320b4a71fca4fb20a255587c2 \
+  --lower-ghost-sidecar /mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/tablebases/kghostk.ufgm \
+  --work /mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328/work \
+  --maximum-disk-bytes 483183820800 \
+  --maximum-resident-bytes 47244640256 \
+  --minimum-free-bytes 32212254720
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+AllowedCPUs=1
+CPUWeight=25
+MemoryHigh=40G
+MemoryMax=46G
+OOMPolicy=stop
+TasksMax=64
+LimitNOFILE=65536
+Restart=no
+TimeoutStartSec=infinity
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/restored-11120
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/rebound-7328
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-certification-7328
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-certification-7328
+ReadWritePaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328
+StandardOutput=append:/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328/service.log
+StandardError=append:/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328/service.log
