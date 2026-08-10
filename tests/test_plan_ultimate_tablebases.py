@@ -351,9 +351,56 @@ class TablebasePlanTests(unittest.TestCase):
         text = "\n".join((readme.START, "| header |", first, second,
                            readme.END))
         self.assertEqual(readme.cached_rows(text), {
-            "krk.uftb": first,
-            "kqk.uftb": second,
+            "krk.uftb":
+                "| `krk.uftb` | King+Rook vs King | 1 | 2 | 3 | — | `abc` |",
+            "kqk.uftb":
+                "| `kqk.uftb` | King+Queen vs King | 4 | 5 | 6 | — | `def` |",
         })
+
+        current = (
+            "| `krk.uftb` | King+Rook vs King | 1 | 2 | 3 | 99 | `abc` |"
+        )
+        self.assertEqual(
+            readme.cached_rows("\n".join(
+                (readme.START, "| header |", current, readme.END))),
+            {"krk.uftb": current},
+        )
+
+    def test_readme_compressed_size_is_bound_to_restored_artifact(self):
+        artifact = readme.concrete_certificates.Artifact(
+            filename="krk.uftb",
+            states=10,
+            win=5,
+            loss=3,
+            draw=2,
+            raw_bytes=140,
+            compressed_bytes=80,
+            output_sha256="a" * 64,
+            archive_sha256="b" * 64,
+            s3_bucket="private-versioned-bucket",
+            s3_key="results/sha256/" + "b" * 64 + "/krk.tar.zst",
+            version_id="version-1",
+        )
+        artifacts = {artifact.filename: artifact}
+        self.assertEqual(
+            "80",
+            readme.certified_compressed_cell(
+                "krk.uftb", "a" * 64, 140, artifacts, require=True),
+        )
+        with self.assertRaisesRegex(ValueError, "SHA-256 does not match"):
+            readme.certified_compressed_cell(
+                "krk.uftb", "c" * 64, 140, artifacts, require=True)
+        with self.assertRaisesRegex(ValueError, "raw byte count"):
+            readme.certified_compressed_cell(
+                "krk.uftb", "a" * 64, 141, artifacts, require=True)
+        with self.assertRaisesRegex(ValueError, "no restored"):
+            readme.certified_compressed_cell(
+                "kqk.uftb", "a" * 64, 140, artifacts, require=True)
+        self.assertEqual(
+            "—",
+            readme.certified_compressed_cell(
+                "kqk.uftb", "a" * 64, 140, artifacts),
+        )
 
 
 if __name__ == "__main__":

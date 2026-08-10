@@ -10,6 +10,7 @@ import struct
 from typing import Mapping
 
 import plan_ultimate_tablebases as plan
+import summarize_ultimate_concrete_certificates as concrete_certificates
 import summarize_ultimate_tablebases as summarize
 import ultimate_information_tablebases as information
 import ultimate_tablebase_shards as shards
@@ -19,6 +20,47 @@ ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "tablebases" / "README.md"
 START = "<!-- GENERATED_TABLE_START -->"
 END = "<!-- GENERATED_TABLE_END -->"
+
+
+def certified_artifacts(
+        report: concrete_certificates.Report | None,
+) -> dict[str, concrete_certificates.Artifact]:
+    """Index fully restored concrete artifacts by logical filename.
+
+    ``load_report`` has already authenticated the content-addressed certificate,
+    its versioned S3 object, fresh download, and archive restore.  Keeping this
+    conversion narrow makes it impossible for the README path to accept an
+    unverified size-only JSON export.
+    """
+    if report is None:
+        return {}
+    result = {artifact.filename: artifact for artifact in report.artifacts}
+    if len(result) != len(report.artifacts):
+        raise ValueError("concrete certificate report has duplicate filenames")
+    return result
+
+
+def certified_compressed_cell(
+        filename: str,
+        digest: str,
+        raw_bytes: int,
+        artifacts: Mapping[str, concrete_certificates.Artifact],
+        require: bool = False,
+) -> str:
+    """Return an exact preserved archive size after binding it to table bytes."""
+    artifact = artifacts.get(filename)
+    if artifact is None:
+        if require:
+            raise ValueError(
+                f"{filename}: no restored concrete compression certificate")
+        return "—"
+    if artifact.output_sha256 != digest:
+        raise ValueError(
+            f"{filename}: certificate output SHA-256 does not match table")
+    if artifact.raw_bytes != raw_bytes:
+        raise ValueError(
+            f"{filename}: certificate raw byte count does not match table")
+    return f"{artifact.compressed_bytes:,}"
 
 
 def display_name(record: dict[str, object]) -> str:
@@ -45,6 +87,18 @@ def cached_rows(text: str) -> dict[str, str]:
     result: dict[str, str] = {}
     for line in text[begin:end].splitlines():
         if not line.startswith("| `"):
+            continue
+        # Rows generated before compressed preservation was certificate-bound
+        # have six fields.  They remain safe summary caches, but their absent
+        # size must be represented explicitly rather than shifting SHA-256
+        # into the new compressed-size column.
+        if line.count("|") == 7:
+            body = line[:-2]
+            prefix, separator, digest = body.rpartition(" | ")
+            if not separator:
+                continue
+            line = f"{prefix} | — | {digest} |"
+        elif line.count("|") != 8:
             continue
         filename, separator, _rest = line[3:].partition("` |")
         if separator:
@@ -171,7 +225,23 @@ def main() -> None:
     parser.add_argument(
         "--full", action="store_true",
         help="reread, validate, summarize, and hash every packed table")
+    parser.add_argument(
+        "--concrete-certificates", type=Path,
+        help=("restored sha256/*/wave-certificate.json tree used to add exact "
+              "versioned-S3 archive sizes"))
+    parser.add_argument(
+        "--require-certified-compression", action="store_true",
+        help="fail if any rendered table lacks a restored compression certificate")
     args = parser.parse_args()
+    if args.require_certified_compression and args.concrete_certificates is None:
+        parser.error("--require-certified-compression requires "
+                     "--concrete-certificates")
+
+    certificate_report = (
+        concrete_certificates.load_report(args.concrete_certificates)
+        if args.concrete_certificates is not None else None
+    )
+    compression = certified_artifacts(certificate_report)
 
     # Validate all 45 rows, their exact-solver certificates, and their logical
     # table SHA-256 bindings before allowing even cached output to be reused.
@@ -192,8 +262,9 @@ def main() -> None:
     lines = [
         START,
         "| File | Class | In-class edges | First material owner starts W / L / D | "
-        "Second material owner / bare King starts W / L / D | SHA-256 |",
-        "| --- | --- | ---: | ---: | ---: | --- |",
+        "Second material owner / bare King starts W / L / D | "
+        "Preserved compressed bytes | SHA-256 |",
+        "| --- | --- | ---: | ---: | ---: | ---: | --- |",
     ]
     for record in ordered:
         path = ROOT / "tablebases" / str(record["filename"])
@@ -201,7 +272,8 @@ def main() -> None:
         # point-square reflection of a Giant's 2x2 lower-left anchor.
         summarize.require_current_giant_codec(path)
         cached = old_rows.get(path.name)
-        if (not args.full and logic_mtime <= readme_mtime and cached is not None
+        if (not args.full and certificate_report is None and
+                logic_mtime <= readme_mtime and cached is not None
                 and path.stat().st_mtime_ns <= readme_mtime):
             lines.append(cached)
             reused += 1
@@ -214,9 +286,12 @@ def main() -> None:
         totals, illegal = summarize.summary(path, data, digest)
         first_cell, second_cell = summary_cells(
             path.name, totals, illegal, information_catalog)
+        compressed_cell = certified_compressed_cell(
+            path.name, digest, len(data), compression,
+            require=args.require_certified_compression)
         lines.append(
             f"| `{path.name}` | {display_name(record)} | {edges:,} | "
-            f"{first_cell} | {second_cell} | `{digest}` |")
+            f"{first_cell} | {second_cell} | {compressed_cell} | `{digest}` |")
     lines.append(END)
 
     begin = text.index(START)
