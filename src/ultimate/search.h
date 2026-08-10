@@ -6,14 +6,17 @@
 #ifndef ULTIMATE_SEARCH_H_INCLUDED
 #define ULTIMATE_SEARCH_H_INCLUDED
 
+#include "information.h"
 #include "position.h"
 #include "nnue.h"
 
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace Stockfish::Ultimate {
@@ -68,7 +71,88 @@ struct BeliefSearchResult {
     std::size_t deepBeliefs = 0;
     std::size_t commonMoves = 0;
     std::size_t candidates = 0;
+    // False when the configured observer is to move but the supplied state
+    // still spans multiple privately visible legal-dot observations.
+    bool validInformationCell = true;
+    // The current live solver constrains only the root action across the
+    // complete information set.  Deeper searches are explicitly concrete-
+    // world searches until the history-preserving search lands.
+    int historyPreservingPlies = 0;
     std::vector<std::string> principalVariation;
+};
+
+struct BeliefTransitionResult {
+    std::size_t before = 0;
+    std::size_t after = 0;
+    std::size_t observations = 0;
+    bool applied = false;
+};
+
+struct BeliefSuccessorBucket {
+    std::string observation;
+    std::vector<Position> worlds;
+};
+
+struct BeliefSuccessorPartitions {
+    std::size_t before = 0;
+    std::size_t incompatible = 0;
+    std::vector<BeliefSuccessorBucket> buckets;
+};
+
+struct BeliefDecisionBucket {
+    std::string observation;
+    std::vector<Position> worlds;
+};
+
+// Collision-free, uncapped public information set shared by protocol clients.
+// Every concrete world must have the same ordinary public view for the
+// configured observer. Mover-private legal-dot differences are retained and
+// reported as decision partitions; they are never silently exposed or used to
+// select the actual world.
+class PublicBeliefState {
+   public:
+    explicit PublicBeliefState(DisclosureContext disclosure = {});
+
+    void clear();
+    bool set_disclosure(DisclosureContext disclosure,
+                        std::string* error = nullptr);
+    [[nodiscard]] const DisclosureContext& disclosure() const;
+    [[nodiscard]] std::size_t size() const;
+    [[nodiscard]] bool empty() const;
+    [[nodiscard]] std::optional<Color> side_to_move() const;
+    [[nodiscard]] const std::string& public_view() const;
+
+    // Returns true for both a new world and an exact duplicate. `size()`
+    // distinguishes the two. No hash-only identity or world bound is used.
+    bool add(Position position, std::string* error = nullptr);
+    [[nodiscard]] std::vector<Position> positions() const;
+    [[nodiscard]] std::vector<std::string> common_moves() const;
+    [[nodiscard]] std::vector<BeliefDecisionBucket> decision_cells() const;
+    [[nodiscard]] std::size_t decision_partitions() const;
+
+    // Enumerate every exact successor bucket without mutating this belief.
+    // The observation key is the public transition observation, augmented by
+    // the configured observer's private legal-dot observation when that
+    // observer becomes the mover. `incompatible` counts retained worlds in
+    // which the concretely spelled action was not legal.
+    [[nodiscard]] BeliefSuccessorPartitions successor_partitions(
+      std::string_view move) const;
+
+    // Apply one concretely spelled action only if it is legal in every world.
+    // If any world is incompatible, or if the
+    // public animation/result partitions into more than one observation, the
+    // state is left unchanged and the caller must condition on an observed
+    // successor rather than discarding worlds or merging distinguishable
+    // histories. A successor decision observation is included when the
+    // configured observer becomes the mover.
+    BeliefTransitionResult apply_known(std::string_view move,
+                                       std::string* error = nullptr);
+
+   private:
+    DisclosureContext disclosure_{};
+    std::optional<Color> side_;
+    std::string publicView_;
+    std::map<std::string, Position> worlds_;
 };
 
 class Search {
@@ -76,6 +160,10 @@ class Search {
     explicit Search(std::size_t hashMegabytes = 64);
 
     SearchResult think(Position& position, const SearchLimits& limits);
+    BeliefSearchResult think_beliefs(const PublicBeliefState& beliefs,
+                                     const SearchLimits& limits,
+                                     std::size_t maximumDeepBeliefs = 8,
+                                     std::size_t maximumCandidates = 8);
     BeliefSearchResult think_beliefs(const std::vector<Position>& beliefs,
                                      const SearchLimits& limits,
                                      std::size_t maximumDeepBeliefs = 8,

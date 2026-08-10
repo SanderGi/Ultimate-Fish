@@ -2146,8 +2146,14 @@ void test_native_information_set_search() {
     expect(safeOnly.bestMove && safe.move_to_string(*safeOnly.bestMove) == "d4-e5",
            "a concrete safe world takes the exposed pawn with a continuing attack");
 
+    PublicBeliefState retained({Color::White, false});
+    std::string beliefError;
+    expect(retained.add(unsafe, &beliefError) &&
+             retained.add(safe, &beliefError),
+           "native information-set fixture forms one public view: " +
+             beliefError);
     Search informationSet(2);
-    const BeliefSearchResult robust = informationSet.think_beliefs({unsafe, safe}, limits);
+    const BeliefSearchResult robust = informationSet.think_beliefs(retained, limits);
     expect(robust.bestMove && *robust.bestMove != "d4-e5",
            "native information-set search rejects a queen move lost to one possible Ghost");
     expect(robust.beliefs == 2 && robust.deepBeliefs == 2 && robust.commonMoves > 1,
@@ -2183,6 +2189,203 @@ void test_native_information_set_search() {
       {adjacentOne, adjacentTwo}, limits);
     expect(mate.bestMove && *mate.bestMove == "h9-h10" && mate.score >= 29900,
            "Ghost uncertainty never hard-filters a high-value move that captures the real king");
+}
+
+void test_public_belief_state_core() {
+    auto hiddenGhostWorld = [](int ghostSquare) {
+        Position position;
+        position.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("a1"));
+        position.add_piece(PieceType::Rook, Color::White,
+                           Position::square_from_name("c1"));
+        position.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("h10"));
+        const int ghost = position.add_piece(PieceType::Ghost, Color::Black,
+                                             ghostSquare);
+        position.piece(ghost).visible = false;
+        return position;
+    };
+
+    const std::set<std::string> excluded = {
+      "a1", "a2", "a3", "b1", "b2", "b3", "c1", "d1", "h10"};
+    std::vector<Position> worlds;
+    for (int square = 0; square < Position::BoardSquares; ++square)
+        if (!excluded.count(Position::square_name(square)))
+            worlds.push_back(hiddenGhostWorld(square));
+    expect(worlds.size() > 64,
+           "uncapped belief regression contains more than 64 concrete worlds");
+
+    PublicBeliefState forward({Color::White, false});
+    PublicBeliefState reverse({Color::White, false});
+    std::string error;
+    for (const Position& world : worlds)
+        expect(forward.add(world, &error),
+               "forward hidden-Ghost world is one public view: " + error);
+    for (auto iterator = worlds.rbegin(); iterator != worlds.rend(); ++iterator)
+        expect(reverse.add(*iterator, &error),
+               "reverse hidden-Ghost world is one public view: " + error);
+    expect(forward.size() == worlds.size() && reverse.size() == worlds.size(),
+           "public belief retains every world without a 64-world cap");
+    const std::vector<Position> forwardPositions = forward.positions();
+    const std::vector<Position> reversePositions = reverse.positions();
+    expect(forwardPositions.size() == reversePositions.size() &&
+             std::equal(forwardPositions.begin(), forwardPositions.end(),
+               reversePositions.begin(), reversePositions.end(),
+               [](const Position& first, const Position& second) {
+                   return first.upn() == second.upn();
+               }),
+           "public belief canonical order is insertion-permutation invariant");
+    SearchLimits benchmarkLimits;
+    benchmarkLimits.depth = 1;
+    const std::vector<BeliefDecisionBucket> forwardCells =
+      forward.decision_cells();
+    const std::vector<BeliefDecisionBucket> reverseCells =
+      reverse.decision_cells();
+    std::size_t cellWorlds = 0;
+    for (const BeliefDecisionBucket& cell : forwardCells)
+        cellWorlds += cell.worlds.size();
+    expect(forwardCells.size() > 1 &&
+             forwardCells.size() == reverseCells.size() &&
+             cellWorlds == worlds.size() &&
+             std::equal(forwardCells.begin(), forwardCells.end(),
+               reverseCells.begin(),
+               [](const BeliefDecisionBucket& first,
+                  const BeliefDecisionBucket& second) {
+                   if (first.observation != second.observation ||
+                       first.worlds.size() != second.worlds.size())
+                       return false;
+                   return std::equal(first.worlds.begin(), first.worlds.end(),
+                     second.worlds.begin(),
+                     [](const Position& left, const Position& right) {
+                         return left.upn() == right.upn();
+                     });
+               }),
+           "exact decision cells conserve worlds and ignore insertion order");
+    Search mergedSearch(1);
+    const BeliefSearchResult mergedResult =
+      mergedSearch.think_beliefs(forward, benchmarkLimits);
+    expect(!mergedResult.validInformationCell && !mergedResult.bestMove &&
+             mergedResult.nodes == 0 && mergedResult.beliefs == worlds.size(),
+           "search fails closed across privately distinguishable decision cells");
+    for (const BeliefDecisionBucket& bucket : forwardCells) {
+        PublicBeliefState cell({Color::White, false});
+        for (const Position& world : bucket.worlds)
+            expect(cell.add(world, &error),
+                   "decision-cell world retains its public view: " + error);
+        Search cellSearch(1);
+        const BeliefSearchResult cellResult =
+          cellSearch.think_beliefs(cell, benchmarkLimits);
+        expect(cell.decision_partitions() == 1 &&
+                 cellResult.validInformationCell &&
+                 cellResult.historyPreservingPlies == 0,
+               "each exact private-dot cell searches independently");
+    }
+    const std::size_t beforeDuplicate = forward.size();
+    expect(forward.add(worlds.front(), &error) &&
+             forward.size() == beforeDuplicate,
+           "exact duplicate beliefs are deduplicated without hashing loss");
+
+    Position visible = worlds.front();
+    for (int id = 0; id < visible.piece_count(); ++id)
+        if (visible.piece(id).type == PieceType::Ghost)
+            visible.piece(id).visible = true;
+    expect(!forward.add(visible, &error) &&
+             error.find("public view differs") != std::string::npos,
+           "distinguishable Ghost visibility cannot enter one belief state");
+    expect(!forward.set_disclosure({Color::Black, false}, &error),
+           "belief disclosure cannot change underneath retained worlds");
+
+    std::string incompatibleMove;
+    const std::vector<std::string> common = reverse.common_moves();
+    const std::set<std::string> commonSet(common.begin(), common.end());
+    for (const Position& world : worlds) {
+        for (const Move& move : world.legal_moves()) {
+            const std::string text = world.move_to_string(move);
+            if (!commonSet.count(text)) {
+                incompatibleMove = text;
+                break;
+            }
+        }
+        if (!incompatibleMove.empty())
+            break;
+    }
+    expect(!incompatibleMove.empty(),
+           "hidden-Ghost worlds expose a concrete non-common action");
+    const std::size_t incompatibleBefore = reverse.size();
+    const BeliefTransitionResult incompatible = reverse.apply_known(
+      incompatibleMove, &error);
+    expect(!incompatible.applied && incompatible.before == incompatibleBefore &&
+             incompatible.after == 0 && reverse.size() == incompatibleBefore &&
+             error.find("incompatible with") != std::string::npos,
+           "a known action never silently discards incompatible worlds");
+
+    const std::size_t retained = forward.size();
+    const BeliefTransitionResult applied = forward.apply_known("c1-d1", &error);
+    expect(applied.applied && applied.before == retained &&
+             applied.after == retained && applied.observations == 1 &&
+             forward.size() == retained,
+           "uniform known action preserves the complete hidden-Ghost set");
+
+    std::vector<Position> blackToMoveWorlds;
+    for (const Position& source : worlds) {
+        Position world = source;
+        const int blackRook = world.add_piece(
+          PieceType::Rook, Color::Black,
+          Position::square_from_name("f10"));
+        if (blackRook == Position::NoPiece ||
+            world.piece_on(Position::square_from_name("e10")) !=
+              Position::NoPiece)
+            continue;
+        world.set_side_to_move(Color::Black);
+        blackToMoveWorlds.push_back(std::move(world));
+    }
+    PublicBeliefState blackToMove({Color::White, false});
+    for (const Position& world : blackToMoveWorlds)
+        expect(blackToMove.add(world, &error),
+               "Black-to-move hidden-Ghost world is one public view: " +
+                 error);
+    const std::string splitAction = "f10-e10";
+    const BeliefSuccessorPartitions exactPartitions =
+      blackToMove.successor_partitions(splitAction);
+    expect(exactPartitions.before == blackToMove.size() &&
+             exactPartitions.incompatible == 0 &&
+             exactPartitions.buckets.size() > 1,
+           "non-mutating successor API returns every private-dot bucket");
+    const std::size_t decisionBefore = blackToMove.size();
+    const BeliefTransitionResult decisionResult = blackToMove.apply_known(
+      splitAction, &error);
+    expect(!decisionResult.applied && decisionResult.before == decisionBefore &&
+             decisionResult.after == 0 && decisionResult.observations > 1 &&
+             blackToMove.size() == decisionBefore,
+           "successor private legal-dot partitions fail closed without mutation");
+
+    Position kingTarget;
+    kingTarget.add_piece(PieceType::King, Color::White,
+                         Position::square_from_name("c3"));
+    kingTarget.add_piece(PieceType::Jester, Color::White,
+                         Position::square_from_name("d3"));
+    kingTarget.add_piece(PieceType::King, Color::Black,
+                         Position::square_from_name("h10"));
+    kingTarget.add_piece(PieceType::Rook, Color::Black,
+                         Position::square_from_name("c10"));
+    kingTarget.set_side_to_move(Color::Black);
+    Position jesterTarget;
+    jesterTarget.add_piece(PieceType::Jester, Color::White,
+                           Position::square_from_name("c3"));
+    jesterTarget.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name("d3"));
+    jesterTarget.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name("h10"));
+    jesterTarget.add_piece(PieceType::Rook, Color::Black,
+                           Position::square_from_name("c10"));
+    jesterTarget.set_side_to_move(Color::Black);
+    PublicBeliefState royal({Color::Black, false});
+    expect(royal.add(kingTarget, &error) && royal.add(jesterTarget, &error),
+           "royal silhouettes form one ordinary public belief: " + error);
+    const BeliefTransitionResult split = royal.apply_known("c10-c3", &error);
+    expect(!split.applied && split.before == 2 && split.after == 0 &&
+             split.observations == 2 && royal.size() == 2,
+           "distinguishable terminal/continuing outcomes never merge histories");
 }
 
 void test_native_insufficient_material() {
@@ -3257,6 +3460,7 @@ int main() {
     test_search_and_perft_regressions();
     test_exact_tablebase_probing();
     test_native_information_set_search();
+    test_public_belief_state_core();
     test_native_insufficient_material();
     test_pawn_en_passant_lifetime();
     test_cooldowns_minions_and_freeze_stacking();

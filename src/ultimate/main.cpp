@@ -129,7 +129,7 @@ int main() {
     Position position;
     Search search;
     DraftState draft;
-    std::vector<Position> beliefs;
+    PublicBeliefState beliefs;
     int configuredMoveOverhead = 50;
     std::string line;
     while (std::getline(std::cin, line)) {
@@ -156,7 +156,7 @@ int main() {
         }
         if (line == "ucinewgame") {
             position.clear();
-            beliefs.clear();
+            beliefs = PublicBeliefState{};
             search.clear();
             continue;
         }
@@ -165,8 +165,39 @@ int main() {
             std::cout << "beliefok\n";
             continue;
         }
+        if (line.rfind("belief observer ", 0) == 0) {
+            std::istringstream input(line);
+            std::string beliefToken, observerToken, colorToken;
+            int enemyKingKnown = 0;
+            input >> beliefToken >> observerToken >> colorToken;
+            std::string knownToken;
+            const bool hasKnown = bool(input >> knownToken);
+            const bool parsedKnown = !hasKnown ||
+              parse_int(knownToken, enemyKingKnown);
+            const bool validColor = colorToken == "white" || colorToken == "black";
+            const bool validKnown = parsedKnown &&
+              (enemyKingKnown == 0 || enemyKingKnown == 1);
+            std::string extra;
+            const bool hasExtra = bool(input >> extra);
+            std::string error;
+            if (!validColor || !validKnown || hasExtra ||
+                !beliefs.set_disclosure(
+                  {colorToken == "black" ? Color::Black : Color::White,
+                   enemyKingKnown != 0}, &error))
+                std::cout << "info string invalid belief disclosure "
+                          << (error.empty() ? "expected white|black [0|1]" : error)
+                          << '\n';
+            else
+                std::cout << "beliefok\n";
+            continue;
+        }
         if (line == "belief count") {
-            std::cout << "beliefcount " << beliefs.size() << '\n';
+            std::cout << "beliefcount " << beliefs.size() << " observer "
+                      << (beliefs.disclosure().observer == Color::White
+                            ? "white" : "black")
+                      << " enemykingknown "
+                      << int(beliefs.disclosure().enemyKingKnown)
+                      << " mode exact-uncapped\n";
             continue;
         }
         if (line.rfind("belief add ", 0) == 0) {
@@ -174,12 +205,23 @@ int main() {
             std::string error;
             if (!belief.set_upn(line.substr(11), &error))
                 std::cout << "info string invalid belief " << error << '\n';
-            else if (!beliefs.empty() && belief.side_to_move() != beliefs.front().side_to_move())
-                std::cout << "info string invalid belief side-to-move differs\n";
-            else {
-                beliefs.push_back(std::move(belief));
+            else if (!beliefs.add(std::move(belief), &error))
+                std::cout << "info string invalid belief " << error << '\n';
+            else
                 std::cout << "beliefok\n";
-            }
+            continue;
+        }
+        if (line.rfind("belief apply ", 0) == 0) {
+            std::string error;
+            const BeliefTransitionResult applied = beliefs.apply_known(
+              line.substr(13), &error);
+            if (!applied.applied)
+                std::cout << "info string invalid belief transition " << error
+                          << '\n';
+            else
+                std::cout << "beliefok before " << applied.before
+                          << " after " << applied.after << " observations "
+                          << applied.observations << '\n';
             continue;
         }
         if (line == "belief go" || line.rfind("belief go ", 0) == 0) {
@@ -188,11 +230,21 @@ int main() {
             input >> token >> token;
             const SearchLimits limits = parse_limits(input, nullptr, configuredMoveOverhead);
             const BeliefSearchResult result = search.think_beliefs(beliefs, limits);
+            if (!result.validInformationCell) {
+                std::cout << "info string invalid belief decision cell spans "
+                          << beliefs.decision_partitions()
+                          << " privately distinguishable observations\n"
+                          << "bestmove (none)\n";
+                continue;
+            }
             std::cout << "info depth " << result.completedDepth << " score ";
             print_score(result.score, result.mateActions);
             std::cout << " nodes " << result.nodes << " time " << result.elapsed.count()
                       << " beliefs " << result.beliefs << " deepbeliefs " << result.deepBeliefs
                       << " common " << result.commonMoves << " candidates " << result.candidates
+                      << " beliefmode root-only historyplies "
+                      << result.historyPreservingPlies
+                      << " decisionpartitions " << beliefs.decision_partitions()
                       << " beliefworst " << result.worstScore
                       << " beliefmean " << result.meanScore << " pv";
             for (const std::string& move : result.principalVariation)

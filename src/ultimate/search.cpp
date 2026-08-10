@@ -42,6 +42,213 @@ int score_from_tt(int score, int ply) {
 
 }  // namespace
 
+PublicBeliefState::PublicBeliefState(DisclosureContext disclosure) :
+    disclosure_(disclosure) {}
+
+void PublicBeliefState::clear() {
+    side_.reset();
+    publicView_.clear();
+    worlds_.clear();
+}
+
+bool PublicBeliefState::set_disclosure(DisclosureContext disclosure,
+                                       std::string* error) {
+    if (!worlds_.empty()) {
+        if (error)
+            *error = "cannot change belief disclosure with retained worlds";
+        return false;
+    }
+    disclosure_ = disclosure;
+    return true;
+}
+
+const DisclosureContext& PublicBeliefState::disclosure() const {
+    return disclosure_;
+}
+
+std::size_t PublicBeliefState::size() const {
+    return worlds_.size();
+}
+
+bool PublicBeliefState::empty() const {
+    return worlds_.empty();
+}
+
+std::optional<Color> PublicBeliefState::side_to_move() const {
+    return side_;
+}
+
+const std::string& PublicBeliefState::public_view() const {
+    return publicView_;
+}
+
+bool PublicBeliefState::add(Position position, std::string* error) {
+    if (side_ && position.side_to_move() != *side_) {
+        if (error)
+            *error = "side-to-move differs from the retained belief";
+        return false;
+    }
+    const std::string view = view_key(position, disclosure_);
+    if (!publicView_.empty() && view != publicView_) {
+        if (error)
+            *error = "ordinary public view differs from the retained belief";
+        return false;
+    }
+    const std::string upn = position.upn();
+    const auto [iterator, inserted] = worlds_.emplace(upn, std::move(position));
+    (void)iterator;
+    if (inserted && worlds_.size() == 1) {
+        side_ = worlds_.begin()->second.side_to_move();
+        publicView_ = std::move(view);
+    }
+    return true;
+}
+
+std::vector<Position> PublicBeliefState::positions() const {
+    std::vector<Position> result;
+    result.reserve(worlds_.size());
+    for (const auto& [upn, position] : worlds_) {
+        (void)upn;
+        result.push_back(position);
+    }
+    return result;
+}
+
+std::vector<std::string> PublicBeliefState::common_moves() const {
+    std::set<std::string> common;
+    bool first = true;
+    for (const auto& [upn, position] : worlds_) {
+        (void)upn;
+        std::set<std::string> legal;
+        for (const Move& move : position.legal_moves())
+            legal.insert(position.move_to_string(move));
+        if (first) {
+            common = std::move(legal);
+            first = false;
+            continue;
+        }
+        std::set<std::string> intersection;
+        std::set_intersection(common.begin(), common.end(), legal.begin(),
+                              legal.end(),
+                              std::inserter(intersection, intersection.begin()));
+        common = std::move(intersection);
+        if (common.empty())
+            break;
+    }
+    return {common.begin(), common.end()};
+}
+
+std::vector<BeliefDecisionBucket> PublicBeliefState::decision_cells() const {
+    std::map<std::string, std::vector<Position>> observations;
+    for (const auto& [upn, position] : worlds_) {
+        (void)upn;
+        const std::string observation = side_ &&
+          *side_ == disclosure_.observer
+          ? decision_observation_key(position, disclosure_) : std::string();
+        observations[observation].push_back(position);
+    }
+    std::vector<BeliefDecisionBucket> result;
+    result.reserve(observations.size());
+    for (auto& [observation, worlds] : observations)
+        result.push_back({std::move(observation), std::move(worlds)});
+    return result;
+}
+
+std::size_t PublicBeliefState::decision_partitions() const {
+    if (!side_ || *side_ != disclosure_.observer)
+        return 0;
+    std::set<std::string> observations;
+    for (const auto& [upn, position] : worlds_) {
+        (void)upn;
+        observations.insert(decision_observation_key(position, disclosure_));
+    }
+    return observations.size();
+}
+
+BeliefSuccessorPartitions PublicBeliefState::successor_partitions(
+  std::string_view moveText) const {
+    BeliefSuccessorPartitions result;
+    result.before = worlds_.size();
+    std::map<std::string, std::map<std::string, Position>> observations;
+    for (const auto& [upn, before] : worlds_) {
+        (void)upn;
+        const std::optional<Move> move = before.move_from_string(moveText);
+        if (!move) {
+            ++result.incompatible;
+            continue;
+        }
+        Position after = before;
+        Undo undo;
+        if (!after.make_move(*move, undo)) {
+            ++result.incompatible;
+            continue;
+        }
+        std::string observation = transition_observation_key(
+          before, *move, after, disclosure_);
+        if (!after.game_over() &&
+            after.side_to_move() == disclosure_.observer) {
+            const std::string decision = decision_observation_key(
+              after, disclosure_);
+            observation += "|nextDecision=" +
+                           std::to_string(decision.size()) + ':' + decision;
+        }
+        observations[observation].emplace(after.upn(), std::move(after));
+    }
+    result.buckets.reserve(observations.size());
+    for (auto& [observation, worlds] : observations) {
+        BeliefSuccessorBucket bucket;
+        bucket.observation = std::move(observation);
+        bucket.worlds.reserve(worlds.size());
+        for (auto& [upn, position] : worlds) {
+            (void)upn;
+            bucket.worlds.push_back(std::move(position));
+        }
+        result.buckets.push_back(std::move(bucket));
+    }
+    return result;
+}
+
+BeliefTransitionResult PublicBeliefState::apply_known(
+  std::string_view moveText, std::string* error) {
+    BeliefTransitionResult result;
+    const BeliefSuccessorPartitions partitions = successor_partitions(moveText);
+    result.before = partitions.before;
+    result.observations = partitions.buckets.size();
+    if (worlds_.empty()) {
+        if (error)
+            *error = "cannot apply an action to an empty belief";
+        return result;
+    }
+    if (partitions.incompatible) {
+        if (error)
+            *error = "known action is incompatible with " +
+                     std::to_string(partitions.incompatible) + " of " +
+                     std::to_string(worlds_.size()) + " retained worlds";
+        return result;
+    }
+    if (partitions.buckets.empty()) {
+        if (error)
+            *error = "known action is inconsistent with every retained world";
+        return result;
+    }
+    if (partitions.buckets.size() != 1) {
+        if (error)
+            *error = "known action has " +
+                     std::to_string(partitions.buckets.size()) +
+                     " distinguishable public outcomes";
+        return result;
+    }
+
+    worlds_.clear();
+    for (const Position& position : partitions.buckets.front().worlds)
+        worlds_.emplace(position.upn(), position);
+    side_ = worlds_.begin()->second.side_to_move();
+    publicView_ = view_key(worlds_.begin()->second, disclosure_);
+    result.after = worlds_.size();
+    result.applied = true;
+    return result;
+}
+
 Search::Search(std::size_t hashMegabytes) {
     const std::size_t bytes = std::max<std::size_t>(1, hashMegabytes) * 1024 * 1024;
     std::size_t entries = 1;
@@ -578,6 +785,22 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
     result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - start_);
     return result;
+}
+
+BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
+                                         const SearchLimits& limits,
+                                         std::size_t maximumDeepBeliefs,
+                                         std::size_t maximumCandidates) {
+    if (beliefs.side_to_move() &&
+        *beliefs.side_to_move() == beliefs.disclosure().observer &&
+        beliefs.decision_partitions() != 1) {
+        BeliefSearchResult result;
+        result.beliefs = beliefs.size();
+        result.validInformationCell = false;
+        return result;
+    }
+    return think_beliefs(beliefs.positions(), limits, maximumDeepBeliefs,
+                         maximumCandidates);
 }
 
 BeliefSearchResult Search::think_beliefs(const std::vector<Position>& beliefs,
