@@ -2236,7 +2236,9 @@ ResourceEstimate full_domain_preflight(
   const ResourceLimits& limits, const std::string& scratchPrefix) {
     std::ifstream input(transitionPrefix + ".header", std::ios::binary);
     const TransitionHeaderDisk header = read_value<TransitionHeaderDisk>(input);
-    if (header.magic != std::array<char,8>{'U','F','J','G','T','1',0,0} ||
+    if (header.magic != std::array<char,8>{TransitionMagic[0],
+          TransitionMagic[1], TransitionMagic[2], TransitionMagic[3],
+          TransitionMagic[4], TransitionMagic[5], 0, 0} ||
         header.version != TransitionVersion || !header.complete ||
         header.rawBegin || header.rawCount != RawGeometryCount)
         throw std::runtime_error("resource gate requires complete transition proof");

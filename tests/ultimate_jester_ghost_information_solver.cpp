@@ -154,6 +154,49 @@ int main() {
         resources.maxDiskBytes = std::numeric_limits<std::uint64_t>::max();
         resources.maxResidentBytes = std::numeric_limits<std::uint64_t>::max();
         resources.maxBddNodes = 100'000;
+        {
+            // Exercise the exact merged-header format consumed by the hard
+            // resource gate.  A previous regression left this reader on the
+            // obsolete UFJGT1 magic after transition generation and exhaustive
+            // verification had moved to UFJGT2/version 2.
+            std::fstream header(direct.prefix + ".header",
+              std::ios::binary | std::ios::in | std::ios::out);
+            std::array<char, 8> magic{};
+            std::uint32_t version = 0;
+            header.read(magic.data(), magic.size());
+            header.read(reinterpret_cast<char*>(&version), sizeof(version));
+            require(magic == std::array<char, 8>{'U','F','J','G','T','2',0,0} &&
+                    version == 2, "transition test did not produce UFJGT2");
+            const std::uint32_t completeRawDomain = 38'450'880;
+            const std::uint32_t complete = 1;
+            header.seekp(20); // TransitionHeaderDisk::rawCount
+            header.write(reinterpret_cast<const char*>(&completeRawDomain),
+                         sizeof(completeRawDomain));
+            header.seekp(28); // TransitionHeaderDisk::complete
+            header.write(reinterpret_cast<const char*>(&complete),
+                         sizeof(complete));
+            header.close();
+            require(bool(header), "failed creating complete UFJGT2 fixture");
+        }
+        try {
+            const ResourceEstimate exactEstimate = full_domain_preflight(
+              direct.prefix, tiny_limits(), resources, prefix);
+            require(exactEstimate.canonicalGeometries ==
+                      directWritten.canonicalGeometries &&
+                    exactEstimate.productWorlds == directWritten.worlds &&
+                    exactEstimate.transitionBytes && exactEstimate.admitted,
+                    "complete UFJGT2 resource preflight regression");
+        }
+        catch (const std::exception& error) {
+            // The production gate deliberately applies a 70%-of-physical-RAM
+            // ceiling after authenticating the complete transition header.
+            // Small developer hosts may reject this synthetic full-domain
+            // fixture there; reaching that downstream rejection still proves
+            // the UFJGT2/version-2 header itself was admitted.
+            require(std::string(error.what()) ==
+                      "exact Jester/Ghost solve rejected by RAM/disk/node preflight",
+                    "complete UFJGT2 header was rejected before resource limits");
+        }
         TransitionCompileOptions cycle = compile;
         cycle.prefix = prefix + ".transitions-visibility-cycle";
         cycle.rawGeometryCount = 78;
