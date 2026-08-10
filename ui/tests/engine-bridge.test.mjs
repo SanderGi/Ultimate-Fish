@@ -147,6 +147,15 @@ test("bridge retains uncapped beliefs and analyzes one exact decision cell", asy
   assert.equal(retained.beliefs, worlds.length);
   assert.equal(retained.mode, "exact-uncapped");
 
+  const conservative = await post("/analyze-beliefs", {
+    positions: worlds, observer: "white", enemyKingKnown: false, depth: 1,
+  });
+  assert.equal(conservative.beliefs, worlds.length);
+  assert.ok(conservative.decisionPartitions > 1);
+  assert.equal(conservative.decisionMode, "merged-conservative");
+  assert.equal(conservative.beliefMode, "history-preserving");
+  assert.ok(conservative.bestmove);
+
   const concrete = await post("/state", { upn: worlds[0] });
   const legalMarkers = [...new Set(concrete.moves.map((move) => {
     if (move === "pass") return "pass";

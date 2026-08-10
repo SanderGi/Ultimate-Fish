@@ -63,9 +63,23 @@ type EngineAnalysis = {
   resultReason: string | null;
   engine?: EngineAnalysis | null;
   engineMoves?: string[];
+  beliefs?: number;
+  decisionMode?: "exact-cell" | "merged-conservative";
+  decisionPartitions?: number;
+  beliefMode?: "history-preserving";
+  historyPreservingPlies?: number;
 };
 
 type MoveRecord = { color: Color; notation: string; upn?: string };
+
+type BeliefContext = {
+  positions: string[];
+  observer: Color;
+  enemyKingKnown: boolean;
+  // Undefined means the legal-dot preview was unavailable. An empty array is
+  // an observed decision cell with no legal destinations.
+  legalMarkers?: string[];
+};
 
 const roster: RosterPiece[] = [
   { id: "king", name: "King", family: "Classic", summary: "Royal; one square in any direction." },
@@ -264,12 +278,15 @@ function displayScore(analysis: EngineAnalysis | null, turn: Color): { label: st
   };
 }
 
-function PieceToken({ piece, view, playerSide, large = false }: {
-  piece: PositionPiece; view: View; playerSide: Color; large?: boolean;
+function PieceToken({ piece, view, playerSide, publicBelief = false, large = false }: {
+  piece: PositionPiece; view: View; playerSide: Color;
+  publicBelief?: boolean; large?: boolean;
 }) {
   const enemy = piece.color !== playerSide;
-  if ((view === "play" || view === "draft") && enemy && piece.id === "ghost" && !piece.visible) return null;
-  const disguised = (view === "play" || view === "draft") && enemy && piece.id === "jester";
+  if (((view === "play" || view === "draft") || publicBelief) && enemy &&
+      piece.id === "ghost" && !piece.visible) return null;
+  const disguised = ((view === "play" || view === "draft") || publicBelief) &&
+    enemy && piece.id === "jester";
   const shown = pieceById.get(disguised ? "king" : piece.id);
   const concealedAnalysis = view === "analysis" && enemy && piece.id === "ghost" && !piece.visible;
   return (
@@ -401,6 +418,7 @@ export function UltimateWorkbench() {
   const [positionOpen, setPositionOpen] = useState(false);
   const [positionText, setPositionText] = useState("");
   const [positionMessage, setPositionMessage] = useState("");
+  const [belief, setBelief] = useState<BeliefContext | null>(null);
   const analysisAbort = useRef<AbortController | null>(null);
   const requestSequence = useRef(0);
   const draftAiRequest = useRef<string | null>(null);
@@ -422,7 +440,7 @@ export function UltimateWorkbench() {
   const draftAddedPoints = pointsFor(draftPending);
   const draftPlacementActive = Boolean(view === "draft" && draftWindow?.player === playerSide && draftWindow.action === "pick");
   const rawSelectedPiece = selected === null ? null : boardMap[selected]?.piece ?? null;
-  const selectedPiece = rawSelectedPiece && view === "play" && rawSelectedPiece.color !== playerSide &&
+  const selectedPiece = rawSelectedPiece && (view === "play" || Boolean(belief)) && rawSelectedPiece.color !== playerSide &&
     rawSelectedPiece.id === "ghost" && !rawSelectedPiece.visible ? null : rawSelectedPiece;
   const filteredRoster = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -431,11 +449,13 @@ export function UltimateWorkbench() {
   const material = useMemo(() => pieces.reduce<Record<Color, number>>((totals, piece) => {
     totals[piece.color] += piecePoints(piece); return totals;
   }, { white: 0, black: 0 }), [pieces]);
-  const inspectedId = selectedPiece && view === "play" && selectedPiece.color !== playerSide &&
+  const inspectedId = selectedPiece && (view === "play" || Boolean(belief)) &&
+    selectedPiece.color !== playerSide &&
     selectedPiece.id === "jester" ? "king" : selectedPiece?.id;
   const score = displayScore(analysis, turn);
   const showEvaluation = view === "analysis" || (view === "play" && !gameActive);
-  const boardLocked = gameActive || (view === "draft" && !draftPlacementActive);
+  const boardLocked = gameActive || Boolean(belief) ||
+    (view === "draft" && !draftPlacementActive);
   const initialDraftKingUnlocked = draftPlacementActive && draftPhase === firstDraftPickPhase[playerSide];
   const topColor: Color = flipped ? "white" : "black";
   const bottomColor: Color = topColor === "white" ? "black" : "white";
@@ -535,6 +555,7 @@ export function UltimateWorkbench() {
   const loadHistoryPosition = useCallback((snapshot?: string) => {
     if (!snapshot) return;
     const loaded = parseUpn(snapshot);
+    setBelief(null);
     setPieces(loaded.pieces); setTurn(loaded.turn); setMeta(loaded.meta);
     setAnalysis(null); setLegalMoves([]); setSelected(null);
     setGameResult({ result: "ongoing", reason: null });
@@ -547,6 +568,23 @@ export function UltimateWorkbench() {
     analysisAbort.current = controller;
     setAnalysis(null); setEngineStatus("thinking"); setEngineMessage("Searching…");
     try {
+      if (belief) {
+        const result = await engineRequest("/analyze-beliefs", {
+          positions: belief.positions,
+          observer: belief.observer,
+          enemyKingKnown: belief.enemyKingKnown,
+          ...(belief.legalMarkers === undefined ? {} : { legalMarkers: belief.legalMarkers }),
+          depth: analysisMaxDepth,
+        }, controller.signal);
+        if (sequence !== requestSequence.current) return;
+        setAnalysis(result); setEngineStatus("ready");
+        setEngineMessage(
+          `${(result.beliefs ?? belief.positions.length).toLocaleString()} beliefs · ` +
+          `${result.decisionPartitions ?? 0} decision cell${result.decisionPartitions === 1 ? "" : "s"} · ` +
+          `${result.nodes.toLocaleString()} nodes in ${result.time} ms`,
+        );
+        return;
+      }
       const result = await streamEngineAnalysis({ upn, depth: analysisMaxDepth }, controller.signal, (iteration) => {
         if (sequence !== requestSequence.current) return;
         setAnalysis(iteration); setLegalMoves(iteration.moves);
@@ -562,7 +600,7 @@ export function UltimateWorkbench() {
       setEngineStatus("error");
       setEngineMessage(error instanceof Error ? error.message : "Could not reach the engine bridge.");
     }
-  }, [analysisMaxDepth, streamEngineAnalysis, upn]);
+  }, [analysisMaxDepth, belief, engineRequest, streamEngineAnalysis, upn]);
 
   useEffect(() => {
     if (!analysisRunning || view !== "analysis") return;
@@ -575,6 +613,26 @@ export function UltimateWorkbench() {
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       try {
+        if (belief) {
+          const result = await engineRequest("/belief-state", {
+            positions: belief.positions,
+            observer: belief.observer,
+            enemyKingKnown: belief.enemyKingKnown,
+            ...(belief.legalMarkers === undefined ? {} : { legalMarkers: belief.legalMarkers }),
+          }, controller.signal);
+          const markers = belief.legalMarkers;
+          setLegalMoves(markers?.filter((marker) => marker !== "pass")
+            .map((marker) => marker.replace(">", "-")) ?? []);
+          setGameResult({ result: "ongoing", reason: null });
+          if (engineStatus === "offline") setEngineStatus("ready");
+          if (!analysis) setEngineMessage(
+            `${(result.beliefs ?? belief.positions.length).toLocaleString()} exact beliefs · ` +
+            (markers === undefined
+              ? "legal-dot preview unavailable; retaining all decision cells"
+              : `${markers.length} observed legal marker${markers.length === 1 ? "" : "s"}`),
+          );
+          return;
+        }
         const result = await engineRequest("/state", { upn }, controller.signal);
         setLegalMoves(result.moves);
         setGameResult({ result: result.result, reason: result.resultReason });
@@ -586,7 +644,7 @@ export function UltimateWorkbench() {
       }
     }, 160);
     return () => { window.clearTimeout(timer); controller.abort(); };
-  }, [analysis, analysisRunning, engineRequest, engineStatus, upn, view]);
+  }, [analysis, analysisRunning, belief, engineRequest, engineStatus, upn, view]);
 
   useEffect(() => {
     if (!draftWindow || draftWindow.player === playerSide || view !== "draft") return;
@@ -629,11 +687,13 @@ export function UltimateWorkbench() {
   }, [draftHistory, draftOpponentPieces, draftPhase, draftTeams, draftWindow, engineRequest, playerSide, view]);
 
   function resetTransient() {
+    setBelief(null);
     setMeta(emptyMeta()); setAnalysis(null); setLegalMoves([]); setSelected(null);
     setGameResult({ result: "ongoing", reason: null }); setMoveHistory([]);
   }
 
   function replacePosition(next: ReturnType<typeof classicPosition>) {
+    setBelief(null);
     setPieces(next.pieces); setTurn(next.turn); setMeta(next.meta); setAnalysis(null);
     setLegalMoves([]); setSelected(null); setMoveHistory([]); setGameResult({ result: "ongoing", reason: null });
   }
@@ -729,7 +789,8 @@ export function UltimateWorkbench() {
   }
 
   function dragPiece(to: number) {
-    if (!draggedUid || gameActive || (view !== "analysis" && !draftPlacementActive)) return;
+    if (!draggedUid || gameActive || belief ||
+        (view !== "analysis" && !draftPlacementActive)) return;
     const moving = pieces.find((piece) => piece.uid === draggedUid);
     if (!moving) return;
     setDraggedUid(null);
@@ -849,7 +910,9 @@ export function UltimateWorkbench() {
   }
 
   function changeView(next: View) {
-    if (next !== "analysis") { setAnalysisRunning(false); analysisAbort.current?.abort(); }
+    if (next !== "analysis") {
+      setAnalysisRunning(false); analysisAbort.current?.abort(); setBelief(null);
+    }
     if (next === "draft" && gameActive) stopGame();
     if (view === "draft" && next !== "draft") {
       setDraftPlayerPieces(pieces.filter((piece) => piece.color === playerSide));
@@ -943,7 +1006,15 @@ export function UltimateWorkbench() {
   }
 
   function openPositionEditor() {
-    setPositionText(upn); setPositionMessage(""); setPositionOpen(true);
+    setPositionText(belief ? JSON.stringify({
+      format: "ultimate-belief",
+      version: 1,
+      observer: belief.observer,
+      enemyKingKnown: belief.enemyKingKnown,
+      positions: belief.positions,
+      ...(belief.legalMarkers === undefined ? {} : { legalMarkers: belief.legalMarkers }),
+    }, null, 2) : upn);
+    setPositionMessage(""); setPositionOpen(true);
   }
 
   function loadPosition() {
@@ -952,9 +1023,50 @@ export function UltimateWorkbench() {
         const loaded = parseUpn(positionText.trim()); replacePosition(loaded);
         setPositionMessage("Lossless UPN loaded."); setEditing(false); return;
       }
-      const parsed = JSON.parse(positionText) as { format?: string; version?: number; turn?: Color; pieces?: Array<{ id: PieceId; color: Color; square: string }> };
+      const parsed = JSON.parse(positionText) as {
+        format?: string; version?: number; turn?: Color;
+        pieces?: Array<{ id: PieceId; color: Color; square: string }>;
+        positions?: unknown; observer?: unknown; enemyKingKnown?: unknown;
+        legalMarkers?: unknown;
+      };
+      if (parsed.format === "ultimate-belief" && parsed.version === 1) {
+        if (!Array.isArray(parsed.positions) || parsed.positions.length === 0 ||
+            parsed.positions.some((item) => typeof item !== "string") ||
+            parsed.positions.reduce((total, item) => total + String(item).length, 0) > 4_000_000)
+          throw new Error("Belief positions must be a nonempty UPN array under 4 MB.");
+        if (parsed.observer !== "white" && parsed.observer !== "black")
+          throw new Error("Belief observer must be white or black.");
+        if (typeof parsed.enemyKingKnown !== "boolean")
+          throw new Error("Belief enemyKingKnown must be a boolean.");
+        if (parsed.legalMarkers !== undefined &&
+            (!Array.isArray(parsed.legalMarkers) || parsed.legalMarkers.length > 512 ||
+             parsed.legalMarkers.some((marker) => typeof marker !== "string" ||
+               !/^(?:pass|[a-h](?:10|[1-9])>[a-h](?:10|[1-9]))$/.test(marker))))
+          throw new Error("Belief legalMarkers must contain source>destination or pass markers.");
+        const positions = [...new Set(parsed.positions as string[])];
+        const representative = parseUpn(positions[0]);
+        for (const candidate of positions.slice(1)) parseUpn(candidate);
+        const nextBelief: BeliefContext = {
+          positions,
+          observer: parsed.observer,
+          enemyKingKnown: parsed.enemyKingKnown,
+          ...(parsed.legalMarkers === undefined ? {} : {
+            legalMarkers: [...new Set(parsed.legalMarkers as string[])].sort(),
+          }),
+        };
+        setBelief(nextBelief); setPlayerSide(nextBelief.observer);
+        setPieces(representative.pieces); setTurn(representative.turn); setMeta(representative.meta);
+        setAnalysis(null); setLegalMoves([]); setSelected(null); setMoveHistory([]);
+        setGameResult({ result: "ongoing", reason: null }); setEditing(false);
+        setPositionMessage(
+          `Loaded ${positions.length.toLocaleString()} exact public beliefs` +
+          (nextBelief.legalMarkers === undefined
+            ? " without a legal-dot observation." : " with an exact legal-dot observation."),
+        );
+        return;
+      }
       if (parsed.format !== "ultimate-position" || parsed.version !== 1 || !Array.isArray(parsed.pieces))
-        throw new Error("Expected Ultimate Position JSON version 1.");
+        throw new Error("Expected Ultimate Position or Ultimate Belief JSON version 1.");
       const loadedPieces = parsed.pieces.map((piece) => {
         const square = squareIndex(piece.square);
         if (square < 0 || !pieceById.has(piece.id) || !["white", "black"].includes(piece.color)) throw new Error(`Invalid piece at ${piece.square}.`);
@@ -1034,10 +1146,10 @@ export function UltimateWorkbench() {
           <div className="board-meta">
             <div className="player-card opponent"><span className={`player-token ${topColor === "white" ? "light" : ""}`}>{topColor === "white" ? "I" : "O"}</span><div><small>{topColor === "white" ? "IVORY" : "ONYX"}</small><strong>{playerSide === topColor ? "You" : "Ultimate Fish"}</strong></div><span className={`material-total ${turn === topColor ? "active" : ""}`}>{material[topColor]} pts</span></div>
             <div className="board-actions">
-              <button disabled={boardLocked || view === "draft"} onClick={() => replacePosition(classicPosition())}>Reset</button>
-              <button disabled={boardLocked || view === "draft"} onClick={() => replacePosition({ pieces: [], turn: "white", meta: emptyMeta() })}>Clear</button>
+              <button disabled={gameActive || view === "draft"} onClick={() => replacePosition(classicPosition())}>Reset</button>
+              <button disabled={gameActive || view === "draft"} onClick={() => replacePosition({ pieces: [], turn: "white", meta: emptyMeta() })}>Clear</button>
               <button onClick={() => setFlipped(!flipped)}>Flip ↻</button>
-              <button disabled={boardLocked || view === "draft"} onClick={openPositionEditor}>Position code</button>
+              <button disabled={gameActive || view === "draft"} onClick={openPositionEditor}>Position code</button>
             </div>
           </div>
 
@@ -1047,9 +1159,10 @@ export function UltimateWorkbench() {
                 const row = Math.floor(displayIndex / 8); const col = displayIndex % 8;
                 const dark = (Math.floor(index / 8) + index % 8) % 2 === 1;
                 const mapped = boardMap[index]; const piece = mapped?.piece;
-                const concealedTarget = piece && view === "play" && piece.color !== playerSide &&
+                const concealedTarget = piece && (view === "play" || Boolean(belief)) && piece.color !== playerSide &&
                   piece.id === "ghost" && !piece.visible;
-                const showPiece = piece && piece.id !== "giant" && piece.square === index;
+                const showPiece = piece && piece.id !== "giant" && piece.square === index &&
+                  !concealedTarget;
                 return (
                   <button key={index} role="gridcell" aria-label={squareName(index)}
                     className={`square ${dark ? "dark" : "light"} ${selected === index || (Boolean(piece) && selected !== null && boardMap[selected]?.piece.uid === piece?.uid) ? "selected" : ""} ${legalTargets.has(index) ? "legal-target" : ""}`}
@@ -1059,7 +1172,7 @@ export function UltimateWorkbench() {
                     {col === 0 && <span className="rank-label">{flipped ? row + 1 : 10 - row}</span>}
                     {row === 9 && <span className="file-label">{flipped ? files[7 - col] : files[col]}</span>}
                     {legalTargets.has(index) && <span className={mapped && !concealedTarget ? "capture-ring" : "move-dot"} />}
-                    {showPiece && <span className="board-piece-wrap" draggable={!gameActive && (view === "analysis" || draftPieceIsMovable(piece))} onDragStart={() => setDraggedUid(piece.uid)}><PieceToken piece={piece} view={view} playerSide={playerSide} /></span>}
+                    {showPiece && <span className="board-piece-wrap" draggable={!boardLocked && (view === "analysis" || draftPieceIsMovable(piece))} onDragStart={() => setDraggedUid(piece.uid)}><PieceToken piece={piece} view={view} playerSide={playerSide} publicBelief={Boolean(belief)} /></span>}
                   </button>
                 );
               })}
@@ -1070,9 +1183,9 @@ export function UltimateWorkbench() {
                 return (
                   <div key={piece.uid} className={`giant-piece ${piece.color}`}
                     style={{ top: `${Math.min(...rows) * 10}%`, left: `${Math.min(...cols) * 12.5}%`, width: "25%", height: "20%" }}>
-                    <button type="button" className="giant-drag-handle" draggable={!gameActive && (view === "analysis" || (draftPlacementActive && piece.color === playerSide && draftPlacedUids.includes(piece.uid)))}
+                    <button type="button" className="giant-drag-handle" draggable={!boardLocked && (view === "analysis" || (draftPlacementActive && piece.color === playerSide && draftPlacedUids.includes(piece.uid)))}
                       onDragStart={() => setDraggedUid(piece.uid)} onClick={() => handleSquare(piece.square)}>
-                      <PieceToken piece={piece} view={view} playerSide={playerSide} large />
+                      <PieceToken piece={piece} view={view} playerSide={playerSide} publicBelief={Boolean(belief)} large />
                     </button>
                   </div>
                 );
@@ -1115,14 +1228,14 @@ export function UltimateWorkbench() {
               </section>
               <section className="panel inspector-panel">
                 <div className="panel-heading"><div><p className="eyebrow">INSPECTOR</p><h2>{selected === null ? "Select a square" : squareName(selected)}</h2></div></div>
-                {selectedPiece ? <div className="piece-detail"><PieceToken piece={selectedPiece} view={view} playerSide={playerSide} /><div><strong>{pieceById.get(inspectedId!)?.name}</strong><small>{inspectedId === "king" && selectedPiece.id === "jester" ? 0 : piecePoints(selectedPiece)} material pts · {pieceById.get(inspectedId!)?.summary}</small><div className="state-chips">{selectedPiece.power > 0 && <span>power {selectedPiece.power + 1}</span>}{selectedPiece.cooldown > 0 && <span>cooldown {selectedPiece.cooldown}</span>}{selectedPiece.freeze > 0 && <span>frozen ×{selectedPiece.freeze}</span>}{selectedPiece.id === "ghost" && <span>{selectedPiece.visible ? "revealed" : "hidden"}</span>}</div></div></div> : <p className="empty-state">Select a character to inspect its native state and preview every legal destination.</p>}
+                {selectedPiece ? <div className="piece-detail"><PieceToken piece={selectedPiece} view={view} playerSide={playerSide} publicBelief={Boolean(belief)} /><div><strong>{pieceById.get(inspectedId!)?.name}</strong><small>{inspectedId === "king" && selectedPiece.id === "jester" ? 0 : piecePoints(selectedPiece)} material pts · {pieceById.get(inspectedId!)?.summary}</small><div className="state-chips">{selectedPiece.power > 0 && <span>power {selectedPiece.power + 1}</span>}{selectedPiece.cooldown > 0 && <span>cooldown {selectedPiece.cooldown}</span>}{selectedPiece.freeze > 0 && <span>frozen ×{selectedPiece.freeze}</span>}{selectedPiece.id === "ghost" && <span>{selectedPiece.visible ? "revealed" : "hidden"}</span>}</div></div></div> : <p className="empty-state">Select a character to inspect its native state and preview every legal destination.</p>}
               </section>
             </>
           )}
         </aside>
       </section>
 
-      {positionOpen && <div className="modal-backdrop" role="presentation" onMouseDown={() => setPositionOpen(false)}><section className="position-modal" role="dialog" aria-modal="true" aria-labelledby="position-title" onMouseDown={(event) => event.stopPropagation()}><div className="panel-heading"><div><p className="eyebrow">CUSTOM ANALYSIS</p><h2 id="position-title">Ultimate Position</h2></div><button className="icon-button" onClick={() => setPositionOpen(false)}>×</button></div><p>Paste lossless UPN to preserve cooldowns, Ghost visibility, links, queued actions, and off-board Angels. Ultimate Position JSON v1 is also accepted.</p><textarea value={positionText} onChange={(event) => setPositionText(event.target.value)} spellCheck={false} />{positionMessage && <div className="position-message">{positionMessage}</div>}<div className="modal-actions"><button onClick={() => navigator.clipboard?.writeText(upn)}>Copy current UPN</button><button className="primary-button" onClick={loadPosition}>Load position</button></div></section></div>}
+      {positionOpen && <div className="modal-backdrop" role="presentation" onMouseDown={() => setPositionOpen(false)}><section className="position-modal" role="dialog" aria-modal="true" aria-labelledby="position-title" onMouseDown={(event) => event.stopPropagation()}><div className="panel-heading"><div><p className="eyebrow">CUSTOM ANALYSIS</p><h2 id="position-title">Ultimate Position</h2></div><button className="icon-button" onClick={() => setPositionOpen(false)}>×</button></div><p>Paste lossless UPN, Ultimate Position JSON v1, or Ultimate Belief JSON v1. Beliefs retain every concrete world; include legalMarkers only when those dots were actually observed.</p><textarea value={positionText} onChange={(event) => setPositionText(event.target.value)} spellCheck={false} />{positionMessage && <div className="position-message">{positionMessage}</div>}<div className="modal-actions"><button onClick={() => navigator.clipboard?.writeText(belief ? JSON.stringify({ format: "ultimate-belief", version: 1, observer: belief.observer, enemyKingKnown: belief.enemyKingKnown, positions: belief.positions, ...(belief.legalMarkers === undefined ? {} : { legalMarkers: belief.legalMarkers }) }, null, 2) : upn)}>Copy current code</button><button className="primary-button" onClick={loadPosition}>Load position</button></div></section></div>}
     </main>
   );
 }
