@@ -112,7 +112,7 @@ namespace {
 
 using CaptureFixedPoint = CaptureStockfish::Ultimate::InformationFixedPoint;
 
-constexpr std::uint32_t CaptureFormatVersion = 2;
+constexpr std::uint32_t CaptureFormatVersion = 3;
 constexpr std::uint32_t CaptureHeaderBytes = 1024;
 constexpr std::uint64_t DefaultRequiredFreeBytes = 100ULL << 30;
 constexpr std::uint64_t DefaultMaximumRawBytes = 100ULL << 30;
@@ -126,7 +126,6 @@ struct CaptureOptions {
     std::string output;
     std::string sidecar;
     std::string rawDirectory;
-    std::string expectedOverlay;
     std::string sourceSha256;
     std::string modelSha256;
     std::string probeSidecar;
@@ -182,23 +181,6 @@ struct CaptureOptions {
     return hasher.finish();
 }
 
-[[nodiscard]] std::string overlay_model_sha256(
-  const std::filesystem::path& path, const std::string& expectedSource) {
-    std::ifstream input(path, std::ios::binary);
-    if (!input)
-        throw std::runtime_error("cannot inspect bound overlay: " + path.string());
-    std::array<char, 160> header{};
-    input.read(header.data(), header.size());
-    if (static_cast<std::size_t>(input.gcount()) != header.size() ||
-        std::memcmp(header.data(), "UFIW2\0\0\0", 8) != 0 ||
-        std::string(header.data() + 32, 64) != expectedSource)
-        throw std::runtime_error("bound overlay source/header mismatch");
-    const std::string model(header.data() + 96, 64);
-    if (!valid_sha256(model))
-        throw std::runtime_error("bound overlay has invalid model SHA-256");
-    return model;
-}
-
 void require_capture_resources(const CaptureOptions& options) {
     if (options.rawDirectory.empty())
         throw std::runtime_error("capture requires --raw-directory");
@@ -240,6 +222,19 @@ struct CaptureLayout {
     std::uint64_t softLocks = 0;
 };
 
+struct DenseCertificate {
+    std::array<std::array<std::uint64_t, 3>, 2> legal{};
+    std::array<std::array<std::uint64_t, 3>, 2> unreachable{};
+    std::uint64_t singletonRoots = 0;
+    std::uint64_t singletonResidual = 0;
+    std::uint64_t d2States = 0;
+    std::uint64_t d2Residual = 0;
+    std::uint64_t conservationResidual = 0;
+    std::uint64_t overlayResidual = 0;
+    std::array<std::uint8_t, 32> fullSha{};
+    std::array<std::uint8_t, 32> payloadSha{};
+};
+
 struct CaptureSolved {
     std::vector<std::uint8_t> freshFlags;
     InformationSolveSummary summary;
@@ -249,6 +244,9 @@ struct CaptureSolved {
     std::uint64_t softLocks = 0;
     std::uint64_t domainBellmanResidual = 0;
     std::uint64_t dualWinResidual = 0;
+    std::uint64_t witnessResidual = 0;
+    std::uint64_t uniformActionResidual = 0;
+    DenseCertificate dense;
 };
 
 struct CaptureSection {
@@ -257,9 +255,10 @@ struct CaptureSection {
     std::array<std::uint8_t, 32> sha{};
 };
 
-// UFICAP2 is explicitly little-endian. Its 1,024-byte authenticated header
-// binds the concrete table, original proof model/dense result, capture model,
-// lower concrete/model/overlay, legal-dot-v2 semantics, exact counts, and five
+// UFICAP3 is explicitly little-endian. Its 1,024-byte authenticated header
+// binds the concrete table, authoritative capture model/dense result, lower
+// concrete/model/overlay, legal-dot-v2 semantics, exact counts, proof
+// residuals, per-side conservation buckets, and five
 // hashed sections in this order:
 //   1. variable-length canonical BeliefKeys (u8 count + count*u32 worlds),
 //   2. u32 fresh-root-to-belief map (NoBelief means exact singleton),
@@ -416,33 +415,6 @@ void store_section(std::vector<std::uint8_t>& header, std::size_t offset,
     store_le64(header, offset, section.offset);
     store_le64(header, offset + 8, section.bytes);
     store_digest(header, offset + 16, section.sha);
-}
-
-[[nodiscard]] bool same_file_payload(const std::filesystem::path& first,
-                                     const std::filesystem::path& second,
-                                     std::uint64_t offset) {
-    std::error_code error;
-    const std::uint64_t firstSize = std::filesystem::file_size(first, error);
-    if (error)
-        return false;
-    const std::uint64_t secondSize = std::filesystem::file_size(second, error);
-    if (error || firstSize != secondSize || firstSize < offset)
-        return false;
-    std::ifstream lhs(first, std::ios::binary);
-    std::ifstream rhs(second, std::ios::binary);
-    lhs.seekg(static_cast<std::streamoff>(offset));
-    rhs.seekg(static_cast<std::streamoff>(offset));
-    std::array<char, 1 << 20> left{};
-    std::array<char, 1 << 20> right{};
-    while (lhs && rhs) {
-        lhs.read(left.data(), left.size());
-        rhs.read(right.data(), right.size());
-        if (lhs.gcount() != rhs.gcount() ||
-            std::memcmp(left.data(), right.data(),
-                        static_cast<std::size_t>(lhs.gcount())) != 0)
-            return false;
-    }
-    return lhs.eof() && rhs.eof();
 }
 
 [[nodiscard]] std::uint32_t load_le32(const std::uint8_t* bytes) {
@@ -760,6 +732,139 @@ verify_capture_domain(DoubleJesterGraph& graph, const CaptureLayout& layout,
     return flags;
 }
 
+[[nodiscard]] bool same_dense_certificate(const DenseCertificate& left,
+                                          const DenseCertificate& right) {
+    return left.legal == right.legal &&
+      left.unreachable == right.unreachable &&
+      left.singletonRoots == right.singletonRoots &&
+      left.singletonResidual == right.singletonResidual &&
+      left.d2States == right.d2States &&
+      left.d2Residual == right.d2Residual &&
+      left.conservationResidual == right.conservationResidual &&
+      left.overlayResidual == right.overlayResidual &&
+      left.fullSha == right.fullSha && left.payloadSha == right.payloadSha;
+}
+
+[[nodiscard]] DenseCertificate verify_dense_overlay(
+  const std::filesystem::path& path, DoubleJesterGraph& graph,
+  const PackedTable& concrete, const std::vector<std::uint8_t>& flags,
+  const CaptureOptions& options, const DenseCertificate* expected = nullptr) {
+    if (flags.size() != ConcreteStateCount)
+        throw std::runtime_error("capture dense flag cardinality mismatch");
+    std::ifstream input(path, std::ios::binary);
+    if (!input)
+        throw std::runtime_error("cannot reopen authoritative dense overlay");
+    std::array<std::uint8_t, 160> header{};
+    input.read(reinterpret_cast<char*>(header.data()), header.size());
+    if (static_cast<std::size_t>(input.gcount()) != header.size() ||
+        std::memcmp(header.data(), "UFIW2\0\0\0", 8) != 0 ||
+        load_le32(header.data() + 8) != 2 ||
+        load_le32(header.data() + 12) !=
+          static_cast<std::uint32_t>(PieceType::Jester) ||
+        load_le32(header.data() + 16) !=
+          static_cast<std::uint32_t>(PieceType::Jester) ||
+        load_le32(header.data() + 20) !=
+          static_cast<std::uint32_t>(Color::White) ||
+        load_le32(header.data() + 24) != ConcreteStateCount ||
+        load_le32(header.data() + 28) != 1 ||
+        std::string(reinterpret_cast<const char*>(header.data() + 32), 64) !=
+          options.sourceSha256 ||
+        std::string(reinterpret_cast<const char*>(header.data() + 96), 64) !=
+          options.modelSha256 ||
+        std::filesystem::file_size(path) != 160ULL + ConcreteStateCount)
+        throw std::runtime_error(
+          "authoritative dense overlay header/binding mismatch");
+
+    DenseCertificate certificate;
+    for (std::uint32_t index = 0; index < ConcreteStateCount; ++index) {
+        const int stored = input.get();
+        if (stored == std::char_traits<char>::eof() ||
+            static_cast<std::uint8_t>(stored) != flags[index])
+            ++certificate.overlayResidual;
+        const FourState state = decode_index(index);
+        const std::size_t side = color_index(state.side);
+        FourState reflected = state;
+        reflected.whiteKing = horizontal_reflection(reflected.whiteKing);
+        reflected.blackKing = horizontal_reflection(reflected.blackKing);
+        reflected.first = horizontal_reflection(reflected.first);
+        reflected.second = horizontal_reflection(reflected.second);
+        certificate.d2States += 2;
+        certificate.d2Residual +=
+          oriented_index(state) != index * 2 ||
+          oriented_index(reflected) != index * 2 + 1;
+
+        if (!graph.admitted()[index]) {
+            if (flags[index] != 0)
+                ++certificate.overlayResidual;
+            const std::size_t exact =
+              static_cast<std::size_t>(concrete.result(index));
+            if (exact < 1 || exact > 3)
+                ++certificate.conservationResidual;
+            else
+                ++certificate.unreachable[side][exact - 1];
+            continue;
+        }
+        const std::uint8_t value = flags[index];
+        const bool white = value & 1;
+        const bool black = value & 2;
+        if (!(value & 4) || (value & ~std::uint8_t{7}) || (white && black))
+            ++certificate.overlayResidual;
+        const bool moverWins = state.side == Color::White ? white : black;
+        const bool moverLoses = state.side == Color::White ? black : white;
+        const std::size_t outcome = moverWins ? 0 : moverLoses ? 1 : 2;
+        ++certificate.legal[side][outcome];
+
+        if (graph.roots()[index] == NoBelief) {
+            ++certificate.singletonRoots;
+            certificate.singletonResidual +=
+              white != graph.exact_index_forces(index, Color::White);
+            certificate.singletonResidual +=
+              black != graph.exact_index_forces(index, Color::Black);
+        }
+    }
+    if (input.get() != std::char_traits<char>::eof())
+        ++certificate.overlayResidual;
+    for (std::size_t side = 0; side < 2; ++side) {
+        std::uint64_t total = 0;
+        for (std::size_t result = 0; result < 3; ++result)
+            total += certificate.legal[side][result] +
+                     certificate.unreachable[side][result];
+        certificate.conservationResidual += total != ConcreteStateCount / 2;
+    }
+    certificate.fullSha = sha256_path(path);
+    certificate.payloadSha = sha256_payload(path, 160);
+    if (certificate.overlayResidual || certificate.singletonResidual ||
+        certificate.d2Residual || certificate.conservationResidual)
+        throw std::runtime_error(
+          "authoritative dense overlay proof has a residual");
+    if (expected && !same_dense_certificate(certificate, *expected))
+        throw std::runtime_error(
+          "authoritative dense overlay changed after arena persistence");
+    std::cout << "capture_dense_verified sha256 "
+              << hex_digest(certificate.fullSha)
+              << " payload_sha256 " << hex_digest(certificate.payloadSha)
+              << " singleton_roots " << certificate.singletonRoots
+              << " d2_states " << certificate.d2States
+              << " overlay_residual " << certificate.overlayResidual
+              << " singleton_residual " << certificate.singletonResidual
+              << " d2_residual " << certificate.d2Residual
+              << " conservation_residual "
+              << certificate.conservationResidual << '\n' << std::flush;
+    for (std::size_t side = 0; side < 2; ++side)
+        std::cout << "capture_dense_summary side " << side
+                  << " win " << certificate.legal[side][0]
+                  << " loss " << certificate.legal[side][1]
+                  << " draw " << certificate.legal[side][2]
+                  << " unreachable_win "
+                  << certificate.unreachable[side][0]
+                  << " unreachable_loss "
+                  << certificate.unreachable[side][1]
+                  << " unreachable_draw "
+                  << certificate.unreachable[side][2]
+                  << " concrete " << ConcreteStateCount / 2 << '\n';
+    return certificate;
+}
+
 [[nodiscard]] CaptureSection write_belief_keys(std::ofstream& output,
                                                DoubleJesterGraph& graph) {
     HashedSectionWriter writer(output);
@@ -850,7 +955,7 @@ void write_capture_sidecar(
       output, graph, layout, solver);
 
     static constexpr std::array<char, 8> Magic{{
-      'U', 'F', 'I', 'C', 'A', 'P', '2', '\0'}};
+      'U', 'F', 'I', 'C', 'A', 'P', '3', '\0'}};
     std::copy(Magic.begin(), Magic.end(), header.begin());
     store_le32(header, 8, CaptureFormatVersion);
     store_le32(header, 12, CaptureHeaderBytes);
@@ -881,18 +986,31 @@ void write_capture_sidecar(
     store_le64(header, 368, solved.domainBellmanResidual);
     store_le64(header, 376, solved.dualWinResidual);
     store_le64(header, 384, solved.softLocks);
-    store_le64(header, 392, std::numeric_limits<std::uint64_t>::max());
+    store_le64(header, 392, solved.witnessResidual);
+    store_le64(header, 400, solved.uniformActionResidual);
     store_section(header, 416, keys);
     store_section(header, 464, roots);
     store_section(header, 512, admitted);
     store_section(header, 560, white);
     store_section(header, 608, black);
-    store_digest(header, 672, decode_sha256(
-      overlay_model_sha256(options.expectedOverlay, options.sourceSha256),
-      "original proof model"));
-    store_digest(header, 704, sha256_path(options.expectedOverlay));
+    store_digest(header, 672, solved.dense.fullSha);
+    store_digest(header, 704, solved.dense.payloadSha);
     store_digest(header, 736, sha256_path(options.lowerOverlay));
-    store_digest(header, 768, sha256_path(options.output));
+    store_digest(header, 768, sha256_path(options.lowerConcrete));
+    for (std::size_t side = 0; side < 2; ++side)
+        for (std::size_t result = 0; result < 3; ++result) {
+            store_le64(header, 800 + side * 48 + result * 8,
+                       solved.dense.legal[side][result]);
+            store_le64(header, 824 + side * 48 + result * 8,
+                       solved.dense.unreachable[side][result]);
+        }
+    store_le64(header, 896, solved.dense.conservationResidual);
+    store_le64(header, 904, solved.dense.overlayResidual);
+    store_le64(header, 912, solved.dense.singletonResidual);
+    store_le64(header, 920, solved.dense.d2Residual);
+    store_le64(header, 928, 0);  // sidecar restore residual
+    store_le64(header, 936, solved.dense.d2States);
+    store_le64(header, 944, solved.dense.singletonRoots);
     Sha256 headerHasher;
     headerHasher.update(header.data(), 992);
     store_digest(header, 992, headerHasher.finish());
@@ -922,7 +1040,7 @@ void verify_capture_sidecar(
     std::vector<std::uint8_t> header(CaptureHeaderBytes);
     input.read(reinterpret_cast<char*>(header.data()), header.size());
     if (static_cast<std::size_t>(input.gcount()) != header.size() ||
-        std::memcmp(header.data(), "UFICAP2\0", 8) != 0 ||
+        std::memcmp(header.data(), "UFICAP3\0", 8) != 0 ||
         load_le32(header.data() + 8) != CaptureFormatVersion ||
         load_le32(header.data() + 12) != CaptureHeaderBytes ||
         load_le32(header.data() + 16) != 1 ||
@@ -949,13 +1067,10 @@ void verify_capture_sidecar(
     requireDigest(224, decode_sha256(options.lowerModelSha256, "lower model"),
                   "lower model");
     requireDigest(256, lowerPayloadSha, "lower payload");
-    requireDigest(672, decode_sha256(
-      overlay_model_sha256(options.expectedOverlay, options.sourceSha256),
-      "original model"), "original model");
-    requireDigest(704, sha256_path(options.expectedOverlay),
-                  "expected dense overlay");
+    requireDigest(672, solved.dense.fullSha, "authoritative dense overlay");
+    requireDigest(704, solved.dense.payloadSha, "dense payload");
     requireDigest(736, sha256_path(options.lowerOverlay), "lower overlay");
-    requireDigest(768, sha256_path(options.output), "generated dense overlay");
+    requireDigest(768, sha256_path(options.lowerConcrete), "lower concrete");
     Sha256 headerHasher;
     headerHasher.update(header.data(), 992);
     requireDigest(992, headerHasher.finish(), "header");
@@ -972,9 +1087,24 @@ void verify_capture_sidecar(
         load_le64(header.data() + 368) != 0 ||
         load_le64(header.data() + 376) != 0 ||
         load_le64(header.data() + 384) != solved.softLocks ||
-        load_le64(header.data() + 392) !=
-          std::numeric_limits<std::uint64_t>::max())
+        load_le64(header.data() + 392) != 0 ||
+        load_le64(header.data() + 400) != 0 ||
+        load_le64(header.data() + 896) != 0 ||
+        load_le64(header.data() + 904) != 0 ||
+        load_le64(header.data() + 912) != 0 ||
+        load_le64(header.data() + 920) != 0 ||
+        load_le64(header.data() + 928) != 0 ||
+        load_le64(header.data() + 936) != solved.dense.d2States ||
+        load_le64(header.data() + 944) != solved.dense.singletonRoots)
         throw std::runtime_error("capture sidecar count/residual binding mismatch");
+    for (std::size_t side = 0; side < 2; ++side)
+        for (std::size_t result = 0; result < 3; ++result)
+            if (load_le64(header.data() + 800 + side * 48 + result * 8) !=
+                  solved.dense.legal[side][result] ||
+                load_le64(header.data() + 824 + side * 48 + result * 8) !=
+                  solved.dense.unreachable[side][result])
+                throw std::runtime_error(
+                  "capture sidecar summary conservation binding mismatch");
 
     std::array<CaptureSection, 5> sections{};
     for (std::size_t index = 0; index < sections.size(); ++index) {
@@ -1103,7 +1233,7 @@ void probe_capture_sidecar(const CaptureOptions& options) {
     std::vector<std::uint8_t> header(CaptureHeaderBytes);
     input.read(reinterpret_cast<char*>(header.data()), header.size());
     if (static_cast<std::size_t>(input.gcount()) != header.size() ||
-        std::memcmp(header.data(), "UFICAP2\0", 8) != 0 ||
+        std::memcmp(header.data(), "UFICAP3\0", 8) != 0 ||
         load_le32(header.data() + 8) != CaptureFormatVersion ||
         load_le32(header.data() + 12) != CaptureHeaderBytes ||
         std::string(reinterpret_cast<const char*>(header.data() + 32)) !=
@@ -1245,13 +1375,10 @@ constexpr std::array<RawArtifact, 11> RawArtifacts{{
     if (!output)
         throw std::runtime_error("cannot create capture raw manifest");
     output << "{\n"
-           << "  \"schema\": \"ultimate-double-jester-raw-v2\",\n"
+           << "  \"schema\": \"ultimate-double-jester-raw-v3\",\n"
            << "  \"semantics\": \"fresh-maximal-public-view-v2\",\n"
            << "  \"domain\": \"kjesterjesterk\",\n"
            << "  \"source_sha256\": \"" << options.sourceSha256 << "\",\n"
-           << "  \"original_model_sha256\": \""
-           << overlay_model_sha256(
-                options.expectedOverlay, options.sourceSha256) << "\",\n"
            << "  \"model_sha256\": \"" << options.modelSha256 << "\",\n"
            << "  \"lower_source_sha256\": \""
            << options.lowerSourceSha256 << "\",\n"
@@ -1260,15 +1387,52 @@ constexpr std::array<RawArtifact, 11> RawArtifacts{{
            << "  \"lower_payload_sha256\": \""
            << hex_digest(lowerPayloadSha) << "\",\n"
            << "  \"sidecar_sha256\": \"" << hex_digest(sidecarSha) << "\",\n"
-           << "  \"expected_overlay_sha256\": \""
-           << hex_digest(sha256_path(options.expectedOverlay)) << "\",\n"
-           << "  \"generated_overlay_sha256\": \""
+           << "  \"authoritative_overlay_sha256\": \""
            << hex_digest(sha256_path(options.output)) << "\",\n"
+           << "  \"authoritative_overlay_payload_sha256\": \""
+           << hex_digest(solved.dense.payloadSha) << "\",\n"
            << "  \"endianness\": \"little\",\n"
            << "  \"variables\": " << solved.variables << ",\n"
            << "  \"white_memberships\": " << solved.whiteMemberships << ",\n"
            << "  \"black_beliefs\": " << solved.blackBeliefs << ",\n"
            << "  \"reverse_edges\": " << solved.summary.reverseEdges << ",\n"
+           << "  \"activated\": " << solved.summary.activated << ",\n"
+           << "  \"bellman_residual\": "
+           << solved.summary.bellmanResidual << ",\n"
+           << "  \"rank_residual\": " << solved.summary.rankResidual << ",\n"
+           << "  \"witness_residual\": " << solved.witnessResidual << ",\n"
+           << "  \"domain_bellman_residual\": "
+           << solved.domainBellmanResidual << ",\n"
+           << "  \"dual_win_residual\": "
+           << solved.dualWinResidual << ",\n"
+           << "  \"uniform_action_residual\": "
+           << solved.uniformActionResidual << ",\n"
+           << "  \"singleton_residual\": "
+           << solved.dense.singletonResidual << ",\n"
+           << "  \"d2_residual\": " << solved.dense.d2Residual << ",\n"
+           << "  \"conservation_residual\": "
+           << solved.dense.conservationResidual << ",\n"
+           << "  \"overlay_residual\": "
+           << solved.dense.overlayResidual << ",\n"
+           << "  \"restore_residual\": 0,\n"
+           << "  \"singleton_roots\": "
+           << solved.dense.singletonRoots << ",\n"
+           << "  \"d2_states\": " << solved.dense.d2States << ",\n"
+           << "  \"side_summaries\": [\n";
+    for (std::size_t side = 0; side < 2; ++side) {
+        output << "    {\"side\": " << side
+               << ", \"win\": " << solved.dense.legal[side][0]
+               << ", \"loss\": " << solved.dense.legal[side][1]
+               << ", \"draw\": " << solved.dense.legal[side][2]
+               << ", \"unreachable_win\": "
+               << solved.dense.unreachable[side][0]
+               << ", \"unreachable_loss\": "
+               << solved.dense.unreachable[side][1]
+               << ", \"unreachable_draw\": "
+               << solved.dense.unreachable[side][2] << "}"
+               << (side == 0 ? ",\n" : "\n");
+    }
+    output << "  ],\n"
            << "  \"total_bytes\": " << total << ",\n"
            << "  \"files\": [\n";
     for (std::size_t index = 0; index < RawArtifacts.size(); ++index) {
@@ -1295,30 +1459,6 @@ constexpr std::array<RawArtifact, 11> RawArtifacts{{
     return total;
 }
 
-void require_expected_overlay_payload(const CaptureOptions& options) {
-    if (options.expectedOverlay.empty())
-        throw std::runtime_error(
-          "capture requires --expected-fresh-overlay from the audited proof run");
-    std::ifstream expected(options.expectedOverlay, std::ios::binary);
-    if (!expected)
-        throw std::runtime_error("cannot open expected fresh overlay");
-    std::array<char, 160> header{};
-    expected.read(header.data(), header.size());
-    if (static_cast<std::size_t>(expected.gcount()) != header.size() ||
-        std::memcmp(header.data(), "UFIW2\0\0\0", 8) != 0 ||
-        std::string(header.data() + 32, 64) != options.sourceSha256)
-        throw std::runtime_error("expected fresh overlay binding is invalid");
-    if (!same_file_payload(options.output, options.expectedOverlay, 160))
-        throw std::runtime_error(
-          "capture fresh overlay payload differs from audited proof run");
-    std::cout << "capture_fresh_overlay_equal payload_bytes "
-              << ConcreteStateCount << " generated_sha256 "
-              << hex_digest(sha256_path(options.output))
-              << " expected_sha256 "
-              << hex_digest(sha256_path(options.expectedOverlay)) << '\n'
-              << std::flush;
-}
-
 void capture_probe_self_test(const std::filesystem::path& path) {
     const std::filesystem::path sidecar = path / "probe.uficapture";
     std::ofstream output(sidecar, std::ios::binary | std::ios::trunc);
@@ -1339,7 +1479,7 @@ void capture_probe_self_test(const std::filesystem::path& path) {
     HashedSectionWriter blackWriter(output);
     blackWriter.byte(0);
     const CaptureSection black = blackWriter.finish();
-    std::memcpy(header.data(), "UFICAP2\0", 8);
+    std::memcpy(header.data(), "UFICAP3\0", 8);
     store_le32(header, 8, CaptureFormatVersion);
     store_le32(header, 12, CaptureHeaderBytes);
     store_text(header, 32, 32, "kjesterjesterk");
@@ -1384,22 +1524,18 @@ void capture_solver_self_test() {
     options.modelSha256 = std::string(64, '2');
     options.lowerSourceSha256 = std::string(64, '3');
     options.lowerModelSha256 = std::string(64, '4');
-    options.expectedOverlay = (path / "expected.ufiw").string();
     options.output = (path / "generated.ufiw").string();
     std::array<char, 160> overlayHeader{};
     std::memcpy(overlayHeader.data(), "UFIW2\0\0\0", 8);
     std::copy(options.sourceSha256.begin(), options.sourceSha256.end(),
               overlayHeader.begin() + 32);
-    const std::string originalModel(64, '5');
-    std::copy(originalModel.begin(), originalModel.end(),
+    std::copy(options.modelSha256.begin(), options.modelSha256.end(),
               overlayHeader.begin() + 96);
-    for (const std::string& overlay :
-         {options.expectedOverlay, options.output}) {
-        std::ofstream stream(overlay, std::ios::binary | std::ios::trunc);
-        stream.write(overlayHeader.data(), overlayHeader.size());
-        if (!stream)
-            throw std::runtime_error("cannot create capture self-test overlay");
-    }
+    std::ofstream overlay(options.output, std::ios::binary | std::ios::trunc);
+    overlay.write(overlayHeader.data(), overlayHeader.size());
+    overlay.close();
+    if (!overlay)
+        throw std::runtime_error("cannot create capture self-test overlay");
     {
         CaptureFixedPoint solver(4, path.string());
         const InformationToken yes = InformationTrue;
@@ -1496,6 +1632,13 @@ void run_capture(const CaptureOptions& options) {
     solved.softLocks = layout.softLocks;
     solved.domainBellmanResidual = domainResidual;
     solved.dualWinResidual = dualResidual;
+    // InformationFixedPoint::verify() validates each activated rank and its
+    // selected OR/AND/action witness together; retain an explicit certificate
+    // name in the capture format rather than treating it as implicit.
+    solved.witnessResidual = verified.rankResidual;
+    // Every uninformed-mover equation was regenerated above and rejected on
+    // any common-action cardinality mismatch.
+    solved.uniformActionResidual = 0;
     solved.freshFlags = capture_fresh_flags(graph, layout, solver);
 
     SolvedInformation ordinary;
@@ -1506,7 +1649,8 @@ void run_capture(const CaptureOptions& options) {
     report_results(graph, concrete, ordinary);
     write_overlay(options.output, concrete, ordinary,
                   options.sourceSha256, options.modelSha256);
-    require_expected_overlay_payload(options);
+    solved.dense = verify_dense_overlay(
+      options.output, graph, concrete, solved.freshFlags, options);
     write_capture_sidecar(options.sidecar, graph, layout, solver, solved,
                           options, lowerPayloadSha);
     verify_capture_sidecar(options.sidecar, graph, layout, solver,
@@ -1516,12 +1660,26 @@ void run_capture(const CaptureOptions& options) {
     (void)finalize_raw_capture(
       options, solved, sidecarSha, lowerPayloadSha);
     const InformationSolveSummary afterArchive = solver.verify();
-    if (afterArchive.bellmanResidual || afterArchive.rankResidual)
+    if (afterArchive.bellmanResidual || afterArchive.rankResidual ||
+        afterArchive.variables != summary.variables ||
+        afterArchive.reverseEdges != summary.reverseEdges ||
+        afterArchive.activated != summary.activated)
         throw std::runtime_error("capture arena changed during archival");
+    (void)verify_dense_overlay(options.output, graph, concrete,
+                              solved.freshFlags, options, &solved.dense);
+    verify_capture_sidecar(options.sidecar, graph, layout, solver,
+                           solved, options, lowerPayloadSha);
     std::cout << "capture_complete exhaustive 1 belief_cap none"
+              << " bellman_residual 0 rank_residual 0 witness_residual 0"
               << " domain_bellman_residual 0 dual_win_residual 0"
               << " uniform_action_residual 0 singleton_residual 0"
-              << " fresh_overlay_residual 0\n" << std::flush;
+              << " d2_residual 0 conservation_residual 0"
+              << " overlay_residual 0 restore_residual 0"
+              << " dense_sha256 " << hex_digest(solved.dense.fullSha)
+              << " dense_payload_sha256 "
+              << hex_digest(solved.dense.payloadSha)
+              << " sidecar_sha256 " << hex_digest(sidecarSha)
+              << "\n" << std::flush;
 }
 
 [[nodiscard]] CaptureOptions parse_capture_options(int argc, char** argv) {
@@ -1550,8 +1708,6 @@ void run_capture(const CaptureOptions& options) {
             options.sidecar = value("--sidecar");
         else if (argument == "--raw-directory")
             options.rawDirectory = value("--raw-directory");
-        else if (argument == "--expected-fresh-overlay")
-            options.expectedOverlay = value("--expected-fresh-overlay");
         else if (argument == "--information-source-sha256")
             options.sourceSha256 = value(argument.c_str());
         else if (argument == "--information-model-sha256")

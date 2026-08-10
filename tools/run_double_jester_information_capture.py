@@ -33,11 +33,11 @@ import ultimate_information_tablebases as information  # noqa: E402
 
 SEMANTICS = information.SEMANTICS_ID
 DOMAIN = "kjesterjesterk"
-RAW_ARCHIVE_SCHEMA = "ultimate-double-jester-raw-recovery-v2"
-COMPACT_ARCHIVE_SCHEMA = "ultimate-double-jester-arbitrary-result-v2"
-RUN_SCHEMA = "ultimate-double-jester-capture-run-v3"
-S3_MANIFEST_SCHEMA = "ultimate-double-jester-s3-upload-v2"
-S3_CERTIFICATE_SCHEMA = "ultimate-double-jester-s3-certificate-v2"
+RAW_ARCHIVE_SCHEMA = "ultimate-double-jester-raw-recovery-v3"
+COMPACT_ARCHIVE_SCHEMA = "ultimate-double-jester-arbitrary-result-v3"
+RUN_SCHEMA = "ultimate-double-jester-capture-run-v4"
+S3_MANIFEST_SCHEMA = "ultimate-double-jester-s3-upload-v3"
+S3_CERTIFICATE_SCHEMA = "ultimate-double-jester-s3-certificate-v3"
 DEFAULT_REQUIRED_FREE = 100 << 30
 CONSERVATIVE_RESIDENT_BYTES = 4 << 30
 AUDITED_LOWER_REBIND = {
@@ -94,6 +94,26 @@ def capture_model_sha256(root: Path = ROOT) -> str:
     return information.double_jester_capture_model_fingerprint(root=root)
 
 
+def source_provenance() -> dict[str, object]:
+    paths = [*CAPTURE_SOURCES,
+             "tools/run_double_jester_information_capture.py"]
+    commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    status = subprocess.check_output(
+        ["git", "status", "--porcelain", "--", *paths], cwd=ROOT,
+        text=True).splitlines()
+    return {
+        "git_commit": commit,
+        "solver_sources_dirty": bool(status),
+        "scoped_status": status,
+        "files": {
+            relative: {"bytes": (ROOT / relative).stat().st_size,
+                       "sha256": sha256_path(ROOT / relative)}
+            for relative in paths
+        },
+    }
+
+
 def overlay_binding(path: Path) -> tuple[str, str]:
     with path.open("rb") as stream:
         header = stream.read(160)
@@ -145,28 +165,28 @@ def stage_external_inputs(args: argparse.Namespace, work: Path) -> tuple[
         "input": args.input.resolve(),
         "lower_concrete": args.lower_concrete.resolve(),
         "lower_overlay": args.lower_overlay.resolve(),
-        "expected_overlay": args.expected_overlay.resolve(),
     }
     for name, path in sources.items():
         if not path.is_file():
             raise RuntimeError(f"missing {name} dependency: {path}")
     source_sha = sha256_path(sources["input"])
     lower_source, lower_model = overlay_binding(sources["lower_overlay"])
-    expected_source, original_model = overlay_binding(sources["expected_overlay"])
     if sha256_path(sources["lower_concrete"]) != lower_source:
         raise RuntimeError("lower concrete SHA-256 disagrees with lower overlay")
-    if expected_source != source_sha:
-        raise RuntimeError("ordinary overlay source disagrees with input table")
-    current_lower_model = information.solver_model_fingerprint("kjesterk.uftb")
-    current_original_model = information.solver_model_fingerprint(
-        "kjesterjesterk.uftb")
+    # The lower proof is an immutable authenticated dependency. Its payload was
+    # independently shown identical across the 095d -> 0ed6 header migration;
+    # later edits elsewhere in the conservative primary-Jester source tuple do
+    # not silently rewrite that already-proved dependency.
+    authenticated_lower_model = AUDITED_LOWER_REBIND["to_model_sha256"]
+    catalog_current_lower_model = information.solver_model_fingerprint(
+        "kjesterk.uftb")
     lower_rebind: dict[str, object] | None = None
-    if lower_model != current_lower_model:
+    if lower_model != authenticated_lower_model:
         rebound_payload = bytearray(sources["lower_overlay"].read_bytes())
-        rebound_payload[96:160] = current_lower_model.encode("ascii")
+        rebound_payload[96:160] = authenticated_lower_model.encode("ascii")
         audit_actual = {
             "from_model_sha256": lower_model,
-            "to_model_sha256": current_lower_model,
+            "to_model_sha256": authenticated_lower_model,
             "source_sha256": lower_source,
             "provided_full_sha256": sha256_path(sources["lower_overlay"]),
             "rebound_full_sha256": hashlib.sha256(rebound_payload).hexdigest(),
@@ -184,17 +204,13 @@ def stage_external_inputs(args: argparse.Namespace, work: Path) -> tuple[
                 left != right
                 for left, right in zip(
                     sources["lower_overlay"].read_bytes()[96:160],
-                    current_lower_model.encode("ascii"))),
+                    authenticated_lower_model.encode("ascii"))),
             "payload_residual": 0, "explicitly_authorized": True,
         }
-    if original_model != current_original_model:
-        raise RuntimeError("ordinary double-Jester overlay model is stale")
-
     names = {
         "input": "inputs/kjesterjesterk.uftb",
         "lower_concrete": "inputs/kjesterk.uftb",
         "lower_overlay": "inputs/kjesterk.ufiw",
-        "expected_overlay": "inputs/kjesterjesterk.expected.ufiw",
     }
     staged: dict[str, Path] = {}
     records: dict[str, object] = {}
@@ -219,10 +235,11 @@ def stage_external_inputs(args: argparse.Namespace, work: Path) -> tuple[
         executable.chmod(0o644)
         with executable.open("r+b") as stream:
             stream.seek(96)
-            stream.write(current_lower_model.encode("ascii"))
+            stream.write(authenticated_lower_model.encode("ascii"))
         executable.chmod(0o444)
         rebound_source, rebound_model = overlay_binding(executable)
-        if (rebound_source != lower_source or rebound_model != current_lower_model or
+        if (rebound_source != lower_source or
+                rebound_model != authenticated_lower_model or
                 sha256_path(executable) != lower_rebind["rebound_full_sha256"] or
                 sha256_payload(executable) != lower_rebind["payload_sha256"]):
             raise RuntimeError("audited lower overlay staged-rebind residual")
@@ -231,17 +248,13 @@ def stage_external_inputs(args: argparse.Namespace, work: Path) -> tuple[
         records["lower_overlay"]["provided_sha256"] = lower_rebind[
             "provided_full_sha256"]
         records["lower_overlay"]["sha256"] = sha256_path(executable)
-        records["lower_overlay"]["model_sha256"] = current_lower_model
+        records["lower_overlay"]["model_sha256"] = authenticated_lower_model
     bindings: dict[str, object] = {
         "source_sha256": source_sha,
-        "original_model_sha256": original_model,
-        "current_original_model_sha256": current_original_model,
-        "expected_overlay_sha256": sha256_path(sources["expected_overlay"]),
-        "expected_overlay_payload_sha256": sha256_payload(
-            sources["expected_overlay"]),
         "lower_source_sha256": lower_source,
-        "lower_model_sha256": current_lower_model,
-        "current_lower_model_sha256": current_lower_model,
+        "lower_model_sha256": authenticated_lower_model,
+        "authenticated_lower_model_sha256": authenticated_lower_model,
+        "catalog_current_lower_model_sha256": catalog_current_lower_model,
         "lower_overlay_sha256": sha256_path(work / staged["lower_overlay"]),
         "lower_provided_overlay_sha256": sha256_path(sources["lower_overlay"]),
         "lower_overlay_payload_sha256": sha256_payload(
@@ -250,7 +263,7 @@ def stage_external_inputs(args: argparse.Namespace, work: Path) -> tuple[
         "files": records,
     }
     write_json(work / "inputs/manifest.json", {
-        "schema": "ultimate-double-jester-capture-inputs-v1",
+        "schema": "ultimate-double-jester-capture-inputs-v2",
         "semantics": SEMANTICS,
         "domain": DOMAIN,
         **bindings,
@@ -315,10 +328,9 @@ def relative_capture_command(staged: Mapping[str, Path], model: str,
         str(bindings["lower_source_sha256"]),
         "--lower-information-model-sha256",
         str(bindings["lower_model_sha256"]),
-        "--output", "results/kjesterjesterk.capture.ufiw",
+        "--output", "results/kjesterjesterk.ufiw",
         "--sidecar", "results/kjesterjesterk.uficapture",
         "--raw-directory", "raw-live",
-        "--expected-fresh-overlay", str(staged["expected_overlay"]),
         "--information-source-sha256", str(bindings["source_sha256"]),
         "--information-model-sha256", model,
         "--required-free-bytes", str(args.required_free_bytes),
@@ -328,6 +340,9 @@ def relative_capture_command(staged: Mapping[str, Path], model: str,
 
 def require_resource_gate(measurement: Mapping[str, int], work: Path,
                           args: argparse.Namespace) -> None:
+    if not args.s3_prefix:
+        raise RuntimeError(
+            "--full requires --s3-prefix for authenticated preservation")
     if args.scratch_limit <= 0 or args.resident_limit <= 0:
         raise RuntimeError("--full requires positive --scratch-limit and "
                            "--resident-limit")
@@ -500,6 +515,9 @@ def upload_head_download_verify(*, source: Path, digest: str, extent: int,
     if int(head.get("ContentLength", -1)) != extent or metadata.get(
             "sha256") != digest:
         raise RuntimeError("S3 HEAD extent/full-SHA metadata residual")
+    version_id = head.get("VersionId")
+    if not isinstance(version_id, str) or not version_id or version_id == "null":
+        raise RuntimeError("S3 bucket versioning is required for preservation")
     if download.exists():
         raise RuntimeError(f"S3 verification download exists: {download}")
     download.parent.mkdir(parents=True, exist_ok=True)
@@ -513,29 +531,144 @@ def upload_head_download_verify(*, source: Path, digest: str, extent: int,
     return {
         "bucket": bucket, "key": full_key, "uri": uri, "bytes": extent,
         "sha256": digest, "etag": head.get("ETag", ""),
-        "version_id": head.get("VersionId"), "head_full_sha_residual": 0,
+        "version_id": version_id, "head_full_sha_residual": 0,
         "download_full_sha_residual": 0, "archive_restore_residual": 0,
     }
 
 
+def inspect_dense_overlay(path: Path, source: str, model: str) -> dict[str, object]:
+    with path.open("rb") as stream:
+        header = stream.read(160)
+    if (len(header) != 160 or header[:8] != b"UFIW2\0\0\0" or
+            int.from_bytes(header[8:12], "little") != 2 or
+            int.from_bytes(header[12:16], "little") != 1 or
+            int.from_bytes(header[16:20], "little") != 1 or
+            int.from_bytes(header[20:24], "little") != 0 or
+            int.from_bytes(header[24:28], "little") <= 0 or
+            int.from_bytes(header[28:32], "little") != 1 or
+            header[32:96] != source.encode("ascii") or
+            header[96:160] != model.encode("ascii")):
+        raise RuntimeError("authoritative dense overlay binding residual")
+    concrete = int.from_bytes(header[24:28], "little")
+    if path.stat().st_size != 160 + concrete:
+        raise RuntimeError("authoritative dense overlay extent residual")
+    return {
+        "bytes": path.stat().st_size,
+        "concrete_states": concrete,
+        "sha256": sha256_path(path),
+        "payload_sha256": sha256_payload(path),
+    }
+
+
+def parse_capture_certificate(log: Path) -> dict[str, object]:
+    lines = [line for line in log.read_text(errors="replace").splitlines()
+             if line.startswith("capture_complete ")]
+    if len(lines) != 1:
+        raise RuntimeError("capture proof certificate is missing or duplicated")
+    tokens = lines[0].split()[1:]
+    if len(tokens) % 2 or any(
+            not re.fullmatch(r"[a-z0-9_]+", tokens[index])
+            for index in range(0, len(tokens), 2)):
+        raise RuntimeError("capture proof certificate is malformed")
+    fields = dict(zip(tokens[::2], tokens[1::2]))
+    if len(fields) * 2 != len(tokens):
+        raise RuntimeError("capture proof certificate has duplicate fields")
+    zero_residuals = (
+        "bellman_residual", "rank_residual", "witness_residual",
+        "domain_bellman_residual", "dual_win_residual",
+        "uniform_action_residual", "singleton_residual", "d2_residual",
+        "conservation_residual", "overlay_residual", "restore_residual",
+    )
+    if fields.get("exhaustive") != "1" or fields.get("belief_cap") != "none":
+        raise RuntimeError("capture proof is not exhaustive/no-cap")
+    if any(fields.get(name) != "0" for name in zero_residuals):
+        raise RuntimeError("capture proof has a nonzero or missing residual")
+    for name in ("dense_sha256", "dense_payload_sha256", "sidecar_sha256"):
+        if not re.fullmatch(r"[0-9a-f]{64}", fields.get(name, "")):
+            raise RuntimeError(f"capture proof has malformed {name}")
+    return {name: fields[name] for name in (
+        "exhaustive", "belief_cap", *zero_residuals,
+        "dense_sha256", "dense_payload_sha256", "sidecar_sha256")}
+
+
+def inspect_sidecar_header(path: Path, *, source: str, model: str,
+                           dense: Mapping[str, object],
+                           manifest: Mapping[str, object]) -> dict[str, object]:
+    with path.open("rb") as stream:
+        header = stream.read(1024)
+    if (len(header) != 1024 or header[:8] != b"UFICAP3\0" or
+            int.from_bytes(header[8:12], "little") != 3 or
+            int.from_bytes(header[12:16], "little") != 1024 or
+            int.from_bytes(header[16:20], "little") != 1 or
+            header[32:64].split(b"\0", 1)[0] != DOMAIN.encode("ascii") or
+            header[64:128].rstrip(b"\0") != SEMANTICS.encode("ascii") or
+            header[128:160] != bytes.fromhex(source) or
+            header[160:192] != bytes.fromhex(model) or
+            header[672:704] != bytes.fromhex(str(dense["sha256"])) or
+            header[704:736] != bytes.fromhex(str(dense["payload_sha256"])) or
+            hashlib.sha256(header[:992]).digest() != header[992:1024]):
+        raise RuntimeError("capture sidecar header/hash binding residual")
+    residual_offsets = {
+        "bellman_residual": 352, "rank_residual": 360,
+        "domain_bellman_residual": 368, "dual_win_residual": 376,
+        "witness_residual": 392, "uniform_action_residual": 400,
+        "conservation_residual": 896, "overlay_residual": 904,
+        "singleton_residual": 912, "d2_residual": 920,
+        "restore_residual": 928,
+    }
+    residuals = {name: int.from_bytes(header[offset:offset + 8], "little")
+                 for name, offset in residual_offsets.items()}
+    if any(residuals.values()):
+        raise RuntimeError("capture sidecar proof residual is nonzero")
+    summaries = manifest.get("side_summaries")
+    if not isinstance(summaries, list) or len(summaries) != 2:
+        raise RuntimeError("raw manifest lacks two side summaries")
+    summary_keys = (
+        "win", "loss", "draw", "unreachable_win", "unreachable_loss",
+        "unreachable_draw",
+    )
+    offsets = (800, 808, 816, 824, 832, 840,
+               848, 856, 864, 872, 880, 888)
+    sidecar_counts = [int.from_bytes(header[offset:offset + 8], "little")
+                      for offset in offsets]
+    manifest_counts = [int(summary[key]) for summary in summaries
+                       for key in summary_keys]
+    if sidecar_counts != manifest_counts:
+        raise RuntimeError("sidecar/raw summary cross-binding residual")
+    half = int(dense["concrete_states"]) // 2
+    for summary in summaries:
+        if sum(int(summary[key]) for key in summary_keys) != half:
+            raise RuntimeError("per-side W/L/D conservation residual")
+    if int.from_bytes(header[288:296], "little") != int(
+            dense["concrete_states"]):
+        raise RuntimeError("sidecar/dense state-count residual")
+    return {
+        "bytes": path.stat().st_size, "sha256": sha256_path(path),
+        "header_sha256": header[992:1024].hex(),
+        "residuals": residuals, "side_summaries": summaries,
+        "singleton_roots": int.from_bytes(header[944:952], "little"),
+        "d2_states": int.from_bytes(header[936:944], "little"),
+    }
+
+
 def verify_raw_manifest(work: Path, model: str,
-                        bindings: Mapping[str, object]) -> dict[str, object]:
+                        bindings: Mapping[str, object]) -> tuple[
+                            dict[str, object], dict[str, object]]:
     path = work / "raw-live/manifest.json"
     manifest = json.loads(path.read_text())
-    generated = work / "results/kjesterjesterk.capture.ufiw"
+    generated = work / "results/kjesterjesterk.ufiw"
     sidecar = work / "results/kjesterjesterk.uficapture"
     expected = {
-        "schema": "ultimate-double-jester-raw-v2",
+        "schema": "ultimate-double-jester-raw-v3",
         "semantics": SEMANTICS,
         "domain": DOMAIN,
         "source_sha256": bindings["source_sha256"],
-        "original_model_sha256": bindings["original_model_sha256"],
         "model_sha256": model,
         "lower_source_sha256": bindings["lower_source_sha256"],
         "lower_model_sha256": bindings["lower_model_sha256"],
         "lower_payload_sha256": bindings["lower_overlay_payload_sha256"],
-        "expected_overlay_sha256": bindings["expected_overlay_sha256"],
-        "generated_overlay_sha256": sha256_path(generated),
+        "authoritative_overlay_sha256": sha256_path(generated),
+        "authoritative_overlay_payload_sha256": sha256_payload(generated),
         "sidecar_sha256": sha256_path(sidecar),
     }
     for key, value in expected.items():
@@ -550,19 +683,48 @@ def verify_raw_manifest(work: Path, model: str,
         total += raw.stat().st_size
     if total != int(manifest.get("total_bytes", -1)):
         raise RuntimeError("raw manifest total-byte residual")
-    if sha256_payload(generated) != bindings["expected_overlay_payload_sha256"]:
-        raise RuntimeError("generated/ordinary fresh-overlay payload residual")
     if (int(manifest.get("variables", 0)) <= 0 or
             int(manifest.get("reverse_edges", 0)) <= 0):
         raise RuntimeError("raw manifest fixed-point cardinality residual")
-    capture_log = (work / "logs/capture.log").read_text(errors="replace")
-    certificate = ("capture_complete exhaustive 1 belief_cap none "
-                   "domain_bellman_residual 0 dual_win_residual 0 "
-                   "uniform_action_residual 0 singleton_residual 0 "
-                   "fresh_overlay_residual 0")
-    if certificate not in capture_log:
-        raise RuntimeError("capture proof residual certificate is missing")
-    return manifest
+    manifest_residuals = (
+        "bellman_residual", "rank_residual", "witness_residual",
+        "domain_bellman_residual", "dual_win_residual",
+        "uniform_action_residual", "singleton_residual", "d2_residual",
+        "conservation_residual", "overlay_residual", "restore_residual",
+    )
+    if any(int(manifest.get(name, -1)) for name in manifest_residuals):
+        raise RuntimeError("raw manifest proof residual is nonzero or missing")
+    dense = inspect_dense_overlay(
+        generated, str(bindings["source_sha256"]), model)
+    sidecar_record = inspect_sidecar_header(
+        sidecar, source=str(bindings["source_sha256"]), model=model,
+        dense=dense, manifest=manifest)
+    log_certificate = parse_capture_certificate(work / "logs/capture.log")
+    if (log_certificate["dense_sha256"] != dense["sha256"] or
+            log_certificate["dense_payload_sha256"] !=
+            dense["payload_sha256"] or
+            log_certificate["sidecar_sha256"] != sidecar_record["sha256"]):
+        raise RuntimeError("capture log/output SHA binding residual")
+    proof = {
+        "schema": "ultimate-double-jester-authoritative-proof-v1",
+        "semantics": SEMANTICS, "domain": DOMAIN,
+        "capture_model_sha256": model,
+        "source_sha256": bindings["source_sha256"],
+        "lower_source_sha256": bindings["lower_source_sha256"],
+        "lower_model_sha256": bindings["lower_model_sha256"],
+        "dense": dense, "sidecar": sidecar_record,
+        "fixed_point": {
+            "variables": manifest["variables"],
+            "reverse_edges": manifest["reverse_edges"],
+            "activated": manifest["activated"],
+            "raw_manifest_sha256": sha256_path(path),
+        },
+        "certificate": log_certificate,
+        "persisted_equations_and_values_verified": True,
+        "ordinary_and_arbitrary_outputs_one_solve": True,
+        "belief_cap": None, "exhaustive": True,
+    }
+    return manifest, proof
 
 
 def archive_file_maps(work: Path) -> tuple[dict[str, Path], dict[str, Path]]:
@@ -578,8 +740,6 @@ def archive_file_maps(work: Path) -> tuple[dict[str, Path], dict[str, Path]]:
         "inputs/kjesterjesterk.uftb": work / "inputs/kjesterjesterk.uftb",
         "inputs/kjesterk.uftb": work / "inputs/kjesterk.uftb",
         "inputs/kjesterk.ufiw": work / "inputs/kjesterk.ufiw",
-        "inputs/kjesterjesterk.expected.ufiw":
-            work / "inputs/kjesterjesterk.expected.ufiw",
     }
     provided_lower = work / "inputs/kjesterk.provided-095d.ufiw"
     if provided_lower.exists():
@@ -593,17 +753,63 @@ def archive_file_maps(work: Path) -> tuple[dict[str, Path], dict[str, Path]]:
     raw_manifest = json.loads((work / "raw-live/manifest.json").read_text())
     for record in raw_manifest["files"]:
         raw[f"raw/{record['path']}"] = work / "raw-live" / record["path"]
-    raw["results/kjesterjesterk.capture.ufiw"] = (
-        work / "results/kjesterjesterk.capture.ufiw")
+    raw["proof/authoritative-proof.json"] = work / "authoritative-proof.json"
+    raw["results/kjesterjesterk.ufiw"] = (
+        work / "results/kjesterjesterk.ufiw")
     raw["results/kjesterjesterk.uficapture"] = (
         work / "results/kjesterjesterk.uficapture")
     compact = dict(common)
     compact["proof/raw-manifest.json"] = work / "raw-live/manifest.json"
-    compact["results/kjesterjesterk.capture.ufiw"] = (
-        work / "results/kjesterjesterk.capture.ufiw")
+    compact["proof/authoritative-proof.json"] = (
+        work / "authoritative-proof.json")
+    compact["results/kjesterjesterk.ufiw"] = (
+        work / "results/kjesterjesterk.ufiw")
     compact["results/kjesterjesterk.uficapture"] = (
         work / "results/kjesterjesterk.uficapture")
     return raw, compact
+
+
+def verify_restored_capture(raw: Mapping[str, Path],
+                            compact: Mapping[str, Path], *, model: str,
+                            bindings: Mapping[str, object]) -> dict[str, object]:
+    raw_manifest = json.loads(raw["raw/manifest.json"].read_text())
+    for record in raw_manifest.get("files", []):
+        restored = raw.get(f"raw/{record['path']}")
+        if (restored is None or restored.stat().st_size != int(record["bytes"]) or
+                sha256_path(restored) != record["sha256"]):
+            raise RuntimeError("fresh raw archive restore residual")
+    dense = inspect_dense_overlay(
+        compact["results/kjesterjesterk.ufiw"],
+        str(bindings["source_sha256"]), model)
+    sidecar = inspect_sidecar_header(
+        compact["results/kjesterjesterk.uficapture"],
+        source=str(bindings["source_sha256"]), model=model, dense=dense,
+        manifest=raw_manifest)
+    log = parse_capture_certificate(compact["proof/capture.log"])
+    if (dense["sha256"] != log["dense_sha256"] or
+            dense["payload_sha256"] != log["dense_payload_sha256"] or
+            sidecar["sha256"] != log["sidecar_sha256"]):
+        raise RuntimeError("fresh compact archive restore binding residual")
+    proof = json.loads(compact["proof/authoritative-proof.json"].read_text())
+    if (proof.get("dense", {}).get("sha256") != dense["sha256"] or
+            proof.get("sidecar", {}).get("sha256") != sidecar["sha256"]):
+        raise RuntimeError("fresh authoritative proof restore residual")
+    return {
+        "schema": "ultimate-double-jester-local-restore-certificate-v1",
+        "semantics": SEMANTICS, "domain": DOMAIN,
+        "capture_model_sha256": model,
+        "raw_files": len(raw_manifest["files"]),
+        "raw_bytes": raw_manifest["total_bytes"],
+        "dense_sha256": dense["sha256"],
+        "dense_payload_sha256": dense["payload_sha256"],
+        "sidecar_sha256": sidecar["sha256"],
+        "raw_hash_extent_residual": 0,
+        "dense_restore_residual": 0,
+        "sidecar_restore_residual": 0,
+        "equation_value_restore_residual": 0,
+        "local_originals_retained": True,
+        "safe_to_delete_gate": False,
+    }
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -613,7 +819,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--lower-overlay", type=Path, required=True)
     parser.add_argument("--lower-concrete", type=Path,
                         default=ROOT / "tablebases/kjesterk.uftb")
-    parser.add_argument("--expected-overlay", type=Path, required=True)
     parser.add_argument("--work-directory", type=Path, required=True)
     parser.add_argument("--full", action="store_true")
     parser.add_argument("--scratch-limit", type=int, default=0)
@@ -629,6 +834,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     work = args.work_directory.resolve()
     require_empty_work_directory(work)
+    provenance = source_provenance()
     model = capture_model_sha256()
     bundle = stage_source_bundle(work, model)
     staged, bindings = stage_external_inputs(args, work)
@@ -658,6 +864,7 @@ def main(argv: list[str] | None = None) -> int:
         "binary_sha256": sha256_path(binary),
         "build": build_command, "command": command,
         "bindings": bindings, "measurement": measurement,
+        "source_provenance": provenance,
         "full_explicitly_requested": bool(args.full),
         "never_delete": True,
     }
@@ -666,6 +873,9 @@ def main(argv: list[str] | None = None) -> int:
         print(json.dumps({"status": plan["status"], **measurement}, sort_keys=True))
         return 0
 
+    if provenance["solver_sources_dirty"]:
+        raise RuntimeError(
+            "--full requires committed canonical solver/runner sources")
     require_resource_gate(measurement, work, args)
     (work / "raw-live").mkdir()
     (work / "results").mkdir()
@@ -674,15 +884,19 @@ def main(argv: list[str] | None = None) -> int:
         raise RuntimeError("staged capture sources changed during solve")
     if sha256_path(binary) != plan["binary_sha256"]:
         raise RuntimeError("capture binary changed during solve")
-    raw_manifest = verify_raw_manifest(work, model, bindings)
+    raw_manifest, authoritative_proof = verify_raw_manifest(
+        work, model, bindings)
+    write_json(work / "authoritative-proof.json", authoritative_proof)
 
     plan["status"] = "full-capture-complete-local-verification-pending"
     plan["raw_manifest_sha256"] = sha256_path(work / "raw-live/manifest.json")
     plan["generated_overlay_sha256"] = sha256_path(
-        work / "results/kjesterjesterk.capture.ufiw")
+        work / "results/kjesterjesterk.ufiw")
     plan["sidecar_sha256"] = sha256_path(
         work / "results/kjesterjesterk.uficapture")
     plan["raw_bytes"] = raw_manifest["total_bytes"]
+    plan["authoritative_proof_sha256"] = sha256_path(
+        work / "authoritative-proof.json")
     write_json(work / "capture-plan.json", plan)
 
     raw_files, compact_files = archive_file_maps(work)
@@ -691,10 +905,15 @@ def main(argv: list[str] | None = None) -> int:
     compact_archive, compact_sha = content_address_archive(
         work / "archives", "double-jester-arbitrary", compact_files,
         COMPACT_ARCHIVE_SCHEMA)
-    restore_zstd_archive(raw_archive, work / "restore-local/raw",
-                         RAW_ARCHIVE_SCHEMA)
-    restore_zstd_archive(compact_archive, work / "restore-local/compact",
-                         COMPACT_ARCHIVE_SCHEMA)
+    restored_raw = restore_zstd_archive(
+        raw_archive, work / "restore-local/raw", RAW_ARCHIVE_SCHEMA)
+    restored_compact = restore_zstd_archive(
+        compact_archive, work / "restore-local/compact", COMPACT_ARCHIVE_SCHEMA)
+    local_restore = verify_restored_capture(
+        restored_raw, restored_compact, model=model, bindings=bindings)
+    local_restore_path = work / "archives/local-restore-certificate.json"
+    write_json(local_restore_path, local_restore)
+    local_restore_sha = sha256_path(local_restore_path)
 
     objects = [
         {"name": raw_archive.name, "bytes": raw_archive.stat().st_size,
@@ -705,6 +924,12 @@ def main(argv: list[str] | None = None) -> int:
          "sha256": compact_sha,
          "key": f"results/sha256/{compact_sha}/{compact_archive.name}",
          "schema": COMPACT_ARCHIVE_SCHEMA},
+        {"name": local_restore_path.name,
+         "bytes": local_restore_path.stat().st_size,
+         "sha256": local_restore_sha,
+         "key": (f"certificates/sha256/{local_restore_sha}/"
+                 f"{local_restore_path.name}"),
+         "schema": None},
     ]
     upload_manifest = {
         "schema": S3_MANIFEST_SCHEMA, "semantics": SEMANTICS,
@@ -718,13 +943,16 @@ def main(argv: list[str] | None = None) -> int:
     s3_status = "not-requested-no-preservation-claim"
     if args.s3_prefix:
         local = {raw_archive.name: raw_archive,
-                 compact_archive.name: compact_archive}
+                 compact_archive.name: compact_archive,
+                 local_restore_path.name: local_restore_path}
         verified = [upload_head_download_verify(
             source=local[str(record["name"])],
             digest=str(record["sha256"]), extent=int(record["bytes"]),
             prefix=args.s3_prefix, key=str(record["key"]),
             download=work / "s3-verify" / str(record["name"]),
-            archive_schema=str(record["schema"])) for record in objects]
+            archive_schema=(str(record["schema"])
+                            if record["schema"] is not None else None))
+                    for record in objects]
         manifest_sha = sha256_path(upload_manifest_path)
         manifest_verified = upload_head_download_verify(
             source=upload_manifest_path, digest=manifest_sha,
