@@ -242,7 +242,7 @@ def ssm_probe(region: str, instance_id: str, command: str) -> dict[str, Any]:
                 "aws", "ssm", "get-command-invocation", "--region", region,
                 "--command-id", command_id, "--instance-id", instance_id,
                 "--output", "json"], timeout=10))
-        except RuntimeError:
+        except (RuntimeError, subprocess.TimeoutExpired):
             if time.monotonic() >= deadline:
                 raise
             time.sleep(1)
@@ -392,8 +392,8 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         remote_jobs = {entry["id"]: entry for entry in
                        host.get("remote", {}).get("jobs", [])}
         remote = remote_jobs.get(identifier, {})
-        status = unit_status(remote.get("unit", {})) if remote else "FAILED"
-        if not source_exact(definition, remote):
+        status = unit_status(remote.get("unit", {})) if remote else "UNKNOWN"
+        if remote and not source_exact(definition, remote):
             status = "SOURCE_MISMATCH"
         completion = all_paths_exist(remote.get("completion", []))
         certificates: list[dict[str, Any]] = []
@@ -411,7 +411,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
             "status": status, "unit": remote.get("unit", {}),
             "checkpoints": remote.get("checkpoints", []),
             "completion": remote.get("completion", []),
-            "source_exact": source_exact(definition, remote),
+            "source_exact": source_exact(definition, remote) if remote else False,
             "certificates": certificates,
             "dependencies": definition.get("dependencies", []),
         }

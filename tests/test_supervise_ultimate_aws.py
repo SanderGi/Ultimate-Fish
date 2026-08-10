@@ -8,6 +8,7 @@ import importlib.util
 import json
 from pathlib import Path
 import shlex
+import subprocess
 import unittest
 from unittest import mock
 
@@ -175,6 +176,18 @@ class SupervisionTests(unittest.TestCase):
         self.assertEqual("FAILED", output["report"]["jobs"]["first"]["status"])
         self.assertTrue(output["delegate_sol"])
         self.assertEqual("error", output["severity"])
+
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    @mock.patch.object(SUPERVISOR, "ec2_inventory")
+    def test_host_probe_error_never_fabricates_job_failures(
+            self, inventory: mock.Mock, probe: mock.Mock) -> None:
+        inventory.return_value = self.ec2
+        probe.side_effect = subprocess.TimeoutExpired(["aws"], 10)
+        output, _ = SUPERVISOR.supervise(config(), {}, self.now)
+        self.assertEqual("UNKNOWN", output["report"]["jobs"]["first"]["status"])
+        self.assertEqual("UNKNOWN", output["report"]["jobs"]["second"]["status"])
+        self.assertTrue(output["delegate_sol"])
+        self.assertIn("timed out", output["report"]["errors"][0]["error"])
 
     @mock.patch.object(SUPERVISOR, "run")
     def test_advance_refuses_nonready_and_starts_only_exact_unit(
