@@ -177,6 +177,109 @@ void solver_arena_test() {
     }
     require(badSeedRange, "crossed fresh root seed accepted a bad range");
 
+    Solver::GraphDiscovery discovery = Solver::GraphDiscovery::seed(
+      seedBegin, 64);
+    Solver::GraphDiscovery segmented = Solver::GraphDiscovery::seed(
+      seedBegin, 32);
+    const Solver::FreshSeedCertificate appended = segmented.append_seed(32);
+    require(appended.rawBegin == seedBegin + 32 && appended.rawCount == 32 &&
+             segmented.roots() == discovery.roots() &&
+             segmented.arena().size() == discovery.arena().size(),
+            "crossed segmented root seed changed the graph");
+    for (Solver::NodeId node = 0; node < segmented.arena().size(); ++node)
+        require(segmented.arena().node(node) == discovery.arena().node(node),
+                "crossed segmented root seed changed stable node IDs");
+    const Solver::DiscoveryCertificate progress = discovery.advance(2);
+    require(progress.expanded == 2 && progress.nodesBefore > 0 &&
+             progress.nodesAfter >= progress.nodesBefore &&
+             progress.actions > 0 && progress.observations > 0 &&
+             progress.outcomes > 0 && progress.residual == 0 &&
+             discovery.expanded() == 2 && discovery.roots().size() == 64,
+            "crossed graph discovery progress has a residual");
+    bool lateSeedRejected = false;
+    try {
+        (void)discovery.append_seed(1);
+    }
+    catch (const std::logic_error&) {
+        lateSeedRejected = true;
+    }
+    require(lateSeedRejected,
+            "crossed graph discovery accepted roots after expansion");
+    std::ostringstream checkpoint(std::ios::binary);
+    const Solver::DiscoveryArchiveCertificate checkpointWritten =
+      discovery.write(checkpoint);
+    std::istringstream checkpointInput(checkpoint.str(), std::ios::binary);
+    auto [resumed, checkpointRead] = Solver::GraphDiscovery::read(
+      checkpointInput);
+    require(checkpointWritten.roots == 64 &&
+             checkpointWritten.expanded == 2 &&
+             checkpointWritten.rootBoundsResidual == 0 &&
+             checkpointWritten.cursorResidual == 0 &&
+             checkpointWritten.extentResidual == 0 &&
+             checkpointRead.roots == checkpointWritten.roots &&
+             checkpointRead.emptyRoots == checkpointWritten.emptyRoots &&
+             checkpointRead.expanded == checkpointWritten.expanded &&
+             checkpointRead.graph.nodes == checkpointWritten.graph.nodes &&
+             resumed.raw_begin() == seedBegin && resumed.expanded() == 2 &&
+             resumed.roots() == discovery.roots() &&
+             resumed.arena().size() == discovery.arena().size(),
+            "crossed graph discovery checkpoint did not restore exactly");
+    const auto corrupt_u32 = [](std::string& bytes, std::size_t offset,
+                                std::uint32_t value) {
+        for (unsigned byte = 0; byte < 4; ++byte)
+            bytes.at(offset + byte) = static_cast<char>(value >> (8 * byte));
+    };
+    bool badCheckpointRejected = false;
+    try {
+        std::string badExtent = checkpoint.str();
+        corrupt_u32(badExtent, 16, Model::RawPublicFrameCount);
+        std::istringstream invalid(badExtent, std::ios::binary);
+        (void)Solver::GraphDiscovery::read(invalid);
+    }
+    catch (const std::exception&) {
+        badCheckpointRejected = true;
+    }
+    require(badCheckpointRejected,
+            "crossed discovery accepted an invalid raw extent");
+    badCheckpointRejected = false;
+    try {
+        std::string badCursor = checkpoint.str();
+        for (std::size_t byte = 24; byte < 32; ++byte)
+            badCursor.at(byte) = static_cast<char>(0xff);
+        std::istringstream invalid(badCursor, std::ios::binary);
+        (void)Solver::GraphDiscovery::read(invalid);
+    }
+    catch (const std::exception&) {
+        badCheckpointRejected = true;
+    }
+    require(badCheckpointRejected,
+            "crossed discovery accepted an invalid expansion cursor");
+    const auto nonempty = std::find_if(discovery.roots().begin(),
+      discovery.roots().end(), [](Solver::NodeId root) {
+          return root != std::numeric_limits<Solver::NodeId>::max();
+      });
+    require(nonempty != discovery.roots().end(),
+            "crossed discovery corruption fixture has no root");
+    badCheckpointRejected = false;
+    try {
+        std::string badRoot = checkpoint.str();
+        const std::size_t rootIndex = static_cast<std::size_t>(
+          nonempty - discovery.roots().begin());
+        corrupt_u32(badRoot, 32 + 4 * rootIndex,
+                    static_cast<std::uint32_t>(discovery.arena().size()));
+        std::istringstream invalid(badRoot, std::ios::binary);
+        (void)Solver::GraphDiscovery::read(invalid);
+    }
+    catch (const std::exception&) {
+        badCheckpointRejected = true;
+    }
+    require(badCheckpointRejected,
+            "crossed discovery accepted an out-of-bounds root");
+    const Solver::DiscoveryCertificate resumedProgress = resumed.advance(1);
+    require(resumedProgress.expanded == 1 && resumed.expanded() == 3 &&
+             resumedProgress.residual == 0,
+            "crossed graph discovery did not resume at its exact cursor");
+
     Solver::Arena focused;
     const Model::KnowledgeState root = fixture();
     const Solver::NodeId rootId = focused.intern(root);

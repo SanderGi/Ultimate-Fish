@@ -11,6 +11,7 @@
 
 #include <cstdint>
 #include <iosfwd>
+#include <limits>
 #include <map>
 #include <optional>
 #include <utility>
@@ -52,6 +53,28 @@ struct FreshSeedCertificate {
 struct FreshSeedResult {
     std::vector<std::optional<NodeId>> roots;
     FreshSeedCertificate certificate;
+};
+
+struct DiscoveryCertificate {
+    std::uint64_t expanded = 0;
+    std::uint64_t nodesBefore = 0;
+    std::uint64_t nodesAfter = 0;
+    std::uint64_t actions = 0;
+    std::uint64_t observations = 0;
+    std::uint64_t outcomes = 0;
+    std::uint64_t newlyInterned = 0;
+    std::uint64_t residual = 0;
+    bool closed = false;
+};
+
+struct DiscoveryArchiveCertificate {
+    std::uint64_t roots = 0;
+    std::uint64_t emptyRoots = 0;
+    std::uint64_t expanded = 0;
+    GraphArchiveCertificate graph;
+    std::uint64_t rootBoundsResidual = 0;
+    std::uint64_t cursorResidual = 0;
+    std::uint64_t extentResidual = 0;
 };
 
 struct NodeExpansion {
@@ -186,6 +209,12 @@ class LowerForceOracle {
 // deterministic oracle used by focused tests and restore verification.
 class Arena {
    public:
+    Arena() = default;
+    Arena(const Arena&) = delete;
+    Arena& operator=(const Arena&) = delete;
+    Arena(Arena&&) = default;
+    Arena& operator=(Arena&&) = default;
+
     [[nodiscard]] FreshSeedResult seed_fresh_range(
       std::uint32_t rawBegin, std::uint32_t rawCount);
     [[nodiscard]] NodeId intern(
@@ -212,6 +241,44 @@ class Arena {
     // heap-heavy decoded KnowledgeState for every discovered node.
     std::vector<const std::vector<std::uint8_t>*> nodes_;
     std::map<std::vector<std::uint8_t>, NodeId> interner_;
+};
+
+// Resumable full-closure driver. A checkpoint contains the exact raw-root map,
+// expansion cursor, and portable graph arena; restoring it never depends on a
+// process heap or anonymous scratch file.
+class GraphDiscovery {
+   public:
+    GraphDiscovery() = default;
+    GraphDiscovery(const GraphDiscovery&) = delete;
+    GraphDiscovery& operator=(const GraphDiscovery&) = delete;
+    GraphDiscovery(GraphDiscovery&&) = default;
+    GraphDiscovery& operator=(GraphDiscovery&&) = default;
+
+    [[nodiscard]] static GraphDiscovery seed(std::uint32_t rawBegin,
+                                             std::uint32_t rawCount);
+    [[nodiscard]] FreshSeedCertificate append_seed(
+      std::uint32_t rawCount);
+    [[nodiscard]] DiscoveryCertificate advance(
+      std::uint64_t maximumExpansions);
+    [[nodiscard]] DiscoveryArchiveCertificate write(
+      std::ostream& output) const;
+    [[nodiscard]] static std::pair<GraphDiscovery,
+                                   DiscoveryArchiveCertificate>
+      read(std::istream& input);
+
+    [[nodiscard]] std::uint32_t raw_begin() const;
+    [[nodiscard]] const std::vector<NodeId>& roots() const;
+    [[nodiscard]] std::uint64_t expanded() const;
+    [[nodiscard]] bool closed() const;
+    [[nodiscard]] const Arena& arena() const;
+
+   private:
+    static constexpr NodeId EmptyRoot = std::numeric_limits<NodeId>::max();
+
+    Arena arena_;
+    std::uint32_t rawBegin_ = 0;
+    std::vector<NodeId> roots_;
+    std::uint64_t expanded_ = 0;
 };
 
 }  // namespace Stockfish::Ultimate::CrossedJesterGhostSolver

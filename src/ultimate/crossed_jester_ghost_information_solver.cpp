@@ -21,6 +21,8 @@ namespace {
 
 constexpr std::array<char, 12> GraphMagic{{
   'U', 'F', 'C', 'R', 'O', 'S', 'S', 'G', 'R', 'F', '1', '\0'}};
+constexpr std::array<char, 12> DiscoveryMagic{{
+  'U', 'F', 'C', 'R', 'O', 'S', 'S', 'C', 'H', 'K', '1', '\0'}};
 
 void write_u32(std::ostream& output, std::uint32_t value) {
     std::array<char, 4> bytes{};
@@ -39,6 +41,26 @@ std::uint32_t read_u32(std::istream& input) {
     std::uint32_t value = 0;
     for (unsigned index = 0; index < bytes.size(); ++index)
         value |= static_cast<std::uint32_t>(bytes[index]) << (8 * index);
+    return value;
+}
+
+void write_u64(std::ostream& output, std::uint64_t value) {
+    std::array<char, 8> bytes{};
+    for (unsigned index = 0; index < bytes.size(); ++index)
+        bytes[index] = static_cast<char>(value >> (8 * index));
+    output.write(bytes.data(), bytes.size());
+    if (!output)
+        throw std::runtime_error("cannot write crossed discovery archive");
+}
+
+std::uint64_t read_u64(std::istream& input) {
+    std::array<std::uint8_t, 8> bytes{};
+    input.read(reinterpret_cast<char*>(bytes.data()), bytes.size());
+    if (!input)
+        throw std::runtime_error("truncated crossed discovery word");
+    std::uint64_t value = 0;
+    for (unsigned index = 0; index < bytes.size(); ++index)
+        value |= static_cast<std::uint64_t>(bytes[index]) << (8 * index);
     return value;
 }
 
@@ -519,6 +541,146 @@ Model::KnowledgeState Arena::node(NodeId id) const {
 
 std::size_t Arena::size() const {
     return nodes_.size();
+}
+
+GraphDiscovery GraphDiscovery::seed(std::uint32_t rawBegin,
+                                    std::uint32_t rawCount) {
+    GraphDiscovery result;
+    result.rawBegin_ = rawBegin;
+    (void)result.append_seed(rawCount);
+    return result;
+}
+
+FreshSeedCertificate GraphDiscovery::append_seed(std::uint32_t rawCount) {
+    if (expanded_)
+        throw std::logic_error(
+          "crossed discovery cannot add roots after expansion starts");
+    if (rawBegin_ > Model::RawPublicFrameCount ||
+        roots_.size() > std::numeric_limits<std::uint32_t>::max() ||
+        roots_.size() > Model::RawPublicFrameCount - rawBegin_)
+        throw std::overflow_error("crossed discovery seed extent overflow");
+    const std::uint32_t begin = rawBegin_ +
+      static_cast<std::uint32_t>(roots_.size());
+    FreshSeedResult seeded = arena_.seed_fresh_range(begin, rawCount);
+    roots_.reserve(roots_.size() + seeded.roots.size());
+    for (const std::optional<NodeId> root : seeded.roots)
+        roots_.push_back(root ? *root : EmptyRoot);
+    return seeded.certificate;
+}
+
+DiscoveryCertificate GraphDiscovery::advance(
+  std::uint64_t maximumExpansions) {
+    DiscoveryCertificate certificate;
+    certificate.nodesBefore = arena_.size();
+    while (certificate.expanded < maximumExpansions &&
+           expanded_ < arena_.size()) {
+        if (expanded_ >= std::numeric_limits<NodeId>::max())
+            throw std::overflow_error(
+              "crossed discovery cursor exceeds the node domain");
+        const NodeExpansion expansion = arena_.regenerate(
+          static_cast<NodeId>(expanded_), true);
+        certificate.actions += expansion.certificate.actions;
+        certificate.observations += expansion.certificate.observations;
+        certificate.outcomes += expansion.certificate.outcomes;
+        certificate.newlyInterned += expansion.certificate.newlyInterned;
+        certificate.residual += expansion.certificate.keyRoundtripResidual;
+        ++expanded_;
+        ++certificate.expanded;
+    }
+    certificate.nodesAfter = arena_.size();
+    certificate.closed = closed();
+    if (certificate.residual)
+        throw std::runtime_error("crossed discovery expansion residual");
+    return certificate;
+}
+
+DiscoveryArchiveCertificate GraphDiscovery::write(
+  std::ostream& output) const {
+    output.write(DiscoveryMagic.data(), DiscoveryMagic.size());
+    write_u32(output, 1);
+    write_u32(output, rawBegin_);
+    if (roots_.size() > std::numeric_limits<std::uint32_t>::max())
+        throw std::overflow_error("crossed discovery root map exceeds uint32");
+    write_u32(output, static_cast<std::uint32_t>(roots_.size()));
+    write_u64(output, expanded_);
+    DiscoveryArchiveCertificate certificate;
+    certificate.roots = roots_.size();
+    certificate.expanded = expanded_;
+    if (rawBegin_ > Model::RawPublicFrameCount ||
+        roots_.size() > Model::RawPublicFrameCount - rawBegin_)
+        ++certificate.extentResidual;
+    for (const NodeId root : roots_) {
+        write_u32(output, root);
+        if (root == EmptyRoot)
+            ++certificate.emptyRoots;
+        else if (root >= arena_.size())
+            ++certificate.rootBoundsResidual;
+    }
+    if (expanded_ > arena_.size())
+        ++certificate.cursorResidual;
+    if (certificate.rootBoundsResidual || certificate.cursorResidual ||
+        certificate.extentResidual)
+        throw std::runtime_error(
+          "crossed discovery archive metadata has a residual");
+    certificate.graph = arena_.write(output);
+    return certificate;
+}
+
+std::pair<GraphDiscovery, DiscoveryArchiveCertificate> GraphDiscovery::read(
+  std::istream& input) {
+    std::array<char, DiscoveryMagic.size()> magic{};
+    input.read(magic.data(), magic.size());
+    if (!input || magic != DiscoveryMagic || read_u32(input) != 1)
+        throw std::runtime_error("invalid crossed discovery archive header");
+    GraphDiscovery result;
+    result.rawBegin_ = read_u32(input);
+    const std::uint32_t roots = read_u32(input);
+    result.expanded_ = read_u64(input);
+    result.roots_.resize(roots);
+    DiscoveryArchiveCertificate certificate;
+    certificate.roots = roots;
+    certificate.expanded = result.expanded_;
+    if (result.rawBegin_ > Model::RawPublicFrameCount ||
+        roots > Model::RawPublicFrameCount - result.rawBegin_)
+        ++certificate.extentResidual;
+    for (NodeId& root : result.roots_) {
+        root = read_u32(input);
+        if (root == EmptyRoot)
+            ++certificate.emptyRoots;
+    }
+    auto [arena, graph] = Arena::read(input);
+    result.arena_ = std::move(arena);
+    certificate.graph = graph;
+    for (const NodeId root : result.roots_)
+        if (root != EmptyRoot && root >= result.arena_.size())
+            ++certificate.rootBoundsResidual;
+    if (result.expanded_ > result.arena_.size())
+        ++certificate.cursorResidual;
+    if (certificate.rootBoundsResidual || certificate.cursorResidual ||
+        certificate.extentResidual)
+        throw std::runtime_error(
+          "crossed discovery restore metadata has a residual");
+    return {std::move(result), certificate};
+}
+
+std::uint32_t GraphDiscovery::raw_begin() const {
+    return rawBegin_;
+}
+
+const std::vector<NodeId>& GraphDiscovery::roots() const {
+    return roots_;
+}
+
+std::uint64_t GraphDiscovery::expanded() const {
+    return expanded_;
+}
+
+bool GraphDiscovery::closed() const {
+    return expanded_ == arena_.size();
+}
+
+const Arena& GraphDiscovery::arena() const {
+    return arena_;
 }
 
 }  // namespace Stockfish::Ultimate::CrossedJesterGhostSolver
