@@ -230,6 +230,8 @@ class Arena {
 
     [[nodiscard]] CrossedJesterGhostInformation::KnowledgeState node(
       NodeId id) const;
+    [[nodiscard]] const std::vector<std::uint8_t>& encoded_key(
+      NodeId id) const;
     [[nodiscard]] std::size_t size() const;
 
    private:

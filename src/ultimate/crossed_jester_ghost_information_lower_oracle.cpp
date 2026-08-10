@@ -136,6 +136,29 @@ std::string sha256_file(const std::string& path) {
     return result.str();
 }
 
+std::string sha256_range(const std::string& path, std::uint64_t offset,
+                         std::uint64_t count) {
+    std::ifstream input(path, std::ios::binary);
+    input.seekg(static_cast<std::streamoff>(offset));
+    if (!input) throw std::runtime_error("cannot seek while hashing " + path);
+    Sha256 hash;
+    std::array<char, 1 << 20> buffer{};
+    while (count) {
+        const std::size_t take = static_cast<std::size_t>(
+          std::min<std::uint64_t>(count, buffer.size()));
+        input.read(buffer.data(), static_cast<std::streamsize>(take));
+        if (input.gcount() != static_cast<std::streamsize>(take))
+            throw std::runtime_error("truncated hash range " + path);
+        hash.update(buffer.data(), take);
+        count -= take;
+    }
+    const auto digest = hash.finish();
+    std::ostringstream result;
+    result << std::hex << std::setfill('0');
+    for (const std::uint8_t byte : digest) result << std::setw(2) << unsigned(byte);
+    return result.str();
+}
+
 enum class Wdl : std::uint8_t { Invalid = 0, Win = 1, Loss = 2, Draw = 3 };
 
 struct PackedTable {
@@ -209,6 +232,11 @@ struct Stratum { std::uint32_t geometry=NoIndex; Mask live; std::uint32_t root=0
 
 std::string authenticated_file_sha256(const std::string& path) {
     return sha256_file(path);
+}
+
+std::string authenticated_file_range_sha256(
+  const std::string& path, std::uint64_t offset, std::uint64_t count) {
+    return sha256_range(path, offset, count);
 }
 
 class AuthenticatedLowerForceOracle::Impl {

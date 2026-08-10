@@ -525,6 +525,7 @@ ultimate-crossed-jester-ghost-information-solver-test:
 		../tests/ultimate_crossed_jester_ghost_information_solver.cpp \
 		ultimate/crossed_jester_ghost_information_fixed_point.cpp \
 		ultimate/crossed_jester_ghost_information_lower_oracle.cpp \
+		ultimate/crossed_jester_ghost_information_sidecar.cpp \
 		ultimate/crossed_jester_ghost_information_solver.cpp \
 		ultimate/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
 		ultimate/information.cpp ultimate/information_solver.cpp ultimate/nnue.cpp \

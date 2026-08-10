@@ -37,6 +37,8 @@ struct LowerOracleCertificate {
 // Used by the production CLI and deterministic artifact tests so dependency
 // hashes are computed by the same audited implementation as the loader.
 [[nodiscard]] std::string authenticated_file_sha256(const std::string& path);
+[[nodiscard]] std::string authenticated_file_range_sha256(
+  const std::string& path, std::uint64_t offset, std::uint64_t count);
 
 // Loads only fully authenticated lower artifacts. Queries validate the entire
 // inherited belief against the lower artifact's live/terminal and mover-private

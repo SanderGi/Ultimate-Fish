@@ -2,6 +2,7 @@
 
 #include "crossed_jester_ghost_information_fixed_point.h"
 #include "crossed_jester_ghost_information_lower_oracle.h"
+#include "crossed_jester_ghost_information_sidecar.h"
 
 #include <algorithm>
 #include <array>
@@ -764,6 +765,10 @@ int main() {
     try {
         Stockfish::Ultimate::public_frame_codec_test();
         Stockfish::Ultimate::authenticated_lower_oracle_test();
+        Stockfish::Ultimate::CrossedJesterGhostSolver::arbitrary_sidecar_format_self_test(
+          "/tmp/ultimate-crossed-sidecar-format-test.ufcs");
+        std::cout << "crossed_sidecar full_roots 38450880 canonical_lookup 1 "
+                     "dual_force 0 corruption_rejected 1 residual 0\n";
         Stockfish::Ultimate::solver_arena_test();
         return 0;
     }

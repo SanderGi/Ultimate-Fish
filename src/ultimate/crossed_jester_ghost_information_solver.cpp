@@ -539,6 +539,12 @@ Model::KnowledgeState Arena::node(NodeId id) const {
     return Model::deserialize_state(*nodes_[id]);
 }
 
+const std::vector<std::uint8_t>& Arena::encoded_key(NodeId id) const {
+    if (id >= nodes_.size())
+        throw std::out_of_range("crossed graph node ID is out of range");
+    return *nodes_[id];
+}
+
 std::size_t Arena::size() const {
     return nodes_.size();
 }
