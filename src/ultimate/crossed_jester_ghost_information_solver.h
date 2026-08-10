@@ -10,8 +10,10 @@
 #include "crossed_jester_ghost_information_model.h"
 
 #include <cstdint>
+#include <iosfwd>
 #include <map>
 #include <optional>
+#include <utility>
 #include <vector>
 
 namespace Stockfish::Ultimate::CrossedJesterGhostSolver {
@@ -27,6 +29,14 @@ struct ExpansionCertificate {
     std::uint64_t externalObservations = 0;
     std::uint64_t newlyInterned = 0;
     std::uint64_t keyRoundtripResidual = 0;
+};
+
+struct GraphArchiveCertificate {
+    std::uint64_t nodes = 0;
+    std::uint64_t payloadBytes = 0;
+    std::uint64_t keyRoundtripResidual = 0;
+    std::uint64_t canonicalResidual = 0;
+    std::uint64_t duplicateResidual = 0;
 };
 
 struct NodeExpansion {
@@ -168,6 +178,9 @@ class Arena {
     [[nodiscard]] NodeExpansion regenerate(NodeId node, bool allowNew);
     [[nodiscard]] TargetBellmanPlan bellman_plan(
       NodeId node, Color target, bool allowNew);
+    [[nodiscard]] GraphArchiveCertificate write(std::ostream& output) const;
+    [[nodiscard]] static std::pair<Arena, GraphArchiveCertificate> read(
+      std::istream& input);
 
     [[nodiscard]] const CrossedJesterGhostInformation::KnowledgeState& node(
       NodeId id) const;

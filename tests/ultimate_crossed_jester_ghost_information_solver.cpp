@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 
 namespace Stockfish::Ultimate {
@@ -126,6 +127,46 @@ void solver_arena_test() {
              replay.certificate.newlyInterned == 0 &&
              replay.sameClassChildren == first.sameClassChildren,
             "crossed solver closed replay differs from discovery");
+
+    std::ostringstream archive(std::ios::binary);
+    const Solver::GraphArchiveCertificate written = arena.write(archive);
+    const std::string graphBytes = archive.str();
+    std::istringstream restoredInput(graphBytes, std::ios::binary);
+    auto [restoredArena, restored] = Solver::Arena::read(restoredInput);
+    require(written.nodes == discovered && restored.nodes == discovered &&
+             written.payloadBytes == restored.payloadBytes &&
+             written.keyRoundtripResidual == 0 &&
+             written.canonicalResidual == 0 &&
+             restored.keyRoundtripResidual == 0 &&
+             restored.canonicalResidual == 0 &&
+             restored.duplicateResidual == 0 &&
+             restoredArena.size() == arena.size(),
+            "crossed graph archive round-trip has a residual");
+    for (Solver::NodeId node = 0; node < discovered; ++node)
+        require(restoredArena.node(node) == arena.node(node),
+                "crossed graph archive changed a stable node ID");
+    bool rejected = false;
+    try {
+        std::string trailing = graphBytes;
+        trailing.push_back('x');
+        std::istringstream invalid(trailing, std::ios::binary);
+        (void)Solver::Arena::read(invalid);
+    }
+    catch (const std::exception&) {
+        rejected = true;
+    }
+    require(rejected, "crossed graph archive accepted trailing bytes");
+    rejected = false;
+    try {
+        std::string corrupt = graphBytes;
+        corrupt.front() ^= 1;
+        std::istringstream invalid(corrupt, std::ios::binary);
+        (void)Solver::Arena::read(invalid);
+    }
+    catch (const std::exception&) {
+        rejected = true;
+    }
+    require(rejected, "crossed graph archive accepted a bad magic byte");
     for (std::size_t bucket = 0;
          bucket < first.transitions.buckets.size(); ++bucket) {
         const auto& transition = first.transitions.buckets[bucket];

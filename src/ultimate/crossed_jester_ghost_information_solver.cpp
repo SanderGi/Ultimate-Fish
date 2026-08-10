@@ -7,11 +7,42 @@
 #include "crossed_jester_ghost_information_solver.h"
 
 #include <algorithm>
+#include <array>
+#include <cstring>
+#include <istream>
 #include <limits>
+#include <ostream>
 #include <stdexcept>
 
 namespace Stockfish::Ultimate::CrossedJesterGhostSolver {
 namespace Model = CrossedJesterGhostInformation;
+
+namespace {
+
+constexpr std::array<char, 12> GraphMagic{{
+  'U', 'F', 'C', 'R', 'O', 'S', 'S', 'G', 'R', 'F', '1', '\0'}};
+
+void write_u32(std::ostream& output, std::uint32_t value) {
+    std::array<char, 4> bytes{};
+    for (unsigned index = 0; index < bytes.size(); ++index)
+        bytes[index] = static_cast<char>(value >> (8 * index));
+    output.write(bytes.data(), bytes.size());
+    if (!output)
+        throw std::runtime_error("cannot write crossed graph archive");
+}
+
+std::uint32_t read_u32(std::istream& input) {
+    std::array<std::uint8_t, 4> bytes{};
+    input.read(reinterpret_cast<char*>(bytes.data()), bytes.size());
+    if (!input)
+        throw std::runtime_error("truncated crossed graph word");
+    std::uint32_t value = 0;
+    for (unsigned index = 0; index < bytes.size(); ++index)
+        value |= static_cast<std::uint32_t>(bytes[index]) << (8 * index);
+    return value;
+}
+
+}  // namespace
 
 std::vector<std::uint8_t> Arena::key(const Model::KnowledgeState& state) {
     return Model::serialize_state(Model::canonicalize_state(state).value);
@@ -230,6 +261,71 @@ TargetBellmanPlan Arena::bellman_plan(NodeId id, Color target,
         plan.certificate.cellUniformityResidual)
         throw std::runtime_error("crossed Bellman plan has a residual");
     return plan;
+}
+
+GraphArchiveCertificate Arena::write(std::ostream& output) const {
+    if (nodes_.size() >= std::numeric_limits<NodeId>::max())
+        throw std::overflow_error(
+          "crossed graph archive exceeds the uint32 token domain");
+    output.write(GraphMagic.data(), GraphMagic.size());
+    write_u32(output, 1);
+    write_u32(output, static_cast<std::uint32_t>(nodes_.size()));
+    GraphArchiveCertificate certificate;
+    certificate.nodes = nodes_.size();
+    for (const Model::KnowledgeState& state : nodes_) {
+        const std::vector<std::uint8_t> encoded = Model::serialize_state(state);
+        if (encoded.size() > std::numeric_limits<std::uint32_t>::max())
+            throw std::overflow_error("crossed graph state key exceeds uint32");
+        write_u32(output, static_cast<std::uint32_t>(encoded.size()));
+        output.write(reinterpret_cast<const char*>(encoded.data()),
+                     static_cast<std::streamsize>(encoded.size()));
+        if (!output)
+            throw std::runtime_error("cannot write crossed graph state key");
+        certificate.payloadBytes += 4 + encoded.size();
+        certificate.keyRoundtripResidual +=
+          Model::deserialize_state(encoded) == state ? 0 : 1;
+        certificate.canonicalResidual +=
+          Model::canonicalize_state(state).value == state ? 0 : 1;
+    }
+    if (certificate.keyRoundtripResidual || certificate.canonicalResidual)
+        throw std::runtime_error("crossed graph write certificate has a residual");
+    return certificate;
+}
+
+std::pair<Arena, GraphArchiveCertificate> Arena::read(std::istream& input) {
+    std::array<char, GraphMagic.size()> magic{};
+    input.read(magic.data(), magic.size());
+    if (!input || magic != GraphMagic || read_u32(input) != 1)
+        throw std::runtime_error("invalid crossed graph archive header");
+    const std::uint32_t count = read_u32(input);
+    Arena arena;
+    GraphArchiveCertificate certificate;
+    certificate.nodes = count;
+    for (std::uint32_t expected = 0; expected < count; ++expected) {
+        const std::uint32_t size = read_u32(input);
+        if (!size)
+            throw std::runtime_error("crossed graph archive has an empty key");
+        std::vector<std::uint8_t> encoded(size);
+        input.read(reinterpret_cast<char*>(encoded.data()),
+                   static_cast<std::streamsize>(encoded.size()));
+        if (!input)
+            throw std::runtime_error("truncated crossed graph state key");
+        certificate.payloadBytes += 4 + encoded.size();
+        const Model::KnowledgeState state = Model::deserialize_state(encoded);
+        certificate.keyRoundtripResidual +=
+          Model::serialize_state(state) == encoded ? 0 : 1;
+        certificate.canonicalResidual +=
+          Model::canonicalize_state(state).value == state ? 0 : 1;
+        const NodeId restored = arena.intern(state);
+        if (restored != expected)
+            ++certificate.duplicateResidual;
+    }
+    if (input.peek() != std::char_traits<char>::eof())
+        throw std::runtime_error("crossed graph archive has trailing bytes");
+    if (certificate.keyRoundtripResidual || certificate.canonicalResidual ||
+        certificate.duplicateResidual || arena.size() != count)
+        throw std::runtime_error("crossed graph restore certificate has a residual");
+    return {std::move(arena), certificate};
 }
 
 ExternalForceQuery external_force_query(const NodeExpansion& expansion,
