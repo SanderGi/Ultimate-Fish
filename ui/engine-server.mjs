@@ -120,6 +120,84 @@ async function analyze(upn, requestedDepth, requestedTime, signal, maximumDepth 
   return parseAnalysis(lines);
 }
 
+function beliefCommands(positions, observer, enemyKingKnown) {
+  if (!Array.isArray(positions) || positions.length === 0 ||
+      positions.some((upn) => typeof upn !== "string" || upn.length > 20_000) ||
+      positions.reduce((total, upn) => total + upn.length, 0) > 4_000_000)
+    throw new Error("A nonempty belief-position array under 4 MB is required");
+  if (observer !== "white" && observer !== "black")
+    throw new Error("Belief observer must be white or black");
+  if (typeof enemyKingKnown !== "boolean")
+    throw new Error("enemyKingKnown must be a boolean");
+  return [
+    "belief clear",
+    `belief observer ${observer} ${enemyKingKnown ? 1 : 0}`,
+    ...positions.map((upn) => `belief add ${upn}`),
+  ];
+}
+
+function beliefError(lines) {
+  return lines.find((line) => line.startsWith("info string invalid belief"));
+}
+
+async function beliefState(positions, observer, enemyKingKnown, signal) {
+  const lines = await runEngine([
+    ...beliefCommands(positions, observer, enemyKingKnown),
+    "belief count",
+  ], signal);
+  const error = beliefError(lines);
+  if (error) throw new Error(error);
+  const count = [...lines].reverse().find((line) => line.startsWith("beliefcount ")) ?? "";
+  const match = count.match(/^beliefcount (\d+) observer (white|black) enemykingknown ([01]) mode (\S+)$/);
+  if (!match) throw new Error("Engine did not return exact belief metadata");
+  return {
+    beliefs: Number(match[1]),
+    observer: match[2],
+    enemyKingKnown: match[3] === "1",
+    mode: match[4],
+  };
+}
+
+async function analyzeBeliefs(positions, observer, enemyKingKnown,
+                              requestedDepth, requestedTime, signal) {
+  const depth = Math.max(1, Math.min(16, Number(requestedDepth) || 4));
+  const moveTime = Math.max(0, Math.min(120_000, Number(requestedTime) || 0));
+  const go = moveTime
+    ? `belief go depth ${depth} movetime ${moveTime}`
+    : `belief go depth ${depth}`;
+  const lines = await runEngine([
+    ...beliefCommands(positions, observer, enemyKingKnown), go,
+  ], signal);
+  const error = beliefError(lines);
+  if (error) throw new Error(error);
+  const info = [...lines].reverse().find((line) => line.startsWith("info depth ")) ?? "";
+  const match = info.match(
+    /^info depth (\d+) score (cp|mate) (-?\d+) nodes (\d+) time (\d+) beliefs (\d+) deepbeliefs (\d+) common (\d+) candidates (\d+) beliefmode (\S+) historyplies (\d+) decisionpartitions (\d+) beliefworst (-?\d+) beliefmean (-?\d+) pv(?: (.*))?$/,
+  );
+  if (!match) throw new Error("Engine did not return belief analysis metadata");
+  const best = [...lines].reverse().find((line) => line.startsWith("bestmove "))?.slice(9) ?? null;
+  return {
+    bestmove: best === "(none)" ? null : best,
+    depth: Number(match[1]),
+    scoreType: match[2],
+    score: Number(match[3]),
+    nodes: Number(match[4]),
+    time: Number(match[5]),
+    beliefs: Number(match[6]),
+    deepBeliefs: Number(match[7]),
+    commonMoves: Number(match[8]),
+    candidates: Number(match[9]),
+    beliefMode: match[10],
+    historyPreservingPlies: Number(match[11]),
+    decisionPartitions: Number(match[12]),
+    worstScore: Number(match[13]),
+    meanScore: Number(match[14]),
+    pv: match[15]?.split(" ").filter(Boolean) ?? [],
+    observer,
+    enemyKingKnown,
+  };
+}
+
 async function draftAuto(history, signal) {
   if (!Array.isArray(history) || history.length > 160 ||
       history.some((command) => typeof command !== "string" ||
@@ -176,7 +254,7 @@ const server = createServer(async (request, response) => {
     send(response, 200, { ok: true, engineBinary });
     return;
   }
-  if (request.method !== "POST" || !["/state", "/analyze", "/analyze-stream", "/move", "/play", "/computer", "/draft-ai"].includes(request.url)) {
+  if (request.method !== "POST" || !["/state", "/analyze", "/analyze-stream", "/move", "/play", "/computer", "/draft-ai", "/belief-state", "/analyze-beliefs"].includes(request.url)) {
     send(response, 404, { error: "Not found" });
     return;
   }
@@ -184,11 +262,23 @@ const server = createServer(async (request, response) => {
     let raw = "";
     for await (const chunk of request)
       raw += chunk;
-    if (raw.length > 100_000)
+    if (raw.length > 5_000_000)
       throw new Error("Request is too large");
     const body = JSON.parse(raw || "{}");
     if (request.url === "/draft-ai") {
       send(response, 200, await draftAuto(body.history, cancellation.signal));
+      return;
+    }
+    if (request.url === "/belief-state") {
+      send(response, 200, await beliefState(
+        body.positions, body.observer, body.enemyKingKnown,
+        cancellation.signal));
+      return;
+    }
+    if (request.url === "/analyze-beliefs") {
+      send(response, 200, await analyzeBeliefs(
+        body.positions, body.observer, body.enemyKingKnown,
+        body.depth, body.movetime, cancellation.signal));
       return;
     }
     if (typeof body.upn !== "string" || body.upn.length > 20_000)

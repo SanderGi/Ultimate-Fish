@@ -131,3 +131,29 @@ test("aborting auto-analysis leaves the bridge responsive", async () => {
   const health = await fetch(`${base}/health`).then((response) => response.json());
   assert.equal(health.ok, true);
 });
+
+test("bridge retains uncapped beliefs and analyzes one exact decision cell", async () => {
+  const squares = [];
+  for (let rank = 1; rank <= 10; rank += 1)
+    for (const file of "abcdefgh") squares.push(`${file}${rank}`);
+  const occupied = new Set(["a1", "a2", "b1", "b2", "c1", "h10"]);
+  const worlds = squares.filter((square) => !occupied.has(square)).map((square) =>
+    `w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;win=-;king,w,a1,0,0,0,0,1,1,-1,1,-1,0;rook,w,c1,0,0,0,0,1,1,-1,1,-1,0;king,b,h10,0,0,0,0,1,1,-1,1,-1,0;ghost,b,${square},0,0,0,0,0,0,-1,1,-1,0`,
+  );
+  assert.ok(worlds.length > 64);
+  const retained = await post("/belief-state", {
+    positions: worlds, observer: "white", enemyKingKnown: false,
+  });
+  assert.equal(retained.beliefs, worlds.length);
+  assert.equal(retained.mode, "exact-uncapped");
+
+  const singleton = await post("/analyze-beliefs", {
+    positions: [worlds[0]], observer: "white", enemyKingKnown: false,
+    depth: 1,
+  });
+  assert.equal(singleton.beliefs, 1);
+  assert.equal(singleton.decisionPartitions, 1);
+  assert.equal(singleton.beliefMode, "root-only");
+  assert.equal(singleton.historyPreservingPlies, 0);
+  assert.ok(singleton.bestmove);
+});
