@@ -219,48 +219,50 @@
     {
       "id": "jester-ghost-measure",
       "instance_id": "i-08c0f44a1776cb34a",
-      "unit": "ultimatefish-jg7328-measure-v2.service",
+      "unit": "ultimatefish-jg7328-measure-v3.service",
       "dependencies": ["jester-ghost-merge"],
       "queue_stage": true,
       "checkpoint_paths": [
-        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328-v2/service.log",
-        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328-v2/work/measurement.log",
-        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328-v2/work/scratch/*"
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-binary-compat-b4503336/production-input-preflight.log",
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-binary-compat-b4503336/production-input-preflight-v2.log",
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328-v3/service.log",
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328-v3/work/measurement.log",
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328-v3/work/scratch/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328-v2/work/measurement-certificate.json"
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328-v3/work/measurement-certificate.json"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328-v2/bin/run_ultimate_jester_ghost_measurement_aws.py",
-          "sha256": "31b129b204d2777dc1f8987afe5383cb0f5467bec780fde7451564c581060a7a"
+          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328-v3/bin/run_ultimate_jester_ghost_measurement_aws.py",
+          "sha256": "c2744ea0290763e1de66c86f2d5dc2cec589302de74746820b33e10484c13f34"
         },
         {
-          "path": "/etc/systemd/system/ultimatefish-jg7328-measure-v2.service",
-          "sha256": "7df7488ec0f6a38b4202caaf62b29c1483ad5f39ced2c146865f761667383d14"
+          "path": "/etc/systemd/system/ultimatefish-jg7328-measure-v3.service",
+          "sha256": "c412c4a89c9d95fd75f595634196df338597e1b961a4309e1d62caf120965ccb"
         },
         {
-          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/ultimate_jester_ghost_information_tablebase",
-          "sha256": "978fdf69362577c824d9e456a28a51d133cca4b6823fcab9e8e7555e2c11a147"
+          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-binary-compat-b4503336/build/source/ultimate_jester_ghost_information_tablebase",
+          "sha256": "8b2f75829f26b8d23ecb51033f33090f7ce1ff138ea572aa281004dff13bdf05"
         },
         {
-          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/lower-jester-compatibility-f9e9f187/prepare_ultimate_jester_ghost_lower_compatibility.py",
-          "sha256": "7d26e92d2afe5ddeb861646ad82b594c3e8b869b24f5da9c93313c62349123cd"
+          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-binary-compat-b4503336/build/compatibility-certificate.json",
+          "sha256": "227070e91829b6120ec99c5143a722962a8cdc32e8bfc8d936b05842ff920712"
         },
         {
-          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/lower-jester-compatibility-f9e9f187/compatibility-certificate.json",
-          "sha256": "c5004fbce37effdb6cc7f548e8fa6a2cc19b70531dfc10255d892e6c5c231cd7"
-        },
-        {
-          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/lower-jester-compatibility-f9e9f187/kjesterk-v5-compat.uftb",
-          "sha256": "58eb6dddd0f0c0641df68f0c5b6ae7bce6f9f67de1183f91dac33887f95db150"
-        },
-        {
-          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/lower-jester-compatibility-f9e9f187/kjesterk-v5-compat.ufiw",
-          "sha256": "7f140e9a17a3579f1adf7df1ee50360c75c8f9d3a0b40c940f34fbe77dc3897d"
+          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-binary-compat-b4503336/production-input-preflight-v2.log",
+          "sha256": "6a9ae9be1497e7a23d87a3d7e738e3b138f03e8ba7587ceb0e6405c1eb94664a"
         }
       ],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/jester-ghost/migration/11120e7c-to-732852b8/measurement-compat/sha256/f5e117c7b603951c01087c9653930fd558985b05be29d36f8dee8d7e081defa0/jester-ghost-measurement-compat-evidence-b4503336.tar.gz",
+          "version_id": "mmcxrp9UeFH0Fiihu7l3FabdFdJLrP1h",
+          "sha256": "f5e117c7b603951c01087c9653930fd558985b05be29d36f8dee8d7e081defa0",
+          "size": 342010
+        }
+      ]
     },
     {
       "id": "concrete-ghost-kchecker-certified",

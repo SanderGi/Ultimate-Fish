@@ -77,7 +77,7 @@ class JesterGhostMeasurementTest(unittest.TestCase):
                          jobs["jester-ghost-measure"]["dependencies"])
 
     def test_production_unit_is_measurement_only_and_resource_bounded(self):
-        unit = (ROOT / "tools/ultimatefish-jg7328-measure-v2.service").read_text()
+        unit = (ROOT / "tools/ultimatefish-jg7328-measure-v3.service").read_text()
         self.assertIn("--merge-evidence-sha256 "
                       "83f4ee24c9c19672bb62899f55aacdf230e6d4848684e96322211d04add2fcdd",
                       unit)
@@ -90,9 +90,13 @@ class JesterGhostMeasurementTest(unittest.TestCase):
         self.assertNotIn("--full", unit)
         self.assertIn("ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work", unit)
         self.assertIn("ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328", unit)
-        self.assertIn("--lower-compatibility-certificate-sha256 "
-                      "c5004fbce37effdb6cc7f548e8fa6a2cc19b70531dfc10255d892e6c5c231cd7",
+        self.assertIn("ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328-v2", unit)
+        self.assertIn("--binary-compatibility-certificate-sha256 "
+                      "227070e91829b6120ec99c5143a722962a8cdc32e8bfc8d936b05842ff920712",
                       unit)
+        self.assertIn("--production-preflight-log-sha256 ", unit)
+        self.assertNotIn("--lower-compatibility-certificate", unit)
+        self.assertNotIn("PREFLIGHT_SHA256", unit)
 
 
 if __name__ == "__main__":
