@@ -39,7 +39,7 @@ struct SidecarCertificate {
 // fixed-point reverse edges are deliberately absent from the runtime artifact.
 [[nodiscard]] SidecarCertificate write_arbitrary_sidecar(
   const std::string& path, const GraphDiscovery& graph,
-  const FixedPointSolution& white, const FixedPointSolution& black,
+  const PackedForcePlane& white, const PackedForcePlane& black,
   const SidecarBindings& bindings);
 
 class CrossedSidecarProbe {

@@ -9,6 +9,14 @@
 namespace Stockfish::Ultimate::CrossedJesterGhostSolver {
 namespace Model = CrossedJesterGhostInformation;
 
+bool PackedForcePlane::value(NodeId node,std::uint32_t atom)const{
+    if(node+1>=atomBase.size()||atom>=atomBase[node+1]-atomBase[node])
+        throw std::out_of_range("crossed packed force atom is outside graph");
+    const std::uint64_t index=std::uint64_t(atomBase[node])+atom;
+    if(index/8>=values.size())throw std::runtime_error("crossed packed force extent residual");
+    return(values[index/8]>>(index%8))&1u;
+}
+
 FixedPointSolution::FixedPointSolution(
   std::unique_ptr<InformationFixedPoint> solver,
   std::vector<std::uint32_t> atomBase,
@@ -41,6 +49,17 @@ std::uint32_t FixedPointSolution::witness_index(
 
 const FixedPointCertificate& FixedPointSolution::certificate() const {
     return certificate_;
+}
+
+PackedForcePlane FixedPointSolution::pack()const{
+    PackedForcePlane result;result.certificate=certificate_;result.atomBase=atomBase_;
+    result.values.assign((certificate_.atomVariables+7)/8,0);
+    for(std::uint64_t atom=0;atom<certificate_.atomVariables;++atom)
+        if(solver_->value(static_cast<InformationToken>(atom)))
+            result.values[atom/8]|=std::uint8_t(1u<<(atom%8));
+    if(result.atomBase.empty()||result.atomBase.back()!=certificate_.atomVariables)
+        throw std::runtime_error("crossed packed force conservation residual");
+    return result;
 }
 
 FixedPointSolution solve_closed_graph(

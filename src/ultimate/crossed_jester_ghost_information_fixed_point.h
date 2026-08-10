@@ -26,6 +26,14 @@ struct FixedPointCertificate {
     InformationSolveSummary solve;
 };
 
+struct PackedForcePlane {
+    FixedPointCertificate certificate;
+    std::vector<std::uint32_t> atomBase;
+    std::vector<std::uint8_t> values;
+
+    [[nodiscard]] bool value(NodeId node, std::uint32_t atom) const;
+};
+
 class FixedPointSolution {
    public:
     FixedPointSolution(FixedPointSolution&&) noexcept = default;
@@ -39,6 +47,10 @@ class FixedPointSolution {
     [[nodiscard]] std::uint32_t witness_index(
       NodeId node, std::uint32_t atom) const;
     [[nodiscard]] const FixedPointCertificate& certificate() const;
+    // Retains only the solved force bitplane and node-to-atom offsets. This
+    // lets production solve White and Black sequentially instead of keeping
+    // two multi-gigabyte equation/reverse-CSR arenas resident at once.
+    [[nodiscard]] PackedForcePlane pack() const;
 
    private:
     friend FixedPointSolution solve_closed_graph(

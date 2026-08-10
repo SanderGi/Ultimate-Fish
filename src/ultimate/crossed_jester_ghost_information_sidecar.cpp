@@ -112,15 +112,15 @@ std::array<std::uint8_t,HeaderBytes> make_header(
 
 SidecarCertificate write_arbitrary_sidecar(
   const std::string& path,const GraphDiscovery& graph,
-  const FixedPointSolution& white,const FixedPointSolution& black,
+  const PackedForcePlane& white,const PackedForcePlane& black,
   const SidecarBindings& bindings){
     validate_bindings(bindings);
     if(!graph.closed())throw std::invalid_argument("crossed sidecar requires a closed graph");
     if(graph.raw_begin()!=0||graph.roots().size()!=Model::RawPublicFrameCount)
         throw std::invalid_argument("crossed sidecar requires the full fresh-root domain");
     const Arena& arena=graph.arena();
-    if(arena.size()!=white.certificate().nodes||arena.size()!=black.certificate().nodes||
-       white.certificate().atomVariables!=black.certificate().atomVariables)
+    if(arena.size()!=white.certificate.nodes||arena.size()!=black.certificate.nodes||
+       white.certificate.atomVariables!=black.certificate.atomVariables)
         throw std::runtime_error("crossed sidecar fixed-point dimensions disagree");
     if(arena.size()>std::numeric_limits<std::uint32_t>::max())
         throw std::overflow_error("crossed sidecar node count exceeds uint32");
@@ -142,7 +142,7 @@ SidecarCertificate write_arbitrary_sidecar(
         atoms=checked_add(atoms,arena.node(old).atoms.size());
         keyBytes=checked_add(keyBytes,key.size());
     }
-    if(atoms!=white.certificate().atomVariables||certificate.keyOrderResidual)
+    if(atoms!=white.certificate.atomVariables||certificate.keyOrderResidual)
         throw std::runtime_error("crossed sidecar sorted graph residual");
     certificate.atoms=atoms;certificate.keyBytes=keyBytes;
     const std::uint64_t bitBytes=(atoms+7)/8;
@@ -169,7 +169,7 @@ SidecarCertificate write_arbitrary_sidecar(
         }
         for(const NodeId old:order){const auto&key=arena.encoded_key(old);
             output.write(reinterpret_cast<const char*>(key.data()),key.size());}
-        const auto bits=[&](const FixedPointSolution& solution,bool checkDual){
+        const auto bits=[&](const PackedForcePlane& solution,bool checkDual){
             std::array<std::uint8_t,1<<20>buffer{};std::size_t used=0;std::uint8_t byte=0;unsigned bit=0;
             const auto emit=[&](std::uint8_t value){buffer[used++]=value;if(used==buffer.size()){output.write(reinterpret_cast<const char*>(buffer.data()),used);used=0;}};
             for(const NodeId old:order){const auto state=arena.node(old);
