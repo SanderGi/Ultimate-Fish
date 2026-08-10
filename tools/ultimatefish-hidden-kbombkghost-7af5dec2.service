@@ -19,6 +19,7 @@ LimitNOFILE=1048576
 TimeoutStartSec=infinity
 Restart=no
 NoNewPrivileges=true
+PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
 ReadWritePaths=/mnt/ultimatefish/hidden-kbombkghost-7af5dec2
