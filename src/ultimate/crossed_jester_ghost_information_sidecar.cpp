@@ -26,6 +26,7 @@ constexpr std::uint32_t EmptyRoot = std::numeric_limits<std::uint32_t>::max();
 constexpr std::uint32_t HeaderBytes = 640;
 constexpr std::uint32_t IndexBytes = 16;
 constexpr std::array<char,8> Magic{{'U','F','C','R','O','S','S','1'}};
+constexpr std::array<char,8> OverlayMagic{{'U','F','I','W','2',0,0,0}};
 constexpr std::string_view Semantics = "dual-perfect-recall-forces-v1";
 
 void require_hash(const std::string& value, const char* label) {
@@ -83,6 +84,170 @@ void sync_file(const std::string& path){
 }
 
 struct IndexRecord{std::uint64_t keyOffset=0;std::uint32_t keyLength=0;std::uint32_t atomBase=0;};
+
+enum class Wdl : std::uint8_t { Invalid = 0, Win = 1, Loss = 2, Draw = 3 };
+
+struct ConcreteTable {
+    std::vector<std::uint8_t> wdl;
+    [[nodiscard]] Wdl result(std::uint32_t index) const {
+        if (index >= Model::StateCount)
+            throw std::out_of_range("crossed concrete result index");
+        return static_cast<Wdl>((wdl.at(index / 4) >> (2 * (index % 4))) & 3);
+    }
+};
+
+ConcreteTable load_concrete(const std::string& path,
+                            const std::string& expectedSha) {
+    require_hash(expectedSha, "source SHA-256");
+    if (authenticated_file_sha256(path) != expectedSha)
+        throw std::runtime_error("crossed concrete source full SHA mismatch");
+    std::ifstream input(path, std::ios::binary);
+    std::array<std::uint8_t, 64> header{};
+    input.read(reinterpret_cast<char*>(header.data()), header.size());
+    const std::size_t available = static_cast<std::size_t>(input.gcount());
+    constexpr std::array<char,8> tableMagic{{'U','F','T','B','1',0,0,0}};
+    if (available < 48 ||
+        !std::equal(tableMagic.begin(), tableMagic.end(),
+                    reinterpret_cast<const char*>(header.data())))
+        throw std::runtime_error("crossed concrete source header is truncated");
+    const std::uint32_t version = get_u32(header.data() + 8);
+    const std::uint32_t count = get_u32(header.data() + 16);
+    const std::uint32_t substates = get_u32(header.data() + 24);
+    const std::uint32_t wdlBytes = get_u32(header.data() + 28);
+    const std::uint32_t dtwBytes = get_u32(header.data() + 32);
+    const std::uint32_t exceptions = get_u32(header.data() + 36);
+    const std::uint32_t headerBytes = version >= 7 ? 64 : version >= 6 ? 56 : 48;
+    if (version < 5 || version > 7 ||
+        get_u32(header.data() + 12) !=
+          static_cast<std::uint32_t>(PieceType::Jester) ||
+        count != Model::StateCount || substates != 1 ||
+        wdlBytes != (Model::StateCount + 3) / 4 ||
+        dtwBytes != Model::StateCount ||
+        get_u32(header.data() + 40) !=
+          static_cast<std::uint32_t>(PieceType::Ghost) ||
+        get_u32(header.data() + 44) !=
+          static_cast<std::uint32_t>(Color::Black))
+        throw std::runtime_error("crossed concrete source material/codec mismatch");
+    input.seekg(0, std::ios::end);
+    const std::uint64_t extent = static_cast<std::uint64_t>(input.tellg());
+    const std::uint64_t expectedExtent = std::uint64_t(headerBytes) +
+      wdlBytes + dtwBytes + std::uint64_t(exceptions) * 6;
+    if (extent != expectedExtent)
+        throw std::runtime_error("crossed concrete source extent mismatch");
+    ConcreteTable result;
+    result.wdl.resize(wdlBytes);
+    input.seekg(headerBytes);
+    input.read(reinterpret_cast<char*>(result.wdl.data()), result.wdl.size());
+    if (!input)
+        throw std::runtime_error("crossed concrete WDL plane is truncated");
+    return result;
+}
+
+struct FreshCoordinate {
+    NodeId root = EmptyRoot;
+    std::uint32_t raw = 0;
+    std::uint32_t atom = 0;
+};
+
+std::uint32_t folded_source_index(const Model::PublicFrame& frame,
+                                  const Model::ProductWorld& world) {
+    const std::uint8_t whiteKing = world.kingAtFirst
+                                 ? frame.royalFirst : frame.royalSecond;
+    const Model::FramedWorld folded =
+      whiteKing % Position::BoardFiles < Position::BoardFiles / 2
+      ? Model::FramedWorld{frame, world}
+      : Model::transform_world(frame, world,
+          Model::RectangleTransform::Horizontal);
+    return Model::encode_source(
+      Model::product_to_source(folded.frame, folded.world));
+}
+
+template<class Forces>
+DenseOverlayCertificate project_dense(
+  const ConcreteTable& concrete, const GraphDiscovery& graph,
+  Forces&& forces, std::vector<std::uint8_t>* flags,
+  const std::vector<std::uint8_t>* expected) {
+    if (!graph.closed() || graph.raw_begin() != 0 ||
+        graph.roots().size() != Model::RawPublicFrameCount)
+        throw std::invalid_argument("crossed dense overlay requires full closed graph");
+    DenseOverlayCertificate certificate;
+    std::vector<std::uint8_t> generated(Model::StateCount, 0);
+    std::vector<std::uint8_t> seenRoot(graph.arena().size(), 0);
+    for (std::uint32_t raw = 0; raw < Model::RawPublicFrameCount; ++raw) {
+        const Model::PublicFrame frame = Model::decode_public_frame(raw);
+        const NodeId root = graph.roots().at(raw);
+        const std::optional<Model::KnowledgeState> fresh =
+          Model::admitted_fresh_state(frame);
+        if (!fresh) {
+            certificate.rootResidual += root != EmptyRoot;
+            continue;
+        }
+        if (root == EmptyRoot || root >= graph.arena().size()) {
+            ++certificate.rootResidual;
+            continue;
+        }
+        const Model::KnowledgeState canonical =
+          Model::canonicalize_state(*fresh).value;
+        if (!(graph.arena().node(root) == canonical))
+            ++certificate.rootResidual;
+        const std::size_t side = static_cast<std::size_t>(frame.side);
+        if (!seenRoot[root]) {
+            seenRoot[root] = 1;
+            const Model::KnowledgeState decisions =
+              Model::refine_mover_decisions(canonical);
+            certificate.informationSets[side] +=
+              Model::partition_for(decisions, decisions.frame.side).cells.size();
+        }
+        for (std::uint32_t atom = 0; atom < fresh->atoms.size(); ++atom) {
+            const std::uint32_t index = folded_source_index(
+              frame, fresh->atoms[atom].world);
+            FreshCoordinate coordinate;
+            coordinate.root = root;
+            coordinate.raw = raw;
+            coordinate.atom = atom;
+            const auto [white, black] = forces(coordinate);
+            certificate.dualForceResidual += white && black;
+            const std::uint8_t value = 4 | (white ? 1 : 0) | (black ? 2 : 0);
+            if (generated[index]) {
+                certificate.forceResidual += generated[index] != value;
+                continue;
+            }
+            generated[index] = value;
+            ++certificate.legalRealizations[side];
+            const bool mover = frame.side == Color::White ? white : black;
+            const bool opponent = frame.side == Color::White ? black : white;
+            ++certificate.totals[side][mover ? 1 : opponent ? 2 : 3];
+        }
+    }
+    for (std::uint32_t index = 0; index < Model::StateCount; ++index) {
+        const std::size_t side = static_cast<std::size_t>(
+          Model::decode_source(index).side);
+        if (!generated[index]) {
+            ++certificate.unreachableRealizations[side];
+            ++certificate.unreachable[side]
+              [static_cast<unsigned>(concrete.result(index))];
+        }
+        if (expected && expected->at(index) != generated[index])
+            ++certificate.forceResidual;
+    }
+    if (flags)
+        *flags = generated;
+    for (std::size_t side = 0; side < 2; ++side) {
+        certificate.conservationResidual +=
+          certificate.legalRealizations[side] +
+          certificate.unreachableRealizations[side] != Model::StateCount / 2;
+        std::uint64_t states = 0;
+        for (unsigned result = 1; result < 4; ++result)
+            states += certificate.totals[side][result] +
+                      certificate.unreachable[side][result];
+        certificate.conservationResidual += states != Model::StateCount / 2;
+    }
+    if (certificate.rootResidual || certificate.atomResidual ||
+        certificate.forceResidual || certificate.dualForceResidual ||
+        certificate.conservationResidual)
+        throw std::runtime_error("crossed dense overlay certificate residual");
+    return certificate;
+}
 
 std::array<std::uint8_t,HeaderBytes> make_header(
   std::uint32_t nodes,std::uint64_t atoms,std::uint64_t keyBytes,
@@ -205,6 +370,49 @@ SidecarCertificate write_arbitrary_sidecar(
     return certificate;
 }
 
+DenseOverlayCertificate write_dense_overlay(
+  const std::string& path, const std::string& sourceTable,
+  const GraphDiscovery& graph, const PackedForcePlane& white,
+  const PackedForcePlane& black, const SidecarBindings& bindings) {
+    validate_bindings(bindings);
+    if (graph.arena().size() != white.certificate.nodes ||
+        graph.arena().size() != black.certificate.nodes)
+        throw std::runtime_error("crossed dense force-plane dimensions disagree");
+    const ConcreteTable concrete = load_concrete(sourceTable,
+                                                  bindings.sourceSha256);
+    std::vector<std::uint8_t> flags(Model::StateCount);
+    DenseOverlayCertificate certificate = project_dense(
+      concrete, graph,
+      [&](const FreshCoordinate& coordinate) {
+          return std::pair<bool,bool>{
+            white.value(coordinate.root, coordinate.atom),
+            black.value(coordinate.root, coordinate.atom)};
+      }, &flags, nullptr);
+    const std::string temporary = path + ".tmp";
+    {
+        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+        output.write(OverlayMagic.data(), OverlayMagic.size());
+        for (const std::uint32_t word : {
+               2u, static_cast<std::uint32_t>(PieceType::Jester),
+               static_cast<std::uint32_t>(PieceType::Ghost),
+               static_cast<std::uint32_t>(Color::Black), Model::StateCount, 2u})
+            write_u32(output, word);
+        output.write(bindings.sourceSha256.data(), 64);
+        output.write(bindings.modelSha256.data(), 64);
+        output.write(reinterpret_cast<const char*>(flags.data()), flags.size());
+        output.flush();
+        if (!output)
+            throw std::runtime_error("failed writing crossed dense UFIW2");
+    }
+    sync_file(temporary);
+    if (std::rename(temporary.c_str(), path.c_str()) != 0)
+        throw std::runtime_error("cannot install crossed dense UFIW2: " +
+                                 std::string(std::strerror(errno)));
+    sync_file(path);
+    certificate.fileSha256 = authenticated_file_sha256(path);
+    return certificate;
+}
+
 class CrossedSidecarProbe::Impl {
    public:
     Impl(const std::string& path,const std::string& expectedFile,
@@ -274,6 +482,17 @@ class CrossedSidecarProbe::Impl {
         const Model::KnowledgeState canonical=Model::canonicalize_state(state).value;const auto key=Model::serialize_state(canonical);const std::uint32_t id=find(key);const IndexRecord r=index(id);if(actual>=canonical.atoms.size())throw std::runtime_error("crossed canonical atom residual");return bit(target==Color::White?whiteOffset_:blackOffset_,std::uint64_t(r.atomBase)+actual);
     }
     std::uint32_t root(std::uint32_t raw)const{if(raw>=Model::RawPublicFrameCount)throw std::out_of_range("crossed raw frame");return get_u32(mapping_+rootsOffset_+std::uint64_t(raw)*4);}
+    bool fresh_force(std::uint32_t raw,std::uint32_t actual,Color target)const{
+        if(target!=Color::White&&target!=Color::Black)throw std::invalid_argument("crossed force target");
+        const std::uint32_t id=root(raw);
+        if(id==EmptyRoot||id>=nodes_)throw std::out_of_range("crossed empty fresh root");
+        const IndexRecord current=index(id);
+        const std::uint64_t end=id+1<nodes_?index(id+1).atomBase:atoms_;
+        if(std::uint64_t(current.atomBase)+actual>=end)
+            throw std::out_of_range("crossed fresh actual atom");
+        return bit(target==Color::White?whiteOffset_:blackOffset_,
+                   std::uint64_t(current.atomBase)+actual);
+    }
     int fd_=-1;const std::uint8_t*mapping_=nullptr;std::uint64_t bytes_=0;
     std::uint32_t nodes_=0;std::uint64_t atoms_=0,keyBytes_=0,rootsOffset_=0,indexOffset_=0,keyOffset_=0,whiteOffset_=0,blackOffset_=0;
     SidecarCertificate certificate_;
@@ -285,9 +504,68 @@ CrossedSidecarProbe::CrossedSidecarProbe(CrossedSidecarProbe&&)noexcept=default;
 CrossedSidecarProbe&CrossedSidecarProbe::operator=(CrossedSidecarProbe&&)noexcept=default;
 bool CrossedSidecarProbe::force(const Model::KnowledgeState&state,std::uint32_t atom,Color target)const{return impl_->force(state,atom,target);}
 std::uint32_t CrossedSidecarProbe::fresh_root(std::uint32_t raw)const{return impl_->root(raw);}
+bool CrossedSidecarProbe::fresh_force(std::uint32_t raw,std::uint32_t atom,Color target)const{return impl_->fresh_force(raw,atom,target);}
 const SidecarCertificate&CrossedSidecarProbe::certificate()const{return impl_->certificate_;}
 
+DenseOverlayCertificate verify_dense_overlay(
+  const std::string& path, const std::string& expectedFileSha256,
+  const std::string& sourceTable, const GraphDiscovery& graph,
+  const CrossedSidecarProbe& sidecar, const SidecarBindings& bindings) {
+    validate_bindings(bindings);
+    require_hash(expectedFileSha256, "dense overlay full SHA-256");
+    if (authenticated_file_sha256(path) != expectedFileSha256)
+        throw std::runtime_error("crossed dense UFIW2 full SHA mismatch");
+    std::ifstream input(path, std::ios::binary);
+    std::array<std::uint8_t,160> header{};
+    input.read(reinterpret_cast<char*>(header.data()), header.size());
+    if (!input ||
+        !std::equal(OverlayMagic.begin(), OverlayMagic.end(),
+                    reinterpret_cast<const char*>(header.data())) ||
+        get_u32(header.data() + 8) != 2 ||
+        get_u32(header.data() + 12) !=
+          static_cast<std::uint32_t>(PieceType::Jester) ||
+        get_u32(header.data() + 16) !=
+          static_cast<std::uint32_t>(PieceType::Ghost) ||
+        get_u32(header.data() + 20) !=
+          static_cast<std::uint32_t>(Color::Black) ||
+        get_u32(header.data() + 24) != Model::StateCount ||
+        get_u32(header.data() + 28) != 2 ||
+        std::string(reinterpret_cast<const char*>(header.data() + 32), 64) !=
+          bindings.sourceSha256 ||
+        std::string(reinterpret_cast<const char*>(header.data() + 96), 64) !=
+          bindings.modelSha256)
+        throw std::runtime_error("crossed dense UFIW2 header mismatch");
+    std::vector<std::uint8_t> flags(Model::StateCount);
+    input.read(reinterpret_cast<char*>(flags.data()), flags.size());
+    if (!input || input.peek() != std::char_traits<char>::eof())
+        throw std::runtime_error("crossed dense UFIW2 extent mismatch");
+    for (const std::uint8_t value : flags)
+        if ((value & ~std::uint8_t{7}) || (!(value & 4) && (value & 3)))
+            throw std::runtime_error("crossed dense UFIW2 flag residual");
+    const ConcreteTable concrete = load_concrete(sourceTable,
+                                                  bindings.sourceSha256);
+    DenseOverlayCertificate certificate = project_dense(
+      concrete, graph,
+      [&](const FreshCoordinate& coordinate) {
+          return std::pair<bool,bool>{
+            sidecar.fresh_force(coordinate.raw, coordinate.atom, Color::White),
+            sidecar.fresh_force(coordinate.raw, coordinate.atom, Color::Black)};
+      }, nullptr, &flags);
+    certificate.fileSha256 = expectedFileSha256;
+    return certificate;
+}
+
 void arbitrary_sidecar_format_self_test(const std::string& path){
+    {
+        const Model::ConcreteState source = Model::decode_source(0);
+        const Model::FramedWorld physical = Model::source_to_product(source);
+        const Model::FramedWorld mirrored = Model::transform_world(
+          physical.frame, physical.world,
+          Model::RectangleTransform::Horizontal);
+        if (folded_source_index(physical.frame, physical.world) != 0 ||
+            folded_source_index(mirrored.frame, mirrored.world) != 0)
+            throw std::runtime_error("crossed dense source-fold residual");
+    }
     SidecarBindings bindings{std::string(64,'1'),std::string(64,'2'),
       std::string(64,'3'),std::string(64,'4'),std::string(64,'5'),
       std::string(64,'6'),std::string(64,'7')};
@@ -322,6 +600,8 @@ void arbitrary_sidecar_format_self_test(const std::string& path){
     {
         CrossedSidecarProbe probe(path,full,bindings);
         if(!probe.force(*state,0,Color::White)||probe.force(*state,0,Color::Black)||
+           !probe.fresh_force(raw,0,Color::White)||
+           probe.fresh_force(raw,0,Color::Black)||
            probe.fresh_root(raw)!=0||probe.certificate().dualForceResidual)
             throw std::runtime_error("crossed sidecar self-test query residual");
     }

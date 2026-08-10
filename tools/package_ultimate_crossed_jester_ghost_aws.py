@@ -20,8 +20,8 @@ if str(TOOLS) not in sys.path:
 import ultimate_information_tablebases as information  # noqa: E402
 
 
-SCHEMA = "ultimate-crossed-jester-ghost-aws-v1"
-SEMANTICS = "crossed-jester-ghost-perfect-recall-v1"
+SCHEMA = "ultimate-crossed-jester-ghost-aws-v2"
+SEMANTICS = "crossed-jester-ghost-perfect-recall-dense-and-arbitrary-v2"
 SOURCE_SHA256 = "d9b75b6aa4d4cad713206e18f12efb1c4781adea0cc5f99a4a77fd58eca92cc3"
 LOWER_JESTER_TABLE_SHA256 = "3d896b07c0f7ee97da5aabefee6551c90732bbc200343a4af51a08b678e236aa"
 LOWER_JESTER_OVERLAY_SHA256 = "ab806963760bcd52163d6acfbb7d5a0c6f2b2dcc8a616a61c16ae060a2d412ee"

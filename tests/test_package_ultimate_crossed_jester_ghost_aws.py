@@ -31,7 +31,7 @@ class CrossedJesterGhostAwsTests(unittest.TestCase):
     def test_manifest_is_exact_measure_first_and_restore_capable(self):
         manifest = package.build_manifest(require_committed=False)
         self.assertEqual(manifest["schema"],
-                         "ultimate-crossed-jester-ghost-aws-v1")
+                         "ultimate-crossed-jester-ghost-aws-v2")
         self.assertEqual(manifest["default_mode"], "measurement-only")
         self.assertEqual(manifest["raw_public_frames"], 38_450_880)
         self.assertEqual(manifest["source_sha256"], package.SOURCE_SHA256)
@@ -48,6 +48,15 @@ class CrossedJesterGhostAwsTests(unittest.TestCase):
                   "crossed_jester_ghost_information_tablebase.cpp").read_text()
         self.assertIn("--verify-sidecar", source)
         self.assertIn("crossed_sidecar_restore_certificate", source)
+        self.assertIn("crossed_result_restore_certificate", source)
+        self.assertIn("crossed_overlay_certificate", source)
+        runner_source = (ROOT / "tools/"
+                         "run_ultimate_crossed_jester_ghost_aws.py").read_text()
+        self.assertIn('"--verify-result"', runner_source)
+        self.assertIn('"tablebases/kjesterkghost.ufiw"', runner_source)
+        self.assertIn('"tablebases/kjesterkghost.uftb"', runner_source)
+        self.assertEqual(runner.RESULT_SCHEMA,
+                         "ultimate-crossed-jester-ghost-result-v2")
 
     def test_committed_source_gate_rejects_one_byte_drift(self):
         with mock.patch.object(package, "committed_source",
@@ -107,7 +116,7 @@ class CrossedJesterGhostAwsTests(unittest.TestCase):
                 "variables 18 tokens 22 reverse_edges 23 external_constants 3 "
                 "peak_scratch_bytes 120 residual 0\n"
                 "crossed_solve_resources sidecar_bytes 30 required_free_bytes "
-                "150 actual_free_bytes 1000 residual 0\n")
+                "150 overlay_bytes 40 actual_free_bytes 1000 residual 0\n")
             parsed = runner.parse_preflight(log)
             self.assertEqual(parsed["nodes"], 7)
             self.assertEqual(parsed["peak_scratch_bytes"], 120)

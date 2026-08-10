@@ -6,6 +6,7 @@
 #include "crossed_jester_ghost_information_fixed_point.h"
 
 #include <cstdint>
+#include <array>
 #include <memory>
 #include <string>
 
@@ -34,6 +35,20 @@ struct SidecarCertificate {
     std::string fileSha256;
 };
 
+struct DenseOverlayCertificate {
+    std::array<std::array<std::uint64_t, 4>, 2> totals{};
+    std::array<std::array<std::uint64_t, 4>, 2> unreachable{};
+    std::array<std::uint64_t, 2> informationSets{};
+    std::array<std::uint64_t, 2> legalRealizations{};
+    std::array<std::uint64_t, 2> unreachableRealizations{};
+    std::uint64_t rootResidual = 0;
+    std::uint64_t atomResidual = 0;
+    std::uint64_t forceResidual = 0;
+    std::uint64_t dualForceResidual = 0;
+    std::uint64_t conservationResidual = 0;
+    std::string fileSha256;
+};
+
 // Sorts the full collision-free graph keys, remaps every fresh root, and
 // bit-packs both exact target force functions. Construction graph caches and
 // fixed-point reverse edges are deliberately absent from the runtime artifact.
@@ -41,6 +56,15 @@ struct SidecarCertificate {
   const std::string& path, const GraphDiscovery& graph,
   const PackedForcePlane& white, const PackedForcePlane& black,
   const SidecarBindings& bindings);
+
+// Writes the standard dense fresh-state UFIW2 result used by the catalog and
+// README.  The arbitrary sidecar remains authoritative for later histories;
+// this overlay is the exact projection of the same solved force planes onto
+// all concrete source-table starting states.
+[[nodiscard]] DenseOverlayCertificate write_dense_overlay(
+  const std::string& path, const std::string& sourceTable,
+  const GraphDiscovery& graph, const PackedForcePlane& white,
+  const PackedForcePlane& black, const SidecarBindings& bindings);
 
 class CrossedSidecarProbe {
    public:
@@ -60,12 +84,23 @@ class CrossedSidecarProbe {
       const CrossedJesterGhostInformation::KnowledgeState& state,
       std::uint32_t actualAtom, Color target) const;
     [[nodiscard]] std::uint32_t fresh_root(std::uint32_t rawFrame) const;
+    [[nodiscard]] bool fresh_force(std::uint32_t rawFrame,
+                                   std::uint32_t actualAtom,
+                                   Color target) const;
     [[nodiscard]] const SidecarCertificate& certificate() const;
 
    private:
     class Impl;
     std::unique_ptr<Impl> impl_;
 };
+
+// Re-reads a dense overlay and proves every admitted force bit against the
+// independently mmap-loaded arbitrary sidecar.  Unreachable W/L/D buckets are
+// regenerated from the authenticated concrete UFTB.
+[[nodiscard]] DenseOverlayCertificate verify_dense_overlay(
+  const std::string& path, const std::string& expectedFileSha256,
+  const std::string& sourceTable, const GraphDiscovery& graph,
+  const CrossedSidecarProbe& sidecar, const SidecarBindings& bindings);
 
 // Permanent focused regression for the portable layout, full-domain root map,
 // arbitrary-belief lookup, force bitplanes, and provenance authentication.

@@ -29,9 +29,9 @@ if str(TOOLS) not in sys.path:
 import package_ultimate_crossed_jester_ghost_aws as package  # noqa: E402
 
 
-RAW_SCHEMA = "ultimate-crossed-jester-ghost-raw-v1"
-RESULT_SCHEMA = "ultimate-crossed-jester-ghost-result-v1"
-S3_SCHEMA = "ultimate-crossed-jester-ghost-s3-v1"
+RAW_SCHEMA = "ultimate-crossed-jester-ghost-raw-v2"
+RESULT_SCHEMA = "ultimate-crossed-jester-ghost-result-v2"
+S3_SCHEMA = "ultimate-crossed-jester-ghost-s3-v2"
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 
 
@@ -270,6 +270,7 @@ def parse_preflight(log: Path) -> dict[str, int]:
         "peak_scratch_bytes": max(int(record["peak_scratch_bytes"])
                                   for record in records),
         "sidecar_bytes": int(resources["sidecar_bytes"]),
+        "overlay_bytes": int(resources["overlay_bytes"]),
         "required_free_bytes": int(resources["required_free_bytes"]),
         "actual_free_bytes": int(resources["actual_free_bytes"]),
     }
@@ -338,11 +339,13 @@ def main(argv: list[str] | None = None) -> int:
     inputs.mkdir()
     checkpoint = inputs / "graph.chk"
     lower_overlay = inputs / "kjesterk.ufiw"
+    source_table = inputs / "kjesterkghost.uftb"
     lower_table = inputs / "kjesterk.uftb"
     lower_ghost = inputs / "kghostk.ufgm"
     for source, destination in (
             (args.checkpoint.resolve(), checkpoint),
             (args.lower_jester_overlay.resolve(), lower_overlay),
+            (ROOT / "tablebases/kjesterkghost.uftb", source_table),
             (ROOT / "tablebases/kjesterk.uftb", lower_table),
             (ROOT / "tablebases/kghostk.ufgm", lower_ghost)):
         shutil.copyfile(source, destination)
@@ -412,16 +415,20 @@ def main(argv: list[str] | None = None) -> int:
     # copies are smaller but receive the same conservative treatment.
     preservation_bytes = (
         measurement["peak_scratch_bytes"] + 5 * checkpoint.stat().st_size +
-        6 * measurement["sidecar_bytes"] + args.minimum_free_bytes)
+        6 * (measurement["sidecar_bytes"] + measurement["overlay_bytes"]) +
+        args.minimum_free_bytes)
     measurement["preservation_required_free_bytes"] = preservation_bytes
     if measurement["actual_free_bytes"] < preservation_bytes:
         raise RuntimeError("crossed preservation coexistence disk gate failed")
     write_json(work / "measurement.json", measurement)
 
     result = work / "results/kjesterkghost.ufcross"
+    overlay = work / "results/kjesterkghost.ufiw"
     result.parent.mkdir()
     solve = common + [
         "--solve", "--output-sidecar", str(result),
+        "--output-overlay", str(overlay),
+        "--source-table", str(source_table),
         "--lower-jester-table", str(lower_table),
         "--lower-jester-overlay", str(lower_overlay),
         "--lower-ghost-sidecar", str(lower_ghost),
@@ -432,16 +439,19 @@ def main(argv: list[str] | None = None) -> int:
     solve_text = (work / "logs/solve.log").read_text(errors="replace")
     if (solve_text.count("crossed_fixed_point target ") != 2 or
             "crossed_sidecar_certificate " not in solve_text or
-            re.search(r"(?:bellman|rank|equation|root|key|dual_force)_residual [1-9]",
-                      solve_text)):
+            "crossed_overlay_certificate " not in solve_text or
+            solve_text.count("information_summary side ") != 2 or
+            re.search(r"[a-z_]+_residual [1-9]", solve_text)):
         raise RuntimeError("crossed solve certificate residual/missing proof")
     sidecar_sha = sha256_path(result)
+    overlay_sha = sha256_path(overlay)
 
     source_files = {f"sources/{relative}": ROOT / relative
                     for relative in package.BUNDLE_FILES
                     if relative.startswith(("src/", "tools/"))}
     raw_files = {
         "raw/graph.chk": checkpoint,
+        "tablebases/kjesterkghost.uftb": source_table,
         "tablebases/kjesterk.uftb": lower_table,
         "tablebases/kjesterk.ufiw": lower_overlay,
         "tablebases/kghostk.ufgm": lower_ghost,
@@ -474,17 +484,20 @@ def main(argv: list[str] | None = None) -> int:
         "checkpoint_sha256": args.checkpoint_sha256,
         "raw_archive_sha256": raw_sha,
         "sidecar": {"bytes": result.stat().st_size, "sha256": sidecar_sha},
+        "overlay": {"bytes": overlay.stat().st_size, "sha256": overlay_sha},
         "measurement": measurement,
         "solve_peak_resident_bytes": solve_peak,
     }
     write_json(work / "results/result-manifest.json", result_manifest)
     result_files = {
         "tablebases/kjesterkghost.ufcross": result,
+        "tablebases/kjesterkghost.ufiw": overlay,
         "proof/result-manifest.json": work / "results/result-manifest.json",
         "proof/solve.log": work / "logs/solve.log",
         "proof/restore-checkpoint.log": work / "logs/restore-checkpoint.log",
         "binary/solver": built["build"],
         "tablebases/kjesterk.uftb": lower_table,
+        "tablebases/kjesterkghost.uftb": source_table,
         "tablebases/kjesterk.ufiw": lower_overlay,
         "tablebases/kghostk.ufgm": lower_ghost,
         **source_files,
@@ -496,14 +509,22 @@ def main(argv: list[str] | None = None) -> int:
     restore_sidecar = [
         str(result_restore["binary/solver"]), "--checkpoint",
         str(raw_restore["raw/graph.chk"]), "--seed-batch", "1",
-        "--expansion-batch", "1", "--verify-sidecar",
+        "--expansion-batch", "1", "--verify-result",
         "--output-sidecar", str(result_restore["tablebases/kjesterkghost.ufcross"]),
         "--sidecar-sha256", sidecar_sha,
+        "--output-overlay", str(result_restore["tablebases/kjesterkghost.ufiw"]),
+        "--overlay-sha256", overlay_sha,
+        "--source-table", str(result_restore["tablebases/kjesterkghost.uftb"]),
         *binding_args(manifest, args.checkpoint_sha256,
                       result_restore["tablebases/kjesterk.ufiw"]),
     ]
     run_logged(restore_sidecar, work / "logs/restore-sidecar.log", cwd=ROOT,
                resident_limit=args.maximum_resident_bytes)
+    restore_text = (work / "logs/restore-sidecar.log").read_text(
+        errors="replace")
+    if ("crossed_result_restore_certificate " not in restore_text or
+            re.search(r"[a-z_]+_residual [1-9]", restore_text)):
+        raise RuntimeError("crossed restored result certificate residual")
 
     objects = []
     for archive, digest, schema in (
@@ -519,6 +540,7 @@ def main(argv: list[str] | None = None) -> int:
         "source_commit": manifest["source_commit"],
         "checkpoint_sha256": args.checkpoint_sha256,
         "sidecar_sha256": sidecar_sha,
+        "overlay_sha256": overlay_sha,
         "objects": objects,
         "local_scratch_retained": True,
         "safe_to_delete_gate": False,
@@ -535,6 +557,7 @@ def main(argv: list[str] | None = None) -> int:
         "raw_archive_sha256": raw_sha,
         "result_archive_sha256": result_sha,
         "sidecar_sha256": sidecar_sha,
+        "overlay_sha256": overlay_sha,
         "preservation_certificate": certificate_record,
     }, sort_keys=True))
     return 0
