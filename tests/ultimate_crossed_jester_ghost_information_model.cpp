@@ -293,6 +293,37 @@ void complete_transition_enumeration_test() {
               << " residual 0\n";
 }
 
+void portable_state_codec_test() {
+    const Model::KnowledgeState state = four_world_state(Color::Black);
+    const std::vector<std::uint8_t> encoded = Model::serialize_state(state);
+    expect(Model::deserialize_state(encoded) == state,
+           "portable crossed-state codec does not round trip");
+    expect(Model::serialize_state(Model::deserialize_state(encoded)) == encoded,
+           "portable crossed-state encoding is not canonical for one state");
+    std::vector<std::uint8_t> truncated = encoded;
+    truncated.pop_back();
+    bool rejected = false;
+    try {
+        (void)Model::deserialize_state(truncated);
+    }
+    catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    expect(rejected, "portable crossed-state codec accepted truncation");
+    std::vector<std::uint8_t> trailing = encoded;
+    trailing.push_back(0);
+    rejected = false;
+    try {
+        (void)Model::deserialize_state(trailing);
+    }
+    catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    expect(rejected, "portable crossed-state codec accepted trailing bytes");
+    std::cout << "crossed_state_codec bytes " << encoded.size()
+              << " truncation_residual 0 trailing_residual 0\n";
+}
+
 void folded_physical_successor_test() {
     Model::KnowledgeState state;
     state.frame = {Color::Black, square("d10"), square("b2"),
@@ -515,6 +546,7 @@ int main() {
         decision_refinement_test();
         perfect_recall_convergence_test();
         complete_transition_enumeration_test();
+        portable_state_codec_test();
         folded_physical_successor_test();
         symmetry_and_action_test();
         lower_projection_and_terminal_test();

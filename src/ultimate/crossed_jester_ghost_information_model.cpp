@@ -627,6 +627,112 @@ CanonicalState canonicalize_state(const KnowledgeState& state) {
     return result;
 }
 
+std::vector<std::uint8_t> serialize_state(const KnowledgeState& state) {
+    validate_knowledge_state(state);
+    constexpr std::array<std::uint8_t, 12> magic{{
+      'U', 'F', 'C', 'R', 'O', 'S', 'S', 'S', 'T', 'A', 'T', '1'}};
+    std::vector<std::uint8_t> result(magic.begin(), magic.end());
+    const auto byte = [&](std::uint8_t value) {
+        result.push_back(value);
+    };
+    const auto word = [&](std::uint32_t value) {
+        for (unsigned shift = 0; shift < 32; shift += 8)
+            result.push_back(static_cast<std::uint8_t>(value >> shift));
+    };
+    byte(static_cast<std::uint8_t>(state.frame.side));
+    byte(state.frame.blackKing);
+    byte(state.frame.royalFirst);
+    byte(state.frame.royalSecond);
+    byte(state.frame.visibleGhost ? 1 : 0);
+    byte(state.frame.visibleGhost ? *state.frame.visibleGhost : 0xff);
+    word(static_cast<std::uint32_t>(state.atoms.size()));
+    for (const HistoryAtom& atom : state.atoms) {
+        byte(atom.world.kingAtFirst ? 1 : 0);
+        byte(atom.world.ghost);
+    }
+    const auto partition = [&](const KnowledgePartition& value) {
+        word(static_cast<std::uint32_t>(value.cells.size()));
+        for (const KnowledgeCell& cell : value.cells) {
+            word(static_cast<std::uint32_t>(cell.size()));
+            for (const std::uint32_t atom : cell)
+                word(atom);
+        }
+    };
+    partition(state.white);
+    partition(state.black);
+    return result;
+}
+
+KnowledgeState deserialize_state(const std::vector<std::uint8_t>& bytes) {
+    constexpr std::array<std::uint8_t, 12> magic{{
+      'U', 'F', 'C', 'R', 'O', 'S', 'S', 'S', 'T', 'A', 'T', '1'}};
+    if (bytes.size() < magic.size() ||
+        !std::equal(magic.begin(), magic.end(), bytes.begin()))
+        throw std::invalid_argument("invalid crossed-state magic");
+    std::size_t cursor = magic.size();
+    const auto byte = [&]() -> std::uint8_t {
+        if (cursor == bytes.size())
+            throw std::invalid_argument("truncated crossed-state byte");
+        return bytes[cursor++];
+    };
+    const auto word = [&]() -> std::uint32_t {
+        if (bytes.size() - cursor < 4)
+            throw std::invalid_argument("truncated crossed-state word");
+        std::uint32_t value = 0;
+        for (unsigned shift = 0; shift < 32; shift += 8)
+            value |= static_cast<std::uint32_t>(bytes[cursor++]) << shift;
+        return value;
+    };
+    KnowledgeState result;
+    result.frame.side = static_cast<Color>(byte());
+    result.frame.blackKing = byte();
+    result.frame.royalFirst = byte();
+    result.frame.royalSecond = byte();
+    const std::uint8_t visible = byte();
+    const std::uint8_t visibleSquare = byte();
+    if (visible > 1 || (!visible && visibleSquare != 0xff))
+        throw std::invalid_argument("invalid crossed-state visibility field");
+    if (visible)
+        result.frame.visibleGhost = visibleSquare;
+    const std::uint32_t atoms = word();
+    if (atoms > (bytes.size() - cursor) / 2)
+        throw std::invalid_argument("crossed-state atom extent exceeds payload");
+    result.atoms.reserve(atoms);
+    for (std::uint32_t atom = 0; atom < atoms; ++atom) {
+        const std::uint8_t royal = byte();
+        const std::uint8_t ghost = byte();
+        if (royal > 1)
+            throw std::invalid_argument("invalid crossed-state royal bit");
+        result.atoms.push_back({{royal != 0, ghost}});
+    }
+    const auto partition = [&](KnowledgePartition& value) {
+        const std::uint32_t cells = word();
+        if (cells > atoms)
+            throw std::invalid_argument(
+              "crossed-state partition has too many cells");
+        value.cells.reserve(cells);
+        for (std::uint32_t cellIndex = 0; cellIndex < cells; ++cellIndex) {
+            const std::uint32_t members = word();
+            if (!members || members > atoms ||
+                members > (bytes.size() - cursor) / 4)
+                throw std::invalid_argument(
+                  "invalid crossed-state partition cell extent");
+            KnowledgeCell cell;
+            cell.reserve(members);
+            for (std::uint32_t member = 0; member < members; ++member)
+                cell.push_back(word());
+            value.cells.push_back(std::move(cell));
+        }
+    };
+    partition(result.white);
+    partition(result.black);
+    if (cursor != bytes.size())
+        throw std::invalid_argument("crossed-state payload has trailing bytes");
+    result.worlds = projected_worlds(result.frame, result.atoms);
+    validate_knowledge_state(result);
+    return result;
+}
+
 bool operator<(const ActionKey& lhs, const ActionKey& rhs) {
     return std::tie(lhs.from, lhs.to, lhs.auxiliary, lhs.kind, lhs.promotion) <
            std::tie(rhs.from, rhs.to, rhs.auxiliary, rhs.kind, rhs.promotion);

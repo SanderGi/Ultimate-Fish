@@ -179,6 +179,15 @@ struct CanonicalState {
 [[nodiscard]] CanonicalState canonicalize_state(
   const KnowledgeState& state);
 
+// Portable collision-free graph key. The projected physical mask is derived
+// on decode rather than trusted as a second representation. All integer fields
+// are explicit little-endian; truncation, trailing bytes, malformed cells, and
+// invalid public frames fail closed.
+[[nodiscard]] std::vector<std::uint8_t> serialize_state(
+  const KnowledgeState& state);
+[[nodiscard]] KnowledgeState deserialize_state(
+  const std::vector<std::uint8_t>& bytes);
+
 struct ActionKey {
     std::uint8_t from = 0;
     std::uint8_t to = 0;
