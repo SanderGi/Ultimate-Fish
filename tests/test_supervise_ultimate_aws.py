@@ -190,6 +190,38 @@ class SupervisionTests(unittest.TestCase):
                          output["report"]["jobs"]["third"]["status"])
         self.assertEqual(["second", "third"], output["ready_jobs"])
 
+    @mock.patch.object(SUPERVISOR, "head_certificate")
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    @mock.patch.object(SUPERVISOR, "ec2_inventory")
+    def test_explicit_s3_only_archive_remains_certified_after_cleanup(
+            self, inventory: mock.Mock, probe: mock.Mock,
+            head: mock.Mock) -> None:
+        document = config()
+        first = document["jobs"][0]
+        first["s3_only_certified"] = True
+        first["source_bindings"] = []
+        inventory.return_value = self.ec2
+        probe.return_value = remote(first="inactive", complete=False)
+        probe.return_value["jobs"][0]["sources"] = []
+        head.return_value = {
+            "bucket": "private", "key": "results/first", "version_id": "v1",
+            "size": 12, "sha256": SHA_B, "exact": True,
+        }
+        output, _ = SUPERVISOR.supervise(document, {}, self.now)
+        self.assertEqual("CERTIFIED", output["report"]["jobs"]["first"]["status"])
+        self.assertEqual("READY", output["report"]["jobs"]["second"]["status"])
+
+    def test_s3_only_certification_is_archival_and_version_bound(self) -> None:
+        document = config()
+        first = document["jobs"][0]
+        first["s3_only_certified"] = True
+        with self.assertRaisesRegex(RuntimeError, "archival only"):
+            SUPERVISOR.validate_config(document)
+        first["source_bindings"] = []
+        first["s3_certificates"] = []
+        with self.assertRaisesRegex(RuntimeError, "requires certificates"):
+            SUPERVISOR.validate_config(document)
+
     @mock.patch.object(SUPERVISOR, "local_probe")
     @mock.patch.object(SUPERVISOR, "ec2_inventory")
     def test_failure_requests_sol_without_restart(

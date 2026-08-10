@@ -149,6 +149,13 @@ def validate_config(config: dict[str, Any]) -> None:
                 raise RuntimeError(f"{identifier} S3 certificate lacks bucket/key")
             if not certificate.get("version_id"):
                 raise RuntimeError(f"{identifier} S3 certificate lacks VersionId")
+        if job.get("s3_only_certified"):
+            if not job.get("s3_certificates"):
+                raise RuntimeError(
+                    f"{identifier} S3-only certification requires certificates")
+            if job.get("advanceable") or job.get("source_bindings"):
+                raise RuntimeError(
+                    f"{identifier} S3-only certification is archival only")
     for job in jobs:
         for dependency in job.get("dependencies", []):
             if dependency not in job_ids or dependency == job["id"]:
@@ -449,13 +456,15 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
             remote["unit"]["SupervisionFailure"] = (
                 "transient unit disappeared after RUNNING without completion")
         certificates: list[dict[str, Any]] = []
-        if completion and definition.get("s3_certificates"):
+        s3_only = bool(definition.get("s3_only_certified"))
+        if (completion or s3_only) and definition.get("s3_certificates"):
             try:
                 certificates = [head_certificate(config["region"], certificate)
                                 for certificate in definition["s3_certificates"]]
             except Exception as error:
                 errors.append({"job": identifier, "error": str(error)})
-        if completion and certificates and all(item["exact"] for item in certificates):
+        if ((completion or s3_only) and certificates and
+                all(item["exact"] for item in certificates)):
             status = "CERTIFIED"
         elif completion and status == "INACTIVE":
             status = "COMPLETED_UNCERTIFIED"

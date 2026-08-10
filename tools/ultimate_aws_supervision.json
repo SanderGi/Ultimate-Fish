@@ -268,6 +268,7 @@
       "id": "concrete-ghost-kchecker-certified",
       "instance_id": "i-08c0f44a1776cb34a",
       "unit": "ultimatefish-concrete-ghost-kchecker-ac9b2d32-v2.service",
+      "s3_only_certified": true,
       "dependencies": [],
       "checkpoint_paths": [],
       "completion_paths": [
