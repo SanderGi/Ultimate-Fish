@@ -125,8 +125,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         supported = info.supported_solver_inventory()
         unsupported = info.unsupported_solver_inventory()
         names = [filename for filename, _ in supported] + list(unsupported)
-        self.assertEqual(len(supported), 42)
-        self.assertEqual(len(unsupported), 3)
+        self.assertEqual(len(supported), 44)
+        self.assertEqual(len(unsupported), 1)
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(set(names), set(info.AFFECTED_FILENAMES))
         counts = {}
@@ -151,6 +151,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "mage-ghost-opposing": 1,
             "parasite-ghost-same": 1,
             "parasite-ghost-opposing": 1,
+            "giant-ghost-same": 1,
+            "giant-ghost-opposing": 1,
             "ghost-pair": 1,
             "jester-ghost": 1,
         })
@@ -240,12 +242,19 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                              ("kghostk.ufgm",))
             self.assertEqual(info.solver_concrete_dependencies(filename),
                              ("kparasitek.uftb",))
+        for filename in ("kghostgiantk.uftb", "kghostkgiant.uftb"):
+            self.assertEqual(info.solver_sidecar_dependencies(filename),
+                             ("kghostk.ufgm",))
+            self.assertEqual(info.solver_concrete_dependencies(filename),
+                             ("kgiantk.uftb",))
         self.assertEqual(len(info.concrete_tablebase_model_fingerprint(
             "kdragonk.uftb")), 64)
         self.assertEqual(len(info.concrete_tablebase_model_fingerprint(
             "kbombk.uftb")), 64)
         self.assertEqual(len(info.concrete_tablebase_model_fingerprint(
             "kparasitek.uftb")), 64)
+        self.assertEqual(len(info.concrete_tablebase_model_fingerprint(
+            "kgiantk.uftb")), 64)
         self.assertTrue((ROOT / "tablebases" / "kghostk.ufgm").exists())
 
     def test_solver_fingerprints_are_isolated_by_implementation_domain(self):
@@ -267,6 +276,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "mage-ghost-opposing": "kghostkmage.uftb",
             "parasite-ghost-same": "kghostparasitek.uftb",
             "parasite-ghost-opposing": "kghostkparasite.uftb",
+            "giant-ghost-same": "kghostgiantk.uftb",
+            "giant-ghost-opposing": "kghostkgiant.uftb",
             "ghost-pair": "kghostghostk.uftb",
             "jester-ghost": "kjesterghostk.uftb",
         }
@@ -323,6 +334,10 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                                 before["parasite-ghost-same"])
             self.assertNotEqual(after_ghost["parasite-ghost-opposing"],
                                 before["parasite-ghost-opposing"])
+            self.assertNotEqual(after_ghost["giant-ghost-same"],
+                                before["giant-ghost-same"])
+            self.assertNotEqual(after_ghost["giant-ghost-opposing"],
+                                before["giant-ghost-opposing"])
             for domain in ("primary-jester", "primary-jester-giant",
                            "double-jester", "joint-jester"):
                 self.assertEqual(after_ghost[domain], before[domain])
@@ -357,7 +372,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                            "fisherman-ghost-same",
                            "fisherman-ghost-opposing", "mage-ghost-same",
                            "mage-ghost-opposing", "parasite-ghost-same",
-                           "parasite-ghost-opposing"):
+                           "parasite-ghost-opposing", "giant-ghost-same",
+                           "giant-ghost-opposing"):
                 self.assertEqual(after_probe[domain], after_shared[domain])
 
             pair_relative = info.GHOST_PAIR_SOLVER_SOURCES[-1].relative_to(ROOT)
@@ -429,6 +445,23 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                 else:
                     self.assertEqual(after_parasite[domain],
                                      after_mage[domain])
+
+            giant_relative = info.GIANT_GHOST_SOLVER_SOURCES[-1].relative_to(ROOT)
+            giant_source = source_root / giant_relative
+            giant_source.write_bytes(
+                giant_source.read_bytes() + b"\n// giant-only drift\n")
+            after_giant = {
+                domain: info.solver_model_fingerprint(filename,
+                                                      root=source_root)
+                for domain, filename in representatives.items()
+            }
+            for domain in representatives:
+                if domain in {"giant-ghost-same", "giant-ghost-opposing"}:
+                    self.assertNotEqual(after_giant[domain],
+                                        after_parasite[domain])
+                else:
+                    self.assertEqual(after_giant[domain],
+                                     after_parasite[domain])
 
         self.assertEqual(
             info.solver_model_fingerprint("kbishopghostk.uftb"),

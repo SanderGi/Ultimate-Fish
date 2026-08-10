@@ -51,6 +51,9 @@ class InformationGenerationDriverTests(unittest.TestCase):
             parasite_ghost_same_transitions=root / "parasite-ghost-same",
             parasite_ghost_opposing_transitions=
                 root / "parasite-ghost-opposing",
+            giant_ghost_binary=root / "giant-ghost",
+            giant_ghost_same_transitions=root / "giant-ghost-same",
+            giant_ghost_opposing_transitions=root / "giant-ghost-opposing",
             ghost_pair_binary=root / "ghost-pair",
             ghost_pair_transitions=root / "ghost-pair-transitions",
             jester_ghost_binary=root / "jester-ghost",
@@ -387,6 +390,44 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 stream.seek(480); stream.write(b"0" * 64)
             self.assertFalse(generate.arbitrary_is_current(path, source, model))
 
+    def test_arbitrary_reuse_authenticates_giant_ufgi(self):
+        source, model = "b" * 64, "c" * 64
+        payload = b"exact-giant-anchor-ghost-roots"
+        header = bytearray(1248)
+        header[:8] = b"UFGI1\0\0\0"
+        struct.pack_into("<14I", header, 8, 1, 1248, 0x01020304,
+                         generate.PIECE_TYPE_IDS["ghost"],
+                         generate.PIECE_TYPE_IDS["giant"], 0, 1,
+                         80, 53_146_800, 9, 392, 16, 4, 0)
+        struct.pack_into("<Q", header, 96, 1248)
+        struct.pack_into("<Q", header, 152, len(payload))
+        header[160:224] = source.encode()
+        header[288:352] = model.encode()
+        header[352:416] = (
+            generate.information.observation_model_fingerprint().encode())
+        header[416:480] = (
+            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        lower_giant = (
+            b"eb52f2c08cf88e1e3682d0c72dfde191d9009e79779ad7eee23ca82fdcade591")
+        header[480:544] = lower_giant
+        header[544:608] = lower_giant
+        header[608:672] = generate.information.concrete_tablebase_model_fingerprint(
+            "kgiantk.uftb").encode()
+        header[1120:1184] = hashlib.sha256(payload).hexdigest().encode()
+        semantics = b"fresh-maximal-public-view-v2:giant-anchor-v2-ghost"
+        header[1184:1184 + len(semantics)] = semantics
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "giant.ufgi"
+            path.write_bytes(header + payload)
+            self.assertTrue(generate.arbitrary_is_current(
+                path, source, model, giant_orientation=1))
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model, giant_orientation=0))
+            with path.open("r+b") as stream:
+                stream.seek(608); stream.write(b"0" * 64)
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model, giant_orientation=1))
+
     def test_arbitrary_reuse_authenticates_fisherman_ufgf_material(self):
         source, model = "5" * 64, "6" * 64
         payload = b"exact-fisherman-ghost-roots"
@@ -556,6 +597,10 @@ class InformationGenerationDriverTests(unittest.TestCase):
                     str(args.bomb_ghost_binary), "--orientation"),
                 "kbombkghost.uftb": (
                     str(args.bomb_ghost_binary), "--orientation"),
+                "kghostgiantk.uftb": (
+                    str(args.giant_ghost_binary), "--orientation"),
+                "kghostkgiant.uftb": (
+                    str(args.giant_ghost_binary), "--orientation"),
                 "kghostghostk.uftb": (
                     str(args.ghost_pair_binary), "--output-arbitrary"),
                 "kjesterghostk.uftb": (
@@ -701,6 +746,29 @@ class InformationGenerationDriverTests(unittest.TestCase):
                     str(args.overlays / f"{Path(filename).stem}.ufmg"), mage)
                 self.assertNotIn("--lower-mage-table", mage)
 
+            for filename, orientation, transitions in (
+                    ("kghostgiantk.uftb", "same",
+                     args.giant_ghost_same_transitions),
+                    ("kghostkgiant.uftb", "opposing",
+                     args.giant_ghost_opposing_transitions)):
+                giant = generate.solver_command(
+                    args, records[filename], root / f"{filename}.ufiw",
+                    "1" * 64,
+                    generate.information.solver_model_fingerprint(filename))
+                self.assertEqual(giant[0], str(args.giant_ghost_binary))
+                self.assertEqual(giant[giant.index("--orientation") + 1],
+                                 orientation)
+                self.assertEqual(
+                    giant[giant.index("--transition-prefix") + 1],
+                    str(transitions))
+                self.assertIn(
+                    str(args.overlays / f"{Path(filename).stem}.ufgi"), giant)
+                self.assertIn(str(ROOT / "tablebases" / "kgiantk.uftb"),
+                              giant)
+                self.assertEqual(
+                    giant[giant.index("--lower-giant-sha256") + 1],
+                    "eb52f2c08cf88e1e3682d0c72dfde191d9009e79779ad7eee23ca82fdcade591")
+
     def test_primary_jester_secondary_routing_preserves_material_layout(self):
         records = generate._records()  # pylint: disable=protected-access
         with tempfile.TemporaryDirectory() as directory:
@@ -758,7 +826,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,
                                         "unsupported information class"):
                 generate.solver_command(
-                    self._args(root), records["kghostgiantk.uftb"],
+                    self._args(root), records["kjesterkghost.uftb"],
                     root / "bad.ufiw", "1" * 64, "2" * 64)
 
 
