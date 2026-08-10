@@ -17,6 +17,7 @@ from typing import Any
 
 SCHEMA = "ultimate-jester-ghost-measurement-binary-compatibility-v1"
 STATUS = "codec-loader-only-transition-semantics-unchanged"
+OLD_BUNDLE_COMMIT = "b51f514087bacff46e9433cc684e07772d6110e8"
 OLD_SOLVER_SHA256 = "06ba77bbdf0ad26481568d43332e55054ce4b592e13d1ca9eba4b0e4e27993ac"
 NEW_SOLVER_SHA256 = "1fb64c1e2818c665f4b39885a87fbff625480cdd840813b01e7ad4cb6515dd36"
 OLD_HEADER_SHA256 = "ea129d411069814320e569983e5af4a0929188090d1369ddb590e5531e07306e"
@@ -30,6 +31,7 @@ SEMANTIC_MODEL_SHA256 = "732852b8ddc43b8a1c66bb0f9fb5fd4c94aa9ad6faa5daeda31053f
 FULL_SOURCE_MODEL_SHA256 = "553a2b3f7b223d877c1d94ec9a87dd9c627393bd8a5ff4bf10e3fd2ace03086b"
 OBSERVATION_SHA256 = "af09ebab834599de83d546f8729b8329dbe5ba8ff1cc7f24be3ac63086273adf"
 SHA = re.compile(r"[0-9a-f]{64}\Z")
+COMMIT = re.compile(r"[0-9a-f]{40}\Z")
 
 
 def sha256_file(path: Path) -> str:
@@ -78,7 +80,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     if (not args.builder_source.is_file() or
             sha256_file(args.builder_source) != args.builder_sha256):
         raise ValueError("compatibility builder SHA-256 mismatch")
-    if (not SHA.fullmatch(args.source_commit) or args.work.exists()):
+    if (not COMMIT.fullmatch(args.source_commit) or args.work.exists()):
         raise ValueError("invalid source commit or nonfresh build work")
     manifest = load_json(args.old_bundle_manifest)
     if (manifest.get("schema") != "ultimate-jester-ghost-aws-v2" or
@@ -146,6 +148,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     certificate = {
         "schema": SCHEMA, "status": STATUS,
         "source_commit": args.source_commit,
+        "old_bundle_commit": OLD_BUNDLE_COMMIT,
         "builder_sha256": args.builder_sha256,
         "old_bundle_manifest_sha256": sha256_file(args.old_bundle_manifest),
         "authenticated_bundle_files": authenticated,

@@ -29,6 +29,10 @@ measurement = load(
 
 
 class MeasurementBinaryCompatibilityTest(unittest.TestCase):
+    def test_builder_accepts_canonical_sha1_commit_ids(self):
+        self.assertIsNotNone(builder.COMMIT.fullmatch("a" * 40))
+        self.assertIsNone(builder.COMMIT.fullmatch("a" * 64))
+
     def test_committed_loader_patch_is_exactly_allowlisted(self):
         expected = [
             ("src/ultimate/jester_ghost_information_solver.cpp",
@@ -41,7 +45,8 @@ class MeasurementBinaryCompatibilityTest(unittest.TestCase):
         patches = []
         for relative, old_sha, new_sha in expected:
             old = subprocess.check_output(
-                ["git", "show", f"HEAD:{relative}"], cwd=ROOT)
+                ["git", "show", f"{builder.OLD_BUNDLE_COMMIT}:{relative}"],
+                cwd=ROOT)
             new = (ROOT / relative).read_bytes()
             self.assertEqual(old_sha, builder.hashlib.sha256(old).hexdigest())
             self.assertEqual(new_sha, builder.hashlib.sha256(new).hexdigest())
