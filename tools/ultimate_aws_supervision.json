@@ -52,7 +52,7 @@
       "minimum_disk_free_bytes": {
         "/": 2147483648,
         "/mnt/ultimatefish": 322122547200,
-        "/mnt/ultimatefish-overflow": 429496729600
+        "/mnt/ultimatefish-overflow": 354334801920
       }
     }
   ],
