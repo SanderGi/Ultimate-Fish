@@ -8,7 +8,10 @@ The host LaunchAgent owns all AWS network access. From the repository root, run
 this local-only event consumer exactly once:
 
 ```bash
-python3 tools/ultimate_aws_supervision_bridge.py consume --json
+python3 tools/ultimate_aws_supervision_bridge.py consume --json \
+  --health /private/tmp/ultimatefish-aws-supervision/health.json \
+  --events /private/tmp/ultimatefish-aws-supervision/events \
+  --cursor /private/tmp/ultimatefish-aws-supervision/luna-cursor.json
 ```
 
 If stdout is exactly `NO_CHANGE`, finish silently: do not notify, summarize,

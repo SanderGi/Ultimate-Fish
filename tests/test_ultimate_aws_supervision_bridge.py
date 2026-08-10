@@ -103,11 +103,16 @@ class BridgeTests(unittest.TestCase):
             now=self.now + dt.timedelta(minutes=17)))
 
     def test_launch_agent_is_host_level_five_minute_singleton(self) -> None:
-        value = INSTALLER.launch_agent(ROOT, Path("/python3"))
+        value = INSTALLER.launch_agent(
+            Path("/Application Support/UltimateFishAWS/commit"),
+            Path("/python3"))
         self.assertEqual(300, value["StartInterval"])
         self.assertTrue(value["RunAtLoad"])
         self.assertEqual("org.ultimatefish.aws-supervisor", value["Label"])
         self.assertIn("collect", value["ProgramArguments"])
+        self.assertIn("/private/tmp/ultimatefish-aws-supervision/health.json",
+                      value["ProgramArguments"])
+        self.assertNotIn(str(ROOT), value["ProgramArguments"])
         self.assertNotIn("aws_access_key", json.dumps(value).lower())
 
 
