@@ -383,6 +383,66 @@
       "completion_paths": [],
       "source_bindings": [],
       "s3_certificates": []
+    },
+    {
+      "id": "bomb-ghost-same-measure",
+      "instance_id": "i-0986ed3d272721f02",
+      "unit": "ultimatefish-hidden-kbombghostk-7af5dec2.service",
+      "dependencies": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/work/logs/*.log",
+        "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/work/transitions/shard-*.verified"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/work/artifact-manifest.json"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/tools/run_ultimate_ghost_bomb_aws.py",
+          "sha256": "61e69736ceb7393afe30f36c2fa40dc265ee9c7ab1b8e9ca77fe32a7bd34ad4e"
+        }
+      ],
+      "s3_certificates": []
+    },
+    {
+      "id": "bomb-ghost-opposing-measure",
+      "instance_id": "i-024a2073283e4336e",
+      "unit": "ultimatefish-hidden-kbombkghost-7af5dec2.service",
+      "dependencies": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/work/logs/*.log",
+        "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/work/transitions/shard-*.verified"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/work/artifact-manifest.json"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/tools/run_ultimate_ghost_bomb_aws.py",
+          "sha256": "61e69736ceb7393afe30f36c2fa40dc265ee9c7ab1b8e9ca77fe32a7bd34ad4e"
+        }
+      ],
+      "s3_certificates": []
+    },
+    {
+      "id": "parasite-ghost-same-measure",
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "unit": "ultimatefish-hidden-kghostparasitek-7af5dec2.service",
+      "dependencies": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/hidden-kghostparasitek-7af5dec2/work/logs/*.log",
+        "/mnt/ultimatefish/hidden-kghostparasitek-7af5dec2/work/transitions/shard-*.verified"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/hidden-kghostparasitek-7af5dec2/work/artifact-manifest.json"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/hidden-kghostparasitek-7af5dec2/tools/run_ultimate_ghost_parasite_aws.py",
+          "sha256": "f83b7ecae74ecf43f98904b1c1d786effc4fdb5b63e2928fee50609e7436d516"
+        }
+      ],
+      "s3_certificates": []
     }
   ]
 }

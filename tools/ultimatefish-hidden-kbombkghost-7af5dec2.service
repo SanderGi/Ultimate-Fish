@@ -1,0 +1,29 @@
+[Unit]
+Description=Ultimate Fish Bomb/Ghost opposing measure-first exact run
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/mnt/ultimatefish/hidden-kbombkghost-7af5dec2
+ExecStart=/usr/bin/python3 tools/run_ultimate_ghost_bomb_aws.py --manifest bundle-manifest.json
+Environment=PYTHONUNBUFFERED=1
+Nice=10
+IOSchedulingClass=idle
+AllowedCPUs=2-31
+CPUQuota=2900%
+MemoryHigh=28G
+MemoryMax=32G
+TasksMax=infinity
+LimitNOFILE=1048576
+TimeoutStartSec=infinity
+Restart=no
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/mnt/ultimatefish/hidden-kbombkghost-7af5dec2
+StandardOutput=append:/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/service.log
+StandardError=append:/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/service.log
+
+[Install]
+WantedBy=multi-user.target

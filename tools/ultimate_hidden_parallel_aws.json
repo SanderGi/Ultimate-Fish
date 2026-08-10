@@ -1,0 +1,37 @@
+{
+  "schema": "ultimate-hidden-parallel-aws-v1",
+  "canonical_commit": "7af5dec2",
+  "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+  "jobs": [
+    {
+      "id": "bomb-ghost-same-measure",
+      "instance_id": "i-0986ed3d272721f02",
+      "work_directory": "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2",
+      "bundle_key": "bundles/hidden/commit/7af5dec2/sha256/e8d335c603fb66e79c1a96ffcc12965a831463b7600b58df6a456bf29e49a22b/ultimate-kbombghostk.tar",
+      "bundle_sha256": "e8d335c603fb66e79c1a96ffcc12965a831463b7600b58df6a456bf29e49a22b",
+      "bundle_version_id": "J.lmPtL4NjFtDluHx0JSotztzyhIv_qQ",
+      "unit": "tools/ultimatefish-hidden-kbombghostk-7af5dec2.service",
+      "runner_sha256": "61e69736ceb7393afe30f36c2fa40dc265ee9c7ab1b8e9ca77fe32a7bd34ad4e"
+    },
+    {
+      "id": "bomb-ghost-opposing-measure",
+      "instance_id": "i-024a2073283e4336e",
+      "work_directory": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2",
+      "bundle_key": "bundles/hidden/commit/7af5dec2/sha256/9d8e7fd4f64ce9c100a9fe1fca2ab751ae20c0b1d5cd002eda1973b5010789cc/ultimate-kbombkghost.tar",
+      "bundle_sha256": "9d8e7fd4f64ce9c100a9fe1fca2ab751ae20c0b1d5cd002eda1973b5010789cc",
+      "bundle_version_id": "T01gW_bCVZv6g1HzgwhiLkyvbBvFraAo",
+      "unit": "tools/ultimatefish-hidden-kbombkghost-7af5dec2.service",
+      "runner_sha256": "61e69736ceb7393afe30f36c2fa40dc265ee9c7ab1b8e9ca77fe32a7bd34ad4e"
+    },
+    {
+      "id": "parasite-ghost-same-measure",
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "work_directory": "/mnt/ultimatefish/hidden-kghostparasitek-7af5dec2",
+      "bundle_key": "bundles/hidden/commit/7af5dec2/sha256/a131a18d28e2431b5edc0b076f006a9fc303ae920d256b16fd96c38121b4d2e5/ultimate-kghostparasitek.tar",
+      "bundle_sha256": "a131a18d28e2431b5edc0b076f006a9fc303ae920d256b16fd96c38121b4d2e5",
+      "bundle_version_id": "aiO_9ksEAtRRP9OnHvgFggiwslUc4rdO",
+      "unit": "tools/ultimatefish-hidden-kghostparasitek-7af5dec2.service",
+      "runner_sha256": "f83b7ecae74ecf43f98904b1c1d786effc4fdb5b63e2928fee50609e7436d516"
+    }
+  ]
+}
