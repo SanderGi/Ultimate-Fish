@@ -790,6 +790,93 @@ def detect_outline_squares(image, geometry: BoardGeometry, color: str = "red",
     return occupied
 
 
+def classify_legal_dot_preview(
+    baseline_frames: Sequence[object], selected_frames: Sequence[object],
+    geometry: BoardGeometry, candidate_patterns: Sequence[frozenset[str]],
+) -> frozenset[str]:
+    """Match a rendered dot pattern using a stable candidate-directed diff.
+
+    This is deliberately not a general board-vision classifier.  Exact belief
+    cells supply the complete finite set of possible destination patterns, so
+    only their cell centers are compared.  Temporal noise is subtracted from
+    the selected-vs-baseline signal and a pattern is accepted only when every
+    expected dot clears every expected non-dot by a conservative margin.
+    """
+    try:
+        import numpy as np
+    except ImportError as exc:  # pragma: no cover - environment guidance
+        raise RuntimeError("legal-dot preview requires numpy") from exc
+    if len(baseline_frames) < 3 or len(selected_frames) < 3:
+        raise ValueError("legal-dot preview requires three frames per state")
+    patterns = tuple(dict.fromkeys(frozenset(pattern) for pattern in candidate_patterns))
+    if len(patterns) < 2 or any(not pattern for pattern in patterns):
+        raise ValueError("legal-dot preview requires distinct nonempty patterns")
+    targets = frozenset().union(*patterns)
+    sizes = {getattr(frame, "size", None)
+             for frame in (*baseline_frames, *selected_frames)}
+    if len(sizes) != 1 or None in sizes:
+        raise ValueError("legal-dot preview frames must have one image size")
+    width, height = next(iter(sizes))
+    scaled = geometry.scaled(width, height)
+
+    def arrays(frames: Sequence[object]):
+        return np.stack([
+            np.asarray(frame.convert("RGB"), dtype=np.int16)
+            for frame in frames
+        ])
+
+    baseline = arrays(baseline_frames)
+    selected = arrays(selected_frames)
+    baseline_median = np.median(baseline, axis=0)
+    selected_median = np.median(selected, axis=0)
+    cross = np.max(np.abs(selected_median - baseline_median), axis=2)
+    baseline_noise = np.max(
+        np.max(np.abs(baseline - baseline_median), axis=3), axis=0
+    )
+    selected_noise = np.max(
+        np.max(np.abs(selected - selected_median), axis=3), axis=0
+    )
+    temporal_noise = np.maximum(baseline_noise, selected_noise)
+
+    signals: dict[str, float] = {}
+    for square in targets:
+        x, y = scaled.point(square)
+        half_w = max(4, round(scaled.cell_width * 0.22))
+        half_h = max(4, round(scaled.cell_height * 0.22))
+        y0, y1 = max(0, y - half_h), min(height, y + half_h + 1)
+        x0, x1 = max(0, x - half_w), min(width, x + half_w + 1)
+        if y0 >= y1 or x0 >= x1:
+            raise ValueError(f"legal-dot preview cell lies outside image: {square}")
+        changed = float(np.percentile(cross[y0:y1, x0:x1], 90))
+        noise = float(np.percentile(temporal_noise[y0:y1, x0:x1], 95))
+        signals[square] = changed - noise
+
+    viable: list[tuple[float, frozenset[str]]] = []
+    for pattern in patterns:
+        present = min(signals[square] for square in pattern)
+        absent_values = [
+            signals[square] for square in targets if square not in pattern
+        ]
+        absent = max(absent_values, default=0.0)
+        separation = present - absent
+        # Twelve 8-bit levels after subtracting temporal noise is large enough
+        # to reject ordinary idle animation in calibrated board-center crops;
+        # the additional six-level split prevents two nearly equal candidate
+        # patterns from being forced into a result.
+        if present >= 12.0 and separation >= 6.0:
+            viable.append((separation, pattern))
+    if not viable:
+        detail = " ".join(
+            f"{square}:{signals[square]:.1f}"
+            for square in sorted(signals, key=square_sort_key)
+        )
+        raise RuntimeError("legal-dot screenshot is unresolved: " + detail)
+    viable.sort(key=lambda item: (-item[0], tuple(sorted(item[1], key=square_sort_key))))
+    if len(viable) > 1 and viable[0][0] - viable[1][0] < 4.0:
+        raise RuntimeError("legal-dot screenshot matches multiple candidate patterns")
+    return viable[0][1]
+
+
 def consensus_square_sets(observations: Sequence[Iterable[str]],
                           minimum_hits: int | None = None) -> list[str]:
     """Majority-vote already detected square sets."""
@@ -2162,11 +2249,10 @@ class EngineClient:
             result = self.until(("beliefok", "info string invalid belief"))
             if result != "beliefok":
                 raise ValueError(f"engine rejected belief: {result}\n{position}")
-        # The Android bridge does not yet identify which highlighted legal-dot
-        # cell the app disclosed. Until it does, ignore that extra private
-        # information conservatively: require one root action across all exact
-        # cells instead of sampling a cell or leaking a hidden world.
-        limits = ["belief", "go", "conservative", "depth", str(depth)]
+        # PhoneGame conditions the exact rendered legal-dot cell before this
+        # call.  Strict mode makes the engine independently enforce that the
+        # retained worlds occupy one mover-private decision cell.
+        limits = ["belief", "go", "depth", str(depth)]
         if nodes:
             limits += ["nodes", str(nodes)]
         if movetime_ms:
@@ -2548,6 +2634,160 @@ class BeliefSet:
             raise RuntimeError(f"belief side-to-move diverged: {sides}")
         return next(iter(sides))
 
+    def legal_markers(self, position: str) -> frozenset[str]:
+        """Return the exact native move-dot observation for one world.
+
+        The shipping UI renders only source/destination dots. Internal move
+        kinds, auxiliaries, and promotion identities sharing one dot are not
+        separately disclosed, matching ``decision_observation_key`` in the
+        engine.
+        """
+        markers: set[str] = set()
+        for move in self.engine.legal_moves(position):
+            if move == "pass":
+                markers.add("pass")
+                continue
+            source, target, _separator = parse_engine_move(move)
+            markers.add(f"{source}>{target}")
+        return frozenset(markers)
+
+    def decision_cells(self) -> dict[frozenset[str], list[str]]:
+        cells: dict[frozenset[str], list[str]] = {}
+        for position in self.positions:
+            cells.setdefault(self.legal_markers(position), []).append(position)
+        return cells
+
+    def _legal_preview_unit(
+        self, source: str, all_sources: frozenset[str]
+    ) -> tuple[str, ...]:
+        """Return one native selection unit, grouping linked Copycat halves."""
+        partners = {
+            copycat_partner_square(position, source)
+            for position in self.positions
+            if is_copycat_square(position, source)
+        }
+        partners.discard(None)
+        if len(partners) > 1:
+            raise RuntimeError(
+                f"linked Copycat partner for {source} diverged across beliefs"
+            )
+        if partners:
+            partner = next(iter(partners))
+            if partner in all_sources:
+                return tuple(sorted((source, partner), key=square_sort_key))
+        return (source,)
+
+    def legal_preview_projection(
+        self, signature: frozenset[str], sources: Sequence[str]
+    ) -> frozenset[str]:
+        """Project one full legal-dot cell onto a selected native unit.
+
+        Giant destinations are rendered as a four-cell footprint even though
+        the engine action stores the lower-left anchor.  Copycat selection is
+        already grouped by both linked source squares above.
+        """
+        selected = frozenset(sources)
+        giant_sources = {
+            source for source in selected
+            if all(
+                (actor := upn_piece_at(position, source)) is not None and
+                actor[0] == "giant"
+                for position in self.positions
+            )
+        }
+        projected: set[str] = set()
+        for marker in signature:
+            if marker == "pass":
+                continue
+            source, target = marker.split(">", 1)
+            if source not in selected:
+                continue
+            if source in giant_sources:
+                projected.update(giant_footprint(target))
+            else:
+                projected.add(target)
+        return frozenset(projected)
+
+    def next_legal_preview_probe(
+        self, used: Iterable[Sequence[str]] = ()
+    ) -> tuple[tuple[str, ...], tuple[frozenset[str], ...]]:
+        """Choose the most discriminating safe legal-dot preview.
+
+        A source is safe only when every retained cell renders at least one
+        destination for it.  An empty-dot timeout is not accepted as evidence
+        because it is indistinguishable from a swallowed selection in the
+        stock app.  Pass-only differences therefore fail closed.
+        """
+        cells = self.decision_cells()
+        if len(cells) <= 1:
+            raise RuntimeError("legal-dot preview is already fully conditioned")
+        used_units = {tuple(unit) for unit in used}
+        all_sources = frozenset(
+            marker.split(">", 1)[0]
+            for signature in cells
+            for marker in signature
+            if marker != "pass"
+        )
+        units = {
+            self._legal_preview_unit(source, all_sources)
+            for source in all_sources
+        }
+        candidates = []
+        for unit in sorted(units, key=lambda value: tuple(map(square_sort_key, value))):
+            if unit in used_units:
+                continue
+            grouped: dict[frozenset[str], int] = {}
+            for signature, worlds in cells.items():
+                projection = self.legal_preview_projection(signature, unit)
+                grouped[projection] = grouped.get(projection, 0) + len(worlds)
+            if len(grouped) <= 1 or any(not projection for projection in grouped):
+                continue
+            # Minimize the worst surviving world count, then prefer more
+            # partitions and fewer rendered candidate cells.
+            score = (
+                max(grouped.values()), -len(grouped),
+                len(set().union(*map(set, grouped))), unit,
+            )
+            candidates.append((score, unit, tuple(sorted(
+                grouped, key=lambda projection: tuple(
+                    sorted(projection, key=square_sort_key)
+                )
+            ))))
+        if not candidates:
+            raise RuntimeError(
+                "legal-dot cells cannot be distinguished by a nonempty "
+                "board preview; pass/end-turn control is not calibrated"
+            )
+        _score, unit, projections = min(candidates, key=lambda item: item[0])
+        return unit, projections
+
+    def condition_on_legal_projection(
+        self, sources: Sequence[str], observed: Iterable[str]
+    ) -> None:
+        """Apply one exact selected-piece dot observation without guessing."""
+        projection = frozenset(observed)
+        matches = [
+            position for position in self.positions
+            if self.legal_preview_projection(
+                self.legal_markers(position), sources
+            ) == projection
+        ]
+        if not matches:
+            raise RuntimeError(
+                "previewed selected-piece dots match no retained belief"
+            )
+        self.positions = matches
+
+    def condition_on_legal_markers(self, observed: Iterable[str]) -> None:
+        """Condition on all move dots previewed by the local player."""
+        signature = frozenset(observed)
+        matches = self.decision_cells().get(signature, [])
+        if not matches:
+            raise RuntimeError(
+                "previewed legal move dots match no retained belief"
+            )
+        self.positions = list(matches)
+
     def apply_known(self, move: str) -> None:
         next_positions = []
         for position in self.positions:
@@ -2924,6 +3164,12 @@ class BeliefSet:
         # filters, or overwrites a move. Root selection belongs to the native
         # information-set search so tactical sacrifices and Ghost risk are
         # evaluated by the same engine.
+        cells = self.decision_cells()
+        if len(cells) != 1:
+            raise RuntimeError(
+                "legal-dot preview must condition one exact decision cell "
+                "before belief search"
+            )
         legal_sets = [set(self.engine.legal_moves(position)) for position in self.positions]
         common = set.intersection(*legal_sets)
         if not common:
@@ -8060,6 +8306,122 @@ class PhoneGame:
                 return "unknown"
             time.sleep(0.25)
 
+    def _preview_frames(self) -> tuple[object, object, object]:
+        frames = []
+        for _ in range(3):
+            frames.append(self.adb.screenshot())
+            time.sleep(0.06)
+        return tuple(frames)  # type: ignore[return-value]
+
+    def _select_legal_preview_unit(
+        self, sources: Sequence[str]
+    ) -> AppEvent | None:
+        """Select one exact source unit and authenticate fresh Unity barriers."""
+        assert self.beliefs is not None
+        expected_origins = set(sources)
+        source = sources[0]
+        actor = upn_piece_at(self.beliefs.positions[0], source)
+        if actor is None:
+            raise RuntimeError(f"legal-dot preview source is unoccupied: {source}")
+        expected_piece = public_probe_piece(actor[0])
+        display = self.device_square(source)
+        center_x, center_y = self.geometry.point(display)
+        offsets = (
+            (0.0, 0.0), (-0.24, 0.0), (0.24, 0.0),
+            (0.0, -0.24), (0.0, 0.24),
+            (-0.20, -0.20), (0.20, -0.20),
+            (-0.20, 0.20), (0.20, 0.20),
+        )
+        for x_offset, y_offset in offsets:
+            pending = self.events.drain()
+            if pending is not None:
+                return pending
+            if x_offset == 0.0 and y_offset == 0.0:
+                self.adb.tap_square(self.geometry, display)
+            else:
+                self.adb.tap(
+                    round(center_x + x_offset * self.geometry.cell_width),
+                    round(center_y + y_offset * self.geometry.cell_height),
+                )
+            pointer = None
+            selected = False
+            origins: set[str] = set()
+            touched = False
+            deadline = time.monotonic() + 0.85
+            while time.monotonic() < deadline:
+                try:
+                    event = self.events.wait(
+                        ("pointer_square", "selected", "dot_ready", "touch_end",
+                         "terminal_label", "game_over", "out_of_time"),
+                        deadline - time.monotonic(),
+                    )
+                except TimeoutError:
+                    break
+                if event.kind in ("terminal_label", "game_over", "out_of_time"):
+                    return event
+                if event.kind == "pointer_square":
+                    pointer = self.canonical_event(event).source
+                elif event.kind == "selected":
+                    if event.piece and public_probe_piece(event.piece) == expected_piece:
+                        selected = True
+                elif event.kind == "dot_ready" and event.source:
+                    origin = self.canonical_event(event).source
+                    if origin:
+                        origins.add(origin)
+                elif event.kind == "touch_end":
+                    touched = True
+                    break
+            if (pointer == source and selected and touched and
+                    expected_origins <= origins):
+                return None
+        raise RuntimeError(
+            "legal-dot preview could not authenticate pointer/selection/"
+            f"origin barriers for {','.join(sources)}"
+        )
+
+    def condition_local_legal_preview(self) -> AppEvent | None:
+        """Observe legal dots until the local mover's exact cell is known.
+
+        No screenshot is interpreted outside the finite patterns supplied by
+        the current belief set.  Any low-margin image, stale native event,
+        pass-only distinction, or inconsistent retry stops before search and
+        leaves the last fully authenticated belief set intact.
+        """
+        if self.beliefs is None:
+            raise RuntimeError("beliefs are not initialized")
+        if len(self.beliefs.decision_cells()) <= 1:
+            return None
+        pending = self.events.drain()
+        if pending is not None:
+            return pending
+        baseline = self._preview_frames()
+        used: list[tuple[str, ...]] = []
+        while len(self.beliefs.decision_cells()) > 1:
+            sources, patterns = self.beliefs.next_legal_preview_probe(used)
+            terminal = self._select_legal_preview_unit(sources)
+            if terminal is not None:
+                return terminal
+            time.sleep(0.10)
+            selected = self._preview_frames()
+            device_patterns = tuple(
+                frozenset(self.device_square(square) for square in pattern)
+                for pattern in patterns
+            )
+            observed_device = classify_legal_dot_preview(
+                baseline, selected, self.geometry, device_patterns
+            )
+            observed = frozenset(self.device_square(square)
+                                 for square in observed_device)
+            self.beliefs.condition_on_legal_projection(sources, observed)
+            used.append(tuple(sources))
+            self.log(
+                "conditioned legal-dot preview "
+                f"{','.join(sources)} -> "
+                + ",".join(sorted(observed, key=square_sort_key))
+                + f" ({len(self.beliefs.positions)} worlds retained)"
+            )
+        return None
+
     def play(self) -> str:
         if self.beliefs is None:
             raise RuntimeError("call initialize first")
@@ -8094,6 +8456,20 @@ class PhoneGame:
         while True:
             record_repetition_state()
             if self.beliefs.side == "w":
+                preview_terminal = self.condition_local_legal_preview()
+                if preview_terminal is not None:
+                    if preview_terminal.kind == "terminal_label":
+                        result = ("draw" if preview_terminal.source == "draw"
+                                  else "win")
+                    elif preview_terminal.kind == "out_of_time":
+                        result = "win"
+                    else:
+                        result = self.classify_game_over(decisive_result="win")
+                    self.log(
+                        f"result: {result} ({preview_terminal.kind} during "
+                        "legal-dot preview)"
+                    )
+                    return result
                 repetition_draw_moves: list[str] = []
                 if repetition_counts and max(repetition_counts.values()) >= 2:
                     legal_sets = [

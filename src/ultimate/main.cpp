@@ -211,6 +211,25 @@ int main() {
                 std::cout << "beliefok\n";
             continue;
         }
+        if (line == "belief observe" || line.rfind("belief observe ", 0) == 0) {
+            std::istringstream input(line);
+            std::string token;
+            input >> token >> token;
+            std::vector<std::string> markers;
+            while (input >> token)
+                markers.push_back(token);
+            const std::size_t before = beliefs.size();
+            const std::size_t partitions = beliefs.decision_partitions();
+            std::string error;
+            if (!beliefs.condition_on_decision_markers(markers, &error))
+                std::cout << "info string invalid belief observation "
+                          << error << '\n';
+            else
+                std::cout << "beliefok before " << before
+                          << " after " << beliefs.size()
+                          << " partitions " << partitions << '\n';
+            continue;
+        }
         if (line.rfind("belief apply ", 0) == 0) {
             std::string error;
             const BeliefTransitionResult applied = beliefs.apply_known(

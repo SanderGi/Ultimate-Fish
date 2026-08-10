@@ -120,7 +120,7 @@ async function analyze(upn, requestedDepth, requestedTime, signal, maximumDepth 
   return parseAnalysis(lines);
 }
 
-function beliefCommands(positions, observer, enemyKingKnown) {
+function beliefCommands(positions, observer, enemyKingKnown, legalMarkers) {
   if (!Array.isArray(positions) || positions.length === 0 ||
       positions.some((upn) => typeof upn !== "string" || upn.length > 20_000) ||
       positions.reduce((total, upn) => total + upn.length, 0) > 4_000_000)
@@ -129,10 +129,20 @@ function beliefCommands(positions, observer, enemyKingKnown) {
     throw new Error("Belief observer must be white or black");
   if (typeof enemyKingKnown !== "boolean")
     throw new Error("enemyKingKnown must be a boolean");
+  let observe = [];
+  if (legalMarkers !== undefined) {
+    if (!Array.isArray(legalMarkers) || legalMarkers.length > 512 ||
+        legalMarkers.some((marker) => typeof marker !== "string" ||
+          !/^(?:pass|[a-h](?:10|[1-9])>[a-h](?:10|[1-9]))$/.test(marker)))
+      throw new Error("legalMarkers must contain source>destination or pass markers");
+    const exact = [...new Set(legalMarkers)].sort();
+    observe = [`belief observe${exact.length ? ` ${exact.join(" ")}` : ""}`];
+  }
   return [
     "belief clear",
     `belief observer ${observer} ${enemyKingKnown ? 1 : 0}`,
     ...positions.map((upn) => `belief add ${upn}`),
+    ...observe,
   ];
 }
 
@@ -140,9 +150,9 @@ function beliefError(lines) {
   return lines.find((line) => line.startsWith("info string invalid belief"));
 }
 
-async function beliefState(positions, observer, enemyKingKnown, signal) {
+async function beliefState(positions, observer, enemyKingKnown, legalMarkers, signal) {
   const lines = await runEngine([
-    ...beliefCommands(positions, observer, enemyKingKnown),
+    ...beliefCommands(positions, observer, enemyKingKnown, legalMarkers),
     "belief count",
   ], signal);
   const error = beliefError(lines);
@@ -159,20 +169,20 @@ async function beliefState(positions, observer, enemyKingKnown, signal) {
 }
 
 async function analyzeBeliefs(positions, observer, enemyKingKnown,
-                              requestedDepth, requestedTime, signal) {
+                              legalMarkers, requestedDepth, requestedTime, signal) {
   const depth = Math.max(1, Math.min(16, Number(requestedDepth) || 4));
   const moveTime = Math.max(0, Math.min(120_000, Number(requestedTime) || 0));
   const go = moveTime
     ? `belief go depth ${depth} movetime ${moveTime}`
     : `belief go depth ${depth}`;
   const lines = await runEngine([
-    ...beliefCommands(positions, observer, enemyKingKnown), go,
+    ...beliefCommands(positions, observer, enemyKingKnown, legalMarkers), go,
   ], signal);
   const error = beliefError(lines);
   if (error) throw new Error(error);
   const info = [...lines].reverse().find((line) => line.startsWith("info depth ")) ?? "";
   const match = info.match(
-    /^info depth (\d+) score (cp|mate) (-?\d+) nodes (\d+) time (\d+) beliefs (\d+) deepbeliefs (\d+) common (\d+) candidates (\d+) beliefmode (\S+) historyplies (\d+) decisionpartitions (\d+) beliefworst (-?\d+) beliefmean (-?\d+) pv(?: (.*))?$/,
+    /^info depth (\d+) score (cp|mate) (-?\d+) nodes (\d+) time (\d+) beliefs (\d+) deepbeliefs (\d+) common (\d+) candidates (\d+) beliefmode (\S+) historyplies (\d+) decisionmode (\S+) decisionpartitions (\d+) beliefworst (-?\d+) beliefmean (-?\d+) pv(?: (.*))?$/,
   );
   if (!match) throw new Error("Engine did not return belief analysis metadata");
   const best = [...lines].reverse().find((line) => line.startsWith("bestmove "))?.slice(9) ?? null;
@@ -189,10 +199,11 @@ async function analyzeBeliefs(positions, observer, enemyKingKnown,
     candidates: Number(match[9]),
     beliefMode: match[10],
     historyPreservingPlies: Number(match[11]),
-    decisionPartitions: Number(match[12]),
-    worstScore: Number(match[13]),
-    meanScore: Number(match[14]),
-    pv: match[15]?.split(" ").filter(Boolean) ?? [],
+    decisionMode: match[12],
+    decisionPartitions: Number(match[13]),
+    worstScore: Number(match[14]),
+    meanScore: Number(match[15]),
+    pv: match[16]?.split(" ").filter(Boolean) ?? [],
     observer,
     enemyKingKnown,
   };
@@ -272,13 +283,14 @@ const server = createServer(async (request, response) => {
     if (request.url === "/belief-state") {
       send(response, 200, await beliefState(
         body.positions, body.observer, body.enemyKingKnown,
-        cancellation.signal));
+        body.legalMarkers, cancellation.signal));
       return;
     }
     if (request.url === "/analyze-beliefs") {
       send(response, 200, await analyzeBeliefs(
         body.positions, body.observer, body.enemyKingKnown,
-        body.depth, body.movetime, cancellation.signal));
+        body.legalMarkers, body.depth, body.movetime,
+        cancellation.signal));
       return;
     }
     if (typeof body.upn !== "string" || body.upn.length > 20_000)

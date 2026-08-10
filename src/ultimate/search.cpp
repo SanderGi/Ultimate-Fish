@@ -165,6 +165,65 @@ std::size_t PublicBeliefState::decision_partitions() const {
     return observations.size();
 }
 
+bool PublicBeliefState::condition_on_decision_markers(
+  const std::vector<std::string>& supplied, std::string* error) {
+    if (worlds_.empty()) {
+        if (error)
+            *error = "cannot observe legal dots on an empty belief";
+        return false;
+    }
+    if (!side_ || *side_ != disclosure_.observer) {
+        if (error)
+            *error = "legal-dot observation is private to the side to move";
+        return false;
+    }
+    std::vector<std::string> expected = supplied;
+    std::sort(expected.begin(), expected.end());
+    expected.erase(std::unique(expected.begin(), expected.end()), expected.end());
+    for (const std::string& marker : expected) {
+        if (marker == "pass")
+            continue;
+        const std::size_t separator = marker.find('>');
+        if (separator == std::string::npos ||
+            marker.find('>', separator + 1) != std::string::npos ||
+            Position::square_from_name(marker.substr(0, separator)) < 0 ||
+            Position::square_from_name(marker.substr(separator + 1)) < 0) {
+            if (error)
+                *error = "legal-dot marker must be source>destination or pass";
+            return false;
+        }
+    }
+
+    std::map<std::string, Position> retained;
+    std::size_t matchingCells = 0;
+    for (const BeliefDecisionBucket& cell : decision_cells()) {
+        std::vector<std::string> actual;
+        for (const Move& move : cell.worlds.front().legal_moves()) {
+            if (move.kind == MoveKind::Pass)
+                actual.emplace_back("pass");
+            else
+                actual.push_back(Position::square_name(move.from) + ">" +
+                                 Position::square_name(move.to));
+        }
+        std::sort(actual.begin(), actual.end());
+        actual.erase(std::unique(actual.begin(), actual.end()), actual.end());
+        if (actual != expected)
+            continue;
+        ++matchingCells;
+        for (const Position& world : cell.worlds)
+            retained.emplace(world.upn(), world);
+    }
+    if (matchingCells != 1 || retained.empty()) {
+        if (error)
+            *error = matchingCells
+              ? "legal-dot markers ambiguously match multiple decision cells"
+              : "legal-dot markers match no retained decision cell";
+        return false;
+    }
+    worlds_ = std::move(retained);
+    return true;
+}
+
 BeliefSuccessorPartitions PublicBeliefState::successor_partitions(
   std::string_view moveText) const {
     BeliefSuccessorPartitions result;

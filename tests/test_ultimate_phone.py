@@ -494,6 +494,18 @@ class EngineDraftProtocolTests(unittest.TestCase):
         )
         self.assertEqual(commands, ["draft preview copycat prince"])
 
+    def test_belief_search_uses_strict_conditioned_decision_cell(self):
+        client, commands = self.client_with_lines(
+            "beliefok", "beliefok", "beliefok", "beliefok",
+            "info depth 3 score cp 12 beliefs 2", "bestmove a1-a2",
+        )
+        move, score, _info = client.search_beliefs(
+            ("world-one", "world-two"), 3, nodes=200
+        )
+        self.assertEqual((move, score), ("a1-a2", 12))
+        self.assertEqual(commands[-1], "belief go depth 3 nodes 200")
+        self.assertNotIn("conservative", commands[-1])
+
 
 class AdbDeviceTests(unittest.TestCase):
     @unittest.skipUnless(importlib.util.find_spec("PIL"), "Pillow not installed")
@@ -3305,6 +3317,100 @@ class BeliefConstructionTests(unittest.TestCase):
             beliefs.apply_known("a1-a2")
         self.assertEqual(["compatible", "incompatible"], beliefs.positions)
 
+    def test_legal_dot_preview_conditions_the_exact_decision_cell(self):
+        class PreviewEngine:
+            @staticmethod
+            def legal_moves(position):
+                return {
+                    "near-ghost": ["a1-a2", "b1-b2", "pass"],
+                    # Distinct internal action kinds at one endpoint still
+                    # render one source/destination marker.
+                    "far-ghost": ["a1-a2", "b1!c1", "b1~c1"],
+                }[position]
+
+        beliefs = MODULE.BeliefSet(
+            PreviewEngine(), ("near-ghost", "far-ghost")
+        )
+        cells = beliefs.decision_cells()
+        self.assertEqual(2, len(cells))
+        self.assertEqual(2, sum(len(worlds) for worlds in cells.values()))
+
+        beliefs.condition_on_legal_markers(("a1>a2", "b1>c1"))
+        self.assertEqual(["far-ghost"], beliefs.positions)
+        self.assertEqual(1, len(beliefs.decision_cells()))
+
+    def test_unknown_legal_dot_preview_fails_without_mutation(self):
+        class PreviewEngine:
+            @staticmethod
+            def legal_moves(position):
+                return ["a1-a2"] if position == "one" else ["a1-a3"]
+
+        beliefs = MODULE.BeliefSet(PreviewEngine(), ("one", "two"))
+        with self.assertRaisesRegex(RuntimeError, "match no retained"):
+            beliefs.condition_on_legal_markers(("h1>h2",))
+        self.assertEqual(["one", "two"], beliefs.positions)
+
+    def test_legal_dot_preview_adaptively_conditions_without_sampling(self):
+        class PreviewEngine:
+            @staticmethod
+            def legal_moves(position):
+                return {
+                    "one": ["a1-a2", "b1-b2"],
+                    "two": ["a1-a3", "b1-b2"],
+                    "three": ["a1-a3", "b1-b3"],
+                }[position]
+
+        beliefs = MODULE.BeliefSet(PreviewEngine(), ("one", "two", "three"))
+        first, patterns = beliefs.next_legal_preview_probe()
+        self.assertEqual(("a1",), first)
+        self.assertEqual({frozenset({"a2"}), frozenset({"a3"})}, set(patterns))
+        beliefs.condition_on_legal_projection(first, ("a3",))
+        self.assertCountEqual(["two", "three"], beliefs.positions)
+        second, patterns = beliefs.next_legal_preview_probe((first,))
+        self.assertEqual(("b1",), second)
+        self.assertEqual({frozenset({"b2"}), frozenset({"b3"})}, set(patterns))
+        beliefs.condition_on_legal_projection(second, ("b3",))
+        self.assertEqual(["three"], beliefs.positions)
+
+    def test_pass_only_legal_dot_difference_fails_closed(self):
+        class PreviewEngine:
+            @staticmethod
+            def legal_moves(position):
+                return ["a1-a2", "pass"] if position == "pass" else ["a1-a2"]
+
+        beliefs = MODULE.BeliefSet(PreviewEngine(), ("pass", "plain"))
+        with self.assertRaisesRegex(RuntimeError, "pass/end-turn"):
+            beliefs.next_legal_preview_probe()
+        self.assertEqual(["pass", "plain"], beliefs.positions)
+
+    @unittest.skipUnless(importlib.util.find_spec("PIL") and
+                         importlib.util.find_spec("numpy"),
+                         "Pillow/numpy not installed")
+    def test_candidate_directed_dot_diff_requires_a_unique_visual_pattern(self):
+        from PIL import Image, ImageDraw
+
+        geometry = MODULE.BoardGeometry().scaled(216, 480)
+        baseline = Image.new("RGB", (216, 480), (65, 95, 70))
+        selected = baseline.copy()
+        draw = ImageDraw.Draw(selected)
+        for square in ("b2", "c2"):
+            x, y = geometry.point(square)
+            draw.ellipse((x - 5, y - 5, x + 5, y + 5),
+                         fill=(75, 205, 250))
+        patterns = (frozenset({"a2"}), frozenset({"b2", "c2"}))
+        observed = MODULE.classify_legal_dot_preview(
+            (baseline.copy(), baseline.copy(), baseline.copy()),
+            (selected.copy(), selected.copy(), selected.copy()),
+            MODULE.BoardGeometry(), patterns,
+        )
+        self.assertEqual(frozenset({"b2", "c2"}), observed)
+        with self.assertRaisesRegex(RuntimeError, "unresolved"):
+            MODULE.classify_legal_dot_preview(
+                (baseline.copy(), baseline.copy(), baseline.copy()),
+                (baseline.copy(), baseline.copy(), baseline.copy()),
+                MODULE.BoardGeometry(), patterns,
+            )
+
     def test_default_initial_beliefs_enumerate_every_hidden_ghost_pair(self):
         positions = MODULE.initial_beliefs(
             (("king", "a1"),), (("king", "a10"),), 30
@@ -3383,7 +3489,7 @@ class BeliefConstructionTests(unittest.TestCase):
             def legal_moves(self, position):
                 return {
                     "p1": ["a1-a2", "b1-b2"],
-                    "p2": ["a1-a2", "c1-c2"],
+                    "p2": ["a1-a2", "b1-b2"],
                 }[position]
 
             def search_beliefs(self, positions, depth, nodes, movetime, draw_moves=()):
@@ -3427,7 +3533,8 @@ class BeliefConstructionTests(unittest.TestCase):
         class LegalEngine:
             @staticmethod
             def legal_moves(position):
-                return ["a1-a2", "b1-b2"] if position == "p1" else ["a1-a2"]
+                return (["a1-a2", "b1-b2"] if position == "p1"
+                        else ["a1-a2", "b1!b2"])
 
             @staticmethod
             def search_beliefs(_positions, _depth, _nodes, _movetime, _draw_moves=()):

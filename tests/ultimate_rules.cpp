@@ -2261,6 +2261,30 @@ void test_public_belief_state_core() {
                      });
                }),
            "exact decision cells conserve worlds and ignore insertion order");
+    const auto renderedMarkers = [](const Position& position) {
+        std::vector<std::string> markers;
+        for (const Move& move : position.legal_moves())
+            markers.push_back(move.kind == MoveKind::Pass
+              ? "pass"
+              : Position::square_name(move.from) + ">" +
+                Position::square_name(move.to));
+        return markers;
+    };
+    PublicBeliefState observed = forward;
+    const std::size_t observedBefore = observed.size();
+    std::vector<std::string> firstMarkers = renderedMarkers(
+      forwardCells.front().worlds.front());
+    if (!firstMarkers.empty())
+        firstMarkers.push_back(firstMarkers.front());
+    expect(observed.condition_on_decision_markers(firstMarkers, &error) &&
+             observed.size() == forwardCells.front().worlds.size() &&
+             observed.decision_partitions() == 1,
+           "rendered legal-dot markers select one exact cell without sampling: " +
+             error);
+    const std::size_t observedAfter = observed.size();
+    expect(!observed.condition_on_decision_markers({"h1>h2"}, &error) &&
+             observed.size() == observedAfter && observedBefore >= observedAfter,
+           "unknown legal-dot markers fail without mutating retained worlds");
     Search mergedSearch(1);
     const BeliefSearchResult mergedResult =
       mergedSearch.think_beliefs(forward, benchmarkLimits);

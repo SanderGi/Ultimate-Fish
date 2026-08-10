@@ -130,6 +130,14 @@ class PublicBeliefState {
     [[nodiscard]] std::vector<BeliefDecisionBucket> decision_cells() const;
     [[nodiscard]] std::size_t decision_partitions() const;
 
+    // Condition the exact mover-private legal-dot frontier observed by a UI.
+    // Markers use ``source>destination`` or ``pass`` and are deduplicated;
+    // internal Move kinds sharing one rendered endpoint remain indistinct.
+    // Failure never mutates the retained worlds.
+    bool condition_on_decision_markers(
+      const std::vector<std::string>& markers,
+      std::string* error = nullptr);
+
     // Enumerate every exact successor bucket without mutating this belief.
     // The observation key is the public transition observation, augmented by
     // the configured observer's private legal-dot observation when that

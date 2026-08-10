@@ -147,12 +147,34 @@ test("bridge retains uncapped beliefs and analyzes one exact decision cell", asy
   assert.equal(retained.beliefs, worlds.length);
   assert.equal(retained.mode, "exact-uncapped");
 
+  const concrete = await post("/state", { upn: worlds[0] });
+  const legalMarkers = [...new Set(concrete.moves.map((move) => {
+    if (move === "pass") return "pass";
+    const match = move.match(/^([a-h](?:10|[1-9]))[-~@x!&]([a-h](?:10|[1-9]))$/);
+    assert.ok(match, `unexpected move spelling ${move}`);
+    return `${match[1]}>${match[2]}`;
+  }))].sort();
+  const observed = await post("/belief-state", {
+    positions: worlds, observer: "white", enemyKingKnown: false,
+    legalMarkers,
+  });
+  assert.ok(observed.beliefs > 0 && observed.beliefs < worlds.length);
+  const exact = await post("/analyze-beliefs", {
+    positions: worlds, observer: "white", enemyKingKnown: false,
+    legalMarkers, depth: 1,
+  });
+  assert.equal(exact.beliefs, observed.beliefs);
+  assert.equal(exact.decisionPartitions, 1);
+  assert.equal(exact.decisionMode, "exact-cell");
+  assert.ok(exact.bestmove);
+
   const singleton = await post("/analyze-beliefs", {
     positions: [worlds[0]], observer: "white", enemyKingKnown: false,
     depth: 1,
   });
   assert.equal(singleton.beliefs, 1);
   assert.equal(singleton.decisionPartitions, 1);
+  assert.equal(singleton.decisionMode, "exact-cell");
   assert.equal(singleton.beliefMode, "root-only");
   assert.equal(singleton.historyPreservingPlies, 0);
   assert.ok(singleton.bestmove);
