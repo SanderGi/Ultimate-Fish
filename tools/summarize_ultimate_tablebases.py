@@ -391,7 +391,7 @@ def adjacent_ranges(count: int, substates: int, side: int):
 def add_penguin_reachability_artifacts(
         wdl: bytes, count: int, substates: int,
         owns_material: tuple[bool, bool], illegal: list[list[int]]) -> None:
-    """Separate impossible K+Penguin-v-K aura/turn states.
+    """Separate impossible K+Penguin-v-K causal freeze/turn states.
 
     An active aura must freeze at least one adjacent model. If it freezes the
     lone enemy King, that King receives the next turn and either moves (which
@@ -418,14 +418,26 @@ def add_penguin_reachability_artifacts(
         if penguin >= high:
             penguin += 1
         kings_adjacent = adjacent(white, black)
-        freezes_white = adjacent(penguin, white)
-        freezes_black = adjacent(penguin, black)
+        adjacent_white = adjacent(penguin, white)
+        adjacent_black = adjacent(penguin, black)
         for substate in range(substates):
             index = placement * substates + substate
             result = (wdl[index // 4] >> ((index % 4) * 2)) & 3
-            active = substate % 2 == 1
-            locally_impossible = active and not (freezes_white or freezes_black)
-            impossible_turn = side == 0 and active and freezes_black
+            if substates == 2:
+                # Legacy payloads represented only inactive/full-current-aura.
+                freezes_white = bool(substate) and adjacent_white
+                freezes_black = bool(substate) and adjacent_black
+                locally_impossible = bool(substate) and not (
+                    adjacent_white or adjacent_black)
+            elif substates == 4:
+                # Exact v4 causal membership bits: White King, Black King.
+                freezes_white = bool(substate & 1)
+                freezes_black = bool(substate & 2)
+                locally_impossible = ((freezes_white and not adjacent_white) or
+                                      (freezes_black and not adjacent_black))
+            else:
+                raise ValueError("unexpected K+Penguin-v-K substate factor")
+            impossible_turn = side == 0 and freezes_black
             adjacent_penguin_decisive = (kings_adjacent and
                 ((side == 0 and result == 1) or (side == 1 and result == 2)))
             if not (locally_impossible or impossible_turn or adjacent_penguin_decisive):
@@ -482,7 +494,7 @@ def summary(path: Path, data: bytes | None = None,
             artifact = 2 if owns_material[side] else 1
             for begin, end in adjacent_ranges(count, substates, side):
                 illegal[side][artifact] += count_results(wdl, begin, end)[artifact]
-    if piece == 14:  # Penguin / native SimulatedFreeze
+    if piece == 14 and secondary == -1:  # solo Penguin / SimulatedFreeze
         add_penguin_reachability_artifacts(wdl, count, substates,
                                            owns_material, illegal)
     for side in range(2):

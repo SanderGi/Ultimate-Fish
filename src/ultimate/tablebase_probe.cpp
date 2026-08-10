@@ -212,7 +212,8 @@ std::uint32_t encode_identical_four(Color side, std::uint8_t whiteKing,
              * (SquareCount - 1) + blackRank) * pairs + pairRank;
 }
 
-std::uint32_t represented_substates(PieceType type) {
+std::uint32_t represented_substates(PieceType type, bool fourModels = false,
+                                    PieceType other = PieceType::Count) {
     switch (type) {
     case PieceType::Berserker: return 10;
     case PieceType::Ghost: return 2;
@@ -220,7 +221,8 @@ std::uint32_t represented_substates(PieceType type) {
     case PieceType::Prince: return 2;
     case PieceType::Checker: return 4;
     case PieceType::Pawn: return 2;
-    case PieceType::Penguin: return 2;
+    case PieceType::Penguin:
+        return !fourModels || other == PieceType::Penguin ? 4 : 8;
     default: return 1;
     }
 }
@@ -569,8 +571,147 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
           ? actual == PieceType::Checker || actual == PieceType::CheckerKing
           : represented == actual;
     };
+    constexpr std::array<std::array<int, 2>, 8> penguinDirections{{
+      {{1, 0}}, {{-1, 0}}, {{0, 1}}, {{0, -1}},
+      {{1, 1}}, {{-1, 1}}, {{1, -1}}, {{-1, -1}}
+    }};
+    const auto penguinDirectionBit = [](int deltaFile, int deltaRank) {
+        if (deltaFile == 0 && deltaRank == 1) return std::uint8_t{1};
+        if (deltaFile == 0 && deltaRank == -1) return std::uint8_t{2};
+        if (deltaFile == -1 && deltaRank == 0) return std::uint8_t{4};
+        if (deltaFile == 1 && deltaRank == 0) return std::uint8_t{8};
+        if (deltaFile == -1 && deltaRank == 1) return std::uint8_t{16};
+        if (deltaFile == 1 && deltaRank == 1) return std::uint8_t{32};
+        if (deltaFile == -1 && deltaRank == -1) return std::uint8_t{64};
+        if (deltaFile == 1 && deltaRank == -1) return std::uint8_t{128};
+        return std::uint8_t{0};
+    };
+    const auto penguinTargetFlag = [&](int target, int other) {
+        if (target == whiteKing) return 1u;
+        if (target == blackKing) return 2u;
+        if (other != Position::NoPiece && target == other) return 4u;
+        return 0u;
+    };
+    const auto penguinSubstate = [&](int penguin, int other)
+      -> std::optional<std::uint32_t> {
+        const PieceState& item = position.pieces_[penguin];
+        if (item.type != PieceType::Penguin || item.link != Position::NoPiece ||
+            item.cooldown || item.power)
+            return std::nullopt;
+        const int file = item.square % Position::BoardFiles;
+        const int rank = item.square / Position::BoardFiles;
+        std::uint32_t substate = 0;
+        for (const auto& direction : penguinDirections) {
+            const std::uint8_t directionBit = penguinDirectionBit(
+              direction[0], direction[1]);
+            if (!(item.action & directionBit))
+                continue;
+            const int targetFile = file + direction[0];
+            const int targetRank = rank + direction[1];
+            if (targetFile < 0 || targetFile >= Position::BoardFiles ||
+                targetRank < 0 || targetRank >= Position::BoardRanks)
+                return std::nullopt;
+            const int target = position.board_[
+              targetRank * Position::BoardFiles + targetFile];
+            const std::uint32_t targetFlag = penguinTargetFlag(target, other);
+            if (!targetFlag || position.pieces_[target].type == PieceType::Penguin)
+                return std::nullopt;
+            substate |= targetFlag;
+        }
+        std::uint8_t expectedAction = 0;
+        for (const auto& direction : penguinDirections) {
+            const int targetFile = file + direction[0];
+            const int targetRank = rank + direction[1];
+            if (targetFile < 0 || targetFile >= Position::BoardFiles ||
+                targetRank < 0 || targetRank >= Position::BoardRanks)
+                continue;
+            const int target = position.board_[
+              targetRank * Position::BoardFiles + targetFile];
+            const std::uint32_t targetFlag = penguinTargetFlag(target, other);
+            if (targetFlag && (substate & targetFlag))
+                expectedAction |= penguinDirectionBit(direction[0], direction[1]);
+        }
+        return expectedAction == item.action
+          ? std::optional<std::uint32_t>(substate) : std::nullopt;
+    };
+    const auto fullPenguinSubstate = [&](int penguin, int other) {
+        const PieceState& item = position.pieces_[penguin];
+        const int file = item.square % Position::BoardFiles;
+        const int rank = item.square / Position::BoardFiles;
+        std::uint32_t result = 0;
+        for (const auto& direction : penguinDirections) {
+            const int targetFile = file + direction[0];
+            const int targetRank = rank + direction[1];
+            if (targetFile < 0 || targetFile >= Position::BoardFiles ||
+                targetRank < 0 || targetRank >= Position::BoardRanks)
+                continue;
+            const int target = position.board_[
+              targetRank * Position::BoardFiles + targetFile];
+            const std::uint32_t targetFlag = penguinTargetFlag(target, other);
+            if (targetFlag && position.pieces_[target].type != PieceType::Penguin)
+                result |= targetFlag;
+        }
+        return result;
+    };
+    const auto penguinFreezeMatches = [&](int first, int firstOther,
+                                          std::uint32_t firstSubstate,
+                                          int second, int secondOther,
+                                          std::uint32_t secondSubstate) {
+        Position expected = position;
+        for (int id = 0; id < expected.pieceCount_; ++id) {
+            expected.pieces_[id].freezeCount = 0;
+            if (expected.pieces_[id].type == PieceType::Penguin)
+                expected.pieces_[id].action = 0;
+        }
+        const auto apply = [&](int penguin, int other, std::uint32_t substate) {
+            if (penguin == Position::NoPiece)
+                return substate == 0;
+            if ((other == Position::NoPiece && (substate & ~3u)) ||
+                (other != Position::NoPiece &&
+                 expected.pieces_[other].type == PieceType::Penguin &&
+                 (substate & ~3u)) || (substate & ~7u))
+                return false;
+            PieceState& item = expected.pieces_[penguin];
+            std::array<bool, Position::MaxPieces> frozen{};
+            std::uint32_t found = 0;
+            const int file = item.square % Position::BoardFiles;
+            const int rank = item.square / Position::BoardFiles;
+            for (const auto& direction : penguinDirections) {
+                const int targetFile = file + direction[0];
+                const int targetRank = rank + direction[1];
+                if (targetFile < 0 || targetFile >= Position::BoardFiles ||
+                    targetRank < 0 || targetRank >= Position::BoardRanks)
+                    continue;
+                const int target = expected.board_[
+                  targetRank * Position::BoardFiles + targetFile];
+                const std::uint32_t targetFlag = penguinTargetFlag(target, other);
+                if (!targetFlag || !(substate & targetFlag))
+                    continue;
+                found |= targetFlag;
+                item.action |= penguinDirectionBit(direction[0], direction[1]);
+                if (!frozen[target]) {
+                    frozen[target] = true;
+                    ++expected.pieces_[target].freezeCount;
+                }
+            }
+            return found == substate;
+        };
+        if (!apply(first, firstOther, firstSubstate) ||
+            !apply(second, secondOther, secondSubstate))
+            return false;
+        for (int id = 0; id < expected.pieceCount_; ++id) {
+            if (!expected.pieces_[id].alive)
+                continue;
+            if (expected.pieces_[id].freezeCount != position.pieces_[id].freezeCount)
+                return false;
+            if (expected.pieces_[id].type == PieceType::Penguin &&
+                expected.pieces_[id].action != position.pieces_[id].action)
+                return false;
+        }
+        return true;
+    };
     const auto extractSubstate = [&](int id, PieceType represented,
-                                     bool& continuationMatched)
+                                     int other, bool& continuationMatched)
       -> std::optional<std::uint32_t> {
         const PieceState& item = position.pieces_[id];
         if (!typeMatches(represented, item.type) || item.link != Position::NoPiece)
@@ -606,8 +747,7 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
             if (item.cooldown || item.power || item.action) return std::nullopt;
             return item.moved ? 1u : 0u;
         case PieceType::Penguin:
-            if (item.cooldown || item.power) return std::nullopt;
-            return item.action ? 1u : 0u;
+            return penguinSubstate(id, other);
         default:
             if (item.cooldown || item.power || item.action) return std::nullopt;
             return 0u;
@@ -730,7 +870,7 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
               position.continuation_ == Continuation::None &&
               position.forcedPiece_ == Position::NoPiece;
             const auto secondarySubstate = extractSubstate(
-              material, database.secondary, continuationMatched);
+              material, database.secondary, copycat, continuationMatched);
             if (!secondarySubstate || !continuationMatched ||
                 *secondarySubstate >= represented_substates(database.secondary) ||
                 database.substates != represented_substates(database.secondary))
@@ -792,10 +932,12 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                                            position.forcedPiece_ == Position::NoPiece;
                 std::optional<std::uint32_t> primarySubstate = copycat
                   ? std::optional<std::uint32_t>(0)
-                  : extractSubstate(first, database.attacker, continuationMatched);
+                  : extractSubstate(
+                      first, database.attacker, second, continuationMatched);
                 std::optional<std::uint32_t> secondarySubstate = copycat
                   ? std::optional<std::uint32_t>(0)
-                  : extractSubstate(second, database.secondary, continuationMatched);
+                  : extractSubstate(
+                      second, database.secondary, first, continuationMatched);
                 if (!primarySubstate || !secondarySubstate || !continuationMatched)
                     continue;
                 if (position.enPassantVictim_ != Position::NoPiece) {
@@ -807,30 +949,22 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 else if (position.enPassantSquare_ != Position::NoSquare)
                     continue;
 
-                std::array<int, 2> representedPenguins{Position::NoPiece, Position::NoPiece};
-                int penguinCount = 0;
-                if (database.attacker == PieceType::Penguin)
-                    representedPenguins[penguinCount++] = first;
-                if (database.secondary == PieceType::Penguin)
-                    representedPenguins[penguinCount++] = second;
-                if (penguinCount) {
-                    Position expected = position;
-                    for (int id = 0; id < expected.pieceCount_; ++id) {
-                        expected.pieces_[id].freezeCount = 0;
-                        expected.pieces_[id].action = 0;
-                    }
-                    for (int slot = 0; slot < penguinCount; ++slot) {
-                        const int id = representedPenguins[slot];
-                        if (position.pieces_[id].action)
-                            expected.apply_penguin_freeze(id);
-                    }
-                    bool freezeMatches = true;
-                    for (int id = 0; id < position.pieceCount_; ++id)
-                        if (position.pieces_[id].alive)
-                            freezeMatches = freezeMatches &&
-                              position.pieces_[id].freezeCount == expected.pieces_[id].freezeCount &&
-                              position.pieces_[id].action == expected.pieces_[id].action;
-                    if (!freezeMatches)
+                if (database.attacker == PieceType::Penguin ||
+                    database.secondary == PieceType::Penguin) {
+                    const int firstPenguin = database.attacker == PieceType::Penguin
+                      ? first : second;
+                    const int firstOther = firstPenguin == first ? second : first;
+                    const std::uint32_t firstPenguinSubstate =
+                      firstPenguin == first ? *primarySubstate : *secondarySubstate;
+                    const int secondPenguin =
+                      database.attacker == PieceType::Penguin &&
+                      database.secondary == PieceType::Penguin
+                        ? second : Position::NoPiece;
+                    if (!penguinFreezeMatches(
+                          firstPenguin, firstOther, firstPenguinSubstate,
+                          secondPenguin, first,
+                          secondPenguin == Position::NoPiece
+                            ? 0 : *secondarySubstate))
                         continue;
                 }
                 else {
@@ -847,6 +981,7 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 const bool identical = database.attacker == database.secondary &&
                                        database.secondaryColor == Color::White;
                 std::uint32_t placement = 0;
+                bool identicalSwapped = false;
                 if (copycat)
                     placement = encode(side, position.pieces_[canonicalWhite].square,
                                        position.pieces_[canonicalBlack].square, primary.square);
@@ -867,8 +1002,10 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                           : reflect_horizontal(secondSquare);
                     }
                     if (rank_excluding(firstSquare, {wk, bk}) >
-                        rank_excluding(secondSquare, {wk, bk}))
+                        rank_excluding(secondSquare, {wk, bk})) {
                         std::swap(*primarySubstate, *secondarySubstate);
+                        identicalSwapped = true;
+                    }
                     placement = encode_identical_four(
                       side, position.pieces_[canonicalWhite].square,
                       position.pieces_[canonicalBlack].square, primary.square,
@@ -879,8 +1016,50 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                   position.pieces_[canonicalBlack].square, primary.square,
                   secondary.square, database.attacker == PieceType::Giant,
                   database.secondary == PieceType::Giant);
-                const std::uint32_t secondaryFactor = represented_substates(database.secondary);
-                if (*primarySubstate >= represented_substates(database.attacker) ||
+                const std::uint32_t exactPrimaryFactor = represented_substates(
+                  database.attacker, true, database.secondary);
+                const std::uint32_t exactSecondaryFactor = represented_substates(
+                  database.secondary, true, database.attacker);
+                std::uint32_t primaryFactor = exactPrimaryFactor;
+                std::uint32_t secondaryFactor = exactSecondaryFactor;
+                if (database.substates != exactPrimaryFactor * exactSecondaryFactor) {
+                    const std::uint32_t legacyPrimaryFactor =
+                      database.attacker == PieceType::Penguin
+                        ? 2 : exactPrimaryFactor;
+                    const std::uint32_t legacySecondaryFactor =
+                      database.secondary == PieceType::Penguin
+                        ? 2 : exactSecondaryFactor;
+                    if (database.substates !=
+                        legacyPrimaryFactor * legacySecondaryFactor)
+                        continue;
+                    const auto legacyPenguin = [&](PieceType type, int id,
+                                                   int other,
+                                                   std::uint32_t exact)
+                      -> std::optional<std::uint32_t> {
+                        if (type != PieceType::Penguin)
+                            return exact;
+                        if (!exact)
+                            return 0;
+                        const std::uint32_t full = fullPenguinSubstate(id, other);
+                        return full && exact == full
+                          ? std::optional<std::uint32_t>(1) : std::nullopt;
+                    };
+                    const int encodedPrimary = identicalSwapped ? second : first;
+                    const int encodedSecondary = identicalSwapped ? first : second;
+                    const auto legacyPrimary = legacyPenguin(
+                      database.attacker, encodedPrimary, encodedSecondary,
+                      *primarySubstate);
+                    const auto legacySecondary = legacyPenguin(
+                      database.secondary, encodedSecondary, encodedPrimary,
+                      *secondarySubstate);
+                    if (!legacyPrimary || !legacySecondary)
+                        continue;
+                    *primarySubstate = *legacyPrimary;
+                    *secondarySubstate = *legacySecondary;
+                    primaryFactor = legacyPrimaryFactor;
+                    secondaryFactor = legacySecondaryFactor;
+                }
+                if (*primarySubstate >= primaryFactor ||
                     *secondarySubstate >= secondaryFactor)
                     continue;
                 const std::uint64_t index64 = std::uint64_t(placement) * database.substates +
@@ -956,23 +1135,12 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 position.continuation_ != Continuation::None ||
                 position.forcedPiece_ != Position::NoPiece)
                 continue;
-            Position expected = position;
-            for (int id = 0; id < expected.pieceCount_; ++id) {
-                expected.pieces_[id].freezeCount = 0;
-                expected.pieces_[id].action = 0;
-            }
-            expected.apply_penguin_freeze(attacker);
-            if (extra.action) {
-                bool matches = extra.action == expected.pieces_[attacker].action;
-                for (int id : {whiteKing, blackKing})
-                    matches = matches && position.pieces_[id].freezeCount ==
-                                           expected.pieces_[id].freezeCount;
-                if (!matches)
-                    continue;
-            }
-            else if (has_unrepresented_freeze())
+            const auto exact = penguinSubstate(attacker, Position::NoPiece);
+            if (!exact || !penguinFreezeMatches(
+                  attacker, Position::NoPiece, *exact,
+                  Position::NoPiece, Position::NoPiece, 0))
                 continue;
-            substate = extra.action ? 1 : 0;
+            substate = *exact;
             break;
         }
         default:
@@ -981,6 +1149,18 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 position.forcedPiece_ != Position::NoPiece)
                 continue;
             break;
+        }
+        const std::uint32_t exactSubstates = represented_substates(extra.type);
+        if (database.substates != exactSubstates) {
+            if (extra.type != PieceType::Penguin || database.substates != 2)
+                continue;
+            if (substate) {
+                const std::uint32_t full = fullPenguinSubstate(
+                  attacker, Position::NoPiece);
+                if (!full || substate != full)
+                    continue;
+                substate = 1;
+            }
         }
         if (substate >= database.substates)
             continue;

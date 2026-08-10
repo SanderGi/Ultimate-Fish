@@ -25,10 +25,10 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
         self.assertEqual(232, len(runner.closed_inventory()))
         rows = runner.supported_inventory()
         self.assertEqual(268, len(rows))
-        self.assertEqual(72_736_864_200,
+        self.assertEqual(94_657_563_000,
                          sum(int(row["packed_bytes"]) for row in rows))
-        expected = ((226, 65_050_385_400),
-                    (40, 7_401_794_400),
+        expected = ((226, 85_832_346_600),
+                    (40, 8_540_532_000),
                     (2, 284_684_400))
         self.assertEqual(expected, tuple(
             (len(runner.wave_inventory(wave)),
@@ -153,6 +153,33 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
                 runner.parse_uftb(output, record, log)
             output.write_bytes(header + bytes([0b_11_10_01_01]) + bytes(3))
             with self.assertRaisesRegex(RuntimeError, "extent"):
+                runner.parse_uftb(output, record, log)
+
+    def test_penguin_header_requires_material_specific_causal_factor(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "kpenguinbombk.uftb"
+            record = {
+                "filename": output.name, "primary": "penguin",
+                "secondary": "bomb", "opposing": False,
+                "states": 4, "packed_bytes": 5, "shards": 1,
+                "phase": "test",
+            }
+            header = struct.pack(
+                "<8sIIIIIIIIII", b"UFTB1\0\0\0", 5,
+                runner.PIECE_INDEX["penguin"], 4, 7, 8, 1, 4, 0,
+                runner.PIECE_INDEX["bomb"], 0)
+            output.write_bytes(header + bytes([0b_11_10_01_01]) + bytes(4))
+            log = root / "proof.log"
+            log.write_text(
+                f"verifyok states 4\noutput outputs/{output.name} edges 7 "
+                "win 1 loss 1 draw 2\ncomplete states 4/4 elapsed 1s\n")
+            self.assertEqual(8, runner.parse_uftb(
+                output, record, log)["substates"])
+            damaged = bytearray(output.read_bytes())
+            struct.pack_into("<I", damaged, 24, 2)
+            output.write_bytes(damaged)
+            with self.assertRaisesRegex(RuntimeError, "codec header"):
                 runner.parse_uftb(output, record, log)
 
     def test_dependency_manifest_rejects_duplicates(self) -> None:

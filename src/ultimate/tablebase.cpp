@@ -677,7 +677,7 @@ bool closed_unsplit_copycat_secondary(PieceType type) {
     return type == PieceType::Copycat || closed_four_piece(type);
 }
 
-std::uint32_t substate_count(PieceType type) {
+std::uint32_t ordinary_substate_count(PieceType type) {
     switch (type) {
     case PieceType::Berserker: return 10;  // power 0..8, then board-saturating 9+
     case PieceType::Ghost: return 2;
@@ -685,9 +685,22 @@ std::uint32_t substate_count(PieceType type) {
     case PieceType::Prince: return 2;
     case PieceType::Checker: return 4;  // ordinary/promoted x normal/forced jump
     case PieceType::Pawn: return 2;
-    case PieceType::Penguin: return 2;  // inactive / exact geometry-derived freeze aura
     default: return 1;
     }
+}
+
+std::uint32_t material_substate_count(PieceType type, bool fourModels,
+                                      PieceType other) {
+    if (type != PieceType::Penguin)
+        return ordinary_substate_count(type);
+    // A Penguin remembers exactly which currently adjacent characters it
+    // froze on its preceding move.  A later move may enter its aura without
+    // becoming frozen, so an inactive/active bit is not an exact state model.
+    // Bits 0/1 identify the two Kings.  In a one-Penguin four-model class bit
+    // 2 identifies the other non-King; two Penguins never freeze each other.
+    if (!fourModels || other == PieceType::Penguin)
+        return 4;
+    return 8;
 }
 
 }  // namespace
@@ -711,8 +724,10 @@ class TablebaseGenerator {
         secondaryColor_(secondaryColor),
         fourModels_(secondaryType_ != PieceType::Count),
         identicalExtras_(secondaryType == attackerType && secondaryColor == Color::White),
-        primarySubstates_(substate_count(attackerType)),
-        secondarySubstates_(fourModels_ ? substate_count(secondaryType_) : 1),
+        primarySubstates_(material_substate_count(
+          attackerType, fourModels_, secondaryType_)),
+        secondarySubstates_(fourModels_ ? material_substate_count(
+          secondaryType_, true, attackerType) : 1),
         substates_(primarySubstates_ * secondarySubstates_),
         stateCount_(copycatOnly_ ? PlacementStateCount
                     : identicalCompoundCopycats_
@@ -750,7 +765,57 @@ class TablebaseGenerator {
         return result;
     }
 
+    void self_test_penguin_causal_codec() const {
+        if (attackerType_ != PieceType::Penguin &&
+            secondaryType_ != PieceType::Penguin)
+            return;
+        std::uint32_t index = 0;
+        if (!fourModels_) {
+            index = encode({Color::White, 0, 2, 1, 1});
+        }
+        else {
+            const auto distant = [](PieceType type) {
+                return static_cast<std::uint8_t>(
+                  type == PieceType::Giant ? 60 : 64);
+            };
+            const FourState state{
+              Color::White, 0, 2,
+              attackerType_ == PieceType::Penguin ? std::uint8_t{1}
+                                                   : distant(attackerType_),
+              secondaryType_ == PieceType::Penguin ?
+                (attackerType_ == PieceType::Penguin ? std::uint8_t{64}
+                                                     : std::uint8_t{1})
+                : distant(secondaryType_)};
+            const std::uint32_t placement = identicalExtras_
+              ? encode_identical_four_material(state)
+              : encode_four_material(state);
+            const std::uint32_t primary =
+              attackerType_ == PieceType::Penguin ? 1 : 0;
+            const std::uint32_t secondary =
+              secondaryType_ == PieceType::Penguin &&
+              attackerType_ != PieceType::Penguin ? 1 : 0;
+            index = placement * substates_ +
+                    primary * secondarySubstates_ + secondary;
+        }
+        Position position;
+        if (!make_position_at(index, position) || child_index(position) != index)
+            throw std::runtime_error(
+              "Penguin partial causal freeze mask does not round trip");
+        int penguin = Position::NoPiece;
+        for (int id = 0; id < position.piece_count(); ++id)
+            if (position.piece(id).type == PieceType::Penguin &&
+                position.piece(id).square == 1)
+                penguin = id;
+        if (penguin == Position::NoPiece || position.piece(penguin).action != 4 ||
+            position.piece(0).freezeCount != 1 ||
+            position.piece(1).freezeCount != 0)
+            throw std::runtime_error(
+              "Penguin partial causal freeze mask reconstructed the wrong aura");
+        std::cout << "penguincausalfreezemaskok partial_mask 1 action 4\n";
+    }
+
     void self_test() const {
+        self_test_penguin_causal_codec();
         if (compoundCopycat_) {
             constexpr std::uint32_t samples = 20'000;
             for (std::uint32_t sample = 0; sample < samples; ++sample) {
@@ -855,6 +920,13 @@ class TablebaseGenerator {
             if (state.whiteKing == state.blackKing || state.whiteKing == state.attacker ||
                 state.blackKing == state.attacker || encode(state) != index)
                 throw std::runtime_error("tablebase state codec is not bijective");
+            if (attackerType_ == PieceType::Penguin) {
+                Position position;
+                if (make_position_at(index, position) &&
+                    child_index(position) != index)
+                    throw std::runtime_error(
+                      "Penguin causal freeze-mask codec is not bijective");
+            }
         }
         std::cout << "codecok states " << stateCount_ << '\n';
     }
@@ -2770,6 +2842,137 @@ class TablebaseGenerator {
           : actual == represented;
     }
 
+    static constexpr std::array<std::array<int, 2>, 8> PenguinDirections{{
+      {{1, 0}}, {{-1, 0}}, {{0, 1}}, {{0, -1}},
+      {{1, 1}}, {{-1, 1}}, {{1, -1}}, {{-1, -1}}
+    }};
+
+    static std::uint8_t penguin_direction_bit(int deltaFile, int deltaRank) {
+        if (deltaFile == 0 && deltaRank == 1) return 1;
+        if (deltaFile == 0 && deltaRank == -1) return 2;
+        if (deltaFile == -1 && deltaRank == 0) return 4;
+        if (deltaFile == 1 && deltaRank == 0) return 8;
+        if (deltaFile == -1 && deltaRank == 1) return 16;
+        if (deltaFile == 1 && deltaRank == 1) return 32;
+        if (deltaFile == -1 && deltaRank == -1) return 64;
+        if (deltaFile == 1 && deltaRank == -1) return 128;
+        return 0;
+    }
+
+    static std::uint32_t penguin_target_flag(int target, int other) {
+        if (target == 0) return 1;
+        if (target == 1) return 2;
+        if (other != Position::NoPiece && target == other) return 4;
+        return 0;
+    }
+
+    static bool penguin_action_substate(const Position& position, int penguin,
+                                        int other, std::uint32_t& substate) {
+        if (penguin < 0 || penguin >= position.piece_count() ||
+            !position.piece(penguin).alive ||
+            position.piece(penguin).type != PieceType::Penguin)
+            return false;
+        substate = 0;
+        const PieceState& item = position.piece(penguin);
+        const int file = item.square % Position::BoardFiles;
+        const int rank = item.square / Position::BoardFiles;
+        for (const auto& direction : PenguinDirections) {
+            const std::uint8_t directionBit = penguin_direction_bit(
+              direction[0], direction[1]);
+            if (!(item.action & directionBit))
+                continue;
+            const int targetFile = file + direction[0];
+            const int targetRank = rank + direction[1];
+            if (targetFile < 0 || targetFile >= Position::BoardFiles ||
+                targetRank < 0 || targetRank >= Position::BoardRanks)
+                return false;
+            const int target = position.piece_on(
+              targetRank * Position::BoardFiles + targetFile);
+            const std::uint32_t targetFlag = penguin_target_flag(target, other);
+            if (!targetFlag || position.piece(target).type == PieceType::Penguin)
+                return false;
+            substate |= targetFlag;
+        }
+
+        std::uint8_t expectedAction = 0;
+        for (const auto& direction : PenguinDirections) {
+            const int targetFile = file + direction[0];
+            const int targetRank = rank + direction[1];
+            if (targetFile < 0 || targetFile >= Position::BoardFiles ||
+                targetRank < 0 || targetRank >= Position::BoardRanks)
+                continue;
+            const int target = position.piece_on(
+              targetRank * Position::BoardFiles + targetFile);
+            const std::uint32_t targetFlag = penguin_target_flag(target, other);
+            if (targetFlag && (substate & targetFlag))
+                expectedAction |= penguin_direction_bit(direction[0], direction[1]);
+        }
+        return expectedAction == item.action;
+    }
+
+    static bool apply_penguin_substate(Position& position, int penguin,
+                                       int other, std::uint32_t substate) {
+        if (penguin < 0 || penguin >= position.piece_count() ||
+            position.piece(penguin).type != PieceType::Penguin ||
+            (other == Position::NoPiece && (substate & ~3u)) ||
+            (other != Position::NoPiece &&
+             position.piece(other).type == PieceType::Penguin && (substate & ~3u)) ||
+            (substate & ~7u))
+            return false;
+        PieceState& item = position.piece(penguin);
+        item.action = 0;
+        std::uint32_t found = 0;
+        std::array<bool, Position::MaxPieces> frozen{};
+        const int file = item.square % Position::BoardFiles;
+        const int rank = item.square / Position::BoardFiles;
+        for (const auto& direction : PenguinDirections) {
+            const int targetFile = file + direction[0];
+            const int targetRank = rank + direction[1];
+            if (targetFile < 0 || targetFile >= Position::BoardFiles ||
+                targetRank < 0 || targetRank >= Position::BoardRanks)
+                continue;
+            const int target = position.piece_on(
+              targetRank * Position::BoardFiles + targetFile);
+            const std::uint32_t targetFlag = penguin_target_flag(target, other);
+            if (!targetFlag || !(substate & targetFlag))
+                continue;
+            found |= targetFlag;
+            item.action |= penguin_direction_bit(direction[0], direction[1]);
+            if (!frozen[target]) {
+                frozen[target] = true;
+                ++position.piece(target).freezeCount;
+            }
+        }
+        return found == substate;
+    }
+
+    static bool penguin_freeze_state_matches(
+      const Position& position, int first, int firstOther,
+      std::uint32_t firstSubstate, int second = Position::NoPiece,
+      int secondOther = Position::NoPiece, std::uint32_t secondSubstate = 0) {
+        Position expected = position;
+        for (int id = 0; id < expected.piece_count(); ++id) {
+            expected.piece(id).freezeCount = 0;
+            if (expected.piece(id).type == PieceType::Penguin)
+                expected.piece(id).action = 0;
+        }
+        if (!apply_penguin_substate(expected, first, firstOther, firstSubstate) ||
+            (second != Position::NoPiece &&
+             !apply_penguin_substate(
+               expected, second, secondOther, secondSubstate)))
+            return false;
+        for (int id = 0; id < expected.piece_count(); ++id) {
+            if (!expected.piece(id).alive)
+                continue;
+            if (expected.piece(id).freezeCount != position.piece(id).freezeCount)
+                return false;
+            if (expected.piece(id).type == PieceType::Penguin &&
+                expected.piece(id).action != position.piece(id).action)
+                return false;
+        }
+        return true;
+    }
+
     bool apply_substate(Position& position, int id, PieceType type,
                         std::uint32_t substate) const {
         switch (type) {
@@ -2800,7 +3003,7 @@ class TablebaseGenerator {
     }
 
     std::uint32_t piece_substate(const Position& position, int id,
-                                 PieceType type) const {
+                                 PieceType type, int other) const {
         switch (type) {
         case PieceType::Berserker:
             return std::min<std::uint32_t>(position.piece(id).power, 9);
@@ -2814,7 +3017,12 @@ class TablebaseGenerator {
                    (position.continuation_ == Continuation::CheckerJump &&
                     position.forcedPiece_ == id ? 1u : 0u);
         case PieceType::Pawn: return position.piece(id).moved ? 1 : 0;
-        case PieceType::Penguin: return position.piece(id).action ? 1u : 0u;
+        case PieceType::Penguin: {
+            std::uint32_t substate = 0;
+            if (!penguin_action_substate(position, id, other, substate))
+                throw std::runtime_error("Penguin action mask is outside its exact state codec");
+            return substate;
+        }
         default: return 0;
         }
     }
@@ -2881,15 +3089,11 @@ class TablebaseGenerator {
         if (!apply_substate(position, first, attackerType_, primarySubstate) ||
             !apply_substate(position, second, secondaryType_, secondarySubstate))
             return false;
-        for (const auto [id, type, substate] : {
-               std::tuple<int, PieceType, std::uint32_t>{first, attackerType_, primarySubstate},
-               {second, secondaryType_, secondarySubstate}}) {
-            if (type == PieceType::Penguin && (substate & 1)) {
-                position.apply_penguin_freeze(id);
-                if (!position.piece(id).action)
-                    return false;
-            }
-        }
+        if ((attackerType_ == PieceType::Penguin &&
+             !apply_penguin_substate(position, first, second, primarySubstate)) ||
+            (secondaryType_ == PieceType::Penguin &&
+             !apply_penguin_substate(position, second, first, secondarySubstate)))
+            return false;
         position.set_side_to_move(state.side);
         return true;
     }
@@ -2931,12 +3135,9 @@ class TablebaseGenerator {
             position.piece(attacker).moved = state.substate != 0;
             break;
         case PieceType::Penguin:
-            position.piece(attacker).cooldown = state.substate / 2;
-            if (state.substate & 1) {
-                position.apply_penguin_freeze(attacker);
-                if (!position.piece(attacker).action)
-                    return false;
-            }
+            if (!apply_penguin_substate(
+                  position, attacker, Position::NoPiece, state.substate))
+                return false;
             break;
         default: break;
         }
@@ -2991,12 +3192,27 @@ class TablebaseGenerator {
               ? encode_identical_compound_copycat(state)
               : encode_compound_copycat(state);
             const std::uint32_t secondarySubstate =
-              piece_substate(position, 4, secondaryType_);
+              piece_substate(position, 4, secondaryType_, 2);
             return placement * substates_ + secondarySubstate;
         }
         if (fourModels_) {
-            std::uint32_t primarySubstate = piece_substate(position, 2, attackerType_);
-            std::uint32_t secondarySubstate = piece_substate(position, 3, secondaryType_);
+            std::uint32_t primarySubstate =
+              piece_substate(position, 2, attackerType_, 3);
+            std::uint32_t secondarySubstate =
+              piece_substate(position, 3, secondaryType_, 2);
+            if (attackerType_ == PieceType::Penguin ||
+                secondaryType_ == PieceType::Penguin) {
+                const bool exact = attackerType_ == PieceType::Penguin &&
+                                   secondaryType_ == PieceType::Penguin
+                  ? penguin_freeze_state_matches(
+                      position, 2, 3, primarySubstate, 3, 2, secondarySubstate)
+                  : attackerType_ == PieceType::Penguin
+                  ? penguin_freeze_state_matches(position, 2, 3, primarySubstate)
+                  : penguin_freeze_state_matches(position, 3, 2, secondarySubstate);
+                if (!exact)
+                    throw std::runtime_error(
+                      "Penguin freeze layers are outside their exact state codec");
+            }
             const FourState state{position.side_to_move(), position.piece(0).square,
                                   position.piece(1).square, position.piece(2).square,
                                   position.piece(3).square};
@@ -3026,9 +3242,15 @@ class TablebaseGenerator {
             substate = position.continuation_ == Continuation::PrinceSecondMove ? 1 : 0;
             break;
         case PieceType::Pawn: substate = position.piece(2).moved ? 1 : 0; break;
-        case PieceType::Penguin:
-            substate = position.piece(2).action ? 1 : 0;
+        case PieceType::Penguin: {
+            substate = static_cast<std::uint8_t>(
+              piece_substate(position, 2, attackerType_, Position::NoPiece));
+            if (!penguin_freeze_state_matches(
+                  position, 2, Position::NoPiece, substate))
+                throw std::runtime_error(
+                  "Penguin freeze layers are outside their exact state codec");
             break;
+        }
         default: break;
         }
         return encode({position.side_to_move(), position.piece(0).square,
@@ -3129,10 +3351,16 @@ class TablebaseGenerator {
         std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
         if (!stream)
             throw std::runtime_error("cannot write tablebase checkpoint");
-        const std::array<char, 8> magic{{'U','F','T','B','C','P','3','\0'}};
+        const std::array<char, 8> magic{{'U','F','T','B','C','P','4','\0'}};
         const std::uint32_t piece = static_cast<std::uint32_t>(attackerType_);
+        const std::uint32_t secondary = static_cast<std::uint32_t>(secondaryType_);
+        const std::uint32_t secondaryColor = static_cast<std::uint32_t>(secondaryColor_);
         stream.write(magic.data(), magic.size());
         stream.write(reinterpret_cast<const char*>(&piece), sizeof(piece));
+        stream.write(reinterpret_cast<const char*>(&secondary), sizeof(secondary));
+        stream.write(reinterpret_cast<const char*>(&secondaryColor), sizeof(secondaryColor));
+        stream.write(reinterpret_cast<const char*>(&stateCount_), sizeof(stateCount_));
+        stream.write(reinterpret_cast<const char*>(&substates_), sizeof(substates_));
         stream.write(reinterpret_cast<const char*>(&processed), sizeof(processed));
         stream.write(reinterpret_cast<const char*>(nodes_),
                      std::uint64_t(stateCount_) * sizeof(Node));
@@ -3150,12 +3378,20 @@ class TablebaseGenerator {
         if (!stream)
             return 0;
         std::array<char, 8> magic{};
-        std::uint32_t piece = 0, processed = 0;
+        std::uint32_t piece = 0, secondary = 0, secondaryColor = 0;
+        std::uint32_t stateCount = 0, substates = 0, processed = 0;
         stream.read(magic.data(), magic.size());
         stream.read(reinterpret_cast<char*>(&piece), sizeof(piece));
+        stream.read(reinterpret_cast<char*>(&secondary), sizeof(secondary));
+        stream.read(reinterpret_cast<char*>(&secondaryColor), sizeof(secondaryColor));
+        stream.read(reinterpret_cast<char*>(&stateCount), sizeof(stateCount));
+        stream.read(reinterpret_cast<char*>(&substates), sizeof(substates));
         stream.read(reinterpret_cast<char*>(&processed), sizeof(processed));
-        const std::array<char, 8> expected{{'U','F','T','B','C','P','3','\0'}};
+        const std::array<char, 8> expected{{'U','F','T','B','C','P','4','\0'}};
         if (magic != expected || piece != static_cast<std::uint32_t>(attackerType_) ||
+            secondary != static_cast<std::uint32_t>(secondaryType_) ||
+            secondaryColor != static_cast<std::uint32_t>(secondaryColor_) ||
+            stateCount != stateCount_ || substates != substates_ ||
             processed > stateCount_)
             throw std::runtime_error("invalid tablebase checkpoint");
         stream.read(reinterpret_cast<char*>(nodes_),

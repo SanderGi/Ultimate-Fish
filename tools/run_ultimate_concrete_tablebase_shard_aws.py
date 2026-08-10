@@ -121,7 +121,7 @@ def closed_inventory() -> tuple[dict[str, object], ...]:
     names = [str(row["filename"]) for row in rows]
     if len(rows) != 232 or len(set(names)) != len(names):
         raise RuntimeError("closed stateful K+K+2 inventory cardinality residual")
-    if sum(int(row["packed_bytes"]) for row in rows) != 65_951_886_000:
+    if sum(int(row["packed_bytes"]) for row in rows) != 87_872_584_800:
         raise RuntimeError("closed stateful K+K+2 inventory byte residual")
     return tuple(rows)
 
@@ -138,7 +138,7 @@ def supported_inventory() -> tuple[dict[str, object], ...]:
     rows = tuple(sorted((*closed_inventory(), *mirror_copycat_inventory()),
                         key=lambda row: str(row["filename"])))
     if (len(rows) != 268 or len({str(row["filename"]) for row in rows}) != 268 or
-            sum(int(row["packed_bytes"]) for row in rows) != 72_736_864_200):
+            sum(int(row["packed_bytes"]) for row in rows) != 94_657_563_000):
         raise RuntimeError("supported K+K+2 inventory residual")
     return rows
 
@@ -441,12 +441,14 @@ def parse_uftb(path: Path, record: Mapping[str, object],
         primary_piece = PIECE_INDEX[str(record["primary"])]
         secondary_piece = PIECE_INDEX[str(record["secondary"])]
         giant = "giant" in {record["primary"], record["secondary"]}
-        expected_substates = next(
-            piece.state_factor for piece in plan.PIECES
+        primary_spec = next(
+            piece for piece in plan.PIECES
             if piece.name == record["primary"])
-        expected_substates *= next(
-            piece.state_factor for piece in plan.PIECES
+        secondary_spec = next(
+            piece for piece in plan.PIECES
             if piece.name == record["secondary"])
+        expected_substates = plan.pair_state_factor(
+            primary_spec, secondary_spec)
         if (primary != primary_piece or secondary != secondary_piece or
                 secondary_color != int(bool(record["opposing"])) or
                 states != expected_states or substates != expected_substates or

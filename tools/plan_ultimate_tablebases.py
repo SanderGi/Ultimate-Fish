@@ -23,10 +23,11 @@ GITHUB_FILE_LIMIT = 100_000_000
 # Leave a full 5 MB safety margin below GitHub's decimal 100 MB hard limit.
 DEFAULT_SHARD_LIMIT = 95_000_000
 DEFAULT_BUDGET = 10 * 1024**3
-# Two explicitly requested compound/stateful classes may exceed the original
-# storage target.  The current bundle plus their format overhead remains below
-# this narrow, documented ceiling (about 160 MiB over 10 GiB).
-AUTHORIZED_BUDGET = DEFAULT_BUDGET + 160 * 1024**2
+# Preserve the historically selected repository classes while exact causal
+# Penguin membership expands their logical payloads.  Most completed outputs
+# will be served from S3, so this is now a 12 GiB planning ceiling rather than
+# a promise that every logical payload will be committed to Git.
+AUTHORIZED_BUDGET = 12 * 1024**3
 
 
 @dataclass(frozen=True)
@@ -61,8 +62,8 @@ PIECES = (
     Piece("ghost", decisive=True, state_factor=2, stateless=False,
           note="visible/hidden"),
     Piece("mage", support=True),
-    Piece("penguin", decisive=True, state_factor=2, stateless=False,
-          note="inactive or exact geometry-derived freeze aura"),
+    Piece("penguin", decisive=True, state_factor=4, stateless=False,
+          note="exact causal freeze membership for both Kings and any companion"),
     Piece("parasite", decisive=True),
     Piece("devil", state_factor=4, stateless=False, closed_k2=False,
           note="insufficient alone; generated Minions belong to larger closures"),
@@ -114,6 +115,28 @@ def compound_copycat_pair_states(identical_pair: bool = False) -> int:
     """
     result = 2 * SQUARES * (SQUARES - 1) * (SQUARES - 2) * (SQUARES - 3)
     return result // 2 if identical_pair else result
+
+
+def material_state_factor(piece: Piece, *, four_models: bool = False,
+                          other: Piece | None = None) -> int:
+    """Return the exact substate factor in this material domain.
+
+    A Penguin records which adjacent pieces it actually froze on its preceding
+    move.  Later movement can enter an active Penguin's neighbourhood without
+    joining that causal set, so geometry alone cannot recover the state.  Two
+    King membership bits give four K+Penguin-v-K substates.  A distinct fourth
+    model adds one bit; another Penguin is immune and adds no target bit.
+    """
+    if piece.name != "penguin":
+        return piece.state_factor
+    if not four_models or other is None or other.name == "penguin":
+        return 4
+    return 8
+
+
+def pair_state_factor(first: Piece, second: Piece) -> int:
+    return (material_state_factor(first, four_models=True, other=second) *
+            material_state_factor(second, four_models=True, other=first))
 
 
 def split_plane_bytes(states: int) -> int:
@@ -172,7 +195,7 @@ def stateful_candidates() -> list[dict[str, object]]:
         for second in closed[first_index:]:
             if first.stateless and second.stateless:
                 continue
-            factor = first.state_factor * second.state_factor
+            factor = pair_state_factor(first, second)
             if sufficient_pair(first, second, True):
                 states = placement_states(
                     first.models + second.models,
@@ -243,7 +266,7 @@ def inventory(budget: int = DEFAULT_BUDGET) -> list[dict[str, object]]:
     for piece in PIECES:
         if not piece.decisive:
             continue
-        states = placement_states(piece.models) * piece.state_factor
+        states = placement_states(piece.models) * material_state_factor(piece)
         single_filename = {"queen": "kqk.uftb", "rook": "krk.uftb"}.get(
             piece.name, f"k{piece.name}k.uftb")
         result.append(class_record(f"K{piece.name}vK", states, "kings+1", piece.note,
@@ -287,6 +310,8 @@ def inventory(budget: int = DEFAULT_BUDGET) -> list[dict[str, object]]:
     # Deliberate, narrowly scoped over-budget additions. Copycat is exact only
     # while its linked half remains at the mirrored square; Bishop cannot split
     # or save one half, so this material class is closed under that invariant.
+    by_name = {piece.name: piece for piece in PIECES}
+    penguin_factor = pair_state_factor(by_name["bishop"], by_name["penguin"])
     requested = (
         class_record(
             "KcopycatvKbishop", compound_copycat_pair_states(),
@@ -294,9 +319,26 @@ def inventory(budget: int = DEFAULT_BUDGET) -> list[dict[str, object]]:
             opposing=True, filename="kcopycatkbishop.uftb",
             note="linked mirrored Copycat compound; displaced/singleton states excluded"),
         class_record(
-            "KdragonvKpenguin", placement_states(2) * 2,
+            "KdragonvKpenguin", placement_states(2) * pair_state_factor(
+                by_name["dragon"], by_name["penguin"]),
             "kings+2-requested", primary="dragon", secondary="penguin",
             opposing=True, filename="kdragonkpenguin.uftb"),
+        class_record(
+            "KbishopvKpenguin", placement_states(2) * penguin_factor,
+            "kings+2-requested", primary="bishop", secondary="penguin",
+            opposing=True, filename="kbishopkpenguin.uftb",
+            note="exact causal Penguin membership supersedes legacy aura bit"),
+        class_record(
+            "KbishoppenguinvK", placement_states(2) * penguin_factor,
+            "kings+2-requested", primary="bishop", secondary="penguin",
+            filename="kbishoppenguink.uftb",
+            note="exact causal Penguin membership supersedes legacy aura bit"),
+        class_record(
+            "KbombvKpenguin", placement_states(2) * pair_state_factor(
+                by_name["bomb"], by_name["penguin"]),
+            "kings+2-requested", primary="bomb", secondary="penguin",
+            opposing=True, filename="kbombkpenguin.uftb",
+            note="exact causal Penguin membership supersedes legacy aura bit"),
     )
     known = {str(record["filename"]) for record in result}
     result.extend(record for record in requested

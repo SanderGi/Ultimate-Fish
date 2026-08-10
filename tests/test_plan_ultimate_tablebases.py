@@ -39,6 +39,17 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertEqual(tb.placement_states(2), 37_957_920)
         self.assertEqual(tb.placement_states(2, identical_pair=True), 18_978_960)
 
+    def test_penguin_factor_preserves_exact_causal_membership(self):
+        pieces = {piece.name: piece for piece in tb.PIECES}
+        penguin = pieces["penguin"]
+        self.assertEqual(4, tb.material_state_factor(penguin))
+        self.assertEqual(8, tb.material_state_factor(
+            penguin, four_models=True, other=pieces["bomb"]))
+        self.assertEqual(4, tb.material_state_factor(
+            penguin, four_models=True, other=penguin))
+        self.assertEqual(8, tb.pair_state_factor(penguin, pieces["bomb"]))
+        self.assertEqual(16, tb.pair_state_factor(penguin, penguin))
+
     def test_all_decisive_single_material_is_planned(self):
         planned = {record["class"] for record in tb.inventory()
                    if record["phase"] == "kings+1"}
@@ -81,7 +92,7 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertLessEqual(total, tb.AUTHORIZED_BUDGET)
         admitted = [record for record in records
                     if record["phase"] == "kings+2-stateful"]
-        self.assertEqual(len(admitted), 29)
+        self.assertEqual(len(admitted), 26)
         represented = {str(record[side]) for record in admitted
                        for side in ("primary", "secondary")}
         self.assertTrue({"pawn", "berserker", "ghost", "penguin", "sniper",
@@ -91,7 +102,9 @@ class TablebasePlanTests(unittest.TestCase):
         requested = {record["filename"] for record in records
                      if record["phase"] == "kings+2-requested"}
         self.assertEqual(requested, {
-            "kcopycatkbishop.uftb", "kdragonkpenguin.uftb"})
+            "kcopycatkbishop.uftb", "kdragonkpenguin.uftb",
+            "kbishopkpenguin.uftb", "kbishoppenguink.uftb",
+            "kbombkpenguin.uftb"})
 
     def test_compound_copycat_indexes_one_anchor_not_both_halves(self):
         records = {record["filename"]: record for record in tb.inventory()}
