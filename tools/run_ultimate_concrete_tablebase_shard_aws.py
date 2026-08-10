@@ -70,6 +70,7 @@ MODEL_SOURCES = (
     "src/ultimate/nnue.cpp",
     "tools/plan_ultimate_tablebases.py",
     "tools/ultimate_tablebase_shards.py",
+    "tools/ultimate_information_tablebases.py",
     "tools/run_double_jester_information_capture.py",
     "tools/run_ultimate_concrete_tablebase_shard_aws.py",
 )

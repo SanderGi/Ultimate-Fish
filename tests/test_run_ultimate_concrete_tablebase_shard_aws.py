@@ -6,7 +6,10 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+import shutil
 import struct
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -21,6 +24,19 @@ SPEC.loader.exec_module(runner)
 
 
 class ConcreteAwsRunnerTest(unittest.TestCase):
+    def test_staged_source_inventory_has_a_closed_python_import_graph(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for relative in runner.MODEL_SOURCES:
+                target = root / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(ROOT / relative, target)
+            subprocess.run([
+                sys.executable,
+                str(root / "tools/run_ultimate_concrete_tablebase_shard_aws.py"),
+                "--help",
+            ], cwd=root, check=True, stdout=subprocess.DEVNULL)
+
     def test_inventory_and_wave_conservation(self) -> None:
         self.assertEqual(232, len(runner.closed_inventory()))
         rows = runner.supported_inventory()
