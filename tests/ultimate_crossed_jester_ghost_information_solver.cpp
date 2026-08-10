@@ -39,6 +39,29 @@ Model::KnowledgeState fixture() {
     return state;
 }
 
+Model::KnowledgeState external_fixture() {
+    Model::KnowledgeState state;
+    state.frame = {Color::Black, square("e5"), square("a1"),
+                   square("e4"), {}};
+    const std::array<const char*, 8> ghosts{
+      "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"};
+    for (const char* name : ghosts) {
+        state.atoms.push_back({{true, square(name)}});
+        state.atoms.push_back({{false, square(name)}});
+    }
+    for (const Model::HistoryAtom& atom : state.atoms)
+        state.worlds.set(Model::world_variable(state.frame, atom.world));
+    Model::KnowledgeCell first;
+    Model::KnowledgeCell second;
+    for (std::uint32_t atom = 0; atom < state.atoms.size(); ++atom)
+        (atom % 2 ? second : first).push_back(atom);
+    state.white.cells = {first, second};
+    for (std::uint32_t atom = 0; atom < state.atoms.size(); atom += 2)
+        state.black.cells.push_back({atom, atom + 1});
+    Model::validate_knowledge_state(state);
+    return state;
+}
+
 void solver_arena_test() {
     Solver::Arena arena;
     const Model::KnowledgeState root = fixture();
@@ -120,6 +143,39 @@ void solver_arena_test() {
               << " black_gates " << black.certificate.gates
               << " white_children " << white.certificate.childReferences
               << " replay_new_nodes 0 bellman_residual 0\n";
+
+    Solver::Arena externalArena;
+    const Solver::NodeId externalId = externalArena.intern(
+      external_fixture());
+    const Solver::TargetBellmanPlan external = externalArena.bellman_plan(
+      externalId, Color::Black, true);
+    require(external.certificate.externalReferences > 0 &&
+             external.certificate.internalReferences > 0,
+            "crossed external fixture did not retain mixed child domains");
+    std::uint64_t lowerGhost = 0;
+    std::uint64_t exactTerminal = 0;
+    for (const Solver::ActionGatePlan& gate : external.gates)
+        for (const Solver::ChildReference& child : gate.children) {
+            if (child.domain == Model::ChildDomain::SameClass)
+                require(child.node.has_value(),
+                        "crossed internal reference lost its node");
+            else {
+                require(!child.node.has_value() &&
+                          child.domain != Model::ChildDomain::Invalid,
+                        "crossed external reference was interned or invalid");
+                lowerGhost += child.domain == Model::ChildDomain::LowerGhost;
+                exactTerminal +=
+                  child.domain == Model::ChildDomain::ExactTerminal;
+                if (child.domain == Model::ChildDomain::ExactTerminal)
+                    require(child.child.winner.has_value(),
+                            "crossed terminal reference lost its winner");
+            }
+        }
+    require(lowerGhost > 0 && exactTerminal > 0,
+            "crossed Bellman plan lost lower-Ghost or terminal references");
+    std::cout << "crossed_solver_external lower_ghost " << lowerGhost
+              << " exact_terminal " << exactTerminal
+              << " unresolved_as_draw 0 residual 0\n";
 }
 
 }  // namespace
