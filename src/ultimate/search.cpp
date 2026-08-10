@@ -1093,11 +1093,11 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
         int best = maximizing ? -Infinity : Infinity;
         BeliefPv bestPv;
         std::vector<std::string> orderedActions(actionSet.begin(), actionSet.end());
-        // One- and two-ply information searches are deliberately cheap, and
-        // their horizon move is often a poor guide.  From depth four onward,
-        // the completed PV is valuable enough to pay for ordering every
-        // observation branch before alpha-beta expansion.
-        if (currentIterationDepth >= 4 &&
+        // Reuse the prior completed information-set PV as soon as one exists.
+        // This changes only alpha-beta ordering, never observation branching
+        // or the completed score. Color-balanced fixed-node matches showed
+        // that waiting until depth four wasted 4-10% of belief nodes.
+        if (currentIterationDepth >= 2 &&
             static_cast<std::size_t>(ply) < previousIterationPv.size()) {
             const auto pvAction = std::find(
               orderedActions.begin(), orderedActions.end(),
