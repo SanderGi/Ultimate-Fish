@@ -370,10 +370,41 @@
       ]
     },
     {
+      "id": "concrete-wave0-003",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave0-003-ac9b2d32-resume-v1.service",
+      "dependencies": ["concrete-wave0-020"],
+      "advanceable": true,
+      "checkpoint_paths": ["/mnt/ultimatefish/concrete-penguin-1083b6f8/wave0-003-resume-v1/work/scratch/*"],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-penguin-1083b6f8/wave0-003-resume-v1/work/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-penguin-1083b6f8/wave0-003-resume-v1/work/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/concrete-penguin-1083b6f8/wave0-003-resume-v1/source/ultimatefish/tools/resume_ultimate_concrete_frontier_aws.py",
+          "sha256": "c84ef0b8d082c24a62f6ca18e6e11df67d35792162a6d9a1ff07c6d329ba0ff0"
+        },
+        {
+          "path": "/mnt/ultimatefish/concrete-penguin-1083b6f8/wave0-003-resume-v1/source/ultimatefish/tools/ultimate_concrete_wave0_003_resume.json",
+          "sha256": "9ba6a5ca60ecdd1da2e7572bf28daeb6a803f6e5b2ebcc53ae846d220c2f1ac3"
+        },
+        {
+          "path": "/mnt/ultimatefish/concrete-penguin-1083b6f8/wave0-003-resume-v1/source/ultimatefish/tools/ultimatefish-concrete-wave0-003-ac9b2d32-resume-v1.service",
+          "sha256": "72b598030eb5ca5db9f52f7e844e1e7e9af5a6f2ae038b6082b2dc9b3124f169"
+        },
+        {
+          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-003-full-v3/dependencies/manifest.json",
+          "sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504"
+        }
+      ],
+      "s3_certificates": []
+    },
+    {
       "id": "concrete-wave0-remaining",
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-concrete-wave0-next.service",
-      "dependencies": ["concrete-wave0-020"],
+      "dependencies": ["concrete-wave0-003"],
       "queue_stage": true,
       "checkpoint_paths": [],
       "completion_paths": [],

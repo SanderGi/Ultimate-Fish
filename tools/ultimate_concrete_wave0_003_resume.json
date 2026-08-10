@@ -1,0 +1,75 @@
+{
+  "schema": "ultimate-concrete-frontier-resume-v1",
+  "status": "resource-gated-frontier-preserved",
+  "source_work_directory": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-003-full-v3",
+  "generator_model_sha256": "ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6",
+  "inventory_sha256": "b82a3d87a42ba342b5b611d068783876e3ecf2701e7684400534b937bbda4fd0",
+  "binary_sha256": "09113a356cae6b2cb91801d2113d88dff98226b27fd0f0841774db7a89c7cf50",
+  "dependency_manifest_sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504",
+  "states": 379579200,
+  "substates": 10,
+  "last_frontier_marker": "reverse states 2000000/379579200",
+  "resource_violation": "minimum-free resource limit crossed: 429381267456 < 429496729600",
+  "selection": {"wave": 0, "begin": 3, "end": 4, "classes": 1},
+  "record": {
+    "filename": "kberserkerdragonk.uftb",
+    "primary": "berserker",
+    "secondary": "dragon",
+    "opposing": false,
+    "states": 379579200,
+    "packed_bytes": 474474000,
+    "shards": 5,
+    "phase": "kings+2-stateful"
+  },
+  "run_plan": {
+    "relative_path": "run-plan.json",
+    "bytes": 18352,
+    "sha256": "b2ccc642ba0862f88e5b848f7015e89be76b49583d3887b1b419f59626623e8a"
+  },
+  "generator_log": {
+    "relative_path": "logs/generate/kberserkerdragonk.log",
+    "bytes": 9991,
+    "sha256": "93a365bf0b32d4c3d173f7dbb866d507c29f9957eab0b7b70433ed7bb52b0595"
+  },
+  "resource_certificate": {
+    "relative_path": "logs/generate/kberserkerdragonk.resources.json",
+    "bytes": 311,
+    "sha256": "b817579648638bc70deb637a54babf25c55aa3d8c91a1383f6da48b6cd067506"
+  },
+  "binary": {
+    "relative_path": "binary/ultimate_tablebase",
+    "bytes": 644032,
+    "sha256": "09113a356cae6b2cb91801d2113d88dff98226b27fd0f0841774db7a89c7cf50"
+  },
+  "dependency_manifest": {
+    "relative_path": "dependencies/manifest.json",
+    "bytes": 28281,
+    "sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504"
+  },
+  "planes": {
+    "degrees": {
+      "relative_path": "scratch/kberserkerdragonk.degrees",
+      "bytes": 1518316800,
+      "allocated_bytes": 1445199872,
+      "sha256": "60aefa7615c9b22a57beab5ea2ec6cd0bc1bf6bd96775651dbae18c5b9741df2"
+    },
+    "nodes": {
+      "relative_path": "scratch/kberserkerdragonk.nodes",
+      "bytes": 3036633600,
+      "allocated_bytes": 3036635136,
+      "sha256": "a9ce150ba6c6855f7c3a0e0fd6d24125e15dfa65d79674d1bd6dcf16bd550b7b"
+    },
+    "offsets": {
+      "relative_path": "scratch/kberserkerdragonk.offsets",
+      "bytes": 3036633608,
+      "allocated_bytes": 3036635136,
+      "sha256": "d3e0166001bd80125fb1d75a332571cf01e314a0c23e3f14a3418ee1f73b2339"
+    },
+    "predecessors": {
+      "relative_path": "scratch/kberserkerdragonk.predecessors",
+      "bytes": 51175745432,
+      "allocated_bytes": 3654995968,
+      "sha256": "308f95a96d1f1be36d925018f2ee239420afcaba58b30c4f4194802797802f12"
+    }
+  }
+}

@@ -192,6 +192,29 @@ class FrontierResumeTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "selection/class"):
                 RESUME.authenticate_manifest(document)
 
+    def test_class003_production_resume_is_bounded_and_preserves_source(self) -> None:
+        manifest = json.loads((
+            ROOT / "tools/ultimate_concrete_wave0_003_resume.json").read_text())
+        self.assertEqual(
+            RESUME.concrete.normalized_record(
+                RESUME.concrete.wave_inventory(0)[3]), manifest["record"])
+        self.assertEqual(
+            "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/"
+            "wave0-003-full-v3", manifest["source_work_directory"])
+        self.assertLess(
+            manifest["planes"]["predecessors"]["allocated_bytes"],
+            manifest["planes"]["predecessors"]["bytes"])
+        service = (ROOT / "tools/ultimatefish-concrete-wave0-003-"
+                   "ac9b2d32-resume-v1.service").read_text()
+        self.assertIn("--minimum-free-bytes 322122547200", service)
+        self.assertIn("--reverse-edge-bytes-limit 60129542144", service)
+        self.assertIn("Restart=no", service)
+        self.assertIn(
+            "ReadOnlyPaths=" + manifest["source_work_directory"], service)
+        self.assertIn(
+            "--work-directory /mnt/ultimatefish/concrete-penguin-1083b6f8/"
+            "wave0-003-resume-v1/work", service)
+
 
 if __name__ == "__main__":
     unittest.main()
