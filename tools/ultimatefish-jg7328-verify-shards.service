@@ -2,10 +2,10 @@
 Description=Ultimate Fish exact Jester/Ghost 732852b8 shard verification
 After=network-online.target
 Wants=network-online.target
-ConditionPathIsRegular=/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/bundle-manifest.json
-ConditionPathIsRegular=/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/ultimate_jester_ghost_information_tablebase
-ConditionPathIsRegular=/mnt/ultimatefish/jester-ghost-migration-7328-prep/rebound-7328/work/transitions/rebind-manifest.json
-ConditionPathIsRegular=/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/bin/verify_ultimate_jester_ghost_rebound_aws.py
+ConditionPathExists=/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/bundle-manifest.json
+ConditionPathExists=/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/ultimate_jester_ghost_information_tablebase
+ConditionPathExists=/mnt/ultimatefish/jester-ghost-migration-7328-prep/rebound-7328/work/transitions/rebind-manifest.json
+ConditionPathExists=/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/bin/verify_ultimate_jester_ghost_rebound_aws.py
 
 [Service]
 Type=oneshot

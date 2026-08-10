@@ -31,6 +31,8 @@ class VerifyReboundTest(unittest.TestCase):
         self.assertIn("ProtectSystem=strict", unit)
         self.assertIn("ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/rebound-7328", unit)
         self.assertIn("978fdf69362577c824d9e456a28a51d133cca4b6823fcab9e8e7555e2c11a147", unit)
+        self.assertNotIn("ConditionPathIsRegular", unit)
+        self.assertEqual(unit.count("ConditionPathExists="), 4)
 
     def manifests(self, root: Path):
         source, model, observation = digest(b"source"), digest(b"model"), digest(b"observation")
