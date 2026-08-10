@@ -352,7 +352,22 @@
           "sha256": "03ec22f4b0caaf6cbe84db50106763107cc21238720c845962c437d214a2ec15"
         }
       ],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/bc27862a2ff4bf0cc3c141261a3a4f4d424e34a2fa29af655175c44fd9643c24/kberserkerkturtle-bc27862a2ff4bf0cc3c141261a3a4f4d424e34a2fa29af655175c44fd9643c24.tar.zst",
+          "version_id": "ewEfzR2SHgsWtETshq9OVYLiwhdNzvHh",
+          "sha256": "bc27862a2ff4bf0cc3c141261a3a4f4d424e34a2fa29af655175c44fd9643c24",
+          "size": 9246626
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/ef8e332fdd328787429ca138c3404085a61168b553711644a2be9a8fa3eeab7d/wave-certificate.json",
+          "version_id": "NdZZmdiwxRbz9EzOE8ehVZuTSzKvfpLe",
+          "sha256": "ef8e332fdd328787429ca138c3404085a61168b553711644a2be9a8fa3eeab7d",
+          "size": 2563
+        }
+      ]
     },
     {
       "id": "concrete-wave0-remaining",
