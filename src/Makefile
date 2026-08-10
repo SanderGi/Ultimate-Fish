@@ -94,6 +94,7 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cp
 	ultimate-jester-ghost-information-test \
 	ultimate-jester-ghost-information-self-test \
 	ultimate-crossed-jester-ghost-information-model-test \
+	ultimate-crossed-jester-ghost-information-solver-test \
 	ultimate-external-robdd-test \
 	ultimate-joint-jester-information-tablebase \
 	ultimate-joint-jester-information-preserver \
@@ -515,6 +516,15 @@ ultimate-crossed-jester-ghost-information-model-test:
 		ultimate/information.cpp ultimate/nnue.cpp \
 		-o ultimate_crossed_jester_ghost_information_model_test
 	./ultimate_crossed_jester_ghost_information_model_test
+
+ultimate-crossed-jester-ghost-information-solver-test:
+	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror -Iultimate \
+		../tests/ultimate_crossed_jester_ghost_information_solver.cpp \
+		ultimate/crossed_jester_ghost_information_solver.cpp \
+		ultimate/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
+		ultimate/information.cpp ultimate/nnue.cpp \
+		-o ultimate_crossed_jester_ghost_information_solver_test
+	./ultimate_crossed_jester_ghost_information_solver_test
 
 VPATH = syzygy:nnue:nnue/features
 
