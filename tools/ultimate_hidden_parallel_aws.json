@@ -1,6 +1,6 @@
 {
-  "schema": "ultimate-hidden-parallel-aws-v1",
-  "canonical_commit": "7af5dec2",
+  "schema": "ultimate-hidden-parallel-aws-v2",
+  "canonical_commit": "abe24c3a",
   "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
   "jobs": [
     {
@@ -31,6 +31,16 @@
       "bundle_sha256": "a131a18d28e2431b5edc0b076f006a9fc303ae920d256b16fd96c38121b4d2e5",
       "bundle_version_id": "aiO_9ksEAtRRP9OnHvgFggiwslUc4rdO",
       "unit": "tools/ultimatefish-hidden-kghostparasitek-7af5dec2.service",
+      "runner_sha256": "f83b7ecae74ecf43f98904b1c1d786effc4fdb5b63e2928fee50609e7436d516"
+    },
+    {
+      "id": "parasite-ghost-opposing-measure",
+      "instance_id": "i-0b4523116b2f7765c",
+      "work_directory": "/mnt/ultimatefish/hidden-kghostkparasite-abe24c3a",
+      "bundle_key": "bundles/hidden/commit/abe24c3a/sha256/9a7b06451f1f9adc82e61fd5a23a0824553d86fa24ca3ec2c7f202a4061e39d0/ultimate-kghostkparasite.tar",
+      "bundle_sha256": "9a7b06451f1f9adc82e61fd5a23a0824553d86fa24ca3ec2c7f202a4061e39d0",
+      "bundle_version_id": "JvQTS0Rn0h6IdnkIpukyO4CEEhvVliEx",
+      "unit": "tools/ultimatefish-hidden-kghostkparasite-abe24c3a.service",
       "runner_sha256": "f83b7ecae74ecf43f98904b1c1d786effc4fdb5b63e2928fee50609e7436d516"
     }
   ]

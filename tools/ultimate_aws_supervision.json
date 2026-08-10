@@ -445,6 +445,26 @@
         }
       ],
       "s3_certificates": []
+    },
+    {
+      "id": "parasite-ghost-opposing-measure",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-hidden-kghostkparasite-abe24c3a.service",
+      "dependencies": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/hidden-kghostkparasite-abe24c3a/work/logs/*.log",
+        "/mnt/ultimatefish/hidden-kghostkparasite-abe24c3a/work/transitions/shard-*.verified"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/hidden-kghostkparasite-abe24c3a/work/artifact-manifest.json"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/hidden-kghostkparasite-abe24c3a/tools/run_ultimate_ghost_parasite_aws.py",
+          "sha256": "f83b7ecae74ecf43f98904b1c1d786effc4fdb5b63e2928fee50609e7436d516"
+        }
+      ],
+      "s3_certificates": []
     }
   ]
 }
