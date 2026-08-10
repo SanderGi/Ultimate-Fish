@@ -75,6 +75,25 @@ void validate_square(std::uint8_t square, const char* field) {
     throw std::runtime_error("crossed-information square rank is invalid");
 }
 
+[[nodiscard]] std::uint32_t pair_rank(std::uint32_t first,
+                                      std::uint32_t second,
+                                      std::uint32_t count) {
+    if (first >= second || second >= count)
+        throw std::invalid_argument("invalid crossed public royal pair");
+    return first * (2 * count - first - 1) / 2 + second - first - 1;
+}
+
+[[nodiscard]] std::pair<std::uint32_t, std::uint32_t> pair_unrank(
+  std::uint32_t rank, std::uint32_t count) {
+    for (std::uint32_t first = 0; first + 1 < count; ++first) {
+        const std::uint32_t width = count - first - 1;
+        if (rank < width)
+            return {first, first + 1 + rank};
+        rank -= width;
+    }
+    throw std::runtime_error("crossed public royal pair index is invalid");
+}
+
 void validate_source(const ConcreteState& state) {
     validate_side(state.side);
     validate_square(state.whiteKing, "White King square");
@@ -333,6 +352,53 @@ void normalize_partition(KnowledgePartition& partition) {
 }
 
 }  // namespace
+
+std::uint32_t encode_public_frame(const PublicFrame& frame) {
+    validate_frame(frame);
+    constexpr std::uint32_t PairCount =
+      (Squares - 1) * (Squares - 2) / 2;
+    constexpr std::uint32_t VisibilityCount = Squares - 2;
+    const std::uint32_t first = rank_excluding(
+      frame.royalFirst, {frame.blackKing});
+    const std::uint32_t second = rank_excluding(
+      frame.royalSecond, {frame.blackKing});
+    std::uint32_t visibility = 0;
+    if (frame.visibleGhost)
+        visibility = 1 + rank_excluding(
+          *frame.visibleGhost,
+          {frame.blackKing, frame.royalFirst, frame.royalSecond});
+    return (((static_cast<std::uint32_t>(frame.side) * Squares +
+              frame.blackKing) * PairCount +
+             pair_rank(first, second, Squares - 1)) *
+            VisibilityCount + visibility);
+}
+
+PublicFrame decode_public_frame(std::uint32_t index) {
+    if (index >= RawPublicFrameCount)
+        throw std::out_of_range("crossed public frame index");
+    constexpr std::uint32_t PairCount =
+      (Squares - 1) * (Squares - 2) / 2;
+    constexpr std::uint32_t VisibilityCount = Squares - 2;
+    const std::uint32_t original = index;
+    const std::uint32_t visibility = index % VisibilityCount;
+    index /= VisibilityCount;
+    const auto [firstRank, secondRank] = pair_unrank(index % PairCount,
+                                                     Squares - 1);
+    index /= PairCount;
+    const std::uint8_t blackKing = static_cast<std::uint8_t>(index % Squares);
+    const Color side = static_cast<Color>(index / Squares);
+    const std::uint8_t first = unrank_excluding(firstRank, {blackKing});
+    const std::uint8_t second = unrank_excluding(secondRank, {blackKing});
+    PublicFrame frame{side, blackKing, std::min(first, second),
+                      std::max(first, second), {}};
+    if (visibility)
+        frame.visibleGhost = unrank_excluding(
+          visibility - 1,
+          {blackKing, frame.royalFirst, frame.royalSecond});
+    if (encode_public_frame(frame) != original)
+        throw std::runtime_error("crossed public frame codec is not involutive");
+    return frame;
+}
 
 std::uint32_t encode_source(const ConcreteState& source) {
     const ConcreteState state = horizontal_canonical(source);

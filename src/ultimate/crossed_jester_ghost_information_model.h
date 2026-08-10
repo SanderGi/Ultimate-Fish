@@ -28,6 +28,10 @@ inline constexpr std::uint32_t LowerJesterStateCount =
 inline constexpr std::uint32_t LowerGhostStateCount =
   LowerJesterStateCount * 2;
 inline constexpr unsigned ProductVariables = 2 * Position::BoardSquares;
+inline constexpr std::uint32_t RawPublicFrameCount =
+  2 * Position::BoardSquares *
+  ((Position::BoardSquares - 1) * (Position::BoardSquares - 2) / 2) *
+  (Position::BoardSquares - 2);
 
 // Physical kjesterkghost source state. Jester and Ghost retain fixed material
 // roles through the source table's White-King horizontal fold.
@@ -59,6 +63,12 @@ struct PublicFrame {
                lhs.visibleGhost == rhs.visibleGhost;
     }
 };
+
+// Dense, stable public-frame codec used to seed and shard the complete graph.
+// The royal silhouettes are unordered; visibility zero means hidden and the
+// other 77 values name a visible Ghost outside the three public squares.
+[[nodiscard]] std::uint32_t encode_public_frame(const PublicFrame& frame);
+[[nodiscard]] PublicFrame decode_public_frame(std::uint32_t index);
 
 // White privately knows kingAtFirst. Black privately knows ghost. Neither
 // coordinate is encoded as an independent marginal in an information state.

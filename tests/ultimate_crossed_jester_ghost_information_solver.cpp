@@ -45,6 +45,57 @@ class CountingLowerOracle final : public Solver::LowerForceOracle {
     mutable std::uint64_t ghostQueries = 0;
 };
 
+void public_frame_codec_test() {
+    require(Model::RawPublicFrameCount == 38'450'880,
+            "crossed public frame domain changed");
+    const std::array<std::uint32_t, 9> witnesses{
+      0, 1, 76, 77, 78, 19'225'439, 19'225'440,
+      Model::RawPublicFrameCount - 2, Model::RawPublicFrameCount - 1};
+    for (const std::uint32_t raw : witnesses) {
+        const Model::PublicFrame frame = Model::decode_public_frame(raw);
+        require(Model::encode_public_frame(frame) == raw,
+                "crossed public frame witness did not round-trip");
+    }
+
+    // Exhaust the encoder in its declared dense order. This proves both the
+    // exact count and that every valid hidden/visible frame occupies one slot.
+    std::uint32_t expected = 0;
+    for (const Color side : {Color::White, Color::Black})
+        for (std::uint8_t black = 0; black < Position::BoardSquares; ++black) {
+            std::vector<std::uint8_t> free;
+            for (std::uint8_t candidate = 0;
+                 candidate < Position::BoardSquares; ++candidate)
+                if (candidate != black)
+                    free.push_back(candidate);
+            for (std::size_t first = 0; first + 1 < free.size(); ++first)
+                for (std::size_t second = first + 1; second < free.size();
+                     ++second) {
+                    Model::PublicFrame frame{side, black, free[first],
+                                             free[second], {}};
+                    require(Model::encode_public_frame(frame) == expected++,
+                            "crossed hidden public frame order is not dense");
+                    for (const std::uint8_t ghost : free)
+                        if (ghost != frame.royalFirst &&
+                            ghost != frame.royalSecond) {
+                            frame.visibleGhost = ghost;
+                            require(Model::encode_public_frame(frame) ==
+                                      expected++,
+                                    "crossed visible public frame order is not dense");
+                        }
+                }
+        }
+    require(expected == Model::RawPublicFrameCount,
+            "crossed public frame enumeration did not conserve the domain");
+    bool rejected = false;
+    try {
+        (void)Model::decode_public_frame(Model::RawPublicFrameCount);
+    }
+    catch (const std::out_of_range&) {
+        rejected = true;
+    }
+    require(rejected, "crossed public frame codec accepted an out-of-range ID");
+}
+
 Model::KnowledgeState fixture() {
     Model::KnowledgeState state;
     state.frame = {Color::Black, square("h10"), square("a1"),
@@ -433,6 +484,7 @@ void solver_arena_test() {
 
 int main() {
     try {
+        Stockfish::Ultimate::public_frame_codec_test();
         Stockfish::Ultimate::solver_arena_test();
         return 0;
     }
