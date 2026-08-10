@@ -40,6 +40,35 @@ int score_from_tt(int score, int ply) {
     return score;
 }
 
+// Protocol notation is the public action chosen by a UI, but Move also carries
+// internal auxiliary and promotion identity. Most native actions have one
+// legal Move for a spelling; if a future position exposes two, selecting the
+// first would silently collapse distinct actions. Treat such a spelling as
+// unusable until the protocol has an explicit disambiguator.
+std::optional<Move> unique_notated_move(const Position& position,
+                                        std::string_view notation) {
+    std::optional<Move> result;
+    for (const Move& move : position.legal_moves()) {
+        if (position.move_to_string(move) != notation)
+            continue;
+        if (result)
+            return std::nullopt;
+        result = move;
+    }
+    return result;
+}
+
+std::set<std::string> unambiguous_notated_moves(const Position& position) {
+    std::map<std::string, std::size_t> counts;
+    for (const Move& move : position.legal_moves())
+        ++counts[position.move_to_string(move)];
+    std::set<std::string> result;
+    for (const auto& [notation, count] : counts)
+        if (count == 1)
+            result.insert(notation);
+    return result;
+}
+
 }  // namespace
 
 PublicBeliefState::PublicBeliefState(DisclosureContext disclosure) :
@@ -82,6 +111,10 @@ const std::string& PublicBeliefState::public_view() const {
     return publicView_;
 }
 
+const std::map<std::string, Position>& PublicBeliefState::concrete_worlds() const {
+    return worlds_;
+}
+
 bool PublicBeliefState::add(Position position, std::string* error) {
     if (side_ && position.side_to_move() != *side_) {
         if (error)
@@ -119,9 +152,7 @@ std::vector<std::string> PublicBeliefState::common_moves() const {
     bool first = true;
     for (const auto& [upn, position] : worlds_) {
         (void)upn;
-        std::set<std::string> legal;
-        for (const Move& move : position.legal_moves())
-            legal.insert(position.move_to_string(move));
+        std::set<std::string> legal = unambiguous_notated_moves(position);
         if (first) {
             common = std::move(legal);
             first = false;
@@ -225,13 +256,13 @@ bool PublicBeliefState::condition_on_decision_markers(
 }
 
 BeliefSuccessorPartitions PublicBeliefState::successor_partitions(
-  std::string_view moveText) const {
+  std::string_view moveText, bool includeDecisionObservation) const {
     BeliefSuccessorPartitions result;
     result.before = worlds_.size();
     std::map<std::string, std::map<std::string, Position>> observations;
     for (const auto& [upn, before] : worlds_) {
         (void)upn;
-        const std::optional<Move> move = before.move_from_string(moveText);
+        const std::optional<Move> move = unique_notated_move(before, moveText);
         if (!move) {
             ++result.incompatible;
             continue;
@@ -244,7 +275,7 @@ BeliefSuccessorPartitions PublicBeliefState::successor_partitions(
         }
         std::string observation = transition_observation_key(
           before, *move, after, disclosure_);
-        if (!after.game_over() &&
+        if (includeDecisionObservation && !after.game_over() &&
             after.side_to_move() == disclosure_.observer) {
             const std::string decision = decision_observation_key(
               after, disclosure_);
@@ -849,17 +880,219 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
 BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
                                          const SearchLimits& limits,
                                          std::size_t maximumDeepBeliefs,
-                                         std::size_t maximumCandidates) {
+                                         std::size_t maximumCandidates,
+                                         bool legalDotObservations) {
     if (beliefs.side_to_move() &&
         *beliefs.side_to_move() == beliefs.disclosure().observer &&
-        beliefs.decision_partitions() != 1) {
+        beliefs.decision_partitions() != 1 && legalDotObservations) {
         BeliefSearchResult result;
         result.beliefs = beliefs.size();
         result.validInformationCell = false;
         return result;
     }
-    return think_beliefs(beliefs.positions(), limits, maximumDeepBeliefs,
-                         maximumCandidates);
+    const auto beliefStart = std::chrono::steady_clock::now();
+    BeliefSearchResult result;
+    result.beliefs = beliefs.size();
+    if (beliefs.empty() || !beliefs.side_to_move())
+        return result;
+
+    // A singleton has no information-set branching. Retain the mature native
+    // search (including quiescence/tablebases) and report the whole completed
+    // principal variation as history preserving.
+    if (beliefs.size() == 1) {
+        Position position = beliefs.positions().front();
+        SearchResult exact = think(position, limits);
+        result.bestMove = exact.bestMove
+                        ? std::optional<std::string>(
+                            position.move_to_string(*exact.bestMove))
+                        : std::nullopt;
+        result.score = result.worstScore = result.meanScore = exact.score;
+        result.mateActions = exact.mateActions;
+        result.completedDepth = exact.completedDepth;
+        result.historyPreservingPlies = exact.completedDepth;
+        result.nodes = exact.nodes;
+        result.deepBeliefs = 1;
+        result.commonMoves = position.legal_moves().size();
+        result.candidates = result.commonMoves;
+        for (const Move& move : exact.principalVariation)
+            result.principalVariation.push_back(position.move_to_string(move));
+        result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - beliefStart);
+        return result;
+    }
+
+    limits_ = limits;
+    start_ = beliefStart;
+    nodes_ = 0;
+    stop_ = false;
+    // NNUE accumulators are concrete-path state. Until a belief accumulator is
+    // introduced, use the exact handcrafted evaluator at information leaves.
+    useNnue_ = false;
+    const Color observer = beliefs.disclosure().observer;
+    std::set<std::string> rootRestriction;
+    if (!limits.rootMoves.empty()) {
+        const Position& reference = beliefs.concrete_worlds().begin()->second;
+        for (const Move& move : limits.rootMoves)
+            rootRestriction.insert(reference.move_to_string(move));
+    }
+    const std::set<std::string> rootDraws(
+      limits.rootDrawMoveStrings.begin(), limits.rootDrawMoveStrings.end());
+    const auto observer_evaluate = [&](const PublicBeliefState& state, int ply) {
+        int robust = Infinity;
+        for (const auto& [upn, position] : state.concrete_worlds()) {
+            (void)upn;
+            int score = 0;
+            const Color mover = position.side_to_move();
+            if (const auto winner = position.forced_timeout_winner())
+                score = *winner == mover ? Mate - ply : -Mate + ply;
+            else {
+                const bool ownKing = position.has_real_king(mover);
+                const bool enemyKing = position.has_real_king(~mover);
+                if (!ownKing || !enemyKing)
+                    score = ownKing == enemyKing ? 0
+                          : ownKing ? Mate - ply : -Mate + ply;
+                else if (!position.is_checkmate_possible())
+                    score = 0;
+                else
+                    score = position.handcrafted_evaluate();
+            }
+            if (mover != observer)
+                score = -score;
+            robust = std::min(robust, score);
+        }
+        return robust == Infinity ? 0 : robust;
+    };
+
+    using BeliefPv = std::vector<std::string>;
+    std::function<int(const PublicBeliefState&, int, int, int, int, BeliefPv&)>
+      solve = [&](const PublicBeliefState& state, int depth, int alpha, int beta,
+                  int ply, BeliefPv& pv) -> int {
+        nodes_ += std::max<std::size_t>(1, state.size());
+        if (stopped() || depth <= 0 || ply >= MaxPly - 1)
+            return observer_evaluate(state, ply);
+        const std::optional<Color> side = state.side_to_move();
+        if (!side)
+            return 0;
+
+        std::set<std::string> actionSet;
+        if (*side == observer) {
+            const std::vector<std::string> common = state.common_moves();
+            actionSet.insert(common.begin(), common.end());
+        }
+        else {
+            std::set<std::string> ambiguous;
+            for (const auto& [upn, world] : state.concrete_worlds()) {
+                (void)upn;
+                std::map<std::string, std::size_t> counts;
+                for (const Move& move : world.legal_moves())
+                    ++counts[world.move_to_string(move)];
+                for (const auto& [notation, count] : counts) {
+                    if (count == 1)
+                        actionSet.insert(notation);
+                    else
+                        ambiguous.insert(notation);
+                }
+            }
+            for (const std::string& notation : ambiguous)
+                actionSet.erase(notation);
+        }
+        if (ply == 0 && !rootRestriction.empty()) {
+            std::set<std::string> restricted;
+            std::set_intersection(
+              actionSet.begin(), actionSet.end(),
+              rootRestriction.begin(), rootRestriction.end(),
+              std::inserter(restricted, restricted.begin()));
+            actionSet = std::move(restricted);
+        }
+        if (actionSet.empty())
+            return observer_evaluate(state, ply);
+
+        const bool maximizing = *side == observer;
+        int best = maximizing ? -Infinity : Infinity;
+        BeliefPv bestPv;
+        for (const std::string& action : actionSet) {
+            int actionWorst = ply == 0 && rootDraws.count(action)
+                            ? 0 : Infinity;
+            BeliefPv actionPv;
+            if (actionWorst == Infinity) {
+                const BeliefSuccessorPartitions partitions =
+                  state.successor_partitions(action, legalDotObservations);
+                if (partitions.buckets.empty() ||
+                    (maximizing && partitions.incompatible))
+                    continue;
+
+                // The concrete action is public, so an opponent action may
+                // itself eliminate worlds where that action was illegal. For
+                // either mover, nature then selects the worst compatible
+                // public/private observation bucket. Future strategy branches
+                // only after that bucket has actually been observed.
+                for (const BeliefSuccessorBucket& bucket : partitions.buckets) {
+                    PublicBeliefState child(state.disclosure());
+                    std::string error;
+                    bool valid = true;
+                    for (const Position& world : bucket.worlds)
+                        valid = valid && child.add(world, &error);
+                    if (!valid || child.empty())
+                        continue;
+                    const bool changedSide = child.side_to_move() &&
+                                             *child.side_to_move() != *side;
+                    BeliefPv childPv;
+                    const int score = solve(
+                      child, depth - (changedSide ? 1 : 0),
+                      alpha, beta, ply + 1, childPv);
+                    if (score < actionWorst) {
+                        actionWorst = score;
+                        actionPv = std::move(childPv);
+                    }
+                    if (actionWorst <= alpha || stopped())
+                        break;
+                }
+            }
+            if (actionWorst == Infinity)
+                continue;
+            if ((maximizing && actionWorst > best) ||
+                (!maximizing && actionWorst < best)) {
+                best = actionWorst;
+                bestPv.assign(1, action);
+                bestPv.insert(bestPv.end(), actionPv.begin(), actionPv.end());
+            }
+            if (maximizing)
+                alpha = std::max(alpha, best);
+            else
+                beta = std::min(beta, best);
+            if (alpha >= beta || stopped())
+                break;
+        }
+        if (best == (maximizing ? -Infinity : Infinity))
+            return observer_evaluate(state, ply);
+        pv = std::move(bestPv);
+        return best;
+    };
+
+    const int maxDepth = std::clamp(limits.depth, 1, MaxPly - 2);
+    for (int depth = 1; depth <= maxDepth; ++depth) {
+        BeliefPv pv;
+        const int score = solve(beliefs, depth, -Infinity, Infinity, 0, pv);
+        if (stop_)
+            break;
+        result.score = result.worstScore = result.meanScore = score;
+        result.completedDepth = depth;
+        result.historyPreservingPlies = depth;
+        result.principalVariation = std::move(pv);
+        result.bestMove = result.principalVariation.empty()
+                        ? std::nullopt
+                        : std::optional<std::string>(
+                            result.principalVariation.front());
+    }
+    result.nodes = nodes_;
+    result.deepBeliefs = beliefs.size();
+    result.commonMoves = beliefs.common_moves().size();
+    result.candidates = result.commonMoves;
+    result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - beliefStart);
+    (void)maximumDeepBeliefs;
+    (void)maximumCandidates;
+    return result;
 }
 
 BeliefSearchResult Search::think_beliefs(const std::vector<Position>& beliefs,

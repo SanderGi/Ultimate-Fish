@@ -166,6 +166,8 @@ test("bridge retains uncapped beliefs and analyzes one exact decision cell", asy
   assert.equal(exact.beliefs, observed.beliefs);
   assert.equal(exact.decisionPartitions, 1);
   assert.equal(exact.decisionMode, "exact-cell");
+  assert.equal(exact.beliefMode, "history-preserving");
+  assert.equal(exact.historyPreservingPlies, 1);
   assert.ok(exact.bestmove);
 
   const singleton = await post("/analyze-beliefs", {
@@ -174,8 +176,8 @@ test("bridge retains uncapped beliefs and analyzes one exact decision cell", asy
   });
   assert.equal(singleton.beliefs, 1);
   assert.equal(singleton.decisionPartitions, 1);
-  assert.equal(singleton.decisionMode, "exact-cell");
-  assert.equal(singleton.beliefMode, "root-only");
-  assert.equal(singleton.historyPreservingPlies, 0);
+  assert.equal(singleton.decisionMode, "merged-conservative");
+  assert.equal(singleton.beliefMode, "history-preserving");
+  assert.equal(singleton.historyPreservingPlies, 1);
   assert.ok(singleton.bestmove);
 });

@@ -2291,6 +2291,15 @@ void test_public_belief_state_core() {
     expect(!mergedResult.validInformationCell && !mergedResult.bestMove &&
              mergedResult.nodes == 0 && mergedResult.beliefs == worlds.size(),
            "search fails closed across privately distinguishable decision cells");
+    Search mergedConservative(1);
+    const BeliefSearchResult mergedConservativeResult =
+      mergedConservative.think_beliefs(
+        forward, benchmarkLimits, 8, 8, false);
+    expect(mergedConservativeResult.validInformationCell &&
+             mergedConservativeResult.bestMove &&
+             mergedConservativeResult.beliefs == worlds.size() &&
+             mergedConservativeResult.historyPreservingPlies == 1,
+           "no-dot search retains all decision cells and chooses a common action");
     for (const BeliefDecisionBucket& bucket : forwardCells) {
         PublicBeliefState cell({Color::White, false});
         for (const Position& world : bucket.worlds)
@@ -2301,9 +2310,27 @@ void test_public_belief_state_core() {
           cellSearch.think_beliefs(cell, benchmarkLimits);
         expect(cell.decision_partitions() == 1 &&
                  cellResult.validInformationCell &&
-                 cellResult.historyPreservingPlies == 0,
-               "each exact private-dot cell searches independently");
+                 cellResult.historyPreservingPlies == 1,
+               "each exact private-dot cell searches with preserved history");
     }
+    PublicBeliefState drawCell({Color::White, false});
+    for (const Position& world : forwardCells.front().worlds)
+        expect(drawCell.add(world, &error),
+               "public repetition fixture retains its decision cell: " + error);
+    const std::string drawingAction = drawCell.common_moves().front();
+    const auto drawingMove = drawCell.concrete_worlds().begin()->second
+                               .move_from_string(drawingAction);
+    expect(bool(drawingMove), "public repetition action parses in its cell");
+    SearchLimits publicRepetitionLimits;
+    publicRepetitionLimits.depth = 2;
+    publicRepetitionLimits.rootMoves = {*drawingMove};
+    publicRepetitionLimits.rootDrawMoveStrings = {drawingAction};
+    Search publicRepetition(1);
+    const BeliefSearchResult publicDraw = publicRepetition.think_beliefs(
+      drawCell, publicRepetitionLimits);
+    expect(publicDraw.bestMove && *publicDraw.bestMove == drawingAction &&
+             publicDraw.score == 0,
+           "public threefold result remains a draw in history-preserving search");
     const std::size_t beforeDuplicate = forward.size();
     expect(forward.add(worlds.front(), &error) &&
              forward.size() == beforeDuplicate,
@@ -2375,6 +2402,12 @@ void test_public_belief_state_core() {
              exactPartitions.incompatible == 0 &&
              exactPartitions.buckets.size() > 1,
            "non-mutating successor API returns every private-dot bucket");
+    const BeliefSuccessorPartitions conservativePartitions =
+      blackToMove.successor_partitions(splitAction, false);
+    expect(conservativePartitions.before == blackToMove.size() &&
+             conservativePartitions.incompatible == 0 &&
+             conservativePartitions.buckets.size() < exactPartitions.buckets.size(),
+           "search can retain all compatible worlds when legal dots are unavailable");
     const std::size_t decisionBefore = blackToMove.size();
     const BeliefTransitionResult decisionResult = blackToMove.apply_known(
       splitAction, &error);
@@ -2382,6 +2415,26 @@ void test_public_belief_state_core() {
              decisionResult.after == 0 && decisionResult.observations > 1 &&
              blackToMove.size() == decisionBefore,
            "successor private legal-dot partitions fail closed without mutation");
+
+    SearchLimits splitLimits;
+    splitLimits.depth = 2;
+    const auto forcedSplit = blackToMoveWorlds.front().move_from_string(splitAction);
+    expect(bool(forcedSplit), "private-dot split action parses at the belief root");
+    splitLimits.rootMoves = {*forcedSplit};
+    Search exactHistory(1);
+    const BeliefSearchResult exactHistoryResult = exactHistory.think_beliefs(
+      blackToMove, splitLimits, 8, 8, true);
+    Search conservativeHistory(1);
+    const BeliefSearchResult conservativeHistoryResult =
+      conservativeHistory.think_beliefs(
+        blackToMove, splitLimits, 8, 8, false);
+    expect(exactHistoryResult.bestMove &&
+             *exactHistoryResult.bestMove == splitAction &&
+             exactHistoryResult.historyPreservingPlies == 2 &&
+             conservativeHistoryResult.bestMove &&
+             *conservativeHistoryResult.bestMove == splitAction &&
+             conservativeHistoryResult.historyPreservingPlies == 2,
+           "two-ply belief search propagates exact and no-dot histories");
 
     Position kingTarget;
     kingTarget.add_piece(PieceType::King, Color::White,

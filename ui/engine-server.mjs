@@ -172,9 +172,10 @@ async function analyzeBeliefs(positions, observer, enemyKingKnown,
                               legalMarkers, requestedDepth, requestedTime, signal) {
   const depth = Math.max(1, Math.min(16, Number(requestedDepth) || 4));
   const moveTime = Math.max(0, Math.min(120_000, Number(requestedTime) || 0));
+  const decisionMode = legalMarkers === undefined ? " conservative" : "";
   const go = moveTime
-    ? `belief go depth ${depth} movetime ${moveTime}`
-    : `belief go depth ${depth}`;
+    ? `belief go${decisionMode} depth ${depth} movetime ${moveTime}`
+    : `belief go${decisionMode} depth ${depth}`;
   const lines = await runEngine([
     ...beliefCommands(positions, observer, enemyKingKnown, legalMarkers), go,
   ], signal);

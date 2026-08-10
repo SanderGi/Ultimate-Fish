@@ -121,6 +121,7 @@ class PublicBeliefState {
     [[nodiscard]] bool empty() const;
     [[nodiscard]] std::optional<Color> side_to_move() const;
     [[nodiscard]] const std::string& public_view() const;
+    [[nodiscard]] const std::map<std::string, Position>& concrete_worlds() const;
 
     // Returns true for both a new world and an exact duplicate. `size()`
     // distinguishes the two. No hash-only identity or world bound is used.
@@ -142,9 +143,11 @@ class PublicBeliefState {
     // The observation key is the public transition observation, augmented by
     // the configured observer's private legal-dot observation when that
     // observer becomes the mover. `incompatible` counts retained worlds in
-    // which the concretely spelled action was not legal.
+    // which the concretely spelled action was not legal or did not identify a
+    // unique full Move. Ambiguous protocol spellings fail closed.
     [[nodiscard]] BeliefSuccessorPartitions successor_partitions(
-      std::string_view move) const;
+      std::string_view move,
+      bool includeDecisionObservation = true) const;
 
     // Apply one concretely spelled action only if it is legal in every world.
     // If any world is incompatible, or if the
@@ -171,7 +174,8 @@ class Search {
     BeliefSearchResult think_beliefs(const PublicBeliefState& beliefs,
                                      const SearchLimits& limits,
                                      std::size_t maximumDeepBeliefs = 8,
-                                     std::size_t maximumCandidates = 8);
+                                     std::size_t maximumCandidates = 8,
+                                     bool legalDotObservations = true);
     BeliefSearchResult think_beliefs(const std::vector<Position>& beliefs,
                                      const SearchLimits& limits,
                                      std::size_t maximumDeepBeliefs = 8,

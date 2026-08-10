@@ -258,9 +258,8 @@ int main() {
             // that private information. Searching the union is conservative:
             // one move must be legal across every retained cell, and no world
             // is sampled or discarded. Ordinary `belief go` remains strict.
-            const BeliefSearchResult result = conservativeMergedCells
-              ? search.think_beliefs(beliefs.positions(), limits)
-              : search.think_beliefs(beliefs, limits);
+            const BeliefSearchResult result = search.think_beliefs(
+              beliefs, limits, 8, 8, !conservativeMergedCells);
             if (!result.validInformationCell) {
                 std::cout << "info string invalid belief decision cell spans "
                           << beliefs.decision_partitions()
@@ -273,7 +272,7 @@ int main() {
             std::cout << " nodes " << result.nodes << " time " << result.elapsed.count()
                       << " beliefs " << result.beliefs << " deepbeliefs " << result.deepBeliefs
                       << " common " << result.commonMoves << " candidates " << result.candidates
-                      << " beliefmode root-only historyplies "
+                      << " beliefmode history-preserving historyplies "
                       << result.historyPreservingPlies
                       << " decisionmode "
                       << (conservativeMergedCells
