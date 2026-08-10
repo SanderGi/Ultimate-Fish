@@ -167,6 +167,69 @@ void solver_arena_test() {
         rejected = true;
     }
     require(rejected, "crossed graph archive accepted a bad magic byte");
+    const auto little_word = [](const std::string& bytes, std::size_t offset) {
+        return static_cast<std::uint32_t>(
+          static_cast<std::uint8_t>(bytes.at(offset))) |
+          (static_cast<std::uint32_t>(
+             static_cast<std::uint8_t>(bytes.at(offset + 1))) << 8) |
+          (static_cast<std::uint32_t>(
+             static_cast<std::uint8_t>(bytes.at(offset + 2))) << 16) |
+          (static_cast<std::uint32_t>(
+             static_cast<std::uint8_t>(bytes.at(offset + 3))) << 24);
+    };
+    const auto put_word = [](std::string& bytes, std::size_t offset,
+                             std::uint32_t value) {
+        for (unsigned byte = 0; byte < 4; ++byte)
+            bytes.at(offset + byte) = static_cast<char>(value >> (8 * byte));
+    };
+    const std::uint32_t firstKeyBytes = little_word(graphBytes, 20);
+    const std::string firstRecord = graphBytes.substr(20, 4 + firstKeyBytes);
+    rejected = false;
+    try {
+        std::string duplicate = graphBytes.substr(0, 20);
+        put_word(duplicate, 16, 2);
+        duplicate += firstRecord;
+        duplicate += firstRecord;
+        std::istringstream invalid(duplicate, std::ios::binary);
+        (void)Solver::Arena::read(invalid);
+    }
+    catch (const std::exception&) {
+        rejected = true;
+    }
+    require(rejected, "crossed graph archive accepted a duplicate node key");
+    rejected = false;
+    try {
+        const Model::KnowledgeState& canonical = arena.node(rootId);
+        std::optional<Model::KnowledgeState> noncanonical;
+        for (const Model::RectangleTransform transform : {
+               Model::RectangleTransform::Horizontal,
+               Model::RectangleTransform::Vertical,
+               Model::RectangleTransform::Both}) {
+            Model::KnowledgeState candidate = Model::transform_state(
+              canonical, transform);
+            if (!(candidate == canonical) &&
+                Model::canonicalize_state(candidate).value == canonical) {
+                noncanonical = std::move(candidate);
+                break;
+            }
+        }
+        require(noncanonical.has_value(),
+                "crossed archive fixture has no noncanonical D2 representative");
+        const std::vector<std::uint8_t> key = Model::serialize_state(
+          *noncanonical);
+        std::string invalidBytes = graphBytes.substr(0, 20);
+        put_word(invalidBytes, 16, 1);
+        std::string record(4, '\0');
+        put_word(record, 0, static_cast<std::uint32_t>(key.size()));
+        record.append(reinterpret_cast<const char*>(key.data()), key.size());
+        invalidBytes += record;
+        std::istringstream invalid(invalidBytes, std::ios::binary);
+        (void)Solver::Arena::read(invalid);
+    }
+    catch (const std::exception&) {
+        rejected = true;
+    }
+    require(rejected, "crossed graph archive accepted a noncanonical D2 key");
     for (std::size_t bucket = 0;
          bucket < first.transitions.buckets.size(); ++bucket) {
         const auto& transition = first.transitions.buckets[bucket];
