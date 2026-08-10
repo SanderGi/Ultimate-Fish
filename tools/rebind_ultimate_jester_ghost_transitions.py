@@ -28,7 +28,11 @@ RAW_DOMAIN = 38_450_880
 CANONICAL_GEOMETRIES = 9_612_720
 CONCRETE_WORLDS = 37_957_920
 TRANSITION_EDGES = 479_456_062
-GEOMETRY_BYTES = 936
+# UFJGT2 stores the construction-time GeometryDisk, including 160 correlated
+# product variables' dense owner ordinals and actual-stratum map.  This is not
+# the smaller 56-byte permanent UFJG catalog record.  Bind the exact production
+# extent so a restore migration fails closed on ABI/layout drift.
+GEOMETRY_BYTES = 952
 STRATUM_BYTES = 24
 MODEL_OFFSET = 224
 MARKER_MODEL_OFFSET = 88

@@ -49,6 +49,15 @@ def write_prefix(directory: Path, name: str = "shard-00") -> Path:
 
 
 class RebindJesterGhostTransitionsTest(unittest.TestCase):
+    def test_production_merged_extents_are_bound(self) -> None:
+        # Exact counters and extents from the authenticated complete UFJGT2
+        # transition database.  This specifically prevents confusing its
+        # construction GeometryDisk with the compact permanent UFJG catalog.
+        self.assertEqual(9_151_309_440,
+                         rebind.CANONICAL_GEOMETRIES *
+                         rebind.GEOMETRY_BYTES)
+        self.assertEqual(240_053_064, 10_002_211 * rebind.STRATUM_BYTES)
+
     def test_rebind_changes_only_authenticated_fields(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
