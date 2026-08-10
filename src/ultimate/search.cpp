@@ -964,6 +964,10 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
     };
 
     using BeliefPv = std::vector<std::string>;
+    struct PreparedBeliefWorld {
+        const Position* position = nullptr;
+        std::map<std::string, Move> moves;
+    };
     BeliefPv previousIterationPv;
     int currentIterationDepth = 0;
     std::function<int(const PublicBeliefState&, int, int, int, int, BeliefPv&)>
@@ -977,27 +981,53 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
             return 0;
 
         std::set<std::string> actionSet;
-        if (*side == observer) {
-            const std::vector<std::string> common = state.common_moves();
-            actionSet.insert(common.begin(), common.end());
-        }
-        else {
-            std::set<std::string> ambiguous;
-            for (const auto& [upn, world] : state.concrete_worlds()) {
-                (void)upn;
-                std::map<std::string, std::size_t> counts;
-                for (const Move& move : world.legal_moves())
-                    ++counts[world.move_to_string(move)];
-                for (const auto& [notation, count] : counts) {
-                    if (count == 1)
-                        actionSet.insert(notation);
-                    else
-                        ambiguous.insert(notation);
+        std::set<std::string> ambiguous;
+        std::vector<PreparedBeliefWorld> prepared;
+        prepared.reserve(state.size());
+        bool firstWorld = true;
+        for (const auto& [upn, world] : state.concrete_worlds()) {
+            (void)upn;
+            PreparedBeliefWorld entry;
+            entry.position = &world;
+            std::set<std::string> worldAmbiguous;
+            for (const Move& move : world.legal_moves()) {
+                const std::string notation = world.move_to_string(move);
+                if (worldAmbiguous.count(notation))
+                    continue;
+                const auto [iterator, inserted] = entry.moves.emplace(notation, move);
+                if (!inserted) {
+                    entry.moves.erase(iterator);
+                    worldAmbiguous.insert(notation);
                 }
             }
-            for (const std::string& notation : ambiguous)
-                actionSet.erase(notation);
+            if (*side == observer) {
+                std::set<std::string> legal;
+                for (const auto& [notation, move] : entry.moves) {
+                    (void)move;
+                    legal.insert(notation);
+                }
+                if (firstWorld)
+                    actionSet = std::move(legal);
+                else {
+                    std::set<std::string> intersection;
+                    std::set_intersection(
+                      actionSet.begin(), actionSet.end(), legal.begin(), legal.end(),
+                      std::inserter(intersection, intersection.begin()));
+                    actionSet = std::move(intersection);
+                }
+            }
+            else {
+                for (const auto& [notation, move] : entry.moves) {
+                    (void)move;
+                    actionSet.insert(notation);
+                }
+                ambiguous.insert(worldAmbiguous.begin(), worldAmbiguous.end());
+            }
+            prepared.push_back(std::move(entry));
+            firstWorld = false;
         }
+        for (const std::string& notation : ambiguous)
+            actionSet.erase(notation);
         if (ply == 0 && !rootRestriction.empty()) {
             std::set<std::string> restricted;
             std::set_intersection(
@@ -1030,8 +1060,45 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
                             ? 0 : Infinity;
             BeliefPv actionPv;
             if (actionWorst == Infinity) {
-                const BeliefSuccessorPartitions partitions =
-                  state.successor_partitions(action, legalDotObservations);
+                BeliefSuccessorPartitions partitions;
+                partitions.before = prepared.size();
+                std::map<std::string, std::map<std::string, Position>> observations;
+                for (const PreparedBeliefWorld& entry : prepared) {
+                    const auto found = entry.moves.find(action);
+                    if (found == entry.moves.end()) {
+                        ++partitions.incompatible;
+                        continue;
+                    }
+                    const Position& before = *entry.position;
+                    Position after = before;
+                    Undo undo;
+                    if (!after.make_move(found->second, undo)) {
+                        ++partitions.incompatible;
+                        continue;
+                    }
+                    std::string observation = transition_observation_key(
+                      before, found->second, after, state.disclosure());
+                    if (legalDotObservations && !after.game_over() &&
+                        after.side_to_move() == state.disclosure().observer) {
+                        const std::string decision = decision_observation_key(
+                          after, state.disclosure());
+                        observation += "|nextDecision=" +
+                          std::to_string(decision.size()) + ':' + decision;
+                    }
+                    observations[observation].emplace(
+                      after.upn(), std::move(after));
+                }
+                partitions.buckets.reserve(observations.size());
+                for (auto& [observation, worlds] : observations) {
+                    BeliefSuccessorBucket bucket;
+                    bucket.observation = std::move(observation);
+                    bucket.worlds.reserve(worlds.size());
+                    for (auto& [upn, position] : worlds) {
+                        (void)upn;
+                        bucket.worlds.push_back(std::move(position));
+                    }
+                    partitions.buckets.push_back(std::move(bucket));
+                }
                 if (partitions.buckets.empty() ||
                     (maximizing && partitions.incompatible))
                     continue;
