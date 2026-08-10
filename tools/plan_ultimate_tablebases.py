@@ -84,6 +84,9 @@ PIECES = (
     Piece("dragon", decisive=True),
 )
 
+DEFERRED_DYNAMIC_K2 = frozenset({"devil", "sludge", "angel"})
+COPYCAT_SEPARATORS = frozenset({"penguin", "mage", "fisherman"})
+
 
 def placement_states(extra_models: int, identical_pair: bool = False) -> int:
     """Dense states after exact horizontal-reflection canonicalization.
@@ -101,7 +104,7 @@ def placement_states(extra_models: int, identical_pair: bool = False) -> int:
     return result
 
 
-def compound_copycat_pair_states() -> int:
+def compound_copycat_pair_states(identical_pair: bool = False) -> int:
     """K+linked-Copycat vs K+piece states without reflection folding.
 
     The Copycat's second board model is derived from the indexed half, so only
@@ -109,7 +112,8 @@ def compound_copycat_pair_states() -> int:
     typed halves, however, so this codec deliberately retains both orbits just
     like the existing K+Copycat-v-K table.
     """
-    return 2 * SQUARES * (SQUARES - 1) * (SQUARES - 2) * (SQUARES - 3)
+    result = 2 * SQUARES * (SQUARES - 1) * (SQUARES - 2) * (SQUARES - 3)
+    return result // 2 if identical_pair else result
 
 
 def split_plane_bytes(states: int) -> int:
@@ -194,6 +198,44 @@ def stateful_candidates() -> list[dict[str, object]]:
         (str(record["primary"]), str(record["secondary"]), bool(record["opposing"]))
         not in coverage,
         int(record["packed_bytes"]), str(record["filename"])))
+
+
+def mirror_copycat_candidates() -> list[dict[str, object]]:
+    """User-approved linked-mirror K+K+2 Copycat planning domain.
+
+    One indexed Copycat half implies its exact horizontal-mirror clone, as in
+    the bundled K+Copycat-v-K and K+Copycat-v-K+Bishop tables. Starting states
+    therefore contain only unsplit linked pairs. Devil/Sludge/Angel remain
+    deferred wholesale, while Penguin, Mage, and Fisherman are omitted because
+    they can split a pair within this material class. Every retained class is
+    closed under the unsplit-pair invariant; no displaced child is scored as a
+    draw or silently discarded.
+    """
+    result: list[dict[str, object]] = []
+    for secondary in PIECES:
+        if secondary.name in DEFERRED_DYNAMIC_K2 | COPYCAT_SEPARATORS:
+            continue
+        for opposing in (False, True):
+            states = compound_copycat_pair_states(
+                identical_pair=secondary.name == "copycat" and not opposing
+            ) * secondary.state_factor
+            record = class_record(
+                (f"Kcopycat{secondary.name}vK" if not opposing else
+                 f"KcopycatvK{secondary.name}"),
+                states, "kings+2-copycat-mirror",
+                primary="copycat", secondary=secondary.name,
+                opposing=opposing,
+                filename=(f"kcopycat{secondary.name}k.uftb" if not opposing else
+                          f"kcopycatk{secondary.name}.uftb"),
+                note=("linked horizontal-mirror Copycat compound; "
+                      "singleton/independently displaced states excluded"),
+            )
+            record["mirror_simplification"] = True
+            record["truncates_native_separation"] = False
+            result.append(record)
+    if len(result) != 36 or len({str(row["filename"]) for row in result}) != 36:
+        raise RuntimeError("mirror Copycat K+K+2 inventory residual")
+    return sorted(result, key=lambda record: str(record["filename"]))
 
 
 def inventory(budget: int = DEFAULT_BUDGET) -> list[dict[str, object]]:

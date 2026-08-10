@@ -99,6 +99,25 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertEqual(copycat["states"], 75_915_840)
         self.assertEqual(copycat["states"], tb.compound_copycat_pair_states())
 
+    def test_mirror_copycat_expansion_is_explicit_and_dynamic_families_deferred(self):
+        records = tb.mirror_copycat_candidates()
+        self.assertEqual(36, len(records))
+        self.assertEqual(6_784_978_200,
+                         sum(int(record["packed_bytes"]) for record in records))
+        self.assertTrue(all(record["primary"] == "copycat" for record in records))
+        self.assertTrue(all(record["mirror_simplification"] for record in records))
+        self.assertTrue(all(record["secondary"] not in tb.DEFERRED_DYNAMIC_K2
+                            for record in records))
+        self.assertFalse(any(record["truncates_native_separation"]
+                             for record in records))
+        self.assertTrue(all(record["secondary"] not in tb.COPYCAT_SEPARATORS
+                            for record in records))
+        by_name = {record["filename"]: record for record in records}
+        self.assertEqual(tb.compound_copycat_pair_states() // 2,
+                         by_name["kcopycatcopycatk.uftb"]["states"])
+        self.assertEqual(tb.compound_copycat_pair_states(),
+                         by_name["kcopycatkcopycat.uftb"]["states"])
+
     def test_stateful_candidate_closures_are_explicit(self):
         candidates = tb.stateful_candidates()
         self.assertTrue(candidates)

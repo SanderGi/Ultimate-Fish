@@ -39,10 +39,10 @@ Exact::TransitionOptions transition_options(Exact::Orientation orientation,
       std::filesystem::exists("tablebases/kparasitek.uftb")
         ? "tablebases/kparasitek.uftb" : "../tablebases/kparasitek.uftb";
     options.lowerParasiteSha256 =
-      "f08b2676a703259ef638bc4ab72b9cd7e6b2000afc72dd70b0ac17e03ea858ab";
+      "c53364f87ce4ff23372aa3565d279e9fadde706eb1aeca5695aecc1ea3e83047";
     options.lowerParasiteSourceSha256 = options.lowerParasiteSha256;
     options.lowerParasiteModelSha256 =
-      "81971a843b1078f678d745e4d7533edad8a4e69d1e69a63df63e0b4009ea68ee";
+      "91a6bec907dc43993c3b0b96001ca5b415fe278add963f4211bd6c5f5d314e88";
     options.lowerGhostSidecar =
       std::filesystem::exists("tablebases/kghostk.ufgm")
         ? "tablebases/kghostk.ufgm" : "../tablebases/kghostk.ufgm";
@@ -179,10 +179,10 @@ void measurement_test(const std::string& base,
     options.lowerGhostSidecarSha256 =
       "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b";
     options.lowerParasiteFullSha256 =
-      "f08b2676a703259ef638bc4ab72b9cd7e6b2000afc72dd70b0ac17e03ea858ab";
+      "c53364f87ce4ff23372aa3565d279e9fadde706eb1aeca5695aecc1ea3e83047";
     options.lowerParasiteSourceSha256 = options.lowerParasiteFullSha256;
     options.lowerParasiteModelSha256 =
-      "81971a843b1078f678d745e4d7533edad8a4e69d1e69a63df63e0b4009ea68ee";
+      "91a6bec907dc43993c3b0b96001ca5b415fe278add963f4211bd6c5f5d314e88";
     options.maxNodes = 10'000'000;
     options.uniqueSlots = std::uint64_t{1} << 24;
     options.measureIterations = 1;

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan or run one AWS shard of the complete closed K+K+2 inventory.
+"""Plan or run one AWS shard of the supported K+K+2 inventory.
 
 Default execution is plan/preflight-only and never launches a tablebase solve.
 ``--full`` is Linux/AWS-only, requires explicit disk/RSS/reverse-edge limits and
@@ -41,10 +41,10 @@ import run_double_jester_information_capture as preservation  # noqa: E402
 import ultimate_tablebase_shards as shards  # noqa: E402
 
 
-SCHEMA = "ultimate-concrete-k2-aws-run-v1"
-DEPENDENCY_SCHEMA = "ultimate-concrete-k2-dependencies-v1"
-ARCHIVE_SCHEMA = "ultimate-concrete-k2-result-v1"
-CERTIFICATE_SCHEMA = "ultimate-concrete-k2-s3-certificate-v1"
+SCHEMA = "ultimate-concrete-k2-aws-run-v2"
+DEPENDENCY_SCHEMA = "ultimate-concrete-k2-dependencies-v2"
+ARCHIVE_SCHEMA = "ultimate-concrete-k2-result-v2"
+CERTIFICATE_SCHEMA = "ultimate-concrete-k2-s3-certificate-v2"
 GIANT_TAG = 0x32474E4149474655
 PIECE_TYPES = (
     "king", "jester", "knight", "pawn", "queen", "rook", "bishop",
@@ -83,18 +83,15 @@ PINNED_BUILD = (
     "clang++", "-std=c++17", "-O3", "-DNDEBUG", "-Wall", "-Wextra",
     "-Wpedantic", "-Werror", "-Wno-error=range-loop-construct", "-pthread",
 )
-NON_CLOSED = {
+DEFERRED_DYNAMIC = {
     "devil": "each spawn adds a persistent Minion board model",
     "sludge": "moves leave one or two persistent Goop board models",
-    "copycat": (
-        "the linked clone is a fifth physical model; Penguin freeze, Mage swap, "
-        "Fisherman pull, or Angel rescue can make the halves independently placed"
-    ),
     "angel": (
         "linking creates a Halo plus off-board host/attachment/order state; rescue "
         "relocates the host and nested Angels require a larger closure"
     ),
 }
+COPYCAT_MIRROR_SEMANTICS = "linked-horizontal-mirror-single-index-v1"
 
 
 def sha256_path(path: Path) -> str:
@@ -106,12 +103,17 @@ def sha256_path(path: Path) -> str:
 
 
 def normalized_record(record: Mapping[str, object]) -> dict[str, object]:
-    return {
+    normalized = {
         key: record[key] for key in (
             "filename", "primary", "secondary", "opposing", "states",
             "packed_bytes", "shards", "phase",
         )
     }
+    if record.get("mirror_simplification"):
+        normalized["mirror_simplification"] = COPYCAT_MIRROR_SEMANTICS
+        normalized["truncates_native_separation"] = bool(
+            record.get("truncates_native_separation"))
+    return normalized
 
 
 def closed_inventory() -> tuple[dict[str, object], ...]:
@@ -124,6 +126,23 @@ def closed_inventory() -> tuple[dict[str, object], ...]:
     return tuple(rows)
 
 
+def mirror_copycat_inventory() -> tuple[dict[str, object], ...]:
+    rows = tuple(plan.mirror_copycat_candidates())
+    if (len(rows) != 36 or len({str(row["filename"]) for row in rows}) != 36 or
+            sum(int(row["packed_bytes"]) for row in rows) != 6_784_978_200):
+        raise RuntimeError("mirror Copycat K+K+2 inventory residual")
+    return rows
+
+
+def supported_inventory() -> tuple[dict[str, object], ...]:
+    rows = tuple(sorted((*closed_inventory(), *mirror_copycat_inventory()),
+                        key=lambda row: str(row["filename"])))
+    if (len(rows) != 268 or len({str(row["filename"]) for row in rows}) != 268 or
+            sum(int(row["packed_bytes"]) for row in rows) != 72_736_864_200):
+        raise RuntimeError("supported K+K+2 inventory residual")
+    return rows
+
+
 def dependency_wave(record: Mapping[str, object]) -> int:
     pawns = int(record["primary"] == "pawn") + int(record["secondary"] == "pawn")
     return min(pawns, 2)
@@ -132,7 +151,7 @@ def dependency_wave(record: Mapping[str, object]) -> int:
 def wave_inventory(wave: int) -> tuple[dict[str, object], ...]:
     if wave not in (0, 1, 2):
         raise ValueError("dependency wave must be 0, 1, or 2")
-    return tuple(row for row in closed_inventory() if dependency_wave(row) == wave)
+    return tuple(row for row in supported_inventory() if dependency_wave(row) == wave)
 
 
 def base_dependency_filenames() -> tuple[str, ...]:
@@ -150,7 +169,7 @@ def required_dependency_filenames(wave: int) -> tuple[str, ...]:
 
 def inventory_sha256() -> str:
     payload = json.dumps(
-        [normalized_record(row) for row in closed_inventory()],
+        [normalized_record(row) for row in supported_inventory()],
         sort_keys=True, separators=(",", ":")).encode()
     return hashlib.sha256(payload).hexdigest()
 
@@ -159,7 +178,8 @@ def generator_model_sha256(root: Path = ROOT) -> str:
     digest = hashlib.sha256()
     contract = json.dumps({
         "schema": SCHEMA, "inventory_sha256": inventory_sha256(),
-        "non_closed": NON_CLOSED,
+        "deferred_dynamic": DEFERRED_DYNAMIC,
+        "copycat_mirror_semantics": COPYCAT_MIRROR_SEMANTICS,
     }, sort_keys=True, separators=(",", ":")).encode()
     digest.update(len(contract).to_bytes(8, "little"))
     digest.update(contract)
@@ -225,224 +245,51 @@ def wave_costs() -> list[dict[str, object]]:
     return costs
 
 
-def _falling(available: int, count: int) -> int:
-    result = 1
-    for offset in range(count):
-        result *= available - offset
-    return result
-
-
-def _storage(states: int) -> int:
-    return (states + 3) // 4 + states
-
-
-def nonclosed_domain_plan() -> dict[str, object]:
-    """Return exact sizes of deliberately dense larger-closure codecs.
-
-    The spawned-effect codecs use a three-valued cell alphabet (empty, Ivory,
-    Onyx).  This intentionally retains unreachable color layouts as invalid
-    dense records, just as the existing UFTBs retain invalid king geometry;
-    the cardinalities below are therefore exact for the proposed codecs and
-    conservative for reachable play.
-    """
-    king_frame = 2 * 40 * 79
-    # Linked Copycat codecs deliberately retain both horizontal orientations:
-    # reflection exchanges the Copycat and CopycatClone typed halves.
-    copycat_king_frame = 2 * 80 * 79
-    squares = 78
-
-    def spawned(parent_factor: int, secondary_factor: int, alphabet: int,
-                parent_color_factor: int) -> int:
-        # Each labelled deployable can be alive on one square or absent.
-        return king_frame * (
-            alphabet ** squares +
-            squares * (parent_factor * parent_color_factor + secondary_factor) *
-            alphabet ** (squares - 1) +
-            _falling(squares, 2) * parent_factor * parent_color_factor *
-            secondary_factor * alphabet ** (squares - 2))
-
-    def compound_copycat(secondary_factor: int, color_factor: int) -> int:
-        # The clone square is derived from the indexed half. Clone collisions
-        # remain invalid dense records, matching the existing compound codec.
-        return copycat_king_frame * (
-            1 + squares * secondary_factor + squares * color_factor +
-            _falling(squares, 2) * secondary_factor * color_factor)
-
-    def displaced_copycat(secondary_factor: int) -> int:
-        # Copycat modes: dead, either singleton half, or both linked halves.
-        return copycat_king_frame * (
-            1 + squares * secondary_factor +
-            2 * squares + 2 * _falling(squares, 2) * secondary_factor +
-            _falling(squares, 2) +
-            _falling(squares, 3) * secondary_factor)
-
-    def angel(secondary_factor: int, same_team: bool,
-              color_factor: int) -> int:
-        # Dead; on-board; or attached/off-board with one on-board Halo.
-        host_without_secondary = 1
-        host_with_secondary = 2 if same_team else 1
-        return king_frame * (
-            1 + squares * secondary_factor +
-            squares * color_factor +
-            _falling(squares, 2) * secondary_factor * color_factor +
-            squares * host_without_secondary * color_factor +
-            _falling(squares, 2) * secondary_factor * host_with_secondary *
-            color_factor)
-
-    def copycat_spawner(parent_factor: int) -> int:
-        # Devil/Sludge cannot split the linked pair. One indexed Copycat half
-        # implies its reflected clone, and generated cells have a fixed owner.
-        total = 0
-        for copycat_alive in (0, 1):
-            for parent_live, factor in ((0, 1), (1, parent_factor)):
-                occupied = copycat_alive + parent_live
-                total += (_falling(squares, occupied) * factor *
-                          2 ** (squares - occupied))
-        return copycat_king_frame * total
-
-    def copycat_angel(same_team: bool) -> int:
-        total = 0
-        for halves, multiplicity in ((0, 1), (1, 2), (2, 1)):
-            placed = _falling(squares, halves)
-            # Angel dead.
-            total += multiplicity * placed
-            # Angel on board.
-            total += multiplicity * _falling(squares, halves + 1)
-            # Attached Angel is off board; its Halo occupies one square.
-            hosts = 1 + halves if same_team else 1
-            total += multiplicity * _falling(squares, halves + 1) * hosts
-        return copycat_king_frame * total
-
-    def copycat_pair(same_team: bool) -> int:
-        if same_team:
-            # The two deployable characters are indistinguishable. Canonical
-            # anchor order removes the pair-exchange duplicate.
-            modes = 1 + squares + _falling(squares, 2) // 2
-        else:
-            modes = 1 + 2 * squares + _falling(squares, 2)
-        return copycat_king_frame * modes
-
-    def class_codec(first: object, second: object,
-                    same_team: bool) -> tuple[str, int, str]:
-        first_name = str(first.name)
-        second_name = str(second.name)
-        names = {first_name, second_name}
-        if first_name == second_name == "copycat":
-            return ("compound-copycat-pair", copycat_pair(same_team),
-                    "each linked pair dead/alive+anchor; reflected clone derived; "
-                    "same-team pair anchors canonically ordered")
-        if names == {"copycat", "devil"}:
-            return ("compound-copycat+devil-minions", copycat_spawner(4),
-                    "linked Copycat dead/alive+anchor; Devil dead/alive+square+"
-                    "cooldown; binary generated-Minion occupancy")
-        if names == {"copycat", "sludge"}:
-            return ("compound-copycat+sludge-goop", copycat_spawner(1),
-                    "linked Copycat dead/alive+anchor; Sludge dead/alive+square; "
-                    "binary generated-Goop occupancy")
-        if names == {"copycat", "angel"}:
-            states = copycat_angel(same_team)
-            return ("displaced-copycat+angel-host-halo", states,
-                    "Copycat both/either/none+labelled squares; Angel dead/on-board/"
-                    "attached; Halo square; exact live allied-host selector")
-
-        family = next(name for name in names if name in NON_CLOSED)
-        other = second if first_name == family else first
-        other_name = str(other.name)
-        factor = int(other.state_factor)
-        parasite_switch = other_name == "parasite" and not same_team
-        if family == "devil":
-            alphabet = 3 if parasite_switch else 2
-            states = spawned(4, factor, alphabet, 2 if parasite_switch else 1)
-            return ("devil-minion-board", states,
-                    "Devil dead/alive+square+cooldown; secondary dead/alive+square+"
-                    "substate; per-free-cell generated-Minion occupancy " +
-                    ("empty/Ivory/Onyx plus possessed-Devil owner bit"
-                     if parasite_switch else "empty/fixed-owner"))
-        if family == "sludge":
-            alphabet = 3 if parasite_switch else 2
-            states = spawned(1, factor, alphabet, 2 if parasite_switch else 1)
-            return ("sludge-goop-board", states,
-                    "Sludge dead/alive+square; secondary dead/alive+square+substate; "
-                    "per-free-cell generated-Goop occupancy " +
-                    ("empty/Ivory/Onyx plus possessed-Sludge owner bit"
-                     if parasite_switch else "empty/fixed-owner"))
-        if family == "copycat":
-            separators = {"penguin", "mage", "fisherman"}
-            if other_name in separators:
-                return ("displaced-copycat", displaced_copycat(factor),
-                        "Copycat both/either/none+independent labelled squares/link; "
-                        "secondary dead/alive+square+substate")
-            return ("compound-copycat", compound_copycat(
-                        factor, 2 if parasite_switch else 1),
-                    "Copycat dead/alive+anchor with reflected clone derived; "
-                    "secondary dead/alive+square+substate" +
-                    ("; possessed-pair owner bit" if parasite_switch else ""))
-        if family == "angel":
-            return ("angel-host-halo", angel(
-                        factor, same_team, 2 if parasite_switch else 1),
-                    "Angel dead/on-board/attached; Halo square; allied-host selector; "
-                    "secondary dead/alive+square+substate" +
-                    ("; possessed-Angel owner bit" if parasite_switch else ""))
-        raise AssertionError(f"unplanned nonclosed family: {family}")
-
-    classes = []
+def deferred_dynamic_inventory() -> tuple[dict[str, object], ...]:
+    """Enumerate sufficient K+K+2 classes deferred by user direction."""
+    rows: list[dict[str, object]] = []
     for first_index, first in enumerate(plan.PIECES):
         for second in plan.PIECES[first_index:]:
-            if first.closed_k2 and second.closed_k2:
+            if not ({first.name, second.name} & set(DEFERRED_DYNAMIC)):
                 continue
             for same_team in (True, False):
                 if not plan.sufficient_pair(first, second, same_team):
                     continue
-                codec, states, variables = class_codec(first, second, same_team)
-                filename = (f"k{first.name}{second.name}k.uftb" if same_team else
-                            f"k{first.name}k{second.name}.uftb")
-                classes.append({
-                    "filename": filename, "primary": first.name,
-                    "secondary": second.name, "opposing": not same_team,
-                    "codec": codec, "dense_states": states,
-                    "split_plane_bytes": _storage(states),
-                    "decimal_order": len(str(states)) - 1,
-                    "variables": variables,
-                    "pawn_promotion_dependency": (
-                        filename.replace("pawn", "queen")
-                        if "pawn" in {first.name, second.name} else None),
+                rows.append({
+                    "filename": (
+                        f"k{first.name}{second.name}k.uftb" if same_team else
+                        f"k{first.name}k{second.name}.uftb"),
+                    "primary": first.name, "secondary": second.name,
+                    "opposing": not same_team,
                 })
-    classes.sort(key=lambda record: str(record["filename"]))
-    if len(classes) != 132 or len({row["filename"] for row in classes}) != 132:
-        raise RuntimeError("nonclosed K+K+2 class inventory residual")
+    rows.sort(key=lambda row: str(row["filename"]))
+    if len(rows) != 90 or len({str(row["filename"]) for row in rows}) != 90:
+        raise RuntimeError("deferred dynamic K+K+2 inventory residual")
+    return tuple(rows)
 
-    domains = []
-    for codec in sorted({str(row["codec"]) for row in classes}):
-        members = [row for row in classes if row["codec"] == codec]
-        domains.append({
-            "codec": codec, "classes": len(members),
-            "minimum_dense_states": min(int(row["dense_states"]) for row in members),
-            "maximum_dense_states": max(int(row["dense_states"]) for row in members),
-            "minimum_split_plane_bytes": min(
-                int(row["split_plane_bytes"]) for row in members),
-            "maximum_split_plane_bytes": max(
-                int(row["split_plane_bytes"]) for row in members),
-        })
+
+def deferred_domain_plan() -> dict[str, object]:
+    rows = deferred_dynamic_inventory()
+    by_family = {
+        family: sum(family in {str(row["primary"]), str(row["secondary"])}
+                    for row in rows)
+        for family in sorted(DEFERRED_DYNAMIC)
+    }
     return {
-        "schema": "ultimate-nonclosed-k2-domain-plan-v1",
-        "sufficient_material_classes": 132,
-        "dense_invalid_records_retained": True,
-        "codec_domains": domains,
-        "classes": classes,
-        "dependency_order": [
-            "392 closed four-model classes (160 stateless + 232 stateful)",
-            "displaced/singleton Copycat with closed secondary pieces",
-            "Angel/host/Halo with closed secondary pieces",
-            "Sludge/Goop and Devil/Minion with closed secondary pieces",
-            "Copycat+Angel, Copycat+Sludge, and Copycat+Devil cross closures",
-        ],
+        "schema": "ultimate-deferred-dynamic-k2-v2",
+        "status": "explicitly-deferred-no-symbolic-work-authorized",
+        "classes": 90, "by_family_overlap": by_family,
+        "families": DEFERRED_DYNAMIC,
+        "inventory": list(rows),
+        "copycat_mirror_classes_in_scope": 36,
+        "copycat_mirror_semantics": COPYCAT_MIRROR_SEMANTICS,
+        "copycat_native_separation_classes": 0,
+        "copycat_separator_classes_deferred": 6,
         "completeness": (
-            "planned only; these 132 classes are not complete UFTBs until the "
-            "larger codecs and generators exist"
+            "The supported inventory is intentionally incomplete for these "
+            "90 Devil/Minion, Sludge/Goop, and Angel/Halo classes."
         ),
     }
-
-
 def load_dependency_manifest(path: Path) -> dict[str, dict[str, object]]:
     document = json.loads(path.read_text())
     if document.get("schema") != DEPENDENCY_SCHEMA:
@@ -881,9 +728,12 @@ def main(argv: list[str] | None = None) -> int:
         "generator_model_sha256": model,
         "inventory_sha256": inventory_sha256(),
         "closed_classes": 232, "closed_packed_bytes": 65_951_886_000,
+        "copycat_mirror_classes": 36,
+        "copycat_mirror_packed_bytes": 6_784_978_200,
+        "supported_classes": 268,
+        "supported_packed_bytes": 72_736_864_200,
         "stateless_classes_complete": 160,
-        "non_closed": NON_CLOSED,
-        "nonclosed_domain_plan": nonclosed_domain_plan(),
+        "deferred_dynamic": deferred_domain_plan(),
         "wave_costs": costs,
         "selection": measurement,
         "selected": [normalized_record(row) for row in selected],
@@ -981,7 +831,7 @@ def main(argv: list[str] | None = None) -> int:
             restored[f"proof/{log.name}"])
         if restored_verification["sha256"] != verification["sha256"]:
             raise RuntimeError("locally restored UFTB full-SHA residual")
-        key = (f"concrete/v1/model/{model}/wave-{args.wave}/sha256/"
+        key = (f"concrete/v2/model/{model}/wave-{args.wave}/sha256/"
                f"{archive_sha}/{archive_path.name}")
         remote = preservation.upload_head_download_verify(
             source=archive_path, digest=archive_sha,
@@ -1010,7 +860,7 @@ def main(argv: list[str] | None = None) -> int:
     certificate_remote = preservation.upload_head_download_verify(
         source=certificate_path, digest=certificate_sha,
         extent=certificate_path.stat().st_size, prefix=args.s3_prefix,
-        key=(f"concrete/v1/certificates/sha256/{certificate_sha}/"
+        key=(f"concrete/v2/certificates/sha256/{certificate_sha}/"
              f"{certificate_path.name}"),
         download=work / "s3-verify" / certificate_path.name,
         archive_schema=None)

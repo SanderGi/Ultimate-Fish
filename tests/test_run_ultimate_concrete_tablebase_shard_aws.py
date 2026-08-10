@@ -22,12 +22,13 @@ SPEC.loader.exec_module(runner)
 
 class ConcreteAwsRunnerTest(unittest.TestCase):
     def test_inventory_and_wave_conservation(self) -> None:
-        rows = runner.closed_inventory()
-        self.assertEqual(232, len(rows))
-        self.assertEqual(65_951_886_000,
+        self.assertEqual(232, len(runner.closed_inventory()))
+        rows = runner.supported_inventory()
+        self.assertEqual(268, len(rows))
+        self.assertEqual(72_736_864_200,
                          sum(int(row["packed_bytes"]) for row in rows))
-        expected = ((192, 58_644_986_400),
-                    (38, 7_022_215_200),
+        expected = ((226, 65_050_385_400),
+                    (40, 7_401_794_400),
                     (2, 284_684_400))
         self.assertEqual(expected, tuple(
             (len(runner.wave_inventory(wave)),
@@ -47,27 +48,18 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
             self.assertEqual(sum(int(row["states"]) for row in rows),
                              sum(item["states"] for item in ranges))
 
-    def test_nonclosed_inventory_is_explicit(self) -> None:
-        self.assertEqual({"devil", "sludge", "copycat", "angel"},
-                         set(runner.NON_CLOSED))
-        self.assertIn("Minion", runner.NON_CLOSED["devil"])
-        self.assertIn("Goop", runner.NON_CLOSED["sludge"])
-        self.assertIn("fifth physical model", runner.NON_CLOSED["copycat"])
-        self.assertIn("Halo", runner.NON_CLOSED["angel"])
-        domains = runner.nonclosed_domain_plan()
-        self.assertEqual(132, domains["sufficient_material_classes"])
-        self.assertEqual(132, len(domains["classes"]))
-        self.assertEqual(9, len(domains["codec_domains"]))
-        self.assertTrue(all(item["split_plane_bytes"] ==
-                            (item["dense_states"] + 3) // 4 +
-                            item["dense_states"]
-                            for item in domains["classes"]))
-        self.assertEqual(132, sum(item["classes"]
-                                  for item in domains["codec_domains"]))
-        self.assertEqual(2, len([
-            item for item in domains["classes"]
-            if item["codec"] == "compound-copycat-pair"]))
-        self.assertIn("not complete", domains["completeness"])
+    def test_copycat_scope_and_dynamic_deferral_are_explicit(self) -> None:
+        self.assertEqual({"devil", "sludge", "angel"},
+                         set(runner.DEFERRED_DYNAMIC))
+        self.assertEqual(36, len(runner.mirror_copycat_inventory()))
+        self.assertFalse(any(bool(row["truncates_native_separation"])
+                             for row in runner.mirror_copycat_inventory()))
+        self.assertTrue(all(row["secondary"] not in runner.plan.COPYCAT_SEPARATORS
+                            for row in runner.mirror_copycat_inventory()))
+        deferred = runner.deferred_domain_plan()
+        self.assertEqual(90, deferred["classes"])
+        self.assertEqual(90, len(deferred["inventory"]))
+        self.assertIn("incomplete", deferred["completeness"])
 
     def test_pawn_dependency_waves(self) -> None:
         for wave in range(3):

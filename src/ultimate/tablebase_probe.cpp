@@ -28,6 +28,8 @@ constexpr std::uint32_t FourStateCount =
 constexpr std::uint32_t IdenticalFourStateCount = FourStateCount / 2;
 constexpr std::uint32_t CompoundCopycatStateCount =
   2 * SquareCount * (SquareCount - 1) * (SquareCount - 2) * (SquareCount - 3);
+constexpr std::uint32_t IdenticalCompoundCopycatStateCount =
+  CompoundCopycatStateCount / 2;
 constexpr std::uint64_t GiantAnchorV2Tag = 0x32474e4149474655ULL;
 
 bool compatible_codec(std::uint32_t version, PieceType primary,
@@ -166,6 +168,23 @@ std::uint32_t encode_compound_copycat(Color side, std::uint8_t whiteKing,
                * (SquareCount - 1) + blackRank)
               * (SquareCount - 2) + copycatRank)
              * (SquareCount - 3) + secondaryRank);
+}
+
+std::uint32_t encode_identical_compound_copycat(
+  Color side, std::uint8_t whiteKing, std::uint8_t blackKing,
+  std::uint8_t first, std::uint8_t second) {
+    const std::uint32_t blackRank = rank_excluding(blackKing, {whiteKing});
+    std::uint32_t firstRank = rank_excluding(first, {whiteKing, blackKing});
+    std::uint32_t secondRank = rank_excluding(second, {whiteKing, blackKing});
+    if (firstRank > secondRank)
+        std::swap(firstRank, secondRank);
+    constexpr std::uint32_t remaining = SquareCount - 2;
+    constexpr std::uint32_t pairs = remaining * (remaining - 1) / 2;
+    const std::uint32_t pairRank =
+      firstRank * (2 * remaining - firstRank - 1) / 2 +
+      secondRank - firstRank - 1;
+    return ((static_cast<std::uint32_t>(side) * SquareCount + whiteKing) *
+            (SquareCount - 1) + blackRank) * pairs + pairRank;
 }
 
 std::uint32_t encode_identical_four(Color side, std::uint8_t whiteKing,
@@ -363,9 +382,13 @@ std::vector<Database> load_databases() {
                                      database.secondary == PieceType::CopycatClone;
                 const bool compoundCopycat = database.attacker == PieceType::Copycat &&
                                              database.secondary != PieceType::CopycatClone;
+                const bool identicalCompoundCopycats = compoundCopycat &&
+                  database.secondary == PieceType::Copycat &&
+                  database.secondaryColor == Color::White;
                 const bool identical = database.attacker == database.secondary &&
                                        database.secondaryColor == Color::White;
                 const std::uint64_t placementCount = copycat ? StateCount
+                  : identicalCompoundCopycats ? IdenticalCompoundCopycatStateCount
                   : compoundCopycat ? CompoundCopycatStateCount
                   : identical ? IdenticalFourStateCount : FourStateCount;
                 if (std::uint64_t(count) != placementCount * substates) {
@@ -519,8 +542,8 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
 
     int whiteKing = Position::NoPiece;
     int blackKing = Position::NoPiece;
-    std::array<int, 3> extras{Position::NoPiece, Position::NoPiece,
-                              Position::NoPiece};
+    std::array<int, 4> extras{Position::NoPiece, Position::NoPiece,
+                              Position::NoPiece, Position::NoPiece};
     int extraCount = 0;
     int alive = 0;
     for (int id = 0; id < position.pieceCount_; ++id) {
@@ -533,19 +556,145 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
         ++alive;
         if (piece.type == PieceType::King)
             (piece.color == Color::White ? whiteKing : blackKing) = id;
-        else if (extraCount < 3)
+        else if (extraCount < static_cast<int>(extras.size()))
             extras[extraCount++] = id;
         else return std::nullopt;
     }
-    if ((alive < 3 || alive > 5) || whiteKing == Position::NoPiece ||
+    if ((alive < 3 || alive > 6) || whiteKing == Position::NoPiece ||
         blackKing == Position::NoPiece || extraCount != alive - 2)
         return std::nullopt;
+
+    const auto typeMatches = [](PieceType represented, PieceType actual) {
+        return represented == PieceType::Checker
+          ? actual == PieceType::Checker || actual == PieceType::CheckerKing
+          : represented == actual;
+    };
+    const auto extractSubstate = [&](int id, PieceType represented,
+                                     bool& continuationMatched)
+      -> std::optional<std::uint32_t> {
+        const PieceState& item = position.pieces_[id];
+        if (!typeMatches(represented, item.type) || item.link != Position::NoPiece)
+            return std::nullopt;
+        switch (represented) {
+        case PieceType::Berserker:
+            if (item.cooldown || item.action) return std::nullopt;
+            return std::min<std::uint32_t>(item.power, 9);
+        case PieceType::Ghost:
+            if (item.cooldown || item.power || item.action) return std::nullopt;
+            return item.visible ? 1u : 0u;
+        case PieceType::Sniper:
+            if (item.cooldown > 3 || item.power || item.action) return std::nullopt;
+            return item.cooldown;
+        case PieceType::Prince: {
+            if (item.cooldown || item.power || item.action) return std::nullopt;
+            const bool forced =
+              position.continuation_ == Continuation::PrinceSecondMove &&
+              position.forcedPiece_ == id;
+            continuationMatched = continuationMatched || forced;
+            return forced ? 1u : 0u;
+        }
+        case PieceType::Checker: {
+            if (item.cooldown || item.power || item.action) return std::nullopt;
+            const bool forced =
+              position.continuation_ == Continuation::CheckerJump &&
+              position.forcedPiece_ == id;
+            continuationMatched = continuationMatched || forced;
+            return (item.type == PieceType::CheckerKing ? 2u : 0u) +
+                   (forced ? 1u : 0u);
+        }
+        case PieceType::Pawn:
+            if (item.cooldown || item.power || item.action) return std::nullopt;
+            return item.moved ? 1u : 0u;
+        case PieceType::Penguin:
+            if (item.cooldown || item.power) return std::nullopt;
+            return item.action ? 1u : 0u;
+        default:
+            if (item.cooldown || item.power || item.action) return std::nullopt;
+            return 0u;
+        }
+    };
+
+    if (extraCount == 4) {
+        std::array<int, 2> copycats{Position::NoPiece, Position::NoPiece};
+        int copycatCount = 0;
+        std::array<bool, Position::MaxPieces> consumed{};
+        for (int slot = 0; slot < extraCount; ++slot) {
+            const int id = extras[slot];
+            if (position.pieces_[id].type != PieceType::Copycat)
+                continue;
+            if (copycatCount == static_cast<int>(copycats.size()))
+                return std::nullopt;
+            const int clone = position.pieces_[id].link;
+            if (clone == Position::NoPiece || clone >= position.pieceCount_ ||
+                !position.pieces_[clone].alive ||
+                position.pieces_[clone].type != PieceType::CopycatClone ||
+                position.pieces_[clone].link != id ||
+                position.pieces_[clone].color != position.pieces_[id].color ||
+                position.pieces_[clone].square !=
+                  reflect_horizontal(position.pieces_[id].square))
+                return std::nullopt;
+            copycats[copycatCount++] = id;
+            consumed[id] = consumed[clone] = true;
+        }
+        if (copycatCount != 2)
+            return std::nullopt;
+        for (int slot = 0; slot < extraCount; ++slot) {
+            const int id = extras[slot];
+            if (!consumed[id])
+                return std::nullopt;
+        }
+        if (position.continuation_ != Continuation::None ||
+            position.forcedPiece_ != Position::NoPiece ||
+            position.enPassantVictim_ != Position::NoPiece ||
+            position.enPassantSquare_ != Position::NoSquare)
+            return std::nullopt;
+        for (int id = 0; id < position.pieceCount_; ++id) {
+            const PieceState& item = position.pieces_[id];
+            if (item.alive && (item.cooldown || item.power || item.action ||
+                               item.freezeCount))
+                return std::nullopt;
+        }
+        for (const Database& database : databases()) {
+            if (database.attacker != PieceType::Copycat ||
+                database.secondary != PieceType::Copycat ||
+                database.substates != 1)
+                continue;
+            for (int order = 0; order < 2; ++order) {
+                const PieceState& primary = position.pieces_[copycats[order]];
+                const PieceState& secondary = position.pieces_[copycats[1 - order]];
+                const Color expectedSecondary =
+                  database.secondaryColor == Color::White
+                    ? primary.color : ~primary.color;
+                if (secondary.color != expectedSecondary)
+                    continue;
+                const bool swapColors = primary.color == Color::Black;
+                const Color side = swapColors ? ~position.sideToMove_
+                                              : position.sideToMove_;
+                const int canonicalWhite = swapColors ? blackKing : whiteKing;
+                const int canonicalBlack = swapColors ? whiteKing : blackKing;
+                const std::uint32_t placement =
+                  database.secondaryColor == Color::White
+                    ? encode_identical_compound_copycat(
+                        side, position.pieces_[canonicalWhite].square,
+                        position.pieces_[canonicalBlack].square,
+                        primary.square, secondary.square)
+                    : encode_compound_copycat(
+                        side, position.pieces_[canonicalWhite].square,
+                        position.pieces_[canonicalBlack].square,
+                        primary.square, secondary.square);
+                if (placement < database.count)
+                    return database.at(placement);
+            }
+        }
+        return std::nullopt;
+    }
 
     if (extraCount == 3) {
         int copycat = Position::NoPiece;
         int clone = Position::NoPiece;
         int material = Position::NoPiece;
-        for (const int id : extras) {
+        for (int slot = 0; slot < extraCount; ++slot) {
+            const int id = extras[slot];
             if (position.pieces_[id].type == PieceType::Copycat)
                 copycat = id;
             else if (position.pieces_[id].type == PieceType::CopycatClone)
@@ -562,38 +711,53 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
         if (primary.link != clone || linked.link != copycat ||
             linked.type != PieceType::CopycatClone || linked.color != primary.color ||
             linked.square != reflect_horizontal(primary.square) ||
-            secondary.link != Position::NoPiece ||
-            position.continuation_ != Continuation::None ||
-            position.forcedPiece_ != Position::NoPiece ||
-            position.enPassantVictim_ != Position::NoPiece ||
-            position.enPassantSquare_ != Position::NoSquare)
+            secondary.link != Position::NoPiece || primary.cooldown ||
+            primary.power || primary.action || primary.freezeCount ||
+            linked.cooldown || linked.power || linked.action || linked.freezeCount)
             return std::nullopt;
-        for (int id = 0; id < position.pieceCount_; ++id) {
-            const PieceState& item = position.pieces_[id];
-            if (item.alive && (item.cooldown || item.power || item.action ||
-                               item.freezeCount))
-                return std::nullopt;
-        }
         for (const Database& database : databases()) {
             if (database.attacker != PieceType::Copycat ||
                 database.secondary == PieceType::Count ||
                 database.secondary == PieceType::CopycatClone ||
+                database.secondary == PieceType::Copycat ||
                 database.secondary != secondary.type)
                 continue;
             const Color expectedSecondary = database.secondaryColor == Color::White
               ? primary.color : ~primary.color;
-            if (secondary.color != expectedSecondary || database.substates != 1)
+            if (secondary.color != expectedSecondary)
+                continue;
+            bool continuationMatched =
+              position.continuation_ == Continuation::None &&
+              position.forcedPiece_ == Position::NoPiece;
+            const auto secondarySubstate = extractSubstate(
+              material, database.secondary, continuationMatched);
+            if (!secondarySubstate || !continuationMatched ||
+                *secondarySubstate >= represented_substates(database.secondary) ||
+                database.substates != represented_substates(database.secondary))
+                continue;
+            if (position.enPassantVictim_ != Position::NoPiece) {
+                if (position.enPassantVictim_ != material ||
+                    secondary.type != PieceType::Pawn)
+                    continue;
+            }
+            else if (position.enPassantSquare_ != Position::NoSquare)
+                continue;
+            bool hasUnrepresentedFreeze = false;
+            for (int id = 0; id < position.pieceCount_; ++id)
+                hasUnrepresentedFreeze = hasUnrepresentedFreeze ||
+                  (position.pieces_[id].alive && position.pieces_[id].freezeCount);
+            if (hasUnrepresentedFreeze)
                 continue;
             const bool swapColors = primary.color == Color::Black;
             const Color side = swapColors ? ~position.sideToMove_ : position.sideToMove_;
             const int canonicalWhite = swapColors ? blackKing : whiteKing;
             const int canonicalBlack = swapColors ? whiteKing : blackKing;
-            const std::uint32_t index = encode_compound_copycat(
+            const std::uint64_t index = std::uint64_t(encode_compound_copycat(
               side, position.pieces_[canonicalWhite].square,
               position.pieces_[canonicalBlack].square, primary.square,
-              secondary.square);
+              secondary.square)) * database.substates + *secondarySubstate;
             if (index < database.count)
-                return database.at(index);
+                return database.at(static_cast<std::uint32_t>(index));
         }
         return std::nullopt;
     }
@@ -607,11 +771,6 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 const int second = extras[1 - order];
                 const PieceState& primary = position.pieces_[first];
                 const PieceState& secondary = position.pieces_[second];
-                const auto typeMatches = [](PieceType represented, PieceType actual) {
-                    return represented == PieceType::Checker
-                      ? actual == PieceType::Checker || actual == PieceType::CheckerKing
-                      : represented == actual;
-                };
                 if (!typeMatches(database.attacker, primary.type) ||
                     !typeMatches(database.secondary, secondary.type))
                     continue;
@@ -631,51 +790,12 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                     continue;
                 bool continuationMatched = position.continuation_ == Continuation::None &&
                                            position.forcedPiece_ == Position::NoPiece;
-                const auto extractSubstate = [&](int id, PieceType represented)
-                  -> std::optional<std::uint32_t> {
-                    const PieceState& item = position.pieces_[id];
-                    if (!typeMatches(represented, item.type) || item.link != Position::NoPiece)
-                        return std::nullopt;
-                    switch (represented) {
-                    case PieceType::Berserker:
-                        if (item.cooldown || item.action) return std::nullopt;
-                        return std::min<std::uint32_t>(item.power, 9);
-                    case PieceType::Ghost:
-                        if (item.cooldown || item.power || item.action) return std::nullopt;
-                        return item.visible ? 1u : 0u;
-                    case PieceType::Sniper:
-                        if (item.cooldown > 3 || item.power || item.action) return std::nullopt;
-                        return item.cooldown;
-                    case PieceType::Prince: {
-                        if (item.cooldown || item.power || item.action) return std::nullopt;
-                        const bool forced = position.continuation_ == Continuation::PrinceSecondMove &&
-                                            position.forcedPiece_ == id;
-                        continuationMatched = continuationMatched || forced;
-                        return forced ? 1u : 0u;
-                    }
-                    case PieceType::Checker: {
-                        if (item.cooldown || item.power || item.action) return std::nullopt;
-                        const bool forced = position.continuation_ == Continuation::CheckerJump &&
-                                            position.forcedPiece_ == id;
-                        continuationMatched = continuationMatched || forced;
-                        return (item.type == PieceType::CheckerKing ? 2u : 0u) +
-                               (forced ? 1u : 0u);
-                    }
-                    case PieceType::Pawn:
-                        if (item.cooldown || item.power || item.action) return std::nullopt;
-                        return item.moved ? 1u : 0u;
-                    case PieceType::Penguin:
-                        if (item.cooldown || item.power) return std::nullopt;
-                        return item.action ? 1u : 0u;
-                    default:
-                        if (item.cooldown || item.power || item.action) return std::nullopt;
-                        return 0u;
-                    }
-                };
                 std::optional<std::uint32_t> primarySubstate = copycat
-                  ? std::optional<std::uint32_t>(0) : extractSubstate(first, database.attacker);
+                  ? std::optional<std::uint32_t>(0)
+                  : extractSubstate(first, database.attacker, continuationMatched);
                 std::optional<std::uint32_t> secondarySubstate = copycat
-                  ? std::optional<std::uint32_t>(0) : extractSubstate(second, database.secondary);
+                  ? std::optional<std::uint32_t>(0)
+                  : extractSubstate(second, database.secondary, continuationMatched);
                 if (!primarySubstate || !secondarySubstate || !continuationMatched)
                     continue;
                 if (position.enPassantVictim_ != Position::NoPiece) {

@@ -24,11 +24,11 @@ are invalid and are never accepted as a fallback.
 | `kqk.uftb` | King+Queen vs King | 15,744,492 | 306,404 (186,556) / 0 / 0 | 0 (41,808) / 413,304 / 37,848 | `1d5d15c2a5ed93d06aa423d458c9a32b8b7854bafba4f6d15bb4e8fb6cdf1fd3` |
 | `krk.uftb` | King+Rook vs King | 11,970,912 | 361,648 (131,312) / 0 / 0 | 0 (41,808) / 414,300 / 36,852 | `abeef6191dd9baa87918f74a379592dde9683be81675691e8d8e6550dcd1ce44` |
 | `kberserkerk.uftb` | King+Berserker vs King | 92,321,028 | 1,468,376 (3,461,224) / 0 / 0 | 0 (418,080) / 4,143,200 / 368,320 | `f41245a06eb280136c458e6337ef4a588a0d5142b606413b92f84c248487e2b1` |
-| `kbombk.uftb` | King+Bomb vs King | 9,761,788 | 394,988 (97,972) / 0 / 0 | 0 (41,808) / 448,600 (1,760) / 792 | `3d4f44035652e486cbd72c59e8247cfbba355b748107ee2b9d06abfe4674b864` |
+| `kbombk.uftb` | King+Bomb vs King | 9,827,604 | 394,988 (97,972) / 0 / 0 | 0 (41,808) / 448,600 (1,760) / 792 | `18e057c83faf940db1ad7404a39623a5db208724de892d604735576d7583ce2f` |
 | `kninjak.uftb` | King+Ninja vs King | 12,610,592 | 356,360 (136,600) / 0 / 0 | 0 (41,808) / 413,376 / 37,776 | `4552403a54317cfdb3fee192ea4e7e80d33769ef956ee5b0c8f82548efb87776` |
 | `kghostk.uftb` | King+Ghost vs King | 17,761,144 | 902,304 (83,616) / 0 / 0 | 0 (83,616) / 865,512 / 36,792 | `3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31` |
 | `kpenguink.uftb` | King+Penguin vs King | 9,874,656 | 384 (48,064) / 192 / 489,112 (448,168) | 796 (43,568) / 1,760 / 527,180 (412,616) | `7097ade2d86569ab5d5edf5b5700eaf0c5fa576f92d3510f523b2bf4625b7cbd` |
-| `kparasitek.uftb` | King+Parasite vs King | 8,602,716 | 412,616 (80,344) / 0 / 0 | 0 (41,808) / 451,120 / 32 | `f08b2676a703259ef638bc4ab72b9cd7e6b2000afc72dd70b0ac17e03ea858ab` |
+| `kparasitek.uftb` | King+Parasite vs King | 8,646,512 | 412,616 (80,344) / 0 / 0 | 0 (41,808) / 451,120 / 32 | `c53364f87ce4ff23372aa3565d279e9fadde706eb1aeca5695aecc1ea3e83047` |
 | `ksniperk.uftb` | King+Sniper vs King | 24,180,908 | 5,014 (194,552) / 0 / 872,222 (900,052) | 0 (167,232) / 1,210 (1,066) / 901,094 (901,238) | `473022c95908a45eec7ac8aab7752482d30033cb24f66b65bdf329a7c49c49c5` |
 | `kprincek.uftb` | King+Prince vs King | 14,324,280 | 867,040 (80,344) / 0 (38,536) / 0 | 0 (41,808) / 414,344 (492,944) / 36,808 (16) | `7bce11ab717f49e1e2b6e1e0844825139382fe324b2ad88a59b5fc027ba0e6c0` |
 | `kgiantk.uftb` | King+Giant vs King | 4,747,504 | 3,300 (82,476) / 0 / 273,324 (133,860) | 0 (30,868) / 1,460 / 326,772 (133,860) | `eb52f2c08cf88e1e3682d0c72dfde191d9009e79779ad7eee23ca82fdcade591` |
@@ -262,11 +262,14 @@ to use it.
 Copycat is one deployable character with two board models. The K+Copycat-v-K
 and K+Copycat-v-K+Bishop classes index it as one compound piece: the linked
 half is reconstructed at the exact horizontal mirror of the selected half
-rather than storing unreachable arbitrary clone coordinates. Bishop cannot
-separate or save one half, so every in-class transition preserves that
-invariant. Singleton Copycats and independently displaced halves remain outside
-the bundled domain; Penguin, Mage, Fisherman, and Angel interactions require
-larger state closures before those combinations can be represented exactly.
+rather than storing arbitrary clone coordinates. The next expansion applies
+that same explicitly requested unsplit-start simplification to 36 sufficient
+K+K+2 Copycat material classes. Each pair has one indexed Copycat anchor and a
+derived linked clone. Copycat+Copycat uses two such linked pairs and folds the
+same-team pair exchange. Singleton Copycats and independently displaced halves
+remain outside this planning domain. Both orientations of Copycat with Penguin,
+Mage, or Fisherman are skipped because those pieces can split the linked pair
+within the class; no out-of-domain successor is silently scored as a draw.
 
 `tools/plan_ultimate_tablebases.py` is the authoritative class and storage
 inventory for the expansion. It applies horizontal-reflection canonicalization
@@ -308,9 +311,18 @@ versus K+Dragon, K+Ghost versus K+Fisherman, K+Ghost versus K+Giant,
 K+Ghost versus K+Mage, K+Ghost versus K+Parasite, K+Ghost+Mage,
 K+Ghost+Parasite, K+Jester+Ghost, and K+Jester versus K+Ghost. The narrow
 approved overrun adds K+Copycat versus K+Bishop and K+Dragon versus K+Penguin.
-Devil, Sludge, Angel, and general Copycat combinations remain excluded from
-K+K+2 because Minion spawning, persistent Goop, Angel host/Halo state, and
-separated Copycat halves make those classes larger than the exact indexed
-closure used here. The linked compound Copycat+Bishop class is the deliberate
-exception described above; representing the other combinations as ordinary
-K+K+2 tables would be incorrect.
+
+The AWS expansion inventory separately contains all 232 closed stateful
+K+K+2 classes (65,951,886,000 packed bytes) plus 36 unsplit-Copycat classes
+(6,784,978,200 packed bytes), for 268 supported classes and 72,736,864,200
+packed bytes. Its promotion dependency waves are 226 classes / 65,050,385,400
+bytes without Pawns, 40 classes / 7,401,794,400 bytes with one
+Pawn, and 2 classes / 284,684,400 bytes with two Pawns. Pawn waves depend on
+the complete preceding wave; in particular, Copycat+Pawn depends on the
+mirror-domain Copycat+Queen table.
+
+The remaining 90 sufficient K+K+2 material classes containing Devil, Sludge,
+or Angel are explicitly deferred by current scope. Minion spawning, persistent
+Goop, and Angel host/Halo graphs require larger dynamic codecs; no symbolic
+solver work or completeness claim is made for them. This deferred set also
+includes Copycat paired with one of those three families.

@@ -371,7 +371,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
         header[416:480] = (
             b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
         lower_bomb = (
-            b"3d4f44035652e486cbd72c59e8247cfbba355b748107ee2b9d06abfe4674b864")
+            b"18e057c83faf940db1ad7404a39623a5db208724de892d604735576d7583ce2f")
         header[480:544] = lower_bomb
         header[544:608] = lower_bomb
         header[608:672] = generate.information.concrete_tablebase_model_fingerprint(
@@ -475,7 +475,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
         header[416:480] = (
             b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
         lower_parasite = (
-            b"f08b2676a703259ef638bc4ab72b9cd7e6b2000afc72dd70b0ac17e03ea858ab")
+            b"c53364f87ce4ff23372aa3565d279e9fadde706eb1aeca5695aecc1ea3e83047")
         header[480:544] = lower_parasite
         header[544:608] = lower_parasite
         header[608:672] = (
@@ -658,7 +658,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
                               bomb)
                 self.assertEqual(
                     bomb[bomb.index("--lower-bomb-sha256") + 1],
-                    "3d4f44035652e486cbd72c59e8247cfbba355b748107ee2b9d06abfe4674b864")
+                    "18e057c83faf940db1ad7404a39623a5db208724de892d604735576d7583ce2f")
 
             for filename, orientation, transitions in (
                     ("kghostfishermank.uftb", "same",
