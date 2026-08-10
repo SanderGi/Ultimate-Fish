@@ -206,7 +206,15 @@
           "sha256": "166d613695abc30b1f8dbcdb4587d71acee93556eecb2ffba09f5a3d75bf8efe"
         }
       ],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/jester-ghost/migration/11120e7c-to-732852b8/merge-evidence/results/sha256/8849de1535b5f376188d2773227bfc6f66ffbb8a31410c6e6c7586d55bab1c6c/jester-ghost-7328-merge-evidence-8849de1535b5f376188d2773227bfc6f66ffbb8a31410c6e6c7586d55bab1c6c.tar.zst",
+          "version_id": "odnMlowB2a7iZCOlKNqnIg74bJCCahgZ",
+          "sha256": "8849de1535b5f376188d2773227bfc6f66ffbb8a31410c6e6c7586d55bab1c6c",
+          "size": 41158
+        }
+      ]
     },
     {
       "id": "jester-ghost-measure",
@@ -214,9 +222,28 @@
       "unit": "ultimatefish-jg7328-measure.service",
       "dependencies": ["jester-ghost-merge"],
       "queue_stage": true,
-      "checkpoint_paths": [],
-      "completion_paths": [],
-      "source_bindings": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328/service.log",
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328/work/measurement.log",
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328/work/scratch/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328/work/measurement-certificate.json"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-7328/bin/run_ultimate_jester_ghost_measurement_aws.py",
+          "sha256": "b8cfa0c3c822a96cb32fa8404d147f24890f9deea764723a1f15da71842761c0"
+        },
+        {
+          "path": "/etc/systemd/system/ultimatefish-jg7328-measure.service",
+          "sha256": "f746df92fc5d88ce6aca22f339259b9f88129edc3f939c65ed31f7b22e37d737"
+        },
+        {
+          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/ultimate_jester_ghost_information_tablebase",
+          "sha256": "978fdf69362577c824d9e456a28a51d133cca4b6823fcab9e8e7555e2c11a147"
+        }
+      ],
       "s3_certificates": []
     },
     {
