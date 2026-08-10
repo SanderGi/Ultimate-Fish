@@ -75,11 +75,51 @@ void solver_arena_test() {
                   first.sameClassChildren[bucket].has_value(),
                 "crossed solver bucket/child domain mapping is incomplete");
     }
+    const Solver::TargetBellmanPlan black = arena.bellman_plan(
+      rootId, Color::Black, false);
+    require(black.mover == Color::Black &&
+             black.certificate.atoms == root.atoms.size() &&
+             black.certificate.gates == first.certificate.actions &&
+             black.certificate.childReferences ==
+               first.certificate.outcomes &&
+             black.certificate.internalReferences +
+                 black.certificate.externalReferences ==
+               black.certificate.childReferences &&
+             black.certificate.sourceCoverageResidual == 0 &&
+             black.certificate.cellUniformityResidual == 0,
+            "crossed informed-mover Bellman plan has a residual");
+    for (const Solver::AtomEquationPlan& equation : black.atoms)
+        require(equation.kind == Solver::EquationKind::Or &&
+                  !equation.gates.empty() && equation.children.empty(),
+                "crossed informed atom is not an OR of action gates");
+    for (const Solver::ActionGatePlan& gate : black.gates)
+        require(!gate.children.empty(),
+                "crossed informed action gate lacks cell outcomes");
+
+    const Solver::TargetBellmanPlan white = arena.bellman_plan(
+      rootId, Color::White, false);
+    require(white.mover == Color::Black && white.gates.empty() &&
+             white.certificate.atoms == root.atoms.size() &&
+             white.certificate.gates == 0 &&
+             white.certificate.childReferences ==
+               2 * first.certificate.outcomes &&
+             white.certificate.internalReferences +
+                 white.certificate.externalReferences ==
+               white.certificate.childReferences &&
+             white.certificate.sourceCoverageResidual == 0 &&
+             white.certificate.cellUniformityResidual == 0,
+            "crossed uninformed-target Bellman plan has a residual");
+    for (const Solver::AtomEquationPlan& equation : white.atoms)
+        require(equation.kind == Solver::EquationKind::And &&
+                  equation.gates.empty() && !equation.children.empty(),
+                "crossed opponent atom is not an AND of compatible outcomes");
     std::cout << "crossed_solver_arena nodes " << arena.size()
               << " actions " << first.certificate.actions
               << " observations " << first.certificate.observations
               << " outcomes " << first.certificate.outcomes
-              << " replay_new_nodes 0 residual 0\n";
+              << " black_gates " << black.certificate.gates
+              << " white_children " << white.certificate.childReferences
+              << " replay_new_nodes 0 bellman_residual 0\n";
 }
 
 }  // namespace
