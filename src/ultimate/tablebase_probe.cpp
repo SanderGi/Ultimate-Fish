@@ -921,6 +921,19 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                     continue;
                 const bool copycat = primary.type == PieceType::Copycat &&
                                      secondary.type == PieceType::CopycatClone;
+                const bool containsCopycat =
+                  primary.type == PieceType::Copycat ||
+                  primary.type == PieceType::CopycatClone ||
+                  secondary.type == PieceType::Copycat ||
+                  secondary.type == PieceType::CopycatClone;
+                // Every concrete Copycat table starts with the complete
+                // linked horizontal-mirror pair.  A later split/singleton
+                // state may otherwise have the same two non-King piece types
+                // as a compound Copycat table and accidentally reuse its
+                // placement index.  Only the dedicated intact-pair shape is
+                // representable in this two-extra branch.
+                if (containsCopycat && !copycat)
+                    continue;
                 if (copycat ? !(primary.link == second && secondary.link == first)
                             : !(primary.link == Position::NoPiece &&
                                 secondary.link == Position::NoPiece))
@@ -1075,6 +1088,11 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
 
     const int attacker = extras[0];
     const PieceState& extra = position.pieces_[attacker];
+    // There is no K+singleton-Copycat domain: Copycat tablebases always encode
+    // both linked halves, even when no other non-King model is present.
+    if (extra.type == PieceType::Copycat ||
+        extra.type == PieceType::CopycatClone)
+        return std::nullopt;
     if (extra.link != Position::NoPiece)
         return std::nullopt;
     const auto has_unrepresented_freeze = [&] {

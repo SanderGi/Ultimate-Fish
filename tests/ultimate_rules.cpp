@@ -2039,6 +2039,14 @@ void test_exact_tablebase_probing() {
              compoundBlack->dtw == compoundWhite->dtw,
            "compound Copycat tablebase canonicalizes material-owner color");
 
+    Position singletonCopycatBishop = copycatBishop;
+    singletonCopycatBishop.piece(compoundCat).link = Position::NoPiece;
+    singletonCopycatBishop.piece(compoundClone).link = Position::NoPiece;
+    expect(singletonCopycatBishop.remove_piece(compoundClone),
+           "Copycat tablebase regression constructs one surviving split half");
+    expect(!TablebaseProbe::probe(singletonCopycatBishop),
+           "a split Copycat singleton never probes an unsplit linked-pair table");
+
     copycatBishop.piece(compoundClone).square =
       Position::square_from_name("e3");
     expect(!TablebaseProbe::probe(copycatBishop),
