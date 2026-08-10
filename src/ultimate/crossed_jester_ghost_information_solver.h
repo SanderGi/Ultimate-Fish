@@ -199,7 +199,7 @@ class Arena {
     [[nodiscard]] static std::pair<Arena, GraphArchiveCertificate> read(
       std::istream& input);
 
-    [[nodiscard]] const CrossedJesterGhostInformation::KnowledgeState& node(
+    [[nodiscard]] CrossedJesterGhostInformation::KnowledgeState node(
       NodeId id) const;
     [[nodiscard]] std::size_t size() const;
 
@@ -207,7 +207,10 @@ class Arena {
     [[nodiscard]] static std::vector<std::uint8_t> key(
       const CrossedJesterGhostInformation::KnowledgeState& state);
 
-    std::vector<CrossedJesterGhostInformation::KnowledgeState> nodes_;
+    // The map owns the one canonical byte string for each node. Stable key
+    // addresses provide the ID-indexed arena without retaining a second,
+    // heap-heavy decoded KnowledgeState for every discovered node.
+    std::vector<const std::vector<std::uint8_t>*> nodes_;
     std::map<std::vector<std::uint8_t>, NodeId> interner_;
 };
 

@@ -94,8 +94,11 @@ NodeId Arena::intern(const Model::KnowledgeState& state) {
     if (nodes_.size() >= std::numeric_limits<NodeId>::max())
         throw std::overflow_error("crossed solver node IDs exceed uint32");
     const NodeId id = static_cast<NodeId>(nodes_.size());
-    nodes_.push_back(std::move(canonical));
-    interner_.emplace(std::move(encoded), id);
+    const auto [inserted, fresh] = interner_.emplace(std::move(encoded), id);
+    if (!fresh)
+        throw std::runtime_error(
+          "crossed solver interner insertion lost an exact key");
+    nodes_.push_back(&inserted->first);
     return id;
 }
 
@@ -109,7 +112,7 @@ NodeExpansion Arena::regenerate(NodeId id, bool allowNew) {
     if (id >= nodes_.size())
         throw std::out_of_range("crossed solver node is outside the arena");
     // Interning children may reallocate nodes_; keep the source independent.
-    const Model::KnowledgeState source = nodes_[id];
+    const Model::KnowledgeState source = node(id);
     NodeExpansion result;
     result.transitions = Model::enumerate_complete_transitions(source);
     result.sameClassChildren.resize(result.transitions.buckets.size());
@@ -306,8 +309,10 @@ GraphArchiveCertificate Arena::write(std::ostream& output) const {
     write_u32(output, static_cast<std::uint32_t>(nodes_.size()));
     GraphArchiveCertificate certificate;
     certificate.nodes = nodes_.size();
-    for (const Model::KnowledgeState& state : nodes_) {
-        const std::vector<std::uint8_t> encoded = Model::serialize_state(state);
+    for (const std::vector<std::uint8_t>* stored : nodes_) {
+        if (!stored)
+            throw std::runtime_error("crossed graph arena has a null key");
+        const std::vector<std::uint8_t>& encoded = *stored;
         if (encoded.size() > std::numeric_limits<std::uint32_t>::max())
             throw std::overflow_error("crossed graph state key exceeds uint32");
         write_u32(output, static_cast<std::uint32_t>(encoded.size()));
@@ -316,8 +321,9 @@ GraphArchiveCertificate Arena::write(std::ostream& output) const {
         if (!output)
             throw std::runtime_error("cannot write crossed graph state key");
         certificate.payloadBytes += 4 + encoded.size();
+        const Model::KnowledgeState state = Model::deserialize_state(encoded);
         certificate.keyRoundtripResidual +=
-          Model::deserialize_state(encoded) == state ? 0 : 1;
+          Model::serialize_state(state) == encoded ? 0 : 1;
         certificate.canonicalResidual +=
           Model::canonicalize_state(state).value == state ? 0 : 1;
     }
@@ -503,10 +509,12 @@ bool resolve_external_force(const ExternalForceQuery& query,
     throw std::invalid_argument("unknown crossed external child domain");
 }
 
-const Model::KnowledgeState& Arena::node(NodeId id) const {
+Model::KnowledgeState Arena::node(NodeId id) const {
     if (id >= nodes_.size())
         throw std::out_of_range("crossed solver node is outside the arena");
-    return nodes_[id];
+    if (!nodes_[id])
+        throw std::runtime_error("crossed solver node has a null key");
+    return Model::deserialize_state(*nodes_[id]);
 }
 
 std::size_t Arena::size() const {

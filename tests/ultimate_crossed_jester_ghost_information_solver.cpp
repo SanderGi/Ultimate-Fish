@@ -277,7 +277,7 @@ void solver_arena_test() {
     require(rejected, "crossed graph archive accepted a duplicate node key");
     rejected = false;
     try {
-        const Model::KnowledgeState& canonical = focused.node(rootId);
+        const Model::KnowledgeState canonical = focused.node(rootId);
         std::optional<Model::KnowledgeState> noncanonical;
         for (const Model::RectangleTransform transform : {
                Model::RectangleTransform::Horizontal,
