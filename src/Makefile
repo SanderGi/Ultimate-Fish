@@ -58,7 +58,7 @@ ULTIMATE_SRCS = ultimate/main.cpp ultimate/position.cpp ultimate/search.cpp ulti
 ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cpp \
 	ultimate/information_solver.cpp ultimate/nnue.cpp
 
-.PHONY: ultimatefish ultimate-test ultimate-information-test \
+.PHONY: ultimatefish ultimate-test ultimate-belief-benchmark ultimate-information-test \
 	ultimate-ghost-information-probe-test ultimate-tablebase \
 	ultimate-nnue-reference ultimate-information-solvers \
 	ultimate-ghost-information-tablebase ultimate-double-jester-information-tablebase \
@@ -500,6 +500,12 @@ ultimate-test:
 		ultimate/tablebase_probe.cpp ultimate/information.cpp ultimate/nnue.cpp \
 		-o ultimate_rules_test
 	./ultimate_rules_test
+
+ultimate-belief-benchmark:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror -Iultimate \
+		../tools/benchmark_ultimate_beliefs.cpp ultimate/position.cpp \
+		ultimate/search.cpp ultimate/tablebase_probe.cpp ultimate/information.cpp \
+		ultimate/nnue.cpp -o ultimate_belief_benchmark
 
 VPATH = syzygy:nnue:nnue/features
 

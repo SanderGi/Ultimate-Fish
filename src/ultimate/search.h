@@ -74,9 +74,9 @@ struct BeliefSearchResult {
     // False when the configured observer is to move but the supplied state
     // still spans multiple privately visible legal-dot observations.
     bool validInformationCell = true;
-    // The current live solver constrains only the root action across the
-    // complete information set.  Deeper searches are explicitly concrete-
-    // world searches until the history-preserving search lands.
+    // Number of completed action layers for which the principal variation
+    // retained the complete information set and branched on exact public and
+    // mover-private observations.
     int historyPreservingPlies = 0;
     std::vector<std::string> principalVariation;
 };
