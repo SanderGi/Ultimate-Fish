@@ -536,9 +536,12 @@ ultimate-crossed-jester-ghost-information-tablebase:
 	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
 		-Wno-error=pedantic -Wno-error=range-loop-construct -Iultimate \
 		ultimate/crossed_jester_ghost_information_tablebase.cpp \
+		ultimate/crossed_jester_ghost_information_fixed_point.cpp \
+		ultimate/crossed_jester_ghost_information_lower_oracle.cpp \
+		ultimate/crossed_jester_ghost_information_sidecar.cpp \
 		ultimate/crossed_jester_ghost_information_solver.cpp \
 		ultimate/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
-		ultimate/information.cpp ultimate/nnue.cpp \
+		ultimate/information.cpp ultimate/information_solver.cpp ultimate/nnue.cpp \
 		-o ultimate_crossed_jester_ghost_information_tablebase
 
 VPATH = syzygy:nnue:nnue/features

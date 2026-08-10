@@ -34,6 +34,19 @@ struct PackedForcePlane {
     [[nodiscard]] bool value(NodeId node, std::uint32_t atom) const;
 };
 
+struct FixedPointPreflight {
+    Color target = Color::White;
+    std::uint64_t nodes = 0;
+    std::uint64_t atomVariables = 0;
+    std::uint64_t gateVariables = 0;
+    std::uint64_t totalVariables = 0;
+    std::uint64_t tokenReferences = 0;
+    std::uint64_t reverseEdges = 0;
+    std::uint64_t externalConstants = 0;
+    std::uint64_t peakScratchBytes = 0;
+    std::uint64_t residual = 0;
+};
+
 class FixedPointSolution {
    public:
     FixedPointSolution(FixedPointSolution&&) noexcept = default;
@@ -73,6 +86,12 @@ class FixedPointSolution {
 [[nodiscard]] FixedPointSolution solve_closed_graph(
   Arena& arena, Color target, const LowerForceOracle& oracle,
   const std::string& scratchDirectory);
+
+// Regenerates every equation without allocating the disk-backed solver.  The
+// returned scratch extent is the exact maximum of the fixed-point file layouts
+// with every reverse edge counted, and is therefore a hard pre-launch gate.
+[[nodiscard]] FixedPointPreflight preflight_closed_graph(
+  Arena& arena, Color target);
 
 }  // namespace Stockfish::Ultimate::CrossedJesterGhostSolver
 

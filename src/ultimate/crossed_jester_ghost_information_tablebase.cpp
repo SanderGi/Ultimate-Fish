@@ -4,6 +4,9 @@
   GPLv3 or later.
 */
 
+#include "crossed_jester_ghost_information_fixed_point.h"
+#include "crossed_jester_ghost_information_lower_oracle.h"
+#include "crossed_jester_ghost_information_sidecar.h"
 #include "crossed_jester_ghost_information_solver.h"
 
 #include <algorithm>
@@ -83,6 +86,25 @@ void sync_parent(const std::string& path) {
           std::to_string(saved));
 }
 
+[[nodiscard]] std::string parent_path(const std::string& path) {
+    const std::size_t slash = path.find_last_of('/');
+    return slash == std::string::npos ? "."
+         : slash == 0 ? "/" : path.substr(0, slash);
+}
+
+void require_same_volume(const std::string& scratch,
+                         const std::string& output) {
+    struct stat scratchStatus {};
+    struct stat outputStatus {};
+    if (::stat(scratch.c_str(), &scratchStatus) != 0 ||
+        ::stat(parent_path(output).c_str(), &outputStatus) != 0)
+        throw std::runtime_error(
+          "cannot stat crossed solve scratch/output directories");
+    if (scratchStatus.st_dev != outputStatus.st_dev)
+        throw std::runtime_error(
+          "crossed solve scratch and sidecar must share one gated volume");
+}
+
 struct Options {
     std::string checkpoint;
     std::uint32_t rawBegin = 0;
@@ -96,7 +118,18 @@ struct Options {
     std::uint64_t maximumCheckpointBytes =
       std::numeric_limits<std::uint64_t>::max();
     std::uint64_t minimumFreeBytes = 0;
+    std::uint64_t maximumSolveScratchBytes =
+      std::numeric_limits<std::uint64_t>::max();
+    std::string scratchDirectory;
+    std::string outputSidecar;
+    std::string sourceSha256;
+    std::string modelSha256;
+    std::string observationSha256;
+    std::string checkpointSha256;
+    Solver::LowerOracleOptions lower;
     bool verifyOnly = false;
+    bool measureSolve = false;
+    bool solve = false;
 };
 
 struct Resources {
@@ -179,8 +212,55 @@ void resource_gate(const Options& options) {
         else if (argument == "--minimum-free-bytes")
             options.minimumFreeBytes = number(
               value("minimum free bytes"), "minimum free bytes");
+        else if (argument == "--maximum-solve-scratch-bytes")
+            options.maximumSolveScratchBytes = number(
+              value("maximum solve scratch bytes"),
+              "maximum solve scratch bytes");
+        else if (argument == "--scratch-directory")
+            options.scratchDirectory = value("scratch directory");
+        else if (argument == "--output-sidecar")
+            options.outputSidecar = value("output sidecar");
+        else if (argument == "--source-sha256")
+            options.sourceSha256 = value("source SHA-256");
+        else if (argument == "--model-sha256")
+            options.modelSha256 = value("model SHA-256");
+        else if (argument == "--observation-sha256")
+            options.observationSha256 = value("observation SHA-256");
+        else if (argument == "--checkpoint-sha256")
+            options.checkpointSha256 = value("checkpoint SHA-256");
+        else if (argument == "--lower-jester-table")
+            options.lower.jesterTable = value("lower Jester table");
+        else if (argument == "--lower-jester-table-sha256")
+            options.lower.jesterTableSha256 =
+              value("lower Jester table SHA-256");
+        else if (argument == "--lower-jester-overlay")
+            options.lower.jesterOverlay = value("lower Jester overlay");
+        else if (argument == "--lower-jester-overlay-sha256")
+            options.lower.jesterOverlaySha256 =
+              value("lower Jester overlay SHA-256");
+        else if (argument == "--lower-jester-model-sha256")
+            options.lower.jesterModelSha256 =
+              value("lower Jester model SHA-256");
+        else if (argument == "--lower-ghost-sidecar")
+            options.lower.ghostSidecar = value("lower Ghost sidecar");
+        else if (argument == "--lower-ghost-sidecar-sha256")
+            options.lower.ghostSidecarSha256 =
+              value("lower Ghost sidecar SHA-256");
+        else if (argument == "--lower-ghost-source-sha256")
+            options.lower.ghostSourceSha256 =
+              value("lower Ghost source SHA-256");
+        else if (argument == "--lower-ghost-model-sha256")
+            options.lower.ghostModelSha256 =
+              value("lower Ghost model SHA-256");
+        else if (argument == "--lower-ghost-observation-sha256")
+            options.lower.ghostObservationSha256 =
+              value("lower Ghost observation SHA-256");
         else if (argument == "--verify-checkpoint")
             options.verifyOnly = true;
+        else if (argument == "--measure-solve")
+            options.measureSolve = true;
+        else if (argument == "--solve")
+            options.solve = true;
         else
             throw std::invalid_argument("unknown crossed graph argument: " +
                                         argument);
@@ -192,6 +272,30 @@ void resource_gate(const Options& options) {
     if (options.rawBegin > Model::RawPublicFrameCount ||
         options.rawCount > Model::RawPublicFrameCount - options.rawBegin)
         throw std::out_of_range("crossed graph raw range is outside domain");
+    if (unsigned(options.verifyOnly) + unsigned(options.measureSolve) +
+          unsigned(options.solve) > 1)
+        throw std::invalid_argument(
+          "crossed verify, measurement, and solve modes are exclusive");
+    if ((options.measureSolve || options.solve) &&
+        (options.rawBegin || options.rawCount != Model::RawPublicFrameCount ||
+         options.checkpointSha256.empty() || options.scratchDirectory.empty()))
+        throw std::invalid_argument(
+          "crossed solve requires the full graph, checkpoint SHA, and scratch directory");
+    if (options.solve &&
+        (options.outputSidecar.empty() || options.sourceSha256.empty() ||
+         options.modelSha256.empty() || options.observationSha256.empty() ||
+         options.lower.jesterTable.empty() ||
+         options.lower.jesterTableSha256.empty() ||
+         options.lower.jesterOverlay.empty() ||
+         options.lower.jesterOverlaySha256.empty() ||
+         options.lower.jesterModelSha256.empty() ||
+         options.lower.ghostSidecar.empty() ||
+         options.lower.ghostSidecarSha256.empty() ||
+         options.lower.ghostSourceSha256.empty() ||
+         options.lower.ghostModelSha256.empty() ||
+         options.lower.ghostObservationSha256.empty()))
+        throw std::invalid_argument(
+          "crossed production solve is missing a provenance-bound input");
     return options;
 }
 
@@ -243,6 +347,163 @@ void save(const Solver::GraphDiscovery& discovery,
               << " durable 1 residual 0\n";
 }
 
+[[nodiscard]] std::uint64_t checked_add(
+  std::uint64_t lhs, std::uint64_t rhs, const char* field) {
+    if (lhs > std::numeric_limits<std::uint64_t>::max() - rhs)
+        throw std::overflow_error(std::string("crossed ") + field +
+                                  " overflow");
+    return lhs + rhs;
+}
+
+struct SolvePreflight {
+    Solver::FixedPointPreflight white;
+    Solver::FixedPointPreflight black;
+    std::uint64_t sidecarBytes = 0;
+    std::uint64_t requiredFreeBytes = 0;
+};
+
+[[nodiscard]] SolvePreflight solve_preflight(
+  Solver::GraphDiscovery& discovery, const Options& options) {
+    if (!discovery.closed() || discovery.raw_begin() ||
+        discovery.roots().size() != Model::RawPublicFrameCount)
+        throw std::runtime_error(
+          "crossed solve requires a closed full-domain graph");
+    SolvePreflight result;
+    result.white = Solver::preflight_closed_graph(
+      discovery.arena(), Color::White);
+    result.black = Solver::preflight_closed_graph(
+      discovery.arena(), Color::Black);
+    if (result.white.nodes != result.black.nodes ||
+        result.white.atomVariables != result.black.atomVariables)
+        throw std::runtime_error(
+          "crossed target preflight dimensions disagree");
+    std::uint64_t keyBytes = 0;
+    for (Solver::NodeId node = 0; node < discovery.arena().size(); ++node)
+        keyBytes = checked_add(
+          keyBytes, discovery.arena().encoded_key(node).size(),
+          "sidecar key bytes");
+    const std::uint64_t bitBytes =
+      (result.white.atomVariables + 7) / 8;
+    result.sidecarBytes = checked_add(
+      checked_add(
+        checked_add(640,
+          std::uint64_t(Model::RawPublicFrameCount) * 4,
+          "sidecar root bytes"),
+        result.white.nodes * 16, "sidecar index bytes"),
+      checked_add(keyBytes, 2 * bitBytes, "sidecar payload bytes"),
+      "sidecar extent");
+    const std::uint64_t scratch = std::max(
+      result.white.peakScratchBytes, result.black.peakScratchBytes);
+    if (scratch > options.maximumSolveScratchBytes)
+        throw std::runtime_error(
+          "crossed solve scratch resource gate exceeded");
+    result.requiredFreeBytes = checked_add(
+      checked_add(scratch, result.sidecarBytes,
+                  "solve durable peak bytes"),
+      options.minimumFreeBytes, "solve free-disk floor");
+    struct statvfs volume {};
+    if (::statvfs(options.scratchDirectory.c_str(), &volume) != 0)
+        throw std::runtime_error("cannot stat crossed solve scratch volume");
+    const std::uint64_t freeBytes =
+      volume.f_bavail && volume.f_frsize >
+        std::numeric_limits<std::uint64_t>::max() / volume.f_bavail
+      ? std::numeric_limits<std::uint64_t>::max()
+      : std::uint64_t(volume.f_bavail) * volume.f_frsize;
+    const auto print = [](const Solver::FixedPointPreflight& value) {
+        std::cout << "crossed_solve_preflight target "
+                  << (value.target == Color::White ? "white" : "black")
+                  << " nodes " << value.nodes
+                  << " atoms " << value.atomVariables
+                  << " gates " << value.gateVariables
+                  << " variables " << value.totalVariables
+                  << " tokens " << value.tokenReferences
+                  << " reverse_edges " << value.reverseEdges
+                  << " external_constants " << value.externalConstants
+                  << " peak_scratch_bytes " << value.peakScratchBytes
+                  << " residual " << value.residual << '\n';
+    };
+    print(result.white);
+    print(result.black);
+    std::cout << "crossed_solve_resources sidecar_bytes "
+              << result.sidecarBytes << " required_free_bytes "
+              << result.requiredFreeBytes << " actual_free_bytes "
+              << freeBytes << " residual 0\n";
+    if (freeBytes < result.requiredFreeBytes)
+        throw std::runtime_error("crossed solve free-disk gate failed");
+    return result;
+}
+
+void print_solution(const Solver::FixedPointCertificate& certificate) {
+    std::cout << "crossed_fixed_point target "
+              << (certificate.target == Color::White ? "white" : "black")
+              << " nodes " << certificate.nodes
+              << " atoms " << certificate.atomVariables
+              << " gates " << certificate.gateVariables
+              << " variables " << certificate.totalVariables
+              << " internal_tokens " << certificate.internalTokens
+              << " external_true " << certificate.externalTrue
+              << " external_false " << certificate.externalFalse
+              << " reverse_edges " << certificate.solve.reverseEdges
+              << " activated " << certificate.solve.activated
+              << " bellman_residual " << certificate.solve.bellmanResidual
+              << " rank_residual " << certificate.solve.rankResidual
+              << " equation_residual " << certificate.equationResidual
+              << '\n';
+}
+
+void solve(Solver::GraphDiscovery& discovery, const Options& options) {
+    require_same_volume(options.scratchDirectory, options.outputSidecar);
+    const std::string checkpointSha =
+      Solver::authenticated_file_sha256(options.checkpoint);
+    if (checkpointSha != options.checkpointSha256)
+        throw std::runtime_error("crossed graph checkpoint SHA mismatch");
+    (void)solve_preflight(discovery, options);
+    Solver::AuthenticatedLowerForceOracle oracle(options.lower);
+    const Solver::LowerOracleCertificate& lower = oracle.certificate();
+    std::cout << "crossed_lower_oracle jester_states "
+              << lower.jesterStates << " ghost_geometries "
+              << lower.ghostGeometries << " ghost_strata "
+              << lower.ghostStrata << " ghost_nodes " << lower.ghostNodes
+              << " residual 0\n";
+    Solver::PackedForcePlane white;
+    {
+        Solver::FixedPointSolution solution = Solver::solve_closed_graph(
+          discovery.arena(), Color::White, oracle, options.scratchDirectory);
+        print_solution(solution.certificate());
+        white = solution.pack();
+    }
+    Solver::PackedForcePlane black;
+    {
+        Solver::FixedPointSolution solution = Solver::solve_closed_graph(
+          discovery.arena(), Color::Black, oracle, options.scratchDirectory);
+        print_solution(solution.certificate());
+        black = solution.pack();
+    }
+    const Solver::SidecarBindings bindings{
+      options.sourceSha256, options.modelSha256, options.observationSha256,
+      checkpointSha, lower.jesterTableSha256, lower.jesterOverlaySha256,
+      lower.ghostSidecarSha256};
+    const Solver::SidecarCertificate written =
+      Solver::write_arbitrary_sidecar(
+        options.outputSidecar, discovery, white, black, bindings);
+    Solver::CrossedSidecarProbe restored(
+      options.outputSidecar, written.fileSha256, bindings);
+    const Solver::SidecarCertificate& checked = restored.certificate();
+    if (checked.nodes != written.nodes || checked.atoms != written.atoms ||
+        checked.payloadSha256 != written.payloadSha256)
+        throw std::runtime_error("crossed sidecar restore residual");
+    std::cout << "crossed_sidecar_certificate roots " << written.roots
+              << " nodes " << written.nodes << " atoms " << written.atoms
+              << " key_bytes " << written.keyBytes
+              << " payload_bytes " << written.payloadBytes
+              << " payload_sha256 " << written.payloadSha256
+              << " file_sha256 " << written.fileSha256
+              << " root_residual " << written.rootBoundsResidual
+              << " key_residual " << written.keyOrderResidual
+              << " dual_force_residual " << written.dualForceResidual
+              << " restore_residual 0\n";
+}
+
 int run(const Options& options) {
     const bool exists = bool(std::ifstream(options.checkpoint,
                                            std::ios::binary));
@@ -258,6 +519,22 @@ int run(const Options& options) {
             throw std::runtime_error(
               "cannot verify a missing crossed graph checkpoint");
         resource_gate(options);
+        return 0;
+    }
+    if (options.measureSolve || options.solve) {
+        if (!exists)
+            throw std::runtime_error(
+              "cannot solve a missing crossed graph checkpoint");
+        if (options.measureSolve) {
+            const std::string checkpointSha =
+              Solver::authenticated_file_sha256(options.checkpoint);
+            if (checkpointSha != options.checkpointSha256)
+                throw std::runtime_error(
+                  "crossed graph checkpoint SHA mismatch");
+            (void)solve_preflight(discovery, options);
+        }
+        else
+            solve(discovery, options);
         return 0;
     }
 

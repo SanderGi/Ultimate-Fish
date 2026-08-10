@@ -9,6 +9,26 @@
 namespace Stockfish::Ultimate::CrossedJesterGhostSolver {
 namespace Model = CrossedJesterGhostInformation;
 
+namespace {
+
+[[nodiscard]] std::uint64_t checked_add(
+  std::uint64_t lhs, std::uint64_t rhs, const char* field) {
+    if (lhs > std::numeric_limits<std::uint64_t>::max() - rhs)
+        throw std::overflow_error(std::string("crossed ") + field +
+                                  " overflow");
+    return lhs + rhs;
+}
+
+[[nodiscard]] std::uint64_t checked_multiply(
+  std::uint64_t lhs, std::uint64_t rhs, const char* field) {
+    if (lhs && rhs > std::numeric_limits<std::uint64_t>::max() / lhs)
+        throw std::overflow_error(std::string("crossed ") + field +
+                                  " overflow");
+    return lhs * rhs;
+}
+
+}  // namespace
+
 bool PackedForcePlane::value(NodeId node,std::uint32_t atom)const{
     if(node+1>=atomBase.size()||atom>=atomBase[node+1]-atomBase[node])
         throw std::out_of_range("crossed packed force atom is outside graph");
@@ -59,6 +79,80 @@ PackedForcePlane FixedPointSolution::pack()const{
             result.values[atom/8]|=std::uint8_t(1u<<(atom%8));
     if(result.atomBase.empty()||result.atomBase.back()!=certificate_.atomVariables)
         throw std::runtime_error("crossed packed force conservation residual");
+    return result;
+}
+
+FixedPointPreflight preflight_closed_graph(Arena& arena, Color target) {
+    if (target != Color::White && target != Color::Black)
+        throw std::invalid_argument("invalid crossed preflight target");
+    if (arena.size() >= std::numeric_limits<NodeId>::max())
+        throw std::overflow_error("crossed preflight graph exceeds uint32");
+    FixedPointPreflight result;
+    result.target = target;
+    result.nodes = arena.size();
+    for (NodeId node = 0; node < arena.size(); ++node) {
+        const Model::KnowledgeState state = arena.node(node);
+        const NodeExpansion expansion = arena.regenerate(node, false);
+        const TargetBellmanPlan plan = arena.bellman_plan(node, target, false);
+        if (plan.atoms.size() != state.atoms.size() ||
+            expansion.sameClassChildren.size() !=
+              expansion.transitions.buckets.size())
+            ++result.residual;
+        result.atomVariables = checked_add(
+          result.atomVariables, plan.atoms.size(), "preflight atoms");
+        result.gateVariables = checked_add(
+          result.gateVariables, plan.gates.size(), "preflight gates");
+        for (const ActionGatePlan& gate : plan.gates) {
+            result.tokenReferences = checked_add(
+              result.tokenReferences, gate.children.size(),
+              "preflight token references");
+            for (const ChildReference& child : gate.children) {
+                if (child.domain == Model::ChildDomain::SameClass)
+                    ++result.reverseEdges;
+                else
+                    ++result.externalConstants;
+            }
+        }
+        for (const AtomEquationPlan& atom : plan.atoms) {
+            const std::uint64_t count = atom.kind == EquationKind::Or
+              ? atom.gates.size() : atom.children.size();
+            result.tokenReferences = checked_add(
+              result.tokenReferences, count, "preflight token references");
+            if (atom.kind == EquationKind::Or)
+                result.reverseEdges = checked_add(
+                  result.reverseEdges, atom.gates.size(),
+                  "preflight reverse edges");
+            else
+                for (const ChildReference& child : atom.children) {
+                    if (child.domain == Model::ChildDomain::SameClass)
+                        ++result.reverseEdges;
+                    else
+                        ++result.externalConstants;
+                }
+        }
+    }
+    result.totalVariables = checked_add(
+      result.atomVariables, result.gateVariables,
+      "preflight variables");
+    if (!result.totalVariables || result.totalVariables >= InformationTrue ||
+        result.reverseEdges > result.tokenReferences || result.residual)
+        throw std::runtime_error("crossed fixed-point preflight residual");
+
+    // Peak after solution allocation: equations 16V, tokens 4T, offsets
+    // 8(V+1), reverse CSR 12R, and value/settled/rank/witness/remaining/queue
+    // arrays 22V.  The earlier cursor phase is smaller by 14V.
+    result.peakScratchBytes = checked_add(
+      checked_add(
+        checked_multiply(46, result.totalVariables,
+                         "preflight scratch variables"),
+        checked_multiply(4, result.tokenReferences,
+                         "preflight scratch tokens"),
+        "preflight scratch"),
+      checked_add(
+        checked_multiply(12, result.reverseEdges,
+                         "preflight scratch reverse edges"),
+        8, "preflight scratch offsets"),
+      "preflight scratch");
     return result;
 }
 

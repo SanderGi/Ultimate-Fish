@@ -605,6 +605,15 @@ void solver_arena_test() {
     }
     require(incompleteRejected,
             "crossed fixed point accepted an incomplete graph closure");
+    bool preflightRejected = false;
+    try {
+        (void)Solver::preflight_closed_graph(focused, Color::Black);
+    }
+    catch (const std::exception&) {
+        preflightRejected = true;
+    }
+    require(preflightRejected,
+            "crossed preflight accepted an incomplete graph closure");
     std::cout << "crossed_solver_arena nodes " << focused.size()
               << " actions " << first.certificate.actions
               << " observations " << first.certificate.observations
