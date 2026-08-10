@@ -126,8 +126,10 @@ struct Options {
     std::string modelSha256;
     std::string observationSha256;
     std::string checkpointSha256;
+    std::string sidecarSha256;
     Solver::LowerOracleOptions lower;
     bool verifyOnly = false;
+    bool verifySidecar = false;
     bool measureSolve = false;
     bool solve = false;
 };
@@ -228,6 +230,8 @@ void resource_gate(const Options& options) {
             options.observationSha256 = value("observation SHA-256");
         else if (argument == "--checkpoint-sha256")
             options.checkpointSha256 = value("checkpoint SHA-256");
+        else if (argument == "--sidecar-sha256")
+            options.sidecarSha256 = value("sidecar SHA-256");
         else if (argument == "--lower-jester-table")
             options.lower.jesterTable = value("lower Jester table");
         else if (argument == "--lower-jester-table-sha256")
@@ -257,6 +261,8 @@ void resource_gate(const Options& options) {
               value("lower Ghost observation SHA-256");
         else if (argument == "--verify-checkpoint")
             options.verifyOnly = true;
+        else if (argument == "--verify-sidecar")
+            options.verifySidecar = true;
         else if (argument == "--measure-solve")
             options.measureSolve = true;
         else if (argument == "--solve")
@@ -272,10 +278,10 @@ void resource_gate(const Options& options) {
     if (options.rawBegin > Model::RawPublicFrameCount ||
         options.rawCount > Model::RawPublicFrameCount - options.rawBegin)
         throw std::out_of_range("crossed graph raw range is outside domain");
-    if (unsigned(options.verifyOnly) + unsigned(options.measureSolve) +
-          unsigned(options.solve) > 1)
+    if (unsigned(options.verifyOnly) + unsigned(options.verifySidecar) +
+          unsigned(options.measureSolve) + unsigned(options.solve) > 1)
         throw std::invalid_argument(
-          "crossed verify, measurement, and solve modes are exclusive");
+          "crossed verification, measurement, and solve modes are exclusive");
     if ((options.measureSolve || options.solve) &&
         (options.rawBegin || options.rawCount != Model::RawPublicFrameCount ||
          options.checkpointSha256.empty() || options.scratchDirectory.empty()))
@@ -296,6 +302,16 @@ void resource_gate(const Options& options) {
          options.lower.ghostObservationSha256.empty()))
         throw std::invalid_argument(
           "crossed production solve is missing a provenance-bound input");
+    if (options.verifySidecar &&
+        (options.outputSidecar.empty() || options.sidecarSha256.empty() ||
+         options.sourceSha256.empty() || options.modelSha256.empty() ||
+         options.observationSha256.empty() ||
+         options.checkpointSha256.empty() ||
+         options.lower.jesterTableSha256.empty() ||
+         options.lower.jesterOverlaySha256.empty() ||
+         options.lower.ghostSidecarSha256.empty()))
+        throw std::invalid_argument(
+          "crossed sidecar verification is missing a provenance binding");
     return options;
 }
 
@@ -505,6 +521,34 @@ void solve(Solver::GraphDiscovery& discovery, const Options& options) {
 }
 
 int run(const Options& options) {
+    if (options.verifySidecar) {
+        const std::string checkpointSha =
+          Solver::authenticated_file_sha256(options.checkpoint);
+        if (checkpointSha != options.checkpointSha256)
+            throw std::runtime_error(
+              "crossed graph checkpoint SHA mismatch");
+        const Solver::SidecarBindings bindings{
+          options.sourceSha256, options.modelSha256,
+          options.observationSha256, checkpointSha,
+          options.lower.jesterTableSha256,
+          options.lower.jesterOverlaySha256,
+          options.lower.ghostSidecarSha256};
+        Solver::CrossedSidecarProbe restored(
+          options.outputSidecar, options.sidecarSha256, bindings);
+        const Solver::SidecarCertificate& checked = restored.certificate();
+        std::cout << "crossed_sidecar_restore_certificate roots "
+                  << checked.roots << " nodes " << checked.nodes
+                  << " atoms " << checked.atoms
+                  << " key_bytes " << checked.keyBytes
+                  << " payload_bytes " << checked.payloadBytes
+                  << " payload_sha256 " << checked.payloadSha256
+                  << " file_sha256 " << checked.fileSha256
+                  << " root_residual " << checked.rootBoundsResidual
+                  << " key_residual " << checked.keyOrderResidual
+                  << " dual_force_residual " << checked.dualForceResidual
+                  << " checkpoint_residual 0 restore_residual 0\n";
+        return 0;
+    }
     const bool exists = bool(std::ifstream(options.checkpoint,
                                            std::ios::binary));
     Solver::GraphDiscovery discovery = exists
