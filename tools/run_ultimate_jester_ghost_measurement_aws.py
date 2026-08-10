@@ -48,6 +48,46 @@ def authenticate(path: Path, record: dict[str, Any], label: str) -> None:
         raise ValueError(f"{label} extent/SHA-256 mismatch")
 
 
+def compatibility_inputs(args: argparse.Namespace,
+                         manifest: dict[str, Any]) -> tuple[str, str, str]:
+    if args.lower_compatibility_certificate is None:
+        table = file_record(manifest, "tablebases/kjesterk.uftb")
+        overlay = file_record(manifest, "tablebases/kjesterk.ufiw")
+        authenticate(args.lower_jester_table, table, "tablebases/kjesterk.uftb")
+        authenticate(args.lower_jester_overlay, overlay,
+                     "tablebases/kjesterk.ufiw")
+        return str(table["sha256"]), str(overlay["sha256"]), ""
+    certificate = load_json(args.lower_compatibility_certificate)
+    certificate_sha = sha256_file(args.lower_compatibility_certificate)
+    old_table = file_record(manifest, "tablebases/kjesterk.uftb")
+    if (certificate_sha != args.lower_compatibility_certificate_sha256 or
+            certificate.get("schema") !=
+            "ultimate-jester-ghost-lower-jester-compatibility-v1" or
+            certificate.get("status") !=
+            "v4-to-v5-header-only-overlay-rebound" or
+            certificate.get("tool_sha256") !=
+            args.lower_compatibility_tool_sha256 or
+            certificate.get("lower_model_sha256") !=
+            args.lower_jester_model_sha256 or
+            certificate.get("old_table", {}).get("sha256") !=
+            old_table["sha256"] or
+            certificate.get("old_overlay", {}).get("sha256") !=
+            manifest["lower_jester_overlay_sha256"] or
+            certificate.get("residuals") != {
+                "table_layout": 0, "table_payload": 0,
+                "overlay_layout": 0, "overlay_flags": 0,
+                "header_diff": 0, "binding": 0}):
+        raise ValueError("lower Jester compatibility certificate mismatch")
+    table = certificate.get("new_table")
+    overlay = certificate.get("new_overlay")
+    if not isinstance(table, dict) or not isinstance(overlay, dict):
+        raise ValueError("lower Jester compatibility artifacts missing")
+    authenticate(args.lower_jester_table, table, "compatible lower Jester table")
+    authenticate(args.lower_jester_overlay, overlay,
+                 "compatible lower Jester overlay")
+    return str(table["sha256"]), str(overlay["sha256"]), certificate_sha
+
+
 def write_exclusive_json(path: Path, value: object) -> None:
     with path.open("x", encoding="utf-8") as stream:
         json.dump(value, stream, indent=2, sort_keys=True)
@@ -119,12 +159,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             raise ValueError(f"certified transition component changed: {suffix}")
     inputs = {
         "tablebases/kjesterghostk.uftb": args.source_table,
-        "tablebases/kjesterk.uftb": args.lower_jester_table,
-        "tablebases/kjesterk.ufiw": args.lower_jester_overlay,
         "tablebases/kghostk.ufgm": args.lower_ghost_sidecar,
     }
     for relative, path in inputs.items():
         authenticate(path, file_record(manifest, relative), relative)
+    lower_table_sha, lower_overlay_sha, compatibility_sha = \
+        compatibility_inputs(args, manifest)
 
     args.work.mkdir(parents=True)
     scratch = args.work / "scratch/kjesterghostk"
@@ -138,7 +178,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "--lower-jester-overlay", str(args.lower_jester_overlay),
         "--lower-jester-model-sha256", args.lower_jester_model_sha256,
         "--lower-jester-overlay-sha256",
-        manifest["lower_jester_overlay_sha256"],
+        lower_overlay_sha,
         "--lower-ghost-sidecar", str(args.lower_ghost_sidecar),
         "--lower-ghost-sidecar-sha256",
         manifest["lower_ghost_sidecar_sha256"],
@@ -184,6 +224,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "runner_sha256": args.runner_sha256,
         "binary_sha256": args.binary_sha256,
         "merge_evidence_sha256": args.merge_evidence_sha256,
+        "lower_compatibility_certificate_sha256": compatibility_sha,
+        "lower_jester_table_sha256": lower_table_sha,
+        "lower_jester_overlay_sha256": lower_overlay_sha,
         "transition_payload_sha256": merge_evidence["payload_sha256"],
         "measurement": certificate,
         "peak_resident_bytes": peak_rss,
@@ -214,6 +257,10 @@ def main() -> None:
     parser.add_argument("--lower-jester-table", type=Path, required=True)
     parser.add_argument("--lower-jester-overlay", type=Path, required=True)
     parser.add_argument("--lower-jester-model-sha256", required=True)
+    parser.add_argument("--lower-compatibility-certificate", type=Path)
+    parser.add_argument("--lower-compatibility-certificate-sha256",
+                        default="")
+    parser.add_argument("--lower-compatibility-tool-sha256", default="")
     parser.add_argument("--lower-ghost-sidecar", type=Path, required=True)
     parser.add_argument("--work", type=Path, required=True)
     parser.add_argument("--maximum-disk-bytes", type=int, required=True)
