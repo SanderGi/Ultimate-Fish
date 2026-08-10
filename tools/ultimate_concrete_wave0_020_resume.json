@@ -1,0 +1,75 @@
+{
+  "schema": "ultimate-concrete-frontier-resume-v1",
+  "status": "resource-gated-frontier-preserved",
+  "source_work_directory": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/work",
+  "generator_model_sha256": "ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6",
+  "inventory_sha256": "b82a3d87a42ba342b5b611d068783876e3ecf2701e7684400534b937bbda4fd0",
+  "binary_sha256": "09113a356cae6b2cb91801d2113d88dff98226b27fd0f0841774db7a89c7cf50",
+  "dependency_manifest_sha256": "03ec22f4b0caaf6cbe84db50106763107cc21238720c845962c437d214a2ec15",
+  "states": 379579200,
+  "substates": 10,
+  "last_frontier_marker": "frontier states 379579200/379579200",
+  "resource_violation": "scratch resource limit exceeded: 52719446168 > 51539607552",
+  "selection": {"wave": 0, "begin": 20, "end": 21, "classes": 1},
+  "record": {
+    "filename": "kberserkerkturtle.uftb",
+    "primary": "berserker",
+    "secondary": "turtle",
+    "opposing": true,
+    "states": 379579200,
+    "packed_bytes": 474474000,
+    "shards": 5,
+    "phase": "kings+2-stateful"
+  },
+  "run_plan": {
+    "relative_path": "run-plan.json",
+    "bytes": 18352,
+    "sha256": "0830b762d0c19fac183c9695590fc019fecc45b824d43599c29fcf73b32ea56a"
+  },
+  "generator_log": {
+    "relative_path": "logs/generate/kberserkerkturtle.log",
+    "bytes": 53,
+    "sha256": "fd4f9451fba8a1edb931cd171b9c980bb5734694ce5694895eb84c4ea61291f3"
+  },
+  "resource_certificate": {
+    "relative_path": "logs/generate/kberserkerkturtle.resources.json",
+    "bytes": 305,
+    "sha256": "d214f1787b7cbfe04fe001a3f5c89e9bb4d71a1e8e7a0540a0f91f77e7934020"
+  },
+  "binary": {
+    "relative_path": "binary/ultimate_tablebase",
+    "bytes": 644032,
+    "sha256": "09113a356cae6b2cb91801d2113d88dff98226b27fd0f0841774db7a89c7cf50"
+  },
+  "dependency_manifest": {
+    "relative_path": "dependencies/manifest.json",
+    "bytes": 28281,
+    "sha256": "03ec22f4b0caaf6cbe84db50106763107cc21238720c845962c437d214a2ec15"
+  },
+  "planes": {
+    "degrees": {
+      "relative_path": "scratch/kberserkerkturtle.degrees",
+      "bytes": 1518316800,
+      "allocated_bytes": 1390579712,
+      "sha256": "e1d6ecf5e3dc33f9c1959fbca6c8c11cc6489000aa9b00e49d59c194384da814"
+    },
+    "nodes": {
+      "relative_path": "scratch/kberserkerkturtle.nodes",
+      "bytes": 3036633600,
+      "allocated_bytes": 3036639232,
+      "sha256": "bad68c1407e192ae25ea8b5c659ffe0c2096364f35f4f9426d64c7273c8a242b"
+    },
+    "offsets": {
+      "relative_path": "scratch/kberserkerkturtle.offsets",
+      "bytes": 3036633608,
+      "allocated_bytes": 3036635136,
+      "sha256": "e41f472f34355471dc28f283d10e259bb9d9d665d30449d5406b373b8a6ef664"
+    },
+    "predecessors": {
+      "relative_path": "scratch/kberserkerkturtle.predecessors",
+      "bytes": 40572911728,
+      "allocated_bytes": 115703808,
+      "sha256": "52388c7eb13bff4f0c2b0227c11bc16815007ffd7ba6c04628cdc6ea71b72f20"
+    }
+  }
+}

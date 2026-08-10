@@ -325,30 +325,30 @@
     {
       "id": "concrete-wave0-020",
       "instance_id": "i-0b4523116b2f7765c",
-      "unit": "ultimatefish-concrete-wave0-020-ac9b2d32-v1.service",
+      "unit": "ultimatefish-concrete-wave0-020-ac9b2d32-resume-v2.service",
       "dependencies": ["concrete-ghost-kchecker-certified", "concrete-wave0-018"],
       "advanceable": true,
-      "checkpoint_paths": ["/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/work/scratch/*"],
+      "checkpoint_paths": ["/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-resume-v2/work/scratch/*"],
       "completion_paths": [
-        "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/work/certificates/wave-certificate.json",
-        "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/work/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-resume-v2/work/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-resume-v2/work/s3-verify/wave-certificate.json"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/source/ultimatefish/tools/run_ultimate_concrete_checkpointed_aws.py",
-          "sha256": "e0db6d472a921f5de7445c46f7e2f63d26dc0bf99899fd3cbeb393fa96fa5c46"
+          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-resume-v2/source/ultimatefish/tools/resume_ultimate_concrete_frontier_aws.py",
+          "sha256": "c84ef0b8d082c24a62f6ca18e6e11df67d35792162a6d9a1ff07c6d329ba0ff0"
         },
         {
-          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/source/ultimatefish/tools/run_ultimate_concrete_tablebase_shard_aws.py",
-          "sha256": "1acf8d13ffa465fc6f6372554d495646df5020f2685c1a59bbf4105753862578"
+          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-resume-v2/source/ultimatefish/tools/ultimate_concrete_wave0_020_resume.json",
+          "sha256": "609acb74fa3391c6b317758042c12d0a57cbee854ee8b6a102b70624cb9cae35"
         },
         {
-          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/source/ultimatefish/tools/ultimatefish-concrete-wave0-020-ac9b2d32-v1.service",
-          "sha256": "63268e53ff86a0ed18af6fcd4b5cbe1310a0d5d5f24c3691cf2fe4ff9fec5e02"
+          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-resume-v2/source/ultimatefish/tools/ultimatefish-concrete-wave0-020-ac9b2d32-resume-v2.service",
+          "sha256": "dea06bcbe33fd8acbeefcc6abbcb3686440f5397ee75c1c5f10271a5d037b37c"
         },
         {
-          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-018-full-v3/dependencies/manifest.json",
-          "sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504"
+          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-v1/work/dependencies/manifest.json",
+          "sha256": "03ec22f4b0caaf6cbe84db50106763107cc21238720c845962c437d214a2ec15"
         }
       ],
       "s3_certificates": []

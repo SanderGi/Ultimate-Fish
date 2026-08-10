@@ -96,13 +96,27 @@ def authenticate_manifest(document: dict[str, Any]) -> dict[str, Any]:
     if not source.is_dir():
         raise RuntimeError("preserved source work directory is missing")
     record = document.get("record")
-    if not isinstance(record, dict) or record.get("filename") != \
-            "kberserkerkprince.uftb":
-        raise RuntimeError("resume manifest is not the bounded wave0-018 class")
+    if (not isinstance(record, dict) or
+            Path(str(record.get("filename", ""))).name != record.get("filename") or
+            record.get("primary") not in concrete.PIECE_INDEX or
+            record.get("secondary") not in concrete.PIECE_INDEX):
+        raise RuntimeError("resume manifest has a malformed bounded class")
     if int(record.get("states", 0)) != int(document.get("states", -1)):
         raise RuntimeError("resume state count residual")
-    if int(document.get("substates", 0)) != 20:
-        raise RuntimeError("Berserker/Prince substate residual")
+    if int(document.get("substates", 0)) <= 0:
+        raise RuntimeError("resume substate residual")
+    selection = document.get("selection")
+    if selection is not None:
+        if (not isinstance(selection, dict) or selection.get("wave") not in (0, 1, 2) or
+                int(selection.get("classes", 0)) != 1 or
+                int(selection.get("end", -1)) !=
+                int(selection.get("begin", -2)) + 1):
+            raise RuntimeError("resume selection residual")
+        rows = concrete.wave_inventory(int(selection["wave"]))
+        begin = int(selection["begin"])
+        if (begin < 0 or begin >= len(rows) or
+                concrete.normalized_record(rows[begin]) != record):
+            raise RuntimeError("resume selection/class binding residual")
 
     files: dict[str, Any] = {}
     for name in ("run_plan", "generator_log", "resource_certificate",
@@ -376,7 +390,10 @@ def main(argv: list[str] | None = None) -> int:
                            restored[f"proof/{log.name}"])["sha256"] != \
             verification["sha256"]:
         raise RuntimeError("local resume archive restore residual")
-    key = (f"concrete/v2/model/{document['generator_model_sha256']}/wave-0/"
+    selection = document.get(
+        "selection", {"wave": 0, "begin": 18, "end": 19, "classes": 1})
+    key = (f"concrete/v2/model/{document['generator_model_sha256']}/"
+           f"wave-{selection['wave']}/"
            f"sha256/{archive_sha}/{archive.name}")
     remote = preservation.upload_head_download_verify(
         source=archive, digest=archive_sha, extent=archive.stat().st_size,
@@ -388,7 +405,7 @@ def main(argv: list[str] | None = None) -> int:
         "status": "head-download-full-sha-archive-restore-verified",
         "generator_model_sha256": document["generator_model_sha256"],
         "inventory_sha256": document["inventory_sha256"],
-        "selection": {"wave": 0, "begin": 18, "end": 19, "classes": 1},
+        "selection": selection,
         "completed": [{
             "filename": output_name, "status": "resumed-frontier-preserved",
             "output": verification,

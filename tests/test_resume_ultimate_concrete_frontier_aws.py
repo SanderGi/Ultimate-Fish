@@ -164,6 +164,34 @@ class FrontierResumeTests(unittest.TestCase):
         self.assertFalse(args.full)
         self.assertIsNone(args.work_directory)
 
+    def test_explicit_selection_binds_inventory_class(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            document = self.fixture(Path(temporary))
+            record = RESUME.concrete.normalized_record(
+                RESUME.concrete.wave_inventory(0)[20])
+            document.update({
+                "record": record, "states": record["states"], "substates": 10,
+                "selection": {"wave": 0, "begin": 20, "end": 21,
+                              "classes": 1},
+            })
+            run_plan_path = (Path(document["source_work_directory"]) /
+                             document["run_plan"]["relative_path"])
+            run_plan = json.loads(run_plan_path.read_text())
+            run_plan["selected"] = [record]
+            run_plan_path.write_text(json.dumps(run_plan))
+            document["run_plan"].update({
+                "bytes": run_plan_path.stat().st_size,
+                "sha256": RESUME.sha256_path(run_plan_path),
+            })
+            with mock.patch.object(
+                    RESUME.concrete, "generator_model_sha256",
+                    return_value=document["generator_model_sha256"]):
+                RESUME.authenticate_manifest(document)
+            document["selection"]["begin"] = 21
+            document["selection"]["end"] = 22
+            with self.assertRaisesRegex(RuntimeError, "selection/class"):
+                RESUME.authenticate_manifest(document)
+
 
 if __name__ == "__main__":
     unittest.main()
