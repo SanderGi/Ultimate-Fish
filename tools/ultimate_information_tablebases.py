@@ -215,6 +215,24 @@ MAGE_GHOST_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "ghost_mage_information_solver.cpp",
     ROOT / "src" / "ultimate" / "ghost_mage_information_tablebase.cpp",
 )
+PARASITE_GHOST_SOLVER_SOURCES = (
+    ROOT / "src" / "ultimate" / "position.h",
+    ROOT / "src" / "ultimate" / "position.cpp",
+    ROOT / "src" / "ultimate" / "information.h",
+    ROOT / "src" / "ultimate" / "information.cpp",
+    ROOT / "src" / "ultimate" / "ghost_information_probe.h",
+    ROOT / "src" / "ultimate" / "ghost_information_probe.cpp",
+    ROOT / "src" / "ultimate" / "external_robdd.h",
+    ROOT / "src" / "ultimate" / "external_robdd.cpp",
+    ROOT / "src" / "ultimate" / "ghost_extra_information_tablebase.cpp",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_model.h",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_model.cpp",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_information_solver.h",
+    ROOT / "src" / "ultimate" / "ghost_public_extra_information_solver.cpp",
+    ROOT / "src" / "ultimate" / "ghost_parasite_information_solver.h",
+    ROOT / "src" / "ultimate" / "ghost_parasite_information_solver.cpp",
+    ROOT / "src" / "ultimate" / "ghost_parasite_information_tablebase.cpp",
+)
 GHOST_PAIR_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "position.h",
     ROOT / "src" / "ultimate" / "position.cpp",
@@ -354,6 +372,8 @@ SOLVER_DOMAIN_FILENAMES = {
     "fisherman-ghost-opposing": ("kghostkfisherman.uftb",),
     "mage-ghost-same": ("kghostmagek.uftb",),
     "mage-ghost-opposing": ("kghostkmage.uftb",),
+    "parasite-ghost-same": ("kghostparasitek.uftb",),
+    "parasite-ghost-opposing": ("kghostkparasite.uftb",),
     "ghost-pair": ("kghostghostk.uftb",),
     "jester-ghost": ("kjesterghostk.uftb",),
 }
@@ -373,6 +393,8 @@ SOLVER_DOMAIN_SOURCES = {
     "fisherman-ghost-opposing": FISHERMAN_GHOST_SOLVER_SOURCES,
     "mage-ghost-same": MAGE_GHOST_SOLVER_SOURCES,
     "mage-ghost-opposing": MAGE_GHOST_SOLVER_SOURCES,
+    "parasite-ghost-same": PARASITE_GHOST_SOLVER_SOURCES,
+    "parasite-ghost-opposing": PARASITE_GHOST_SOLVER_SOURCES,
     "ghost-pair": GHOST_PAIR_SOLVER_SOURCES,
     "jester-ghost": JESTER_GHOST_SOLVER_SOURCES,
 }
@@ -386,6 +408,8 @@ SOLVER_SIDECAR_DEPENDENCIES = {
     "fisherman-ghost-opposing": ("kghostk.ufgm",),
     "mage-ghost-same": ("kghostk.ufgm",),
     "mage-ghost-opposing": ("kghostk.ufgm",),
+    "parasite-ghost-same": ("kghostk.ufgm",),
+    "parasite-ghost-opposing": ("kghostk.ufgm",),
     "ghost-pair": ("kghostk.ufgm",),
     "jester-ghost": ("kghostk.ufgm",),
 }
@@ -582,6 +606,8 @@ def solver_concrete_dependencies(filename: str) -> tuple[str, ...]:
         return ("kdragonk.uftb",)
     if domain in {"bomb-ghost-same", "bomb-ghost-opposing"}:
         return ("kbombk.uftb",)
+    if domain in {"parasite-ghost-same", "parasite-ghost-opposing"}:
+        return ("kparasitek.uftb",)
     if domain == "jester-ghost":
         return ("kjesterk.uftb",)
     if domain not in {"primary-jester", "primary-jester-giant"}:
@@ -607,7 +633,8 @@ def solver_concrete_dependencies(filename: str) -> tuple[str, ...]:
 def concrete_tablebase_model_fingerprint(filename: str,
                                          *, root: Path = ROOT) -> str:
     """Bind a probed concrete lower table to its native generator model."""
-    if filename not in {"kdragonk.uftb", "kbombk.uftb"}:
+    if filename not in {"kdragonk.uftb", "kbombk.uftb",
+                        "kparasitek.uftb"}:
         raise SummaryValidationError(
             f"unsupported concrete dependency model {filename}")
     sources = (

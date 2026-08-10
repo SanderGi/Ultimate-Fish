@@ -84,6 +84,9 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cp
 	ultimate-ghost-mage-information-tablebase \
 	ultimate-ghost-mage-information-test \
 	ultimate-ghost-mage-information-self-test \
+	ultimate-ghost-parasite-information-tablebase \
+	ultimate-ghost-parasite-information-test \
+	ultimate-ghost-parasite-information-self-test \
 	ultimate-ghost-pair-information-tablebase \
 	ultimate-ghost-pair-information-test \
 	ultimate-ghost-pair-information-self-test \
@@ -303,6 +306,37 @@ ultimate-ghost-mage-information-self-test: \
 	./ultimate_ghost_mage_information_tablebase --self-test \
 		--scratch /tmp/ultimate-ghost-mage-cli
 
+ULTIMATE_GHOST_PARASITE_SRCS = \
+	ultimate/ghost_parasite_information_tablebase.cpp \
+	ultimate/ghost_parasite_information_solver.cpp \
+	ultimate/ghost_public_extra_model.cpp ultimate/external_robdd.cpp \
+	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+	ultimate/position.cpp ultimate/nnue.cpp
+
+ultimate-ghost-parasite-information-tablebase:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=range-loop-construct -include sstream \
+		$(ULTIMATE_GHOST_PARASITE_SRCS) \
+		-o ultimate_ghost_parasite_information_tablebase
+
+ultimate-ghost-parasite-information-test:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=range-loop-construct -include sstream -Iultimate \
+		../tests/ultimate_ghost_parasite_information_solver.cpp \
+		$(filter-out ultimate/ghost_parasite_information_tablebase.cpp, \
+			$(ULTIMATE_GHOST_PARASITE_SRCS)) \
+		-o ultimate_ghost_parasite_information_solver_test
+	./ultimate_ghost_parasite_information_solver_test
+	./ultimate_ghost_parasite_information_solver_test --measurement-smoke \
+		../tablebases/kghostparasitek.uftb \
+		../tablebases/kghostkparasite.uftb ../tablebases/kghostk.ufgm \
+		../tablebases/kparasitek.uftb
+
+ultimate-ghost-parasite-information-self-test: \
+	ultimate-ghost-parasite-information-tablebase
+	./ultimate_ghost_parasite_information_tablebase --self-test \
+		--scratch /tmp/ultimate-ghost-parasite-cli
+
 ULTIMATE_GHOST_PAIR_SRCS = ultimate/ghost_pair_information_tablebase.cpp \
 	ultimate/ghost_pair_information_solver.cpp \
 	ultimate/ghost_pair_information_model.cpp \
@@ -385,6 +419,7 @@ ultimate-information-solvers: ultimate-ghost-information-tablebase \
 	ultimate-ghost-bomb-information-tablebase \
 	ultimate-ghost-fisherman-information-tablebase \
 	ultimate-ghost-mage-information-tablebase \
+	ultimate-ghost-parasite-information-tablebase \
 	ultimate-reciprocal-bishop-ghost-information-tablebase
 
 ultimate-information-solvers-self-test: ultimate-information-solvers
@@ -399,6 +434,8 @@ ultimate-information-solvers-self-test: ultimate-information-solvers
 		--scratch /tmp/ultimate-ghost-fisherman-cli
 	./ultimate_ghost_mage_information_tablebase --self-test \
 		--scratch /tmp/ultimate-ghost-mage-cli
+	./ultimate_ghost_parasite_information_tablebase --self-test \
+		--scratch /tmp/ultimate-ghost-parasite-cli
 	./ultimate_reciprocal_bishop_ghost_information_tablebase --self-test \
 		--scratch /tmp/ultimate-reciprocal-bishop-ghost-cli
 
@@ -417,6 +454,8 @@ ultimate-information-solvers-clean:
 		ultimate_ghost_fisherman_information_solver_test \
 		ultimate_ghost_mage_information_tablebase \
 		ultimate_ghost_mage_information_solver_test \
+		ultimate_ghost_parasite_information_tablebase \
+		ultimate_ghost_parasite_information_solver_test \
 		ultimate_reciprocal_bishop_ghost_information_tablebase \
 		ultimate_reciprocal_bishop_ghost_information_solver_test \
 		ultimate_ghost_public_extra_model_test \

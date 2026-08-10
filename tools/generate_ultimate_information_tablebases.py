@@ -174,7 +174,8 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                          lower_jester_overlay_sha256: str | None = None,
                          dragon_orientation: int | None = None,
                          fisherman_orientation: int | None = None,
-                         mage_orientation: int | None = None) -> bool:
+                         mage_orientation: int | None = None,
+                         parasite_orientation: int | None = None) -> bool:
     """Authenticate a permanent exact arbitrary-belief artifact."""
     try:
         with path.open("rb") as stream:
@@ -231,11 +232,18 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 semantics_offset = 992
                 semantics = b"fresh-maximal-public-view-v2:mage-ghost-generic"
                 expected_version = 1
+            elif magic == b"UFGP1\0\0\0":
+                expected_header, payload_offset = 1248, 152
+                first_section_offset = 96
+                source_offset, model_offset, payload_sha_offset = 160, 288, 1120
+                semantics_offset = 1184
+                semantics = b"fresh-maximal-public-view-v2:parasite-ghost-generic"
+                expected_version = 1
             else:
                 return False
             if magic not in {b"UFGX2\0\0\0", b"UFGD1\0\0\0",
                              b"UFGB1\0\0\0", b"UFGF1\0\0\0",
-                             b"UFMG1\0\0\0"}:
+                             b"UFMG1\0\0\0", b"UFGP1\0\0\0"}:
                 expected_version = 1
             if header_bytes != expected_header:
                 return False
@@ -302,6 +310,19 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                     information.observation_model_fingerprint() and
                 header[416:480].decode() ==
                     "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        elif magic == b"UFGP1\0\0\0":
+            lower_parasite_sha = shards.logical_sha256(
+                ROOT / "tablebases" / "kparasitek.uftb")
+            dependencies_current = (
+                header[352:416].decode() ==
+                    information.observation_model_fingerprint() and
+                header[416:480].decode() ==
+                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b" and
+                header[480:544].decode() == lower_parasite_sha and
+                header[544:608].decode() == lower_parasite_sha and
+                header[608:672].decode() ==
+                    information.concrete_tablebase_model_fingerprint(
+                        "kparasitek.uftb"))
         else:
             dependencies_current = (
                 header[284:348].decode() ==
@@ -342,6 +363,17 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 (mage_orientation is None or
                  struct.unpack_from("<I", header, 32)[0] ==
                     mage_orientation))
+        elif magic == b"UFGP1\0\0\0":
+            material_current = (
+                struct.unpack_from("<I", header, 20)[0] ==
+                    PIECE_TYPE_IDS["ghost"] and
+                struct.unpack_from("<I", header, 24)[0] ==
+                    PIECE_TYPE_IDS["parasite"] and
+                struct.unpack_from("<I", header, 28)[0] == 0 and
+                struct.unpack_from("<I", header, 32)[0] in {0, 1} and
+                (parasite_orientation is None or
+                 struct.unpack_from("<I", header, 32)[0] ==
+                    parasite_orientation))
         return (
             header[:8] == magic and
             struct.unpack_from("<I", header, 8)[0] == expected_version and
@@ -670,6 +702,48 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             "--lower-observation-sha256", payload[224:288].decode(),
             "--compact-every", "1",
         ]
+    if domain in {"parasite-ghost-same", "parasite-ghost-opposing"}:
+        lower = ROOT / "tablebases" / "kghostk.ufgm"
+        payload = lower.read_bytes()
+        if (len(payload) < 320 or payload[:8] != b"UFGM1\0\0\0" or
+                struct.unpack_from("<I", payload, 12)[0] != 320):
+            raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
+        lower_sha = hashlib.sha256(payload).hexdigest()
+        expected_lower_sha = (
+            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        if lower_sha != expected_lower_sha:
+            raise RuntimeError(f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
+        orientation = ("same" if domain == "parasite-ghost-same"
+                       else "opposing")
+        transitions = (args.parasite_ghost_same_transitions
+                       if orientation == "same"
+                       else args.parasite_ghost_opposing_transitions)
+        lower_parasite = ROOT / "tablebases" / "kparasitek.uftb"
+        lower_parasite_sha = shards.logical_sha256(lower_parasite)
+        return [
+            str(args.parasite_ghost_binary), "--solve",
+            "--orientation", orientation,
+            "--transition-prefix", str(transitions),
+            "--input", str(table), "--lower-ghost-sidecar", str(lower),
+            "--lower-parasite-table", str(lower_parasite),
+            "--scratch", str(args.scratch / f"{Path(table).stem}-exact"),
+            "--output", str(overlay), "--output-arbitrary",
+            str(args.overlays / f"{Path(table).stem}.ufgp"),
+            "--source-sha256", source_sha256,
+            "--model-sha256", model_sha256,
+            "--observation-sha256",
+            information.observation_model_fingerprint(),
+            "--lower-sidecar-sha256", lower_sha,
+            "--lower-source-sha256", payload[96:160].decode(),
+            "--lower-model-sha256", payload[160:224].decode(),
+            "--lower-observation-sha256", payload[224:288].decode(),
+            "--lower-parasite-sha256", lower_parasite_sha,
+            "--lower-parasite-source-sha256", lower_parasite_sha,
+            "--lower-parasite-model-sha256",
+            information.concrete_tablebase_model_fingerprint(
+                "kparasitek.uftb"),
+            "--compact-every", "1",
+        ]
     if domain == "ghost-pair":
         lower = ROOT / "tablebases" / "kghostk.ufgm"
         payload = lower.read_bytes()
@@ -808,6 +882,9 @@ def solve_one(args: argparse.Namespace) -> None:
                                "fisherman-ghost-opposing"}
                  else args.overlays / f"{Path(args.filename).stem}.ufmg"
                  if domain in {"mage-ghost-same", "mage-ghost-opposing"}
+                 else args.overlays / f"{Path(args.filename).stem}.ufgp"
+                 if domain in {"parasite-ghost-same",
+                               "parasite-ghost-opposing"}
                  else args.overlays / "kjesterghostk.ufjg")
     lower_jester_arbitrary_sha = None
     fisherman_orientation = (0 if domain == "fisherman-ghost-same" else
@@ -815,6 +892,8 @@ def solve_one(args: argparse.Namespace) -> None:
                               None)
     mage_orientation = (0 if domain == "mage-ghost-same" else
                         1 if domain == "mage-ghost-opposing" else None)
+    parasite_orientation = (0 if domain == "parasite-ghost-same" else
+                            1 if domain == "parasite-ghost-opposing" else None)
     dragon_orientation = (0 if domain == "dragon-ghost-same" else
                           1 if domain == "dragon-ghost-opposing" else None)
     if domain == "jester-ghost":
@@ -831,12 +910,14 @@ def solve_one(args: argparse.Namespace) -> None:
                             "dragon-ghost-opposing", "bomb-ghost-same",
                             "bomb-ghost-opposing", "fisherman-ghost-same",
                             "fisherman-ghost-opposing", "mage-ghost-same",
-                            "mage-ghost-opposing"} or arbitrary_is_current(
+                            "mage-ghost-opposing", "parasite-ghost-same",
+                            "parasite-ghost-opposing"} or arbitrary_is_current(
                 arbitrary, source_sha256, model_sha256,
                 lower_jester_overlay_sha256=lower_jester_arbitrary_sha,
                 dragon_orientation=dragon_orientation,
                 fisherman_orientation=fisherman_orientation,
-                mage_orientation=mage_orientation))):
+                mage_orientation=mage_orientation,
+                parasite_orientation=parasite_orientation))):
         print(f"already complete and verified: {args.filename}")
         return
     command = solver_command(
@@ -856,12 +937,14 @@ def solve_one(args: argparse.Namespace) -> None:
                   "dragon-ghost-opposing", "bomb-ghost-same",
                   "bomb-ghost-opposing", "fisherman-ghost-same",
                   "fisherman-ghost-opposing", "mage-ghost-same",
-                  "mage-ghost-opposing"} and not arbitrary_is_current(
+                  "mage-ghost-opposing", "parasite-ghost-same",
+                  "parasite-ghost-opposing"} and not arbitrary_is_current(
             arbitrary, source_sha256, model_sha256,
             lower_jester_overlay_sha256=lower_jester_arbitrary_sha,
             dragon_orientation=dragon_orientation,
             fisherman_orientation=fisherman_orientation,
-            mage_orientation=mage_orientation):
+            mage_orientation=mage_orientation,
+            parasite_orientation=parasite_orientation):
         raise RuntimeError(
             f"{arbitrary}: missing/stale authenticated all-beliefs artifact")
     document = merge_checkpoint_entry(
@@ -936,6 +1019,15 @@ def main() -> None:
     parser.add_argument("--mage-ghost-opposing-transitions", type=Path,
                         default=Path(
                           "/tmp/kghostkmage-exact-transitions"))
+    parser.add_argument("--parasite-ghost-binary", type=Path,
+                        default=ROOT / "src" /
+                        "ultimate_ghost_parasite_information_tablebase")
+    parser.add_argument("--parasite-ghost-same-transitions", type=Path,
+                        default=Path(
+                          "/tmp/kghostparasitek-exact-transitions"))
+    parser.add_argument("--parasite-ghost-opposing-transitions", type=Path,
+                        default=Path(
+                          "/tmp/kghostkparasite-exact-transitions"))
     parser.add_argument("--ghost-pair-binary", type=Path,
                         default=ROOT / "src" /
                         "ultimate_ghost_pair_information_tablebase")

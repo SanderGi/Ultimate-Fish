@@ -47,6 +47,10 @@ class InformationGenerationDriverTests(unittest.TestCase):
             mage_ghost_binary=root / "mage-ghost",
             mage_ghost_same_transitions=root / "mage-ghost-same",
             mage_ghost_opposing_transitions=root / "mage-ghost-opposing",
+            parasite_ghost_binary=root / "parasite-ghost",
+            parasite_ghost_same_transitions=root / "parasite-ghost-same",
+            parasite_ghost_opposing_transitions=
+                root / "parasite-ghost-opposing",
             ghost_pair_binary=root / "ghost-pair",
             ghost_pair_transitions=root / "ghost-pair-transitions",
             jester_ghost_binary=root / "jester-ghost",
@@ -452,6 +456,52 @@ class InformationGenerationDriverTests(unittest.TestCase):
             path.write_bytes(header + payload)
             self.assertFalse(generate.arbitrary_is_current(
                 path, source, model, mage_orientation=0))
+
+    def test_arbitrary_reuse_authenticates_parasite_ufgp_dependencies(self):
+        source, model = "9" * 64, "a" * 64
+        payload = b"exact-parasite-ghost-roots"
+        header = bytearray(1248)
+        header[:8] = b"UFGP1\0\0\0"
+        struct.pack_into("<14I", header, 8, 1, 1248, 0x01020304,
+                         generate.PIECE_TYPE_IDS["ghost"],
+                         generate.PIECE_TYPE_IDS["parasite"], 0, 1,
+                         80, 75_915_840, 9, 392, 16, 4, 0)
+        struct.pack_into("<Q", header, 96, 1248)
+        struct.pack_into("<Q", header, 152, len(payload))
+        header[160:224] = source.encode()
+        header[288:352] = model.encode()
+        header[352:416] = (
+            generate.information.observation_model_fingerprint().encode())
+        header[416:480] = (
+            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        lower_parasite = (
+            b"f08b2676a703259ef638bc4ab72b9cd7e6b2000afc72dd70b0ac17e03ea858ab")
+        header[480:544] = lower_parasite
+        header[544:608] = lower_parasite
+        header[608:672] = (
+            generate.information.concrete_tablebase_model_fingerprint(
+                "kparasitek.uftb").encode())
+        header[1120:1184] = hashlib.sha256(payload).hexdigest().encode()
+        semantics = b"fresh-maximal-public-view-v2:parasite-ghost-generic"
+        header[1184:1184 + len(semantics)] = semantics
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "parasite.ufgp"
+            path.write_bytes(header + payload)
+            self.assertTrue(generate.arbitrary_is_current(
+                path, source, model, parasite_orientation=1))
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model, parasite_orientation=0))
+            with path.open("r+b") as stream:
+                stream.seek(480); stream.write(b"0" * 64)
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model, parasite_orientation=1))
+            path.write_bytes(header + payload)
+            with path.open("r+b") as stream:
+                stream.seek(24)
+                stream.write(struct.pack(
+                    "<I", generate.PIECE_TYPE_IDS["bomb"]))
+            self.assertFalse(generate.arbitrary_is_current(
+                path, source, model, parasite_orientation=1))
 
     def test_checkpoint_merge_preserves_independent_completed_rows(self):
         with tempfile.TemporaryDirectory() as directory:
