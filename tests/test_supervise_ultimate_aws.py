@@ -245,10 +245,27 @@ class SupervisionTests(unittest.TestCase):
         result = SUPERVISOR.start_ready(config(), state, "second")
         self.assertEqual("STARTED", result["status"])
         command.assert_called_once_with(
-            ["systemctl", "start", "ultimatefish-second.service"])
+            ["systemctl", "start", "--no-block",
+             "ultimatefish-second.service"])
         state["report"]["jobs"]["second"]["status"] = "RUNNING"
         with self.assertRaisesRegex(RuntimeError, "not source-certified READY"):
             SUPERVISOR.start_ready(config(), state, "second")
+
+    @mock.patch.object(SUPERVISOR, "ssm_probe")
+    def test_remote_advance_never_waits_for_oneshot_completion(
+            self, probe: mock.Mock) -> None:
+        document = config()
+        document["instances"][0]["transport"] = "ssm"
+        state = {"report": {"jobs": {
+            "first": {"status": "CERTIFIED"},
+            "second": {"status": "READY", "source_exact": True},
+        }}}
+        result = SUPERVISOR.start_ready(document, state, "second")
+        self.assertEqual(result["status"], "STARTED")
+        command = probe.call_args.args[2]
+        self.assertIn(
+            "systemctl start --no-block ultimatefish-second.service", command)
+        self.assertIn('test "$state" = activating', command)
 
 
 if __name__ == "__main__":

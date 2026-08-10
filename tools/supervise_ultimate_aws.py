@@ -592,12 +592,18 @@ def start_ready(config: dict[str, Any], state: dict[str, Any], job_id: str) -> d
     instance = next(item for item in config["instances"]
                     if item["instance_id"] == job["instance_id"])
     if instance.get("transport", "ssm") == "local":
-        run(["systemctl", "start", job["unit"]])
+        run(["systemctl", "start", "--no-block", job["unit"]])
     else:
-        # Use the same SSM channel, but a literal validated unit name only.
+        # A synchronous start waits for Type=oneshot completion and can exceed
+        # the bounded SSM probe even though the unit started successfully.
+        # Queue the exact validated unit, then accept only active/activating.
+        unit = job["unit"]
         ssm_probe(config["region"], job["instance_id"],
-                  f"systemctl start {job['unit']} && "
-                  f"systemctl is-active {job['unit']} && "
+                  f"systemctl start --no-block {unit} && "
+                  f"state=$(systemctl show {unit} "
+                  "--property=ActiveState --value) && "
+                  '{ test "$state" = active || '
+                  'test "$state" = activating; } && '
                   f"echo {REMOTE_PREFIX}{{}}")
     return {"status": "STARTED", "job": job_id,
             "instance_id": job["instance_id"], "unit": job["unit"],
