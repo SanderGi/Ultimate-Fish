@@ -679,6 +679,10 @@ bool GraphDiscovery::closed() const {
     return expanded_ == arena_.size();
 }
 
+Arena& GraphDiscovery::arena() {
+    return arena_;
+}
+
 const Arena& GraphDiscovery::arena() const {
     return arena_;
 }

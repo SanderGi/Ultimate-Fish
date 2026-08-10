@@ -270,6 +270,7 @@ class GraphDiscovery {
     [[nodiscard]] const std::vector<NodeId>& roots() const;
     [[nodiscard]] std::uint64_t expanded() const;
     [[nodiscard]] bool closed() const;
+    [[nodiscard]] Arena& arena();
     [[nodiscard]] const Arena& arena() const;
 
    private:

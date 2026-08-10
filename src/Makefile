@@ -523,9 +523,10 @@ ultimate-crossed-jester-ghost-information-solver-test:
 	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
 		-Wno-error=pedantic -Wno-error=range-loop-construct -Iultimate \
 		../tests/ultimate_crossed_jester_ghost_information_solver.cpp \
+		ultimate/crossed_jester_ghost_information_fixed_point.cpp \
 		ultimate/crossed_jester_ghost_information_solver.cpp \
 		ultimate/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
-		ultimate/information.cpp ultimate/nnue.cpp \
+		ultimate/information.cpp ultimate/information_solver.cpp ultimate/nnue.cpp \
 		-o ultimate_crossed_jester_ghost_information_solver_test
 	./ultimate_crossed_jester_ghost_information_solver_test
 

@@ -1,6 +1,6 @@
 /* Exact crossed Jester/Ghost solver-core regression. GPLv3+. */
 
-#include "crossed_jester_ghost_information_solver.h"
+#include "crossed_jester_ghost_information_fixed_point.h"
 
 #include <algorithm>
 #include <array>
@@ -456,6 +456,17 @@ void solver_arena_test() {
         require(equation.kind == Solver::EquationKind::And &&
                   equation.gates.empty() && !equation.children.empty(),
                 "crossed opponent atom is not an AND of compatible outcomes");
+    CountingLowerOracle closureOracle;
+    bool incompleteRejected = false;
+    try {
+        (void)Solver::solve_closed_graph(
+          focused, Color::Black, closureOracle, "/tmp");
+    }
+    catch (const std::exception&) {
+        incompleteRejected = true;
+    }
+    require(incompleteRejected,
+            "crossed fixed point accepted an incomplete graph closure");
     std::cout << "crossed_solver_arena nodes " << focused.size()
               << " actions " << first.certificate.actions
               << " observations " << first.certificate.observations
