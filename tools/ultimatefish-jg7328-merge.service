@@ -1,0 +1,52 @@
+[Unit]
+Description=Ultimate Fish fresh Jester/Ghost 732852b8 transition merge
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-certification-7328/evidence/verification-certificate.json
+ConditionPathExists=/mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work/bin/merge_ultimate_jester_ghost_rebound_aws.py
+
+[Service]
+Type=oneshot
+WorkingDirectory=/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 /mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work/bin/merge_ultimate_jester_ghost_rebound_aws.py \
+  --runner-source /mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work/bin/merge_ultimate_jester_ghost_rebound_aws.py \
+  --runner-sha256 185d4b6404c7fd95e493c82fd96e779b58ac7a6446f5e7eeecff88630eb58768 \
+  --verifier /mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/bin/verify_ultimate_jester_ghost_rebound_aws.py \
+  --verifier-sha256 4238b837a1478fe8c68f2d5434839244a5f37dee8117b4a54a1aaae64bbe38ba \
+  --bundle-manifest /mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/bundle-manifest.json \
+  --rebind-manifest /mnt/ultimatefish/jester-ghost-migration-7328-prep/rebound-7328/work/transitions/rebind-manifest.json \
+  --transition-tree /mnt/ultimatefish/jester-ghost-migration-7328-prep/rebound-7328/work/transitions \
+  --verification-certificate /mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-certification-7328/evidence/verification-certificate.json \
+  --verification-certificate-sha256 098eccaf0afce77dc0d163abb5413045b0a712285406abcd6505e3d22d81c16a \
+  --verification-summary /mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/state/verification-summary.json \
+  --binary /mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/ultimate_jester_ghost_information_tablebase \
+  --binary-sha256 978fdf69362577c824d9e456a28a51d133cca4b6823fcab9e8e7555e2c11a147 \
+  --output-dir /mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work/output
+Nice=15
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+AllowedCPUs=1
+CPUWeight=10
+MemoryHigh=2G
+MemoryMax=4G
+OOMPolicy=stop
+TasksMax=32
+LimitNOFILE=65536
+Restart=no
+TimeoutStartSec=infinity
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/restored-11120
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/rebound-7328
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328
+ReadOnlyPaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-certification-7328
+ReadWritePaths=/mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work
+StandardOutput=append:/mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work/service.log
+StandardError=append:/mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work/service.log
