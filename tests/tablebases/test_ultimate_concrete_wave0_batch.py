@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
 from pathlib import Path
 import sys
 import tempfile
@@ -22,6 +23,17 @@ import ultimate_information_tablebases as information  # noqa: E402
 
 
 class ConcreteWave0BatchTest(unittest.TestCase):
+    def historical_document(self):
+        historical = json.loads(batch.MANIFEST.read_text())
+        filenames = {str(unit["filename"]) for unit in historical["units"]}
+        entries = batch.ledger_by_filename()
+        entries = {
+            name: replace(entry, status="planned") if name in filenames else entry
+            for name, entry in entries.items()
+        }
+        with mock.patch.object(batch, "ledger_by_filename", return_value=entries):
+            return batch.build_document(24)
+
     def test_dependency_inventory_binds_full_extent_and_fails_closed(self) -> None:
         inventory = batch.dependency_artifact_records()
         self.assertEqual(10, len(inventory))
@@ -31,7 +43,7 @@ class ConcreteWave0BatchTest(unittest.TestCase):
                         int(header["payload_bytes"]))
             self.assertEqual(expected, int(record["bytes"]))
             self.assertEqual(expected, int(header["file_bytes"]))
-        document = batch.build_document(24)
+        document = self.historical_document()
         packed_by_name = {
             str(row["filename"]): int(row["packed_bytes"])
             for row in runner.plan.inventory(0)
@@ -54,7 +66,7 @@ class ConcreteWave0BatchTest(unittest.TestCase):
                     batch.dependency_artifact_records()
 
     def test_manifest_is_deterministic_and_fail_closed(self) -> None:
-        document = batch.build_document(24)
+        document = self.historical_document()
         units = document["units"]
         self.assertEqual(document["schema"], batch.SCHEMA)
         self.assertEqual(document["status"], "plan-only-not-uploaded-not-installed-not-launched")
@@ -277,7 +289,7 @@ class ConcreteWave0BatchTest(unittest.TestCase):
             batch.build_document(batch.MAX_CLASSES + 1)
 
     def test_config_merge_replaces_serial_placeholder(self) -> None:
-        document = batch.build_document(24)
+        document = self.historical_document()
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fragment = root / "jobs.json"

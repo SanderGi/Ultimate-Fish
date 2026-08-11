@@ -13,6 +13,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 import sys
 from typing import Mapping, Sequence
 
@@ -33,6 +34,7 @@ DEPENDENCY_BASE_ROOT = f"/mnt/ultimatefish/concrete-wave0-batch/dependencies-{BA
 MANIFEST = TOOLS / "ultimate_concrete_wave0_batch_v4r2.json"
 JOB_FRAGMENT = TOOLS / "ultimate_concrete_wave0_batch_v4r2_jobs.json"
 WRAPPER_RELATIVE = Path(__file__).relative_to(ROOT).as_posix()
+SHARED_PLAN_RELATIVE = Path(plan.__file__).resolve().relative_to(ROOT).as_posix()
 STAGING_HELPER_RELATIVE = plan.STAGING_HELPER_RELATIVE
 SUPERVISION_CONFIG = plan.SUPERVISION_CONFIG
 DEPENDENCY_ARCHIVE = plan.DEPENDENCY_ARCHIVE
@@ -60,6 +62,18 @@ def _serialized(document: Mapping[str, object]) -> bytes:
     return (json.dumps(document, indent=2, sort_keys=True) + "\n").encode()
 
 
+def _require_committed_planner_sources() -> None:
+    paths = (WRAPPER_RELATIVE, SHARED_PLAN_RELATIVE)
+    tracked = subprocess.run(
+        ["git", "ls-files", "--error-unmatch", "--", *paths], cwd=ROOT,
+        check=False, capture_output=True, text=True)
+    clean = subprocess.run(
+        ["git", "diff", "--quiet", "HEAD", "--", *paths], cwd=ROOT,
+        check=False)
+    if tracked.returncode or clean.returncode:
+        raise RuntimeError("versioned batch planner sources are not committed")
+
+
 def _configure_base() -> None:
     # Reuse the exact v4 selector/host policy and production dependency
     # resolver, changing only the immutable namespace and generated outputs.
@@ -79,12 +93,14 @@ def _restore_base_namespace() -> None:
 
 
 def build_document(count: int = plan.DEFAULT_CLASSES) -> dict[str, object]:
+    _require_committed_planner_sources()
     _configure_base()
     try:
         document = plan.base.build_document(count)
         source = dict(document["source_hashes"])
         source.pop(SUPERVISION_CONFIG.relative_to(ROOT).as_posix(), None)
         source[WRAPPER_RELATIVE] = _sha256_path(Path(__file__))
+        source[SHARED_PLAN_RELATIVE] = _sha256_path(Path(plan.__file__))
         helper = ROOT / STAGING_HELPER_RELATIVE
         if not helper.is_file():
             raise RuntimeError("committed v4 staging helper is missing")

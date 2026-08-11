@@ -230,7 +230,7 @@ class FrontierResumeTests(unittest.TestCase):
         self.assertIn("--minimum-free-bytes 214748364800", service)
         self.assertIn("--reverse-edge-bytes-limit 34359738368", service)
         self.assertIn("Restart=no", service)
-        mount = (ROOT / "tools/mnt-ultimatefish\\x2dresume.mount").read_text()
+        mount = (ROOT / "tools/tablebases/mnt-ultimatefish\\x2dresume.mount").read_text()
         self.assertIn(
             "What=/dev/disk/by-uuid/d71ca950-588b-4ff8-9160-e9b7d2d78fe2",
             mount)

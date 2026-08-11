@@ -23,8 +23,8 @@ import sys
 from typing import Mapping, Sequence
 
 
-ROOT = Path(__file__).resolve().parents[1]
-TOOLS = ROOT / "tools"
+ROOT = Path(__file__).resolve().parents[2]
+TOOLS = ROOT / "tools" / "tablebases"
 sys.path.insert(0, str(TOOLS))
 
 import build_ultimate_concrete_wave0_batch as base  # noqa: E402

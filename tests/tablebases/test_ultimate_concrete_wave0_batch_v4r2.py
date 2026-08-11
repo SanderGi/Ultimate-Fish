@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -16,8 +18,20 @@ import supervise_ultimate_aws as supervisor  # noqa: E402
 
 
 class ConcreteWave0BatchV4R2Test(unittest.TestCase):
+    def historical_document(self):
+        historical = json.loads(r2.MANIFEST.read_text())
+        filenames = {str(unit["filename"]) for unit in historical["units"]}
+        entries = r2.plan.base.ledger_by_filename()
+        entries = {
+            name: replace(entry, status="planned") if name in filenames else entry
+            for name, entry in entries.items()
+        }
+        with mock.patch.object(
+                r2.plan.base, "ledger_by_filename", return_value=entries):
+            return r2.build_document()
+
     def test_namespace_is_add_only_and_source_pinned(self) -> None:
-        document = r2.build_document()
+        document = self.historical_document()
         self.assertEqual(r2.SCHEMA, document["schema"])
         self.assertEqual("v4r2", document["batch_version"])
         self.assertEqual(24, len(document["units"]))
@@ -27,14 +41,17 @@ class ConcreteWave0BatchV4R2Test(unittest.TestCase):
             self.assertIn("/dependencies-v4r2/", str(unit["dependency_root"]))
             self.assertIn("batch-v4r2-", str(unit["work_directory"]))
             self.assertEqual(
-                r2._sha256_path(ROOT / r2.STAGING_HELPER_RELATIVE),
+            r2._sha256_path(ROOT / r2.STAGING_HELPER_RELATIVE),
                 unit["source_hashes"][r2.STAGING_HELPER_RELATIVE])
+            self.assertEqual(
+                r2._sha256_path(ROOT / r2.SHARED_PLAN_RELATIVE),
+                unit["source_hashes"][r2.SHARED_PLAN_RELATIVE])
         self.assertEqual(
             r2.DEPENDENCY_ARCHIVE["version_id"],
             document["dependency_archive"]["version_id"])
 
     def test_fragment_has_distinct_source_pinned_ids(self) -> None:
-        document = r2.build_document()
+        document = self.historical_document()
         fragment = r2.build_supervision_jobs(document)
         self.assertEqual(24, len(fragment["jobs"]))
         self.assertTrue(all(str(job["id"]).startswith(
@@ -47,7 +64,7 @@ class ConcreteWave0BatchV4R2Test(unittest.TestCase):
                             for job in fragment["jobs"]))
 
     def test_config_merge_replaces_only_current_namespace_and_validates(self) -> None:
-        document = r2.build_document()
+        document = self.historical_document()
         fragment = r2.build_supervision_jobs(document)
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
