@@ -800,6 +800,7 @@ def merge_supervision_config(document: Mapping[str, object],
         raise RuntimeError("supervision config jobs are malformed")
     replacements = set(map(str, fragment["replace_job_ids"]))
     batch_ids = {str(item["id"]) for item in fragment["jobs"]}
+    current_batch_prefix = f"concrete-wave0-batch-{BATCH_VERSION}-"
     updates = {str(item["id"]): item
                for item in fragment["retained_placeholder_updates"]}
     merged: list[dict[str, object]] = []
@@ -807,7 +808,8 @@ def merge_supervision_config(document: Mapping[str, object],
     for raw in jobs:
         job = dict(raw)
         identifier = str(job["id"])
-        if identifier in replacements or identifier in batch_ids:
+        if (identifier in replacements or identifier in batch_ids or
+                identifier.startswith(current_batch_prefix)):
             continue
         # Preserve the v1 records and their scratch as an immutable audit
         # trail, but make them monitor-only so the scheduler cannot relaunch
