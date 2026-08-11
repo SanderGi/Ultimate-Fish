@@ -119,6 +119,7 @@ def validate_config(config: dict[str, Any]) -> None:
     if not isinstance(jobs, list):
         raise RuntimeError("config jobs must be a list")
     instance_ids: set[str] = set()
+    capacities: dict[str, int] = {}
     for instance in instances:
         if not isinstance(instance, dict):
             raise RuntimeError("each instance must be an object")
@@ -130,6 +131,7 @@ def validate_config(config: dict[str, Any]) -> None:
             raise RuntimeError(f"{identifier} requires a positive hourly_usd")
         if int(instance.get("vcpus", 0)) <= 0:
             raise RuntimeError(f"{identifier} requires a positive vcpus count")
+        capacities[identifier] = int(instance["vcpus"])
         if instance.get("transport", "ssm") not in {"ssm", "local"}:
             raise RuntimeError(f"{identifier} has unsupported transport")
     job_ids: set[str] = set()
@@ -172,6 +174,17 @@ def validate_config(config: dict[str, Any]) -> None:
                 any(not re.fullmatch(r"[a-z0-9]+\.uftb", str(item))
                     for item in ledger_files)):
             raise RuntimeError(f"{identifier} has invalid ledger_files")
+        expected_cpus = job.get("expected_allowed_cpus")
+        if expected_cpus is not None:
+            try:
+                parsed = parse_cpu_set(
+                    expected_cpus, capacities[str(job["instance_id"])])
+            except ValueError as error:
+                raise RuntimeError(
+                    f"{identifier} has invalid expected_allowed_cpus: {error}") from error
+            if not parsed:
+                raise RuntimeError(
+                    f"{identifier} expected_allowed_cpus must not be empty")
     for job in jobs:
         for dependency in job.get("dependencies", []):
             if dependency not in job_ids or dependency == job["id"]:
@@ -451,6 +464,7 @@ def integer_property(unit: dict[str, Any], name: str) -> int | None:
 
 
 def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
+                   job_definitions: list[dict[str, Any]] | None = None,
                    previous_remote: dict[str, Any] | None = None,
                    sample_seconds: float | None = None) -> dict[str, Any]:
     capacity = int(instance["vcpus"])
@@ -460,6 +474,11 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
         str(job.get("id")): job for job in (previous_remote or {}).get("jobs", [])
     }
     utilization: dict[str, dict[str, Any]] = {}
+    expected = {
+        str(job["id"]): parse_cpu_set(job["expected_allowed_cpus"], capacity)
+        for job in (job_definitions or [])
+        if job.get("expected_allowed_cpus") is not None
+    }
     for job in remote.get("jobs", []):
         unit = job.get("unit", {})
         if unit.get("ActiveState") not in {"active", "activating", "reloading"}:
@@ -503,6 +522,14 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
                     f"{first}+{second}:{','.join(map(str, sorted(shared)))}")
     measured_busy = sum(float(item["average_busy_vcpus"])
                         for item in utilization.values())
+    mismatches = {
+        name: {
+            "expected": ",".join(map(str, sorted(cpus))),
+            "actual": ",".join(map(str, sorted(active_sets.get(name, set())))),
+        }
+        for name, cpus in expected.items()
+        if name in active_sets and active_sets[name] != cpus
+    }
     return {
         "vcpus": capacity,
         "allocated_vcpus": len(allocated),
@@ -517,6 +544,7 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
             100 * measured_busy / capacity, 1),
         "measurement_complete": bool(active_sets) and
         set(utilization) == set(active_sets),
+        "allocation_mismatches": mismatches,
     }
 
 
@@ -544,16 +572,20 @@ def probe_instance(config: dict[str, Any], definition: dict[str, Any],
             error = str(exception)
     warnings = resource_warnings(definition, remote) if remote else []
     allocation = cpu_allocation(
-        definition, remote, previous_remote, sample_seconds) if remote else {
+        definition, remote, jobs, previous_remote, sample_seconds) if remote else {
         "vcpus": int(definition["vcpus"]), "allocated_vcpus": 0,
         "idle_vcpus": int(definition["vcpus"]), "allocation_known": False,
         "unknown_jobs": [], "overlaps": [], "active_jobs": {},
         "measured_jobs": {}, "measured_busy_vcpus": 0.0,
         "measured_fleet_capacity_percent": 0.0,
         "measurement_complete": False,
+        "allocation_mismatches": {},
     }
     if allocation["overlaps"]:
         warnings.append("cpu_overlap=" + ";".join(allocation["overlaps"]))
+    if allocation["allocation_mismatches"]:
+        warnings.append("cpu_allocation_mismatch=" + canonical_json(
+            allocation["allocation_mismatches"]))
     return ({
         "name": definition.get("name", definition["instance_id"]),
         "ec2_state": state, "instance_type": ec2.get("InstanceType", ""),
@@ -713,7 +745,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                 key: value["cpu_allocation"][key] for key in (
                     "vcpus", "allocated_vcpus", "idle_vcpus",
                     "allocation_known", "unknown_jobs", "overlaps",
-                    "active_jobs")
+                    "active_jobs", "allocation_mismatches")
             },
         } for identifier, value in instance_results.items()},
         "jobs": {identifier: value["status"] for identifier, value in jobs.items()},

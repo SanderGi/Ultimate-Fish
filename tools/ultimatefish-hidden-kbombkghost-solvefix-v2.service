@@ -12,7 +12,7 @@ Environment=PYTHONUNBUFFERED=1
 Environment=TMPDIR=/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/tmp
 Nice=10
 IOSchedulingClass=idle
-AllowedCPUs=2-31
+AllowedCPUs=16-31
 CPUQuota=2900%
 MemoryHigh=28G
 MemoryMax=32G

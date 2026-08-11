@@ -163,6 +163,7 @@
       "ledger_certifies": true,
       "instance_id": "i-024a2073283e4336e",
       "unit": "ultimatefish-giant-ghost-opposing-8be6f990-full-v1.service",
+      "expected_allowed_cpus": "0-15",
       "dependencies": [],
       "checkpoint_paths": ["/mnt/ultimatefish/giant-ghost-opposing-8be6f990/work/logs/*.log"],
       "completion_paths": ["/mnt/ultimatefish/giant-ghost-opposing-8be6f990/work/results/*"],
@@ -676,6 +677,7 @@
       "ledger_certifies": true,
       "instance_id": "i-024a2073283e4336e",
       "unit": "ultimatefish-hidden-kbombkghost-solvefix-v2.service",
+      "expected_allowed_cpus": "16-31",
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/work/logs/*.log",

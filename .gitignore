@@ -57,3 +57,11 @@ reverse-engineering/output/
 tsconfig.tsbuildinfo
 tablebases/*.checkpoint
 tablebases/*.tmp
+# Production tablebase payloads live in versioned S3; the repository keeps
+# only the canonical README ledger and generated plot.
+tablebases/*.uftb
+tablebases/*.uftb.part*
+tablebases/*.ufiw
+tablebases/*.ufgm
+tablebases/*.ufgi
+tablebases/*.uficapture

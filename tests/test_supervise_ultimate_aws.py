@@ -191,7 +191,7 @@ class SupervisionTests(unittest.TestCase):
         after = remote()
         after["jobs"][0]["unit"]["CPUUsageNSec"] = "130000000000"
         report = SUPERVISOR.cpu_allocation(
-            definition, after, before, sample_seconds=60)
+            definition, after, previous_remote=before, sample_seconds=60)
         sample = report["measured_jobs"]["first"]
         self.assertEqual(120_000_000_000, sample["cpu_delta_nsec"])
         self.assertEqual(2.0, sample["average_busy_vcpus"])
@@ -201,9 +201,25 @@ class SupervisionTests(unittest.TestCase):
 
         after["jobs"][0]["unit"]["StateChangeTimestamp"] = "new activation"
         report = SUPERVISOR.cpu_allocation(
-            definition, after, before, sample_seconds=60)
+            definition, after, previous_remote=before, sample_seconds=60)
         self.assertFalse(report["measurement_complete"])
         self.assertEqual({}, report["measured_jobs"])
+
+    def test_expected_cpu_partition_is_validated_and_monitored(self) -> None:
+        document = config()
+        document["jobs"][0]["expected_allowed_cpus"] = "0-15"
+        SUPERVISOR.validate_config(document)
+        report = SUPERVISOR.cpu_allocation(
+            document["instances"][0], remote(), document["jobs"])
+        self.assertEqual({}, report["allocation_mismatches"])
+        document["jobs"][0]["expected_allowed_cpus"] = "16-31"
+        report = SUPERVISOR.cpu_allocation(
+            document["instances"][0], remote(), document["jobs"])
+        self.assertIn("first", report["allocation_mismatches"])
+
+        document["jobs"][0]["expected_allowed_cpus"] = "32"
+        with self.assertRaisesRegex(RuntimeError, "expected_allowed_cpus"):
+            SUPERVISOR.validate_config(document)
 
     @mock.patch.object(SUPERVISOR, "head_certificate")
     @mock.patch.object(SUPERVISOR, "local_probe")

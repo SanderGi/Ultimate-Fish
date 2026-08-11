@@ -1,4 +1,5 @@
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import tempfile
@@ -23,6 +24,8 @@ ledger = load("ultimate_tablebase_ledger", TOOLS / "update_ultimate_tablebase_le
 plot = load("ultimate_tablebase_plot", TOOLS / "plot_ultimate_tablebases.py")
 archive = load("ultimate_local_tablebase_archive",
                TOOLS / "archive_ultimate_local_tablebases.py")
+cleanup = load("ultimate_local_tablebase_cleanup",
+               TOOLS / "remove_certified_local_tablebases.py")
 
 
 class UltimateTablebaseLedgerTests(unittest.TestCase):
@@ -112,6 +115,31 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             verified = archive.verify_archive(output)
             self.assertEqual(2, verified["files"])
             self.assertEqual(0, verified["stream_restore_residual"])
+
+    def test_cleanup_requires_exact_restored_inventory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tablebases").mkdir()
+            payload = root / "tablebases" / "sample.uftb"
+            payload.write_bytes(b"exact payload")
+            certificate = root / "certificate.json"
+            record = {
+                "path": "tablebases/sample.uftb",
+                "bytes": payload.stat().st_size,
+                "sha256": archive.sha256_path(payload),
+            }
+            certificate.write_text(json.dumps({
+                "schema": archive.SCHEMA,
+                "safe_to_delete_local_payloads": True,
+                "manifest": {"artifacts": [record]},
+                "s3": {"version_id": "version", "head_residual": 0,
+                       "download_residual": 0, "stream_restore_residual": 0},
+            }))
+            self.assertEqual(
+                [payload], cleanup.certified_paths(root, certificate))
+            (root / "tablebases" / "extra.ufiw").write_bytes(b"not certified")
+            with self.assertRaisesRegex(RuntimeError, "inventory differs"):
+                cleanup.certified_paths(root, certificate)
 
 
 if __name__ == "__main__":

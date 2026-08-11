@@ -1008,6 +1008,17 @@ must consult the ledger before staging; **CERTIFIED**, **COMPUTING**, and
 **DRAW** rows must never be launched as new work. Checkpoints and uncertified
 scratch remain resumable and are not deleted merely because a job is quiet.
 
+The 217 legacy local payload files (10,936,783,935 physical bytes) were removed
+after preservation under
+`legacy-local-tablebases/v1/snapshots/sha256/e296deebc6d0f4ef2c53e14eab86fd1c2bbc9954a6051ffca5ce7b9623b08263/`.
+The archive SHA-256 is `e296deebc6d0f4ef2c53e14eab86fd1c2bbc9954a6051ffca5ce7b9623b08263`
+and its S3 VersionId is `YTpSbC_DShKsF8QwShKRSIBUVf8PH0VJ`. The separate
+certificate SHA-256 is
+`1232600dfdc1be8be002701245e6523bfde8334dd4594c8241429a88b5cd825d`
+with VersionId `5hp3sJXKSZLcNwkzKEcs8AXrYuGea3RY`; its local and fresh
+version-pinned archive stream checks both authenticated every file with zero
+residual.
+
 The AWS supervisor reports both CPU-set reservations and measured consumption.
 For every continuously active systemd unit it differences cumulative
 `CPUUsageNSec` across polls and records the sample interval, CPU-time delta,
