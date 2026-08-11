@@ -74,7 +74,22 @@
         "/mnt/ultimatefish/bishop-ghost-v2/kbishopghostk-proof.tar.gz"
       ],
       "source_bindings": [],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "hidden/bishop-ghost/same/v1/results/sha256/7d645981a0992b19da2a032710ba18fbaee91644cc346e9b2dc7f43ba9b5fbd5/bishop-ghost-same-full-7d645981a0992b19da2a032710ba18fbaee91644cc346e9b2dc7f43ba9b5fbd5.tar.zst",
+          "version_id": "zjggi0XmUDmp1Nvf1V3vI4m1F_HfJE6K",
+          "sha256": "7d645981a0992b19da2a032710ba18fbaee91644cc346e9b2dc7f43ba9b5fbd5",
+          "size": 144404
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "hidden/bishop-ghost/same/v1/results/sha256/7d645981a0992b19da2a032710ba18fbaee91644cc346e9b2dc7f43ba9b5fbd5/certificates/051539554e594ad80c68eab1c5abb2674fab7263fc5de05470d77ec1bc01f955.json",
+          "version_id": "8ZcH.23G5UXe7FIDiedL.0BOhfTbil6v",
+          "sha256": "051539554e594ad80c68eab1c5abb2674fab7263fc5de05470d77ec1bc01f955",
+          "size": 1335
+        }
+      ]
     },
     {
       "id": "ghost-pair-full",
@@ -461,7 +476,22 @@
           "sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504"
         }
       ],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/8a1b1797f8f7738d849702b63a18b5da4ecfad019042d6fc88ed519a3adf584f/kberserkergiantk-8a1b1797f8f7738d849702b63a18b5da4ecfad019042d6fc88ed519a3adf584f.tar.zst",
+          "version_id": "EXkOI6JOaP.5gTfjFTSBYEfx9cfFBtS0",
+          "sha256": "8a1b1797f8f7738d849702b63a18b5da4ecfad019042d6fc88ed519a3adf584f",
+          "size": 9669807
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/06aabb1a7c9ec5ad8e219ec0426aaad58ff81a29f96965615e44e5388da9fd17/wave-certificate.json",
+          "version_id": "bBir.kMnQxFvy7NNE8vUrhEQ54g7BtJy",
+          "sha256": "06aabb1a7c9ec5ad8e219ec0426aaad58ff81a29f96965615e44e5388da9fd17",
+          "size": 2557
+        }
+      ]
     },
     {
       "id": "concrete-wave0-remaining",
