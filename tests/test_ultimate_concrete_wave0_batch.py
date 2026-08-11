@@ -135,6 +135,7 @@ class ConcreteWave0BatchTest(unittest.TestCase):
 
         for job in fragment["jobs"]:
             self.assertTrue(job["advanceable"])
+            self.assertTrue(job["queue_stage"])
             self.assertEqual(job["dependencies"], [])
             self.assertTrue(job["ledger_certifies"])
             self.assertEqual(set(job["resource_requirements"]), {

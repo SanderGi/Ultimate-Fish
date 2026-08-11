@@ -592,6 +592,7 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
             "instance_id": unit["instance_id"],
             "unit": unit["unit"],
             "advanceable": True,
+            "queue_stage": True,
             "expected_allowed_cpus": unit["expected_allowed_cpus"],
             "resource_requirements": unit["resource_requirements"],
             "dependencies": [],
