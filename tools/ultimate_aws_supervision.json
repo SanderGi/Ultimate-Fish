@@ -494,10 +494,45 @@
       ]
     },
     {
+      "id": "concrete-wave0-011",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave0-011-ac9b2d32-resume-v1.service",
+      "dependencies": ["concrete-wave0-006"],
+      "advanceable": true,
+      "checkpoint_paths": ["/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-011-resume-v1/work/scratch/*"],
+      "completion_paths": [
+        "/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-011-resume-v1/work/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-011-resume-v1/work/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-011-resume-v1/source/ultimatefish/tools/resume_ultimate_concrete_frontier_aws.py",
+          "sha256": "c84ef0b8d082c24a62f6ca18e6e11df67d35792162a6d9a1ff07c6d329ba0ff0"
+        },
+        {
+          "path": "/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-011-resume-v1/source/ultimatefish/tools/ultimate_concrete_wave0_011_resume.json",
+          "sha256": "f2ff1dad0f55b9ecf30569b7d7ec3325f09a637222b549b3e962b3dd7ee315d6"
+        },
+        {
+          "path": "/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-011-resume-v1/source/ultimatefish/tools/ultimatefish-concrete-wave0-011-ac9b2d32-resume-v1.service",
+          "sha256": "594b6737f9b556a2125b30dc3b179db8cdca7b888bb07f71e1717355837bd2c7"
+        },
+        {
+          "path": "/etc/systemd/system/mnt-ultimatefish\\x2dresume.mount",
+          "sha256": "a5b5b3a39f3bf8f9b881e9b3706e09cc2ef8b4a9fe4590c545ad440bd2b75069"
+        },
+        {
+          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-011-full-v3/dependencies/manifest.json",
+          "sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504"
+        }
+      ],
+      "s3_certificates": []
+    },
+    {
       "id": "concrete-wave0-remaining",
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-concrete-wave0-next.service",
-      "dependencies": ["concrete-wave0-006"],
+      "dependencies": ["concrete-wave0-011"],
       "queue_stage": true,
       "checkpoint_paths": [],
       "completion_paths": [],

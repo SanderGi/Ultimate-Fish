@@ -1,0 +1,35 @@
+{
+  "schema": "ultimate-concrete-frontier-resume-v1",
+  "status": "resource-gated-frontier-preserved",
+  "source_work_directory": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-011-full-v3",
+  "generator_model_sha256": "ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6",
+  "inventory_sha256": "b82a3d87a42ba342b5b611d068783876e3ecf2701e7684400534b937bbda4fd0",
+  "binary_sha256": "09113a356cae6b2cb91801d2113d88dff98226b27fd0f0841774db7a89c7cf50",
+  "dependency_manifest_sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504",
+  "states": 379579200,
+  "substates": 10,
+  "last_frontier_marker": "reverse states 10000000/379579200",
+  "resource_violation": "resident resource limit exceeded: 12943175680 > 12884901888",
+  "selection": {"wave": 0, "begin": 11, "end": 12, "classes": 1},
+  "record": {
+    "filename": "kberserkerkfisherman.uftb",
+    "primary": "berserker",
+    "secondary": "fisherman",
+    "opposing": true,
+    "states": 379579200,
+    "packed_bytes": 474474000,
+    "shards": 5,
+    "phase": "kings+2-stateful"
+  },
+  "run_plan": {"relative_path": "run-plan.json", "bytes": 18359, "sha256": "41f659d7a553431cf27bf0798939358f147dea1626d230a11b3172f2dad08f81"},
+  "generator_log": {"relative_path": "logs/generate/kberserkerkfisherman.log", "bytes": 10196, "sha256": "7bee6adb9e358f4d7534aa0330b0bf012bd7d7184af3897803fa496f1ae73b0b"},
+  "resource_certificate": {"relative_path": "logs/generate/kberserkerkfisherman.resources.json", "bytes": 308, "sha256": "a3365230536b55fdfbd2b905313b7625686d95b45da7746f158d5044239514e6"},
+  "binary": {"relative_path": "binary/ultimate_tablebase", "bytes": 644032, "sha256": "09113a356cae6b2cb91801d2113d88dff98226b27fd0f0841774db7a89c7cf50"},
+  "dependency_manifest": {"relative_path": "dependencies/manifest.json", "bytes": 28281, "sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504"},
+  "planes": {
+    "degrees": {"relative_path": "scratch/kberserkerkfisherman.degrees", "bytes": 1518316800, "allocated_bytes": 1384943616, "sha256": "4441b88170ef98a91d08bfd4f8ef4f597c60ee1a47113416efe155dedeba9304"},
+    "nodes": {"relative_path": "scratch/kberserkerkfisherman.nodes", "bytes": 3036633600, "allocated_bytes": 3036782592, "sha256": "09cf0c812314aa5629722d1eef0619d61dc397182d4722c643e4277277075650"},
+    "offsets": {"relative_path": "scratch/kberserkerkfisherman.offsets", "bytes": 3036633608, "allocated_bytes": 3036635136, "sha256": "43e01de00e417ba81f510ac373c0b9c053e1b1b3f81e8cab27cadafdcff43463"},
+    "predecessors": {"relative_path": "scratch/kberserkerkfisherman.predecessors", "bytes": 46961271528, "allocated_bytes": 6555160576, "sha256": "5b346106af6f819c938ddace7b2e2732bfd3d9a8ec1db89e02238f60850b3949"}
+  }
+}

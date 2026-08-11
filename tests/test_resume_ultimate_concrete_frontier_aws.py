@@ -236,6 +236,25 @@ class FrontierResumeTests(unittest.TestCase):
             mount)
         self.assertIn("Where=/mnt/ultimatefish-resume", mount)
 
+    def test_class011_resume_is_exact_and_has_large_reverse_gate(self) -> None:
+        manifest = json.loads((
+            ROOT / "tools/ultimate_concrete_wave0_011_resume.json").read_text())
+        self.assertEqual(
+            RESUME.concrete.normalized_record(
+                RESUME.concrete.wave_inventory(0)[11]), manifest["record"])
+        self.assertLess(
+            manifest["planes"]["predecessors"]["allocated_bytes"],
+            manifest["planes"]["predecessors"]["bytes"])
+        service = (ROOT / "tools/ultimatefish-concrete-wave0-011-"
+                   "ac9b2d32-resume-v1.service").read_text()
+        self.assertIn("Requires=mnt-ultimatefish\\x2dresume.mount", service)
+        self.assertIn("--minimum-free-bytes 214748364800", service)
+        self.assertIn("--scratch-limit 85899345920", service)
+        self.assertIn("--reverse-edge-bytes-limit 68719476736", service)
+        self.assertIn("Restart=no", service)
+        self.assertIn(
+            "ReadOnlyPaths=" + manifest["source_work_directory"], service)
+
 
 if __name__ == "__main__":
     unittest.main()
