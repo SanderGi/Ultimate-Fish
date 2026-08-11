@@ -72,6 +72,14 @@ class ResultArchiveTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "extent/full-SHA"):
                 archive.authenticated_inventory(root, manifest, "example")
 
+    def test_invalid_compression_level_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            manifest = self.fixture(root)
+            with self.assertRaisesRegex(RuntimeError, "compression level"):
+                archive.build_archive(
+                    root, manifest, "example", root / "archive", 0)
+
     def test_traversal_and_symlink_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

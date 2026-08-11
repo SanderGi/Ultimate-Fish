@@ -105,7 +105,10 @@ def _add_file(archive: tarfile.TarFile, name: str, stream: BinaryIO,
 
 
 def build_archive(root: Path, artifact_manifest: Path, kind: str,
-                  output_dir: Path) -> tuple[Path, dict[str, object]]:
+                  output_dir: Path,
+                  compression_level: int = 19) -> tuple[Path, dict[str, object]]:
+    if compression_level < 1 or compression_level > 19:
+        raise RuntimeError("zstd compression level must be between 1 and 19")
     root = root.resolve(strict=True)
     inventory = authenticated_inventory(root, artifact_manifest, kind)
     manifest_bytes = (json.dumps(inventory, indent=2, sort_keys=True) + "\n").encode()
@@ -124,7 +127,8 @@ def build_archive(root: Path, artifact_manifest: Path, kind: str,
                     _add_file(archive, "payload/" + relative.as_posix(), stream,
                               int(record["bytes"]))
         with compressed.open("wb") as output:
-            subprocess.run(["zstd", "-19", "-T1", "--no-progress", "-c",
+            subprocess.run(["zstd", f"-{compression_level}", "-T1",
+                            "--no-progress", "-c",
                             str(raw_tar)], stdout=output, check=True)
         digest = sha256_path(compressed)
         final = output_dir / f"{kind}-{digest}.tar.zst"
@@ -284,9 +288,11 @@ def main() -> None:
     parser.add_argument("--kind", required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--s3-prefix")
+    parser.add_argument("--zstd-level", type=int, default=19)
     args = parser.parse_args()
     archive, certificate = build_archive(
-        args.root, args.artifact_manifest, args.kind, args.output_dir)
+        args.root, args.artifact_manifest, args.kind, args.output_dir,
+        args.zstd_level)
     certificate["local_archive_restore_residual"] = 0
     if args.s3_prefix:
         certificate["s3"] = upload_and_restore(
