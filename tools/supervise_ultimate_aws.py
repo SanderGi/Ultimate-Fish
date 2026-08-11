@@ -55,8 +55,12 @@ def sha256_bytes(value: bytes) -> str:
 
 
 def run(argv: list[str], *, timeout: int = 60) -> str:
-    completed = subprocess.run(
-        argv, check=False, capture_output=True, text=True, timeout=timeout)
+    try:
+        completed = subprocess.run(
+            argv, check=False, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        label = " ".join(argv[:3])
+        raise RuntimeError(f"command timed out after {timeout}s: {label}") from None
     if completed.returncode:
         detail = completed.stderr.strip() or completed.stdout.strip()
         raise RuntimeError(f"command failed ({completed.returncode}): "
@@ -105,6 +109,9 @@ def validate_config(config: dict[str, Any]) -> None:
     budget = float(config.get("budget_usd", 0))
     if not 0 < budget <= 5_000:
         raise RuntimeError("budget_usd must be positive and at most 5000")
+    probe_workers = int(config.get("probe_workers", 2))
+    if not 1 <= probe_workers <= 3:
+        raise RuntimeError("probe_workers must be between one and three")
     instances = config.get("instances")
     jobs = config.get("jobs")
     if not isinstance(instances, list) or not instances or len(instances) > 5:
@@ -518,7 +525,9 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
     total_spend = 0.0
     errors: list[dict[str, str]] = []
     futures: dict[Any, tuple[str, dict[str, Any]]] = {}
-    with ThreadPoolExecutor(max_workers=len(config["instances"])) as executor:
+    with ThreadPoolExecutor(
+            max_workers=min(int(config.get("probe_workers", 2)),
+                            len(config["instances"]))) as executor:
         for definition in config["instances"]:
             identifier = definition["instance_id"]
             ec2 = inventory.get(identifier)

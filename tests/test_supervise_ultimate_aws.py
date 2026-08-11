@@ -115,6 +115,10 @@ class SupervisionTests(unittest.TestCase):
         invalid["jobs"][0]["unit"] = "safe.service;reboot.service"
         with self.assertRaisesRegex(RuntimeError, "explicit service unit"):
             SUPERVISOR.validate_config(invalid)
+        invalid = config()
+        invalid["probe_workers"] = 5
+        with self.assertRaisesRegex(RuntimeError, "between one and three"):
+            SUPERVISOR.validate_config(invalid)
 
     def test_remote_probe_command_has_no_configured_shell_text(self) -> None:
         definition = config()["instances"][0]
@@ -128,6 +132,15 @@ class SupervisionTests(unittest.TestCase):
         payload = json.loads(base64.b64decode(arguments[4]))
         self.assertIn("sys.argv[2]", program)
         self.assertEqual("first", payload["jobs"][0]["id"])
+
+    @mock.patch.object(SUPERVISOR.subprocess, "run")
+    def test_timeout_error_redacts_encoded_aws_payload(self, command: mock.Mock) -> None:
+        command.side_effect = subprocess.TimeoutExpired(
+            ["aws", "ssm", "send-command", "secret-payload"], 60)
+        with self.assertRaisesRegex(RuntimeError, "aws ssm send-command") as caught:
+            SUPERVISOR.run(
+                ["aws", "ssm", "send-command", "secret-payload"])
+        self.assertNotIn("secret-payload", str(caught.exception))
 
     def test_large_checkpoint_glob_has_bounded_valid_remote_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

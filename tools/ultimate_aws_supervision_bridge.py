@@ -229,9 +229,12 @@ def collect(*, python: Path, supervisor: Path, health: Path, events: Path,
                 event["delegate_sol"] = True
 
     digest = spool_event(events, event) if event is not None else ""
+    # Tests can pin time; production health records completion so a long but
+    # successful bounded poll does not look stale immediately after it exits.
+    completed = observed if now is not None else dt.datetime.now(dt.timezone.utc)
     health_value = {
-        "schema": SCHEMA, "observed_at": observed.isoformat(),
-        "observed_epoch": observed.timestamp(),
+        "schema": SCHEMA, "observed_at": completed.isoformat(),
+        "observed_epoch": completed.timestamp(),
         "supervisor_exit_code": code,
         "supervisor_status": event.get("status") if event else "NO_CHANGE",
         "event_digest": digest,
