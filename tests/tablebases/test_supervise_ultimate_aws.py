@@ -656,6 +656,40 @@ class SupervisionTests(unittest.TestCase):
         self.assertNotIn("third", output["report"]["errors"])
         self.assertFalse(output["delegate_sol"])
 
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    @mock.patch.object(SUPERVISOR, "ec2_inventory")
+    def test_completed_result_survives_reclaimed_source_tree(
+            self, inventory: mock.Mock, probe: mock.Mock) -> None:
+        inventory.return_value = self.ec2
+        finished = remote(first="inactive", complete=True)
+        finished["jobs"][0]["sources"] = [None]
+        probe.return_value = finished
+        output, state = SUPERVISOR.supervise(config(), {}, self.now)
+        observed = state["report"]["jobs"]["first"]
+        self.assertEqual("COMPLETED_UNCERTIFIED", observed["status"])
+        self.assertFalse(observed["source_exact"])
+        self.assertEqual(
+            "COMPLETED_UNCERTIFIED",
+            output["report"]["jobs"]["first"]["status"])
+
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    @mock.patch.object(SUPERVISOR, "ec2_inventory")
+    def test_queued_replacement_does_not_inherit_disappeared_run_failure(
+            self, inventory: mock.Mock, probe: mock.Mock) -> None:
+        document = config()
+        queued = document["jobs"][2]
+        inventory.return_value = self.ec2
+        current = remote(first="inactive", complete=True)
+        current["jobs"][2]["unit"].update({
+            "LoadState": "not-found", "ActiveState": "inactive",
+            "Result": "success", "ExecMainStatus": "0",
+        })
+        probe.return_value = current
+        previous = {"report": {"jobs": {"third": {"status": "RUNNING"}}}}
+        output, state = SUPERVISOR.supervise(document, previous, self.now)
+        self.assertEqual("INACTIVE", state["report"]["jobs"]["third"]["status"])
+        self.assertNotEqual("FAILED", output["report"]["jobs"]["third"]["status"])
+
     @mock.patch.object(SUPERVISOR, "head_certificate")
     @mock.patch.object(SUPERVISOR, "local_probe")
     @mock.patch.object(SUPERVISOR, "ec2_inventory")

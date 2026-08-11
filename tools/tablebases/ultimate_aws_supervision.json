@@ -401,7 +401,7 @@
       "dependencies": [
         "jester-ghost-merge"
       ],
-      "queue_stage": true,
+      "advanceable": true,
       "resume_of": "ultimatefish-jg7328-measure-v3.service",
       "checkpoint_paths": [
         "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-binary-compat-b4503336/production-input-preflight-v2.log",
@@ -432,6 +432,23 @@
         {
           "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-binary-compat-b4503336/production-input-preflight-v2.log",
           "sha256": "6a9ae9be1497e7a23d87a3d7e738e3b138f03e8ba7587ceb0e6405c1eb94664a"
+        }
+      ],
+      "diagnostic_sources": [
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-compat-fc88bb3b/measurement-v4/service.log",
+          "max_bytes": 2048
+        },
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-compat-fc88bb3b/measurement-v4/work/measurement.log",
+          "max_bytes": 4096
+        },
+        {
+          "kind": "journal",
+          "unit": "ultimatefish-jg7328-measure-fc88-v1.service",
+          "max_bytes": 2048
         }
       ],
       "s3_certificates": [
@@ -1097,6 +1114,23 @@
         {
           "path": "/mnt/ultimatefish/hidden-kghostparasitek-7af5dec2/tools/run_ultimate_ghost_parasite_aws.py",
           "sha256": "f83b7ecae74ecf43f98904b1c1d786effc4fdb5b63e2928fee50609e7436d516"
+        }
+      ],
+      "diagnostic_sources": [
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/hidden-kghostparasitek-7af5dec2/work/artifact-manifest.json",
+          "max_bytes": 4096
+        },
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/hidden-kghostparasitek-7af5dec2/work/logs/measure.log",
+          "max_bytes": 2048
+        },
+        {
+          "kind": "journal",
+          "unit": "ultimatefish-hidden-kghostparasitek-7af5dec2.service",
+          "max_bytes": 2048
         }
       ],
       "s3_certificates": []
@@ -3760,6 +3794,18 @@
         "/mnt/ultimatefish/concrete-wave0-batch/batch-v3-23-class086-kcopycatrookk/certificates/wave-certificate.json",
         "/mnt/ultimatefish/concrete-wave0-batch/batch-v3-23-class086-kcopycatrookk/s3-verify/wave-certificate.json"
       ],
+      "diagnostic_sources": [
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/concrete-wave0-batch/batch-v3-23-class086-kcopycatrookk/certificates/wave-certificate.json",
+          "max_bytes": 4096
+        },
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/concrete-wave0-batch/batch-v3-23-class086-kcopycatrookk/s3-verify/wave-certificate.json",
+          "max_bytes": 4096
+        }
+      ],
       "source_bindings": [
         {
           "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v3-23-class086-kcopycatrookk.service",
@@ -3881,6 +3927,18 @@
       "completion_paths": [
         "/mnt/ultimatefish/concrete-wave0-batch/batch-v3-24-class088-kcopycatturtlek/certificates/wave-certificate.json",
         "/mnt/ultimatefish/concrete-wave0-batch/batch-v3-24-class088-kcopycatturtlek/s3-verify/wave-certificate.json"
+      ],
+      "diagnostic_sources": [
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/concrete-wave0-batch/batch-v3-24-class088-kcopycatturtlek/certificates/wave-certificate.json",
+          "max_bytes": 4096
+        },
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/concrete-wave0-batch/batch-v3-24-class088-kcopycatturtlek/s3-verify/wave-certificate.json",
+          "max_bytes": 4096
+        }
       ],
       "source_bindings": [
         {

@@ -1130,8 +1130,9 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         # synthetic not-found record added by probe_instance therefore has no
         # source hash vector by design; do not turn that staging boundary into
         # a live SOURCE_MISMATCH failure.
+        source_matches = source_exact(definition, remote) if remote else False
         if (not superseded and not definition.get("queue_stage") and remote
-                and not source_exact(definition, remote)):
+                and not source_matches):
             status = "SOURCE_MISMATCH"
         completion = all_paths_exist(remote.get("completion", []))
         previous_status = previous.get("report", {}).get("jobs", {}).get(
@@ -1142,7 +1143,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         # RUNNING job may therefore look like a clean inactive exit even though
         # its journal records failure.  Completion evidence may still certify
         # it below; without that evidence, fail closed and delegate diagnosis.
-        if (not superseded and
+        if (not superseded and not definition.get("queue_stage") and
                 remote.get("unit", {}).get("LoadState") == "not-found" and
                 previous_status == "RUNNING" and not completion):
             status = "FAILED"
@@ -1168,13 +1169,19 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         if (not superseded and (completion or s3_only) and certificates and
                 all(item["exact"] for item in certificates)):
             status = "CERTIFIED"
-        elif not superseded and completion and status == "INACTIVE":
+        elif (not superseded and completion and
+              status in {"INACTIVE", "SOURCE_MISMATCH"}):
+            # Successful completion evidence is more durable than a staging
+            # tree.  Source files may be reclaimed after a run while its
+            # result still awaits the version-pinned S3 certification gate.
+            # Keep source_exact=false in the report, but never turn a finished
+            # result into a rerun-worthy SOURCE_MISMATCH failure.
             status = "COMPLETED_UNCERTIFIED"
         jobs[identifier] = {
             "status": status, "unit": remote.get("unit", {}),
             "checkpoints": remote.get("checkpoints", []),
             "completion": remote.get("completion", []),
-            "source_exact": source_exact(definition, remote) if remote else False,
+            "source_exact": source_matches,
             "certificates": certificates,
             "diagnostics": remote.get("diagnostics", []),
             "dependencies": definition.get("dependencies", []),
