@@ -181,8 +181,9 @@ class ConcreteWave0BatchTest(unittest.TestCase):
             self.assertEqual(manifest_binding["sha256"], raw_manifest_sha)
             self.assertTrue(any(path.startswith("/etc/systemd/system/")
                                 for path in paths))
-            self.assertTrue(any(path.endswith("/dependencies/manifest.json")
-                                for path in paths))
+            self.assertTrue(any(
+                "/concrete-wave0-batch/dependencies/" in path and
+                path.endswith("/manifest.json") for path in paths))
             dependency_manifest_path = next(
                 path for path in paths
                 if path.endswith("/manifest.json") and
