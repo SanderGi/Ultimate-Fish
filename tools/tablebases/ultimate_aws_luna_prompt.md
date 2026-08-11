@@ -51,7 +51,7 @@ For a JSON event:
    solvers normally receive one disjoint CPU each; concurrency comes from
    independent classes. `UNDERUTILIZED` means two consecutive complete samples
    were below 50% while runnable or stageable work existed. Delegate one bounded
-   bounded staging fix that prepares a source-pinned batch of explicit class
+   staging fix that prepares a source-pinned batch of explicit class
    units, never a generic "remaining" placeholder.
 5. For resource warnings, inspect only the affected unit/cgroup/mount. Stop or
    throttle safely before a hard limit; preserve resumable state. Do not launch

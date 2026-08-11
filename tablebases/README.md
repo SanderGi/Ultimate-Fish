@@ -27,6 +27,18 @@ as compatibility shims. Immutable S3 certificates and already installed AWS
 units retain their original path strings as historical provenance, while every
 new package is built from this layout.
 
+The five-minute fleet monitor is part of the same subsystem. Its canonical
+automation contract is `tools/tablebases/ultimate_aws_luna_prompt.md`; the
+host-only collector and scheduler are installed by
+`tools/tablebases/install_ultimate_aws_supervision_launchd.py`. The retained
+resume-volume unit is `tools/tablebases/mnt-ultimatefish\x2dresume.mount`.
+The monitor measures CPU-time deltas rather than treating an assigned CPU set
+as utilization, backfills independent source-certified jobs subject to exact
+RAM and disk gates, and records every material state change in this ledger
+before regenerating the plot. Failed expensive phases are retained and resumed
+through authenticated manifests; they are never silently deleted or blindly
+restarted.
+
 ![Ultimate tablebase computation and outcome grid](ultimate-tablebase-grid.png)
 
 Diagonal hatching means the class is currently computing. The image is

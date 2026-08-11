@@ -9,6 +9,7 @@ import io
 import json
 from pathlib import Path
 import tarfile
+from typing import Mapping
 
 import ultimate_information_tablebases as information
 
@@ -26,6 +27,17 @@ LOWER_BOMB_SHA256 = (
     "18e057c83faf940db1ad7404a39623a5db208724de892d604735576d7583ce2f")
 LOWER_BOMB_MODEL_SHA256 = (
     "8e066add3d323bde8b2bdff2ebc7f6620a2e8aeb6f74ab2e544ef04d99210174")
+# The source-tree consolidation deliberately changed physical paths without
+# changing the public-observation contract.  Existing transition headers bind
+# this path-sensitive legacy digest, so resumed measurement must keep it.  The
+# compatibility check below recomputes that digest from the current bytes using
+# their former canonical names and fails closed if either file changes.
+OBSERVATION_SHA256 = (
+    "af09ebab834599de83d546f8729b8329dbe5ba8ff1cc7f24be3ac63086273adf")
+LOWER_SOURCE_SHA256 = (
+    "3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31")
+LOWER_MODEL_SHA256 = (
+    "4a2d9d7b503b29204cf9af08985345771b9046c07bd2116e592fab40ee12e430")
 FROZEN_FINGERPRINTS = {
     "kbishopghostk.uftb":
         "416f3792dfa0b5f5317a0ee4f8ae91b2a4dd874807d7223c5918dc0b291a2dcf",
@@ -85,7 +97,14 @@ BUILD_INPUTS_COMMON = (
     "tablebases/kbombk.uftb",
     "tools/tablebases/run_ultimate_reciprocal_bishop_ghost_aws.py",
     "tools/tablebases/run_ultimate_ghost_bomb_aws.py",
+    "tools/tablebases/stage_ultimate_ghost_bomb_resume_aws.py",
 )
+SERVICE_FILES = {
+    "kbombghostk.uftb":
+        "tools/tablebases/ultimatefish-hidden-kbombghostk-resume-v3.service",
+    "kbombkghost.uftb":
+        "tools/tablebases/ultimatefish-hidden-kbombkghost-resume-v3.service",
+}
 TEXTUAL_CPP = {
     "src/ultimate/tablebases/ghost_public_extra_information_solver.cpp",
     "src/ultimate/tablebases/ghost_extra_information_tablebase.cpp",
@@ -96,10 +115,50 @@ def sha256_bytes(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def file_record(path: str) -> dict[str, object]:
-    payload = (ROOT / path).read_bytes()
+def file_record(path: str, payload: bytes | None = None) -> dict[str, object]:
+    if payload is None:
+        payload = (ROOT / path).read_bytes()
     return {"path": path, "bytes": len(payload),
             "sha256": sha256_bytes(payload)}
+
+
+def legacy_layout_fingerprint(domain: str,
+                              paths: tuple[tuple[str, str], ...]) -> str:
+    digest = hashlib.sha256()
+    contract = json.dumps({
+        "domain": domain,
+        "schema_version": information.SCHEMA_VERSION,
+        "semantics": information.SEMANTICS,
+    }, sort_keys=True, separators=(",", ":")).encode()
+    digest.update(len(contract).to_bytes(8, "little"))
+    digest.update(contract)
+    for legacy, current in paths:
+        relative = legacy.encode()
+        payload = (ROOT / current).read_bytes()
+        digest.update(len(relative).to_bytes(4, "little"))
+        digest.update(relative)
+        digest.update(len(payload).to_bytes(8, "little"))
+        digest.update(payload)
+    return digest.hexdigest()
+
+
+def legacy_observation_fingerprint() -> str:
+    return legacy_layout_fingerprint("observation-model", (
+        ("src/ultimate/information.h",
+         "src/ultimate/tablebases/information.h"),
+        ("src/ultimate/information.cpp",
+         "src/ultimate/tablebases/information.cpp"),
+    ))
+
+
+def legacy_lower_bomb_model_fingerprint() -> str:
+    return legacy_layout_fingerprint(
+        "concrete-tablebase-model:kbombk.uftb", (
+            ("src/ultimate/position.h", "src/ultimate/position.h"),
+            ("src/ultimate/position.cpp", "src/ultimate/position.cpp"),
+            ("src/ultimate/tablebase.cpp",
+             "src/ultimate/tablebases/tablebase.cpp"),
+        ))
 
 
 def lower_binding(payload: bytes) -> tuple[str, str, str]:
@@ -122,7 +181,9 @@ def shard_ranges() -> list[tuple[str, int, int]]:
     return ranges
 
 
-def build_manifest(filename: str) -> dict[str, object]:
+def build_manifest(filename: str,
+                   data_payloads: Mapping[str, bytes] | None = None
+                   ) -> dict[str, object]:
     if filename not in ROWS:
         raise RuntimeError(f"unsupported Bomb/Ghost row {filename}")
     row = ROWS[filename]
@@ -137,20 +198,30 @@ def build_manifest(filename: str) -> dict[str, object]:
     # Its old verified shards remain authoritative; the implementation hash
     # and complete file inventory separately authenticate the patched solver.
     model = str(row["model_sha256"])
-    build_inputs = (*BUILD_INPUTS_COMMON, f"tablebases/{filename}")
-    concrete = (ROOT / "tablebases" / filename).read_bytes()
-    lower_payload = (ROOT / "tablebases" / "kghostk.ufgm").read_bytes()
-    lower_bomb_payload = (ROOT / "tablebases" / "kbombk.uftb").read_bytes()
+    build_inputs = (*BUILD_INPUTS_COMMON, SERVICE_FILES[filename],
+                    f"tablebases/{filename}")
+    def data(path: str) -> bytes:
+        if data_payloads is not None and path in data_payloads:
+            return data_payloads[path]
+        return (ROOT / path).read_bytes()
+
+    concrete = data(f"tablebases/{filename}")
+    lower_payload = data("tablebases/kghostk.ufgm")
+    lower_bomb_payload = data("tablebases/kbombk.uftb")
     if sha256_bytes(concrete) != row["source_sha256"]:
         raise RuntimeError(f"{filename}: concrete SHA-256 mismatch")
     if sha256_bytes(lower_payload) != LOWER_SHA256:
         raise RuntimeError("kghostk lower UFGM SHA-256 mismatch")
     if (sha256_bytes(lower_bomb_payload) != LOWER_BOMB_SHA256 or
-            information.concrete_tablebase_model_fingerprint(
-                "kbombk.uftb") != LOWER_BOMB_MODEL_SHA256):
+            legacy_lower_bomb_model_fingerprint() !=
+            LOWER_BOMB_MODEL_SHA256):
         raise RuntimeError("kbombk lower concrete binding mismatch")
     lower = lower_binding(lower_payload)
-    observation = information.observation_model_fingerprint()
+    if (lower != (LOWER_SOURCE_SHA256, LOWER_MODEL_SHA256,
+                  OBSERVATION_SHA256) or
+            legacy_observation_fingerprint() != OBSERVATION_SHA256):
+        raise RuntimeError("legacy observation compatibility residual")
+    observation = OBSERVATION_SHA256
     stem = Path(filename).stem
     orientation = str(row["orientation"])
     executable = "./ultimate_ghost_bomb_information_tablebase"
@@ -203,7 +274,7 @@ def build_manifest(filename: str) -> dict[str, object]:
         "work/logs/measure.log", "work/logs/solve.log",
     ]
     return {
-        "schema": "ultimate-bomb-ghost-aws-v2",
+        "schema": "ultimate-bomb-ghost-aws-v3",
         "filename": filename, "orientation": orientation,
         "source_sha256": row["source_sha256"], "model_sha256": model,
         "implementation_sha256": implementation,
@@ -224,9 +295,10 @@ def build_manifest(filename: str) -> dict[str, object]:
         "estimated_transition_bytes": 16_000_000_000,
         "estimated_peak_scratch_bytes": 36 << 30,
         "estimated_peak_resident_bytes": 20 << 30,
-        "files": [file_record(path) for path in build_inputs],
+        "files": [file_record(path, data(path) if path.startswith(
+            "tablebases/") else None) for path in build_inputs],
         "commands": {
-            "build": ["clang++", "-std=c++17", "-O3", "-DNDEBUG",
+            "build": ["c++", "-std=c++17", "-O3", "-DNDEBUG",
                       "-Wall", "-Wextra", "-Wpedantic", "-Werror",
                       "-Wno-error=range-loop-construct",
                       "-include", "sstream", "-Isrc/ultimate", "-Isrc/ultimate/tablebases",
@@ -252,8 +324,10 @@ def add_bytes(archive: tarfile.TarFile, name: str, payload: bytes,
     archive.addfile(record, io.BytesIO(payload))
 
 
-def build_bundle(filename: str, output: Path) -> dict[str, object]:
-    manifest = build_manifest(filename)
+def build_bundle(filename: str, output: Path,
+                 data_payloads: Mapping[str, bytes] | None = None
+                 ) -> dict[str, object]:
+    manifest = build_manifest(filename, data_payloads)
     output.parent.mkdir(parents=True, exist_ok=True)
     paths = [str(record["path"]) for record in manifest["files"]]
     with tarfile.open(output, "w", format=tarfile.PAX_FORMAT) as archive:
@@ -261,16 +335,43 @@ def build_bundle(filename: str, output: Path) -> dict[str, object]:
                   (json.dumps(manifest, indent=2, sort_keys=True) + "\n").encode())
         for path in sorted(paths):
             mode = 0o755 if path.endswith("_aws.py") else 0o644
-            add_bytes(archive, path, (ROOT / path).read_bytes(), mode)
+            payload = ((data_payloads or {}).get(path)
+                       if path.startswith("tablebases/") else None)
+            add_bytes(archive, path,
+                      payload if payload is not None else (ROOT / path).read_bytes(),
+                      mode)
     return manifest
+
+
+def payloads_from_base_bundle(filename: str, bundle: Path
+                              ) -> dict[str, bytes]:
+    required = {f"tablebases/{filename}", "tablebases/kghostk.ufgm",
+                "tablebases/kbombk.uftb"}
+    with tarfile.open(bundle) as archive:
+        names = set(archive.getnames())
+        if not required <= names:
+            raise RuntimeError("base Bomb bundle lacks authenticated data")
+        payloads = {}
+        for path in sorted(required):
+            member = archive.getmember(path)
+            stream = archive.extractfile(member)
+            if (not member.isfile() or stream is None or member.name != path or
+                    Path(path).is_absolute() or ".." in Path(path).parts):
+                raise RuntimeError("unsafe Bomb base bundle member")
+            payloads[path] = stream.read()
+    return payloads
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--filename", choices=tuple(ROWS), required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--base-bundle", type=Path,
+                        help="reuse only authenticated tablebase payloads")
     args = parser.parse_args()
-    manifest = build_bundle(args.filename, args.output)
+    payloads = (payloads_from_base_bundle(args.filename, args.base_bundle)
+                if args.base_bundle else None)
+    manifest = build_bundle(args.filename, args.output, payloads)
     print(json.dumps({"bundle": str(args.output),
       "bytes": args.output.stat().st_size,
       "sha256": sha256_bytes(args.output.read_bytes()),

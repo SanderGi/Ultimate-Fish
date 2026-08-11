@@ -26,6 +26,116 @@ assert RUNNER_SPEC and RUNNER_SPEC.loader
 runner = importlib.util.module_from_spec(RUNNER_SPEC)
 sys.modules[RUNNER_SPEC.name] = runner
 RUNNER_SPEC.loader.exec_module(runner)
+STAGE_SPEC = importlib.util.spec_from_file_location(
+    "stage_ultimate_ghost_bomb_resume_aws",
+    TOOLS / "stage_ultimate_ghost_bomb_resume_aws.py")
+assert STAGE_SPEC and STAGE_SPEC.loader
+stage = importlib.util.module_from_spec(STAGE_SPEC)
+sys.modules[STAGE_SPEC.name] = stage
+STAGE_SPEC.loader.exec_module(stage)
+
+
+class BombGhostResumeUnitTests(unittest.TestCase):
+    def manifest(self, filename="kbombghostk.uftb", orientation="same"):
+        return {
+            "schema": "ultimate-bomb-ghost-aws-v3",
+            "filename": filename,
+            "orientation": orientation,
+            "implementation_sha256": "a" * 64,
+            "model_sha256": "b" * 64,
+            "observation_sha256": "c" * 64,
+            "geometries": 492_960,
+            "shards": 64,
+            "shard_count_distribution": {"7703": 32, "7702": 32},
+            "parallelism": 29,
+            "commands": {"shards": [[] for _ in range(64)]},
+        }
+
+    def test_resume_authenticates_every_extent_and_digest(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prefix = root / "work" / "transitions" / "kbombghost"
+            prefix.parent.mkdir(parents=True)
+            paths = [Path(f"{prefix}{suffix}")
+                     for suffix in runner.shared.TRANSITION_SUFFIXES]
+            (root / "work" / "logs").mkdir()
+            paths.append(root / "work" / "logs" / "merge.log")
+            for index, path in enumerate(paths):
+                path.write_bytes(f"proof-{index}".encode())
+            resume = {
+                "schema": "ultimate-bomb-ghost-transition-resume-v1",
+                "filename": "kbombghostk.uftb", "orientation": "same",
+                "model_sha256": "b" * 64,
+                "observation_sha256": "c" * 64,
+                "source_prefix": str(prefix),
+                "files": [{"name": path.name, "bytes": path.stat().st_size,
+                           "sha256": runner.shared.sha256(path)}
+                          for path in paths],
+            }
+            previous = runner.RESUME_PREFIXES["kbombghostk.uftb"]
+            runner.RESUME_PREFIXES["kbombghostk.uftb"] = prefix
+            try:
+                self.assertEqual(runner.validate_transition_resume(
+                    resume, self.manifest()), prefix)
+                paths[3].write_bytes(b"changed")
+                with self.assertRaises(RuntimeError):
+                    runner.validate_transition_resume(resume, self.manifest())
+            finally:
+                runner.RESUME_PREFIXES["kbombghostk.uftb"] = previous
+
+    def test_measure_rewrites_only_the_transition_prefix(self):
+        command = ["solver", "--measure", "1", "--transition-prefix",
+                   "work/transitions/kbombghost", "--output", "result"]
+        rewritten = runner.resumed_measure_command(
+            command, Path("/read-only/kbombghost"))
+        self.assertEqual(command[4], "work/transitions/kbombghost")
+        self.assertEqual(rewritten[4], "/read-only/kbombghost")
+        self.assertEqual(rewritten[:4] + rewritten[5:],
+                         command[:4] + command[5:])
+
+    def test_runner_rejects_old_schema(self):
+        manifest = self.manifest()
+        manifest["schema"] = "ultimate-bomb-ghost-aws-v2"
+        with self.assertRaises(RuntimeError):
+            runner.validate_manifest(manifest)
+
+    def test_safe_extract_rejects_links_and_preserves_destination(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            archive = root / "unsafe.tar"
+            with tarfile.open(archive, "w") as output:
+                member = tarfile.TarInfo("link")
+                member.type = tarfile.SYMTYPE
+                member.linkname = "/etc/passwd"
+                output.addfile(member)
+            destination = root / "destination"
+            with self.assertRaises(RuntimeError):
+                stage.safe_extract(archive, destination)
+            self.assertFalse(destination.exists())
+
+    def test_legacy_observation_digest_survives_only_the_move(self):
+        self.assertEqual(package.legacy_observation_fingerprint(),
+                         package.OBSERVATION_SHA256)
+        self.assertEqual(package.legacy_lower_bomb_model_fingerprint(),
+                         package.LOWER_BOMB_MODEL_SHA256)
+
+    def test_v3_services_are_single_cpu_and_keep_v2_read_only(self):
+        cases = (
+            ("kbombghostk.uftb", "AllowedCPUs=0",
+             "/hidden-kbombghostk-7af5dec2/"),
+            ("kbombkghost.uftb", "AllowedCPUs=1",
+             "/hidden-kbombkghost-7af5dec2/"),
+        )
+        for filename, cpu, root in cases:
+            with self.subTest(filename=filename):
+                service = (ROOT / package.SERVICE_FILES[filename]).read_text()
+                self.assertIn(cpu, service)
+                self.assertIn("CPUQuota=100%", service)
+                self.assertIn(root + "resume-v2", service)
+                self.assertIn("ReadOnlyPaths=", service)
+                self.assertIn(root + "resume-v3", service)
+                self.assertIn("--transition-resume-manifest", service)
+                self.assertNotIn("solvefix-v2", service)
 
 
 class BombGhostAwsBundleTests(unittest.TestCase):
@@ -48,7 +158,7 @@ class BombGhostAwsBundleTests(unittest.TestCase):
             with self.subTest(filename=filename):
                 manifest = package.build_manifest(filename)
                 self.assertEqual(manifest["schema"],
-                                 "ultimate-bomb-ghost-aws-v2")
+                                 "ultimate-bomb-ghost-aws-v3")
                 self.assertEqual(manifest["implementation_sha256"],
                                  package.ROWS[filename][
                                      "implementation_sha256"])
@@ -79,7 +189,7 @@ class BombGhostAwsBundleTests(unittest.TestCase):
                         command[command.index("--compact-every") + 1], "1")
                 build = manifest["commands"]["build"]
                 self.assertEqual(build[:14], [
-                    "clang++", "-std=c++17", "-O3", "-DNDEBUG",
+                    "c++", "-std=c++17", "-O3", "-DNDEBUG",
                     "-Wall", "-Wextra", "-Wpedantic", "-Werror",
                     "-Wno-error=range-loop-construct",
                     "-include", "sstream", "-Isrc/ultimate",
@@ -119,6 +229,9 @@ class BombGhostAwsBundleTests(unittest.TestCase):
                 self.assertIn(f"tablebases/{filename}", names)
                 self.assertIn("tablebases/kbombk.uftb", names)
                 self.assertIn("tools/tablebases/run_ultimate_ghost_bomb_aws.py", names)
+                self.assertIn(
+                    "tools/tablebases/stage_ultimate_ghost_bomb_resume_aws.py",
+                    names)
                 self.assertNotIn(
                     "src/ultimate/tablebases/ghost_public_extra_information_tablebase.cpp",
                     names)

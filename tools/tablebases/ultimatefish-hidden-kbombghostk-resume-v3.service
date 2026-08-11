@@ -1,0 +1,33 @@
+[Unit]
+Description=Ultimate Fish Bomb/Ghost same authenticated measurement resume v3
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3
+ExecStartPre=/usr/bin/mkdir -p /mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/tmp
+ExecStart=/usr/bin/python3 tools/tablebases/run_ultimate_ghost_bomb_aws.py --manifest bundle-manifest.json --transition-resume-manifest transition-resume-manifest.json
+Environment=PYTHONUNBUFFERED=1
+Environment=TMPDIR=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/tmp
+Nice=10
+IOSchedulingClass=idle
+AllowedCPUs=0
+CPUQuota=100%
+MemoryHigh=28G
+MemoryMax=32G
+TasksMax=32
+LimitNOFILE=1048576
+TimeoutStartSec=infinity
+Restart=no
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v2
+ReadWritePaths=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3
+StandardOutput=append:/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/service.log
+StandardError=append:/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/service.log
+
+[Install]
+WantedBy=multi-user.target

@@ -877,48 +877,39 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-0986ed3d272721f02",
-      "unit": "ultimatefish-hidden-kbombghostk-solvefix-v2.service",
+      "unit": "ultimatefish-hidden-kbombghostk-resume-v3.service",
       "expected_allowed_cpus": "0",
       "resource_requirements": {
         "cpu_threads": 1,
         "memory_peak_bytes": 34359738368,
         "disk_peak_bytes": {
-          "/mnt/ultimatefish": 107374182400
+          "/mnt/ultimatefish": 68719476736
         }
       },
       "dependencies": [],
+      "queue_stage": true,
       "checkpoint_paths": [
-        "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v2/work/logs/*.log",
-        "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v2/work/transitions/shard-*.verified"
+        "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/work/logs/*.log",
+        "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/work/solve/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v2/work/artifact-manifest.json"
+        "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/work/artifact-manifest.json"
       ],
-      "source_bindings": [
-        {
-          "path": "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v2/tools/run_ultimate_ghost_bomb_aws.py",
-          "sha256": "f392a79fe0fe6be4bfd42daa771399af3c11d8e633978d5f9b670a4c07d6d079"
-        }
-      ],
+      "source_bindings": [],
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/service-resume-v2.log",
+          "path": "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/service.log",
           "max_bytes": 1024
         },
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v2/work/logs/measure.log",
-          "max_bytes": 2048
-        },
-        {
-          "kind": "file",
-          "path": "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v2/work/logs/merge.log",
-          "max_bytes": 1024
+          "path": "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/work/logs/measure.log",
+          "max_bytes": 3072
         },
         {
           "kind": "journal",
-          "unit": "ultimatefish-hidden-kbombghostk-solvefix-v2.service",
+          "unit": "ultimatefish-hidden-kbombghostk-resume-v3.service",
           "max_bytes": 2048
         }
       ],
@@ -931,48 +922,39 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-024a2073283e4336e",
-      "unit": "ultimatefish-hidden-kbombkghost-solvefix-v2.service",
+      "unit": "ultimatefish-hidden-kbombkghost-resume-v3.service",
       "expected_allowed_cpus": "1",
       "resource_requirements": {
         "cpu_threads": 1,
         "memory_peak_bytes": 34359738368,
         "disk_peak_bytes": {
-          "/mnt/ultimatefish": 107374182400
+          "/mnt/ultimatefish": 68719476736
         }
       },
       "dependencies": [],
+      "queue_stage": true,
       "checkpoint_paths": [
-        "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/work/logs/*.log",
-        "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/work/transitions/shard-*.verified"
+        "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/work/logs/*.log",
+        "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/work/solve/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/work/artifact-manifest.json"
+        "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/work/artifact-manifest.json"
       ],
-      "source_bindings": [
-        {
-          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v2/tools/run_ultimate_ghost_bomb_aws.py",
-          "sha256": "f392a79fe0fe6be4bfd42daa771399af3c11d8e633978d5f9b670a4c07d6d079"
-        }
-      ],
+      "source_bindings": [],
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/service-resume-v2.log",
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/service.log",
           "max_bytes": 1024
         },
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v2/work/logs/measure.log",
-          "max_bytes": 2048
-        },
-        {
-          "kind": "file",
-          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v2/work/logs/merge.log",
-          "max_bytes": 1024
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/work/logs/measure.log",
+          "max_bytes": 3072
         },
         {
           "kind": "journal",
-          "unit": "ultimatefish-hidden-kbombkghost-solvefix-v2.service",
+          "unit": "ultimatefish-hidden-kbombkghost-resume-v3.service",
           "max_bytes": 2048
         }
       ],
