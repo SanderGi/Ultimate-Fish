@@ -313,7 +313,7 @@ def aggregate(patterns):
  result=[]
  for pattern in patterns:
   matches=sorted(glob.glob(pattern))
-  if not matches: result.append({'exists':False}); continue
+  if not matches: result.append([0]); continue
   digest=hashlib.sha256(); total=0; allocated=0; newest=0
   for path in matches:
    stat=os.stat(path); total+=stat.st_size; allocated+=stat.st_blocks*512
@@ -321,10 +321,7 @@ def aggregate(patterns):
    record=json.dumps([path,stat.st_size,stat.st_mtime_ns],
                      separators=(',',':')).encode()
    digest.update(len(record).to_bytes(8,'big')); digest.update(record)
-  result.append({'exists':True,'match_count':len(matches),
-                 'total_size':total,'allocated_bytes':allocated,
-                 'newest_mtime_ns':newest,
-                 'metadata_sha256':digest.hexdigest()})
+  result.append([1,len(matches),total,allocated,newest,digest.hexdigest()])
  return result
 def sources_exact(bindings):
  exact=True
@@ -362,15 +359,18 @@ for path in payload['mounts']:
                 'total_bytes':stat.f_blocks*stat.f_frsize})
 jobs=[]
 for job in payload['jobs']:
- jobs.append({'id':job['id'],'unit':props(job['unit']),
-             'checkpoints':aggregate(job['checkpoint_paths']),
-             'completion':aggregate(job['completion_paths']),
-             'source_binding_count':len(job['source_bindings']),
-             'sources_exact':sources_exact(job['source_bindings'])})
+ jobs.append({'i':job['id'],'u':props(job['unit']),
+              'k':aggregate(job['checkpoint_paths']),
+              'c':aggregate(job['completion_paths']),
+              'n':len(job['source_bindings']),
+              'x':sources_exact(job['source_bindings'])})
 document={'memory':memory,'mounts':mounts,'jobs':jobs}
+encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+document['b']=len(encoded.encode())
 encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
 if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
  encoded=json.dumps({'probe_error':'bounded remote output budget exceeded',
+                     'probe_encoded_bytes':len(encoded.encode()),
                      'jobs':[]},sort_keys=True,separators=(',',':'))
 print('ULTIMATE_SUPERVISION_JSON='+encoded)
 '''
@@ -419,7 +419,7 @@ def ssm_probe(region: str, instance_id: str, command: str) -> dict[str, Any]:
                 str(response.get("StandardErrorContent", "")))
         for line in str(response.get("StandardOutputContent", "")).splitlines():
             if line.startswith(REMOTE_PREFIX):
-                return json.loads(line[len(REMOTE_PREFIX):])
+                return normalize_remote(json.loads(line[len(REMOTE_PREFIX):]))
         raise RuntimeError(f"SSM probe on {instance_id} returned no JSON sentinel")
 
 
@@ -427,8 +427,52 @@ def local_probe(command: str) -> dict[str, Any]:
     output = run(["/bin/sh", "-c", command])
     for line in output.splitlines():
         if line.startswith(REMOTE_PREFIX):
-            return json.loads(line[len(REMOTE_PREFIX):])
+            return normalize_remote(json.loads(line[len(REMOTE_PREFIX):]))
     raise RuntimeError("local probe returned no JSON sentinel")
+
+
+def normalize_remote(remote: dict[str, Any]) -> dict[str, Any]:
+    """Expand the compact bounded wire format used by the remote probe."""
+    if "b" in remote:
+        remote["probe_encoded_bytes"] = remote.pop("b")
+
+    def aggregate(records: object) -> list[dict[str, Any]]:
+        if not isinstance(records, list):
+            return []
+        result: list[dict[str, Any]] = []
+        for record in records:
+            if not isinstance(record, list) or not record:
+                result.append({"exists": False})
+            elif record[0] == 0:
+                result.append({"exists": False})
+            elif len(record) == 6 and record[0] == 1:
+                result.append({
+                    "exists": True, "match_count": record[1],
+                    "total_size": record[2], "allocated_bytes": record[3],
+                    "newest_mtime_ns": record[4],
+                    "metadata_sha256": record[5],
+                })
+            else:
+                result.append({"exists": False})
+        return result
+
+    jobs = remote.get("jobs")
+    if not isinstance(jobs, list):
+        return remote
+    normalized: list[dict[str, Any]] = []
+    for job in jobs:
+        if not isinstance(job, dict) or "i" not in job:
+            normalized.append(job)
+            continue
+        normalized.append({
+            "id": job.get("i"), "unit": job.get("u", {}),
+            "checkpoints": aggregate(job.get("k")),
+            "completion": aggregate(job.get("c")),
+            "source_binding_count": job.get("n"),
+            "sources_exact": job.get("x"),
+        })
+    remote["jobs"] = normalized
+    return remote
 
 
 def ec2_inventory(config: dict[str, Any]) -> dict[str, dict[str, Any]]:

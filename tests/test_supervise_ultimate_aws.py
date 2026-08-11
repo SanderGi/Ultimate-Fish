@@ -181,12 +181,13 @@ class SupervisionTests(unittest.TestCase):
             jobs[0]["checkpoint_paths"] = [str(checkpoint / "*")]
             result = SUPERVISOR.local_probe(
                 SUPERVISOR.remote_script(definition, jobs))
-            encoded = SUPERVISOR.canonical_json(result).encode()
-            self.assertLessEqual(len(encoded), SUPERVISOR.REMOTE_OUTPUT_BUDGET)
+            self.assertLessEqual(result["probe_encoded_bytes"],
+                                 SUPERVISOR.REMOTE_OUTPUT_BUDGET)
             record = result["jobs"][0]["checkpoints"][0]
             self.assertEqual(2_000, record["match_count"])
             self.assertRegex(record["metadata_sha256"], r"^[0-9a-f]{64}$")
-            self.assertNotIn("checkpoint-00000", encoded.decode())
+            self.assertNotIn(
+                "checkpoint-00000", SUPERVISOR.canonical_json(result))
 
     def test_source_binding_globs_are_rejected(self) -> None:
         invalid = config()
@@ -262,9 +263,8 @@ class SupervisionTests(unittest.TestCase):
                             b"compact-probe")
                 observed = SUPERVISOR.local_probe(
                     SUPERVISOR.remote_script(definition, probe_jobs))
-                encoded = SUPERVISOR.canonical_json(observed).encode()
                 self.assertNotIn("probe_error", observed)
-                self.assertLessEqual(len(encoded),
+                self.assertLessEqual(observed["probe_encoded_bytes"],
                                      SUPERVISOR.REMOTE_OUTPUT_BUDGET)
                 self.assertEqual(
                     sum(len(job["source_bindings"]) for job in jobs),
@@ -272,7 +272,7 @@ class SupervisionTests(unittest.TestCase):
                         for job in observed["jobs"]))
                 self.assertTrue(all(
                     job["sources_exact"] for job in observed["jobs"]))
-            return len(encoded)
+            return observed["probe_encoded_bytes"]
 
         for instance_id, jobs in jobs_by_host.items():
             check_host_payload(instance_id, jobs)
