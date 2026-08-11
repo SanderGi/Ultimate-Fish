@@ -522,6 +522,27 @@ class SupervisionTests(unittest.TestCase):
     @mock.patch.object(SUPERVISOR, "head_certificate")
     @mock.patch.object(SUPERVISOR, "local_probe")
     @mock.patch.object(SUPERVISOR, "ec2_inventory")
+    def test_queued_source_bindings_wait_without_source_mismatch(
+            self, inventory: mock.Mock, probe: mock.Mock,
+            head: mock.Mock) -> None:
+        document = config()
+        document["jobs"][2]["source_bindings"] = [
+            {"path": "/tmp/staged-source", "sha256": SHA_A}]
+        inventory.return_value = self.ec2
+        probe.return_value = remote(first="inactive", complete=True)
+        head.return_value = {
+            "bucket": "private", "key": "results/first", "version_id": "v1",
+            "size": 12, "sha256": SHA_B, "exact": True,
+        }
+        output, _ = SUPERVISOR.supervise(document, {}, self.now)
+        self.assertEqual(
+            "AWAITING_STAGE", output["report"]["jobs"]["third"]["status"])
+        self.assertNotIn("third", output["report"]["errors"])
+        self.assertFalse(output["delegate_sol"])
+
+    @mock.patch.object(SUPERVISOR, "head_certificate")
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    @mock.patch.object(SUPERVISOR, "ec2_inventory")
     def test_explicit_s3_only_archive_remains_certified_after_cleanup(
             self, inventory: mock.Mock, probe: mock.Mock,
             head: mock.Mock) -> None:

@@ -1000,7 +1000,13 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         superseded = bool(definition.get("superseded_by"))
         status = ("SUPERSEDED" if superseded else
                   unit_status(remote.get("unit", {})) if remote else "UNKNOWN")
-        if not superseded and remote and not source_exact(definition, remote):
+        # Queue-stage records are deliberately omitted from the host probe
+        # until their service and source bindings are installed.  The
+        # synthetic not-found record added by probe_instance therefore has no
+        # source hash vector by design; do not turn that staging boundary into
+        # a live SOURCE_MISMATCH failure.
+        if (not superseded and not definition.get("queue_stage") and remote
+                and not source_exact(definition, remote)):
             status = "SOURCE_MISMATCH"
         completion = all_paths_exist(remote.get("completion", []))
         previous_status = previous.get("report", {}).get("jobs", {}).get(
