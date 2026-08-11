@@ -23,9 +23,20 @@ ROOT = Path(__file__).resolve().parents[1]
 TOOLS = Path(__file__).resolve().parent
 sys.path.insert(0, str(TOOLS))
 
-from plan_ultimate_tablebases import PIECES, inventory, sufficient_pair  # noqa: E402
+from plan_ultimate_tablebases import (  # noqa: E402
+    COPYCAT_SEPARATORS,
+    DEFERRED_DYNAMIC_K2,
+    PIECES,
+    inventory,
+    mirror_copycat_candidates,
+    stateful_candidates,
+    sufficient_pair,
+)
 
-Kind = Literal["win_star", "draw", "mixed", "loss_star", "unknown", "duplicate"]
+Kind = Literal[
+    "win_star", "draw", "mixed", "loss_star", "computing", "unknown",
+    "duplicate",
+]
 
 
 @dataclass(frozen=True)
@@ -43,6 +54,7 @@ class WDL:
 class ReadmeResult:
     first_starts: WDL
     second_starts: WDL
+    status: str = "certified"
 
 
 @dataclass(frozen=True)
@@ -63,6 +75,7 @@ COLORS = {
     "draw": "#DCE2E8",
     "mixed": "#FFE3A1",
     "loss_star": "#F9CFB0",
+    "computing": "#C9D8E6",
     "unknown": "#FFFFFF",
     "duplicate": "#FFFFFF",
 }
@@ -87,7 +100,13 @@ def parse_wdl(text: str) -> WDL:
 
 def read_summary(path: Path) -> dict[str, ReadmeResult]:
     results: dict[str, ReadmeResult] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
+    text = path.read_text(encoding="utf-8")
+    start_marker = "<!-- GENERATED_TABLE_START -->"
+    end_marker = "<!-- GENERATED_TABLE_END -->"
+    if start_marker not in text or end_marker not in text:
+        raise ValueError(f"generated table markers missing from {path}")
+    generated = text.split(start_marker, 1)[1].split(end_marker, 1)[0]
+    for line in generated.splitlines():
         if not line.startswith("|") or ".uftb`" not in line:
             continue
         fields = [field.strip() for field in line.strip().strip("|").split("|")]
@@ -97,6 +116,24 @@ def read_summary(path: Path) -> dict[str, ReadmeResult]:
         results[filename] = ReadmeResult(parse_wdl(fields[3]), parse_wdl(fields[4]))
     if not results:
         raise ValueError(f"no generated tablebase summary rows found in {path}")
+    ledger_start = "<!-- COMPUTATION_LEDGER_START -->"
+    ledger_end = "<!-- COMPUTATION_LEDGER_END -->"
+    if ledger_start in text and ledger_end in text:
+        ledger = text.split(ledger_start, 1)[1].split(ledger_end, 1)[0]
+        for line in ledger.splitlines():
+            if not line.startswith("| `"):
+                continue
+            fields = [field.strip() for field in line.strip().strip("|").split("|")]
+            if len(fields) != 11 or fields[3] == "—":
+                continue
+            filename = fields[3].strip("`")
+            status = fields[4].strip("*").lower()
+            raw = results.get(filename)
+            if raw is None:
+                raw = ReadmeResult(WDL(0, 0, 0), WDL(0, 0, 0), status)
+            else:
+                raw = ReadmeResult(raw.first_starts, raw.second_starts, status)
+            results[filename] = raw
     return results
 
 
@@ -133,7 +170,12 @@ def known_draw() -> Cell:
 class OutcomeCatalog:
     def __init__(self, summary: dict[str, ReadmeResult]) -> None:
         self.summary = summary
-        records = inventory()
+        records_by_filename = {
+            str(record["filename"]): record for record in inventory()
+        }
+        for record in (*stateful_candidates(), *mirror_copycat_candidates()):
+            records_by_filename.setdefault(str(record["filename"]), record)
+        records = list(records_by_filename.values())
         self.singles = {
             str(record["primary"]): record
             for record in records
@@ -164,10 +206,16 @@ class OutcomeCatalog:
         raw = self.summary.get(str(record["filename"]))
         if raw is None:
             return Cell("unknown")
+        if raw.status == "computing":
+            return Cell("computing")
+        if raw.status not in {"certified", "preserving", "draw"}:
+            return Cell("unknown")
         first, second = row_side_result(raw, row_is_primary)
         return classify(first, second, allow_loss)
 
     def single(self, name: str) -> Cell:
+        if name in DEFERRED_DYNAMIC_K2:
+            return Cell("unknown")
         if not PIECE_BY_NAME[name].decisive:
             return known_draw()
         return self._cell_for_record(self.singles.get(name))
@@ -175,12 +223,20 @@ class OutcomeCatalog:
     def together(self, row: str, column: str) -> Cell:
         if PIECE_INDEX[column] > PIECE_INDEX[row]:
             return Cell("duplicate")
+        names = {row, column}
+        if (names & DEFERRED_DYNAMIC_K2 or
+                "copycat" in names and bool(names & COPYCAT_SEPARATORS)):
+            return Cell("unknown")
         first, second = sorted((row, column), key=PIECE_INDEX.__getitem__)
         if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
             return known_draw()
         return self._cell_for_record(self.same_team.get((first, second)))
 
     def opposed(self, row: str, column: str) -> Cell:
+        names = {row, column}
+        if (names & DEFERRED_DYNAMIC_K2 or
+                "copycat" in names and bool(names & COPYCAT_SEPARATORS)):
+            return Cell("unknown")
         first, second = sorted((row, column), key=PIECE_INDEX.__getitem__)
         if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], False):
             return known_draw()
@@ -227,7 +283,7 @@ def percentage(value: int, total: int) -> str:
 
 
 def cell_text(cell: Cell) -> str:
-    if cell.kind in {"unknown", "duplicate"}:
+    if cell.kind in {"unknown", "duplicate", "computing"}:
         return ""
     if cell.kind == "win_star":
         return "Win*"
@@ -344,6 +400,15 @@ def draw_grid(
                 outline=COLORS["grid"],
                 width=1,
             )
+            if cell.kind == "computing":
+                spacing = max(7, 10 * max(1, cell_width // 102))
+                for offset in range(-cell_height, cell_width + cell_height, spacing):
+                    x_start = max(left, left + offset)
+                    y_start = top + max(0, -offset)
+                    x_end = min(left + cell_width, left + offset + cell_height)
+                    y_end = top + min(cell_height, cell_height + offset)
+                    draw.line((x_start, y_start, x_end, y_end),
+                              fill="#6E8FA9", width=max(1, spacing // 5))
             text = cell_text(cell)
             if not text:
                 continue
@@ -397,7 +462,7 @@ def render(readme: Path, output: Path, scale: int) -> None:
     )
     draw.text(
         (width // 2, 151 * scale),
-        "Only legal states are counted · white cells have not been computed (yet) or are duplicate conditions",
+        "Only reachability-admitted states are counted · hatched cells are computing now · white cells are planned, deferred, or duplicates",
         fill=COLORS["muted"],
         font=font(20 * scale),
         anchor="ma",
@@ -450,6 +515,7 @@ def render(readme: Path, output: Path, scale: int) -> None:
         ("draw", "Forced draw"),
         ("mixed", "Outcome depends on state"),
         ("loss_star", "Forced loss when column starts"),
+        ("computing", "Computing now"),
         ("unknown", "Not computed / duplicate"),
     )
     legend_font = font(21 * scale)

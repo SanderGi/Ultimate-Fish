@@ -243,21 +243,24 @@ def main() -> None:
     )
     compression = certified_artifacts(certificate_report)
 
-    # Validate all 45 rows, their exact-solver certificates, and their logical
-    # table SHA-256 bindings before allowing even cached output to be reused.
-    # A missing, partial, capped, or stale catalog is an error by design.
-    information_catalog = information.load_and_validate(
-        information.DEFAULT_SUMMARY, root=ROOT, verify_source_hashes=True)
-
-    records = {str(record["filename"]): record for record in plan.inventory()}
-    # Copycat uses v5 because its one deployable character has a linked clone;
-    # the linked K+Copycat-v-K+Bishop extension also carries opposing material.
-    ordered = [record for record in plan.inventory()
-               if (ROOT / "tablebases" / str(record["filename"])).exists()]
     text = README.read_text()
     old_rows = cached_rows(text)
+    records: dict[str, dict[str, object]] = {}
+    for record in (*plan.stateful_candidates(),
+                   *plan.mirror_copycat_candidates(), *plan.inventory()):
+        records[str(record["filename"])] = record
+    unknown = set(old_rows) - set(records)
+    if unknown:
+        raise ValueError(
+            f"README contains rows outside the canonical inventory: {sorted(unknown)}")
+    # S3-only rows are deliberately retained.  Local cache presence can add a
+    # row but can never erase a certified/cached row from the README ledger.
+    ordered = [record for name, record in records.items()
+               if name in old_rows or (ROOT / "tablebases" / name).exists()]
     readme_mtime = README.stat().st_mtime_ns
-    logic_mtime = dependency_mtime(information.DEFAULT_SUMMARY)
+    logic_mtime = (dependency_mtime(information.DEFAULT_SUMMARY)
+                   if information.DEFAULT_SUMMARY.exists() else 0)
+    information_catalog: Mapping[str, object] | None = None
     reused = 0
     lines = [
         START,
@@ -268,10 +271,19 @@ def main() -> None:
     ]
     for record in ordered:
         path = ROOT / "tablebases" / str(record["filename"])
+        cached = old_rows.get(path.name)
+        if not path.exists():
+            if args.full:
+                raise ValueError(
+                    f"{path.name}: --full requires a materialized local cache")
+            if cached is None:
+                raise ValueError(f"{path.name}: S3-only row lacks cached values")
+            lines.append(cached)
+            reused += 1
+            continue
         # Cached rows must not preserve counts produced by the former
         # point-square reflection of a Giant's 2x2 lower-left anchor.
         summarize.require_current_giant_codec(path)
-        cached = old_rows.get(path.name)
         if (not args.full and certificate_report is None and
                 logic_mtime <= readme_mtime and cached is not None
                 and path.stat().st_mtime_ns <= readme_mtime):
@@ -284,8 +296,15 @@ def main() -> None:
             edges = struct.unpack_from("<Q", data, 48)[0]
         digest = hashlib.sha256(data).hexdigest()
         totals, illegal = summarize.summary(path, data, digest)
+        if (path.name in information.AFFECTED_FILENAMES and
+                information_catalog is None):
+            # Hidden rows remain fail-closed whenever they are rebuilt. Cached
+            # S3-only values do not require re-materializing all 45 dependencies.
+            information_catalog = information.load_and_validate(
+                information.DEFAULT_SUMMARY, root=ROOT,
+                verify_source_hashes=True)
         first_cell, second_cell = summary_cells(
-            path.name, totals, illegal, information_catalog)
+            path.name, totals, illegal, information_catalog or {})
         compressed_cell = certified_compressed_cell(
             path.name, digest, len(data), compression,
             require=args.require_certified_compression)
