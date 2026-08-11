@@ -104,8 +104,12 @@
       "instance_id": "i-0986ed3d272721f02",
       "unit": "ultimatefish-giant-ghost-same-31ca4c39-full-v1.service",
       "dependencies": [],
-      "checkpoint_paths": ["/mnt/ultimatefish/giant-ghost-same-31ca4c39/work/logs/*.log"],
-      "completion_paths": ["/mnt/ultimatefish/giant-ghost-same-31ca4c39/work/results/*"],
+      "checkpoint_paths": ["/mnt/ultimatefish/giant-ghost-same-31ca4c39-full-v1/work/logs/*.log"],
+      "completion_paths": [
+        "/mnt/ultimatefish/giant-ghost-same-31ca4c39-full-v1/work/artifact-manifest.json",
+        "/mnt/ultimatefish/giant-ghost-same-31ca4c39-full-v1/work/results/kghostgiantk.ufiw",
+        "/mnt/ultimatefish/giant-ghost-same-31ca4c39-full-v1/work/results/kghostgiantk.ufgi"
+      ],
       "source_bindings": [],
       "s3_certificates": []
     },
