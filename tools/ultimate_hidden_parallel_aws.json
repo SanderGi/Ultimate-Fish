@@ -15,11 +15,12 @@
     },
     {
       "id": "bomb-ghost-opposing-measure",
+      "canonical_commit": "510532b2",
       "instance_id": "i-024a2073283e4336e",
       "work_directory": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2",
-      "bundle_key": "bundles/hidden/commit/7af5dec2/sha256/9d8e7fd4f64ce9c100a9fe1fca2ab751ae20c0b1d5cd002eda1973b5010789cc/ultimate-kbombkghost.tar",
-      "bundle_sha256": "9d8e7fd4f64ce9c100a9fe1fca2ab751ae20c0b1d5cd002eda1973b5010789cc",
-      "bundle_version_id": "T01gW_bCVZv6g1HzgwhiLkyvbBvFraAo",
+      "bundle_key": "bundles/hidden/commit/510532b2/sha256/98955815b744bec420f0a39677fef371b81477bf66a57c59140aca64137a3b62/ultimate-kbombkghost.tar",
+      "bundle_sha256": "98955815b744bec420f0a39677fef371b81477bf66a57c59140aca64137a3b62",
+      "bundle_version_id": "S2gyLDNun0eEIoPgcr0VZBhJjY9KbTxr",
       "unit": "tools/ultimatefish-hidden-kbombkghost-solvefix-v2.service",
       "runner_sha256": "f392a79fe0fe6be4bfd42daa771399af3c11d8e633978d5f9b670a4c07d6d079"
     },
