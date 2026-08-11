@@ -672,6 +672,7 @@ def merge_supervision_config(document: Mapping[str, object],
     if not isinstance(jobs, list):
         raise RuntimeError("supervision config jobs are malformed")
     replacements = set(map(str, fragment["replace_job_ids"]))
+    batch_ids = {str(item["id"]) for item in fragment["jobs"]}
     updates = {str(item["id"]): item
                for item in fragment["retained_placeholder_updates"]}
     merged: list[dict[str, object]] = []
@@ -679,7 +680,7 @@ def merge_supervision_config(document: Mapping[str, object],
     for raw in jobs:
         job = dict(raw)
         identifier = str(job["id"])
-        if identifier in replacements:
+        if identifier in replacements or identifier in batch_ids:
             continue
         if identifier in updates:
             job["dependencies"] = list(updates[identifier]["dependencies"])
