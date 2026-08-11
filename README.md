@@ -101,7 +101,7 @@ Re-rank saved finalists at a larger budget with
 Exact moved-piece three-character endgames can be generated locally with:
 
 ```bash
-tools/generate_ultimate_tablebases.sh
+tools/tablebases/generate_ultimate_tablebases.sh
 ```
 
 The generator performs complete retrograde WDL/DTW propagation and then

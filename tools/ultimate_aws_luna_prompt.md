@@ -8,7 +8,7 @@ The host LaunchAgent owns all AWS network access. From the repository root, run
 this local-only event consumer exactly once:
 
 ```bash
-python3 tools/ultimate_aws_supervision_bridge.py consume --json \
+python3 tools/tablebases/ultimate_aws_supervision_bridge.py consume --json \
   --health /private/tmp/ultimatefish-aws-supervision/health.json \
   --events /private/tmp/ultimatefish-aws-supervision/events \
   --cursor /private/tmp/ultimatefish-aws-supervision/luna-cursor.json \
@@ -31,19 +31,19 @@ For a JSON event:
    exact per-side W/L/D and reachability certificate still must be imported;
    never mark it CERTIFIED from an S3 HEAD alone.
 2. A job with `AWAITING_STAGE` needs a new canonical, explicit service stage.
-   Delegate one bounded task to a **Sol sub-agent**. Sol must inspect read-only
-   evidence first, preserve all scratch, prepare and test the smallest canonical
-   repo/config change, commit and push it, authenticate the uploaded bundle,
-   install a resumable systemd unit, update the explicit supervision queue, and
-   only then use `--advance`. Never improvise an uncommitted AWS command.
+   Inspect read-only evidence first, preserve all scratch, prepare and test the
+   smallest canonical repo/config change, commit and push it, authenticate the
+   uploaded bundle, install a resumable systemd unit, update the explicit
+   supervision queue, and only then use `--advance`. Never improvise an
+   uncommitted AWS command.
 3. For `FAILED`, `SOURCE_MISMATCH`, `SUPERVISOR_ERROR`,
    `HOST_COLLECTOR_ERROR`, `HOST_COLLECTOR_STALE`, certificate mismatch, or
-   malformed output, immediately delegate one bounded diagnosis/fix to a
-   **Sol sub-agent**. Sol must not restart merely because a log is quiet. It must
-   distinguish a superseded historical unit from a live failure, preserve
-   failed scratch, prefer the committed runner's checkpoint/resume path, test
-   any fix locally, commit and push before AWS receives it, and require S3
-   VersionId/HEAD/fresh-download/rehash/restore evidence before cleanup.
+   malformed output, perform one bounded diagnosis/fix. Do not restart merely
+   because a log is quiet. Distinguish a superseded historical unit from a live
+   failure, preserve failed scratch, prefer the committed runner's
+   checkpoint/resume path, test any fix locally, commit and push before AWS
+   receives it, and require S3 VersionId/HEAD/fresh-download/rehash/restore
+   evidence before cleanup.
 4. `ready_jobs` is already the committed supervisor's measured-resource
    backfill selection; do not replace it with a serial queue or choose a job by
    hand. The host collector applies `cpu_rebalance_jobs` first, then advances
@@ -51,8 +51,8 @@ For a JSON event:
    solvers normally receive one disjoint CPU each; concurrency comes from
    independent classes. `UNDERUTILIZED` means two consecutive complete samples
    were below 50% while runnable or stageable work existed. Delegate one bounded
-   Sol task to prepare a source-pinned batch of explicit class units, never a
-   generic "remaining" placeholder.
+   bounded staging fix that prepares a source-pinned batch of explicit class
+   units, never a generic "remaining" placeholder.
 5. For resource warnings, inspect only the affected unit/cgroup/mount. Stop or
    throttle safely before a hard limit; preserve resumable state. Do not launch
    another job on that host until the warning clears.
@@ -68,4 +68,4 @@ results, failures/fixes, resource or spend risks, jobs started from certified
 dependencies, and changed ETA. Include exact job id, certificate SHA/VersionId
 when available, and the next action. Never emit a routine "still running"
 message. Work only in this existing supervising task and bounded ephemeral
-sub-agents; never create a new persistent task/chat for a supervision cycle.
+   work; never create a new persistent task/chat for a supervision cycle.

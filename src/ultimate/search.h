@@ -6,7 +6,7 @@
 #ifndef ULTIMATE_SEARCH_H_INCLUDED
 #define ULTIMATE_SEARCH_H_INCLUDED
 
-#include "information.h"
+#include "tablebases/information.h"
 #include "position.h"
 #include "nnue.h"
 

@@ -1,8 +1,8 @@
 #include "../src/ultimate/position.h"
 #include "../src/ultimate/draft.h"
-#include "../src/ultimate/information.h"
+#include "../src/ultimate/tablebases/information.h"
 #include "../src/ultimate/search.h"
-#include "../src/ultimate/tablebase_probe.h"
+#include "../src/ultimate/tablebases/tablebase_probe.h"
 
 #include <algorithm>
 #include <array>

@@ -4,7 +4,7 @@
 */
 
 #include "search.h"
-#include "tablebase_probe.h"
+#include "tablebases/tablebase_probe.h"
 
 #include <algorithm>
 #include <cmath>

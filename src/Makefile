@@ -54,9 +54,10 @@ OBJS = $(notdir $(SRCS:.cpp=.o))
 # specialized state machine in this Fairy-Stockfish tree and expose a separate
 # protocol binary while sharing the project's build/tooling conventions.
 ULTIMATE_SRCS = ultimate/main.cpp ultimate/position.cpp ultimate/search.cpp ultimate/draft.cpp \
-	ultimate/tablebase_probe.cpp ultimate/information.cpp ultimate/nnue.cpp
-ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cpp \
-	ultimate/information_solver.cpp ultimate/nnue.cpp
+	ultimate/tablebases/tablebase_probe.cpp ultimate/tablebases/information.cpp ultimate/nnue.cpp
+ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/tablebases/information.cpp \
+	ultimate/tablebases/information_solver.cpp ultimate/nnue.cpp
+ULTIMATE_TABLEBASE_INCLUDE = -Iultimate -Iultimate/tablebases
 
 .PHONY: ultimatefish ultimate-test ultimate-belief-benchmark ultimate-information-test \
 	ultimate-ghost-information-probe-test ultimate-tablebase \
@@ -103,42 +104,42 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/information.cp
 	ultimate-information-solvers-self-test \
 	ultimate-information-solvers-clean
 ultimatefish:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic $(ULTIMATE_SRCS) -o ultimatefish
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic $(ULTIMATE_SRCS) -o ultimatefish
 
 ultimate-nnue-reference:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -DULTIMATE_NNUE_REFRESH_EVERY_EVAL \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -DULTIMATE_NNUE_REFRESH_EVERY_EVAL \
 		-Wall -Wextra -Wpedantic $(ULTIMATE_SRCS) -o ultimatefish_nnue_reference
 
 ultimate-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic \
-		ultimate/tablebase.cpp ultimate/position.cpp ultimate/tablebase_probe.cpp \
-		ultimate/information.cpp ultimate/information_solver.cpp ultimate/nnue.cpp \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic \
+		ultimate/tablebases/tablebase.cpp ultimate/position.cpp ultimate/tablebases/tablebase_probe.cpp \
+		ultimate/tablebases/information.cpp ultimate/tablebases/information_solver.cpp ultimate/nnue.cpp \
 		-o ultimate_tablebase
 
 ultimate-information-test: ultimate-ghost-information-probe-test
-	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
-		../tests/ultimate_information_solver.cpp ultimate/information_solver.cpp \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
+		../tests/tablebases/ultimate_information_solver.cpp ultimate/tablebases/information_solver.cpp \
 		-o ultimate_information_solver_test
 	./ultimate_information_solver_test
 
 ultimate-ghost-information-probe-test:
-	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
-		../tests/ultimate_ghost_information_probe.cpp \
-		ultimate/ghost_information_probe.cpp \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
+		../tests/tablebases/ultimate_ghost_information_probe.cpp \
+		ultimate/tablebases/ghost_information_probe.cpp \
 		-o ultimate_ghost_information_probe_test
 	./ultimate_ghost_information_probe_test
 
 ultimate-ghost-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		ultimate/ghost_information_tablebase.cpp ultimate/ghost_information_probe.cpp \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		ultimate/tablebases/ghost_information_tablebase.cpp ultimate/tablebases/ghost_information_probe.cpp \
 		$(ULTIMATE_INFORMATION_COMMON_SRCS) \
 		-o ultimate_ghost_information_tablebase
 
 ultimate-ghost-extra-information-preflight:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		ultimate/ghost_extra_information_tablebase.cpp \
-		ultimate/ghost_information_probe.cpp ultimate/external_robdd.cpp ultimate/position.cpp \
-		ultimate/information.cpp ultimate/nnue.cpp \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		ultimate/tablebases/ghost_extra_information_tablebase.cpp \
+		ultimate/tablebases/ghost_information_probe.cpp ultimate/tablebases/external_robdd.cpp ultimate/position.cpp \
+		ultimate/tablebases/information.cpp ultimate/nnue.cpp \
 		-o ultimate_ghost_extra_information_preflight
 
 ultimate-ghost-extra-information-preflight-self-test: \
@@ -156,11 +157,11 @@ ultimate-ghost-extra-information-preflight-sample: \
 		--lower-ghost-sidecar ../tablebases/kghostk.ufgm --samples 5000
 
 ultimate-bishop-ghost-information-preserver:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		-Wno-error=range-loop-construct -include sstream -Iultimate \
-		ultimate/bishop_ghost_information_preserver.cpp \
-		ultimate/external_robdd.cpp ultimate/ghost_information_probe.cpp \
-		ultimate/information.cpp ultimate/position.cpp ultimate/nnue.cpp \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=range-loop-construct -include sstream -Iultimate -Iultimate/tablebases \
+		ultimate/tablebases/bishop_ghost_information_preserver.cpp \
+		ultimate/tablebases/external_robdd.cpp ultimate/tablebases/ghost_information_probe.cpp \
+		ultimate/tablebases/information.cpp ultimate/position.cpp ultimate/nnue.cpp \
 		-o ultimate_bishop_ghost_information_preserver
 
 ultimate-bishop-ghost-information-preserver-self-test: \
@@ -169,34 +170,34 @@ ultimate-bishop-ghost-information-preserver-self-test: \
 
 ultimate-bishop-ghost-information-preserver-test: \
 	ultimate-bishop-ghost-information-preserver-self-test
-	python3 ../tests/test_package_ultimate_bishop_ghost_preservation.py
+	python3 ../tests/tablebases/test_package_ultimate_bishop_ghost_preservation.py
 
 ULTIMATE_RECIPROCAL_BISHOP_GHOST_SRCS = \
-	ultimate/ghost_public_extra_information_tablebase.cpp \
-	ultimate/ghost_reciprocal_bishop_information_solver.cpp \
-	ultimate/ghost_public_extra_model.cpp ultimate/external_robdd.cpp \
-	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+	ultimate/tablebases/ghost_public_extra_information_tablebase.cpp \
+	ultimate/tablebases/ghost_reciprocal_bishop_information_solver.cpp \
+	ultimate/tablebases/ghost_public_extra_model.cpp ultimate/tablebases/external_robdd.cpp \
+	ultimate/tablebases/ghost_information_probe.cpp ultimate/tablebases/information.cpp \
 	ultimate/position.cpp ultimate/nnue.cpp
 
 ultimate-reciprocal-bishop-ghost-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
 		$(ULTIMATE_RECIPROCAL_BISHOP_GHOST_SRCS) \
 		-o ultimate_reciprocal_bishop_ghost_information_tablebase
 
 ultimate-ghost-public-extra-model-test:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		-Iultimate ../tests/ultimate_ghost_public_extra_model.cpp \
-		ultimate/ghost_public_extra_model.cpp ultimate/information.cpp \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate -Iultimate/tablebases ../tests/tablebases/ultimate_ghost_public_extra_model.cpp \
+		ultimate/tablebases/ghost_public_extra_model.cpp ultimate/tablebases/information.cpp \
 		ultimate/position.cpp ultimate/nnue.cpp \
 		-o ultimate_ghost_public_extra_model_test
 	./ultimate_ghost_public_extra_model_test
 
 ultimate-reciprocal-bishop-ghost-information-test: \
 	ultimate-ghost-public-extra-model-test
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		-Iultimate \
-		../tests/ultimate_ghost_public_extra_information_solver.cpp \
-		$(filter-out ultimate/ghost_public_extra_information_tablebase.cpp, \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate -Iultimate/tablebases \
+		../tests/tablebases/ultimate_ghost_public_extra_information_solver.cpp \
+		$(filter-out ultimate/tablebases/ghost_public_extra_information_tablebase.cpp, \
 			$(ULTIMATE_RECIPROCAL_BISHOP_GHOST_SRCS)) \
 		-o ultimate_reciprocal_bishop_ghost_information_solver_test
 	./ultimate_reciprocal_bishop_ghost_information_solver_test
@@ -207,21 +208,21 @@ ultimate-reciprocal-bishop-ghost-information-self-test: \
 		--scratch /tmp/ultimate-reciprocal-bishop-ghost-cli
 
 ULTIMATE_GHOST_DRAGON_SRCS = \
-	ultimate/ghost_dragon_information_tablebase.cpp \
-	ultimate/ghost_dragon_information_solver.cpp \
-	ultimate/ghost_public_extra_model.cpp ultimate/external_robdd.cpp \
-	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+	ultimate/tablebases/ghost_dragon_information_tablebase.cpp \
+	ultimate/tablebases/ghost_dragon_information_solver.cpp \
+	ultimate/tablebases/ghost_public_extra_model.cpp ultimate/tablebases/external_robdd.cpp \
+	ultimate/tablebases/ghost_information_probe.cpp ultimate/tablebases/information.cpp \
 	ultimate/position.cpp ultimate/nnue.cpp
 
 ultimate-ghost-dragon-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
 		$(ULTIMATE_GHOST_DRAGON_SRCS) \
 		-o ultimate_ghost_dragon_information_tablebase
 
 ultimate-ghost-dragon-information-test:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		-Iultimate ../tests/ultimate_ghost_dragon_information_solver.cpp \
-		$(filter-out ultimate/ghost_dragon_information_tablebase.cpp, \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate -Iultimate/tablebases ../tests/tablebases/ultimate_ghost_dragon_information_solver.cpp \
+		$(filter-out ultimate/tablebases/ghost_dragon_information_tablebase.cpp, \
 			$(ULTIMATE_GHOST_DRAGON_SRCS)) \
 		-o ultimate_ghost_dragon_information_solver_test
 	./ultimate_ghost_dragon_information_solver_test
@@ -232,21 +233,21 @@ ultimate-ghost-dragon-information-self-test: \
 		--scratch /tmp/ultimate-ghost-dragon-cli
 
 ULTIMATE_GHOST_BOMB_SRCS = \
-	ultimate/ghost_bomb_information_tablebase.cpp \
-	ultimate/ghost_bomb_information_solver.cpp \
-	ultimate/ghost_public_extra_model.cpp ultimate/external_robdd.cpp \
-	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+	ultimate/tablebases/ghost_bomb_information_tablebase.cpp \
+	ultimate/tablebases/ghost_bomb_information_solver.cpp \
+	ultimate/tablebases/ghost_public_extra_model.cpp ultimate/tablebases/external_robdd.cpp \
+	ultimate/tablebases/ghost_information_probe.cpp ultimate/tablebases/information.cpp \
 	ultimate/position.cpp ultimate/nnue.cpp
 
 ultimate-ghost-bomb-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
 		$(ULTIMATE_GHOST_BOMB_SRCS) \
 		-o ultimate_ghost_bomb_information_tablebase
 
 ultimate-ghost-bomb-information-test:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		-Iultimate ../tests/ultimate_ghost_bomb_information_solver.cpp \
-		$(filter-out ultimate/ghost_bomb_information_tablebase.cpp, \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate -Iultimate/tablebases ../tests/tablebases/ultimate_ghost_bomb_information_solver.cpp \
+		$(filter-out ultimate/tablebases/ghost_bomb_information_tablebase.cpp, \
 			$(ULTIMATE_GHOST_BOMB_SRCS)) \
 		-o ultimate_ghost_bomb_information_solver_test
 	./ultimate_ghost_bomb_information_solver_test
@@ -257,21 +258,21 @@ ultimate-ghost-bomb-information-self-test: \
 		--scratch /tmp/ultimate-ghost-bomb-cli
 
 ULTIMATE_GHOST_FISHERMAN_SRCS = \
-	ultimate/ghost_fisherman_information_tablebase.cpp \
-	ultimate/ghost_fisherman_information_solver.cpp \
-	ultimate/ghost_public_extra_model.cpp ultimate/external_robdd.cpp \
-	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+	ultimate/tablebases/ghost_fisherman_information_tablebase.cpp \
+	ultimate/tablebases/ghost_fisherman_information_solver.cpp \
+	ultimate/tablebases/ghost_public_extra_model.cpp ultimate/tablebases/external_robdd.cpp \
+	ultimate/tablebases/ghost_information_probe.cpp ultimate/tablebases/information.cpp \
 	ultimate/position.cpp ultimate/nnue.cpp
 
 ultimate-ghost-fisherman-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
 		$(ULTIMATE_GHOST_FISHERMAN_SRCS) \
 		-o ultimate_ghost_fisherman_information_tablebase
 
 ultimate-ghost-fisherman-information-test:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		-Iultimate ../tests/ultimate_ghost_fisherman_information_solver.cpp \
-		$(filter-out ultimate/ghost_fisherman_information_tablebase.cpp, \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate -Iultimate/tablebases ../tests/tablebases/ultimate_ghost_fisherman_information_solver.cpp \
+		$(filter-out ultimate/tablebases/ghost_fisherman_information_tablebase.cpp, \
 			$(ULTIMATE_GHOST_FISHERMAN_SRCS)) \
 		-o ultimate_ghost_fisherman_information_solver_test
 	./ultimate_ghost_fisherman_information_solver_test
@@ -282,21 +283,21 @@ ultimate-ghost-fisherman-information-self-test: \
 		--scratch /tmp/ultimate-ghost-fisherman-cli
 
 ULTIMATE_GHOST_MAGE_SRCS = \
-	ultimate/ghost_mage_information_tablebase.cpp \
-	ultimate/ghost_mage_information_solver.cpp \
-	ultimate/ghost_public_extra_model.cpp ultimate/external_robdd.cpp \
-	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+	ultimate/tablebases/ghost_mage_information_tablebase.cpp \
+	ultimate/tablebases/ghost_mage_information_solver.cpp \
+	ultimate/tablebases/ghost_public_extra_model.cpp ultimate/tablebases/external_robdd.cpp \
+	ultimate/tablebases/ghost_information_probe.cpp ultimate/tablebases/information.cpp \
 	ultimate/position.cpp ultimate/nnue.cpp
 
 ultimate-ghost-mage-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
 		$(ULTIMATE_GHOST_MAGE_SRCS) \
 		-o ultimate_ghost_mage_information_tablebase
 
 ultimate-ghost-mage-information-test:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		-Iultimate ../tests/ultimate_ghost_mage_information_solver.cpp \
-		$(filter-out ultimate/ghost_mage_information_tablebase.cpp, \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate -Iultimate/tablebases ../tests/tablebases/ultimate_ghost_mage_information_solver.cpp \
+		$(filter-out ultimate/tablebases/ghost_mage_information_tablebase.cpp, \
 			$(ULTIMATE_GHOST_MAGE_SRCS)) \
 		-o ultimate_ghost_mage_information_solver_test
 	./ultimate_ghost_mage_information_solver_test
@@ -310,23 +311,23 @@ ultimate-ghost-mage-information-self-test: \
 		--scratch /tmp/ultimate-ghost-mage-cli
 
 ULTIMATE_GHOST_PARASITE_SRCS = \
-	ultimate/ghost_parasite_information_tablebase.cpp \
-	ultimate/ghost_parasite_information_solver.cpp \
-	ultimate/ghost_public_extra_model.cpp ultimate/external_robdd.cpp \
-	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+	ultimate/tablebases/ghost_parasite_information_tablebase.cpp \
+	ultimate/tablebases/ghost_parasite_information_solver.cpp \
+	ultimate/tablebases/ghost_public_extra_model.cpp ultimate/tablebases/external_robdd.cpp \
+	ultimate/tablebases/ghost_information_probe.cpp ultimate/tablebases/information.cpp \
 	ultimate/position.cpp ultimate/nnue.cpp
 
 ultimate-ghost-parasite-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
 		-Wno-error=range-loop-construct -include sstream \
 		$(ULTIMATE_GHOST_PARASITE_SRCS) \
 		-o ultimate_ghost_parasite_information_tablebase
 
 ultimate-ghost-parasite-information-test:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		-Wno-error=range-loop-construct -include sstream -Iultimate \
-		../tests/ultimate_ghost_parasite_information_solver.cpp \
-		$(filter-out ultimate/ghost_parasite_information_tablebase.cpp, \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=range-loop-construct -include sstream -Iultimate -Iultimate/tablebases \
+		../tests/tablebases/ultimate_ghost_parasite_information_solver.cpp \
+		$(filter-out ultimate/tablebases/ghost_parasite_information_tablebase.cpp, \
 			$(ULTIMATE_GHOST_PARASITE_SRCS)) \
 		-o ultimate_ghost_parasite_information_solver_test
 	./ultimate_ghost_parasite_information_solver_test
@@ -341,24 +342,24 @@ ultimate-ghost-parasite-information-self-test: \
 		--scratch /tmp/ultimate-ghost-parasite-cli
 
 ULTIMATE_GHOST_GIANT_SRCS = \
-	ultimate/ghost_giant_information_tablebase.cpp \
-	ultimate/ghost_giant_information_solver.cpp \
-	ultimate/ghost_giant_information_model.cpp \
-	ultimate/ghost_public_extra_model.cpp ultimate/external_robdd.cpp \
-	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+	ultimate/tablebases/ghost_giant_information_tablebase.cpp \
+	ultimate/tablebases/ghost_giant_information_solver.cpp \
+	ultimate/tablebases/ghost_giant_information_model.cpp \
+	ultimate/tablebases/ghost_public_extra_model.cpp ultimate/tablebases/external_robdd.cpp \
+	ultimate/tablebases/ghost_information_probe.cpp ultimate/tablebases/information.cpp \
 	ultimate/position.cpp ultimate/nnue.cpp
 
 ultimate-ghost-giant-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
 		-Wno-error=range-loop-construct -include sstream \
 		$(ULTIMATE_GHOST_GIANT_SRCS) \
 		-o ultimate_ghost_giant_information_tablebase
 
 ultimate-ghost-giant-information-test:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		-Wno-error=range-loop-construct -include sstream -Iultimate \
-		../tests/ultimate_ghost_giant_information_solver.cpp \
-		$(filter-out ultimate/ghost_giant_information_tablebase.cpp, \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=range-loop-construct -include sstream -Iultimate -Iultimate/tablebases \
+		../tests/tablebases/ultimate_ghost_giant_information_solver.cpp \
+		$(filter-out ultimate/tablebases/ghost_giant_information_tablebase.cpp, \
 			$(ULTIMATE_GHOST_GIANT_SRCS)) \
 		-o ultimate_ghost_giant_information_solver_test
 	./ultimate_ghost_giant_information_solver_test
@@ -368,22 +369,22 @@ ultimate-ghost-giant-information-self-test: \
 	./ultimate_ghost_giant_information_tablebase --self-test \
 		--scratch /tmp/ultimate-ghost-giant-cli
 
-ULTIMATE_GHOST_PAIR_SRCS = ultimate/ghost_pair_information_tablebase.cpp \
-	ultimate/ghost_pair_information_solver.cpp \
-	ultimate/ghost_pair_information_model.cpp \
-	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+ULTIMATE_GHOST_PAIR_SRCS = ultimate/tablebases/ghost_pair_information_tablebase.cpp \
+	ultimate/tablebases/ghost_pair_information_solver.cpp \
+	ultimate/tablebases/ghost_pair_information_model.cpp \
+	ultimate/tablebases/ghost_information_probe.cpp ultimate/tablebases/information.cpp \
 	ultimate/position.cpp ultimate/nnue.cpp
 
 ultimate-ghost-pair-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
 		$(ULTIMATE_GHOST_PAIR_SRCS) \
 		-o ultimate_ghost_pair_information_tablebase
 
 ultimate-ghost-pair-information-test:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		-Iultimate \
-		../tests/ultimate_ghost_pair_information_solver.cpp \
-		$(filter-out ultimate/ghost_pair_information_tablebase.cpp, \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate -Iultimate/tablebases \
+		../tests/tablebases/ultimate_ghost_pair_information_solver.cpp \
+		$(filter-out ultimate/tablebases/ghost_pair_information_tablebase.cpp, \
 			$(ULTIMATE_GHOST_PAIR_SRCS)) \
 		-o ultimate_ghost_pair_information_solver_test
 	./ultimate_ghost_pair_information_solver_test
@@ -393,21 +394,21 @@ ultimate-ghost-pair-information-self-test: \
 	./ultimate_ghost_pair_information_tablebase --self-test \
 		--scratch /tmp/ultimate-ghost-pair-cli
 
-ULTIMATE_JESTER_GHOST_SRCS = ultimate/jester_ghost_information_tablebase.cpp \
-	ultimate/jester_ghost_information_solver.cpp \
-	ultimate/jester_ghost_information_model.cpp ultimate/external_robdd.cpp \
-	ultimate/ghost_information_probe.cpp ultimate/information.cpp \
+ULTIMATE_JESTER_GHOST_SRCS = ultimate/tablebases/jester_ghost_information_tablebase.cpp \
+	ultimate/tablebases/jester_ghost_information_solver.cpp \
+	ultimate/tablebases/jester_ghost_information_model.cpp ultimate/tablebases/external_robdd.cpp \
+	ultimate/tablebases/ghost_information_probe.cpp ultimate/tablebases/information.cpp \
 	ultimate/position.cpp ultimate/nnue.cpp
 
 ultimate-jester-ghost-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
 		$(ULTIMATE_JESTER_GHOST_SRCS) \
 		-o ultimate_jester_ghost_information_tablebase
 
 ultimate-jester-ghost-information-test:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		-Iultimate ../tests/ultimate_jester_ghost_information_solver.cpp \
-		$(filter-out ultimate/jester_ghost_information_tablebase.cpp, \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Iultimate -Iultimate/tablebases ../tests/tablebases/ultimate_jester_ghost_information_solver.cpp \
+		$(filter-out ultimate/tablebases/jester_ghost_information_tablebase.cpp, \
 			$(ULTIMATE_JESTER_GHOST_SRCS)) \
 		-o ultimate_jester_ghost_information_solver_test
 	./ultimate_jester_ghost_information_solver_test
@@ -418,24 +419,24 @@ ultimate-jester-ghost-information-self-test: \
 		--scratch /tmp/ultimate-jester-ghost-cli
 
 ultimate-external-robdd-test:
-	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
-		../tests/ultimate_external_robdd.cpp ultimate/external_robdd.cpp \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
+		../tests/tablebases/ultimate_external_robdd.cpp ultimate/tablebases/external_robdd.cpp \
 		-o ultimate_external_robdd_test
 	./ultimate_external_robdd_test
 
 ultimate-double-jester-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		ultimate/double_jester_information_tablebase.cpp $(ULTIMATE_INFORMATION_COMMON_SRCS) \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		ultimate/tablebases/double_jester_information_tablebase.cpp $(ULTIMATE_INFORMATION_COMMON_SRCS) \
 		-o ultimate_double_jester_information_tablebase
 
 ultimate-joint-jester-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		ultimate/joint_jester_information_tablebase.cpp $(ULTIMATE_INFORMATION_COMMON_SRCS) \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		ultimate/tablebases/joint_jester_information_tablebase.cpp $(ULTIMATE_INFORMATION_COMMON_SRCS) \
 		-o ultimate_joint_jester_information_tablebase
 
 ultimate-joint-jester-information-preserver:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		ultimate/joint_jester_information_preserver.cpp $(ULTIMATE_INFORMATION_COMMON_SRCS) \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		ultimate/tablebases/joint_jester_information_preserver.cpp $(ULTIMATE_INFORMATION_COMMON_SRCS) \
 		-o ultimate_joint_jester_information_preserver
 
 ultimate-joint-jester-information-preserver-self-test: \
@@ -498,50 +499,50 @@ ultimate-information-solvers-clean:
 		ultimate_ghost_information_probe_test
 
 ultimate-test:
-	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror ../tests/ultimate_rules.cpp \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror ../tests/ultimate_rules.cpp \
 		ultimate/position.cpp ultimate/search.cpp ultimate/draft.cpp \
-		ultimate/tablebase_probe.cpp ultimate/information.cpp ultimate/nnue.cpp \
+		ultimate/tablebases/tablebase_probe.cpp ultimate/tablebases/information.cpp ultimate/nnue.cpp \
 		-o ultimate_rules_test
 	./ultimate_rules_test
 
 ultimate-belief-benchmark:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror -Iultimate \
-		../tools/benchmark_ultimate_beliefs.cpp ultimate/position.cpp \
-		ultimate/search.cpp ultimate/tablebase_probe.cpp ultimate/information.cpp \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror -Iultimate -Iultimate/tablebases \
+		../tools/tablebases/benchmark_ultimate_beliefs.cpp ultimate/position.cpp \
+		ultimate/search.cpp ultimate/tablebases/tablebase_probe.cpp ultimate/tablebases/information.cpp \
 		ultimate/nnue.cpp -o ultimate_belief_benchmark
 
 ultimate-crossed-jester-ghost-information-model-test:
-	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
-		-Wno-error=pedantic -Wno-error=range-loop-construct -Iultimate \
-		../tests/ultimate_crossed_jester_ghost_information_model.cpp \
-		ultimate/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
-		ultimate/information.cpp ultimate/nnue.cpp \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=pedantic -Wno-error=range-loop-construct -Iultimate -Iultimate/tablebases \
+		../tests/tablebases/ultimate_crossed_jester_ghost_information_model.cpp \
+		ultimate/tablebases/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
+		ultimate/tablebases/information.cpp ultimate/nnue.cpp \
 		-o ultimate_crossed_jester_ghost_information_model_test
 	./ultimate_crossed_jester_ghost_information_model_test
 
 ultimate-crossed-jester-ghost-information-solver-test:
-	$(CXX) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
-		-Wno-error=pedantic -Wno-error=range-loop-construct -Iultimate \
-		../tests/ultimate_crossed_jester_ghost_information_solver.cpp \
-		ultimate/crossed_jester_ghost_information_fixed_point.cpp \
-		ultimate/crossed_jester_ghost_information_lower_oracle.cpp \
-		ultimate/crossed_jester_ghost_information_sidecar.cpp \
-		ultimate/crossed_jester_ghost_information_solver.cpp \
-		ultimate/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
-		ultimate/information.cpp ultimate/information_solver.cpp ultimate/nnue.cpp \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=pedantic -Wno-error=range-loop-construct -Iultimate -Iultimate/tablebases \
+		../tests/tablebases/ultimate_crossed_jester_ghost_information_solver.cpp \
+		ultimate/tablebases/crossed_jester_ghost_information_fixed_point.cpp \
+		ultimate/tablebases/crossed_jester_ghost_information_lower_oracle.cpp \
+		ultimate/tablebases/crossed_jester_ghost_information_sidecar.cpp \
+		ultimate/tablebases/crossed_jester_ghost_information_solver.cpp \
+		ultimate/tablebases/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
+		ultimate/tablebases/information.cpp ultimate/tablebases/information_solver.cpp ultimate/nnue.cpp \
 		-o ultimate_crossed_jester_ghost_information_solver_test
 	./ultimate_crossed_jester_ghost_information_solver_test
 
 ultimate-crossed-jester-ghost-information-tablebase:
-	$(CXX) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
-		-Wno-error=pedantic -Wno-error=range-loop-construct -Iultimate \
-		ultimate/crossed_jester_ghost_information_tablebase.cpp \
-		ultimate/crossed_jester_ghost_information_fixed_point.cpp \
-		ultimate/crossed_jester_ghost_information_lower_oracle.cpp \
-		ultimate/crossed_jester_ghost_information_sidecar.cpp \
-		ultimate/crossed_jester_ghost_information_solver.cpp \
-		ultimate/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
-		ultimate/information.cpp ultimate/information_solver.cpp ultimate/nnue.cpp \
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=pedantic -Wno-error=range-loop-construct -Iultimate -Iultimate/tablebases \
+		ultimate/tablebases/crossed_jester_ghost_information_tablebase.cpp \
+		ultimate/tablebases/crossed_jester_ghost_information_fixed_point.cpp \
+		ultimate/tablebases/crossed_jester_ghost_information_lower_oracle.cpp \
+		ultimate/tablebases/crossed_jester_ghost_information_sidecar.cpp \
+		ultimate/tablebases/crossed_jester_ghost_information_solver.cpp \
+		ultimate/tablebases/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
+		ultimate/tablebases/information.cpp ultimate/tablebases/information_solver.cpp ultimate/nnue.cpp \
 		-o ultimate_crossed_jester_ghost_information_tablebase
 
 VPATH = syzygy:nnue:nnue/features

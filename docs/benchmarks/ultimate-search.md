@@ -22,7 +22,7 @@ visit. These are deterministic development measurements, not an Elo claim.
 
 ## Exact public-belief search
 
-`tools/benchmark_ultimate_beliefs.cpp` plays a color-balanced hidden-Ghost trap
+`tools/tablebases/benchmark_ultimate_beliefs.cpp` plays a color-balanced hidden-Ghost trap
 from both compatible concrete worlds. The production player retains the full
 public belief and branches on every public/private observation; its deliberately
 weak opponent searches one canonical determinization. At depth 3 and 3,000
@@ -301,7 +301,7 @@ its complete configured frontier well inside the six-second search slice.
 
 ## Exact Ultimate tablebases
 
-`src/ultimate/tablebase.cpp` performs complete retrograde analysis over closed
+`src/ultimate/tablebases/tablebase.cpp` performs complete retrograde analysis over closed
 three-character state classes and checkpoints its frontier to disk. It then
 reconstructs every legal successor and Bellman-verifies WDL and distance to
 win before writing a packed database. Four useful moved-state classes are
