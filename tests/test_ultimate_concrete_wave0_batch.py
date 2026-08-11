@@ -26,6 +26,12 @@ class ConcreteWave0BatchTest(unittest.TestCase):
         self.assertEqual(document["schema"], batch.SCHEMA)
         self.assertEqual(document["status"], "plan-only-not-uploaded-not-installed-not-launched")
         self.assertEqual(len(units), 24)
+        self.assertTrue(all(
+            unit["unit"].startswith("ultimatefish-concrete-wave0-batch-v2-")
+            for unit in units))
+        self.assertTrue(all(
+            "batch-v2-" in unit["work_directory"]
+            for unit in units))
         self.assertTrue(document["no_remote_side_effects"])
         self.assertTrue(document["never_delete"])
         self.assertTrue(document["launch_ready"])
@@ -130,6 +136,11 @@ class ConcreteWave0BatchTest(unittest.TestCase):
             self.assertIn(f"--range-end {index + 1}", service)
             self.assertIn("--full --aws-execution-ack EC2", service)
             self.assertIn(f"AllowedCPUs={unit['expected_allowed_cpus']}", service)
+            self.assertIn("StandardOutput=journal", service)
+            self.assertIn("StandardError=journal", service)
+            self.assertNotIn("StandardOutput=append:", service)
+            self.assertNotIn("StandardError=append:", service)
+            self.assertNotIn(f"{unit['work_directory']}/service.log", service)
             self.assertNotIn("systemctl", service)
             self.assertNotIn("aws ", service)
             self.assertNotIn("ssh ", service)
@@ -239,13 +250,22 @@ class ConcreteWave0BatchTest(unittest.TestCase):
         jobs = {job["id"]: job for job in merged["jobs"]}
         self.assertNotIn("concrete-wave0-remaining", jobs)
         queued = [job for job in jobs.values()
-                  if job["id"].startswith("concrete-wave0-batch-")]
+                  if job["id"].startswith("concrete-wave0-batch-v2-")]
         self.assertEqual(24, len(queued))
         self.assertTrue(all(job["queue_stage"] for job in queued))
         self.assertTrue(all(not job["source_bindings"] for job in queued))
         self.assertTrue(all("advanceable" not in job for job in queued))
         self.assertTrue(all(job["staging_plan"]["sha256"]
                             for job in queued))
+        legacy = [job for job in jobs.values()
+                  if job["id"].startswith("concrete-wave0-batch-")
+                  and not job["id"].startswith("concrete-wave0-batch-v2-")]
+        self.assertEqual(24, len(legacy))
+        self.assertTrue(all(job.get("queue_stage") and
+                            not job.get("advanceable") and
+                            job.get("superseded_by") ==
+                            "versioned-concrete-wave0-batch-v2"
+                            for job in legacy))
         supervisor.validate_config(merged)
 
 

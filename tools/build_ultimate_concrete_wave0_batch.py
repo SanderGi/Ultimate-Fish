@@ -46,7 +46,12 @@ CERTIFIED_DEPENDENCY_STATUSES = frozenset({"certified", "preserving"})
 MAX_CLASSES = 30
 DEFAULT_CLASSES = 24
 GIB = 1 << 30
-UNIT_PREFIX = "ultimatefish-concrete-wave0-batch"
+# Versioned batch namespace.  The first batch used work-root journald append
+# targets, so systemd created ``service.log`` before the runner's fail-closed
+# empty-root check.  Keep those roots and units immutable, and publish a
+# distinct v2 namespace for retries.
+BATCH_VERSION = "v2"
+UNIT_PREFIX = f"ultimatefish-concrete-wave0-batch-{BATCH_VERSION}"
 SOURCE_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish"
 DEPENDENCY_BASE_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/dependencies"
 S3_PREFIX = (
@@ -412,7 +417,9 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
         stem = Path(filename).stem
         unit_name = f"{UNIT_PREFIX}-{ordinal:02d}-class{index:03d}-{stem}.service"
         work_mount = str(slot["work_mount"])
-        work = f"{work_mount}/concrete-wave0-batch/batch-{ordinal:02d}-class{index:03d}-{stem}"
+        work = (
+            f"{work_mount}/concrete-wave0-batch/"
+            f"batch-{BATCH_VERSION}-{ordinal:02d}-class{index:03d}-{stem}")
         dependency_root = (
             f"{DEPENDENCY_BASE_ROOT}/batch-{ordinal:02d}-class{index:03d}-{stem}")
         _safe_atom(unit_name.removesuffix(".service"), label="unit")
@@ -595,7 +602,9 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
                 "sha256": str(dependency["sha256"]),
             })
         bindings.sort(key=lambda binding: binding["path"])
-        job_id = f"concrete-wave0-batch-{int(unit['ordinal']):02d}-class{int(unit['inventory_index']):03d}"
+        job_id = (
+            f"concrete-wave0-batch-{BATCH_VERSION}-"
+            f"{int(unit['ordinal']):02d}-class{int(unit['inventory_index']):03d}")
         certifies_public_result = unit["ledger_result_kind"] == "concrete"
         jobs.append({
             "id": job_id,
@@ -690,6 +699,13 @@ def merge_supervision_config(document: Mapping[str, object],
         identifier = str(job["id"])
         if identifier in replacements or identifier in batch_ids:
             continue
+        # Preserve the v1 records and their scratch as an immutable audit
+        # trail, but make them monitor-only so the scheduler cannot relaunch
+        # a unit whose work root already contains its historical service.log.
+        if identifier.startswith("concrete-wave0-batch-"):
+            job["queue_stage"] = True
+            job["advanceable"] = False
+            job["superseded_by"] = "versioned-concrete-wave0-batch-v2"
         if identifier in updates:
             job["dependencies"] = list(updates[identifier]["dependencies"])
             job["queue_stage"] = True
