@@ -852,30 +852,30 @@
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-concrete-wave1-next.service",
       "dependencies": [
-        "concrete-wave0-batch-v3-01-class059",
-        "concrete-wave0-batch-v3-02-class032",
-        "concrete-wave0-batch-v3-03-class056",
-        "concrete-wave0-batch-v3-04-class057",
-        "concrete-wave0-batch-v3-05-class060",
-        "concrete-wave0-batch-v3-06-class062",
-        "concrete-wave0-batch-v3-07-class063",
-        "concrete-wave0-batch-v3-08-class066",
-        "concrete-wave0-batch-v3-09-class068",
-        "concrete-wave0-batch-v3-10-class069",
-        "concrete-wave0-batch-v3-11-class071",
-        "concrete-wave0-batch-v3-12-class072",
-        "concrete-wave0-batch-v3-13-class073",
-        "concrete-wave0-batch-v3-14-class074",
-        "concrete-wave0-batch-v3-15-class075",
-        "concrete-wave0-batch-v3-16-class076",
-        "concrete-wave0-batch-v3-17-class078",
-        "concrete-wave0-batch-v3-18-class079",
-        "concrete-wave0-batch-v3-19-class081",
-        "concrete-wave0-batch-v3-20-class082",
-        "concrete-wave0-batch-v3-21-class083",
-        "concrete-wave0-batch-v3-22-class085",
-        "concrete-wave0-batch-v3-23-class086",
-        "concrete-wave0-batch-v3-24-class088"
+        "concrete-wave0-batch-v4-01-class123",
+        "concrete-wave0-batch-v4-02-class125",
+        "concrete-wave0-batch-v4-03-class140",
+        "concrete-wave0-batch-v4-04-class142",
+        "concrete-wave0-batch-v4-05-class183",
+        "concrete-wave0-batch-v4-06-class186",
+        "concrete-wave0-batch-v4-07-class195",
+        "concrete-wave0-batch-v4-08-class198",
+        "concrete-wave0-batch-v4-09-class218",
+        "concrete-wave0-batch-v4-10-class219",
+        "concrete-wave0-batch-v4-11-class029",
+        "concrete-wave0-batch-v4-12-class041",
+        "concrete-wave0-batch-v4-13-class050",
+        "concrete-wave0-batch-v4-14-class051",
+        "concrete-wave0-batch-v4-15-class052",
+        "concrete-wave0-batch-v4-16-class053",
+        "concrete-wave0-batch-v4-17-class054",
+        "concrete-wave0-batch-v4-18-class061",
+        "concrete-wave0-batch-v4-19-class070",
+        "concrete-wave0-batch-v4-20-class097",
+        "concrete-wave0-batch-v4-21-class110",
+        "concrete-wave0-batch-v4-22-class113",
+        "concrete-wave0-batch-v4-23-class122",
+        "concrete-wave0-batch-v4-24-class132"
       ],
       "queue_stage": true,
       "checkpoint_paths": [],
@@ -9666,6 +9666,822 @@
       ],
       "s3_certificates": [],
       "advanceable": true
+    },
+    {
+      "id": "concrete-wave0-batch-v4-01-class123",
+      "instance_id": "i-0986ed3d272721f02",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-01-class123-kknightghostk.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "4",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 21949310480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kknightghostk.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-01-class123-kknightghostk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-01-class123-kknightghostk/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-01-class123-kknightghostk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-01-class123-kknightghostk/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-01-class123"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-02-class125",
+      "instance_id": "i-0986ed3d272721f02",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-02-class125-kknightkghost.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "5",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 21949310480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kknightkghost.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-02-class125-kknightkghost/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-02-class125-kknightkghost/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-02-class125-kknightkghost/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-02-class125-kknightkghost/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-02-class125"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-03-class140",
+      "instance_id": "i-0986ed3d272721f02",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-03-class140-kninjaghostk.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "6",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 21949310480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kninjaghostk.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-03-class140-kninjaghostk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-03-class140-kninjaghostk/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-03-class140-kninjaghostk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-03-class140-kninjaghostk/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-03-class140"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-04-class142",
+      "instance_id": "i-0986ed3d272721f02",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-04-class142-kninjakghost.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "7",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 21949310480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kninjakghost.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-04-class142-kninjakghost/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-04-class142-kninjakghost/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-04-class142-kninjakghost/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-04-class142-kninjakghost/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-04-class142"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-05-class183",
+      "instance_id": "i-0986ed3d272721f02",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-05-class183-kqueenghostk.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "8",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 21949310480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kqueenghostk.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-05-class183-kqueenghostk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-05-class183-kqueenghostk/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-05-class183-kqueenghostk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-05-class183-kqueenghostk/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-05-class183"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-06-class186",
+      "instance_id": "i-0986ed3d272721f02",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-06-class186-kqueenkghost.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "9",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 21949310480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kqueenkghost.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-06-class186-kqueenkghost/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-06-class186-kqueenkghost/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-06-class186-kqueenkghost/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-06-class186-kqueenkghost/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-06-class186"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-07-class195",
+      "instance_id": "i-024a2073283e4336e",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-07-class195-krookghostk.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "4",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 21949310480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "krookghostk.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-07-class195-krookghostk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-07-class195-krookghostk/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-07-class195-krookghostk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-07-class195-krookghostk/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-07-class195"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-08-class198",
+      "instance_id": "i-024a2073283e4336e",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-08-class198-krookkghost.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "5",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 21949310480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "krookkghost.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-08-class198-krookkghost/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-08-class198-krookkghost/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-08-class198-krookkghost/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-08-class198-krookkghost/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-08-class198"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-09-class218",
+      "instance_id": "i-024a2073283e4336e",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-09-class218-kturtleghostk.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "6",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 21949310480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kturtleghostk.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-09-class218-kturtleghostk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-09-class218-kturtleghostk/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-09-class218-kturtleghostk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-09-class218-kturtleghostk/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-09-class218"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-10-class219",
+      "instance_id": "i-024a2073283e4336e",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-10-class219-kturtlekghost.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "7",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 21949310480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kturtlekghost.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-10-class219-kturtlekghost/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-10-class219-kturtlekghost/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-10-class219-kturtlekghost/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-10-class219-kturtlekghost/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-10-class219"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-11-class029",
+      "instance_id": "i-024a2073283e4336e",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-11-class029-kbishopcheckerk.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "8",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kbishopcheckerk.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-11-class029-kbishopcheckerk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-11-class029-kbishopcheckerk/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-11-class029-kbishopcheckerk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-11-class029-kbishopcheckerk/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-11-class029"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-12-class041",
+      "instance_id": "i-024a2073283e4336e",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-12-class041-kbombkchecker.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "9",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kbombkchecker.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-12-class041-kbombkchecker/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-12-class041-kbombkchecker/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-12-class041-kbombkchecker/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-12-class041-kbombkchecker/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-12-class041"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-13-class050",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-13-class050-kcheckerdragonk.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "8",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish-resume": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kcheckerdragonk.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-13-class050-kcheckerdragonk/scratch/*",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-13-class050-kcheckerdragonk/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-13-class050-kcheckerdragonk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-13-class050-kcheckerdragonk/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-13-class050"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-14-class051",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-14-class051-kcheckerfishermank.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "9",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish-resume": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kcheckerfishermank.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-14-class051-kcheckerfishermank/scratch/*",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-14-class051-kcheckerfishermank/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-14-class051-kcheckerfishermank/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-14-class051-kcheckerfishermank/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-14-class051"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-15-class052",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-15-class052-kcheckergiantk.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "10",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish-resume": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kcheckergiantk.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-15-class052-kcheckergiantk/scratch/*",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-15-class052-kcheckergiantk/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-15-class052-kcheckergiantk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-15-class052-kcheckergiantk/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-15-class052"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-16-class053",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-16-class053-kcheckerkdragon.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "11",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish-resume": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kcheckerkdragon.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-16-class053-kcheckerkdragon/scratch/*",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-16-class053-kcheckerkdragon/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-16-class053-kcheckerkdragon/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-16-class053-kcheckerkdragon/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-16-class053"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-17-class054",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-17-class054-kcheckerkgiant.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "12",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish-resume": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kcheckerkgiant.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-17-class054-kcheckerkgiant/scratch/*",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-17-class054-kcheckerkgiant/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-17-class054-kcheckerkgiant/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-17-class054-kcheckerkgiant/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-17-class054"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-18-class061",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-18-class061-kcopycatghostk.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "13",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish-resume": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kcopycatghostk.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-18-class061-kcopycatghostk/scratch/*",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-18-class061-kcopycatghostk/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-18-class061-kcopycatghostk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v4-18-class061-kcopycatghostk/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-18-class061"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-19-class070",
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-19-class070-kcopycatkghost.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "8",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kcopycatkghost.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-19-class070-kcopycatkghost/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-19-class070-kcopycatkghost/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-19-class070-kcopycatkghost/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-19-class070-kcopycatkghost/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-19-class070"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-20-class097",
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-20-class097-kghostkghost.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "9",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kghostkghost.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-20-class097-kghostkghost/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-20-class097-kghostkghost/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-20-class097-kghostkghost/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-20-class097-kghostkghost/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-20-class097"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-21-class110",
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-21-class110-kjestercheckerk.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "10",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kjestercheckerk.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-21-class110-kjestercheckerk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-21-class110-kjestercheckerk/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-21-class110-kjestercheckerk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-21-class110-kjestercheckerk/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-21-class110"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-22-class113",
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-22-class113-kjesterkchecker.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "11",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kjesterkchecker.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-22-class113-kjesterkchecker/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-22-class113-kjesterkchecker/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-22-class113-kjesterkchecker/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-22-class113-kjesterkchecker/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-22-class113"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-23-class122",
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-23-class122-kknightcheckerk.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "12",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kknightcheckerk.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-23-class122-kknightcheckerk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-23-class122-kknightcheckerk/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-23-class122-kknightcheckerk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-23-class122-kknightcheckerk/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-23-class122"
+      }
+    },
+    {
+      "id": "concrete-wave0-batch-v4-24-class132",
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "unit": "ultimatefish-concrete-wave0-batch-v4-24-class132-kmagecheckerk.service",
+      "queue_stage": true,
+      "expected_allowed_cpus": "13",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 17179869184,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 22423784480
+        }
+      },
+      "dependencies": [],
+      "ledger_files": [
+        "kmagecheckerk.uftb"
+      ],
+      "ledger_certifies": true,
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-24-class132-kmagecheckerk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-24-class132-kmagecheckerk/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-24-class132-kmagecheckerk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v4-24-class132-kmagecheckerk/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": [],
+      "staging_plan": {
+        "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
+        "sha256": "da30d14863f54ea1c115ba9ebfdf9a89ead6977383fca83acaa2bff9433fd7c1",
+        "job_id": "concrete-wave0-batch-v4-24-class132"
+      }
     }
   ]
 }
