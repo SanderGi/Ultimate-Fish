@@ -46,7 +46,7 @@ generated exclusively from the canonical ledger below by
 `python3 tools/tablebases/plot_ultimate_tablebases.py`.
 
 <!-- COMPUTATION_LEDGER_START -->
-Ledger totals: **15 certified**, **186 preserving**, **3 computing**, **34 exact draws**, **193 planned**, **46 blocked**, and **147 deferred**; 624 unique material classes.
+Ledger totals: **15 certified**, **186 preserving**, **3 computing**, **34 exact draws**, **197 planned**, **42 blocked**, and **147 deferred**; 624 unique material classes.
 
 | Key | Class | Domain | File | Status | Indexed states | Result domain | First starts W / L / D | Second starts W / L / D | Reachable / unreachable (first; second) | Canonical storage |
 | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | --- |
@@ -84,7 +84,7 @@ Ledger totals: **15 certified**, **186 preserving**, **3 computing**, **34 exact
 | `same:jester+bomb` | King+Jester+Bomb vs King | same | `kjesterbombk.uftb` | **PRESERVING** | 37,957,920 | information v2 | 13,901,148 (5,077,812) / 0 / 0 | 309,574 / 17,331,368 / 1,338,018 | 13,901,148 / 5,077,812; 18,978,960 / 0 | S3 preservation pending |
 | `same:jester+ninja` | King+Jester+Ninja vs King | same | `kjesterninjak.uftb` | **PRESERVING** | 37,957,920 | information v2 | 12,548,400 (6,430,560) / 0 / 0 | 446,484 / 17,313,736 / 1,218,740 | 12,548,400 / 6,430,560; 18,978,960 / 0 | S3 preservation pending |
 | `same:jester+turtle` | King+Jester+Turtle vs King | same | `kjesterturtlek.uftb` | **PRESERVING** | 37,957,920 | information v2 | 15,158,912 (3,820,048) / 0 / 0 | 189,426 / 16,006,830 / 2,782,704 | 15,158,912 / 3,820,048; 18,978,960 / 0 | S3 preservation pending |
-| `same:jester+ghost` | King+Jester+Ghost vs King | same | `kjesterghostk.uftb` | **BLOCKED** | 75,915,840 | information required | — | — | — | — |
+| `same:jester+ghost` | King+Jester+Ghost vs King | same | `kjesterghostk.uftb` | **PLANNED** | 75,915,840 | information required | — | — | — | — |
 | `same:jester+mage` | King+Jester+Mage vs King | same | `kjestermagek.uftb` | **PRESERVING** | 37,957,920 | information v2 | 15,885,716 (3,093,244) / 0 / 0 | 125,972 / 15,952,244 / 2,900,744 | 15,885,716 / 3,093,244; 18,978,960 / 0 | S3 preservation pending |
 | `same:jester+penguin` | King+Jester+Penguin vs King | same | `kjesterpenguink.uftb` | **PLANNED** | 303,663,360 | concrete | — | — | — | — |
 | `same:jester+parasite` | King+Jester+Parasite vs King | same | `kjesterparasitek.uftb` | **PRESERVING** | 37,957,920 | information v2 | 14,519,136 (4,459,824) / 0 / 0 | 247,372 / 17,365,128 / 1,366,460 | 14,519,136 / 4,459,824; 18,978,960 / 0 | S3 preservation pending |
@@ -224,7 +224,7 @@ Ledger totals: **15 certified**, **186 preserving**, **3 computing**, **34 exact
 | `same:bomb+bomb` | King+2 Bombs vs King | same | `kbombbombk.uftb` | **PRESERVING** | 18,978,960 | concrete | 6,651,352 (2,838,050) / 0 (78) / 0 | 0 (804,804) / 8,582,770 (70,112) / 31,794 | 6,651,352 / 2,838,128; 8,614,564 / 874,916 | S3 preservation pending |
 | `same:bomb+ninja` | King+Bomb+Ninja vs King | same | `kbombninjak.uftb` | **PRESERVING** | 37,957,920 | concrete | 12,012,790 (6,966,170) / 0 / 0 | 0 (1,609,608) / 17,219,704 (67,760) / 81,888 | 12,012,790 / 6,966,170; 17,301,592 / 1,677,368 | S3 preservation pending |
 | `same:bomb+turtle` | King+Bomb+Turtle vs King | same | `kbombturtlek.uftb` | **PRESERVING** | 37,957,920 | concrete | 14,512,116 (4,466,844) / 0 / 0 | 0 (1,609,608) / 17,269,840 (67,760) / 31,752 | 14,512,116 / 4,466,844; 17,301,592 / 1,677,368 | S3 preservation pending |
-| `same:bomb+ghost` | King+Bomb+Ghost vs King | same | `kbombghostk.uftb` | **BLOCKED** | 75,915,840 | information required | — | — | — | — |
+| `same:bomb+ghost` | King+Bomb+Ghost vs King | same | `kbombghostk.uftb` | **PLANNED** | 75,915,840 | information required | — | — | — | — |
 | `same:bomb+mage` | King+Bomb+Mage vs King | same | `kbombmagek.uftb` | **PRESERVING** | 37,957,920 | concrete | 15,215,852 (3,763,108) / 0 / 0 | 0 (1,609,608) / 17,271,480 (67,760) / 30,112 | 15,215,852 / 3,763,108; 17,301,592 / 1,677,368 | S3 preservation pending |
 | `same:bomb+penguin` | King+Bomb+Penguin vs King | same | `kbombpenguink.uftb` | **PRESERVING** | 303,663,360 | concrete | 17,706,778 (5,565,108) / 7,182 (918) / 53,716 (14,624,218) | 27,840 (1,799,520) / 19,930,438 (71,756) / 1,608,118 (14,520,248) | 17,767,676 / 20,190,244; 21,566,396 / 16,391,524 | S3 preservation pending |
 | `same:bomb+parasite` | King+Bomb+Parasite vs King | same | `kbombparasitek.uftb` | **PRESERVING** | 37,957,920 | concrete | 13,901,148 (5,077,812) / 0 / 0 | 0 (1,609,608) / 17,263,608 (67,760) / 37,984 | 13,901,148 / 5,077,812; 17,301,592 / 1,677,368 | S3 preservation pending |
@@ -384,7 +384,7 @@ Ledger totals: **15 certified**, **186 preserving**, **3 computing**, **34 exact
 | `opposed:jester+bomb` | King+Jester vs King+Bomb | opposed | `kjesterkbomb.uftb` | **PRESERVING** | 37,957,920 | information v2 | 95,410 (3,152,980) / 160 (62,344) / 15,668,066 | 3,278,154 / 29,024 / 15,671,782 | 15,763,636 / 3,215,324; 18,978,960 / 0 | S3 preservation pending |
 | `opposed:jester+ninja` | King+Jester vs King+Ninja | opposed | `kjesterkninja.uftb` | **PRESERVING** | 37,957,920 | information v2 | 2,499,692 (3,093,244) / 5,971,304 / 7,414,720 | 14,621,888 / 5,680 / 4,351,392 | 15,885,716 / 3,093,244; 18,978,960 / 0 | S3 preservation pending |
 | `opposed:jester+turtle` | King+Jester vs King+Turtle | opposed | `kjesterkturtle.uftb` | **PRESERVING** | 37,957,920 | information v2 | 8,899,984 (3,093,244) / 0 / 6,985,732 | 264,054 / 5,356,036 / 13,358,870 | 15,885,716 / 3,093,244; 18,978,960 / 0 | S3 preservation pending |
-| `opposed:jester+ghost` | King+Jester vs King+Ghost | opposed | `kjesterkghost.uftb` | **BLOCKED** | 75,915,840 | information required | — | — | — | — |
+| `opposed:jester+ghost` | King+Jester vs King+Ghost | opposed | `kjesterkghost.uftb` | **PLANNED** | 75,915,840 | information required | — | — | — | — |
 | `opposed:jester+mage` | King+Jester vs King+Mage | opposed | `kjesterkmage.uftb` | **PRESERVING** | 37,957,920 | information v2 | 15,885,716 (3,093,244) / 0 / 0 | 125,972 / 15,953,304 / 2,899,684 | 15,885,716 / 3,093,244; 18,978,960 / 0 | S3 preservation pending |
 | `opposed:jester+penguin` | King+Jester vs King+Penguin | opposed | `kjesterkpenguin.uftb` | **PLANNED** | 303,663,360 | concrete | — | — | — | — |
 | `opposed:jester+parasite` | King+Jester vs King+Parasite | opposed | `kjesterkparasite.uftb` | **PRESERVING** | 37,957,920 | information v2 | 256,428 (3,093,244) / 4,476,908 / 11,152,380 | 10,452,700 / 87,668 / 8,438,592 | 15,885,716 / 3,093,244; 18,978,960 / 0 | S3 preservation pending |
@@ -578,7 +578,7 @@ Ledger totals: **15 certified**, **186 preserving**, **3 computing**, **34 exact
 | `opposed:ghost+sniper` | King+Ghost vs King+Sniper | opposed | `kghostksniper.uftb` | **PLANNED** | 303,663,360 | concrete | — | — | — | — |
 | `opposed:ghost+prince` | King+Ghost vs King+Prince | opposed | `kghostkprince.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `opposed:ghost+checker` | King+Ghost vs King+Checker | opposed | `kghostkchecker.uftb` | **PLANNED** | 303,663,360 | concrete | — | — | — | concrete S3 `6166644c…` / `g2ZfdZC3PS4PAyhGElYcMa0TKWDoa4AZ`; information pending |
-| `opposed:ghost+giant` | King+Ghost vs King+Giant | opposed | `kghostkgiant.uftb` | **BLOCKED** | 75,915,840 | information required | — | — | — | — |
+| `opposed:ghost+giant` | King+Ghost vs King+Giant | opposed | `kghostkgiant.uftb` | **PLANNED** | 75,915,840 | information required | — | — | — | — |
 | `opposed:ghost+copycat` | King+Ghost vs King+Copycat | opposed | `kcopycatkghost.uftb` | **BLOCKED** | 151,831,680 | concrete | — | — | — | — |
 | `opposed:ghost+angel` | King+Ghost vs King+Angel | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `opposed:ghost+fisherman` | King+Ghost vs King+Fisherman | opposed | `kghostkfisherman.uftb` | **PLANNED** | 75,915,840 | information required | — | — | — | — |
