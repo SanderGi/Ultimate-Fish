@@ -149,6 +149,8 @@ class SupervisionTests(unittest.TestCase):
         # consumed by classification, resource safety, or scheduling.
         self.assertNotIn("MemoryPeak", program)
         self.assertNotIn("TasksCurrent", program)
+        self.assertNotIn("SubState", program)
+        self.assertNotIn("ExecMainCode", program)
 
     @mock.patch.object(SUPERVISOR.subprocess, "run")
     def test_timeout_error_redacts_encoded_aws_payload(self, command: mock.Mock) -> None:

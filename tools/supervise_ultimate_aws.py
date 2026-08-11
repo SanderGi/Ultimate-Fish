@@ -289,7 +289,7 @@ def command(argv):
  p=subprocess.run(argv,text=True,capture_output=True,check=False)
  return p.returncode,p.stdout.strip(),p.stderr.strip()
 def props(unit):
- names=['LoadState','ActiveState','SubState','Result','ExecMainCode',
+ names=['LoadState','ActiveState','Result',
         'ExecMainStatus','MemoryCurrent','StateChangeTimestamp',
         'AllowedCPUs','CPUUsageNSec']
  try:
@@ -303,7 +303,7 @@ def props(unit):
    key,value=line.split('=',1); result[key]=value
  if result.get('ActiveState') not in {'active','activating','reloading'}:
   result={key:result[key] for key in (
-   'LoadState','ActiveState','SubState','Result','ExecMainCode',
+   'LoadState','ActiveState','Result',
    'ExecMainStatus','AllowedCPUs') if key in result}
  return result
 def aggregate(patterns):
