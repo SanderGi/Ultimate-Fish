@@ -1,23 +1,23 @@
 {
   "batch_manifest": {
     "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-    "semantic_sha256": "82339f2a7b742bae5da147946ecf053a30325cb50db032ba638ef5f93bd3f1d0",
-    "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+    "semantic_sha256": "e13898ce4dfd2bc56a85f3c4b8009a5bcb4c80dd82b2968c81c267d145319ae8",
+    "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
   },
-  "canonical_commit": "19e8827f1bf51115c582975de90af99747b7b0ef",
+  "canonical_commit": "622e03e2f1f7fbf22684a54e7f5be759fc3cfb22",
   "jobs": [
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-01-class059-kcopycatcopycatk/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-01-class059-kcopycatcopycatk/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-01-class059-kcopycatcopycatk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-01-class059-kcopycatcopycatk/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-01-class059-kcopycatcopycatk/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-01-class059-kcopycatcopycatk/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-01-class059-kcopycatcopycatk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-01-class059-kcopycatcopycatk/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "8",
-      "id": "concrete-wave0-batch-01-class059",
+      "id": "concrete-wave0-batch-v2-01-class059",
       "instance_id": "i-03c81f90d2c59a2e7",
       "ledger_certifies": true,
       "ledger_files": [
@@ -35,8 +35,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-01-class059-kcopycatcopycatk.service",
-          "sha256": "08bfb0e14c86ea9edf1303afb4661e270cfe626a3ad4231510279935c9d1eec4"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-01-class059-kcopycatcopycatk.service",
+          "sha256": "e0b78232a206e40e5ac548b55b30f590b8e3ff8960febbcf9787b86d5c6cfbe7"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-01-class059-kcopycatcopycatk/kcopycatk.uftb",
@@ -104,7 +104,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -116,23 +116,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-01-class059-kcopycatcopycatk.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-01-class059-kcopycatcopycatk.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-02-class032-kbishopkghost/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-02-class032-kbishopkghost/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-02-class032-kbishopkghost/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-02-class032-kbishopkghost/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-02-class032-kbishopkghost/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-02-class032-kbishopkghost/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-02-class032-kbishopkghost/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-02-class032-kbishopkghost/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "9",
-      "id": "concrete-wave0-batch-02-class032",
+      "id": "concrete-wave0-batch-v2-02-class032",
       "instance_id": "i-03c81f90d2c59a2e7",
       "ledger_certifies": false,
       "ledger_files": [],
@@ -148,8 +148,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-02-class032-kbishopkghost.service",
-          "sha256": "94a3097a2d32ebeeacf3b908d901fc22fa848efc4d60b899d477914154d9889e"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-02-class032-kbishopkghost.service",
+          "sha256": "f9d596553c814c81eae8bf0f9105f833d6812a2a550578605a417da4949b143d"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-02-class032-kbishopkghost/kghostk.uftb",
@@ -217,7 +217,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -229,23 +229,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-02-class032-kbishopkghost.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-02-class032-kbishopkghost.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-03-class056-kcopycatbishopk/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-03-class056-kcopycatbishopk/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-03-class056-kcopycatbishopk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-03-class056-kcopycatbishopk/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-03-class056-kcopycatbishopk/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-03-class056-kcopycatbishopk/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-03-class056-kcopycatbishopk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-03-class056-kcopycatbishopk/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "10",
-      "id": "concrete-wave0-batch-03-class056",
+      "id": "concrete-wave0-batch-v2-03-class056",
       "instance_id": "i-03c81f90d2c59a2e7",
       "ledger_certifies": true,
       "ledger_files": [
@@ -263,8 +263,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-03-class056-kcopycatbishopk.service",
-          "sha256": "fe91c53d5d5188b72f5f8874ffbbb3e3c24c3abee7d84bcea3ee0c6c18aa8de9"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-03-class056-kcopycatbishopk.service",
+          "sha256": "30228db1c6e5c6f51a421cb25aa6fd2b422134296604f8c413586efc37a7b75a"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-03-class056-kcopycatbishopk/kcopycatk.uftb",
@@ -332,7 +332,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -344,23 +344,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-03-class056-kcopycatbishopk.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-03-class056-kcopycatbishopk.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-04-class057-kcopycatbombk/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-04-class057-kcopycatbombk/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-04-class057-kcopycatbombk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-04-class057-kcopycatbombk/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-04-class057-kcopycatbombk/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-04-class057-kcopycatbombk/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-04-class057-kcopycatbombk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-04-class057-kcopycatbombk/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "11",
-      "id": "concrete-wave0-batch-04-class057",
+      "id": "concrete-wave0-batch-v2-04-class057",
       "instance_id": "i-03c81f90d2c59a2e7",
       "ledger_certifies": true,
       "ledger_files": [
@@ -378,8 +378,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-04-class057-kcopycatbombk.service",
-          "sha256": "cb7a8eb89670c6bcf07726db0692664addfe0fe89e58734d0d4f62fc14f36e67"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-04-class057-kcopycatbombk.service",
+          "sha256": "1c661eae5f0d714529115c65b42ed8eca51c9cbaf003ef91e5dfb4ceecd59bd2"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-04-class057-kcopycatbombk/kbombk.uftb",
@@ -451,7 +451,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -463,23 +463,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-04-class057-kcopycatbombk.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-04-class057-kcopycatbombk.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-05-class060-kcopycatdragonk/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-05-class060-kcopycatdragonk/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-05-class060-kcopycatdragonk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-05-class060-kcopycatdragonk/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-05-class060-kcopycatdragonk/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-05-class060-kcopycatdragonk/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-05-class060-kcopycatdragonk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-05-class060-kcopycatdragonk/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "12",
-      "id": "concrete-wave0-batch-05-class060",
+      "id": "concrete-wave0-batch-v2-05-class060",
       "instance_id": "i-03c81f90d2c59a2e7",
       "ledger_certifies": true,
       "ledger_files": [
@@ -497,8 +497,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-05-class060-kcopycatdragonk.service",
-          "sha256": "97557936615544f66c75f84ed73924d59d25bff9d0bca13788f75f58db246566"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-05-class060-kcopycatdragonk.service",
+          "sha256": "59f9faf147597fe550f181eba57a17bc7e6faa1dec7669e5c1b415eb176cec59"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-05-class060-kcopycatdragonk/kcopycatk.uftb",
@@ -570,7 +570,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -582,23 +582,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-05-class060-kcopycatdragonk.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-05-class060-kcopycatdragonk.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-06-class062-kcopycatgiantk/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-06-class062-kcopycatgiantk/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-06-class062-kcopycatgiantk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-06-class062-kcopycatgiantk/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-06-class062-kcopycatgiantk/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-06-class062-kcopycatgiantk/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-06-class062-kcopycatgiantk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-06-class062-kcopycatgiantk/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "13",
-      "id": "concrete-wave0-batch-06-class062",
+      "id": "concrete-wave0-batch-v2-06-class062",
       "instance_id": "i-03c81f90d2c59a2e7",
       "ledger_certifies": true,
       "ledger_files": [
@@ -616,8 +616,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-06-class062-kcopycatgiantk.service",
-          "sha256": "254b2e5933d122563507fd8f1420dd61480021a3c63a6193fb0a844fe09b0f51"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-06-class062-kcopycatgiantk.service",
+          "sha256": "d9541f9743b17c971a18ce51f4c2180de07bece8034f424e7c0cdb9f4d48e2c2"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-06-class062-kcopycatgiantk/kcopycatk.uftb",
@@ -689,7 +689,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -701,23 +701,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-06-class062-kcopycatgiantk.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-06-class062-kcopycatgiantk.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-07-class063-kcopycatjesterk/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-07-class063-kcopycatjesterk/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-07-class063-kcopycatjesterk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-07-class063-kcopycatjesterk/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-07-class063-kcopycatjesterk/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-07-class063-kcopycatjesterk/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-07-class063-kcopycatjesterk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-07-class063-kcopycatjesterk/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "14",
-      "id": "concrete-wave0-batch-07-class063",
+      "id": "concrete-wave0-batch-v2-07-class063",
       "instance_id": "i-03c81f90d2c59a2e7",
       "ledger_certifies": true,
       "ledger_files": [
@@ -735,8 +735,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-07-class063-kcopycatjesterk.service",
-          "sha256": "8146d3159ec9288b9b6f7ea023aaae38280b650f20efaf021f24cd14c778d2a4"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-07-class063-kcopycatjesterk.service",
+          "sha256": "c84bd2d1da23de21e64e59f8cc6ca12143bda7fbeead5ffbd64bc36048ae1ba6"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-07-class063-kcopycatjesterk/kcopycatk.uftb",
@@ -808,7 +808,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -820,23 +820,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-07-class063-kcopycatjesterk.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-07-class063-kcopycatjesterk.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-08-class066-kcopycatkbomb/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-08-class066-kcopycatkbomb/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-08-class066-kcopycatkbomb/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-08-class066-kcopycatkbomb/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-08-class066-kcopycatkbomb/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-08-class066-kcopycatkbomb/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-08-class066-kcopycatkbomb/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-08-class066-kcopycatkbomb/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "15",
-      "id": "concrete-wave0-batch-08-class066",
+      "id": "concrete-wave0-batch-v2-08-class066",
       "instance_id": "i-03c81f90d2c59a2e7",
       "ledger_certifies": true,
       "ledger_files": [
@@ -854,8 +854,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-08-class066-kcopycatkbomb.service",
-          "sha256": "17ab21c289ceb07bd85e31a227d4b1f47a0c11b0a1647b2298ac2a718eac961c"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-08-class066-kcopycatkbomb.service",
+          "sha256": "a47f3810452057949da66b93ed6a29e24644a45bc2d624c4b64f821e7789c1c0"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-08-class066-kcopycatkbomb/kbombk.uftb",
@@ -927,7 +927,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -939,23 +939,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-08-class066-kcopycatkbomb.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-08-class066-kcopycatkbomb.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-09-class068-kcopycatkcopycat/scratch/*",
-        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-09-class068-kcopycatkcopycat/logs/*"
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v2-09-class068-kcopycatkcopycat/scratch/*",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v2-09-class068-kcopycatkcopycat/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-09-class068-kcopycatkcopycat/certificates/wave-certificate.json",
-        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-09-class068-kcopycatkcopycat/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v2-09-class068-kcopycatkcopycat/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v2-09-class068-kcopycatkcopycat/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "8",
-      "id": "concrete-wave0-batch-09-class068",
+      "id": "concrete-wave0-batch-v2-09-class068",
       "instance_id": "i-0b4523116b2f7765c",
       "ledger_certifies": true,
       "ledger_files": [
@@ -973,8 +973,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-09-class068-kcopycatkcopycat.service",
-          "sha256": "1e77a40cfdef857c06b6edaea13ac6bbd46d0783cdc6bff19874bc1aa93ac047"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-09-class068-kcopycatkcopycat.service",
+          "sha256": "7f667073bab00c79a8f7824e89ab7058c8f28b43ff66523005c601e6ecec301e"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-09-class068-kcopycatkcopycat/kcopycatk.uftb",
@@ -1042,7 +1042,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -1054,23 +1054,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-09-class068-kcopycatkcopycat.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-09-class068-kcopycatkcopycat.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-10-class069-kcopycatkdragon/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-10-class069-kcopycatkdragon/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-10-class069-kcopycatkdragon/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-10-class069-kcopycatkdragon/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-10-class069-kcopycatkdragon/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-10-class069-kcopycatkdragon/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-10-class069-kcopycatkdragon/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-10-class069-kcopycatkdragon/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "9",
-      "id": "concrete-wave0-batch-10-class069",
+      "id": "concrete-wave0-batch-v2-10-class069",
       "instance_id": "i-0b4523116b2f7765c",
       "ledger_certifies": true,
       "ledger_files": [
@@ -1088,8 +1088,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-10-class069-kcopycatkdragon.service",
-          "sha256": "6c7d195fcea48573af092982186756406411e13adcebe95bbbfbabc62496ac60"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-10-class069-kcopycatkdragon.service",
+          "sha256": "ec8a61cf06a662f849b3bd11e7c547e3a08271c014c71af70a441027b1a2417c"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-10-class069-kcopycatkdragon/kcopycatk.uftb",
@@ -1161,7 +1161,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -1173,23 +1173,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-10-class069-kcopycatkdragon.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-10-class069-kcopycatkdragon.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-11-class071-kcopycatkgiant/scratch/*",
-        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-11-class071-kcopycatkgiant/logs/*"
+        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-v2-11-class071-kcopycatkgiant/scratch/*",
+        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-v2-11-class071-kcopycatkgiant/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-11-class071-kcopycatkgiant/certificates/wave-certificate.json",
-        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-11-class071-kcopycatkgiant/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-v2-11-class071-kcopycatkgiant/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-v2-11-class071-kcopycatkgiant/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "10",
-      "id": "concrete-wave0-batch-11-class071",
+      "id": "concrete-wave0-batch-v2-11-class071",
       "instance_id": "i-0b4523116b2f7765c",
       "ledger_certifies": true,
       "ledger_files": [
@@ -1207,8 +1207,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-11-class071-kcopycatkgiant.service",
-          "sha256": "83b4991b08335bf723a669f3e228aeade51bc8191994b9f4e58391e676d84513"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-11-class071-kcopycatkgiant.service",
+          "sha256": "6b200aa03e8ece476c8d8ca0d49de3ca8dfeaf63551f97ffa8419cf6b96b0757"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-11-class071-kcopycatkgiant/kcopycatk.uftb",
@@ -1280,7 +1280,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -1292,23 +1292,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-11-class071-kcopycatkgiant.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-11-class071-kcopycatkgiant.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-12-class072-kcopycatkjester/scratch/*",
-        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-12-class072-kcopycatkjester/logs/*"
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v2-12-class072-kcopycatkjester/scratch/*",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v2-12-class072-kcopycatkjester/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-12-class072-kcopycatkjester/certificates/wave-certificate.json",
-        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-12-class072-kcopycatkjester/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v2-12-class072-kcopycatkjester/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v2-12-class072-kcopycatkjester/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "11",
-      "id": "concrete-wave0-batch-12-class072",
+      "id": "concrete-wave0-batch-v2-12-class072",
       "instance_id": "i-0b4523116b2f7765c",
       "ledger_certifies": true,
       "ledger_files": [
@@ -1326,8 +1326,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-12-class072-kcopycatkjester.service",
-          "sha256": "51629037e1980b5af176a1b30287c63dd614621565258b3de73120ce9af65b99"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-12-class072-kcopycatkjester.service",
+          "sha256": "0eabe311ad01f20929fe0c1587973df8de7cdade4bfd8fdd56ad6a51ee9f9790"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-12-class072-kcopycatkjester/kcopycatk.uftb",
@@ -1399,7 +1399,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -1411,23 +1411,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-12-class072-kcopycatkjester.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-12-class072-kcopycatkjester.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-13-class073-kcopycatkknight/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-13-class073-kcopycatkknight/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-13-class073-kcopycatkknight/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-13-class073-kcopycatkknight/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-13-class073-kcopycatkknight/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-13-class073-kcopycatkknight/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-13-class073-kcopycatkknight/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-13-class073-kcopycatkknight/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "12",
-      "id": "concrete-wave0-batch-13-class073",
+      "id": "concrete-wave0-batch-v2-13-class073",
       "instance_id": "i-0b4523116b2f7765c",
       "ledger_certifies": true,
       "ledger_files": [
@@ -1445,8 +1445,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-13-class073-kcopycatkknight.service",
-          "sha256": "234d4796b2afd98292435a89fd9b3d9a350c0957033062889ff53211bcbc9f16"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-13-class073-kcopycatkknight.service",
+          "sha256": "9518c0630577784f7fe4edaaf8e99c8fbf6cae74fb9b1a8b1078a7c33666a556"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-13-class073-kcopycatkknight/kcopycatk.uftb",
@@ -1514,7 +1514,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -1526,23 +1526,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-13-class073-kcopycatkknight.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-13-class073-kcopycatkknight.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-14-class074-kcopycatknightk/scratch/*",
-        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-14-class074-kcopycatknightk/logs/*"
+        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-v2-14-class074-kcopycatknightk/scratch/*",
+        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-v2-14-class074-kcopycatknightk/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-14-class074-kcopycatknightk/certificates/wave-certificate.json",
-        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-14-class074-kcopycatknightk/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-v2-14-class074-kcopycatknightk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-overflow/concrete-wave0-batch/batch-v2-14-class074-kcopycatknightk/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "13",
-      "id": "concrete-wave0-batch-14-class074",
+      "id": "concrete-wave0-batch-v2-14-class074",
       "instance_id": "i-0b4523116b2f7765c",
       "ledger_certifies": true,
       "ledger_files": [
@@ -1560,8 +1560,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-14-class074-kcopycatknightk.service",
-          "sha256": "b71f40961c31f6ecd63b2b47f8b08eff3511dba26cba198d71d038982f811661"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-14-class074-kcopycatknightk.service",
+          "sha256": "05e4f2981f428656e39f7979f918c6493af142390e96e1a70beff15be1b4fbd0"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-14-class074-kcopycatknightk/kcopycatk.uftb",
@@ -1629,7 +1629,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -1641,23 +1641,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-14-class074-kcopycatknightk.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-14-class074-kcopycatknightk.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-15-class075-kcopycatkninja/scratch/*",
-        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-15-class075-kcopycatkninja/logs/*"
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v2-15-class075-kcopycatkninja/scratch/*",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v2-15-class075-kcopycatkninja/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-15-class075-kcopycatkninja/certificates/wave-certificate.json",
-        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-15-class075-kcopycatkninja/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v2-15-class075-kcopycatkninja/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-resume/concrete-wave0-batch/batch-v2-15-class075-kcopycatkninja/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "14",
-      "id": "concrete-wave0-batch-15-class075",
+      "id": "concrete-wave0-batch-v2-15-class075",
       "instance_id": "i-0b4523116b2f7765c",
       "ledger_certifies": true,
       "ledger_files": [
@@ -1675,8 +1675,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-15-class075-kcopycatkninja.service",
-          "sha256": "bad7f985ee0e0186519a9c69ff9d6b2b34399021ddb376a119f9351a8f2f9ddc"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-15-class075-kcopycatkninja.service",
+          "sha256": "f32111b6a2a7dae38ec5e577c6ab1e82e66183f61b6da6b59d1635569803d618"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-15-class075-kcopycatkninja/kcopycatk.uftb",
@@ -1748,7 +1748,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -1760,23 +1760,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-15-class075-kcopycatkninja.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-15-class075-kcopycatkninja.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-16-class076-kcopycatkparasite/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-16-class076-kcopycatkparasite/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-16-class076-kcopycatkparasite/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-16-class076-kcopycatkparasite/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-16-class076-kcopycatkparasite/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-16-class076-kcopycatkparasite/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-16-class076-kcopycatkparasite/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-16-class076-kcopycatkparasite/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "4",
-      "id": "concrete-wave0-batch-16-class076",
+      "id": "concrete-wave0-batch-v2-16-class076",
       "instance_id": "i-0986ed3d272721f02",
       "ledger_certifies": true,
       "ledger_files": [
@@ -1794,8 +1794,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-16-class076-kcopycatkparasite.service",
-          "sha256": "63607eb3ab25cedd4a8608532d19b5738fa55607fa257b6dd7a6f85ebeaf5443"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-16-class076-kcopycatkparasite.service",
+          "sha256": "5f13a177d7dd516b58b1229f66b6ffec6e9151dee899b7505bb2584d40b5104f"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-16-class076-kcopycatkparasite/kcopycatk.uftb",
@@ -1867,7 +1867,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -1879,23 +1879,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-16-class076-kcopycatkparasite.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-16-class076-kcopycatkparasite.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-17-class078-kcopycatkqueen/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-17-class078-kcopycatkqueen/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-17-class078-kcopycatkqueen/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-17-class078-kcopycatkqueen/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-17-class078-kcopycatkqueen/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-17-class078-kcopycatkqueen/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-17-class078-kcopycatkqueen/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-17-class078-kcopycatkqueen/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "5",
-      "id": "concrete-wave0-batch-17-class078",
+      "id": "concrete-wave0-batch-v2-17-class078",
       "instance_id": "i-0986ed3d272721f02",
       "ledger_certifies": true,
       "ledger_files": [
@@ -1913,8 +1913,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-17-class078-kcopycatkqueen.service",
-          "sha256": "623f2d7cdcc46c566ebf8b116b58cbda0225cd9e86d13a2f00936d3ee5cbaa9c"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-17-class078-kcopycatkqueen.service",
+          "sha256": "b1903264c80783e25c2d036c5b7212d21a3e6acc98857bbeb41c30983db2c4a5"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-17-class078-kcopycatkqueen/kcopycatk.uftb",
@@ -1986,7 +1986,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -1998,23 +1998,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-17-class078-kcopycatkqueen.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-17-class078-kcopycatkqueen.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-18-class079-kcopycatkrook/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-18-class079-kcopycatkrook/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-18-class079-kcopycatkrook/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-18-class079-kcopycatkrook/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-18-class079-kcopycatkrook/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-18-class079-kcopycatkrook/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-18-class079-kcopycatkrook/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-18-class079-kcopycatkrook/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "6",
-      "id": "concrete-wave0-batch-18-class079",
+      "id": "concrete-wave0-batch-v2-18-class079",
       "instance_id": "i-0986ed3d272721f02",
       "ledger_certifies": true,
       "ledger_files": [
@@ -2032,8 +2032,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-18-class079-kcopycatkrook.service",
-          "sha256": "97488191e8ecfb01e35fe521cfe1279295118521501c6eb7272f8f216c062713"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-18-class079-kcopycatkrook.service",
+          "sha256": "65d077f64159529688d84178edb65926f1851d22cb1bf7cdd4a1ff79b715b59d"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-18-class079-kcopycatkrook/kcopycatk.uftb",
@@ -2105,7 +2105,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -2117,23 +2117,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-18-class079-kcopycatkrook.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-18-class079-kcopycatkrook.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-19-class081-kcopycatkturtle/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-19-class081-kcopycatkturtle/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-19-class081-kcopycatkturtle/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-19-class081-kcopycatkturtle/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-19-class081-kcopycatkturtle/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-19-class081-kcopycatkturtle/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-19-class081-kcopycatkturtle/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-19-class081-kcopycatkturtle/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "4",
-      "id": "concrete-wave0-batch-19-class081",
+      "id": "concrete-wave0-batch-v2-19-class081",
       "instance_id": "i-024a2073283e4336e",
       "ledger_certifies": true,
       "ledger_files": [
@@ -2151,8 +2151,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-19-class081-kcopycatkturtle.service",
-          "sha256": "0699cbd43082fbe8b2c72a8c8c96a674db392c4ce98e611ad1ec689a4836d220"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-19-class081-kcopycatkturtle.service",
+          "sha256": "c6005bcfd8714f0c90a3e1b93f3014d82d3192428498dbe4f8d79ba1e0a65b23"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-19-class081-kcopycatkturtle/kcopycatk.uftb",
@@ -2220,7 +2220,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -2232,23 +2232,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-19-class081-kcopycatkturtle.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-19-class081-kcopycatkturtle.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-20-class082-kcopycatninjak/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-20-class082-kcopycatninjak/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-20-class082-kcopycatninjak/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-20-class082-kcopycatninjak/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-20-class082-kcopycatninjak/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-20-class082-kcopycatninjak/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-20-class082-kcopycatninjak/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-20-class082-kcopycatninjak/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "5",
-      "id": "concrete-wave0-batch-20-class082",
+      "id": "concrete-wave0-batch-v2-20-class082",
       "instance_id": "i-024a2073283e4336e",
       "ledger_certifies": true,
       "ledger_files": [
@@ -2266,8 +2266,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-20-class082-kcopycatninjak.service",
-          "sha256": "b06f16edb6edd294b6ae604d2d11a3fd31e87deaa8ddbef2d68a4c3558cabb0f"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-20-class082-kcopycatninjak.service",
+          "sha256": "e1e3a1a101a37c6c94ffbc062fbde22d7dd4cb647146b7b6587b7bd7622a5883"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-20-class082-kcopycatninjak/kcopycatk.uftb",
@@ -2339,7 +2339,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -2351,23 +2351,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-20-class082-kcopycatninjak.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-20-class082-kcopycatninjak.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-21-class083-kcopycatparasitek/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-21-class083-kcopycatparasitek/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-21-class083-kcopycatparasitek/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-21-class083-kcopycatparasitek/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-21-class083-kcopycatparasitek/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-21-class083-kcopycatparasitek/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-21-class083-kcopycatparasitek/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-21-class083-kcopycatparasitek/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "6",
-      "id": "concrete-wave0-batch-21-class083",
+      "id": "concrete-wave0-batch-v2-21-class083",
       "instance_id": "i-024a2073283e4336e",
       "ledger_certifies": true,
       "ledger_files": [
@@ -2385,8 +2385,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-21-class083-kcopycatparasitek.service",
-          "sha256": "b70ce4df8c2a57edf5ca98e1accd78c0e11d9026abf911c0c2d683fc3d825a1f"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-21-class083-kcopycatparasitek.service",
+          "sha256": "a6520ab65930906aa17f348880c486bf58b6cd3950da4143b95fde27c0234175"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-21-class083-kcopycatparasitek/kcopycatk.uftb",
@@ -2458,7 +2458,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -2470,23 +2470,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-21-class083-kcopycatparasitek.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-21-class083-kcopycatparasitek.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-22-class085-kcopycatqueenk/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-22-class085-kcopycatqueenk/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-22-class085-kcopycatqueenk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-22-class085-kcopycatqueenk/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-22-class085-kcopycatqueenk/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-22-class085-kcopycatqueenk/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-22-class085-kcopycatqueenk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-22-class085-kcopycatqueenk/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "4",
-      "id": "concrete-wave0-batch-22-class085",
+      "id": "concrete-wave0-batch-v2-22-class085",
       "instance_id": "i-08c0f44a1776cb34a",
       "ledger_certifies": true,
       "ledger_files": [
@@ -2504,8 +2504,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-22-class085-kcopycatqueenk.service",
-          "sha256": "3e50485816494f9551f4fa8074666bbc74a4948ff8fb5c8bcd89c328e76ac2ba"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-22-class085-kcopycatqueenk.service",
+          "sha256": "d4c21740303949873557f5f9b4dcded857ec1708827f263b4a2620e42a1f53f2"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-22-class085-kcopycatqueenk/kcopycatk.uftb",
@@ -2577,7 +2577,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -2589,23 +2589,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-22-class085-kcopycatqueenk.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-22-class085-kcopycatqueenk.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-23-class086-kcopycatrookk/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-23-class086-kcopycatrookk/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-23-class086-kcopycatrookk/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-23-class086-kcopycatrookk/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-23-class086-kcopycatrookk/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-23-class086-kcopycatrookk/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-23-class086-kcopycatrookk/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-23-class086-kcopycatrookk/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "5",
-      "id": "concrete-wave0-batch-23-class086",
+      "id": "concrete-wave0-batch-v2-23-class086",
       "instance_id": "i-08c0f44a1776cb34a",
       "ledger_certifies": true,
       "ledger_files": [
@@ -2623,8 +2623,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-23-class086-kcopycatrookk.service",
-          "sha256": "e22fb9c24adaa3134d22537c0d0fa66349de144d50ea61a6f8806d4e769db683"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-23-class086-kcopycatrookk.service",
+          "sha256": "9ebdfa56b03a2494fdc1ef2c4e2432f62e8dcdda583db2b52a92ee83256a1611"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-23-class086-kcopycatrookk/kcopycatk.uftb",
@@ -2696,7 +2696,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -2708,23 +2708,23 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-23-class086-kcopycatrookk.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-23-class086-kcopycatrookk.service"
     },
     {
       "checkpoint_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-24-class088-kcopycatturtlek/scratch/*",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-24-class088-kcopycatturtlek/logs/*"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-24-class088-kcopycatturtlek/scratch/*",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-24-class088-kcopycatturtlek/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-24-class088-kcopycatturtlek/certificates/wave-certificate.json",
-        "/mnt/ultimatefish/concrete-wave0-batch/batch-24-class088-kcopycatturtlek/s3-verify/wave-certificate.json"
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-24-class088-kcopycatturtlek/certificates/wave-certificate.json",
+        "/mnt/ultimatefish/concrete-wave0-batch/batch-v2-24-class088-kcopycatturtlek/s3-verify/wave-certificate.json"
       ],
       "dependencies": [],
       "expected_allowed_cpus": "6",
-      "id": "concrete-wave0-batch-24-class088",
+      "id": "concrete-wave0-batch-v2-24-class088",
       "instance_id": "i-08c0f44a1776cb34a",
       "ledger_certifies": true,
       "ledger_files": [
@@ -2742,8 +2742,8 @@
       "source_bindings": [],
       "staging_source_bindings": [
         {
-          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-24-class088-kcopycatturtlek.service",
-          "sha256": "da30fb31c582992069d08076ced264f52b33268b5ba0d46a9495b5b6b89802a5"
+          "path": "/etc/systemd/system/ultimatefish-concrete-wave0-batch-v2-24-class088-kcopycatturtlek.service",
+          "sha256": "0f1a53ffa95095f95a6714a2fcbcfb9f3637b25df7cde531eb3de7193338329f"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/dependencies/batch-24-class088-kcopycatturtlek/kcopycatk.uftb",
@@ -2811,7 +2811,7 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_concrete_wave0_batch.json",
-          "sha256": "68e7fac203f45b02875cfb36964e08347379e18c8e1ac8324967455e159a9cba"
+          "sha256": "970534a753447a8ce8fcf87c2395cffa60a40e00e1738a8613d2cb48923cf846"
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimate_information_tablebases.py",
@@ -2823,10 +2823,10 @@
         },
         {
           "path": "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish/tools/ultimatefish-concrete-wave0-batch.service.template",
-          "sha256": "268433076526f59cd38091cc3b1db525253f638ecc6d74c7b2b8df3f96c70cd3"
+          "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "unit": "ultimatefish-concrete-wave0-batch-24-class088-kcopycatturtlek.service"
+      "unit": "ultimatefish-concrete-wave0-batch-v2-24-class088-kcopycatturtlek.service"
     }
   ],
   "never_delete": true,
@@ -2837,30 +2837,30 @@
   "retained_placeholder_updates": [
     {
       "dependencies": [
-        "concrete-wave0-batch-01-class059",
-        "concrete-wave0-batch-02-class032",
-        "concrete-wave0-batch-03-class056",
-        "concrete-wave0-batch-04-class057",
-        "concrete-wave0-batch-05-class060",
-        "concrete-wave0-batch-06-class062",
-        "concrete-wave0-batch-07-class063",
-        "concrete-wave0-batch-08-class066",
-        "concrete-wave0-batch-09-class068",
-        "concrete-wave0-batch-10-class069",
-        "concrete-wave0-batch-11-class071",
-        "concrete-wave0-batch-12-class072",
-        "concrete-wave0-batch-13-class073",
-        "concrete-wave0-batch-14-class074",
-        "concrete-wave0-batch-15-class075",
-        "concrete-wave0-batch-16-class076",
-        "concrete-wave0-batch-17-class078",
-        "concrete-wave0-batch-18-class079",
-        "concrete-wave0-batch-19-class081",
-        "concrete-wave0-batch-20-class082",
-        "concrete-wave0-batch-21-class083",
-        "concrete-wave0-batch-22-class085",
-        "concrete-wave0-batch-23-class086",
-        "concrete-wave0-batch-24-class088"
+        "concrete-wave0-batch-v2-01-class059",
+        "concrete-wave0-batch-v2-02-class032",
+        "concrete-wave0-batch-v2-03-class056",
+        "concrete-wave0-batch-v2-04-class057",
+        "concrete-wave0-batch-v2-05-class060",
+        "concrete-wave0-batch-v2-06-class062",
+        "concrete-wave0-batch-v2-07-class063",
+        "concrete-wave0-batch-v2-08-class066",
+        "concrete-wave0-batch-v2-09-class068",
+        "concrete-wave0-batch-v2-10-class069",
+        "concrete-wave0-batch-v2-11-class071",
+        "concrete-wave0-batch-v2-12-class072",
+        "concrete-wave0-batch-v2-13-class073",
+        "concrete-wave0-batch-v2-14-class074",
+        "concrete-wave0-batch-v2-15-class075",
+        "concrete-wave0-batch-v2-16-class076",
+        "concrete-wave0-batch-v2-17-class078",
+        "concrete-wave0-batch-v2-18-class079",
+        "concrete-wave0-batch-v2-19-class081",
+        "concrete-wave0-batch-v2-20-class082",
+        "concrete-wave0-batch-v2-21-class083",
+        "concrete-wave0-batch-v2-22-class085",
+        "concrete-wave0-batch-v2-23-class086",
+        "concrete-wave0-batch-v2-24-class088"
       ],
       "id": "concrete-wave1",
       "queue_stage": true
