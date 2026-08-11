@@ -192,6 +192,43 @@ class SupervisionTests(unittest.TestCase):
                             for call in command.call_args_list[1:]))
         self.assertGreaterEqual(sleep.call_count, 2)
 
+    @mock.patch.object(SUPERVISOR.time, "sleep")
+    @mock.patch.object(SUPERVISOR, "run")
+    def test_ssm_probe_polls_every_nonterminal_status(
+            self, command: mock.Mock, sleep: mock.Mock) -> None:
+        command.side_effect = [
+            json.dumps({"Command": {"CommandId": "cmd-1"}}),
+            json.dumps({"Status": "Pending"}),
+            json.dumps({"Status": "InProgress"}),
+            json.dumps({"Status": "Delayed"}),
+            json.dumps({
+                "Status": "Success",
+                "StandardOutputContent": (
+                    'ULTIMATE_SUPERVISION_JSON={"memory":{},'
+                    '"mounts":[],"jobs":[]}'),
+            }),
+        ]
+        observed = SUPERVISOR.ssm_probe(
+            "us-west-2", "i-0123456789abcdef0", "read-only probe")
+        self.assertEqual({"memory": {}, "mounts": [], "jobs": []}, observed)
+        self.assertEqual(3, sleep.call_count)
+
+    @mock.patch.object(SUPERVISOR.time, "monotonic",
+                       side_effect=[0, 46])
+    @mock.patch.object(SUPERVISOR, "run")
+    def test_ssm_probe_reports_bounded_host_deadline(
+            self, command: mock.Mock, monotonic: mock.Mock) -> None:
+        command.side_effect = [
+            json.dumps({"Command": {"CommandId": "cmd-1"}}),
+            RuntimeError("command timed out after 15s: aws ssm get-command-invocation"),
+        ]
+        with self.assertRaisesRegex(
+                RuntimeError,
+                "SSM probe deadline exceeded.*i-0123456789abcdef0.*45s"):
+            SUPERVISOR.ssm_probe(
+                "us-west-2", "i-0123456789abcdef0", "read-only probe")
+        self.assertEqual(2, monotonic.call_count)
+
     def test_large_checkpoint_glob_has_bounded_valid_remote_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

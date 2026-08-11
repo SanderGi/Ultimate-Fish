@@ -55,8 +55,9 @@ DIAGNOSTIC_JOB_MAX_BYTES = 8_192
 # endpoint is unhealthy.  Bound one host probe so the five-minute LaunchAgent
 # never serializes behind an unbounded transport retry.
 SSM_SEND_TIMEOUT_SECONDS = 30
-SSM_GET_TIMEOUT_SECONDS = 5
-SSM_PROBE_DEADLINE_SECONDS = 20
+SSM_GET_TIMEOUT_SECONDS = 15
+SSM_PROBE_DEADLINE_SECONDS = 45
+SSM_POLL_BACKOFF_MAX_SECONDS = 5
 TERMINAL_OK = {"CERTIFIED"}
 TERMINAL_BAD = {"FAILED", "SOURCE_MISMATCH", "RESOURCE_LIMIT"}
 UNIT = re.compile(r"[A-Za-z0-9_.@-]+\.service")
@@ -565,18 +566,22 @@ def ssm_probe(region: str, instance_id: str, command: str) -> dict[str, Any]:
                 "aws", "ssm", "get-command-invocation", "--region", region,
                 "--command-id", command_id, "--instance-id", instance_id,
                 "--output", "json"], timeout=SSM_GET_TIMEOUT_SECONDS))
-        except (RuntimeError, subprocess.TimeoutExpired):
+        except (RuntimeError, subprocess.TimeoutExpired) as error:
             if time.monotonic() >= deadline:
-                raise
+                raise RuntimeError(
+                    f"SSM probe deadline exceeded on {instance_id} after "
+                    f"{SSM_PROBE_DEADLINE_SECONDS}s: {error}") from None
             time.sleep(min(backoff, max(0, deadline - time.monotonic())))
-            backoff = min(backoff * 2, 4)
+            backoff = min(backoff * 2, SSM_POLL_BACKOFF_MAX_SECONDS)
             continue
         status = response.get("Status")
         if status in {"Pending", "InProgress", "Delayed"}:
             if time.monotonic() >= deadline:
-                raise RuntimeError(f"SSM probe timed out on {instance_id}")
+                raise RuntimeError(
+                    f"SSM probe deadline exceeded on {instance_id} after "
+                    f"{SSM_PROBE_DEADLINE_SECONDS}s while {status}")
             time.sleep(min(backoff, max(0, deadline - time.monotonic())))
-            backoff = min(backoff * 2, 4)
+            backoff = min(backoff * 2, SSM_POLL_BACKOFF_MAX_SECONDS)
             continue
         if status != "Success":
             raise RuntimeError(
