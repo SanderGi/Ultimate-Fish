@@ -1,0 +1,47 @@
+[Unit]
+Description=Ultimate Fish concrete wave-0 batch class @CLASS_INDEX@ (@CLASS_FILENAME@)
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=@SOURCE_ROOT@/tools/run_ultimate_concrete_tablebase_shard_aws.py
+ConditionPathExists=@DEPENDENCY_MANIFEST@
+
+[Service]
+Type=oneshot
+WorkingDirectory=@SOURCE_ROOT@
+Environment=PYTHONDONTWRITEBYTECODE=1
+Environment=ULTIMATE_BATCH_MODEL_SHA256=@MODEL_SHA256@
+Environment=ULTIMATE_BATCH_INVENTORY_SHA256=@INVENTORY_SHA256@
+Environment=ULTIMATE_BATCH_CANONICAL_COMMIT=@CANONICAL_COMMIT@
+Environment=ULTIMATE_BATCH_CLASS_INDEX=@CLASS_INDEX@
+Environment=ULTIMATE_BATCH_CLASS_FILENAME=@CLASS_FILENAME@
+ExecStart=/usr/bin/python3 tools/run_ultimate_concrete_tablebase_shard_aws.py \
+  --work-directory @WORK_DIRECTORY@ \
+  --dependencies @DEPENDENCY_ROOT@ \
+  --dependency-manifest @DEPENDENCY_MANIFEST@ \
+  --wave 0 --range-begin @CLASS_INDEX@ --range-end @CLASS_INDEX_END@ \
+  --full --aws-execution-ack EC2 \
+  --scratch-limit @SCRATCH_LIMIT@ --resident-limit @RESIDENT_LIMIT@ \
+  --reverse-edge-bytes-limit @REVERSE_EDGE_LIMIT@ \
+  --minimum-free-bytes @MINIMUM_FREE@ --monitor-interval 5 \
+  --s3-prefix @S3_PREFIX@
+Nice=10
+IOSchedulingClass=idle
+IOSchedulingPriority=7
+CPUQuota=100%
+MemoryMax=@RESIDENT_LIMIT@
+OOMPolicy=stop
+TasksMax=32
+LimitNOFILE=65536
+Restart=no
+TimeoutStartSec=infinity
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+ReadOnlyPaths=@SOURCE_ROOT@ @DEPENDENCY_ROOT@
+ReadWritePaths=@WORK_DIRECTORY@
+StandardOutput=append:@WORK_DIRECTORY@/service.log
+StandardError=append:@WORK_DIRECTORY@/service.log
