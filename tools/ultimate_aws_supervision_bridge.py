@@ -290,12 +290,24 @@ def consume(*, health: Path, events: Path, cursor: Path,
     cursor_value = load_object(cursor) if cursor.exists() else {
         "schema": SCHEMA, "consumed": [], "stale_health_epoch": None}
     consumed = set(str(item) for item in cursor_value.get("consumed", []))
-    for event_path in sorted(events.glob("*.json")) if events.exists() else []:
-        if event_path.name in consumed:
-            continue
-        event = load_object(event_path)
-        consumed.add(event_path.name)
+    pending = [
+        event_path for event_path in events.glob("*.json")
+        if event_path.name not in consumed
+    ] if events.exists() else []
+    if pending:
+        # Event filenames are content digests, not timestamps.  Replaying a
+        # lexical digest backlog can therefore apply an old fleet snapshot
+        # after a newer one and regress the canonical ledger.  Fleet reports
+        # are full snapshots, so coalesce a backlog to the most recently
+        # spooled file and acknowledge the older snapshots atomically.
+        newest = max(
+            pending,
+            key=lambda event_path: (event_path.stat().st_mtime_ns,
+                                    event_path.name))
+        event = load_object(newest)
+        consumed.update(event_path.name for event_path in pending)
         cursor_value["consumed"] = sorted(consumed)
+        cursor_value["last_event_mtime_ns"] = newest.stat().st_mtime_ns
         atomic_json(cursor, cursor_value)
         return event
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import importlib.util
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -68,6 +69,33 @@ class BridgeTests(unittest.TestCase):
             health=self.health, events=self.events, cursor=self.cursor,
             now=self.now))
         self.assertEqual(1, len(list(self.events.glob("*.json"))))
+
+    def test_event_backlog_coalesces_to_newest_spooled_snapshot(self) -> None:
+        self.events.mkdir()
+        BRIDGE.atomic_json(self.health, {
+            "schema": BRIDGE.SCHEMA,
+            "observed_epoch": self.now.timestamp(),
+        })
+        older = self.events / ("f" * 64 + ".json")
+        newer = self.events / ("0" * 64 + ".json")
+        BRIDGE.atomic_json(older, {
+            "status": "CHANGE", "report": {"observed_at": "older"}})
+        BRIDGE.atomic_json(newer, {
+            "status": "CHANGE", "report": {"observed_at": "newer"}})
+        os.utime(older, ns=(1_000_000_000, 1_000_000_000))
+        os.utime(newer, ns=(2_000_000_000, 2_000_000_000))
+
+        event = BRIDGE.consume(
+            health=self.health, events=self.events, cursor=self.cursor,
+            now=self.now)
+
+        self.assertEqual("newer", event["report"]["observed_at"])
+        cursor = json.loads(self.cursor.read_text())
+        self.assertEqual({older.name, newer.name}, set(cursor["consumed"]))
+        self.assertEqual(2_000_000_000, cursor["last_event_mtime_ns"])
+        self.assertIsNone(BRIDGE.consume(
+            health=self.health, events=self.events, cursor=self.cursor,
+            now=self.now))
 
     @mock.patch.object(BRIDGE, "run_supervisor")
     def test_certified_ready_job_auto_advances_through_exact_gate(
