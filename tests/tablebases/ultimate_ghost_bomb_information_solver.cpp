@@ -133,6 +133,9 @@ int main(int argc, char** argv) {
                                   std::string(argv[1]) == "--opposing-only";
         const bool exactSelfTestOnly = argc == 2 &&
           std::string(argv[1]) == "--exact-self-test-only";
+        const bool hasLowerBomb =
+          std::filesystem::exists("tablebases/kbombk.uftb") ||
+          std::filesystem::exists("../tablebases/kbombk.uftb");
         if (!sanitizerSmoke && !opposingOnly)
             Exact::exact_self_test(base);
         if (exactSelfTestOnly) {
@@ -146,19 +149,23 @@ int main(int argc, char** argv) {
             estimate.peakScratchBytes <= estimate.estimatedTransitionBytes ||
             Exact::SolveOptions{}.compactEvery != 1)
             throw std::runtime_error("Bomb resource preflight residual");
-        if (!opposingOnly)
-            shard_test(base + "-same", Exact::Orientation::Same);
-        if (!sameOnly)
-            shard_test(base + "-opposing", Exact::Orientation::Opposing);
-        if (!opposingOnly)
-            explosion_test(base + "-same-explosion",
-                           Exact::Orientation::Same, false);
-        if (!sameOnly) {
-            explosion_test(base + "-opposing-explosion",
-                           Exact::Orientation::Opposing, false);
-            explosion_test(base + "-opposing-draw",
-                           Exact::Orientation::Opposing, true);
+        if (hasLowerBomb) {
+            if (!opposingOnly)
+                shard_test(base + "-same", Exact::Orientation::Same);
+            if (!sameOnly)
+                shard_test(base + "-opposing", Exact::Orientation::Opposing);
+            if (!opposingOnly)
+                explosion_test(base + "-same-explosion",
+                               Exact::Orientation::Same, false);
+            if (!sameOnly) {
+                explosion_test(base + "-opposing-explosion",
+                               Exact::Orientation::Opposing, false);
+                explosion_test(base + "-opposing-draw",
+                               Exact::Orientation::Opposing, true);
+            }
         }
+        else
+            std::cout << "SKIP S3-canonical kbombk.uftb transition fixture\n";
 
         const std::string malformed = base + ".ufgb";
         {
