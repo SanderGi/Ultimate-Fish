@@ -168,6 +168,30 @@ class SupervisionTests(unittest.TestCase):
                 ["aws", "ssm", "send-command", "secret-payload"])
         self.assertNotIn("secret-payload", str(caught.exception))
 
+    @mock.patch.object(SUPERVISOR.time, "sleep")
+    @mock.patch.object(SUPERVISOR, "run")
+    def test_ssm_probe_has_bounded_retry_backoff(
+            self, command: mock.Mock, sleep: mock.Mock) -> None:
+        command_id = {"Command": {"CommandId": "cmd-1"}}
+        result = {
+            "Status": "Success",
+            "StandardOutputContent": (
+                'ULTIMATE_SUPERVISION_JSON={"memory":{},"mounts":[],"jobs":[]}'),
+        }
+        command.side_effect = [json.dumps(command_id),
+                               RuntimeError("command timed out"),
+                               RuntimeError("command timed out"),
+                               json.dumps(result)]
+        observed = SUPERVISOR.ssm_probe("us-west-2", "i-0123456789abcdef0",
+                                        "read-only probe")
+        self.assertEqual({"memory": {}, "mounts": [], "jobs": []}, observed)
+        self.assertEqual(SUPERVISOR.SSM_SEND_TIMEOUT_SECONDS,
+                         command.call_args_list[0].kwargs["timeout"])
+        self.assertTrue(all(call.kwargs["timeout"] ==
+                            SUPERVISOR.SSM_GET_TIMEOUT_SECONDS
+                            for call in command.call_args_list[1:]))
+        self.assertGreaterEqual(sleep.call_count, 2)
+
     def test_large_checkpoint_glob_has_bounded_valid_remote_output(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

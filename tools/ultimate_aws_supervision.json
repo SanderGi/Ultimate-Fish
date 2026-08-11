@@ -3,7 +3,7 @@
   "region": "us-west-2",
   "budget_usd": 5000,
   "budget_warning_fraction": 0.9,
-  "probe_workers": 2,
+  "probe_workers": 1,
   "regular_report_seconds": 7200,
   "target_measured_utilization_fraction": 0.7,
   "underutilized_fraction": 0.5,

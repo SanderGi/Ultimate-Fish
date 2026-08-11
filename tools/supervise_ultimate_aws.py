@@ -51,6 +51,12 @@ REMOTE_REQUEST_BUDGET = 97_000
 # is returned.  Keep the aggregate per-job cap below the SSM output margin.
 DIAGNOSTIC_SOURCE_MAX_BYTES = 4_096
 DIAGNOSTIC_JOB_MAX_BYTES = 8_192
+# SSM can leave a Run Command invocation pending for minutes when an agent or
+# endpoint is unhealthy.  Bound one host probe so the five-minute LaunchAgent
+# never serializes behind an unbounded transport retry.
+SSM_SEND_TIMEOUT_SECONDS = 30
+SSM_GET_TIMEOUT_SECONDS = 5
+SSM_PROBE_DEADLINE_SECONDS = 20
 TERMINAL_OK = {"CERTIFIED"}
 TERMINAL_BAD = {"FAILED", "SOURCE_MISMATCH", "RESOURCE_LIMIT"}
 UNIT = re.compile(r"[A-Za-z0-9_.@-]+\.service")
@@ -548,26 +554,29 @@ def ssm_probe(region: str, instance_id: str, command: str) -> dict[str, Any]:
         "--document-name", "AWS-RunShellScript",
         "--parameters", json.dumps({"commands": [command]}),
         "--comment", "Ultimate Fish read-only supervision",
-        "--timeout-seconds", "45", "--output", "json",
-    ])
+        "--timeout-seconds", str(SSM_SEND_TIMEOUT_SECONDS), "--output", "json",
+    ], timeout=SSM_SEND_TIMEOUT_SECONDS)
     command_id = json.loads(request)["Command"]["CommandId"]
-    deadline = time.monotonic() + 45
+    deadline = time.monotonic() + SSM_PROBE_DEADLINE_SECONDS
+    backoff = 1
     while True:
         try:
             response = json.loads(run([
                 "aws", "ssm", "get-command-invocation", "--region", region,
                 "--command-id", command_id, "--instance-id", instance_id,
-                "--output", "json"], timeout=10))
+                "--output", "json"], timeout=SSM_GET_TIMEOUT_SECONDS))
         except (RuntimeError, subprocess.TimeoutExpired):
             if time.monotonic() >= deadline:
                 raise
-            time.sleep(1)
+            time.sleep(min(backoff, max(0, deadline - time.monotonic())))
+            backoff = min(backoff * 2, 4)
             continue
         status = response.get("Status")
         if status in {"Pending", "InProgress", "Delayed"}:
             if time.monotonic() >= deadline:
                 raise RuntimeError(f"SSM probe timed out on {instance_id}")
-            time.sleep(1)
+            time.sleep(min(backoff, max(0, deadline - time.monotonic())))
+            backoff = min(backoff * 2, 4)
             continue
         if status != "Success":
             raise RuntimeError(
