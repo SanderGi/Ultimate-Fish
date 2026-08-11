@@ -14,6 +14,8 @@ Environment=ULTIMATE_BATCH_INVENTORY_SHA256=@INVENTORY_SHA256@
 Environment=ULTIMATE_BATCH_CANONICAL_COMMIT=@CANONICAL_COMMIT@
 Environment=ULTIMATE_BATCH_CLASS_INDEX=@CLASS_INDEX@
 Environment=ULTIMATE_BATCH_CLASS_FILENAME=@CLASS_FILENAME@
+Environment=ULTIMATE_BATCH_INSTANCE_ID=@INSTANCE_ID@
+Environment=ULTIMATE_BATCH_HOST_NAME=@HOST_NAME@
 ExecStart=/usr/bin/python3 tools/run_ultimate_concrete_tablebase_shard_aws.py \
   --work-directory @WORK_DIRECTORY@ \
   --dependencies @DEPENDENCY_ROOT@ \
@@ -28,6 +30,7 @@ Nice=10
 IOSchedulingClass=idle
 IOSchedulingPriority=7
 CPUQuota=100%
+AllowedCPUs=@EXPECTED_ALLOWED_CPUS@
 MemoryMax=@RESIDENT_LIMIT@
 OOMPolicy=stop
 TasksMax=32

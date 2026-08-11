@@ -19,11 +19,11 @@ import run_ultimate_concrete_tablebase_shard_aws as runner  # noqa: E402
 
 class ConcreteWave0BatchTest(unittest.TestCase):
     def test_manifest_is_deterministic_and_fail_closed(self) -> None:
-        document = batch.build_document(10)
+        document = batch.build_document(24)
         units = document["units"]
         self.assertEqual(document["schema"], batch.SCHEMA)
         self.assertEqual(document["status"], "plan-only-not-uploaded-not-installed-not-launched")
-        self.assertEqual(len(units), 10)
+        self.assertEqual(len(units), 24)
         self.assertTrue(document["no_remote_side_effects"])
         self.assertTrue(document["never_delete"])
         self.assertTrue(document["launch_ready"])
@@ -31,6 +31,17 @@ class ConcreteWave0BatchTest(unittest.TestCase):
         self.assertEqual(len({unit["unit"] for unit in units}), len(units))
         self.assertEqual(
             len({unit["work_directory"] for unit in units}), len(units))
+        hosts = {host["instance_id"]: host
+                 for host in document["configured_hosts"]}
+        self.assertEqual(set(hosts), set(batch.HOST_SPECS))
+        for instance_id, spec in batch.HOST_SPECS.items():
+            self.assertEqual(hosts[instance_id]["name"], spec["name"])
+            self.assertEqual(hosts[instance_id]["capacity_class"], spec["capacity_class"])
+            self.assertEqual(hosts[instance_id]["memory_capacity_bytes"],
+                             spec["memory_capacity_bytes"])
+            self.assertEqual(hosts[instance_id]["cpu_pool"], list(spec["cpu_pool"]))
+        self.assertTrue(document["scheduler_policy"]["simultaneous_launch_forbidden"])
+        cpu_by_host = {}
 
         inventory = runner.wave_inventory(0)
         rows = {str(row["filename"]): (index, row)
@@ -61,6 +72,21 @@ class ConcreteWave0BatchTest(unittest.TestCase):
             resources = unit["resource_requirements"]
             self.assertEqual(resources["cpu_count"], 1)
             self.assertEqual(resources["cpu_quota_percent"], 100)
+            self.assertEqual(resources["cpu_threads"], 1)
+            self.assertEqual(resources["memory_peak_bytes"],
+                             resources["resident_limit_bytes"])
+            self.assertRegex(unit["expected_allowed_cpus"], r"^[0-9]+$")
+            self.assertIn(int(unit["expected_allowed_cpus"]),
+                          batch.HOST_SPECS[unit["instance_id"]]["cpu_pool"])
+            self.assertIn(unit["work_mount"],
+                          batch.HOST_SPECS[unit["instance_id"]]["mount_rotation"])
+            self.assertTrue(unit["work_directory"].startswith(unit["work_mount"] + "/"))
+            cpu_by_host.setdefault(unit["instance_id"], []).append(
+                unit["expected_allowed_cpus"])
+            self.assertEqual(unit["work_mount"], next(iter(resources["disk_peak_bytes"])))
+            self.assertEqual(
+                resources["disk_peak_bytes"][unit["work_mount"]],
+                resources["scratch_limit_bytes"] + 5 * resources["packed_bytes"])
             self.assertGreaterEqual(
                 resources["scratch_limit_bytes"],
                 resources["static_scratch_floor_bytes"] +
@@ -70,16 +96,25 @@ class ConcreteWave0BatchTest(unittest.TestCase):
             self.assertGreaterEqual(resources["resident_limit_bytes"], 16 * batch.GIB)
             self.assertGreaterEqual(resources["reverse_edge_bytes_limit"], 16 * batch.GIB)
             self.assertGreaterEqual(resources["scratch_limit_bytes"], 20 * batch.GIB)
-            self.assertGreaterEqual(resources["minimum_free_bytes"], 320 * batch.GIB)
+            self.assertGreater(resources["minimum_free_bytes"], 0)
 
             service = unit["service_text"]
             self.assertNotIn("@", service)
             self.assertIn(f"--range-begin {index}", service)
             self.assertIn(f"--range-end {index + 1}", service)
             self.assertIn("--full --aws-execution-ack EC2", service)
+            self.assertIn(f"AllowedCPUs={unit['expected_allowed_cpus']}", service)
             self.assertNotIn("systemctl", service)
             self.assertNotIn("aws ", service)
             self.assertNotIn("ssh ", service)
+
+        self.assertEqual(
+            {host: len(cpus) for host, cpus in cpu_by_host.items()},
+            {"i-03c81f90d2c59a2e7": 8, "i-0b4523116b2f7765c": 7,
+             "i-0986ed3d272721f02": 3, "i-024a2073283e4336e": 3,
+             "i-08c0f44a1776cb34a": 3})
+        for cpus in cpu_by_host.values():
+            self.assertEqual(len(cpus), len(set(cpus)))
 
         self.assertEqual(document["all_dependencies"], sorted({
             dependency for unit in units for dependency in unit["dependencies"]

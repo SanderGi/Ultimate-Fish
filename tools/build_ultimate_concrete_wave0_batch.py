@@ -31,6 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / "tools"
 TEMPLATE = TOOLS / "ultimatefish-concrete-wave0-batch.service.template"
 MANIFEST = TOOLS / "ultimate_concrete_wave0_batch.json"
+SUPERVISION_CONFIG = TOOLS / "ultimate_aws_supervision.json"
 sys.path.insert(0, str(TOOLS))
 
 import run_ultimate_concrete_tablebase_shard_aws as runner  # noqa: E402
@@ -41,16 +42,55 @@ SCHEMA = "ultimate-concrete-wave0-batch-plan-v1"
 SELECTION_POLICY = "planned-smallest-packed-bytes-filename-index-v1"
 CERTIFIED_DEPENDENCY_STATUSES = frozenset({"certified", "preserving"})
 MAX_CLASSES = 30
-DEFAULT_CLASSES = 10
+DEFAULT_CLASSES = 24
 GIB = 1 << 30
-MINIMUM_FREE_BYTES = 320 * GIB
 UNIT_PREFIX = "ultimatefish-concrete-wave0-batch"
-WORK_ROOT = "/mnt/ultimatefish/concrete-wave0-batch"
 SOURCE_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish"
 DEPENDENCY_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/dependencies"
 S3_PREFIX = (
     "s3://ultimatefish-info-20260808-a4e679c6-831688117652/"
     "results/concrete/penguin-causal-1083b6f8"
+)
+
+# These are the five configured hosts.  Their names, mounts, vCPU counts, and
+# disk gates are authenticated against the committed supervision document;
+# capacity class and CPU pools are the deterministic scheduler policy for this
+# batch (not an instruction to launch every unit concurrently).
+HOST_SPECS = {
+    "i-03c81f90d2c59a2e7": {
+        "name": "hidden-primary", "capacity_class": "r8gd",
+        "memory_capacity_bytes": 256 * GIB, "cpu_pool": tuple(range(8, 16)),
+        "assignment_count": 8, "mount_rotation": ("/mnt/ultimatefish",),
+    },
+    "i-0b4523116b2f7765c": {
+        "name": "concrete-primary", "capacity_class": "r8gd",
+        "memory_capacity_bytes": 256 * GIB, "cpu_pool": tuple(range(8, 15)),
+        "assignment_count": 7,
+        "mount_rotation": (
+            "/mnt/ultimatefish-resume", "/mnt/ultimatefish",
+            "/mnt/ultimatefish-overflow",
+        ),
+    },
+    "i-0986ed3d272721f02": {
+        "name": "giant-ghost-same", "capacity_class": "c8gd",
+        "memory_capacity_bytes": 64 * GIB, "cpu_pool": (4, 5, 6),
+        "assignment_count": 3, "mount_rotation": ("/mnt/ultimatefish",),
+    },
+    "i-024a2073283e4336e": {
+        "name": "giant-ghost-opposing", "capacity_class": "c8gd",
+        "memory_capacity_bytes": 64 * GIB, "cpu_pool": (4, 5, 6),
+        "assignment_count": 3, "mount_rotation": ("/mnt/ultimatefish",),
+    },
+    "i-08c0f44a1776cb34a": {
+        "name": "crossed-and-jester-ghost", "capacity_class": "c8gd",
+        "memory_capacity_bytes": 64 * GIB, "cpu_pool": (4, 5, 6),
+        "assignment_count": 3, "mount_rotation": ("/mnt/ultimatefish",),
+    },
+}
+HOST_ASSIGNMENT_ORDER = (
+    "i-03c81f90d2c59a2e7", "i-0b4523116b2f7765c",
+    "i-0986ed3d272721f02", "i-024a2073283e4336e",
+    "i-08c0f44a1776cb34a",
 )
 
 
@@ -84,6 +124,7 @@ def require_committed_sources() -> str:
     paths = tuple(runner.MODEL_SOURCES) + (
         Path(__file__).relative_to(ROOT).as_posix(),
         TEMPLATE.relative_to(ROOT).as_posix(),
+        SUPERVISION_CONFIG.relative_to(ROOT).as_posix(),
     )
     try:
         tracked = subprocess.run(
@@ -109,6 +150,61 @@ def committed_ledger_text() -> str:
     return result.stdout.decode("utf-8")
 
 
+def committed_supervision_document() -> dict[str, object]:
+    try:
+        result = subprocess.run(
+            ["git", "show", f"HEAD:{SUPERVISION_CONFIG.relative_to(ROOT)}"],
+            cwd=ROOT, check=True, capture_output=True)
+    except (OSError, subprocess.CalledProcessError) as exc:
+        raise RuntimeError("cannot read committed AWS supervision config") from exc
+    try:
+        document = json.loads(result.stdout.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise RuntimeError("committed AWS supervision config is malformed") from exc
+    if not isinstance(document, dict):
+        raise RuntimeError("committed AWS supervision config must be an object")
+    return document
+
+
+def configured_hosts() -> dict[str, dict[str, object]]:
+    """Authenticate the five host records used by deterministic assignment."""
+    document = committed_supervision_document()
+    configured = {
+        str(item.get("instance_id")): item
+        for item in document.get("instances", [])
+        if isinstance(item, dict) and item.get("instance_id")
+    }
+    if set(configured) != set(HOST_SPECS):
+        raise RuntimeError("configured host inventory does not match five-host batch")
+    result: dict[str, dict[str, object]] = {}
+    for instance_id, spec in HOST_SPECS.items():
+        item = configured[instance_id]
+        if item.get("name") != spec["name"] or int(item.get("vcpus", 0)) != 32:
+            raise RuntimeError(f"configured host identity residual: {instance_id}")
+        mounts = tuple(str(mount) for mount in item.get("mounts", ()))
+        for mount in spec["mount_rotation"]:
+            if mount not in mounts:
+                raise RuntimeError(
+                    f"configured host lacks required mount {mount}: {instance_id}")
+        minimum_disk = item.get("minimum_disk_free_bytes")
+        if not isinstance(minimum_disk, dict):
+            raise RuntimeError(f"configured host disk gates missing: {instance_id}")
+        if len(spec["cpu_pool"]) < int(spec["assignment_count"]):
+            raise RuntimeError(f"host CPU pool cannot assign unique units: {instance_id}")
+        result[instance_id] = {
+            **spec,
+            "configured_name": str(item["name"]),
+            "vcpus": int(item["vcpus"]),
+            "mounts": mounts,
+            "minimum_memory_available_bytes": int(
+                item.get("minimum_memory_available_bytes", 0)),
+            "minimum_disk_free_bytes": {
+                str(mount): int(value) for mount, value in minimum_disk.items()
+            },
+        }
+    return result
+
+
 def ledger_by_filename() -> dict[str, ledger.Entry]:
     entries = ledger.entries(committed_ledger_text())
     return {entry.filename: entry for entry in entries if entry.filename}
@@ -118,6 +214,7 @@ def source_hashes() -> dict[str, str]:
     paths = tuple(runner.MODEL_SOURCES) + (Path(__file__).relative_to(ROOT).as_posix(),)
     if TEMPLATE.exists():
         paths += (TEMPLATE.relative_to(ROOT).as_posix(),)
+    paths += (SUPERVISION_CONFIG.relative_to(ROOT).as_posix(),)
     result: dict[str, str] = {}
     for relative in paths:
         path = ROOT / relative
@@ -132,7 +229,8 @@ def _safe_atom(value: str, *, label: str) -> None:
         raise RuntimeError(f"unsafe {label}: {value!r}")
 
 
-def resource_policy(record: Mapping[str, object]) -> dict[str, int]:
+def resource_policy(record: Mapping[str, object], host: Mapping[str, object],
+                    work_mount: str) -> dict[str, object]:
     states = int(record["states"])
     packed = int(record["packed_bytes"])
     # Keep the estimate coupled to the production runner instead of silently
@@ -146,9 +244,16 @@ def resource_policy(record: Mapping[str, object]) -> dict[str, int]:
     reverse_limit = max(16 * GIB, static_floor)
     scratch_limit = max(20 * GIB, static_floor + reverse_limit)
     resident_limit = max(16 * GIB, 2 * resident_floor)
+    minimum_disk = host.get("minimum_disk_free_bytes")
+    if not isinstance(minimum_disk, Mapping) or work_mount not in minimum_disk:
+        raise RuntimeError("assigned work mount lacks a committed disk gate")
+    disk_peak = scratch_limit + 5 * packed
     return {
         "cpu_count": 1,
         "cpu_quota_percent": 100,
+        "cpu_threads": 1,
+        "memory_peak_bytes": resident_limit,
+        "disk_peak_bytes": {work_mount: disk_peak},
         "states": states,
         "packed_bytes": packed,
         "static_scratch_floor_bytes": static_floor,
@@ -156,7 +261,7 @@ def resource_policy(record: Mapping[str, object]) -> dict[str, int]:
         "scratch_limit_bytes": scratch_limit,
         "resident_limit_bytes": resident_limit,
         "reverse_edge_bytes_limit": reverse_limit,
-        "minimum_free_bytes": MINIMUM_FREE_BYTES,
+        "minimum_free_bytes": int(minimum_disk[work_mount]),
     }
 
 
@@ -216,6 +321,37 @@ def _selected_rows(count: int) -> list[tuple[int, dict[str, object]]]:
     return eligible[:count]
 
 
+def assignment_slots(count: int, hosts: Mapping[str, Mapping[str, object]]) -> list[dict[str, object]]:
+    """Return deterministic host/mount/CPU slots for the selected units."""
+    if count != sum(int(HOST_SPECS[instance]["assignment_count"])
+                   for instance in HOST_ASSIGNMENT_ORDER):
+        raise RuntimeError("batch count must cover the configured assignment plan")
+    slots: list[dict[str, object]] = []
+    for instance_id in HOST_ASSIGNMENT_ORDER:
+        host = hosts[instance_id]
+        count_for_host = int(host["assignment_count"])
+        cpu_pool = tuple(int(cpu) for cpu in host["cpu_pool"])
+        mounts = tuple(str(mount) for mount in host["mount_rotation"])
+        for local_index in range(count_for_host):
+            if local_index >= len(cpu_pool):
+                raise RuntimeError(f"host CPU assignment is not unique: {instance_id}")
+            slots.append({
+                "instance_id": instance_id,
+                "host_name": str(host["name"]),
+                "capacity_class": str(host["capacity_class"]),
+                "memory_capacity_bytes": int(host["memory_capacity_bytes"]),
+                "local_index": local_index,
+                "expected_allowed_cpus": str(cpu_pool[local_index]),
+                "work_mount": mounts[local_index % len(mounts)],
+                "queue_priority": (
+                    0 if host["capacity_class"] == "r8gd" else 1),
+                "host_assignment_count": count_for_host,
+            })
+    if len(slots) != count:
+        raise RuntimeError("host assignment cardinality residual")
+    return slots
+
+
 def render_service(substitutions: Mapping[str, str]) -> str:
     template = TEMPLATE.read_text()
     rendered = template
@@ -229,7 +365,9 @@ def render_service(substitutions: Mapping[str, str]) -> str:
 def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
     commit = require_committed_sources()
     by_filename = ledger_by_filename()
+    hosts = configured_hosts()
     selected = _selected_rows(count)
+    slots = assignment_slots(count, hosts)
     model = runner.generator_model_sha256()
     inventory = runner.inventory_sha256()
     template_sha = sha256_path(TEMPLATE)
@@ -239,11 +377,12 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
     seen_work: set[str] = set()
     all_dependencies: set[str] = set()
     launch_blockers: list[dict[str, object]] = []
-    for ordinal, (index, row) in enumerate(selected, start=1):
+    for ordinal, ((index, row), slot) in enumerate(zip(selected, slots), start=1):
         filename = str(row["filename"])
         stem = Path(filename).stem
         unit_name = f"{UNIT_PREFIX}-{ordinal:02d}-class{index:03d}-{stem}.service"
-        work = f"{WORK_ROOT}/batch-{ordinal:02d}-class{index:03d}-{stem}"
+        work_mount = str(slot["work_mount"])
+        work = f"{work_mount}/concrete-wave0-batch/batch-{ordinal:02d}-class{index:03d}-{stem}"
         _safe_atom(unit_name.removesuffix(".service"), label="unit")
         _safe_atom(stem, label="class stem")
         if unit_name in seen_units or work in seen_work:
@@ -261,7 +400,7 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
             })
         resource_row = dict(row)
         resource_row["_batch_inventory_index"] = index
-        resources = resource_policy(resource_row)
+        resources = resource_policy(resource_row, hosts[str(slot["instance_id"])], work_mount)
         substitutions = {
             "UNIT": unit_name,
             "CLASS_INDEX": str(index),
@@ -279,6 +418,10 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
             "DEPENDENCY_ROOT": DEPENDENCY_ROOT,
             "DEPENDENCY_MANIFEST": f"{DEPENDENCY_ROOT}/manifest.json",
             "S3_PREFIX": S3_PREFIX,
+            "HOST_NAME": str(slot["host_name"]),
+            "INSTANCE_ID": str(slot["instance_id"]),
+            "EXPECTED_ALLOWED_CPUS": str(slot["expected_allowed_cpus"]),
+            "WORK_MOUNT": work_mount,
             "SCRATCH_LIMIT": str(resources["scratch_limit_bytes"]),
             "RESIDENT_LIMIT": str(resources["resident_limit_bytes"]),
             "REVERSE_EDGE_LIMIT": str(resources["reverse_edge_bytes_limit"]),
@@ -292,6 +435,14 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
             "filename": filename,
             "record": runner.normalized_record(row),
             "unit": unit_name,
+            "instance_id": slot["instance_id"],
+            "host_name": slot["host_name"],
+            "capacity_class": slot["capacity_class"],
+            "memory_capacity_bytes": slot["memory_capacity_bytes"],
+            "expected_allowed_cpus": slot["expected_allowed_cpus"],
+            "work_mount": work_mount,
+            "queue_priority": slot["queue_priority"],
+            "scheduler_state": "queued-supervisor-selects-safe-subset",
             "work_directory": work,
             "source_root": SOURCE_ROOT,
             "dependency_root": DEPENDENCY_ROOT,
@@ -318,6 +469,26 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
         "service_template": str(TEMPLATE.relative_to(ROOT)),
         "service_template_sha256": template_sha,
         "s3_prefix": S3_PREFIX,
+        "configured_hosts": [
+            {
+                "instance_id": instance_id,
+                "name": host["name"],
+                "capacity_class": host["capacity_class"],
+                "memory_capacity_bytes": host["memory_capacity_bytes"],
+                "vcpus": host["vcpus"],
+                "mounts": host["mounts"],
+                "cpu_pool": list(host["cpu_pool"]),
+                "assignment_count": host["assignment_count"],
+            }
+            for instance_id in HOST_ASSIGNMENT_ORDER
+            for host in (hosts[instance_id],)
+        ],
+        "scheduler_policy": {
+            "state": "queued-supervisor-selects-measured-safe-subset",
+            "simultaneous_launch_forbidden": True,
+            "priority": "r8gd-before-c8gd",
+            "assignment_order": list(HOST_ASSIGNMENT_ORDER),
+        },
         "required_dependency_statuses": sorted(CERTIFIED_DEPENDENCY_STATUSES),
         "all_dependencies": sorted(all_dependencies),
         "all_dependency_count": len(all_dependencies),
