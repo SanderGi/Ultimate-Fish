@@ -97,6 +97,29 @@ class BridgeTests(unittest.TestCase):
             health=self.health, events=self.events, cursor=self.cursor,
             now=self.now))
 
+    def test_reconciliation_failure_does_not_acknowledge_event(self) -> None:
+        self.events.mkdir()
+        BRIDGE.atomic_json(self.health, {
+            "schema": BRIDGE.SCHEMA,
+            "observed_epoch": self.now.timestamp(),
+        })
+        event_path = self.events / ("a" * 64 + ".json")
+        BRIDGE.atomic_json(event_path, {
+            "status": "CHANGE", "report": {"jobs": {}}})
+        with mock.patch.object(
+                BRIDGE, "reconcile_ledger",
+                side_effect=RuntimeError("ledger validation failed")):
+            with self.assertRaisesRegex(RuntimeError, "ledger validation failed"):
+                BRIDGE.consume_reconciled(
+                    health=self.health, events=self.events, cursor=self.cursor,
+                    stale_seconds=900, repo=self.root, commit=True,
+                    python=Path("/python"))
+        self.assertFalse(self.cursor.exists())
+        self.assertEqual(
+            "CHANGE", BRIDGE.consume(
+                health=self.health, events=self.events, cursor=self.cursor,
+                now=self.now)["status"])
+
     @mock.patch.object(BRIDGE, "run_supervisor")
     def test_certified_ready_job_auto_advances_through_exact_gate(
             self, run: mock.Mock) -> None:
@@ -201,6 +224,71 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual({"kabk.uftb": "computing"}, result["updates"])
         self.assertEqual(2, command.call_count)
         self.assertIn("kabk.uftb=computing", command.call_args_list[0].args[0])
+
+    @mock.patch.object(BRIDGE.subprocess, "run")
+    def test_superseded_failure_cannot_override_current_generation(
+            self, command: mock.Mock) -> None:
+        repo = self.root / "repo"
+        tablebases = repo / "tablebases"
+        tablebases.mkdir(parents=True)
+        tools = repo / "tools"
+        tools.mkdir()
+        (tablebases / "README.md").write_text(
+            "| `same:a+b` | A | same | `kabk.uftb` | **BLOCKED** | 1 | concrete | — | — | — | — |\n")
+        BRIDGE.atomic_json(tools / "ultimate_aws_supervision.json", {
+            "jobs": [
+                {"id": "old", "superseded_by": "new"},
+                {"id": "new"},
+            ]})
+        event = {"report": {"jobs": {
+            "old": {"status": "SOURCE_MISMATCH",
+                    "ledger_files": ["kabk.uftb"]},
+            "new": {"status": "RUNNING",
+                    "ledger_files": ["kabk.uftb"]},
+        }}}
+
+        result = BRIDGE.reconcile_ledger(
+            repo, event, commit=False, python=Path("/python"))
+
+        self.assertEqual({"kabk.uftb": "computing"}, result["updates"])
+        self.assertIn("kabk.uftb=computing", command.call_args_list[0].args[0])
+
+    @mock.patch.object(BRIDGE.subprocess, "run")
+    def test_current_ready_replacement_clears_blocked_status(
+            self, command: mock.Mock) -> None:
+        repo = self.root / "repo"
+        tablebases = repo / "tablebases"
+        tablebases.mkdir(parents=True)
+        (repo / "tools").mkdir()
+        (tablebases / "README.md").write_text(
+            "| `same:a+b` | A | same | `kabk.uftb` | **BLOCKED** | 1 | concrete | — | — | — | — |\n")
+        event = {"report": {"jobs": {"new": {
+            "status": "READY", "ledger_files": ["kabk.uftb"],
+        }}}}
+
+        result = BRIDGE.reconcile_ledger(
+            repo, event, commit=False, python=Path("/python"))
+
+        self.assertEqual({"kabk.uftb": "planned"}, result["updates"])
+
+    @mock.patch.object(BRIDGE.subprocess, "run")
+    def test_completed_uncertified_remains_hatched_until_import(
+            self, command: mock.Mock) -> None:
+        repo = self.root / "repo"
+        tablebases = repo / "tablebases"
+        tablebases.mkdir(parents=True)
+        (repo / "tools").mkdir()
+        (tablebases / "README.md").write_text(
+            "| `same:a+b` | A | same | `kabk.uftb` | **PLANNED** | 1 | concrete | — | — | — | — |\n")
+        event = {"report": {"jobs": {"new": {
+            "status": "COMPLETED_UNCERTIFIED",
+            "ledger_files": ["kabk.uftb"],
+        }}}}
+
+        result = BRIDGE.reconcile_ledger(
+            repo, event, commit=False, python=Path("/python"))
+
+        self.assertEqual({"kabk.uftb": "computing"}, result["updates"])
 
     def test_certification_requires_exact_result_import(self) -> None:
         repo = self.root / "repo"

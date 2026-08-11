@@ -169,6 +169,9 @@ def validate_config(config: dict[str, Any]) -> None:
         if job.get("advanceable") and not job.get("source_bindings"):
             raise RuntimeError(
                 f"{identifier} is advanceable but has no source binding")
+        if job.get("superseded_by") and job.get("advanceable"):
+            raise RuntimeError(
+                f"{identifier} is superseded but remains advanceable")
         for certificate in job.get("s3_certificates", []):
             validate_sha(certificate.get("sha256"),
                          f"{identifier} S3 certificate")
@@ -768,8 +771,11 @@ def probe_instance(config: dict[str, Any], definition: dict[str, Any],
     remote: dict[str, Any] = {}
     error: str | None = None
     queued = [job for job in jobs
-              if job.get("queue_stage") and not job.get("advanceable")]
-    probed = [job for job in jobs if job not in queued]
+              if job.get("queue_stage") and not job.get("advanceable") and
+              not job.get("superseded_by")]
+    superseded = [job for job in jobs if job.get("superseded_by")]
+    omitted = queued + superseded
+    probed = [job for job in jobs if job not in omitted]
     if state == "running":
         try:
             # Uninstalled queue records have no live state.  Sending their
@@ -880,8 +886,10 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         remote_jobs = {entry["id"]: entry for entry in
                        host.get("remote", {}).get("jobs", [])}
         remote = remote_jobs.get(identifier, {})
-        status = unit_status(remote.get("unit", {})) if remote else "UNKNOWN"
-        if remote and not source_exact(definition, remote):
+        superseded = bool(definition.get("superseded_by"))
+        status = ("SUPERSEDED" if superseded else
+                  unit_status(remote.get("unit", {})) if remote else "UNKNOWN")
+        if not superseded and remote and not source_exact(definition, remote):
             status = "SOURCE_MISMATCH"
         completion = all_paths_exist(remote.get("completion", []))
         previous_status = previous.get("report", {}).get("jobs", {}).get(
@@ -892,14 +900,16 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         # RUNNING job may therefore look like a clean inactive exit even though
         # its journal records failure.  Completion evidence may still certify
         # it below; without that evidence, fail closed and delegate diagnosis.
-        if (remote.get("unit", {}).get("LoadState") == "not-found" and
+        if (not superseded and
+                remote.get("unit", {}).get("LoadState") == "not-found" and
                 previous_status == "RUNNING" and not completion):
             status = "FAILED"
             remote["unit"]["SupervisionFailure"] = (
                 "transient unit disappeared after RUNNING without completion")
         certificates: list[dict[str, Any]] = []
         s3_only = bool(definition.get("s3_only_certified"))
-        if (completion or s3_only) and definition.get("s3_certificates"):
+        if (not superseded and (completion or s3_only) and
+                definition.get("s3_certificates")):
             previous_job = previous.get("report", {}).get("jobs", {}).get(
                 identifier, {})
             certificates = cached_certificates(definition, previous_job)
@@ -913,10 +923,10 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                             definition["s3_certificates"]))
                 except Exception as error:
                     errors.append({"job": identifier, "error": str(error)})
-        if ((completion or s3_only) and certificates and
+        if (not superseded and (completion or s3_only) and certificates and
                 all(item["exact"] for item in certificates)):
             status = "CERTIFIED"
-        elif completion and status == "INACTIVE":
+        elif not superseded and completion and status == "INACTIVE":
             status = "COMPLETED_UNCERTIFIED"
         jobs[identifier] = {
             "status": status, "unit": remote.get("unit", {}),

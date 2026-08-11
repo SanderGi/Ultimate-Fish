@@ -132,6 +132,10 @@ class SupervisionTests(unittest.TestCase):
             "other.uftb": {"result_kind": "concrete"}}
         with self.assertRaisesRegex(RuntimeError, "invalid ledger_results"):
             SUPERVISOR.validate_config(invalid)
+        invalid = config()
+        invalid["jobs"][1]["superseded_by"] = "replacement"
+        with self.assertRaisesRegex(RuntimeError, "superseded.*advanceable"):
+            SUPERVISOR.validate_config(invalid)
 
     def test_remote_probe_command_has_no_configured_shell_text(self) -> None:
         definition = config()["instances"][0]
@@ -404,6 +408,27 @@ class SupervisionTests(unittest.TestCase):
         self.assertEqual("third", queued["id"])
         self.assertEqual("not-found", queued["unit"]["LoadState"])
         self.assertEqual({}, result["cpu_allocation"]["active_jobs"])
+
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    @mock.patch.object(SUPERVISOR, "ec2_inventory")
+    def test_superseded_records_are_not_probed_or_reported_as_failures(
+            self, inventory: mock.Mock, probe: mock.Mock) -> None:
+        document = config()
+        retired = document["jobs"][0]
+        retired["superseded_by"] = "replacement"
+        inventory.return_value = self.ec2
+        observed = remote()
+        observed["jobs"] = observed["jobs"][1:]
+        probe.return_value = observed
+
+        output, state = SUPERVISOR.supervise(document, {}, self.now)
+
+        command = probe.call_args.args[0]
+        self.assertNotIn('"id":"first"', command)
+        self.assertEqual(
+            "SUPERSEDED", output["report"]["jobs"]["first"]["status"])
+        self.assertEqual("SUPERSEDED", state["report"]["jobs"]["first"]["status"])
+        self.assertFalse(output["delegate_sol"])
 
     @mock.patch.object(SUPERVISOR, "head_certificate")
     @mock.patch.object(SUPERVISOR, "local_probe")

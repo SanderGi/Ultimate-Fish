@@ -97,7 +97,7 @@ def ledger_statuses(path: Path) -> dict[str, str]:
 
 def reconcile_ledger(repo: Path, event: dict[str, Any], *, commit: bool,
                      python: Path) -> dict[str, Any]:
-    """Apply monotone material state transitions from one durable event."""
+    """Apply current-generation material state from one durable event."""
     readme = repo / "tablebases/README.md"
     plot = repo / "tablebases/ultimate-tablebase-grid.png"
     current = ledger_statuses(readme)
@@ -105,31 +105,56 @@ def reconcile_ledger(repo: Path, event: dict[str, Any], *, commit: bool,
     certified: dict[str, dict[str, str]] = {}
     pending: list[dict[str, str]] = []
     terminal = {"certified", "draw", "deferred"}
+    config_path = repo / "tools/ultimate_aws_supervision.json"
+    superseded: set[str] = set()
+    if config_path.exists():
+        configuration = load_object(config_path)
+        superseded = {
+            str(job.get("id")) for job in configuration.get("jobs", [])
+            if isinstance(job, dict) and job.get("superseded_by")
+        }
+    observations: dict[str, list[str]] = {}
     for job_id, job in event.get("report", {}).get("jobs", {}).items():
+        if str(job_id) in superseded or job.get("status") == "SUPERSEDED":
+            continue
         status = str(job.get("status", ""))
         for filename in job.get("ledger_files", []):
-            existing = current.get(str(filename))
+            filename = str(filename)
+            existing = current.get(filename)
             if existing is None or existing in terminal:
                 continue
-            if status == "RUNNING":
-                updates[str(filename)] = "computing"
-            elif status in {"FAILED", "SOURCE_MISMATCH", "RESOURCE_LIMIT"}:
-                updates[str(filename)] = "blocked"
-            elif status == "CERTIFIED" and job.get("ledger_certifies"):
+            observations.setdefault(filename, []).append(status)
+            if status == "CERTIFIED" and job.get("ledger_certifies"):
                 # A VersionId proves storage, not the per-side W/L/D and
                 # reachability cells.  Keep the current state until the exact
                 # result certificate is imported instead of exposing a stale
                 # pre-information result as current.
-                result = job.get("ledger_results", {}).get(str(filename))
+                result = job.get("ledger_results", {}).get(filename)
                 if isinstance(result, dict):
-                    certified[str(filename)] = {
+                    certified[filename] = {
                         name: str(result[name]) for name in (
                             "result_kind", "first", "second",
                             "reachability", "storage")
                     }
                 else:
                     pending.append({"job": str(job_id),
-                                    "filename": str(filename)})
+                                    "filename": filename})
+    # More than one monitored unit may name the same public result while an
+    # isolated replacement is staged.  Current useful work wins over a current
+    # failure; a successfully staged READY replacement clears the prior
+    # BLOCKED intervention state.  UNKNOWN never regresses the last known
+    # ledger state during a bounded host probe failure.
+    for filename, statuses in observations.items():
+        observed = set(statuses)
+        if filename in certified:
+            continue
+        if observed & {"RUNNING", "COMPLETED_UNCERTIFIED"}:
+            updates[filename] = "computing"
+        elif observed & {"FAILED", "SOURCE_MISMATCH", "RESOURCE_LIMIT"}:
+            updates[filename] = "blocked"
+        elif observed & {"READY", "INACTIVE", "AWAITING_STAGE"} and \
+                current.get(filename) == "blocked":
+            updates[filename] = "planned"
     updates = {filename: status for filename, status in updates.items()
                if current.get(filename) != status}
     certified = {filename: result for filename, result in certified.items()
@@ -284,9 +309,11 @@ def collect(*, python: Path, supervisor: Path, health: Path, events: Path,
     return health_value
 
 
-def consume(*, health: Path, events: Path, cursor: Path,
-            stale_seconds: int = 900,
-            now: dt.datetime | None = None) -> dict[str, Any] | None:
+def select_consumption(*, health: Path, events: Path, cursor: Path,
+                       stale_seconds: int = 900,
+                       now: dt.datetime | None = None
+                       ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Select one event and return its cursor update without committing it."""
     cursor_value = load_object(cursor) if cursor.exists() else {
         "schema": SCHEMA, "consumed": [], "stale_health_epoch": None}
     consumed = set(str(item) for item in cursor_value.get("consumed", []))
@@ -308,8 +335,7 @@ def consume(*, health: Path, events: Path, cursor: Path,
         consumed.update(event_path.name for event_path in pending)
         cursor_value["consumed"] = sorted(consumed)
         cursor_value["last_event_mtime_ns"] = newest.stat().st_mtime_ns
-        atomic_json(cursor, cursor_value)
-        return event
+        return event, cursor_value
 
     current = now or dt.datetime.now(dt.timezone.utc)
     health_value = load_object(health) if health.exists() else {}
@@ -318,15 +344,41 @@ def consume(*, health: Path, events: Path, cursor: Path,
         last_stale = cursor_value.get("stale_health_epoch")
         if last_stale != observed_epoch:
             cursor_value["stale_health_epoch"] = observed_epoch
-            atomic_json(cursor, cursor_value)
-            return {
+            return ({
                 "status": "HOST_COLLECTOR_STALE", "severity": "error",
                 "delegate_sol": True,
                 "error": ("host AWS collector health is missing or older than "
                           f"{stale_seconds} seconds; fleet state is unknown"),
                 "last_observed_epoch": observed_epoch,
-            }
-    return None
+            }, cursor_value)
+    return None, None
+
+
+def consume(*, health: Path, events: Path, cursor: Path,
+            stale_seconds: int = 900,
+            now: dt.datetime | None = None) -> dict[str, Any] | None:
+    event, cursor_value = select_consumption(
+        health=health, events=events, cursor=cursor,
+        stale_seconds=stale_seconds, now=now)
+    if cursor_value is not None:
+        atomic_json(cursor, cursor_value)
+    return event
+
+
+def consume_reconciled(*, health: Path, events: Path, cursor: Path,
+                       stale_seconds: int, repo: Path, commit: bool,
+                       python: Path) -> dict[str, Any] | None:
+    """Reconcile before acknowledging so a failed ledger gate is retryable."""
+    event, cursor_value = select_consumption(
+        health=health, events=events, cursor=cursor,
+        stale_seconds=stale_seconds)
+    if event is not None:
+        event = dict(event)
+        event["ledger"] = reconcile_ledger(
+            repo, event, commit=commit, python=python)
+    if cursor_value is not None:
+        atomic_json(cursor, cursor_value)
+    return event
 
 
 def main() -> int:
@@ -352,16 +404,18 @@ def main() -> int:
         if args.json:
             print(canonical_json(result))
         return 0
-    event = consume(
-        health=args.health.resolve(), events=args.events.resolve(),
-        cursor=args.cursor.resolve(), stale_seconds=args.stale_seconds)
     if args.commit_ledger and not args.reconcile_ledger:
         parser.error("--commit-ledger requires --reconcile-ledger")
-    if event is not None and args.reconcile_ledger:
-        event = dict(event)
-        event["ledger"] = reconcile_ledger(
-            args.ledger_repo.resolve(), event, commit=args.commit_ledger,
+    if args.reconcile_ledger:
+        event = consume_reconciled(
+            health=args.health.resolve(), events=args.events.resolve(),
+            cursor=args.cursor.resolve(), stale_seconds=args.stale_seconds,
+            repo=args.ledger_repo.resolve(), commit=args.commit_ledger,
             python=args.python.resolve())
+    else:
+        event = consume(
+            health=args.health.resolve(), events=args.events.resolve(),
+            cursor=args.cursor.resolve(), stale_seconds=args.stale_seconds)
     print(canonical_json(event) if event is not None else "NO_CHANGE")
     return 0
 
