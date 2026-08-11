@@ -87,11 +87,14 @@ class ConcreteWave0BatchTest(unittest.TestCase):
                 self.assertTrue(dependency["authenticated"])
 
             resources = unit["resource_requirements"]
-            self.assertEqual(resources["cpu_count"], 1)
-            self.assertEqual(resources["cpu_quota_percent"], 100)
+            runner_limits = unit["runner_limits"]
+            self.assertEqual(set(resources), {
+                "cpu_threads", "memory_peak_bytes", "disk_peak_bytes"})
+            self.assertEqual(runner_limits["cpu_count"], 1)
+            self.assertEqual(runner_limits["cpu_quota_percent"], 100)
             self.assertEqual(resources["cpu_threads"], 1)
             self.assertEqual(resources["memory_peak_bytes"],
-                             resources["resident_limit_bytes"])
+                             runner_limits["resident_limit_bytes"])
             self.assertRegex(unit["expected_allowed_cpus"], r"^[0-9]+$")
             self.assertIn(int(unit["expected_allowed_cpus"]),
                           batch.HOST_SPECS[unit["instance_id"]]["cpu_pool"])
@@ -103,17 +106,17 @@ class ConcreteWave0BatchTest(unittest.TestCase):
             self.assertEqual(unit["work_mount"], next(iter(resources["disk_peak_bytes"])))
             self.assertEqual(
                 resources["disk_peak_bytes"][unit["work_mount"]],
-                resources["scratch_limit_bytes"] + 5 * resources["packed_bytes"])
+                runner_limits["scratch_limit_bytes"] + 5 * runner_limits["packed_bytes"])
             self.assertGreaterEqual(
-                resources["scratch_limit_bytes"],
-                resources["static_scratch_floor_bytes"] +
-                resources["reverse_edge_bytes_limit"])
+                runner_limits["scratch_limit_bytes"],
+                runner_limits["static_scratch_floor_bytes"] +
+                runner_limits["reverse_edge_bytes_limit"])
             self.assertGreaterEqual(
-                resources["resident_limit_bytes"], resources["resident_floor_bytes"])
-            self.assertGreaterEqual(resources["resident_limit_bytes"], 16 * batch.GIB)
-            self.assertGreaterEqual(resources["reverse_edge_bytes_limit"], 16 * batch.GIB)
-            self.assertGreaterEqual(resources["scratch_limit_bytes"], 20 * batch.GIB)
-            self.assertGreater(resources["minimum_free_bytes"], 0)
+                runner_limits["resident_limit_bytes"], runner_limits["resident_floor_bytes"])
+            self.assertGreaterEqual(runner_limits["resident_limit_bytes"], 16 * batch.GIB)
+            self.assertGreaterEqual(runner_limits["reverse_edge_bytes_limit"], 16 * batch.GIB)
+            self.assertGreaterEqual(runner_limits["scratch_limit_bytes"], 20 * batch.GIB)
+            self.assertGreater(runner_limits["minimum_free_bytes"], 0)
 
             service = unit["service_text"]
             self.assertNotIn("@", service)
