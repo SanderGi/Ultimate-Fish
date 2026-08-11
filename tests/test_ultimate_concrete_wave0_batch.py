@@ -9,6 +9,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -20,6 +21,37 @@ import supervise_ultimate_aws as supervisor  # noqa: E402
 
 
 class ConcreteWave0BatchTest(unittest.TestCase):
+    def test_dependency_inventory_binds_full_extent_and_fails_closed(self) -> None:
+        inventory = batch.dependency_artifact_records()
+        self.assertEqual(10, len(inventory))
+        for name, record in inventory.items():
+            header = record["header"]
+            expected = (int(header["header_bytes"]) +
+                        int(header["payload_bytes"]))
+            self.assertEqual(expected, int(record["bytes"]))
+            self.assertEqual(expected, int(header["file_bytes"]))
+        document = batch.build_document(24)
+        packed_by_name = {
+            str(row["filename"]): int(row["packed_bytes"])
+            for row in runner.plan.inventory(0)
+        }
+        for unit in document["units"]:
+            for dependency in unit["dependency_records"]:
+                self.assertEqual(
+                    int(inventory[dependency["filename"]]["bytes"]),
+                    int(dependency["bytes"]))
+                self.assertGreater(
+                    int(dependency["bytes"]),
+                    packed_by_name[dependency["filename"]])
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "bad.json"
+            bad = json.loads(batch.DEPENDENCY_ARTIFACTS.read_text())
+            bad["files"][0]["header"]["file_bytes"] -= 1
+            path.write_text(json.dumps(bad))
+            with mock.patch.object(batch, "DEPENDENCY_ARTIFACTS", path):
+                with self.assertRaisesRegex(RuntimeError, "header/extent"):
+                    batch.dependency_artifact_records()
+
     def test_manifest_is_deterministic_and_fail_closed(self) -> None:
         document = batch.build_document(24)
         units = document["units"]
@@ -27,10 +59,11 @@ class ConcreteWave0BatchTest(unittest.TestCase):
         self.assertEqual(document["status"], "plan-only-not-uploaded-not-installed-not-launched")
         self.assertEqual(len(units), 24)
         self.assertTrue(all(
-            unit["unit"].startswith("ultimatefish-concrete-wave0-batch-v2-")
+            unit["unit"].startswith(
+                f"ultimatefish-concrete-wave0-batch-{batch.BATCH_VERSION}-")
             for unit in units))
         self.assertTrue(all(
-            "batch-v2-" in unit["work_directory"]
+            f"batch-{batch.BATCH_VERSION}-" in unit["work_directory"]
             for unit in units))
         self.assertTrue(document["no_remote_side_effects"])
         self.assertTrue(document["never_delete"])
@@ -73,6 +106,10 @@ class ConcreteWave0BatchTest(unittest.TestCase):
         cpu_by_host = {}
 
         inventory = runner.wave_inventory(0)
+        packed_by_name = {
+            str(row["filename"]): int(row["packed_bytes"])
+            for row in runner.plan.inventory(0)
+        }
         rows = {str(row["filename"]): (index, row)
                 for index, row in enumerate(inventory)}
         selected_indices = []
@@ -97,6 +134,8 @@ class ConcreteWave0BatchTest(unittest.TestCase):
             for dependency in unit["dependency_records"]:
                 self.assertRegex(dependency["sha256"], r"^[0-9a-f]{64}$")
                 self.assertTrue(dependency["authenticated"])
+                self.assertGreater(int(dependency["bytes"]),
+                                   packed_by_name[dependency["filename"]])
 
             resources = unit["resource_requirements"]
             runner_limits = unit["runner_limits"]
@@ -250,7 +289,8 @@ class ConcreteWave0BatchTest(unittest.TestCase):
         jobs = {job["id"]: job for job in merged["jobs"]}
         self.assertNotIn("concrete-wave0-remaining", jobs)
         queued = [job for job in jobs.values()
-                  if job["id"].startswith("concrete-wave0-batch-v2-")]
+                  if job["id"].startswith(
+                      f"concrete-wave0-batch-{batch.BATCH_VERSION}-")]
         self.assertEqual(24, len(queued))
         self.assertTrue(all(job["queue_stage"] for job in queued))
         self.assertTrue(all(not job["source_bindings"] for job in queued))
@@ -259,12 +299,13 @@ class ConcreteWave0BatchTest(unittest.TestCase):
                             for job in queued))
         legacy = [job for job in jobs.values()
                   if job["id"].startswith("concrete-wave0-batch-")
-                  and not job["id"].startswith("concrete-wave0-batch-v2-")]
-        self.assertEqual(24, len(legacy))
+                  and not job["id"].startswith(
+                      f"concrete-wave0-batch-{batch.BATCH_VERSION}-")]
+        self.assertEqual(48, len(legacy))
         self.assertTrue(all(job.get("queue_stage") and
                             not job.get("advanceable") and
                             job.get("superseded_by") ==
-                            "versioned-concrete-wave0-batch-v2"
+                            f"versioned-concrete-wave0-batch-{batch.BATCH_VERSION}"
                             for job in legacy))
         supervisor.validate_config(merged)
 
