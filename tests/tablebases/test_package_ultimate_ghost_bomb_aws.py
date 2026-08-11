@@ -84,6 +84,20 @@ class BombGhostResumeUnitTests(unittest.TestCase):
             finally:
                 runner.RESUME_PREFIXES["kbombghostk.uftb"] = previous
 
+    def test_resume_prefixes_match_preserved_merged_artifact_names(self):
+        self.assertEqual(
+            runner.RESUME_PREFIXES["kbombghostk.uftb"].name,
+            "kbombghostk")
+        self.assertEqual(
+            stage.ROWS["kbombghostk.uftb"]["source_prefix"].name,
+            "kbombghostk")
+        self.assertEqual(
+            runner.RESUME_PREFIXES["kbombkghost.uftb"].name,
+            "kbombkghost")
+        self.assertEqual(
+            stage.ROWS["kbombkghost.uftb"]["source_prefix"].name,
+            "kbombkghost")
+
     def test_measure_rewrites_only_the_transition_prefix(self):
         command = ["solver", "--measure", "1", "--transition-prefix",
                    "work/transitions/kbombghost", "--output", "result"]

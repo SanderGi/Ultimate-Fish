@@ -14,7 +14,7 @@ import run_ultimate_reciprocal_bishop_ghost_aws as shared
 RESUME_PREFIXES = {
     "kbombghostk.uftb": Path(
         "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v2/"
-        "work/transitions/kbombghost"),
+        "work/transitions/kbombghostk"),
     "kbombkghost.uftb": Path(
         "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v2/"
         "work/transitions/kbombkghost"),

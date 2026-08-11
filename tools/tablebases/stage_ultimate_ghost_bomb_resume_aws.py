@@ -21,7 +21,7 @@ ROWS = {
         "orientation": "same",
         "source_prefix": Path(
             "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v2/"
-            "work/transitions/kbombghost"),
+            "work/transitions/kbombghostk"),
         "destination": Path(
             "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3"),
         "unit": "ultimatefish-hidden-kbombghostk-resume-v3.service",
