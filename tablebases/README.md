@@ -46,7 +46,7 @@ generated exclusively from the canonical ledger below by
 `python3 tools/tablebases/plot_ultimate_tablebases.py`.
 
 <!-- COMPUTATION_LEDGER_START -->
-Ledger totals: **15 certified**, **186 preserving**, **3 computing**, **34 exact draws**, **195 planned**, **44 blocked**, and **147 deferred**; 624 unique material classes.
+Ledger totals: **15 certified**, **186 preserving**, **3 computing**, **34 exact draws**, **193 planned**, **46 blocked**, and **147 deferred**; 624 unique material classes.
 
 | Key | Class | Domain | File | Status | Indexed states | Result domain | First starts W / L / D | Second starts W / L / D | Reachable / unreachable (first; second) | Canonical storage |
 | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | --- |
@@ -224,7 +224,7 @@ Ledger totals: **15 certified**, **186 preserving**, **3 computing**, **34 exact
 | `same:bomb+bomb` | King+2 Bombs vs King | same | `kbombbombk.uftb` | **PRESERVING** | 18,978,960 | concrete | 6,651,352 (2,838,050) / 0 (78) / 0 | 0 (804,804) / 8,582,770 (70,112) / 31,794 | 6,651,352 / 2,838,128; 8,614,564 / 874,916 | S3 preservation pending |
 | `same:bomb+ninja` | King+Bomb+Ninja vs King | same | `kbombninjak.uftb` | **PRESERVING** | 37,957,920 | concrete | 12,012,790 (6,966,170) / 0 / 0 | 0 (1,609,608) / 17,219,704 (67,760) / 81,888 | 12,012,790 / 6,966,170; 17,301,592 / 1,677,368 | S3 preservation pending |
 | `same:bomb+turtle` | King+Bomb+Turtle vs King | same | `kbombturtlek.uftb` | **PRESERVING** | 37,957,920 | concrete | 14,512,116 (4,466,844) / 0 / 0 | 0 (1,609,608) / 17,269,840 (67,760) / 31,752 | 14,512,116 / 4,466,844; 17,301,592 / 1,677,368 | S3 preservation pending |
-| `same:bomb+ghost` | King+Bomb+Ghost vs King | same | `kbombghostk.uftb` | **PLANNED** | 75,915,840 | information required | — | — | — | — |
+| `same:bomb+ghost` | King+Bomb+Ghost vs King | same | `kbombghostk.uftb` | **BLOCKED** | 75,915,840 | information required | — | — | — | — |
 | `same:bomb+mage` | King+Bomb+Mage vs King | same | `kbombmagek.uftb` | **PRESERVING** | 37,957,920 | concrete | 15,215,852 (3,763,108) / 0 / 0 | 0 (1,609,608) / 17,271,480 (67,760) / 30,112 | 15,215,852 / 3,763,108; 17,301,592 / 1,677,368 | S3 preservation pending |
 | `same:bomb+penguin` | King+Bomb+Penguin vs King | same | `kbombpenguink.uftb` | **PRESERVING** | 303,663,360 | concrete | 17,706,778 (5,565,108) / 7,182 (918) / 53,716 (14,624,218) | 27,840 (1,799,520) / 19,930,438 (71,756) / 1,608,118 (14,520,248) | 17,767,676 / 20,190,244; 21,566,396 / 16,391,524 | S3 preservation pending |
 | `same:bomb+parasite` | King+Bomb+Parasite vs King | same | `kbombparasitek.uftb` | **PRESERVING** | 37,957,920 | concrete | 13,901,148 (5,077,812) / 0 / 0 | 0 (1,609,608) / 17,263,608 (67,760) / 37,984 | 13,901,148 / 5,077,812; 17,301,592 / 1,677,368 | S3 preservation pending |
@@ -578,7 +578,7 @@ Ledger totals: **15 certified**, **186 preserving**, **3 computing**, **34 exact
 | `opposed:ghost+sniper` | King+Ghost vs King+Sniper | opposed | `kghostksniper.uftb` | **PLANNED** | 303,663,360 | concrete | — | — | — | — |
 | `opposed:ghost+prince` | King+Ghost vs King+Prince | opposed | `kghostkprince.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `opposed:ghost+checker` | King+Ghost vs King+Checker | opposed | `kghostkchecker.uftb` | **PLANNED** | 303,663,360 | concrete | — | — | — | concrete S3 `6166644c…` / `g2ZfdZC3PS4PAyhGElYcMa0TKWDoa4AZ`; information pending |
-| `opposed:ghost+giant` | King+Ghost vs King+Giant | opposed | `kghostkgiant.uftb` | **PLANNED** | 75,915,840 | information required | — | — | — | — |
+| `opposed:ghost+giant` | King+Ghost vs King+Giant | opposed | `kghostkgiant.uftb` | **BLOCKED** | 75,915,840 | information required | — | — | — | — |
 | `opposed:ghost+copycat` | King+Ghost vs King+Copycat | opposed | `kcopycatkghost.uftb` | **BLOCKED** | 151,831,680 | concrete | — | — | — | — |
 | `opposed:ghost+angel` | King+Ghost vs King+Angel | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `opposed:ghost+fisherman` | King+Ghost vs King+Fisherman | opposed | `kghostkfisherman.uftb` | **PLANNED** | 75,915,840 | information required | — | — | — | — |
