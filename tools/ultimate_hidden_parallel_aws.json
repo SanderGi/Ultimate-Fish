@@ -11,7 +11,7 @@
       "bundle_sha256": "e8d335c603fb66e79c1a96ffcc12965a831463b7600b58df6a456bf29e49a22b",
       "bundle_version_id": "J.lmPtL4NjFtDluHx0JSotztzyhIv_qQ",
       "unit": "tools/ultimatefish-hidden-kbombghostk-7af5dec2.service",
-      "runner_sha256": "61e69736ceb7393afe30f36c2fa40dc265ee9c7ab1b8e9ca77fe32a7bd34ad4e"
+      "runner_sha256": "f392a79fe0fe6be4bfd42daa771399af3c11d8e633978d5f9b670a4c07d6d079"
     },
     {
       "id": "bomb-ghost-opposing-measure",
@@ -20,8 +20,8 @@
       "bundle_key": "bundles/hidden/commit/7af5dec2/sha256/9d8e7fd4f64ce9c100a9fe1fca2ab751ae20c0b1d5cd002eda1973b5010789cc/ultimate-kbombkghost.tar",
       "bundle_sha256": "9d8e7fd4f64ce9c100a9fe1fca2ab751ae20c0b1d5cd002eda1973b5010789cc",
       "bundle_version_id": "T01gW_bCVZv6g1HzgwhiLkyvbBvFraAo",
-      "unit": "tools/ultimatefish-hidden-kbombkghost-7af5dec2.service",
-      "runner_sha256": "61e69736ceb7393afe30f36c2fa40dc265ee9c7ab1b8e9ca77fe32a7bd34ad4e"
+      "unit": "tools/ultimatefish-hidden-kbombkghost-solvefix-v2.service",
+      "runner_sha256": "f392a79fe0fe6be4bfd42daa771399af3c11d8e633978d5f9b670a4c07d6d079"
     },
     {
       "id": "parasite-ghost-same-measure",

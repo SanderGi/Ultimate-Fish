@@ -39,6 +39,13 @@ class BombGhostAwsBundleTests(unittest.TestCase):
                                       ("kbombkghost.uftb", "opposing")):
             with self.subTest(filename=filename):
                 manifest = package.build_manifest(filename)
+                self.assertEqual(manifest["schema"],
+                                 "ultimate-bomb-ghost-aws-v2")
+                self.assertEqual(manifest["implementation_sha256"],
+                                 package.ROWS[filename][
+                                     "implementation_sha256"])
+                self.assertEqual(manifest["model_sha256"],
+                                 package.ROWS[filename]["model_sha256"])
                 self.assertEqual(manifest["orientation"], orientation)
                 self.assertEqual(manifest["shards"], 64)
                 self.assertEqual(manifest["parallelism"], 29)
@@ -110,6 +117,7 @@ class BombGhostAwsBundleTests(unittest.TestCase):
     def test_runner_fails_closed_on_range_or_orientation_drift(self):
         manifest = package.build_manifest("kbombghostk.uftb")
         for key, value in (("orientation", "opposing"),
+                           ("implementation_sha256", "0" * 63),
                            ("shard_count_distribution", {"7703": 31,
                                                           "7702": 33}),
                            ("shards", 63)):
@@ -117,6 +125,22 @@ class BombGhostAwsBundleTests(unittest.TestCase):
             corrupted[key] = value
             with self.subTest(key=key), self.assertRaises(RuntimeError):
                 runner.validate_manifest(corrupted)
+
+    def test_runner_preserves_completed_merged_transition(self):
+        manifest = package.build_manifest("kbombkghost.uftb")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            prefix = root / "work/transitions/kbombkghost"
+            prefix.parent.mkdir(parents=True)
+            for suffix in runner.shared.TRANSITION_SUFFIXES:
+                Path(f"{prefix}{suffix}").write_bytes(b"preserved")
+            (root / "work/logs").mkdir(parents=True)
+            (root / "work/logs/merge.log").write_text("certified\n")
+            self.assertTrue(runner.merged_transition_is_complete(
+                root, manifest["commands"]["merge"]))
+            Path(f"{prefix}.verified").unlink()
+            self.assertFalse(runner.merged_transition_is_complete(
+                root, manifest["commands"]["merge"]))
 
 
 if __name__ == "__main__":

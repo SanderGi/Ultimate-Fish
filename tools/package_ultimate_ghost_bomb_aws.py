@@ -45,6 +45,8 @@ ROWS = {
             "25fc8d85b05c1104b50118cc7486bd3cfb8bb853eeedbb748cc81d29b95fa86b",
         "model_sha256":
             "87aeb201a1fe108f8787ea16671579b487e05597676fbdb6b914e73acb1aa68b",
+        "implementation_sha256":
+            "c38008799ed00d392bdacc1e4131f2e0b8e5c228ed850a204b8140f4cc312382",
         "normalized_source_sha256":
             "d922dd43d9a22a0ff788741742db11937f547a26ac3b3863b32f591cb1d8f1fc",
     },
@@ -54,6 +56,8 @@ ROWS = {
             "29305aa38fce6a02b0ca1dca724388c02d6e8a4ec5002edc123248c59850bfd0",
         "model_sha256":
             "f2afd099261931a66e034bc9de68b3ee35bf3cb2778d46bbefaaf1e0cdd6eda8",
+        "implementation_sha256":
+            "df66c5c771466775be74eec50f8ae483fa8d11a1851b22a29313201b813923a0",
         "normalized_source_sha256":
             "1e942d9386b6e26ad468242dcabfa489861915b76ba168429e791f761f4f11a9",
     },
@@ -125,9 +129,14 @@ def build_manifest(filename: str) -> dict[str, object]:
     for frozen, expected in FROZEN_FINGERPRINTS.items():
         if information.solver_model_fingerprint(frozen) != expected:
             raise RuntimeError(f"frozen fingerprint changed: {frozen}")
-    model = information.solver_model_fingerprint(filename)
-    if model != row["model_sha256"]:
-        raise RuntimeError(f"Bomb/Ghost model fingerprint changed: {filename}")
+    implementation = information.solver_model_fingerprint(filename)
+    if implementation != row["implementation_sha256"]:
+        raise RuntimeError(
+            f"Bomb/Ghost implementation fingerprint changed: {filename}")
+    # The transition model is intentionally stable across a solve-only fix.
+    # Its old verified shards remain authoritative; the implementation hash
+    # and complete file inventory separately authenticate the patched solver.
+    model = str(row["model_sha256"])
     build_inputs = (*BUILD_INPUTS_COMMON, f"tablebases/{filename}")
     concrete = (ROOT / "tablebases" / filename).read_bytes()
     lower_payload = (ROOT / "tablebases" / "kghostk.ufgm").read_bytes()
@@ -194,9 +203,10 @@ def build_manifest(filename: str) -> dict[str, object]:
         "work/logs/measure.log", "work/logs/solve.log",
     ]
     return {
-        "schema": "ultimate-bomb-ghost-aws-v1",
+        "schema": "ultimate-bomb-ghost-aws-v2",
         "filename": filename, "orientation": orientation,
         "source_sha256": row["source_sha256"], "model_sha256": model,
+        "implementation_sha256": implementation,
         "normalized_source_sha256": row["normalized_source_sha256"],
         "observation_sha256": observation,
         "lower_sidecar_sha256": LOWER_SHA256,

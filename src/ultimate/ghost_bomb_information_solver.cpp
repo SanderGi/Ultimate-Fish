@@ -287,6 +287,75 @@ void validate_unique_node_tuples(const NodeDisk* nodes,
     return {orientation == Orientation::Same ? Color::White : Color::Black};
 }
 
+// The frozen same-side K+extra+Ghost fixture assumes Black is the informed
+// observer.  For the opposing Bomb row Black owns the Ghost, so its legal-dot
+// preview is private to Black and must not be requested through White's
+// disclosure context.  Exercise that ownership boundary without loading any
+// tablebase so the cheap exact self-test fails before an expensive AWS solve.
+void opposing_private_dot_fixture_self_test() {
+    const MaterialSpec material = normalized_material(Orientation::Opposing);
+    const DisclosureContext observer{material.observer(), false};
+    const PublicExtraGeometry raw{
+      static_cast<std::uint8_t>(Color::Black), 0, 79, 78, 0};
+    std::uint64_t privateDotQueries = 0;
+    std::uint64_t lowerEdges = 0;
+    for (std::uint8_t ghost = 0; ghost < Squares; ++ghost) {
+        if (ghost == raw.whiteKing || ghost == raw.blackKing ||
+            ghost == raw.bishop)
+            continue;
+        Position position = make_geometry_position(raw, ghost, material);
+        if (position.game_over())
+            continue;
+        std::string decision;
+        if (position.side_to_move() == observer.observer) {
+            decision = decision_observation_key(position, observer);
+            ++privateDotQueries;
+        }
+        for (const Move& move : position.legal_moves()) {
+            if (move.from != raw.blackKing || move.to != raw.bishop)
+                continue;
+            Position child = position;
+            Undo undo;
+            if (!child.make_move(move, undo))
+                throw std::runtime_error(
+                  "Bomb opposing private-dot fixture move failed");
+            const ClassifiedChild classified = classify_child(child,
+                                                               material);
+            if (classified.domain != ChildDomain::LowerGhost)
+                throw std::runtime_error(
+                  "Bomb opposing private-dot fixture escaped KGhost");
+            (void)decision;
+            ++lowerEdges;
+        }
+    }
+    if (privateDotQueries || lowerEdges)
+        throw std::runtime_error(
+          "Bomb opposing private-dot fixture ownership residual");
+    std::cout << "ghost_bomb_opposing_private_dot_fixture lower_edges "
+              << lowerEdges
+              << " private_dot_queries 0 residual 0\n" << std::flush;
+}
+
+void prove_no_lower_ghost_edges(ExternalTransitionDatabase& database) {
+    std::uint64_t edges = 0;
+    std::uint64_t lowerGhostEdges = 0;
+    for (std::uint32_t geometry = 0;
+         geometry < database.geometry_count(); ++geometry) {
+        const auto [offsets, compiled] = database.raw_block(geometry);
+        (void)offsets;
+        edges += compiled.size();
+        lowerGhostEdges += std::count_if(compiled.begin(), compiled.end(),
+          [](const ExternalCompiledEdge& edge) {
+              return edge.domain == ExternalChildDomain::LowerGhost;
+          });
+    }
+    if (lowerGhostEdges)
+        throw std::runtime_error(
+          "Bomb transition unexpectedly reaches live KGhost");
+    std::cout << "ghost_bomb_no_lower_ghost_certificate edges " << edges
+              << " lower_ghost_edges 0 residual 0\n" << std::flush;
+}
+
 [[nodiscard]] GhostPublicExtra::ConcreteState normalized_to_original(
   const FourState& state, Orientation orientation) {
     GhostPublicExtra::ConcreteState result;
@@ -1344,7 +1413,7 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     ExternalGhostExtraFixedPoint solver(database, lower, concrete, domain,
       constructor, legacy);
     solver.material_ = material;
-    solver.inherited_lower_mask_self_test();
+    prove_no_lower_ghost_edges(database);
     const bool proofComplete =
       GhostPublicExtraExact::run_reciprocal_fixed_point(solver, domain);
     SolveCertificate certificate;
@@ -1367,6 +1436,7 @@ SolveCertificate solve_exact(const SolveOptions& options) {
 void exact_self_test(const std::string& scratchPrefix) {
     (void)scratchPrefix;
     overlay_header_and_role_self_test();
+    opposing_private_dot_fixture_self_test();
     for (const Orientation orientation : {Orientation::Same,
                                            Orientation::Opposing}) {
         const GhostPublicExtra::MaterialSpec material =

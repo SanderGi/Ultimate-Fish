@@ -599,7 +599,7 @@
     {
       "id": "bomb-ghost-opposing-measure",
       "instance_id": "i-024a2073283e4336e",
-      "unit": "ultimatefish-hidden-kbombkghost-7af5dec2.service",
+      "unit": "ultimatefish-hidden-kbombkghost-solvefix-v2.service",
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/work/logs/*.log",
@@ -611,7 +611,7 @@
       "source_bindings": [
         {
           "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/tools/run_ultimate_ghost_bomb_aws.py",
-          "sha256": "61e69736ceb7393afe30f36c2fa40dc265ee9c7ab1b8e9ca77fe32a7bd34ad4e"
+          "sha256": "f392a79fe0fe6be4bfd42daa771399af3c11d8e633978d5f9b670a4c07d6d079"
         }
       ],
       "s3_certificates": []
