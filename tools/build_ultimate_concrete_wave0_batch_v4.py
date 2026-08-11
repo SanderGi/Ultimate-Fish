@@ -43,8 +43,28 @@ DEPENDENCY_BASE_ROOT = f"/mnt/ultimatefish/concrete-wave0-batch/dependencies-{BA
 MANIFEST = TOOLS / "ultimate_concrete_wave0_batch_v4.json"
 JOB_FRAGMENT = TOOLS / "ultimate_concrete_wave0_batch_v4_jobs.json"
 WRAPPER_RELATIVE = Path(__file__).relative_to(ROOT).as_posix()
+STAGING_HELPER_RELATIVE = "tools/stage_ultimate_concrete_wave0_batch_v4.py"
 LEGACY_MANIFEST = TOOLS / "ultimate_concrete_wave0_batch.json"
 SUPERVISION_CONFIG = TOOLS / "ultimate_aws_supervision.json"
+
+# Version-pinned, parity-checked replacement for the earlier nine-payload
+# object whose manifest listed 175 files.  This is provenance only: staging
+# still rehashes every extracted dependency and every final binding.
+DEPENDENCY_ARCHIVE = {
+    "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+    "key": (
+        "staging/concrete-wave0-batch/dependencies-v4/full/sha256/"
+        "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/"
+        "dependencies-v4-full.tar.zst"
+    ),
+    "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+    "bytes": 894129243,
+    "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+    "manifest_sha256": (
+        "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7"
+    ),
+    "status": "head-download-full-sha-archive-restore-verified",
+}
 
 # The two c8gd hosts were measured idle in the source event and are assigned
 # first.  r8gd queues remain explicit but are launchable only after the
@@ -217,6 +237,10 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
     # recorded below, while installed runner inputs remain content-addressed.
     source.pop(SUPERVISION_CONFIG.relative_to(ROOT).as_posix(), None)
     source[WRAPPER_RELATIVE] = _sha256_path(Path(__file__))
+    helper_path = ROOT / STAGING_HELPER_RELATIVE
+    if not helper_path.is_file():
+        raise RuntimeError("committed v4 staging helper is missing")
+    source[STAGING_HELPER_RELATIVE] = _sha256_path(helper_path)
     source = dict(sorted(source.items()))
     document["schema"] = SCHEMA
     document["selection_policy"] = SELECTION_POLICY
@@ -238,6 +262,9 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
         "assignment_order": list(HOST_ASSIGNMENT_ORDER),
         "unassigned_host": "i-08c0f44a1776cb34a",
     }
+    document["dependency_archive"] = dict(DEPENDENCY_ARCHIVE)
+    document["dependency_archive"]["required_dependencies"] = sorted(
+        document["all_dependencies"])
     document.pop("manifest_sha256", None)
     encoded = json.dumps(document, sort_keys=True, separators=(",", ":")).encode()
     document["manifest_sha256"] = hashlib.sha256(encoded).hexdigest()
@@ -250,6 +277,7 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
     old_name = "ultimate_concrete_wave0_batch.json"
     new_name = MANIFEST.name
     wrapper_digest = str(document["source_hashes"][WRAPPER_RELATIVE])
+    helper_digest = str(document["source_hashes"][STAGING_HELPER_RELATIVE])
     for job, unit in zip(fragment["jobs"], document["units"]):
         bindings = []
         for binding in job["staging_source_bindings"]:
@@ -259,8 +287,16 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
             bindings.append(item)
         wrapper_path = f"{unit['source_root']}/{WRAPPER_RELATIVE}"
         bindings.append({"path": wrapper_path, "sha256": wrapper_digest})
+        helper_path = f"{unit['source_root']}/{STAGING_HELPER_RELATIVE}"
+        bindings.append({"path": helper_path, "sha256": helper_digest})
+        # Keep the exact input archive and VersionId attached to every queue
+        # record so a later promotion cannot silently use the superseded
+        # nine-payload object.
+        job_archive = dict(DEPENDENCY_ARCHIVE)
+        job_archive["required_dependencies"] = list(document["all_dependencies"])
         bindings.sort(key=lambda item: str(item["path"]))
         job["staging_source_bindings"] = bindings
+        job["dependency_archive"] = job_archive
     fragment["batch_manifest"]["path"] = f"{SOURCE_ROOT}/tools/{new_name}"
     fragment["replace_job_ids"] = ["concrete-wave0-remaining"]
     fragment["retained_placeholder_updates"] = [
@@ -270,6 +306,7 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
          "queue_stage": True},
     ]
     fragment["version_namespace"] = BATCH_VERSION
+    fragment["dependency_archive"] = dict(document["dependency_archive"])
     return fragment
 
 

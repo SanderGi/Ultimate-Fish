@@ -9695,9 +9695,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-01-class123"
       }
     },
@@ -9729,9 +9749,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-02-class125"
       }
     },
@@ -9763,9 +9803,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-03-class140"
       }
     },
@@ -9797,9 +9857,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-04-class142"
       }
     },
@@ -9831,9 +9911,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-05-class183"
       }
     },
@@ -9865,9 +9965,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-06-class186"
       }
     },
@@ -9899,9 +10019,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-07-class195"
       }
     },
@@ -9933,9 +10073,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-08-class198"
       }
     },
@@ -9967,9 +10127,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-09-class218"
       }
     },
@@ -10001,9 +10181,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-10-class219"
       }
     },
@@ -10035,9 +10235,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-11-class029"
       }
     },
@@ -10069,9 +10289,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-12-class041"
       }
     },
@@ -10103,9 +10343,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-13-class050"
       }
     },
@@ -10137,9 +10397,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-14-class051"
       }
     },
@@ -10171,9 +10451,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-15-class052"
       }
     },
@@ -10205,9 +10505,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-16-class053"
       }
     },
@@ -10239,9 +10559,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-17-class054"
       }
     },
@@ -10273,9 +10613,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-18-class061"
       }
     },
@@ -10307,9 +10667,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-19-class070"
       }
     },
@@ -10341,9 +10721,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-20-class097"
       }
     },
@@ -10375,9 +10775,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-21-class110"
       }
     },
@@ -10409,9 +10829,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-22-class113"
       }
     },
@@ -10443,9 +10883,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-23-class122"
       }
     },
@@ -10477,9 +10937,29 @@
       ],
       "source_bindings": [],
       "s3_certificates": [],
+      "dependency_archive": {
+        "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+        "key": "staging/concrete-wave0-batch/dependencies-v4/full/sha256/6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48/dependencies-v4-full.tar.zst",
+        "version_id": "CO5VzYOBm4Ws12YHMFN8_Ay.1JIG7nCC",
+        "bytes": 894129243,
+        "sha256": "6e9e0f83cef26e25fb9ec156c9d19de8832afbdee5dec49eec1895c8fa891f48",
+        "manifest_sha256": "0117c6892984556c8528a63154164f8f52ebbfae12caac313435133550569bc7",
+        "status": "head-download-full-sha-archive-restore-verified",
+        "required_dependencies": [
+          "kbombk.uftb",
+          "kcopycatk.uftb",
+          "kdragonk.uftb",
+          "kghostk.uftb",
+          "kgiantk.uftb",
+          "kjesterk.uftb",
+          "kninjak.uftb",
+          "kqk.uftb",
+          "krk.uftb"
+        ]
+      },
       "staging_plan": {
         "path": "tools/ultimate_concrete_wave0_batch_v4_jobs.json",
-        "sha256": "ca7a935d2656f595302146c9628fb338ae1567a5844e0c4974091dce4a6d4b49",
+        "sha256": "a0efad434379c17aa31c235aa79bd671887daf61616a93eb0730dbd0b787bf35",
         "job_id": "concrete-wave0-batch-v4-24-class132"
       }
     }

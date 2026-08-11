@@ -48,6 +48,9 @@ class ConcreteWave0BatchV4Test(unittest.TestCase):
             self.assertTrue(set(expected).issubset(artifact_names))
             self.assertEqual(unit["source_hashes"][batch.WRAPPER_RELATIVE],
                              batch._sha256_path(Path(batch.__file__)))
+            self.assertEqual(
+                unit["source_hashes"][batch.STAGING_HELPER_RELATIVE],
+                batch._sha256_path(ROOT / batch.STAGING_HELPER_RELATIVE))
             self.assertNotIn("StandardOutput=append:", unit["service_text"])
             self.assertNotIn("StandardError=append:", unit["service_text"])
         encoded = dict(document)
@@ -98,6 +101,15 @@ class ConcreteWave0BatchV4Test(unittest.TestCase):
         self.assertTrue(all(any(path.endswith(batch.WRAPPER_RELATIVE)
                                 for path in (binding["path"]
                                              for binding in job["staging_source_bindings"]))
+                            for job in fragment["jobs"]))
+        self.assertTrue(all(any(path.endswith(batch.STAGING_HELPER_RELATIVE)
+                                for path in (binding["path"]
+                                             for binding in job["staging_source_bindings"]))
+                            for job in fragment["jobs"]))
+        self.assertEqual(batch.DEPENDENCY_ARCHIVE["version_id"],
+                         fragment["dependency_archive"]["version_id"])
+        self.assertTrue(all(job["dependency_archive"]["sha256"] ==
+                            batch.DEPENDENCY_ARCHIVE["sha256"]
                             for job in fragment["jobs"]))
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
