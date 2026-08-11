@@ -66,7 +66,8 @@ def main() -> None:
                work / "logs" / "self-test.log")
     shared.run_ranges(commands["shards"], root,
                       int(manifest["parallelism"]))
-    shared.run(commands["merge"], root, work / "logs" / "merge.log")
+    if not shared.merged_transition_is_complete(root, commands["merge"]):
+        shared.run(commands["merge"], root, work / "logs" / "merge.log")
     shared.run(commands["measure"], root, work / "logs" / "measure.log")
     if args.full:
         shared.run(commands["solve"], root, work / "logs" / "solve.log")

@@ -11,10 +11,7 @@ import run_ultimate_reciprocal_bishop_ghost_aws as shared
 
 
 def merged_transition_is_complete(root: Path, command: list[str]) -> bool:
-    prefix = root / shared.transition_prefix(command)
-    return (all(Path(f"{prefix}{suffix}").is_file()
-                for suffix in shared.TRANSITION_SUFFIXES) and
-            (root / "work" / "logs" / "merge.log").is_file())
+    return shared.merged_transition_is_complete(root, command)
 
 
 def validate_manifest(manifest: dict[str, object]) -> None:

@@ -40,12 +40,29 @@ def verify_inputs(root: Path, manifest: dict[str, object]) -> None:
 
 def run(command: Sequence[str], root: Path, log: Path) -> None:
     log.parent.mkdir(parents=True, exist_ok=True)
-    with log.open("wb") as output:
+    active = log.with_name(f".{log.name}.active")
+    if active.exists():
+        archive_phase_log(active, log, "interrupted")
+    with active.open("xb") as output:
         completed = subprocess.run(command, cwd=root, stdout=output,
                                    stderr=subprocess.STDOUT, check=False)
     if completed.returncode:
+        failed = archive_phase_log(active, log, "failed")
         raise RuntimeError(
-            f"command failed ({completed.returncode}); inspect {log}")
+            f"command failed ({completed.returncode}); inspect {failed}")
+    if log.exists():
+        archive_phase_log(log, log, "prior")
+    active.replace(log)
+
+
+def archive_phase_log(source: Path, canonical: Path, label: str) -> Path:
+    for attempt in range(1, 10_000):
+        destination = canonical.with_name(
+            f"{canonical.stem}.{label}-{attempt:04d}{canonical.suffix}")
+        if not destination.exists():
+            source.replace(destination)
+            return destination
+    raise RuntimeError(f"too many retained phase logs for {canonical}")
 
 
 def transition_prefix(command: Sequence[str]) -> str:
@@ -66,6 +83,14 @@ def transition_is_complete(root: Path, command: Sequence[str]) -> bool:
     prefix = root / transition_prefix(command)
     return all(Path(f"{prefix}{suffix}").is_file()
                for suffix in TRANSITION_SUFFIXES)
+
+
+def merged_transition_is_complete(root: Path,
+                                  command: Sequence[str]) -> bool:
+    prefix = root / transition_prefix(command)
+    return (all(Path(f"{prefix}{suffix}").is_file()
+                for suffix in TRANSITION_SUFFIXES) and
+            (root / "work" / "logs" / "merge.log").is_file())
 
 
 def run_ranges(commands: object, root: Path, parallelism: int) -> None:
@@ -148,7 +173,9 @@ def main() -> None:
     # a stale or corrupt range can therefore never enter the merged proof.
     run_ranges(zero_shards, root, parallelism)
     run_ranges(shards, root, parallelism)
-    run(manifest["commands"]["merge"], root, work / "logs" / "merge.log")
+    merge = manifest["commands"]["merge"]
+    if not merged_transition_is_complete(root, merge):
+        run(merge, root, work / "logs" / "merge.log")
     run(manifest["commands"]["measure"], root,
         work / "logs" / "measure.log")
     if args.full:

@@ -121,10 +121,36 @@ def validate_manifest(manifest: dict[str, object]) -> None:
 
 def run(command: Sequence[str], root: Path, log: Path) -> None:
     log.parent.mkdir(parents=True, exist_ok=True)
-    with log.open("wb") as output:
+    active = log.with_name(f".{log.name}.active")
+    if active.exists():
+        archive_log(active, log, "interrupted")
+    with active.open("xb") as output:
         result = subprocess.run(command, cwd=root, stdout=output,
                                 stderr=subprocess.STDOUT, check=False)
-    if result.returncode: raise RuntimeError(f"command failed; inspect {log}")
+    if result.returncode:
+        failed = archive_log(active, log, "failed")
+        raise RuntimeError(f"command failed; inspect {failed}")
+    if log.exists():
+        archive_log(log, log, "prior")
+    active.replace(log)
+
+
+def archive_log(source: Path, canonical: Path, label: str) -> Path:
+    for attempt in range(1, 10_000):
+        destination = canonical.with_name(
+            f"{canonical.stem}.{label}-{attempt:04d}{canonical.suffix}")
+        if not destination.exists():
+            source.replace(destination)
+            return destination
+    raise RuntimeError(f"too many retained phase logs for {canonical}")
+
+
+def merged_transition_is_complete(root: Path,
+                                  command: Sequence[str]) -> bool:
+    base = root / prefix(command)
+    return (all(Path(f"{base}{suffix}").is_file()
+                for suffix in SUFFIXES) and
+            (root / "work/logs/merge.log").is_file())
 
 
 def run_ranges(commands: list[list[str]], root: Path, workers: int) -> None:
@@ -195,7 +221,9 @@ def main() -> None:
     authenticate_bootstrap(manifest["commands"]["bootstrap"], root,
                            PARALLELISM)
     run_ranges(manifest["commands"]["shards"], root, PARALLELISM)
-    run(manifest["commands"]["merge"], root, work / "logs/merge.log")
+    merge = manifest["commands"]["merge"]
+    if not merged_transition_is_complete(root, merge):
+        run(merge, root, work / "logs/merge.log")
     run(manifest["commands"]["measure"], root, work / "logs/measure.log")
     if args.full:
         run(manifest["commands"]["solve"], root, work / "logs/solve.log")

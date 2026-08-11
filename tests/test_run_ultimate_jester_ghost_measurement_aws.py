@@ -63,6 +63,65 @@ class JesterGhostMeasurementTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "residual"):
                 measure.parse_log(log)
 
+    def test_work_resume_requires_exact_durable_plan(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory) / "work"
+            plan = {"schema": measure.RUN_PLAN_SCHEMA,
+                    "runner_sha256": "1" * 64}
+            plan_path = measure.prepare_measurement_work(work, plan)
+            self.assertEqual(plan, json.loads(plan_path.read_text()))
+            (work / "scratch" / "kjesterghostk.state").write_bytes(b"resume")
+            (work / "measurement.attempt-0001.log").write_text("failed\n")
+            self.assertEqual(plan_path,
+                             measure.prepare_measurement_work(work, plan))
+            with self.assertRaisesRegex(ValueError, "plan changed"):
+                measure.prepare_measurement_work(
+                    work, {**plan, "runner_sha256": "2" * 64})
+
+    def test_measurement_attempt_logs_are_never_overwritten(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            first = measure.next_measurement_attempt(work)
+            first.write_text("semantic failure\n")
+            second = measure.next_measurement_attempt(work)
+            self.assertEqual("measurement.attempt-0002.log", second.name)
+            second.write_text("success\n")
+            canonical = work / "measurement.log"
+            measure.publish_measurement_log(second, canonical)
+            self.assertEqual("success\n", canonical.read_text())
+            replacement = measure.next_measurement_attempt(work)
+            replacement.write_text("replacement\n")
+            measure.publish_measurement_log(replacement, canonical)
+            self.assertEqual(
+                "success\n",
+                (work / "measurement.prior-0001.log").read_text())
+            self.assertEqual("replacement\n", canonical.read_text())
+
+    def test_successful_attempt_is_recovered_without_rerun(self):
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            attempt = work / "measurement.attempt-0001.log"
+            attempt.write_text("complete proof\n")
+            result = {
+                "schema": "ultimate-jester-ghost-measurement-run-result-v1",
+                "run_plan_sha256": "a" * 64,
+                "attempt_log": attempt.name,
+                "log_sha256": measure.sha256_file(attempt),
+                "exit_code": 0,
+                "peak_resident_bytes": 1234,
+            }
+            (work / "measurement-run-result.json").write_text(
+                json.dumps(result))
+            self.assertEqual(
+                result,
+                measure.recover_measurement_result(work, "a" * 64))
+            self.assertFalse(attempt.exists())
+            self.assertEqual(
+                "complete proof\n", (work / "measurement.log").read_text())
+            with self.assertRaisesRegex(ValueError, "changed"):
+                (work / "measurement.log").write_text("corrupt\n")
+                measure.recover_measurement_result(work, "a" * 64)
+
     def test_certifier_binds_exact_production_totals(self):
         self.assertEqual({
             "raw": 38_450_880, "canonical": 9_612_720,

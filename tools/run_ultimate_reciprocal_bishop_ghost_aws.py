@@ -38,13 +38,39 @@ def verify_inputs(root: Path, manifest: dict[str, object]) -> None:
 
 
 def run(command: Sequence[str], root: Path, log: Path) -> None:
+    """Run one phase without destroying evidence from an earlier attempt.
+
+    Expensive AWS jobs are resumed in-place.  Writing directly to ``log`` with
+    ``wb`` used to erase the only useful failure evidence before a retry had
+    proved that the replacement phase could finish.  Write to an exclusive
+    active log, archive every failed/prior attempt, and publish the canonical
+    log only after a successful exit.
+    """
     log.parent.mkdir(parents=True, exist_ok=True)
-    with log.open("wb") as output:
+    active = log.with_name(f".{log.name}.active")
+    if active.exists():
+        archive_phase_log(active, log, "interrupted")
+    with active.open("xb") as output:
         completed = subprocess.run(command, cwd=root, stdout=output,
                                    stderr=subprocess.STDOUT, check=False)
     if completed.returncode:
+        failed = archive_phase_log(active, log, "failed")
         raise RuntimeError(
-            f"command failed ({completed.returncode}); inspect {log}")
+            f"command failed ({completed.returncode}); inspect {failed}")
+    if log.exists():
+        archive_phase_log(log, log, "prior")
+    active.replace(log)
+
+
+def archive_phase_log(source: Path, canonical: Path, label: str) -> Path:
+    """Move ``source`` to the first unused bounded attempt-log name."""
+    for attempt in range(1, 10_000):
+        destination = canonical.with_name(
+            f"{canonical.stem}.{label}-{attempt:04d}{canonical.suffix}")
+        if not destination.exists():
+            source.replace(destination)
+            return destination
+    raise RuntimeError(f"too many retained phase logs for {canonical}")
 
 
 def transition_prefix(command: Sequence[str]) -> str:
@@ -63,6 +89,15 @@ def transition_prefix(command: Sequence[str]) -> str:
 def transition_is_complete(root: Path, command: Sequence[str]) -> bool:
     prefix = root / transition_prefix(command)
     proof_log = root / "work" / "logs" / f"{prefix.name}.log"
+    return (all(Path(f"{prefix}{suffix}").is_file()
+                for suffix in TRANSITION_SUFFIXES) and proof_log.is_file())
+
+
+def merged_transition_is_complete(root: Path,
+                                  command: Sequence[str]) -> bool:
+    """Return whether an authenticated merged graph and its proof log exist."""
+    prefix = root / transition_prefix(command)
+    proof_log = root / "work" / "logs" / "merge.log"
     return (all(Path(f"{prefix}{suffix}").is_file()
                 for suffix in TRANSITION_SUFFIXES) and proof_log.is_file())
 
@@ -142,7 +177,9 @@ def main() -> None:
     if not isinstance(shards, list) or len(shards) != 32:
         raise RuntimeError("invalid reciprocal shard inventory")
     run_ranges(shards, root, int(manifest["parallelism"]))
-    run(manifest["commands"]["merge"], root, work / "logs" / "merge.log")
+    merge = manifest["commands"]["merge"]
+    if not merged_transition_is_complete(root, merge):
+        run(merge, root, work / "logs" / "merge.log")
     run(manifest["commands"]["measure"], root,
         work / "logs" / "measure.log")
     if args.full:

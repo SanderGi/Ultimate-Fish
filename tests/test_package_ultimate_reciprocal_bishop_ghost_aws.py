@@ -124,6 +124,47 @@ class ReciprocalBishopGhostAwsBundleTests(unittest.TestCase):
                         "lower_model_sha256", "lower_observation_sha256"):
                 self.assertEqual(recorded[key], manifest[key])
 
+    def test_runner_preserves_failed_and_prior_phase_logs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            log = root / "work" / "logs" / "measure.log"
+            with self.assertRaisesRegex(RuntimeError, "failed-0001"):
+                runner.run([
+                    sys.executable, "-c",
+                    "print('first failure'); raise SystemExit(7)",
+                ], root, log)
+            self.assertFalse(log.exists())
+            self.assertEqual(
+                "first failure\n",
+                (log.parent / "measure.failed-0001.log").read_text())
+
+            runner.run([sys.executable, "-c", "print('success')"],
+                       root, log)
+            self.assertEqual("success\n", log.read_text())
+            runner.run([sys.executable, "-c", "print('replacement')"],
+                       root, log)
+            self.assertEqual("success\n",
+                             (log.parent / "measure.prior-0001.log").read_text())
+            self.assertEqual("replacement\n", log.read_text())
+
+    def test_runner_reuses_only_complete_merged_transition(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            runner.prepare_workdirs(root)
+            command = ["solver", "--transition-prefix",
+                       "work/transitions/merged"]
+            prefix = root / "work" / "transitions" / "merged"
+            for suffix in runner.TRANSITION_SUFFIXES:
+                Path(f"{prefix}{suffix}").touch()
+            self.assertFalse(
+                runner.merged_transition_is_complete(root, command))
+            (root / "work" / "logs" / "merge.log").touch()
+            self.assertTrue(
+                runner.merged_transition_is_complete(root, command))
+            Path(f"{prefix}.verified").unlink()
+            self.assertFalse(
+                runner.merged_transition_is_complete(root, command))
+
     def test_tar_is_deterministic_and_minimal(self):
         with tempfile.TemporaryDirectory() as directory:
             first = Path(directory) / "first.tar"

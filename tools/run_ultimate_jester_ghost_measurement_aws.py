@@ -16,6 +16,7 @@ from typing import Any
 
 SCHEMA = "ultimate-jester-ghost-measurement-v1"
 STATUS = "measurement-complete-full-not-launched"
+RUN_PLAN_SCHEMA = "ultimate-jester-ghost-measurement-run-plan-v1"
 
 
 def sha256_file(path: Path) -> str:
@@ -148,6 +149,119 @@ def write_exclusive_json(path: Path, value: object) -> None:
         os.fsync(stream.fileno())
 
 
+def prepare_measurement_work(work: Path, plan: dict[str, Any]) -> Path:
+    """Create or authenticate a resumable measurement directory.
+
+    A retry is admitted only when the exact plan was durably recorded before
+    the first native process started.  This prevents an old scratch prefix
+    from being interpreted under different code, inputs, or resource gates.
+    """
+    plan_path = work / "measurement-run-plan.json"
+    if work.exists():
+        if not work.is_dir() or not plan_path.is_file():
+            raise ValueError("measurement work lacks an authenticated run plan")
+        if load_json(plan_path) != plan:
+            raise ValueError("measurement run plan changed across retry")
+    else:
+        work.mkdir(parents=True)
+        write_exclusive_json(plan_path, plan)
+    (work / "scratch").mkdir(exist_ok=True)
+    allowed_names = {
+        "measurement-run-plan.json", "measurement.log",
+        "measurement-run-result.json", "measurement-certificate.json",
+    }
+    unexpected = []
+    for path in work.rglob("*"):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(work)
+        if (str(relative).startswith("scratch/kjesterghostk") or
+                relative.name in allowed_names or
+                (relative.parent == Path(".") and
+                 re.fullmatch(r"measurement\.(?:attempt|prior)-[0-9]{4}\.log",
+                              relative.name))):
+            continue
+        unexpected.append(relative)
+    if unexpected:
+        raise ValueError(
+            "measurement work contains unexpected files: " +
+            ", ".join(map(str, unexpected[:4])))
+    return plan_path
+
+
+def next_measurement_attempt(work: Path) -> Path:
+    for attempt in range(1, 10_000):
+        path = work / f"measurement.attempt-{attempt:04d}.log"
+        if not path.exists():
+            return path
+    raise RuntimeError("too many retained measurement attempts")
+
+
+def publish_measurement_log(attempt: Path, canonical: Path) -> None:
+    if canonical.exists():
+        for number in range(1, 10_000):
+            prior = canonical.with_name(
+                f"measurement.prior-{number:04d}.log")
+            if not prior.exists():
+                canonical.replace(prior)
+                break
+        else:
+            raise RuntimeError("too many retained successful measurements")
+    attempt.replace(canonical)
+
+
+def recover_measurement_result(work: Path,
+                               plan_sha256: str) -> dict[str, Any] | None:
+    result_path = work / "measurement-run-result.json"
+    if not result_path.exists():
+        return None
+    result = load_json(result_path)
+    attempt_name = result.get("attempt_log")
+    if (result.get("schema") !=
+            "ultimate-jester-ghost-measurement-run-result-v1" or
+            result.get("run_plan_sha256") != plan_sha256 or
+            result.get("exit_code") != 0 or
+            not isinstance(result.get("peak_resident_bytes"), int) or
+            result["peak_resident_bytes"] < 0 or
+            not isinstance(attempt_name, str) or
+            not re.fullmatch(r"measurement\.attempt-[0-9]{4}\.log",
+                             attempt_name) or
+            not isinstance(result.get("log_sha256"), str)):
+        raise ValueError("measurement run result is inexact")
+    canonical = work / "measurement.log"
+    attempt = work / attempt_name
+    if canonical.is_file():
+        if sha256_file(canonical) != result["log_sha256"]:
+            raise ValueError("published measurement log changed")
+    elif attempt.is_file() and sha256_file(attempt) == result["log_sha256"]:
+        publish_measurement_log(attempt, canonical)
+    else:
+        raise ValueError("successful measurement log is missing")
+    return result
+
+
+def completed_measurement(work: Path, plan_sha256: str) -> dict[str, Any] | None:
+    certificate_path = work / "measurement-certificate.json"
+    if not certificate_path.exists():
+        return None
+    certificate = load_json(certificate_path)
+    log = work / "measurement.log"
+    run_result = recover_measurement_result(work, plan_sha256)
+    if (run_result is None or
+            certificate.get("schema") != SCHEMA or
+            certificate.get("status") != STATUS or
+            certificate.get("run_plan_sha256") != plan_sha256 or
+            certificate.get("peak_resident_bytes") !=
+            run_result["peak_resident_bytes"] or
+            not log.is_file() or
+            certificate.get("measurement") != parse_log(log) or
+            certificate.get("residuals") != {
+                "binding": 0, "transition": 0, "measurement": 0,
+                "proof_output": 0, "resource": 0}):
+        raise ValueError("existing measurement certificate is inexact")
+    return certificate
+
+
 def scratch_bytes(prefix: Path) -> int:
     return sum(path.stat().st_size for path in prefix.parent.glob(
         f"{prefix.name}*") if path.is_file())
@@ -183,8 +297,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     if (not args.runner_source.is_file() or
             sha256_file(args.runner_source) != args.runner_sha256):
         raise ValueError("measurement runner SHA-256 mismatch")
-    if args.work.exists():
-        raise ValueError("fresh measurement work directory already exists")
     manifest = load_json(args.bundle_manifest)
     merge_evidence = load_json(args.merge_evidence)
     if (sha256_file(args.merge_evidence) != args.merge_evidence_sha256 or
@@ -221,9 +333,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     lower_table_sha, lower_overlay_sha, compatibility_sha = \
         compatibility_inputs(args, manifest)
 
-    args.work.mkdir(parents=True)
     scratch = args.work / "scratch/kjesterghostk"
-    scratch.parent.mkdir()
     log = args.work / "measurement.log"
     command = [
         str(args.binary), "--measure", "1",
@@ -245,31 +355,73 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "--max-resident-bytes", str(args.maximum_resident_bytes),
         "--min-free-disk-bytes", str(args.minimum_free_bytes),
     ]
-    peak_rss = 0
-    with log.open("xb") as output:
-        process = subprocess.Popen(command, stdout=output,
-                                   stderr=subprocess.STDOUT)
-        while process.poll() is None:
-            try:
-                status = Path(f"/proc/{process.pid}/status").read_text()
-                match = re.search(r"^VmRSS:\s+([0-9]+) kB$", status, re.M)
-                if match:
-                    peak_rss = max(peak_rss, int(match.group(1)) * 1024)
-                    if peak_rss > args.maximum_resident_bytes:
-                        process.terminate()
-                        raise RuntimeError("measurement exceeded resident gate")
-            except FileNotFoundError:
-                pass
-            time.sleep(1)
-        if process.returncode:
-            raise RuntimeError(f"measurement failed ({process.returncode})")
-        output.flush()
-        os.fsync(output.fileno())
+    plan = {
+        "schema": RUN_PLAN_SCHEMA,
+        "command": command,
+        "runner_sha256": args.runner_sha256,
+        "binary_sha256": args.binary_sha256,
+        "binary_compatibility_certificate_sha256":
+            binary_compatibility_sha,
+        "production_preflight_log_sha256": production_preflight_sha,
+        "merge_evidence_sha256": args.merge_evidence_sha256,
+        "lower_compatibility_certificate_sha256": compatibility_sha,
+        "lower_jester_table_sha256": lower_table_sha,
+        "lower_jester_overlay_sha256": lower_overlay_sha,
+        "transition_payload_sha256": merge_evidence["payload_sha256"],
+        "gates": {
+            "maximum_disk_bytes": args.maximum_disk_bytes,
+            "maximum_resident_bytes": args.maximum_resident_bytes,
+            "minimum_free_bytes": args.minimum_free_bytes,
+        },
+    }
+    plan_path = prepare_measurement_work(args.work, plan)
+    plan_sha = sha256_file(plan_path)
+    completed = completed_measurement(args.work, plan_sha)
+    if completed is not None:
+        return completed
+
+    run_result = recover_measurement_result(args.work, plan_sha)
+    if run_result is None:
+        peak_rss = 0
+        attempt_log = next_measurement_attempt(args.work)
+        with attempt_log.open("xb") as output:
+            process = subprocess.Popen(command, stdout=output,
+                                       stderr=subprocess.STDOUT)
+            while process.poll() is None:
+                try:
+                    status = Path(f"/proc/{process.pid}/status").read_text()
+                    match = re.search(
+                        r"^VmRSS:\s+([0-9]+) kB$", status, re.M)
+                    if match:
+                        peak_rss = max(
+                            peak_rss, int(match.group(1)) * 1024)
+                        if peak_rss > args.maximum_resident_bytes:
+                            process.terminate()
+                            process.wait()
+                            raise RuntimeError(
+                                "measurement exceeded resident gate")
+                except FileNotFoundError:
+                    pass
+                time.sleep(1)
+            if process.returncode:
+                raise RuntimeError(
+                    f"measurement failed ({process.returncode}); "
+                    f"inspect {attempt_log}")
+            output.flush()
+            os.fsync(output.fileno())
+        run_result = {
+            "schema": "ultimate-jester-ghost-measurement-run-result-v1",
+            "run_plan_sha256": plan_sha,
+            "attempt_log": attempt_log.name,
+            "log_sha256": sha256_file(attempt_log),
+            "exit_code": 0,
+            "peak_resident_bytes": peak_rss,
+        }
+        write_exclusive_json(
+            args.work / "measurement-run-result.json", run_result)
+        publish_measurement_log(attempt_log, log)
+    peak_rss = run_result["peak_resident_bytes"]
     certificate = parse_log(log)
-    unexpected = [path for path in args.work.rglob("*") if path.is_file() and
-                  path != log and not str(path).startswith(str(scratch))]
-    if unexpected:
-        raise ValueError("measurement wrote unexpected proof output")
     stats = os.statvfs(args.work)
     result = {
         "schema": SCHEMA, "status": STATUS,
@@ -277,6 +429,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "model_sha256": manifest["model_sha256"],
         "observation_sha256": manifest["observation_sha256"],
         "runner_sha256": args.runner_sha256,
+        "run_plan_sha256": plan_sha,
         "binary_sha256": args.binary_sha256,
         "binary_compatibility_certificate_sha256":
             binary_compatibility_sha,

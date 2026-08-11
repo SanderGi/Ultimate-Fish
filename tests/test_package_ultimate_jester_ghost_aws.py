@@ -108,4 +108,32 @@ class JesterGhostAwsTests(unittest.TestCase):
             self.assertIn("bundle-manifest.json", names)
 
 
+class JesterGhostRunnerResumeTests(unittest.TestCase):
+    def test_failed_logs_and_completed_merge_are_preserved(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            log = root / "work/logs/measure.log"
+            with self.assertRaisesRegex(RuntimeError, "failed-0001"):
+                runner.run([
+                    sys.executable, "-c",
+                    "print('late semantic failure'); raise SystemExit(4)",
+                ], root, log)
+            self.assertFalse(log.exists())
+            self.assertEqual(
+                "late semantic failure\n",
+                (log.parent / "measure.failed-0001.log").read_text())
+
+            runner.prepare(root)
+            command = ["solver", "--transition-prefix",
+                       "work/transitions/merged"]
+            base = root / "work/transitions/merged"
+            for suffix in runner.SUFFIXES:
+                Path(f"{base}{suffix}").touch()
+            self.assertFalse(
+                runner.merged_transition_is_complete(root, command))
+            (root / "work/logs/merge.log").touch()
+            self.assertTrue(
+                runner.merged_transition_is_complete(root, command))
+
+
 if __name__ == "__main__": unittest.main()

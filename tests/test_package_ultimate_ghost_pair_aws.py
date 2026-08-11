@@ -171,6 +171,31 @@ class GhostPairAwsBundleTests(unittest.TestCase):
                     "solver", "--transition-prefix",
                     "work/transitions/../../outside"])
 
+            merged = ["solver", "--transition-prefix",
+                      "work/transitions/merged"]
+            merged_prefix = root / "work" / "transitions" / "merged"
+            for suffix in runner.TRANSITION_SUFFIXES:
+                Path(f"{merged_prefix}{suffix}").touch()
+            self.assertFalse(
+                runner.merged_transition_is_complete(root, merged))
+            (root / "work" / "logs" / "merge.log").touch()
+            self.assertTrue(
+                runner.merged_transition_is_complete(root, merged))
+
+    def test_runner_preserves_failed_measurement_log(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            log = root / "work" / "logs" / "measure.log"
+            with self.assertRaisesRegex(RuntimeError, "failed-0001"):
+                runner.run([
+                    sys.executable, "-c",
+                    "print('semantic failure'); raise SystemExit(3)",
+                ], root, log)
+            self.assertFalse(log.exists())
+            self.assertEqual(
+                "semantic failure\n",
+                (log.parent / "measure.failed-0001.log").read_text())
+
     def test_tar_is_deterministic_and_minimal(self):
         with tempfile.TemporaryDirectory() as directory:
             first = Path(directory) / "first.tar"
