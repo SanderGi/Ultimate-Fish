@@ -593,7 +593,6 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
             "id": job_id,
             "instance_id": unit["instance_id"],
             "unit": unit["unit"],
-            "advanceable": True,
             "queue_stage": True,
             "expected_allowed_cpus": unit["expected_allowed_cpus"],
             "resource_requirements": unit["resource_requirements"],
@@ -612,7 +611,13 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
                 f"{unit['work_directory']}/certificates/wave-certificate.json",
                 f"{unit['work_directory']}/s3-verify/wave-certificate.json",
             ],
-            "source_bindings": bindings,
+            # Queue records must remain AWAITING_STAGE before the unit exists.
+            # Publishing future hashes as active bindings would classify every
+            # uninstalled unit as SOURCE_MISMATCH.  Staging promotes these
+            # intended bindings to source_bindings in a focused commit only
+            # after the host has rehashed every installed path.
+            "source_bindings": [],
+            "staging_source_bindings": bindings,
             "s3_certificates": [],
         })
     if len(jobs) != int(document["requested_classes"]):

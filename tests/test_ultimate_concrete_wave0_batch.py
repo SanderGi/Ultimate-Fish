@@ -137,7 +137,7 @@ class ConcreteWave0BatchTest(unittest.TestCase):
             self.assertEqual(len(cpus), len(set(cpus)))
 
         for job in fragment["jobs"]:
-            self.assertTrue(job["advanceable"])
+            self.assertNotIn("advanceable", job)
             self.assertTrue(job["queue_stage"])
             self.assertEqual(job["dependencies"], [])
             unit = next(item for item in units
@@ -151,7 +151,9 @@ class ConcreteWave0BatchTest(unittest.TestCase):
             self.assertEqual(set(job["resource_requirements"]), {
                 "cpu_threads", "memory_peak_bytes", "disk_peak_bytes"})
             self.assertEqual(job["s3_certificates"], [])
-            paths = [binding["path"] for binding in job["source_bindings"]]
+            self.assertEqual(job["source_bindings"], [])
+            paths = [binding["path"]
+                     for binding in job["staging_source_bindings"]]
             self.assertEqual(len(paths), len(set(paths)))
             self.assertTrue(any(path.endswith("run_ultimate_concrete_tablebase_shard_aws.py")
                                 for path in paths))
@@ -161,7 +163,7 @@ class ConcreteWave0BatchTest(unittest.TestCase):
                                 for path in paths))
             self.assertTrue(any(path.endswith("/dependencies/manifest.json")
                                 for path in paths))
-            for binding in job["source_bindings"]:
+            for binding in job["staging_source_bindings"]:
                 self.assertRegex(binding["sha256"], r"^[0-9a-f]{64}$")
                 self.assertFalse(any(character in binding["path"]
                                      for character in "*?[]"))
