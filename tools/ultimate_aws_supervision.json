@@ -8745,8 +8745,32 @@
           "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "s3_certificates": [],
-      "advanceable": true
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/2c37e428063f1917bd2a92c682ebc318e3c86c1b70cfde4f44148ec731471162/kcopycatkqueen-2c37e428063f1917bd2a92c682ebc318e3c86c1b70cfde4f44148ec731471162.tar.zst",
+          "version_id": "wwrkJam6HgCpGUJF_Yr9c4.KAFyquczy",
+          "sha256": "2c37e428063f1917bd2a92c682ebc318e3c86c1b70cfde4f44148ec731471162",
+          "size": 7657313
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/14ac858039d343bdcac06e9ad73e9b79fdbb0f35b155d1f3411afa65d46e57d6/wave-certificate.json",
+          "version_id": "jsMKAP_Dd3QPfpdk8xSFokb1QzcmmhiH",
+          "sha256": "14ac858039d343bdcac06e9ad73e9b79fdbb0f35b155d1f3411afa65d46e57d6",
+          "size": 2666
+        }
+      ],
+      "advanceable": true,
+      "ledger_results": {
+        "kcopycatkqueen.uftb": {
+          "result_kind": "concrete",
+          "first": "14,150,288 / 22,013,424 / 1,794,208",
+          "second": "36,503,304 / 11,304 / 1,443,312",
+          "reachability": "37,957,920 / 0; 37,957,920 / 0",
+          "storage": "S3 sha256:2c37e428063f1917bd2a92c682ebc318e3c86c1b70cfde4f44148ec731471162 VersionId wwrkJam6HgCpGUJF_Yr9c4.KAFyquczy; certificate sha256:14ac858039d343bdcac06e9ad73e9b79fdbb0f35b155d1f3411afa65d46e57d6 VersionId jsMKAP_Dd3QPfpdk8xSFokb1QzcmmhiH"
+        }
+      }
     },
     {
       "id": "concrete-wave0-batch-v3-18-class079",
@@ -8867,8 +8891,32 @@
           "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "s3_certificates": [],
-      "advanceable": true
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/fd7a72056cfe167b2d53cf04cf269bd64ee3f9166c01327cb17b06b72690be2a/kcopycatkrook-fd7a72056cfe167b2d53cf04cf269bd64ee3f9166c01327cb17b06b72690be2a.tar.zst",
+          "version_id": "Hvnps5dshDBsT_4Ti7CeJPqJGSR7SrV_",
+          "sha256": "fd7a72056cfe167b2d53cf04cf269bd64ee3f9166c01327cb17b06b72690be2a",
+          "size": 9260780
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/b82ed9ad43b0c3d227520d5c4da2423578ab5b81cd3fa7340e4d999738c90cba/wave-certificate.json",
+          "version_id": "wvY0MEFLM2w_lsqGhIdV2lxtyBuf7zo6",
+          "sha256": "b82ed9ad43b0c3d227520d5c4da2423578ab5b81cd3fa7340e4d999738c90cba",
+          "size": 2664
+        }
+      ],
+      "advanceable": true,
+      "ledger_results": {
+        "kcopycatkrook.uftb": {
+          "result_kind": "concrete",
+          "first": "14,165,872 / 8,664,984 / 15,127,064",
+          "second": "29,024,560 / 22,976 / 8,910,384",
+          "reachability": "37,957,920 / 0; 37,957,920 / 0",
+          "storage": "S3 sha256:fd7a72056cfe167b2d53cf04cf269bd64ee3f9166c01327cb17b06b72690be2a VersionId Hvnps5dshDBsT_4Ti7CeJPqJGSR7SrV_; certificate sha256:b82ed9ad43b0c3d227520d5c4da2423578ab5b81cd3fa7340e4d999738c90cba VersionId wvY0MEFLM2w_lsqGhIdV2lxtyBuf7zo6"
+        }
+      }
     },
     {
       "id": "concrete-wave0-batch-v3-19-class081",
@@ -9351,8 +9399,32 @@
           "sha256": "2c5d2c6463ea11d635fee8362b2515950ca1fe2dbe0d05c868d32302281fedfb"
         }
       ],
-      "s3_certificates": [],
-      "advanceable": true
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/0937aa6503c03f2ba69acbef26e1ad09f3b3325ebaa242b1249e9ff17699d08c/kcopycatqueenk-0937aa6503c03f2ba69acbef26e1ad09f3b3325ebaa242b1249e9ff17699d08c.tar.zst",
+          "version_id": "YkV3LC8Bq_C3ZRdrj6C45LH5i3YBP.Id",
+          "sha256": "0937aa6503c03f2ba69acbef26e1ad09f3b3325ebaa242b1249e9ff17699d08c",
+          "size": 3946225
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/3120e771730e3d857c202fe5675211a165bbe24dadb1b64a74dabb764d9453e2/wave-certificate.json",
+          "version_id": "7jxFTeCCnXzEBFNXqLAIzEC3j8OwvxCM",
+          "sha256": "3120e771730e3d857c202fe5675211a165bbe24dadb1b64a74dabb764d9453e2",
+          "size": 2666
+        }
+      ],
+      "advanceable": true,
+      "ledger_results": {
+        "kcopycatqueenk.uftb": {
+          "result_kind": "concrete",
+          "first": "36,516,480 / 0 / 1,441,440",
+          "second": "0 (3,098,976) / 33,263,840 / 1,595,104",
+          "reachability": "37,957,920 / 0; 34,858,944 / 3,098,976",
+          "storage": "S3 sha256:0937aa6503c03f2ba69acbef26e1ad09f3b3325ebaa242b1249e9ff17699d08c VersionId YkV3LC8Bq_C3ZRdrj6C45LH5i3YBP.Id; certificate sha256:3120e771730e3d857c202fe5675211a165bbe24dadb1b64a74dabb764d9453e2 VersionId 7jxFTeCCnXzEBFNXqLAIzEC3j8OwvxCM"
+        }
+      }
     },
     {
       "id": "concrete-wave0-batch-v3-23-class086",
