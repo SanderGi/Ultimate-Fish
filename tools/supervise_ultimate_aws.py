@@ -301,6 +301,10 @@ def props(unit):
  for line in out.splitlines():
   if '=' in line:
    key,value=line.split('=',1); result[key]=value
+ if result.get('ActiveState') not in {'active','activating','reloading'}:
+  result={key:result[key] for key in (
+   'LoadState','ActiveState','SubState','Result','ExecMainCode',
+   'ExecMainStatus','AllowedCPUs') if key in result}
  return result
 def aggregate(patterns):
  result=[]

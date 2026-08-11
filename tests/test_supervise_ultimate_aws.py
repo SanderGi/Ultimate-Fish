@@ -202,10 +202,17 @@ class SupervisionTests(unittest.TestCase):
     def test_compact_source_probe_fits_each_batch_host_budget(self) -> None:
         document = json.loads(
             (ROOT / "tools/ultimate_aws_supervision.json").read_text())
+        fragment = json.loads(
+            (ROOT / "tools/ultimate_concrete_wave0_batch_jobs.json").read_text())
+        fragment_jobs = {job["id"]: job for job in fragment["jobs"]}
         jobs_by_host = {}
         for job in document["jobs"]:
-            if job["id"].startswith("concrete-wave0-batch-"):
-                jobs_by_host.setdefault(job["instance_id"], []).append(job)
+            if job["id"].startswith("concrete-wave0-batch-v2-"):
+                copy = json.loads(json.dumps(job))
+                if not copy["source_bindings"]:
+                    copy["source_bindings"] = fragment_jobs[
+                        copy["id"]]["staging_source_bindings"]
+                jobs_by_host.setdefault(copy["instance_id"], []).append(copy)
         self.assertEqual(24, sum(map(len, jobs_by_host.values())))
         self.assertEqual(173, max(
             sum(len(job["source_bindings"]) for job in jobs)
