@@ -65,6 +65,7 @@ class MeasurementBinaryCompatibilityTest(unittest.TestCase):
                 "semantic_transition_model_sha256":
                     builder.SEMANTIC_MODEL_SHA256,
                 "observation_sha256": builder.OBSERVATION_SHA256,
+                "transition_semantics_sha256": "b" * 64,
                 "residuals": {"bundle": 0, "loader_patch": 0,
                               "build": 0, "selftest": 0,
                               "transition_semantics": 0},
@@ -92,6 +93,7 @@ class MeasurementBinaryCompatibilityTest(unittest.TestCase):
                 "semantic_transition_model_sha256":
                     builder.FULL_SOURCE_MODEL_SHA256,
                 "observation_sha256": builder.OBSERVATION_SHA256,
+                "transition_semantics_sha256": "b" * 64,
                 "residuals": {"bundle": 0, "loader_patch": 0,
                               "build": 0, "selftest": 0,
                               "transition_semantics": 0},

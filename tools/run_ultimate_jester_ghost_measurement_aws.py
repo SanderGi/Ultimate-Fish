@@ -106,6 +106,10 @@ def authenticate_binary_compatibility(args: argparse.Namespace,
             manifest["model_sha256"] or
             certificate.get("observation_sha256") !=
             manifest["observation_sha256"] or
+            (not isinstance(certificate.get("transition_semantics_sha256"),
+                            str) or
+             not re.fullmatch(r"[0-9a-f]{64}",
+                              certificate["transition_semantics_sha256"])) or
             certificate.get("residuals") != {
                 "bundle": 0, "loader_patch": 0, "build": 0,
                 "selftest": 0, "transition_semantics": 0}):

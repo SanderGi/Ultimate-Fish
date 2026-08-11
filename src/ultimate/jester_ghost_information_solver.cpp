@@ -2393,6 +2393,37 @@ class LowerJesterOracle {
     std::vector<std::uint8_t> flags_;
 };
 
+struct CanonicalLowerGhostLocation {
+    LowerGhostState state;
+    RectangleTransform transform = RectangleTransform::Identity;
+};
+
+[[nodiscard]] CanonicalLowerGhostLocation canonicalize_lower_ghost(
+  const LowerGhostState& state) {
+    // The codec is the single validation path for lower-Ghost placements.
+    (void)encode_lower_ghost(state);
+    const auto key = [](const LowerGhostState& value) {
+        return std::tuple<std::uint8_t, std::uint8_t, std::uint8_t, bool>{
+          static_cast<std::uint8_t>(value.side), value.ownerKing,
+          value.observerKing, value.visible};
+    };
+    CanonicalLowerGhostLocation result{state, RectangleTransform::Identity};
+    for (std::uint8_t raw = 1; raw < 4; ++raw) {
+        const auto transform = static_cast<RectangleTransform>(raw);
+        const LowerGhostState candidate{
+          state.side,
+          transform_square(state.ownerKing, transform),
+          transform_square(state.observerKing, transform),
+          transform_square(state.ghost, transform),
+          state.visible};
+        // Keep the first stabilizer, exactly matching the sidecar's
+        // public-geometry canonicalization order.
+        if (key(candidate) < key(result.state))
+            result = {candidate, transform};
+    }
+    return result;
+}
+
 class LowerGhostSidecar {
   public:
     using Node = ProductRobdd::SuffixNode;
@@ -2405,6 +2436,11 @@ class LowerGhostSidecar {
         std::array<std::uint8_t, Squares> visibleOwner{}, visibleObserver{};
     };
     struct Stratum { std::uint32_t geometry=NoIndex; Mask live; std::uint32_t root=0; };
+    struct Located {
+        std::uint32_t geometry = NoIndex;
+        std::uint8_t actual = 0;
+        RectangleTransform transform = RectangleTransform::Identity;
+    };
 
     LowerGhostSidecar(const SolveOptions& options) {
         for (const auto& [hash, name] : std::array<std::pair<std::string,const char*>,3>{{
@@ -2489,10 +2525,17 @@ class LowerGhostSidecar {
                     throw std::runtime_error("UFGM reverse-map residual");}}
     }
     [[nodiscard]] const std::vector<Node>& nodes() const { return nodes_; }
-    [[nodiscard]] std::uint32_t geometry(const LowerGhostState& state) const {
-        const std::uint32_t code=geometry_code(static_cast<std::uint8_t>(state.side),
-          state.ownerKing,state.observerKing,state.visible);
-        const auto found=geometryIndex_.find(code);if(found==geometryIndex_.end())throw std::runtime_error("missing lower Ghost geometry");return found->second;
+    [[nodiscard]] Located locate(const LowerGhostState& state) const {
+        const CanonicalLowerGhostLocation canonical =
+          canonicalize_lower_ghost(state);
+        const std::uint32_t code=geometry_code(
+          static_cast<std::uint8_t>(canonical.state.side),
+          canonical.state.ownerKing, canonical.state.observerKing,
+          canonical.state.visible);
+        const auto found=geometryIndex_.find(code);
+        if(found==geometryIndex_.end())
+            throw std::runtime_error("missing lower Ghost geometry");
+        return {found->second, canonical.state.ghost, canonical.transform};
     }
     [[nodiscard]] const Geometry& geometry(std::uint32_t id) const{return geometries_.at(id);}
     [[nodiscard]] const Stratum& stratum(std::uint32_t id) const{return strata_.at(id);}
@@ -2577,24 +2620,27 @@ struct RuntimeBlock{
 
 [[nodiscard]] bool lower_terminal_forces(
   const LowerGhostSidecar::Geometry& geometry,
-  const LowerGhostState& child, Color target) {
-    if (!mask_test(geometry.terminal, child.ghost))
+  unsigned actual, Color target) {
+    if (!mask_test(geometry.terminal, actual))
         throw std::runtime_error("lower Ghost terminal specialization is live");
     return mask_test(target == Color::White ? geometry.terminalOwner
                                              : geometry.terminalObserver,
-                     child.ghost);
+                     actual);
 }
 
 [[nodiscard]] ProductRobdd::Id lower_terminal_formula(
   ProductRobdd& bdd, const RuntimeRelation& relation,
   const LowerGhostSidecar::Geometry& geometry, Color target,
-  std::optional<std::uint32_t> actual) {
+  std::optional<std::uint32_t> actual,
+  std::optional<unsigned> canonicalActual = std::nullopt) {
     if (actual) {
         if (relation.lowerChildren.find(*actual) ==
               relation.lowerChildren.end())
             throw std::runtime_error("actual absent from terminal lower Ghost image");
+        const unsigned canonical = canonicalActual.value_or(
+          canonicalize_lower_ghost(decode_lower_ghost(*actual)).state.ghost);
         return bdd.constant(lower_terminal_forces(
-          geometry, decode_lower_ghost(*actual), target));
+          geometry, canonical, target));
     }
     // The uninformed observer sees only the complete transition observation,
     // so every retained source must force the target outcome. The informed
@@ -2650,21 +2696,22 @@ struct RuntimeBlock{
             }
         } else if(item.edge.domain==CompiledChildDomain::LowerGhost){
             const LowerGhostState child=decode_lower_ghost(item.edge.childConcrete);
-            childGeometry=lowerGhost.geometry(child);
+            const LowerGhostSidecar::Located located=lowerGhost.locate(child);
+            childGeometry=located.geometry;
             const auto& lower=lowerGhost.geometry(childGeometry);
-            terminal=mask_test(lower.terminal,child.ghost);
+            terminal=mask_test(lower.terminal,located.actual);
             if(!terminal&&!child.visible){
-                childStratum=lower.actualStratum[child.ghost];
+                childStratum=lower.actualStratum[located.actual];
                 if(childStratum==NoIndex)throw std::runtime_error("lower Ghost child lacks stratum");
             }
             // UFGM variables live in the suffix plane. Both royal-assignment
             // source variables may map to the same lower Ghost square, and
             // their exact union is substituted for suffix variable 80+g.
-            relation.image[lower_ghost_suffix_variable(child.ghost)].set(source);
+            relation.image[lower_ghost_suffix_variable(located.actual)].set(source);
             relation.lowerChildren[item.edge.childConcrete].set(source);
             if(terminal){
-                if(!mask_test(lower.terminalOwner,child.ghost))relation.badWhiteSources.set(source);
-                if(!mask_test(lower.terminalObserver,child.ghost))relation.badBlackSources.set(source);
+                if(!mask_test(lower.terminalOwner,located.actual))relation.badWhiteSources.set(source);
+                if(!mask_test(lower.terminalObserver,located.actual))relation.badBlackSources.set(source);
             }
         } else if(item.edge.domain==CompiledChildDomain::LowerJester)
             relation.lowerChildren[item.edge.childConcrete].set(source);
@@ -2745,16 +2792,43 @@ class ExactKernel {
         if(r.lowerChildren.empty())throw std::runtime_error("empty lower Ghost image");
         if(certificate_)++certificate_->lowerGhostMaskProbes;
         const LowerGhostState first=decode_lower_ghost(r.lowerChildren.begin()->first);
-        const std::uint32_t geometry=lg_.geometry(first);const auto& g=lg_.geometry(geometry);
-        if(r.childTerminal)
-            return lower_terminal_formula(bdd_,r,g,target,actual);
+        const LowerGhostSidecar::Located firstLocated=lg_.locate(first);
+        const std::uint32_t geometry=firstLocated.geometry;
+        const auto& g=lg_.geometry(geometry);
+        if(r.childTerminal){
+            const std::optional<unsigned> canonicalActual = actual
+              ? std::optional<unsigned>{lg_.locate(
+                  decode_lower_ghost(*actual)).actual}
+              : std::nullopt;
+            if (actual && canonicalActual &&
+                lg_.locate(decode_lower_ghost(*actual)).geometry != geometry)
+                throw std::runtime_error(
+                  "lower Ghost relation mixes canonical geometries");
+            return lower_terminal_formula(bdd_,r,g,target,actual,
+                                           canonicalActual);
+        }
         std::uint32_t root=0;
-        if(actual){const LowerGhostState child=decode_lower_ghost(*actual);
-            if(child.visible)return bdd_.constant(target==Color::White?g.visibleOwner[child.ghost]:g.visibleObserver[child.ghost]);
-            root=target==Color::White?g.ownerRoot[child.ghost]:lg_.stratum(g.actualStratum[child.ghost]).root;
+        if(actual){
+            const LowerGhostState child=decode_lower_ghost(*actual);
+            const LowerGhostSidecar::Located located=lg_.locate(child);
+            if(located.geometry!=geometry)
+                throw std::runtime_error(
+                  "lower Ghost relation mixes canonical geometries");
+            if(child.visible)
+                return bdd_.constant(target==Color::White
+                  ? g.visibleOwner[located.actual]
+                  : g.visibleObserver[located.actual]);
+            root=target==Color::White?g.ownerRoot[located.actual]
+              :lg_.stratum(g.actualStratum[located.actual]).root;
         }else{
-            if(first.visible){bool force=target==Color::White?g.visibleOwner[first.ghost]:g.visibleObserver[first.ghost];return bdd_.constant(force);}
-            root=target==Color::White?g.ownerRoot[first.ghost]:lg_.stratum(r.childStratum).root;
+            if(first.visible){
+                const bool force=target==Color::White
+                  ? g.visibleOwner[firstLocated.actual]
+                  : g.visibleObserver[firstLocated.actual];
+                return bdd_.constant(force);
+            }
+            root=target==Color::White?g.ownerRoot[firstLocated.actual]
+              :lg_.stratum(r.childStratum).root;
         }
         return relation_compose(r,imported_.at(root),relationId);
     }

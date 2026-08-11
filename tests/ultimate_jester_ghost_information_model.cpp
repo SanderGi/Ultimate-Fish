@@ -94,6 +94,72 @@ void exhaustive_codec_test() {
         if (Model::encode_lower_ghost(
               Model::decode_lower_ghost(index)) != index)
             fail("lower Ghost codec residual at " + std::to_string(index));
+    const auto lowerKey = [](const Model::LowerGhostState& state) {
+        return std::tuple<unsigned, unsigned, unsigned, unsigned>{
+          static_cast<unsigned>(state.side), state.ownerKing,
+          state.observerKing, state.visible ? 1u : 0u};
+    };
+    const auto canonicalizeLower = [&](const Model::LowerGhostState& source) {
+        struct Result {
+            Model::LowerGhostState state;
+            Model::RectangleTransform transform =
+              Model::RectangleTransform::Identity;
+        } result{source, Model::RectangleTransform::Identity};
+        for (std::uint8_t raw = 1; raw < 4; ++raw) {
+            const auto transform =
+              static_cast<Model::RectangleTransform>(raw);
+            const Model::LowerGhostState candidate{
+              source.side,
+              Model::transform_square(source.ownerKing, transform),
+              Model::transform_square(source.observerKing, transform),
+              Model::transform_square(source.ghost, transform),
+              source.visible};
+            if (lowerKey(candidate) < lowerKey(result.state))
+                result = {candidate, transform};
+        }
+        return result;
+    };
+    for (std::uint32_t index = 0;
+         index < Model::LowerGhostStateCount; ++index) {
+        const Model::LowerGhostState source =
+          Model::decode_lower_ghost(index);
+        const auto canonical = canonicalizeLower(source);
+        expect(Model::encode_lower_ghost(canonical.state) <
+                 Model::LowerGhostStateCount,
+               "canonical lower Ghost state is not encodable");
+        const Model::LowerGhostState restored{
+          source.side,
+          Model::transform_square(canonical.state.ownerKing,
+                                  canonical.transform),
+          Model::transform_square(canonical.state.observerKing,
+                                  canonical.transform),
+          Model::transform_square(canonical.state.ghost,
+                                  canonical.transform),
+          source.visible};
+        expect(restored.ownerKing == source.ownerKing &&
+                 restored.observerKing == source.observerKing &&
+                 restored.ghost == source.ghost &&
+                 restored.side == source.side &&
+                 restored.visible == source.visible,
+               "lower Ghost canonical transform is not reversible");
+        for (std::uint8_t raw = 0; raw < 4; ++raw) {
+            const auto transform =
+              static_cast<Model::RectangleTransform>(raw);
+            const Model::LowerGhostState candidate{
+              source.side,
+              Model::transform_square(source.ownerKing, transform),
+              Model::transform_square(source.observerKing, transform),
+              Model::transform_square(source.ghost, transform),
+              source.visible};
+            expect(lowerKey(canonical.state) <= lowerKey(candidate),
+                   "lower Ghost canonical tuple is not minimal");
+            if (transform == canonical.transform)
+                expect(candidate.ownerKing == canonical.state.ownerKing &&
+                       candidate.observerKing == canonical.state.observerKing &&
+                       candidate.ghost == canonical.state.ghost,
+                       "lower Ghost canonical transform disagrees with state");
+        }
+    }
     std::cout << "jester_ghost_codec source_states " << Model::StateCount
               << " product_round_trips " << Model::StateCount
               << " lower_jester " << Model::LowerJesterStateCount

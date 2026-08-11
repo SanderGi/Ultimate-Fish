@@ -19,12 +19,12 @@ SCHEMA = "ultimate-jester-ghost-measurement-binary-compatibility-v1"
 STATUS = "codec-loader-only-transition-semantics-unchanged"
 OLD_BUNDLE_COMMIT = "b51f514087bacff46e9433cc684e07772d6110e8"
 OLD_SOLVER_SHA256 = "06ba77bbdf0ad26481568d43332e55054ce4b592e13d1ca9eba4b0e4e27993ac"
-NEW_SOLVER_SHA256 = "1fb64c1e2818c665f4b39885a87fbff625480cdd840813b01e7ad4cb6515dd36"
+NEW_SOLVER_SHA256 = "8e53da00c90db46097bb19b84736ede12ecf0cac90117b0537242070640720ed"
 OLD_HEADER_SHA256 = "ea129d411069814320e569983e5af4a0929188090d1369ddb590e5531e07306e"
 NEW_HEADER_SHA256 = "d615d818862ca46014a98b749ab4b41372b869c67ba15233a0b94fae13d3df42"
 OLD_CLI_SHA256 = "eec4fa81506eaea0d89e883740f7b3dcfb81faebd74991fcb48c23e3a2a46578"
 NEW_CLI_SHA256 = "ae63aadc4d8c13f7037d3a193a604f03a2fb38c2ed049037aae2832e76e83b33"
-PATCH_SHA256 = "f265bf3d0cead42fbb47eb5672d12d8bd23891f9eea1ff2d5416a46536c44de0"
+PATCH_SHA256 = "348dc9bb61a105274c5d5236eb2316ecd5cdbce647f1e30d7aea1f115ec17cf5"
 OLD_BINARY_SHA256 = "978fdf69362577c824d9e456a28a51d133cca4b6823fcab9e8e7555e2c11a147"
 SOURCE_SHA256 = "ad82489372318a7561a43a7c2d0cbc1fdc3e5a840c67470c5eb25704fdfecf7e"
 SEMANTIC_MODEL_SHA256 = "732852b8ddc43b8a1c66bb0f9fb5fd4c94aa9ad6faa5daeda31053f63c98f6db"
@@ -74,6 +74,45 @@ def run_logged(command: list[str], cwd: Path, log: Path) -> None:
         os.fsync(output.fileno())
     if result.returncode:
         raise RuntimeError(f"compatibility command failed; inspect {log}")
+
+
+def verify_transition_semantics(old_binary: Path, new_binary: Path,
+                                work: Path) -> str:
+    """Require the loader patch to preserve a deterministic transition shard.
+
+    The existing merge evidence is bound to ``SEMANTIC_MODEL_SHA256``.  A
+    replacement binary is therefore allowed to differ only after both the
+    certified old binary and the candidate produce byte-identical artifacts
+    for the same complete raw-geometry fixture.  Any missing artifact,
+    command failure, or byte difference fails closed before a certificate is
+    written.
+    """
+    suffixes = ("header", "meta", "strata", "index", "blocks", "verified")
+    prefixes = {"old": work / "transition-old",
+                "new": work / "transition-new"}
+    common = ["--compile-transitions", "--raw-begin", "0", "--raw-count", "1",
+              "--source-sha256", SOURCE_SHA256,
+              "--model-sha256", SEMANTIC_MODEL_SHA256,
+              "--observation-sha256", OBSERVATION_SHA256]
+    for label, binary in (("old", old_binary), ("new", new_binary)):
+        if not binary.is_file():
+            raise ValueError(f"{label} certified binary is absent")
+        run_logged([str(binary), "--transition-prefix", str(prefixes[label]),
+                    *common], work, work / f"logs/transition-{label}.log")
+        for suffix in suffixes:
+            path = Path(f"{prefixes[label]}.{suffix}")
+            if not path.is_file() or path.stat().st_size == 0:
+                raise ValueError(f"{label} transition artifact is incomplete: {suffix}")
+    digest = hashlib.sha256()
+    for suffix in suffixes:
+        old = Path(f"{prefixes['old']}.{suffix}").read_bytes()
+        new = Path(f"{prefixes['new']}.{suffix}").read_bytes()
+        if old != new:
+            raise ValueError(f"transition semantic mismatch: {suffix}")
+        digest.update(suffix.encode())
+        digest.update(b"\0")
+        digest.update(hashlib.sha256(old).digest())
+    return digest.hexdigest()
 
 
 def build(args: argparse.Namespace) -> dict[str, Any]:
@@ -144,6 +183,8 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
     run_logged([str(binary), "--self-test", "--scratch",
                 str(selftest / "jg")], source,
                args.work / "logs/selftest.log")
+    transition_semantics_sha = verify_transition_semantics(
+        args.old_binary, binary, args.work)
     binary_sha = sha256_file(binary)
     certificate = {
         "schema": SCHEMA, "status": STATUS,
@@ -169,6 +210,7 @@ def build(args: argparse.Namespace) -> dict[str, Any]:
         "observation_sha256": OBSERVATION_SHA256,
         "build_log_sha256": sha256_file(args.work / "logs/build.log"),
         "selftest_log_sha256": sha256_file(args.work / "logs/selftest.log"),
+        "transition_semantics_sha256": transition_semantics_sha,
         "residuals": {"bundle": 0, "loader_patch": 0, "build": 0,
                       "selftest": 0, "transition_semantics": 0},
     }
