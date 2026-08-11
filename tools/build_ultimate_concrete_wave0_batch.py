@@ -53,7 +53,8 @@ GIB = 1 << 30
 # distinct v2 namespace for retries.
 BATCH_VERSION = "v3"
 UNIT_PREFIX = f"ultimatefish-concrete-wave0-batch-{BATCH_VERSION}"
-SOURCE_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish"
+# Keep the v1/v2 source tree immutable while staging a corrected v3 runner.
+SOURCE_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/source-v3/ultimatefish"
 # Keep the v1/v2 dependency roots immutable.  v3 copies the authenticated
 # table files into distinct per-job roots with corrected full-file manifests.
 DEPENDENCY_BASE_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/dependencies-v3"
