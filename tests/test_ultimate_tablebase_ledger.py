@@ -112,8 +112,10 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
                 ledger.README, "kghostghostk.uftb", resume=False)
         ledger.check_launch(
             ledger.README, "kghostghostk.uftb", resume=True)
-        ledger.check_launch(
-            ledger.README, "kcopycatjesterk.uftb", resume=False)
+        planned = next(
+            entry.filename for entry in ledger.entries(ledger.README.read_text())
+            if entry.filename and entry.status == "planned")
+        ledger.check_launch(ledger.README, planned, resume=False)
 
     def test_archive_stream_round_trip_authenticates_every_physical_file(self):
         with tempfile.TemporaryDirectory() as directory:
