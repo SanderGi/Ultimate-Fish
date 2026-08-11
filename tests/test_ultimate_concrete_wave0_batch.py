@@ -7,6 +7,7 @@ import hashlib
 import json
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 
 
@@ -192,6 +193,33 @@ class ConcreteWave0BatchTest(unittest.TestCase):
             batch.build_document(0)
         with self.assertRaises(RuntimeError):
             batch.build_document(batch.MAX_CLASSES + 1)
+
+    def test_config_merge_replaces_serial_placeholder(self) -> None:
+        document = batch.build_document(24)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            fragment = root / "jobs.json"
+            config = root / "config.json"
+            batch.write_job_fragment(document, fragment)
+            original_fragment = batch.JOB_FRAGMENT
+            try:
+                batch.JOB_FRAGMENT = fragment
+                config.write_text(batch.SUPERVISION_CONFIG.read_text())
+                batch.merge_supervision_config(document, config)
+            finally:
+                batch.JOB_FRAGMENT = original_fragment
+            merged = json.loads(config.read_text())
+        jobs = {job["id"]: job for job in merged["jobs"]}
+        self.assertNotIn("concrete-wave0-remaining", jobs)
+        queued = [job for job in jobs.values()
+                  if job["id"].startswith("concrete-wave0-batch-")]
+        self.assertEqual(24, len(queued))
+        self.assertTrue(all(job["queue_stage"] for job in queued))
+        self.assertTrue(all(not job["source_bindings"] for job in queued))
+        self.assertTrue(all("advanceable" not in job for job in queued))
+        self.assertTrue(all(job["staging_plan"]["sha256"]
+                            for job in queued))
+        supervisor.validate_config(merged)
 
 
 if __name__ == "__main__":

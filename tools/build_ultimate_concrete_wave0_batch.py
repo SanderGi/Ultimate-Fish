@@ -7,7 +7,7 @@ one explicit unit/work directory per selected class so a later supervisor can
 authenticate each unit independently.
 
 Selection is deterministic: ledger entries must be ``planned`` and belong to
-the production runner's filename-sorted wave-0 inventory; the ten smallest
+the production runner's filename-sorted wave-0 inventory; the requested smallest
 packed classes are selected (ties are resolved by filename and inventory
 index).  Dependencies are obtained from the runner's exact per-class
 ``class_dependency_filenames`` function.  A missing or non-certified
@@ -36,6 +36,7 @@ SUPERVISION_CONFIG = TOOLS / "ultimate_aws_supervision.json"
 sys.path.insert(0, str(TOOLS))
 
 import run_ultimate_concrete_tablebase_shard_aws as runner  # noqa: E402
+import supervise_ultimate_aws as supervisor  # noqa: E402
 import update_ultimate_tablebase_ledger as ledger  # noqa: E402
 
 
@@ -656,12 +657,61 @@ def write_job_fragment(document: Mapping[str, object],
                                 sort_keys=True) + "\n")
 
 
+def merge_supervision_config(document: Mapping[str, object],
+                             path: Path = SUPERVISION_CONFIG) -> None:
+    """Replace the serial wave-0 placeholder with explicit queued records."""
+    fragment = build_supervision_jobs(document)
+    if not JOB_FRAGMENT.is_file():
+        raise RuntimeError("write the supervision fragment before merging config")
+    fragment_sha = sha256_path(JOB_FRAGMENT)
+    fragment_label = (str(JOB_FRAGMENT.relative_to(ROOT))
+                      if JOB_FRAGMENT.is_relative_to(ROOT)
+                      else JOB_FRAGMENT.name)
+    current = json.loads(path.read_text())
+    jobs = current.get("jobs")
+    if not isinstance(jobs, list):
+        raise RuntimeError("supervision config jobs are malformed")
+    replacements = set(map(str, fragment["replace_job_ids"]))
+    updates = {str(item["id"]): item
+               for item in fragment["retained_placeholder_updates"]}
+    merged: list[dict[str, object]] = []
+    seen: set[str] = set()
+    for raw in jobs:
+        job = dict(raw)
+        identifier = str(job["id"])
+        if identifier in replacements:
+            continue
+        if identifier in updates:
+            job["dependencies"] = list(updates[identifier]["dependencies"])
+            job["queue_stage"] = True
+        merged.append(job)
+        seen.add(identifier)
+    for raw in fragment["jobs"]:
+        job = dict(raw)
+        bindings = job.pop("staging_source_bindings")
+        if not bindings:
+            raise RuntimeError("queued batch job lacks intended source bindings")
+        job["staging_plan"] = {
+            "path": fragment_label,
+            "sha256": fragment_sha,
+            "job_id": job["id"],
+        }
+        if str(job["id"]) in seen:
+            raise RuntimeError(f"duplicate queued job {job['id']}")
+        merged.append(job)
+        seen.add(str(job["id"]))
+    current["jobs"] = merged
+    supervisor.validate_config(current)
+    path.write_text(json.dumps(current, indent=2) + "\n")
+
+
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--classes", type=int, default=DEFAULT_CLASSES)
     parser.add_argument("--output", type=Path, default=MANIFEST)
     parser.add_argument("--jobs-output", type=Path, default=JOB_FRAGMENT)
     parser.add_argument("--write", action="store_true")
+    parser.add_argument("--merge-supervision-config", action="store_true")
     return parser.parse_args(argv)
 
 
@@ -671,6 +721,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.write:
         write_manifest(document, args.output)
         write_job_fragment(document, args.jobs_output)
+        if args.merge_supervision_config:
+            merge_supervision_config(document)
+    elif args.merge_supervision_config:
+        raise RuntimeError("--merge-supervision-config requires --write")
     else:
         print(json.dumps(document, indent=2, sort_keys=True))
     return 0
