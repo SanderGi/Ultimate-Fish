@@ -302,10 +302,12 @@ class ConcreteWave0BatchTest(unittest.TestCase):
         self.assertTrue(all("advanceable" not in job for job in queued))
         self.assertTrue(all(job["staging_plan"]["sha256"]
                             for job in queued))
+        # v4 is an independently queued namespace and must not be treated as
+        # v1/v2 legacy when this v3 merge regression runs.
         legacy = [job for job in jobs.values()
                   if job["id"].startswith("concrete-wave0-batch-")
-                  and not job["id"].startswith(
-                      f"concrete-wave0-batch-{batch.BATCH_VERSION}-")]
+                  and not any(f"-batch-{version}-" in job["id"]
+                              for version in ("v3", "v4"))]
         self.assertEqual(48, len(legacy))
         self.assertTrue(all(job.get("queue_stage") and
                             not job.get("advanceable") and
