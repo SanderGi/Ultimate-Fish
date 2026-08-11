@@ -932,7 +932,7 @@
         }
       },
       "dependencies": [],
-      "queue_stage": true,
+      "advanceable": true,
       "checkpoint_paths": [
         "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/work/logs/*.log",
         "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/work/solve/*"
@@ -940,7 +940,124 @@
       "completion_paths": [
         "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/work/artifact-manifest.json"
       ],
-      "source_bindings": [],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/ghost_bomb_information_tablebase.cpp",
+          "sha256": "b811d4aca01664cd9dc2984787b8743463b2476fc378cf63b70a7a577f2f0b9a"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/ghost_bomb_information_solver.cpp",
+          "sha256": "9919fe732ce9a42607f36508c34e6775775a500eb8a10d3b08d1ed0d86e4f659"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/ghost_bomb_information_solver.h",
+          "sha256": "71e30b7964963b07edea90d81680a75e996c1d64dfdfe2bd922b747161045bc7"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/ghost_public_extra_information_solver.cpp",
+          "sha256": "ca3bdfc0cf35eb542f99b0c68b69bf719c500caad5bd095d37b3d35e9c9b1e08"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/ghost_public_extra_information_solver.h",
+          "sha256": "ab62eb0ad613162114524b3fb674c3e7514d1596a89744ce4bcdfd436c6a4ce0"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/ghost_public_extra_model.cpp",
+          "sha256": "08ae06c01de2967793f08af7868ef0472ed848559504d2c553bc4df53dd2c93c"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/ghost_public_extra_model.h",
+          "sha256": "51fb87a601068f616dbeaf163c6318b9785a03ef48e217912463880a8c330d46"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp",
+          "sha256": "9c3808ded7bd42abdf5b683aa6bb771aee184b36e00a5d078c0ef863ba67e61d"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/external_robdd.cpp",
+          "sha256": "9fd1f3c71f41f8fdcfdfe046b5e0912015240932bdcd58061a7abf2f91a01f8d"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/external_robdd.h",
+          "sha256": "5788562a3353f3b48e6acb77867360f90744942abaeb248a229aefede26e8574"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/ghost_information_probe.cpp",
+          "sha256": "1a2356b6d4694bb822c8cf059f01d83859cfeef9c4eebbff0b3cef782775cdbc"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/ghost_information_probe.h",
+          "sha256": "fcffb9f718cddc02509ee76643a4d1c4ef53db63f08200fef128c54841aacd4a"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/information.cpp",
+          "sha256": "8bbc5d90ee0ff08195541be4803cdf18c24334a32adce014a4f51dc816e4f2ab"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/tablebases/information.h",
+          "sha256": "42b1f19dce9f525aeda7b721f79bb67af575416ef9c0a660ef2f5f98064ab660"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/position.cpp",
+          "sha256": "a9aa9afe1e5619eb20e5ea784d4217b03135c8f7a603c851c44a949b331c100b"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/position.h",
+          "sha256": "499bcb159760bb9ab89d78ff05b352d85f4f4d6061a1afa43bbc5c44cd3e2ee1"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/nnue.cpp",
+          "sha256": "2f0119ae52e312dc21a21341063dc9dd179dbebdc24136cdf7b5cb5a37820139"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/nnue.h",
+          "sha256": "7b113d78c3537cc4b7b40d12f605e171dcb3f4b34b3a2e4bf26859971b6d46d0"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/tablebases/kghostk.ufgm",
+          "sha256": "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/tablebases/kbombk.uftb",
+          "sha256": "18e057c83faf940db1ad7404a39623a5db208724de892d604735576d7583ce2f"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/tools/tablebases/run_ultimate_reciprocal_bishop_ghost_aws.py",
+          "sha256": "70d5b9f0442a0fd9e9d3fab727431f689c5e02e0e4112beab31308e43330f3f9"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/tools/tablebases/run_ultimate_ghost_bomb_aws.py",
+          "sha256": "ab0cc0f3021adbe7553ce3971e218eca86fc6b5f5055a6045a6fc700855a46f4"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/tools/tablebases/package_ultimate_ghost_bomb_aws.py",
+          "sha256": "b8c444391c2a3aeeb5afefd57bab6e5ba6a18bf0c576acb911f8e742267f7452"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/tools/tablebases/stage_ultimate_ghost_bomb_resume_aws.py",
+          "sha256": "18ee448eec68eeb81d703d279297558c604440ab2bdd352ae6854cb1108d3661"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/tools/tablebases/ultimatefish-hidden-kbombkghost-resume-v3.service",
+          "sha256": "0a06380fb397cfd3025914e0f35c5e1537b7d998f22442f5114207d6c1447273"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/tablebases/kbombkghost.uftb",
+          "sha256": "29305aa38fce6a02b0ca1dca724388c02d6e8a4ec5002edc123248c59850bfd0"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/bundle-manifest.json",
+          "sha256": "d32c17d8ec30ff34a1750fcd438d535fcd547a8f99a0ef81c31bebfdf1b50cde"
+        },
+        {
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/transition-resume-manifest.json",
+          "sha256": "2f3e2951482d53b32a6196a5dd9e21fbae0c079434764b72c651a0d7dd816f0f"
+        },
+        {
+          "path": "/etc/systemd/system/ultimatefish-hidden-kbombkghost-resume-v3.service",
+          "sha256": "0a06380fb397cfd3025914e0f35c5e1537b7d998f22442f5114207d6c1447273"
+        }
+      ],
       "diagnostic_sources": [
         {
           "kind": "file",
