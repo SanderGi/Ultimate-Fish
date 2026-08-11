@@ -322,18 +322,20 @@ def aggregate(patterns):
 def sources(paths):
  result=[]
  for path in paths:
-  if not os.path.exists(path):
-   result.append({'path':path,'exists':False}); continue
-  stat=os.stat(path); item={'path':path,'exists':True,'size':stat.st_size,
-                            'mtime_ns':stat.st_mtime_ns}
+  # Source paths and metadata are already authenticated in the local job
+  # definition.  Returning them again for every binding wastes the fixed SSM
+  # output budget, especially for the 24-class concrete batch.  Preserve only
+  # the positional digest (or null for a missing/unhashable path); the local
+  # side validates count and order against the requested bindings.
+  if not os.path.isfile(path):
+   result.append(None); continue
+  stat=os.stat(path)
   if stat.st_size>16*1024*1024:
-   item['hash_error']='source binding exceeds 16 MiB'
-  else:
-   digest=hashlib.sha256()
-   with open(path,'rb') as stream:
-    for block in iter(lambda:stream.read(1024*1024),b''): digest.update(block)
-   item['sha256']=digest.hexdigest()
-  result.append(item)
+   result.append(None); continue
+  digest=hashlib.sha256()
+  with open(path,'rb') as stream:
+   for block in iter(lambda:stream.read(1024*1024),b''): digest.update(block)
+  result.append(digest.hexdigest())
  return result
 memory={}
 try:
@@ -489,11 +491,23 @@ def all_paths_exist(records: list[dict[str, Any]]) -> bool:
 
 
 def source_exact(job: dict[str, Any], remote: dict[str, Any]) -> bool:
-    expected = {binding["path"]: binding["sha256"]
-                for binding in job.get("source_bindings", [])}
-    actual = {record["path"]: record.get("sha256")
-              for record in remote.get("sources", []) if record.get("exists")}
-    return not expected or expected == actual
+    expected = job.get("source_bindings", [])
+    if not isinstance(expected, list):
+        return False
+    if not expected:
+        return True
+    actual = remote.get("sources")
+    if not isinstance(actual, list) or len(actual) != len(expected):
+        return False
+    # The remote probe intentionally omits paths.  Positional comparison is
+    # fail-closed for missing, truncated, extra, wrong, or reordered hashes.
+    return all(
+        isinstance(binding, dict) and
+        isinstance(binding.get("sha256"), str) and
+        isinstance(observed, str) and
+        re.fullmatch(r"[0-9a-f]{64}", observed) is not None and
+        observed == binding["sha256"]
+        for binding, observed in zip(expected, actual))
 
 
 def resource_warnings(instance: dict[str, Any], remote: dict[str, Any]) -> list[str]:

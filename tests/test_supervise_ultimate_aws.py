@@ -86,8 +86,7 @@ def remote(first: str = "active", complete: bool = False) -> dict[str, object]:
             "completion": ([{"path": "/tmp/result", "exists": True,
                               "size": 12, "mtime_ns": 2}] if complete else
                            [{"path": "/tmp/result", "exists": False}]),
-            "sources": [{"path": "/tmp/source", "exists": True,
-                         "sha256": SHA_A}],
+            "sources": [SHA_A],
         }, {
             "id": "second",
             "unit": {"ActiveState": "inactive", "Result": "success",
@@ -95,8 +94,7 @@ def remote(first: str = "active", complete: bool = False) -> dict[str, object]:
                      "CPUUsageNSec": "0",
                      "StateChangeTimestamp": "Sun 2026-08-10 10:00:00 UTC"},
             "checkpoints": [], "completion": [],
-            "sources": [{"path": "/tmp/source", "exists": True,
-                         "sha256": SHA_A}],
+            "sources": [SHA_A],
         }, {
             "id": "third",
             "unit": {"ActiveState": "inactive", "Result": "success",
@@ -182,6 +180,67 @@ class SupervisionTests(unittest.TestCase):
         invalid["jobs"][0]["source_bindings"][0]["path"] = "/tmp/source-*"
         with self.assertRaisesRegex(RuntimeError, "one explicit path"):
             SUPERVISOR.validate_config(invalid)
+
+    def test_source_exact_is_positional_and_fail_closed(self) -> None:
+        job = {
+            "source_bindings": [
+                {"path": "/tmp/a", "sha256": SHA_A},
+                {"path": "/tmp/b", "sha256": SHA_B},
+            ]
+        }
+        self.assertTrue(SUPERVISOR.source_exact(job, {
+            "sources": [SHA_A, SHA_B]}))
+        for sources in (
+                [None, SHA_B], ["c" * 64, SHA_B], [SHA_A],
+                [SHA_A, SHA_B, SHA_A], [SHA_B, SHA_A], []):
+            with self.subTest(sources=sources):
+                self.assertFalse(SUPERVISOR.source_exact(
+                    job, {"sources": sources}))
+        self.assertTrue(SUPERVISOR.source_exact(
+            {"source_bindings": []}, {"sources": []}))
+
+    def test_compact_source_probe_fits_each_batch_host_budget(self) -> None:
+        document = json.loads(
+            (ROOT / "tools/ultimate_aws_supervision.json").read_text())
+        jobs_by_host = {}
+        for job in document["jobs"]:
+            if job["id"].startswith("concrete-wave0-batch-"):
+                jobs_by_host.setdefault(job["instance_id"], []).append(job)
+        self.assertEqual(24, sum(map(len, jobs_by_host.values())))
+        self.assertEqual(173, max(
+            sum(len(job["source_bindings"]) for job in jobs)
+            for jobs in jobs_by_host.values()))
+        for instance_id, jobs in jobs_by_host.items():
+            definition = next(item for item in document["instances"]
+                              if item["instance_id"] == instance_id)
+            definition = json.loads(json.dumps(definition))
+            definition["mounts"] = ["/"]
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                replacements = {}
+                for job in jobs:
+                    for binding in job["source_bindings"]:
+                        path = binding["path"]
+                        if path not in replacements:
+                            target = root / f"source-{len(replacements):04d}"
+                            target.write_bytes(b"compact-probe")
+                            replacements[path] = str(target)
+                probe_jobs = json.loads(json.dumps(jobs))
+                for job in probe_jobs:
+                    for binding in job["source_bindings"]:
+                        binding["path"] = replacements[binding["path"]]
+                observed = SUPERVISOR.local_probe(
+                    SUPERVISOR.remote_script(definition, probe_jobs))
+                encoded = SUPERVISOR.canonical_json(observed).encode()
+                self.assertNotIn("probe_error", observed)
+                self.assertLessEqual(len(encoded),
+                                     SUPERVISOR.REMOTE_OUTPUT_BUDGET)
+                self.assertEqual(
+                    sum(len(job["source_bindings"]) for job in jobs),
+                    sum(len(job["sources"]) for job in observed["jobs"]))
+                self.assertTrue(all(
+                    isinstance(digest, str) and len(digest) == 64
+                    for job in observed["jobs"] for digest in job["sources"]))
 
     def test_cpu_allocation_reports_idle_capacity_and_overlap(self) -> None:
         definition = config()["instances"][0]
