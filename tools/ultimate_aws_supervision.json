@@ -126,7 +126,22 @@
         "/mnt/ultimatefish/giant-ghost-same-31ca4c39-full-v1/work/results/kghostgiantk.ufgi"
       ],
       "source_bindings": [],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "hidden/giant-ghost/same/v1/results/sha256/12e0861432f5652b44988b5fe6028d4c10bd15dfbdd55a4ba2890481eafc8be6/giant-ghost-same-full-12e0861432f5652b44988b5fe6028d4c10bd15dfbdd55a4ba2890481eafc8be6.tar.zst",
+          "version_id": "ipoEi8SHEt7PTaYiM0B2WjJEXiW.ZPS6",
+          "sha256": "12e0861432f5652b44988b5fe6028d4c10bd15dfbdd55a4ba2890481eafc8be6",
+          "size": 600916037
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "hidden/giant-ghost/same/v1/results/sha256/12e0861432f5652b44988b5fe6028d4c10bd15dfbdd55a4ba2890481eafc8be6/certificates/397c76c2da2baef5b5bb09e95de2c999fbd025019d39f4b04ff96568494e7558.json",
+          "version_id": "opEvFR3CvhoI5brxXlpdL1NS.YVraQ2I",
+          "sha256": "397c76c2da2baef5b5bb09e95de2c999fbd025019d39f4b04ff96568494e7558",
+          "size": 1339
+        }
+      ]
     },
     {
       "id": "giant-ghost-opposing-full",
