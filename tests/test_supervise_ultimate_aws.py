@@ -53,6 +53,11 @@ def config() -> dict[str, object]:
             "id": "second", "instance_id": "i-0123456789abcdef0",
             "unit": "ultimatefish-second.service", "dependencies": ["first"],
             "advanceable": True,
+            "expected_allowed_cpus": "16",
+            "resource_requirements": {
+                "cpu_threads": 1, "memory_peak_bytes": 10,
+                "disk_peak_bytes": {"/": 10},
+            },
             "checkpoint_paths": [], "completion_paths": [],
             "source_bindings": [{"path": "/tmp/source", "sha256": SHA_A}],
             "s3_certificates": [],
@@ -227,6 +232,66 @@ class SupervisionTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "expected_allowed_cpus"):
             SUPERVISOR.validate_config(document)
 
+    def test_resource_scheduler_backfills_only_jobs_that_fit(self) -> None:
+        document = config()
+        fourth = {
+            "id": "fourth", "instance_id": "i-0123456789abcdef0",
+            "unit": "ultimatefish-fourth.service", "dependencies": [],
+            "advanceable": True, "expected_allowed_cpus": "17",
+            "resource_requirements": {
+                "cpu_threads": 1, "memory_peak_bytes": 95,
+                "disk_peak_bytes": {"/": 10},
+            },
+            "checkpoint_paths": [], "completion_paths": [],
+            "source_bindings": [{"path": "/tmp/source", "sha256": SHA_A}],
+            "s3_certificates": [],
+        }
+        document["jobs"].append(fourth)
+        observed = remote(first="inactive", complete=True)
+        observed["jobs"].append({
+            "id": "fourth", "unit": {"ActiveState": "inactive"},
+            "checkpoints": [], "completion": [], "sources": [],
+        })
+        report = {
+            "instances": {"i-0123456789abcdef0": {
+                "remote": observed,
+                "cpu_allocation": SUPERVISOR.cpu_allocation(
+                    document["instances"][0], observed, document["jobs"]),
+            }},
+            "jobs": {
+                "first": {"status": "CERTIFIED"},
+                "second": {"status": "READY"},
+                "third": {"status": "AWAITING_STAGE"},
+                "fourth": {"status": "READY"},
+            },
+        }
+        schedule = SUPERVISOR.schedule_backfill(document, report)
+        self.assertEqual(["second"], schedule["selected"])
+        self.assertIn("memory", schedule["blocked"]["fourth"])
+
+    @mock.patch.object(SUPERVISOR, "head_certificate")
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    @mock.patch.object(SUPERVISOR, "ec2_inventory")
+    def test_two_low_utilization_samples_raise_underutilized(
+            self, inventory: mock.Mock, probe: mock.Mock,
+            head: mock.Mock) -> None:
+        document = config()
+        document["underutilized_samples"] = 2
+        inventory.return_value = self.ec2
+        probe.return_value = remote(first="inactive", complete=True)
+        head.return_value = {
+            "bucket": "private", "key": "results/first", "version_id": "v1",
+            "size": 12, "sha256": SHA_B, "exact": True,
+        }
+        first, state = SUPERVISOR.supervise(document, {}, self.now)
+        self.assertFalse(first["report"]["scheduling"]["underutilized"])
+        second, _ = SUPERVISOR.supervise(
+            document, state, self.now + dt.timedelta(minutes=5))
+        self.assertTrue(second["report"]["scheduling"]["underutilized"])
+        self.assertTrue(second["delegate_sol"])
+        self.assertEqual("UNDERUTILIZED",
+                         second["report"]["errors"][-1]["fleet"])
+
     @mock.patch.object(SUPERVISOR, "head_certificate")
     @mock.patch.object(SUPERVISOR, "local_probe")
     @mock.patch.object(SUPERVISOR, "ec2_inventory")
@@ -266,7 +331,8 @@ class SupervisionTests(unittest.TestCase):
         self.assertEqual("READY", output["report"]["jobs"]["second"]["status"])
         self.assertEqual("AWAITING_STAGE",
                          output["report"]["jobs"]["third"]["status"])
-        self.assertEqual(["second", "third"], output["ready_jobs"])
+        self.assertEqual(["second"], output["ready_jobs"])
+        self.assertEqual(["third"], output["stage_jobs"])
 
     @mock.patch.object(SUPERVISOR, "head_certificate")
     @mock.patch.object(SUPERVISOR, "local_probe")
@@ -363,7 +429,7 @@ class SupervisionTests(unittest.TestCase):
         state = {"report": {"jobs": {
             "first": {"status": "CERTIFIED"},
             "second": {"status": "READY", "source_exact": True},
-        }}}
+        }, "scheduling": {"selected": ["second"]}}}
         result = SUPERVISOR.start_ready(config(), state, "second")
         self.assertEqual("STARTED", result["status"])
         command.assert_called_once_with(
@@ -371,6 +437,11 @@ class SupervisionTests(unittest.TestCase):
              "ultimatefish-second.service"])
         state["report"]["jobs"]["second"]["status"] = "RUNNING"
         with self.assertRaisesRegex(RuntimeError, "not source-certified READY"):
+            SUPERVISOR.start_ready(config(), state, "second")
+        state["report"]["jobs"]["second"] = {
+            "status": "READY", "source_exact": True}
+        state["report"]["scheduling"]["selected"] = []
+        with self.assertRaisesRegex(RuntimeError, "resource scheduler"):
             SUPERVISOR.start_ready(config(), state, "second")
 
     @mock.patch.object(SUPERVISOR, "ssm_probe")
@@ -381,13 +452,41 @@ class SupervisionTests(unittest.TestCase):
         state = {"report": {"jobs": {
             "first": {"status": "CERTIFIED"},
             "second": {"status": "READY", "source_exact": True},
-        }}}
+        }, "scheduling": {"selected": ["second"]}}}
         result = SUPERVISOR.start_ready(document, state, "second")
         self.assertEqual(result["status"], "STARTED")
         command = probe.call_args.args[2]
         self.assertIn(
             "systemctl start --no-block ultimatefish-second.service", command)
         self.assertIn('test "$state" = activating', command)
+
+    @mock.patch.object(SUPERVISOR, "run")
+    def test_cpu_rebalance_shrinks_overlapping_live_allocations(
+            self, command: mock.Mock) -> None:
+        document = config()
+        document["jobs"][0]["expected_allowed_cpus"] = "0"
+        document["jobs"][0]["resource_requirements"] = {
+            "cpu_threads": 1, "memory_peak_bytes": 10,
+            "disk_peak_bytes": {"/": 10},
+        }
+        observed = remote()
+        observed["jobs"][1]["unit"].update({
+            "ActiveState": "active", "AllowedCPUs": "0-31"})
+        state = {"report": {
+            "jobs": {"first": {"status": "RUNNING"},
+                     "second": {"status": "RUNNING"}},
+            "instances": {"i-0123456789abcdef0": {"remote": observed}},
+        }}
+        command.side_effect = ["", "0\n"]
+        result = SUPERVISOR.rebalance_cpu(document, state, "first")
+        self.assertEqual("CPU_REBALANCED", result["status"])
+        self.assertEqual("0", result["allowed_cpus"])
+        command.assert_has_calls([
+            mock.call(["systemctl", "set-property", "--runtime",
+                       "ultimatefish-first.service", "AllowedCPUs=0"]),
+            mock.call(["systemctl", "show", "ultimatefish-first.service",
+                       "-p", "AllowedCPUs", "--value"]),
+        ])
 
 
 if __name__ == "__main__":

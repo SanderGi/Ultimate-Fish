@@ -44,6 +44,9 @@ TERMINAL_OK = {"CERTIFIED"}
 TERMINAL_BAD = {"FAILED", "SOURCE_MISMATCH", "RESOURCE_LIMIT"}
 UNIT = re.compile(r"[A-Za-z0-9_.@-]+\.service")
 CPU_SET = re.compile(r"[0-9,-]+")
+DEFAULT_TARGET_UTILIZATION = .70
+DEFAULT_UNDERUTILIZED_FRACTION = .50
+DEFAULT_UNDERUTILIZED_SAMPLES = 2
 
 
 def canonical_json(value: object) -> str:
@@ -112,6 +115,17 @@ def validate_config(config: dict[str, Any]) -> None:
     probe_workers = int(config.get("probe_workers", 2))
     if not 1 <= probe_workers <= 3:
         raise RuntimeError("probe_workers must be between one and three")
+    target = float(config.get(
+        "target_measured_utilization_fraction", DEFAULT_TARGET_UTILIZATION))
+    underutilized = float(config.get(
+        "underutilized_fraction", DEFAULT_UNDERUTILIZED_FRACTION))
+    samples = int(config.get(
+        "underutilized_samples", DEFAULT_UNDERUTILIZED_SAMPLES))
+    if not 0 < underutilized < target <= 1:
+        raise RuntimeError(
+            "utilization fractions must satisfy 0 < underutilized < target <= 1")
+    if samples < 2:
+        raise RuntimeError("underutilized_samples must be at least two")
     instances = config.get("instances")
     jobs = config.get("jobs")
     if not isinstance(instances, list) or not instances or len(instances) > 5:
@@ -196,6 +210,35 @@ def validate_config(config: dict[str, Any]) -> None:
             if not parsed:
                 raise RuntimeError(
                     f"{identifier} expected_allowed_cpus must not be empty")
+        resources = job.get("resource_requirements")
+        if resources is not None:
+            if not isinstance(resources, dict) or set(resources) != {
+                    "cpu_threads", "memory_peak_bytes", "disk_peak_bytes"}:
+                raise RuntimeError(
+                    f"{identifier} has invalid resource_requirements")
+            threads = int(resources.get("cpu_threads", 0))
+            memory = int(resources.get("memory_peak_bytes", 0))
+            disks = resources.get("disk_peak_bytes")
+            if (threads <= 0 or memory <= 0 or not isinstance(disks, dict) or
+                    len(disks) != 1):
+                raise RuntimeError(
+                    f"{identifier} requires positive resources on one mount")
+            instance = next(item for item in instances
+                            if item["instance_id"] == job["instance_id"])
+            mounts = set(map(str, instance.get("mounts", ["/"])))
+            if (any(str(path) not in mounts or int(extent) <= 0
+                    for path, extent in disks.items())):
+                raise RuntimeError(
+                    f"{identifier} resource disk requirements are invalid")
+            if expected_cpus is not None and len(parsed) != threads:
+                raise RuntimeError(
+                    f"{identifier} CPU set must equal cpu_threads")
+        if job.get("advanceable") and resources is None:
+            raise RuntimeError(
+                f"{identifier} advanceable job lacks resource_requirements")
+        if job.get("advanceable") and expected_cpus is None:
+            raise RuntimeError(
+                f"{identifier} advanceable job lacks expected_allowed_cpus")
     for job in jobs:
         for dependency in job.get("dependencies", []):
             if dependency not in job_ids or dependency == job["id"]:
@@ -264,14 +307,16 @@ def aggregate(patterns):
  for pattern in patterns:
   matches=sorted(glob.glob(pattern))
   if not matches: result.append({'path':pattern,'exists':False}); continue
-  digest=hashlib.sha256(); total=0; newest=0
+  digest=hashlib.sha256(); total=0; allocated=0; newest=0
   for path in matches:
-   stat=os.stat(path); total+=stat.st_size; newest=max(newest,stat.st_mtime_ns)
+   stat=os.stat(path); total+=stat.st_size; allocated+=stat.st_blocks*512
+   newest=max(newest,stat.st_mtime_ns)
    record=json.dumps([path,stat.st_size,stat.st_mtime_ns],
                      separators=(',',':')).encode()
    digest.update(len(record).to_bytes(8,'big')); digest.update(record)
   result.append({'path':pattern,'exists':True,'match_count':len(matches),
-                 'total_size':total,'newest_mtime_ns':newest,
+                 'total_size':total,'allocated_bytes':allocated,
+                 'newest_mtime_ns':newest,
                  'metadata_sha256':digest.hexdigest()})
  return result
 def sources(paths):
@@ -549,14 +594,148 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
         "unknown_jobs": unknown,
         "overlaps": overlaps,
         "active_jobs": {name: len(cpus) for name, cpus in active_sets.items()},
+        "active_cpu_sets": {
+            name: ",".join(map(str, sorted(cpus)))
+            for name, cpus in active_sets.items()
+        },
         "measured_jobs": utilization,
         "measured_busy_vcpus": round(measured_busy, 3),
         "measured_fleet_capacity_percent": round(
             100 * measured_busy / capacity, 1),
-        "measurement_complete": bool(active_sets) and
+        # An entirely idle, successfully probed host is a complete sample too.
+        # Treating it as unknown prevented the scheduler from backfilling the
+        # most obviously idle machines.
+        "measurement_complete": not unknown and
         set(utilization) == set(active_sets),
         "allocation_mismatches": mismatches,
     }
+
+
+def _job_resources(job: dict[str, Any]) -> dict[str, Any]:
+    resources = job.get("resource_requirements", {})
+    return {
+        "cpu_threads": int(resources.get("cpu_threads", 0)),
+        "memory_peak_bytes": int(resources.get("memory_peak_bytes", 0)),
+        "disk_peak_bytes": {
+            str(path): int(extent)
+            for path, extent in resources.get("disk_peak_bytes", {}).items()
+        },
+    }
+
+
+def schedule_backfill(config: dict[str, Any], report: dict[str, Any]
+                      ) -> dict[str, Any]:
+    """Choose only dependency/source-certified jobs that fit measured hosts.
+
+    Disk and memory requests are conservative peak *additional* reservations.
+    For a running job we reserve only its remaining memory-to-peak and its full
+    declared additional disk extent.  This deliberately favours correctness
+    over optimistic overcommit while still allowing many single-threaded jobs
+    to occupy otherwise idle CPUs.
+    """
+    target = float(config.get(
+        "target_measured_utilization_fraction", DEFAULT_TARGET_UTILIZATION))
+    definitions = {str(job["id"]): job for job in config["jobs"]}
+    jobs = report["jobs"]
+    instances = {str(item["instance_id"]): item for item in config["instances"]}
+    candidates = [
+        definition for definition in config["jobs"]
+        if jobs.get(str(definition["id"]), {}).get("status") == "READY"
+    ]
+    # Smallest peak memory first backfills more independent solves; stable ids
+    # make the decision deterministic and auditable.
+    candidates.sort(key=lambda item: (
+        int(_job_resources(item)["memory_peak_bytes"]), str(item["id"])))
+    selected: list[str] = []
+    blocked: dict[str, str] = {}
+    host_plans: dict[str, dict[str, Any]] = {}
+    for instance_id, instance in instances.items():
+        observed = report["instances"].get(instance_id, {})
+        remote = observed.get("remote", {})
+        allocation = observed.get("cpu_allocation", {})
+        mounts = {str(item["path"]): int(item.get("free_bytes", 0))
+                  for item in remote.get("mounts", [])}
+        available_memory = int(remote.get("memory", {}).get("MemAvailable", 0))
+        memory_budget = max(0, available_memory - int(
+            instance.get("minimum_memory_available_bytes", 0)))
+        disk_budget = {
+            path: max(0, free - int(
+                instance.get("minimum_disk_free_bytes", {}).get(path, 0)))
+            for path, free in mounts.items()
+        }
+        active_cpus: set[int] = set()
+        reserved_memory = 0
+        reserved_disk = {path: 0 for path in disk_budget}
+        remote_jobs = {str(item["id"]): item for item in remote.get("jobs", [])}
+        for job_id, result in jobs.items():
+            definition = definitions[job_id]
+            if definition["instance_id"] != instance_id or \
+                    result["status"] != "RUNNING":
+                continue
+            unit = remote_jobs.get(job_id, {}).get("unit", {})
+            try:
+                active_cpus |= parse_cpu_set(
+                    unit.get("AllowedCPUs"), int(instance["vcpus"]))
+            except ValueError:
+                pass
+            resources = _job_resources(definition)
+            current = integer_property(unit, "MemoryCurrent") or 0
+            reserved_memory += max(0, resources["memory_peak_bytes"] - current)
+            current_disk = sum(
+                int(item.get("allocated_bytes", 0))
+                for item in remote_jobs.get(job_id, {}).get("checkpoints", []))
+            for path, extent in resources["disk_peak_bytes"].items():
+                reserved_disk[path] = reserved_disk.get(path, 0) + max(
+                    0, extent - current_disk)
+        host_plans[instance_id] = {
+            "measurement_complete": bool(allocation.get("measurement_complete")),
+            "measured_busy_vcpus": float(
+                allocation.get("measured_busy_vcpus", 0.0)),
+            "target_busy_vcpus": round(target * int(instance["vcpus"]), 3),
+            "selected": [], "memory_budget_bytes": memory_budget,
+            "memory_reserved_bytes": reserved_memory,
+            "disk_budget_bytes": disk_budget,
+            "disk_reserved_bytes": reserved_disk,
+        }
+        if not allocation.get("measurement_complete"):
+            continue
+        host_candidates = [item for item in candidates
+                           if item["instance_id"] == instance_id]
+        predicted_busy = float(allocation.get("measured_busy_vcpus", 0.0))
+        for job in host_candidates:
+            identifier = str(job["id"])
+            resources = _job_resources(job)
+            cpus = parse_cpu_set(
+                job.get("expected_allowed_cpus"), int(instance["vcpus"]))
+            if predicted_busy >= target * int(instance["vcpus"]):
+                blocked[identifier] = "host target utilization reached"
+                continue
+            if not cpus or cpus & active_cpus:
+                blocked[identifier] = "no disjoint configured CPU set"
+                continue
+            if reserved_memory + resources["memory_peak_bytes"] > memory_budget:
+                blocked[identifier] = "insufficient measured memory headroom"
+                continue
+            disk_failure = next((
+                path for path, extent in resources["disk_peak_bytes"].items()
+                if (path not in disk_budget or
+                    reserved_disk.get(path, 0) + extent > disk_budget[path])
+            ), None)
+            if disk_failure is not None:
+                blocked[identifier] = (
+                    f"insufficient measured disk headroom on {disk_failure}")
+                continue
+            selected.append(identifier)
+            host_plans[instance_id]["selected"].append(identifier)
+            active_cpus |= cpus
+            reserved_memory += resources["memory_peak_bytes"]
+            for path, extent in resources["disk_peak_bytes"].items():
+                reserved_disk[path] = reserved_disk.get(path, 0) + extent
+            predicted_busy += resources["cpu_threads"]
+        host_plans[instance_id]["predicted_busy_vcpus"] = round(predicted_busy, 3)
+        host_plans[instance_id]["memory_reserved_bytes"] = reserved_memory
+        host_plans[instance_id]["disk_reserved_bytes"] = reserved_disk
+    return {"selected": selected, "blocked": blocked, "hosts": host_plans}
 
 
 def probe_instance(config: dict[str, Any], definition: dict[str, Any],
@@ -587,6 +766,7 @@ def probe_instance(config: dict[str, Any], definition: dict[str, Any],
         "vcpus": int(definition["vcpus"]), "allocated_vcpus": 0,
         "idle_vcpus": int(definition["vcpus"]), "allocation_known": False,
         "unknown_jobs": [], "overlaps": [], "active_jobs": {},
+        "active_cpu_sets": {},
         "measured_jobs": {}, "measured_busy_vcpus": 0.0,
         "measured_fleet_capacity_percent": 0.0,
         "measurement_complete": False,
@@ -746,6 +926,49 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                                               for instance in config["instances"]), 2),
         "instances": instance_results, "jobs": jobs, "errors": errors,
     }
+    scheduling = schedule_backfill(config, report)
+    measured_instances = [
+        value for value in instance_results.values()
+        if value.get("ec2_state") == "running"
+    ]
+    measurement_complete = bool(measured_instances) and all(
+        value["cpu_allocation"].get("measurement_complete")
+        for value in measured_instances)
+    measured_capacity = sum(int(value["cpu_allocation"]["vcpus"])
+                            for value in measured_instances)
+    measured_busy = sum(float(value["cpu_allocation"]["measured_busy_vcpus"])
+                        for value in measured_instances)
+    utilization_fraction = (measured_busy / measured_capacity
+                            if measured_capacity else 0.0)
+    stage_jobs = [identifier for identifier, value in jobs.items()
+                  if value["status"] == "AWAITING_STAGE"]
+    runnable = sorted(set(scheduling["selected"]) | set(stage_jobs))
+    below = (measurement_complete and bool(runnable) and
+             utilization_fraction < float(config.get(
+                 "underutilized_fraction", DEFAULT_UNDERUTILIZED_FRACTION)))
+    underutilized_limit = int(config.get(
+        "underutilized_samples", DEFAULT_UNDERUTILIZED_SAMPLES))
+    underutilized_samples = (min(
+        underutilized_limit,
+        int(previous.get("underutilized_samples", 0)) + 1) if below else 0)
+    underutilized = underutilized_samples >= underutilized_limit
+    if underutilized:
+        errors.append({
+            "fleet": "UNDERUTILIZED",
+            "error": (f"measured fleet utilization {utilization_fraction:.3f} "
+                      f"below threshold with {len(runnable)} runnable jobs for "
+                      f"{underutilized_samples} samples"),
+        })
+    scheduling.update({
+        "measurement_complete": measurement_complete,
+        "measured_busy_vcpus": round(measured_busy, 3),
+        "measured_capacity_vcpus": measured_capacity,
+        "measured_utilization_percent": round(100 * utilization_fraction, 1),
+        "underutilized_samples": underutilized_samples,
+        "underutilized": underutilized,
+        "stage_jobs": stage_jobs,
+    })
+    report["scheduling"] = scheduling
     # Utilization is sampled every poll and belongs in the durable state and
     # regular report, but it must not turn quiet progress into a five-minute
     # event stream.  Scheduling topology and warnings remain event-significant.
@@ -757,11 +980,18 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                 key: value["cpu_allocation"][key] for key in (
                     "vcpus", "allocated_vcpus", "idle_vcpus",
                     "allocation_known", "unknown_jobs", "overlaps",
-                    "active_jobs", "allocation_mismatches")
+                    "active_jobs", "active_cpu_sets",
+                    "allocation_mismatches")
             },
         } for identifier, value in instance_results.items()},
         "jobs": {identifier: value["status"] for identifier, value in jobs.items()},
         "errors": errors,
+        "scheduling": {
+            "selected": scheduling["selected"],
+            "stage_jobs": stage_jobs,
+            "underutilized_samples": underutilized_samples,
+            "underutilized": underutilized,
+        },
     }
     digest = sha256_bytes(canonical_json(event_view).encode())
     last_digest = previous.get("event_digest")
@@ -775,8 +1005,14 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
     severity = ("error" if errors or any(
         result["status"] in TERMINAL_BAD for result in jobs.values())
                 else "warning" if resource_risk else "info")
-    ready = [identifier for identifier, value in jobs.items()
-             if value["status"] in {"READY", "AWAITING_STAGE"}]
+    # Only the resource scheduler's safe subset reaches the automatic advance
+    # gate.  Staged-but-not-installed work is reported separately for Sol.
+    ready = list(scheduling["selected"])
+    rebalance_jobs = sorted({
+        job_id
+        for value in instance_results.values()
+        for job_id in value["cpu_allocation"]["allocation_mismatches"]
+    })
     previous_jobs = previous.get("report", {}).get("jobs", {})
     changed_jobs = [identifier for identifier, value in jobs.items()
                     if previous_jobs.get(identifier, {}).get("status") !=
@@ -812,6 +1048,8 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
     output = {
         "status": event_type, "severity": severity,
         "delegate_sol": severity == "error", "ready_jobs": ready,
+        "cpu_rebalance_jobs": rebalance_jobs,
+        "stage_jobs": stage_jobs,
         "report": {
             "observed_at": report["observed_at"],
             "estimated_spend_usd": report["estimated_spend_usd"],
@@ -824,6 +1062,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                if heartbeat or not last_digest or value["resource_warnings"]},
             "jobs": compact_jobs,
             "errors": errors,
+            "scheduling": scheduling,
         },
     }
     state = {
@@ -831,6 +1070,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         "last_observed_epoch": now.timestamp(),
         "last_regular_report_epoch": (now.timestamp() if heartbeat or changed
                                        else last_report),
+        "underutilized_samples": underutilized_samples,
         "report": report,
     }
     return output, state
@@ -843,6 +1083,9 @@ def start_ready(config: dict[str, Any], state: dict[str, Any], job_id: str) -> d
     observed = state.get("report", {}).get("jobs", {}).get(job_id, {})
     if observed.get("status") != "READY" or not observed.get("source_exact"):
         raise RuntimeError(f"{job_id} is not source-certified READY")
+    selected = state.get("report", {}).get("scheduling", {}).get("selected", [])
+    if job_id not in selected:
+        raise RuntimeError(f"{job_id} was not selected by the resource scheduler")
     job = jobs[job_id]
     if not job.get("advanceable"):
         raise RuntimeError(f"{job_id} is monitor-only and cannot be advanced")
@@ -872,6 +1115,63 @@ def start_ready(config: dict[str, Any], state: dict[str, Any], job_id: str) -> d
             "resumable": True}
 
 
+def rebalance_cpu(config: dict[str, Any], state: dict[str, Any],
+                  job_id: str) -> dict[str, Any]:
+    jobs = {job["id"]: job for job in config["jobs"]}
+    if job_id not in jobs:
+        raise RuntimeError(f"unknown CPU rebalance job {job_id}")
+    job = jobs[job_id]
+    expected = str(job.get("expected_allowed_cpus", ""))
+    if not expected:
+        raise RuntimeError(f"{job_id} has no canonical CPU allocation")
+    observed = state.get("report", {}).get("jobs", {}).get(job_id, {})
+    if observed.get("status") != "RUNNING":
+        raise RuntimeError(f"{job_id} is not RUNNING for CPU rebalance")
+    instance = next(item for item in config["instances"]
+                    if item["instance_id"] == job["instance_id"])
+    desired = parse_cpu_set(expected, int(instance["vcpus"]))
+    remote_jobs = state.get("report", {}).get("instances", {}).get(
+        job["instance_id"], {}).get("remote", {}).get("jobs", [])
+    definitions = {str(item["id"]): item for item in config["jobs"]}
+    for other in remote_jobs:
+        if other.get("id") == job_id or other.get("unit", {}).get(
+                "ActiveState") not in {"active", "activating", "reloading"}:
+            continue
+        other_definition = definitions.get(str(other.get("id")), {})
+        other_expected = other_definition.get("expected_allowed_cpus")
+        try:
+            # Compare canonical destinations when both jobs are being shrunk.
+            # Comparing against the other job's current oversized set would
+            # make an overlap impossible to repair without stopping work.
+            actual = parse_cpu_set(
+                other_expected or other.get("unit", {}).get("AllowedCPUs"),
+                int(instance["vcpus"]))
+        except ValueError:
+            raise RuntimeError(
+                f"{job_id} cannot rebalance around unknown {other.get('id')} CPUs")
+        if desired & actual:
+            raise RuntimeError(
+                f"{job_id} canonical CPUs overlap canonical active "
+                f"{other.get('id')}")
+    unit = str(job["unit"])
+    if instance.get("transport", "ssm") == "local":
+        run(["systemctl", "set-property", "--runtime", unit,
+             f"AllowedCPUs={expected}"])
+        actual = run(["systemctl", "show", unit, "-p", "AllowedCPUs",
+                      "--value"]).strip()
+        if parse_cpu_set(actual, int(instance["vcpus"])) != desired:
+            raise RuntimeError(f"{job_id} CPU rebalance readback residual")
+    else:
+        command = (
+            f"systemctl set-property --runtime {unit} AllowedCPUs={expected} && "
+            f"actual=$(systemctl show {unit} -p AllowedCPUs --value) && "
+            f'test "$actual" = {expected} && echo {REMOTE_PREFIX}{{}}')
+        ssm_probe(config["region"], job["instance_id"], command)
+    return {"status": "CPU_REBALANCED", "job": job_id,
+            "instance_id": job["instance_id"], "unit": unit,
+            "allowed_cpus": expected}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
@@ -879,6 +1179,7 @@ def main() -> int:
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--once", action="store_true")
     mode.add_argument("--advance", metavar="JOB")
+    mode.add_argument("--rebalance-cpu", metavar="JOB")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     config = load_json(args.config.resolve())
@@ -900,6 +1201,11 @@ def main() -> int:
             result = start_ready(config, previous, args.advance)
             print(canonical_json(result) if args.json else
                   f"STARTED {args.advance}")
+            return 0
+        if args.rebalance_cpu:
+            result = rebalance_cpu(config, previous, args.rebalance_cpu)
+            print(canonical_json(result) if args.json else
+                  f"CPU_REBALANCED {args.rebalance_cpu}")
             return 0
         output, state = supervise(
             config, previous, dt.datetime.now(dt.timezone.utc))

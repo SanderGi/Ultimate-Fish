@@ -78,14 +78,36 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
         self.assertIn("incomplete", deferred["completeness"])
 
     def test_pawn_dependency_waves(self) -> None:
+        singles = set(runner.base_dependency_filenames())
+        self.assertEqual(15, len(singles))
+        self.assertNotIn("kjesterkjester.uftb", singles)
         for wave in range(3):
             for row in runner.wave_inventory(wave):
                 self.assertEqual(wave, runner.dependency_wave(row))
+                dependencies = set(runner.class_dependency_filenames(row))
+                self.assertEqual(1 if wave else 0,
+                                 len(dependencies - singles))
+                self.assertNotIn(str(row["filename"]), dependencies)
             self.assertTrue(set(runner.required_dependency_filenames(wave)).isdisjoint(
                 {str(row["filename"]) for row in runner.wave_inventory(wave)}))
-        wave_one = set(runner.required_dependency_filenames(1))
-        self.assertTrue({str(row["filename"])
-                         for row in runner.wave_inventory(0)} <= wave_one)
+        bomb_berserker = next(
+            row for row in runner.wave_inventory(0)
+            if row["filename"] == "kberserkerbombk.uftb")
+        self.assertEqual(
+            {"kberserkerk.uftb", "kbombk.uftb"},
+            set(runner.class_dependency_filenames(bomb_berserker)))
+        pawn_bomb = next(
+            row for row in runner.wave_inventory(1)
+            if row["filename"] == "kpawnbombk.uftb")
+        self.assertEqual(
+            {"kpawnk.uftb", "kbombk.uftb", "kqueenbombk.uftb"},
+            set(runner.class_dependency_filenames(pawn_bomb)))
+        pawn_pair = next(
+            row for row in runner.wave_inventory(2)
+            if row["filename"] == "kpawnpawnk.uftb")
+        self.assertEqual(
+            {"kpawnk.uftb", "kpawnqueenk.uftb"},
+            set(runner.class_dependency_filenames(pawn_pair)))
 
     def test_default_is_plan_only(self) -> None:
         arguments = [

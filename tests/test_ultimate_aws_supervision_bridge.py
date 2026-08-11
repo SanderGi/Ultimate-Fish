@@ -89,6 +89,56 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual(
             ["--advance", "next", "--json"], run.call_args_list[1].args[2])
 
+    @mock.patch.object(BRIDGE, "run_supervisor")
+    def test_cpu_mismatch_is_rebalanced_before_backfill(
+            self, run: mock.Mock) -> None:
+        event = {"status": "CHANGE", "severity": "info",
+                 "cpu_rebalance_jobs": ["oversized"],
+                 "ready_jobs": ["next"],
+                 "report": {"jobs": {"next": {"status": "READY"}}}}
+        run.side_effect = [
+            (0, json.dumps(event), ""),
+            (0, json.dumps({"status": "CPU_REBALANCED",
+                            "job": "oversized"}), ""),
+            (0, json.dumps({"status": "STARTED", "job": "next"}), ""),
+        ]
+        BRIDGE.collect(
+            python=Path("/python"), supervisor=Path("/supervisor"),
+            health=self.health, events=self.events, now=self.now)
+        consumed = BRIDGE.consume(
+            health=self.health, events=self.events, cursor=self.cursor,
+            now=self.now)
+        self.assertEqual(
+            ["CPU_REBALANCED", "STARTED"],
+            [item["status"] for item in consumed["host_actions"]])
+        self.assertEqual(
+            ["--rebalance-cpu", "oversized", "--json"],
+            run.call_args_list[1].args[2])
+        self.assertEqual(
+            ["--advance", "next", "--json"], run.call_args_list[2].args[2])
+
+    @mock.patch.object(BRIDGE, "run_supervisor")
+    def test_failed_cpu_rebalance_blocks_backfill(
+            self, run: mock.Mock) -> None:
+        event = {"status": "CHANGE", "severity": "info",
+                 "cpu_rebalance_jobs": ["oversized"],
+                 "ready_jobs": ["next"],
+                 "report": {"jobs": {"next": {"status": "READY"}}}}
+        run.side_effect = [
+            (0, json.dumps(event), ""),
+            (1, json.dumps({"status": "CPU_REBALANCE_ERROR",
+                            "job": "oversized"}), "overlap"),
+        ]
+        BRIDGE.collect(
+            python=Path("/python"), supervisor=Path("/supervisor"),
+            health=self.health, events=self.events, now=self.now)
+        consumed = BRIDGE.consume(
+            health=self.health, events=self.events, cursor=self.cursor,
+            now=self.now)
+        self.assertEqual(2, run.call_count)
+        self.assertEqual("error", consumed["severity"])
+        self.assertTrue(consumed["delegate_sol"])
+
     def test_stale_collector_reports_once_without_claiming_fleet_failure(
             self) -> None:
         BRIDGE.atomic_json(self.health, {

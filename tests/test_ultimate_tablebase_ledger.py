@@ -109,9 +109,9 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             ledger.check_launch(ledger.README, "krk.uftb", resume=False)
         with self.assertRaisesRegex(RuntimeError, "status computing"):
             ledger.check_launch(
-                ledger.README, "kbombghostk.uftb", resume=False)
+                ledger.README, "kghostghostk.uftb", resume=False)
         ledger.check_launch(
-            ledger.README, "kbombghostk.uftb", resume=True)
+            ledger.README, "kghostghostk.uftb", resume=True)
         ledger.check_launch(
             ledger.README, "kcopycatjesterk.uftb", resume=False)
 

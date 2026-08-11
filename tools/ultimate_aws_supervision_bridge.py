@@ -217,7 +217,28 @@ def collect(*, python: Path, supervisor: Path, health: Path, events: Path,
     actions: list[dict[str, Any]] = []
     if event is not None and auto_advance and code == 0:
         jobs = event.get("report", {}).get("jobs", {})
-        for job_id in event.get("ready_jobs", []):
+        for job_id in event.get("cpu_rebalance_jobs", []):
+            action_code, action_stdout, action_stderr = run_supervisor(
+                python, supervisor, ["--rebalance-cpu", str(job_id), "--json"])
+            try:
+                action = parse_supervisor_output(action_stdout)
+            except Exception as error:
+                action = {
+                    "status": "CPU_REBALANCE_ERROR", "job": job_id,
+                    "error": f"malformed CPU rebalance output: {error}",
+                }
+            if action is None:
+                action = {"status": "CPU_REBALANCE_ERROR", "job": job_id,
+                          "error": "CPU rebalance emitted NO_CHANGE"}
+            action["exit_code"] = action_code
+            if action_stderr:
+                action["stderr"] = action_stderr
+            actions.append(action)
+        rebalance_ok = all(
+            action.get("status") == "CPU_REBALANCED" and
+            not action.get("exit_code")
+            for action in actions)
+        for job_id in (event.get("ready_jobs", []) if rebalance_ok else []):
             if jobs.get(job_id, {}).get("status") != "READY":
                 continue
             action_code, action_stdout, action_stderr = run_supervisor(
@@ -239,7 +260,8 @@ def collect(*, python: Path, supervisor: Path, health: Path, events: Path,
         if actions:
             event = dict(event)
             event["host_actions"] = actions
-            if any(action.get("status") != "STARTED" or action.get("exit_code")
+            if any(action.get("status") not in {"STARTED", "CPU_REBALANCED"} or
+                   action.get("exit_code")
                    for action in actions):
                 event["severity"] = "error"
                 event["delegate_sol"] = True

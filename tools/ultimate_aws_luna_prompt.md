@@ -44,14 +44,23 @@ For a JSON event:
    failed scratch, prefer the committed runner's checkpoint/resume path, test
    any fix locally, commit and push before AWS receives it, and require S3
    VersionId/HEAD/fresh-download/rehash/restore evidence before cleanup.
-4. For resource warnings, inspect only the affected unit/cgroup/mount. Stop or
+4. `ready_jobs` is already the committed supervisor's measured-resource
+   backfill selection; do not replace it with a serial queue or choose a job by
+   hand. The host collector applies `cpu_rebalance_jobs` first, then advances
+   every selected job through its exact source/dependency gate. Single-threaded
+   solvers normally receive one disjoint CPU each; concurrency comes from
+   independent classes. `UNDERUTILIZED` means two consecutive complete samples
+   were below 50% while runnable or stageable work existed. Delegate one bounded
+   Sol task to prepare a source-pinned batch of explicit class units, never a
+   generic "remaining" placeholder.
+5. For resource warnings, inspect only the affected unit/cgroup/mount. Stop or
    throttle safely before a hard limit; preserve resumable state. Do not launch
    another job on that host until the warning clears.
    For an AWAITING_STAGE job, use the reported `cpu_allocation` to assign a
-   disjoint idle CPU set whenever RAM and durable disk gates also fit. Prefer
-   two independently checkpointed 16-vCPU jobs on a 32-vCPU host over leaving
-   half the host idle; never overlap AllowedCPUs or weaken either job's gates.
-5. Never exceed five EC2 instances or the $5,000 budget. Treat the supervisor's
+   disjoint one-CPU set whenever measured RAM and projected durable disk gates
+   also fit. Batch-stage 10–30 independently checkpointed classes when possible;
+   never overlap AllowedCPUs or weaken a job's gates.
+6. Never exceed five EC2 instances or the $5,000 budget. Treat the supervisor's
    spend as an estimate and report the current estimate and fleet burn rate.
 
 Notify the primary task only for compact material deltas: newly certified

@@ -158,15 +158,76 @@ def wave_inventory(wave: int) -> tuple[dict[str, object], ...]:
 
 
 def base_dependency_filenames() -> tuple[str, ...]:
+    """Return material-bearing K+piece-v-K tables.
+
+    Bare-K and insufficient single-piece endings are closed-form leaves and do
+    not have payload files.  K+A-v-K+B tables are peers, not lower material;
+    requiring every stateless peer here unnecessarily serialized all wave-0
+    work behind the hidden-information Jester/Jester class.
+    """
     rows = plan.inventory(0)
     return tuple(sorted(str(row["filename"]) for row in rows
-                        if row["phase"] in {"kings+1", "kings+2-stateless"}))
+                        if row["phase"] == "kings+1"))
 
 
-def required_dependency_filenames(wave: int) -> tuple[str, ...]:
-    result = set(base_dependency_filenames())
-    for earlier in range(wave):
-        result.update(str(row["filename"]) for row in wave_inventory(earlier))
+def _material_signature(record: Mapping[str, object]
+                        ) -> tuple[bool, tuple[str, str]]:
+    names = tuple(sorted((str(record["primary"]), str(record["secondary"])),
+                         key=PIECE_INDEX.__getitem__))
+    return bool(record["opposing"]), names
+
+
+def class_dependency_filenames(
+        record: Mapping[str, object]) -> tuple[str, ...]:
+    """Return the exact proper-lower material files for one K+K+2 class.
+
+    Captures from any supported four-model class retain at most one extra
+    piece, so only the surviving K+piece-v-K payloads are needed.  A Pawn
+    promotion retains both extras and replaces one Pawn with a Queen, yielding
+    the corresponding class in the immediately preceding dependency wave.
+    This relation is structural and independent of WDL values.
+    """
+    wave = dependency_wave(record)
+    singles = {
+        str(row["primary"]): str(row["filename"])
+        for row in plan.inventory(0) if row["phase"] == "kings+1"
+    }
+    names = (str(record["primary"]), str(record["secondary"]))
+    result = {singles[name] for name in names if name in singles}
+    if wave:
+        promoted = list(names)
+        promoted[promoted.index("pawn")] = "queen"
+        signature = (bool(record["opposing"]), tuple(sorted(
+            promoted, key=PIECE_INDEX.__getitem__)))
+        dependency_inventory = {
+            str(row["filename"]): row
+            for row in (*plan.inventory(0), *supported_inventory())
+            if row.get("secondary")
+        }.values()
+        matches = [row for row in dependency_inventory
+                   if _material_signature(row) == signature]
+        if len(matches) != 1:
+            raise RuntimeError(
+                f"promotion dependency residual for {record['filename']}")
+        dependency = matches[0]
+        if dependency_wave(dependency) != wave - 1:
+            raise RuntimeError(
+                f"promotion dependency wave residual for {record['filename']}")
+        result.add(str(dependency["filename"]))
+    result.discard(str(record["filename"]))
+    return tuple(sorted(result))
+
+
+def required_dependency_filenames(
+        wave: int,
+        selected: tuple[Mapping[str, object], ...] | None = None
+        ) -> tuple[str, ...]:
+    rows = selected if selected is not None else wave_inventory(wave)
+    if any(dependency_wave(row) != wave for row in rows):
+        raise RuntimeError("selected dependency wave residual")
+    result: set[str] = set()
+    for row in rows:
+        result.update(class_dependency_filenames(row))
     return tuple(sorted(result))
 
 
@@ -760,7 +821,7 @@ def main(argv: list[str] | None = None) -> int:
             raise RuntimeError("wave/range are required without --bootstrap-penguin")
         selected, measurement = selection_plan(
             args.wave, args.range_begin, args.range_end)
-        required = required_dependency_filenames(args.wave)
+        required = required_dependency_filenames(args.wave, selected)
         wave_label = str(args.wave)
     model = generator_model_sha256()
     costs = wave_costs()

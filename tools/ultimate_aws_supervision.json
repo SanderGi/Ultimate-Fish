@@ -5,6 +5,9 @@
   "budget_warning_fraction": 0.9,
   "probe_workers": 2,
   "regular_report_seconds": 7200,
+  "target_measured_utilization_fraction": 0.7,
+  "underutilized_fraction": 0.5,
+  "underutilized_samples": 2,
   "state_path": ".git/ultimate-aws-supervision.json",
   "instances": [
     {
@@ -105,6 +108,12 @@
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-kghostghost-tail-2280445e.service",
+      "expected_allowed_cpus": "0",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 68719476736,
+        "disk_peak_bytes": {"/mnt/ultimatefish": 107374182400}
+      },
       "dependencies": [],
       "checkpoint_paths": ["/mnt/ultimatefish/kghostghost-2280445e/work/logs/*.log"],
       "completion_paths": ["/mnt/ultimatefish/kghostghost-2280445e/work/results/*.ufgg"],
@@ -194,7 +203,12 @@
       "ledger_certifies": true,
       "instance_id": "i-024a2073283e4336e",
       "unit": "ultimatefish-giant-ghost-opposing-8be6f990-full-v1.service",
-      "expected_allowed_cpus": "0-15",
+      "expected_allowed_cpus": "0",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 34359738368,
+        "disk_peak_bytes": {"/mnt/ultimatefish": 107374182400}
+      },
       "dependencies": [],
       "checkpoint_paths": ["/mnt/ultimatefish/giant-ghost-opposing-8be6f990/work/logs/*.log"],
       "completion_paths": ["/mnt/ultimatefish/giant-ghost-opposing-8be6f990/work/results/*"],
@@ -205,6 +219,12 @@
       "id": "crossed-jester-ghost-closure",
       "instance_id": "i-08c0f44a1776cb34a",
       "unit": "ultimatefish-crossed-jester-ghost-closurefull-e39ccd0a.service",
+      "expected_allowed_cpus": "0",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 34359738368,
+        "disk_peak_bytes": {"/mnt/ultimatefish": 214748364800}
+      },
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/crossed-jester-ghost-e39ccd0a/work/graph.chk",
@@ -315,6 +335,12 @@
       "ledger_files": ["kjesterghostk.uftb", "kjesterkghost.uftb"],
       "instance_id": "i-08c0f44a1776cb34a",
       "unit": "ultimatefish-jg7328-measure-fc88-v1.service",
+      "expected_allowed_cpus": "1",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 34359738368,
+        "disk_peak_bytes": {"/mnt/ultimatefish": 107374182400}
+      },
       "dependencies": ["jester-ghost-merge"],
       "queue_stage": true,
       "resume_of": "ultimatefish-jg7328-measure-v3.service",
@@ -424,6 +450,12 @@
       "unit": "ultimatefish-concrete-wave0-020-ac9b2d32-resume-v2.service",
       "dependencies": ["concrete-ghost-kchecker-certified", "concrete-wave0-018"],
       "advanceable": true,
+      "expected_allowed_cpus": "0",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 68719476736,
+        "disk_peak_bytes": {"/mnt/ultimatefish-overflow": 103079215104}
+      },
       "checkpoint_paths": ["/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-resume-v2/work/scratch/*"],
       "completion_paths": [
         "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-020-resume-v2/work/certificates/wave-certificate.json",
@@ -470,6 +502,12 @@
       "unit": "ultimatefish-concrete-wave0-003-ac9b2d32-resume-v1.service",
       "dependencies": ["concrete-wave0-020"],
       "advanceable": true,
+      "expected_allowed_cpus": "1",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 68719476736,
+        "disk_peak_bytes": {"/mnt/ultimatefish": 103079215104}
+      },
       "checkpoint_paths": ["/mnt/ultimatefish/concrete-penguin-1083b6f8/wave0-003-resume-v1/work/scratch/*"],
       "completion_paths": [
         "/mnt/ultimatefish/concrete-penguin-1083b6f8/wave0-003-resume-v1/work/certificates/wave-certificate.json",
@@ -516,6 +554,12 @@
       "unit": "ultimatefish-concrete-wave0-006-ac9b2d32-resume-v1.service",
       "dependencies": ["concrete-wave0-003"],
       "advanceable": true,
+      "expected_allowed_cpus": "2",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 68719476736,
+        "disk_peak_bytes": {"/mnt/ultimatefish-resume": 103079215104}
+      },
       "checkpoint_paths": ["/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-006-resume-v1/work/scratch/*"],
       "completion_paths": [
         "/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-006-resume-v1/work/certificates/wave-certificate.json",
@@ -566,6 +610,12 @@
       "unit": "ultimatefish-concrete-wave0-011-ac9b2d32-resume-v1.service",
       "dependencies": ["concrete-wave0-006"],
       "advanceable": true,
+      "expected_allowed_cpus": "3",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 68719476736,
+        "disk_peak_bytes": {"/mnt/ultimatefish-resume": 103079215104}
+      },
       "checkpoint_paths": ["/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-011-resume-v1/work/scratch/*"],
       "completion_paths": [
         "/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-011-resume-v1/work/certificates/wave-certificate.json",
@@ -627,6 +677,12 @@
       "unit": "ultimatefish-concrete-wave0-001-ac9b2d32-resume-v1.service",
       "dependencies": ["concrete-wave0-011"],
       "advanceable": true,
+      "expected_allowed_cpus": "4",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 68719476736,
+        "disk_peak_bytes": {"/mnt/ultimatefish-resume": 103079215104}
+      },
       "checkpoint_paths": ["/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-001-resume-v1/work/scratch/*"],
       "completion_paths": [
         "/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-001-resume-v1/work/certificates/wave-certificate.json",
@@ -710,6 +766,12 @@
       "ledger_certifies": true,
       "instance_id": "i-0986ed3d272721f02",
       "unit": "ultimatefish-hidden-kbombghostk-solvefix-v2.service",
+      "expected_allowed_cpus": "0",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 34359738368,
+        "disk_peak_bytes": {"/mnt/ultimatefish": 107374182400}
+      },
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v2/work/logs/*.log",
@@ -732,7 +794,12 @@
       "ledger_certifies": true,
       "instance_id": "i-024a2073283e4336e",
       "unit": "ultimatefish-hidden-kbombkghost-solvefix-v2.service",
-      "expected_allowed_cpus": "16-31",
+      "expected_allowed_cpus": "1",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 34359738368,
+        "disk_peak_bytes": {"/mnt/ultimatefish": 107374182400}
+      },
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/work/logs/*.log",
