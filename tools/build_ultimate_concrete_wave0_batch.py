@@ -31,6 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / "tools"
 TEMPLATE = TOOLS / "ultimatefish-concrete-wave0-batch.service.template"
 MANIFEST = TOOLS / "ultimate_concrete_wave0_batch.json"
+JOB_FRAGMENT = TOOLS / "ultimate_concrete_wave0_batch_jobs.json"
 SUPERVISION_CONFIG = TOOLS / "ultimate_aws_supervision.json"
 sys.path.insert(0, str(TOOLS))
 
@@ -274,6 +275,10 @@ def _dependency_records(
     names = tuple(str(name) for name in resolver(record))
     if tuple(sorted(set(names))) != names:
         raise RuntimeError("class dependency resolver returned duplicate/unsorted names")
+    inventory_by_filename = {
+        str(row["filename"]): row
+        for row in (*runner.plan.inventory(0), *runner.supported_inventory())
+    }
     records: list[dict[str, object]] = []
     for name in names:
         if Path(name).name != name or not re.fullmatch(r"k[a-z]+k(?:[a-z]+)?\.uftb", name):
@@ -281,10 +286,14 @@ def _dependency_records(
         entry = by_filename.get(name)
         if entry is None:
             raise RuntimeError(f"class dependency absent from committed ledger: {name}")
+        planner_record = inventory_by_filename.get(name)
+        if planner_record is None:
+            raise RuntimeError(f"class dependency absent from committed planner: {name}")
         records.append({
             "filename": name,
             "ledger_status": entry.status,
             "states": entry.states,
+            "bytes": int(planner_record["packed_bytes"]),
             "storage": entry.storage,
             "sha256": entry.digest,
             "authenticated": (
@@ -292,6 +301,22 @@ def _dependency_records(
                 bool(re.fullmatch(r"[0-9a-f]{64}", entry.digest))),
         })
     return list(names), records
+
+
+def dependency_manifest_payload(records: Sequence[Mapping[str, object]]) -> dict[str, object]:
+    files = [{
+        "filename": str(record["filename"]),
+        "sha256": str(record["sha256"]),
+        "bytes": int(record["bytes"]),
+    } for record in records]
+    files.sort(key=lambda record: record["filename"])
+    return {"schema": runner.DEPENDENCY_SCHEMA, "files": files}
+
+
+def dependency_manifest_sha256(records: Sequence[Mapping[str, object]]) -> str:
+    payload = dependency_manifest_payload(records)
+    encoded = (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode()
+    return sha256_bytes(encoded)
 
 
 def _selected_rows(count: int) -> list[tuple[int, dict[str, object]]]:
@@ -400,7 +425,13 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
             })
         resource_row = dict(row)
         resource_row["_batch_inventory_index"] = index
-        resources = resource_policy(resource_row, hosts[str(slot["instance_id"])], work_mount)
+        runner_limits = resource_policy(
+            resource_row, hosts[str(slot["instance_id"])], work_mount)
+        scheduler_resources = {
+            "cpu_threads": int(runner_limits["cpu_threads"]),
+            "memory_peak_bytes": int(runner_limits["memory_peak_bytes"]),
+            "disk_peak_bytes": dict(runner_limits["disk_peak_bytes"]),
+        }
         substitutions = {
             "UNIT": unit_name,
             "CLASS_INDEX": str(index),
@@ -422,10 +453,10 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
             "INSTANCE_ID": str(slot["instance_id"]),
             "EXPECTED_ALLOWED_CPUS": str(slot["expected_allowed_cpus"]),
             "WORK_MOUNT": work_mount,
-            "SCRATCH_LIMIT": str(resources["scratch_limit_bytes"]),
-            "RESIDENT_LIMIT": str(resources["resident_limit_bytes"]),
-            "REVERSE_EDGE_LIMIT": str(resources["reverse_edge_bytes_limit"]),
-            "MINIMUM_FREE": str(resources["minimum_free_bytes"]),
+            "SCRATCH_LIMIT": str(runner_limits["scratch_limit_bytes"]),
+            "RESIDENT_LIMIT": str(runner_limits["resident_limit_bytes"]),
+            "REVERSE_EDGE_LIMIT": str(runner_limits["reverse_edge_bytes_limit"]),
+            "MINIMUM_FREE": str(runner_limits["minimum_free_bytes"]),
         }
         service = render_service(substitutions)
         units.append({
@@ -448,7 +479,10 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
             "dependency_root": DEPENDENCY_ROOT,
             "dependencies": dependencies,
             "dependency_records": dependency_records,
-            "resource_requirements": resources,
+            "resource_requirements": scheduler_resources,
+            "runner_limits": runner_limits,
+            "dependency_manifest_sha256": dependency_manifest_sha256(
+                dependency_records),
             "service_template": str(TEMPLATE.relative_to(ROOT)),
             "service_template_sha256": template_sha,
             "service_sha256": sha256_bytes(service.encode()),
@@ -468,6 +502,8 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
         "source_hashes": source,
         "service_template": str(TEMPLATE.relative_to(ROOT)),
         "service_template_sha256": template_sha,
+        "supervision_fragment": str(JOB_FRAGMENT.relative_to(ROOT)),
+        "supervision_fragment_schema": "ultimate-aws-supervision-job-fragment-v1",
         "s3_prefix": S3_PREFIX,
         "configured_hosts": [
             {
@@ -503,14 +539,116 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
     return document
 
 
+def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
+    """Render an exact, non-mutating supervisor config fragment.
+
+    The fragment is separate from the batch manifest so the manifest's own
+    SHA-256 can be bound as a source without creating a circular hash.  The
+    caller may merge these records into the canonical supervision config only
+    after source staging and remote preflight have authenticated every path.
+    """
+    jobs: list[dict[str, object]] = []
+    for unit in document.get("units", []):
+        if not isinstance(unit, Mapping):
+            raise RuntimeError("batch unit record is malformed")
+        runner_source = unit["source_root"]
+        source_hashes_for_unit = unit["source_hashes"]
+        if not isinstance(source_hashes_for_unit, Mapping):
+            raise RuntimeError("batch unit source hashes are malformed")
+        bindings = []
+        for relative in runner.MODEL_SOURCES:
+            digest = source_hashes_for_unit.get(relative)
+            if not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+                raise RuntimeError(f"missing committed source hash: {relative}")
+            bindings.append({
+                "path": f"{runner_source}/{relative}", "sha256": digest,
+            })
+        template_relative = str(TEMPLATE.relative_to(ROOT))
+        bindings.append({
+            "path": f"{runner_source}/{template_relative}",
+            "sha256": str(unit["service_template_sha256"]),
+        })
+        bindings.append({
+            "path": f"/etc/systemd/system/{unit['unit']}",
+            "sha256": str(unit["service_sha256"]),
+        })
+        bindings.append({
+            "path": f"{runner_source}/tools/ultimate_concrete_wave0_batch.json",
+            "sha256": str(document["manifest_sha256"]),
+        })
+        bindings.append({
+            "path": f"{unit['dependency_root']}/manifest.json",
+            "sha256": str(unit["dependency_manifest_sha256"]),
+        })
+        for dependency in unit["dependency_records"]:
+            bindings.append({
+                "path": f"{unit['dependency_root']}/{dependency['filename']}",
+                "sha256": str(dependency["sha256"]),
+            })
+        bindings.sort(key=lambda binding: binding["path"])
+        job_id = f"concrete-wave0-batch-{int(unit['ordinal']):02d}-class{int(unit['inventory_index']):03d}"
+        jobs.append({
+            "id": job_id,
+            "instance_id": unit["instance_id"],
+            "unit": unit["unit"],
+            "advanceable": True,
+            "expected_allowed_cpus": unit["expected_allowed_cpus"],
+            "resource_requirements": unit["resource_requirements"],
+            "dependencies": [],
+            "ledger_files": [unit["filename"]],
+            "ledger_certifies": True,
+            "checkpoint_paths": [
+                f"{unit['work_directory']}/scratch/*",
+                f"{unit['work_directory']}/logs/*",
+            ],
+            "completion_paths": [
+                f"{unit['work_directory']}/certificates/wave-certificate.json",
+                f"{unit['work_directory']}/s3-verify/wave-certificate.json",
+            ],
+            "source_bindings": bindings,
+            "s3_certificates": [],
+        })
+    if len(jobs) != int(document["requested_classes"]):
+        raise RuntimeError("supervision job fragment cardinality residual")
+    job_ids = [str(job["id"]) for job in jobs]
+    if len(set(job_ids)) != len(job_ids):
+        raise RuntimeError("supervision job IDs are not unique")
+    return {
+        "schema": "ultimate-aws-supervision-job-fragment-v1",
+        "status": "plan-only-queue-stage-not-installed",
+        "canonical_commit": document["canonical_commit"],
+        "batch_manifest": {
+            "path": f"{SOURCE_ROOT}/tools/ultimate_concrete_wave0_batch.json",
+            "sha256": document["manifest_sha256"],
+        },
+        "jobs": jobs,
+        "replace_job_ids": ["concrete-wave0-remaining"],
+        "retained_placeholder_updates": [
+            {"id": "concrete-wave1", "dependencies": job_ids,
+             "queue_stage": True},
+            {"id": "concrete-wave2", "dependencies": ["concrete-wave1"],
+             "queue_stage": True},
+        ],
+        "no_remote_side_effects": True,
+        "never_delete": True,
+    }
+
+
 def write_manifest(document: Mapping[str, object], path: Path = MANIFEST) -> None:
     path.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n")
+
+
+def write_job_fragment(document: Mapping[str, object],
+                       path: Path = JOB_FRAGMENT) -> None:
+    path.write_text(json.dumps(build_supervision_jobs(document), indent=2,
+                                sort_keys=True) + "\n")
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--classes", type=int, default=DEFAULT_CLASSES)
     parser.add_argument("--output", type=Path, default=MANIFEST)
+    parser.add_argument("--jobs-output", type=Path, default=JOB_FRAGMENT)
     parser.add_argument("--write", action="store_true")
     return parser.parse_args(argv)
 
@@ -520,6 +658,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     document = build_document(args.classes)
     if args.write:
         write_manifest(document, args.output)
+        write_job_fragment(document, args.jobs_output)
     else:
         print(json.dumps(document, indent=2, sort_keys=True))
     return 0

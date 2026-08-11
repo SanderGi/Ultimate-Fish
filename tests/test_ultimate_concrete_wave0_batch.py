@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import build_ultimate_concrete_wave0_batch as batch  # noqa: E402
 import run_ultimate_concrete_tablebase_shard_aws as runner  # noqa: E402
+import supervise_ultimate_aws as supervisor  # noqa: E402
 
 
 class ConcreteWave0BatchTest(unittest.TestCase):
@@ -28,6 +29,22 @@ class ConcreteWave0BatchTest(unittest.TestCase):
         self.assertTrue(document["never_delete"])
         self.assertTrue(document["launch_ready"])
         self.assertEqual(document["launch_blockers"], [])
+        fragment = batch.build_supervision_jobs(document)
+        self.assertEqual(fragment["schema"], "ultimate-aws-supervision-job-fragment-v1")
+        self.assertEqual(len(fragment["jobs"]), 24)
+        self.assertEqual(fragment["replace_job_ids"], ["concrete-wave0-remaining"])
+        self.assertEqual(
+            [update["id"] for update in fragment["retained_placeholder_updates"]],
+            ["concrete-wave1", "concrete-wave2"])
+        merged = json.loads(
+            (ROOT / "tools/ultimate_aws_supervision.json").read_text())
+        jobs_by_id = {job["id"]: job for job in merged["jobs"]}
+        jobs_by_id.pop("concrete-wave0-remaining", None)
+        for update in fragment["retained_placeholder_updates"]:
+            jobs_by_id[update["id"]]["dependencies"] = update["dependencies"]
+        jobs_by_id.update({job["id"]: job for job in fragment["jobs"]})
+        merged["jobs"] = list(jobs_by_id.values())
+        supervisor.validate_config(merged)
         self.assertEqual(len({unit["unit"] for unit in units}), len(units))
         self.assertEqual(
             len({unit["work_directory"] for unit in units}), len(units))
@@ -115,6 +132,28 @@ class ConcreteWave0BatchTest(unittest.TestCase):
              "i-08c0f44a1776cb34a": 3})
         for cpus in cpu_by_host.values():
             self.assertEqual(len(cpus), len(set(cpus)))
+
+        for job in fragment["jobs"]:
+            self.assertTrue(job["advanceable"])
+            self.assertEqual(job["dependencies"], [])
+            self.assertTrue(job["ledger_certifies"])
+            self.assertEqual(set(job["resource_requirements"]), {
+                "cpu_threads", "memory_peak_bytes", "disk_peak_bytes"})
+            self.assertEqual(job["s3_certificates"], [])
+            paths = [binding["path"] for binding in job["source_bindings"]]
+            self.assertEqual(len(paths), len(set(paths)))
+            self.assertTrue(any(path.endswith("run_ultimate_concrete_tablebase_shard_aws.py")
+                                for path in paths))
+            self.assertTrue(any(path.endswith("ultimate_concrete_wave0_batch.json")
+                                for path in paths))
+            self.assertTrue(any(path.startswith("/etc/systemd/system/")
+                                for path in paths))
+            self.assertTrue(any(path.endswith("/dependencies/manifest.json")
+                                for path in paths))
+            for binding in job["source_bindings"]:
+                self.assertRegex(binding["sha256"], r"^[0-9a-f]{64}$")
+                self.assertFalse(any(character in binding["path"]
+                                     for character in "*?[]"))
 
         self.assertEqual(document["all_dependencies"], sorted({
             dependency for unit in units for dependency in unit["dependencies"]
