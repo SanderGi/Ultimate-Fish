@@ -54,7 +54,9 @@ GIB = 1 << 30
 BATCH_VERSION = "v3"
 UNIT_PREFIX = f"ultimatefish-concrete-wave0-batch-{BATCH_VERSION}"
 SOURCE_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish"
-DEPENDENCY_BASE_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/dependencies"
+# Keep the v1/v2 dependency roots immutable.  v3 copies the authenticated
+# table files into distinct per-job roots with corrected full-file manifests.
+DEPENDENCY_BASE_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/dependencies-v3"
 S3_PREFIX = (
     "s3://ultimatefish-info-20260808-a4e679c6-831688117652/"
     "results/concrete/penguin-causal-1083b6f8"
@@ -509,7 +511,8 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
             f"{work_mount}/concrete-wave0-batch/"
             f"batch-{BATCH_VERSION}-{ordinal:02d}-class{index:03d}-{stem}")
         dependency_root = (
-            f"{DEPENDENCY_BASE_ROOT}/batch-{ordinal:02d}-class{index:03d}-{stem}")
+            f"{DEPENDENCY_BASE_ROOT}/batch-{BATCH_VERSION}-{ordinal:02d}-"
+            f"class{index:03d}-{stem}")
         _safe_atom(unit_name.removesuffix(".service"), label="unit")
         _safe_atom(stem, label="class stem")
         if unit_name in seen_units or work in seen_work:
