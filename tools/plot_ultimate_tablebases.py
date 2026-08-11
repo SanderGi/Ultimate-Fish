@@ -128,11 +128,20 @@ def read_summary(path: Path) -> dict[str, ReadmeResult]:
                 continue
             filename = fields[3].strip("`")
             status = fields[4].strip("*").lower()
-            raw = results.get(filename)
-            if raw is None:
-                raw = ReadmeResult(WDL(0, 0, 0), WDL(0, 0, 0), status)
+            # The computation ledger is canonical.  In particular, certified
+            # S3-only payloads no longer have to appear in the legacy generated
+            # local-file summary, but their exact W/L/D values still belong in
+            # the plot.
+            if fields[7] != "—" and fields[8] != "—":
+                raw = ReadmeResult(
+                    parse_wdl(fields[7]), parse_wdl(fields[8]), status)
             else:
-                raw = ReadmeResult(raw.first_starts, raw.second_starts, status)
+                previous = results.get(filename)
+                if previous is None:
+                    raw = ReadmeResult(WDL(0, 0, 0), WDL(0, 0, 0), status)
+                else:
+                    raw = ReadmeResult(
+                        previous.first_starts, previous.second_starts, status)
             results[filename] = raw
     return results
 

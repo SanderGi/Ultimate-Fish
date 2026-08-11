@@ -59,6 +59,16 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         catalog = plot.OutcomeCatalog(summary)
         self.assertEqual("computing", catalog.together("ghost", "ghost").kind)
 
+    def test_s3_only_certified_ledger_result_is_plotted(self):
+        summary = plot.read_summary(ledger.README)
+        result = summary["kjesterjesterk.uftb"]
+        self.assertEqual("certified", result.status)
+        self.assertEqual(7_259_568, result.first_starts.wins)
+        self.assertEqual(8_682_564, result.second_starts.losses)
+        catalog = plot.OutcomeCatalog(summary)
+        self.assertNotEqual(
+            "unknown", catalog.together("jester", "jester").kind)
+
     def test_computing_hatch_is_clipped_parallel_diagonal_lines(self):
         hatch = plot.diagonal_hatch(30, 20, 10, 1)
         alpha = hatch.getchannel("A")
