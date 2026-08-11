@@ -195,6 +195,67 @@ class SupervisionTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "one explicit path"):
             SUPERVISOR.validate_config(invalid)
 
+    def test_diagnostic_sources_are_explicit_and_bounded(self) -> None:
+        document = config()
+        document["jobs"][0]["diagnostic_sources"] = [{
+            "kind": "file", "path": "/tmp/failure.log", "max_bytes": 2048,
+        }, {
+            "kind": "journal", "unit": "ultimatefish-first.service",
+            "max_bytes": 2048,
+        }]
+        SUPERVISOR.validate_config(document)
+        invalid = config()
+        invalid["jobs"][0]["diagnostic_sources"] = [{
+            "kind": "file", "path": "/tmp/failure-*", "max_bytes": 2048,
+        }]
+        with self.assertRaisesRegex(RuntimeError, "not allowlisted"):
+            SUPERVISOR.validate_config(invalid)
+        invalid = config()
+        invalid["jobs"][0]["diagnostic_sources"] = [{
+            "kind": "journal", "unit": "other.service", "max_bytes": 2048,
+        }]
+        with self.assertRaisesRegex(RuntimeError, "journal unit"):
+            SUPERVISOR.validate_config(invalid)
+        invalid = config()
+        invalid["jobs"][0]["diagnostic_sources"] = [{
+            "kind": "file", "path": "/tmp/failure.log",
+            "max_bytes": SUPERVISOR.DIAGNOSTIC_SOURCE_MAX_BYTES + 1,
+        }]
+        with self.assertRaisesRegex(RuntimeError, "max_bytes"):
+            SUPERVISOR.validate_config(invalid)
+        invalid = config()
+        invalid["jobs"][0]["diagnostic_sources"] = [{
+            "kind": "file", "path": f"/tmp/failure-{index}.log",
+            "max_bytes": SUPERVISOR.DIAGNOSTIC_SOURCE_MAX_BYTES,
+        } for index in range(3)]
+        with self.assertRaisesRegex(RuntimeError, "byte cap"):
+            SUPERVISOR.validate_config(invalid)
+
+    def test_failed_diagnostic_tail_is_redacted_and_hashed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "failure.log"
+            payload = (b"prefix\nAWS_SECRET_ACCESS_KEY=super-secret\n"
+                       b"fatal: SIGBUS while finalizing transitions\n")
+            path.write_bytes(payload)
+            document = config()
+            document["jobs"][0]["diagnostic_sources"] = [{
+                "kind": "file", "path": str(path), "max_bytes": 2048,
+            }]
+            observed = SUPERVISOR.local_probe(
+                SUPERVISOR.remote_script(document["instances"][0],
+                                         document["jobs"]))
+            diagnostic = observed["jobs"][0]["diagnostics"][0]
+            self.assertEqual("ok", diagnostic["status"])
+            self.assertEqual(len(payload), diagnostic["bytes"])
+            self.assertEqual(SUPERVISOR.sha256_bytes(payload),
+                             diagnostic["sha256"])
+            self.assertIn("fatal: SIGBUS", diagnostic["tail"])
+            self.assertIn("AWS_SECRET_ACCESS_KEY=[REDACTED]",
+                          diagnostic["tail"])
+            self.assertNotIn("super-secret", diagnostic["tail"])
+            self.assertLessEqual(
+                len(diagnostic["tail"].encode()), 2048)
+
     def test_source_exact_is_positional_and_fail_closed(self) -> None:
         job = {
             "source_bindings": [

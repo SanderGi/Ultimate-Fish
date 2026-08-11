@@ -46,6 +46,11 @@ REMOTE_OUTPUT_BUDGET = 20_000
 # transport-only supervision error.  Source paths are deduplicated below,
 # which keeps the concrete batch comfortably below this bound.
 REMOTE_REQUEST_BUDGET = 97_000
+# Failed-job diagnostics are deliberately tiny and immutable: each source is
+# an explicit config allowlist entry and only a bounded, redaction-safe tail
+# is returned.  Keep the aggregate per-job cap below the SSM output margin.
+DIAGNOSTIC_SOURCE_MAX_BYTES = 4_096
+DIAGNOSTIC_JOB_MAX_BYTES = 8_192
 TERMINAL_OK = {"CERTIFIED"}
 TERMINAL_BAD = {"FAILED", "SOURCE_MISMATCH", "RESOURCE_LIMIT"}
 UNIT = re.compile(r"[A-Za-z0-9_.@-]+\.service")
@@ -110,6 +115,47 @@ def validate_sha(value: object, label: str) -> str:
     return text
 
 
+def validate_diagnostic_sources(job: dict[str, Any]) -> None:
+    """Validate the fail-closed, config-bound diagnostic allowlist."""
+    sources = job.get("diagnostic_sources", [])
+    if not isinstance(sources, list):
+        raise RuntimeError(f"{job.get('id', '<job>')} diagnostic_sources must be a list")
+    if len(sources) > 4:
+        raise RuntimeError(f"{job.get('id', '<job>')} has too many diagnostic sources")
+    total = 0
+    for source in sources:
+        if not isinstance(source, dict):
+            raise RuntimeError(
+                f"{job.get('id', '<job>')} diagnostic source must be an object")
+        kind = source.get("kind")
+        if kind not in {"file", "journal"}:
+            raise RuntimeError(
+                f"{job.get('id', '<job>')} diagnostic source kind is invalid")
+        try:
+            limit = int(source.get("max_bytes", 0))
+        except (TypeError, ValueError):
+            limit = 0
+        if not 1 <= limit <= DIAGNOSTIC_SOURCE_MAX_BYTES:
+            raise RuntimeError(
+                f"{job.get('id', '<job>')} diagnostic source max_bytes is invalid")
+        total += limit
+        if kind == "file":
+            path = str(source.get("path", ""))
+            if (not path.startswith("/") or glob_magic(path) or
+                    "\x00" in path or ".." in Path(path).parts):
+                raise RuntimeError(
+                    f"{job.get('id', '<job>')} diagnostic file path is not allowlisted")
+        else:
+            unit = str(source.get("unit", ""))
+            if (not UNIT.fullmatch(unit) or
+                    unit != str(job.get("unit", ""))):
+                raise RuntimeError(
+                    f"{job.get('id', '<job>')} diagnostic journal unit is not allowlisted")
+    if total > DIAGNOSTIC_JOB_MAX_BYTES:
+        raise RuntimeError(
+            f"{job.get('id', '<job>')} diagnostic byte cap exceeded")
+
+
 def validate_config(config: dict[str, Any]) -> None:
     if config.get("schema") != SCHEMA:
         raise RuntimeError(f"supervision config schema must be {SCHEMA}")
@@ -167,6 +213,7 @@ def validate_config(config: dict[str, Any]) -> None:
         unit = str(job.get("unit", ""))
         if not UNIT.fullmatch(unit):
             raise RuntimeError(f"{identifier} requires an explicit service unit")
+        validate_diagnostic_sources(job)
         for source in job.get("source_bindings", []):
             validate_sha(source.get("sha256"), f"{identifier} source binding")
             if glob_magic(str(source.get("path", ""))):
@@ -316,6 +363,15 @@ def compact_source_bindings(
             "checkpoint_paths": job.get("checkpoint_paths", []),
             "completion_paths": job.get("completion_paths", []),
             "binding_refs": references,
+            "diagnostic_sources": [
+                {
+                    key: source[key]
+                    for key in (("kind", "path", "max_bytes")
+                                if source.get("kind") == "file" else
+                                ("kind", "unit", "max_bytes"))
+                }
+                for source in job.get("diagnostic_sources", [])
+            ],
         })
     return table, compact_jobs
 
@@ -329,7 +385,7 @@ def remote_script(instance: dict[str, Any], jobs: list[dict[str, Any]]) -> str:
     }
     encoded = base64.b64encode(canonical_json(payload).encode()).decode()
     program = r'''
-import glob,hashlib,json,os,subprocess,sys
+import glob,hashlib,json,os,re,subprocess,sys
 payload=json.loads(base64.b64decode(sys.argv[2]))
 def command(argv):
  p=subprocess.run(argv,text=True,capture_output=True,check=False)
@@ -392,6 +448,42 @@ def checked_bindings(bindings):
   result.append(actual==expected)
  return result
 
+def safe_text(raw, limit):
+ # Diagnostics are evidence, not an arbitrary log transport.  Preserve only
+ # printable ASCII plus whitespace, redact common credential forms, and cap
+ # again after replacement so redaction cannot expand the payload.
+ text=raw.decode('utf-8','replace')
+ text=re.sub(r'(?i)\b(?:AKIA|ASIA)[A-Z0-9]{16}\b', '[REDACTED_AWS_KEY]', text)
+ text=re.sub(r'(?i)(aws_(?:access_key_id|secret_access_key|session_token)|token|password|secret)[ \t]*[:=][^\s]+', r'\1=[REDACTED]', text)
+ text=''.join(ch if ch in '\n\r\t' or 32<=ord(ch)<127 else '?' for ch in text)
+ return text[-limit:]
+
+def diagnostic(source):
+ kind=source.get('kind'); limit=int(source.get('max_bytes',0))
+ raw=b''; total=0; status='ok'
+ try:
+  if kind=='file':
+   path=source['path']; stat=os.stat(path); total=stat.st_size
+   with open(path,'rb') as stream:
+    stream.seek(max(0,total-limit)); raw=stream.read(limit)
+  elif kind=='journal':
+   completed=subprocess.run(['journalctl','--no-pager','--quiet','-u',source['unit'],'-n','64','-o','cat'],capture_output=True,check=False)
+   raw=(completed.stdout or completed.stderr)[-limit:]
+   total=len(raw)
+   if completed.returncode: status='error'
+  else:
+   status='invalid'
+ except FileNotFoundError:
+  status='missing'
+ except (OSError,ValueError,KeyError) as error:
+  status='error'
+  raw=str(error).encode('utf-8','replace')[-limit:]
+ return {'s':status,'n':total,'h':hashlib.sha256(raw).hexdigest(),'t':safe_text(raw,limit)}
+
+def diagnostics(sources):
+ if not isinstance(sources,list): return []
+ return [diagnostic(source) for source in sources]
+
 source_results=checked_bindings(payload.get('bindings',[]))
 def sources_exact(references):
  if not isinstance(references,list): return False
@@ -421,7 +513,8 @@ for job in payload['jobs']:
               'k':aggregate(job['checkpoint_paths']),
               'c':aggregate(job['completion_paths']),
               'n':len(job.get('binding_refs',[])),
-              'x':sources_exact(job.get('binding_refs',[]))})
+              'x':sources_exact(job.get('binding_refs',[])),
+              'd':diagnostics(job.get('diagnostic_sources',[]))})
 document={'memory':memory,'mounts':mounts,'jobs':jobs}
 encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
 document['b']=len(encoded.encode())
@@ -519,6 +612,23 @@ def normalize_remote(remote: dict[str, Any]) -> dict[str, Any]:
                 result.append({"exists": False})
         return result
 
+    def diagnostic_records(records: object) -> list[dict[str, Any]]:
+        if not isinstance(records, list):
+            return []
+        result: list[dict[str, Any]] = []
+        for index, record in enumerate(records):
+            if not isinstance(record, dict):
+                result.append({"source_index": index, "status": "malformed"})
+                continue
+            result.append({
+                "source_index": index,
+                "status": record.get("s", "malformed"),
+                "bytes": int(record.get("n", 0) or 0),
+                "sha256": record.get("h", ""),
+                "tail": record.get("t", ""),
+            })
+        return result
+
     jobs = remote.get("jobs")
     if not isinstance(jobs, list):
         return remote
@@ -533,6 +643,7 @@ def normalize_remote(remote: dict[str, Any]) -> dict[str, Any]:
             "completion": aggregate(job.get("c")),
             "source_binding_count": job.get("n"),
             "sources_exact": job.get("x"),
+            "diagnostics": diagnostic_records(job.get("d")),
         })
     remote["jobs"] = normalized
     return remote
@@ -1051,6 +1162,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
             "completion": remote.get("completion", []),
             "source_exact": source_exact(definition, remote) if remote else False,
             "certificates": certificates,
+            "diagnostics": remote.get("diagnostics", []),
             "dependencies": definition.get("dependencies", []),
             "ledger_files": definition.get("ledger_files", []),
             "ledger_certifies": bool(definition.get("ledger_certifies")),
@@ -1144,7 +1256,17 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                     "allocation_mismatches")
             },
         } for identifier, value in instance_results.items()},
-        "jobs": {identifier: value["status"] for identifier, value in jobs.items()},
+        "jobs": {identifier: {
+            "status": value["status"],
+            # Include only stable diagnostic metadata in the event digest; the
+            # redacted tail is carried when this job is selected for an event.
+            "diagnostics": [{
+                "source_index": item.get("source_index"),
+                "status": item.get("status"),
+                "bytes": item.get("bytes"),
+                "sha256": item.get("sha256"),
+            } for item in value.get("diagnostics", [])],
+        } for identifier, value in jobs.items()},
         "errors": errors,
         "scheduling": {
             "selected": scheduling["selected"],
@@ -1206,6 +1328,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                 "size": certificate["size"],
                 "exact": certificate["exact"],
             } for certificate in jobs[identifier]["certificates"]],
+            "diagnostics": jobs[identifier]["diagnostics"],
             "ledger_files": jobs[identifier]["ledger_files"],
             "ledger_certifies": jobs[identifier]["ledger_certifies"],
             "ledger_results": jobs[identifier]["ledger_results"],
