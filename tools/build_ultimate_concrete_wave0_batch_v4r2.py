@@ -192,6 +192,11 @@ def merge_supervision_config(document: Mapping[str, object], path: Path = SUPERV
     for raw in jobs:
         job = dict(raw)
         identifier = str(job.get("id", ""))
+        # Regeneration is idempotent: the previous r2 records are replaced by
+        # the freshly bound fragment below, rather than duplicated in the
+        # explicit queue.  v1-v3 and the superseded v4 records are retained.
+        if identifier.startswith("concrete-wave0-batch-v4r2-"):
+            continue
         if identifier.startswith("concrete-wave0-batch-v4-"):
             suffix = identifier.removeprefix("concrete-wave0-batch-v4-")
             replacement = f"concrete-wave0-batch-v4r2-{suffix}"
