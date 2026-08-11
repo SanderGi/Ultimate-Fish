@@ -6,13 +6,14 @@ anything, install a unit, or start a service.  The generated manifest contains
 one explicit unit/work directory per selected class so a later supervisor can
 authenticate each unit independently.
 
-Selection is deterministic: ledger entries must be ``planned`` and belong to
-the production runner's filename-sorted wave-0 inventory; the requested smallest
-packed classes are selected (ties are resolved by filename and inventory
-index).  Dependencies are obtained from the runner's exact per-class
-``class_dependency_filenames`` function.  A missing or non-certified
-dependency is a launch blocker, never a reason to silently broaden the
-dependency set.
+Selection is deterministic: ledger entries must be ``planned``, belong to the
+production runner's filename-sorted wave-0 inventory, not require the separate
+hidden-information pipeline, and have every exact base dependency in the
+authenticated artifact inventory.  The requested smallest packed classes are
+selected (ties are resolved by filename and inventory index).  Dependencies
+are obtained from the runner's exact per-class ``class_dependency_filenames``
+function.  A missing or non-certified dependency is a launch blocker, never a
+reason to silently broaden the dependency set.
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ sys.path.insert(0, str(TOOLS))
 import run_ultimate_concrete_tablebase_shard_aws as runner  # noqa: E402
 import supervise_ultimate_aws as supervisor  # noqa: E402
 import update_ultimate_tablebase_ledger as ledger  # noqa: E402
+import ultimate_information_tablebases as information  # noqa: E402
 
 
 SCHEMA = "ultimate-concrete-wave0-batch-plan-v1"
@@ -425,6 +427,7 @@ def _selected_rows(count: int) -> list[tuple[int, dict[str, object]]]:
         raise RuntimeError(f"class count must be in [1, {MAX_CLASSES}]")
     rows = runner.wave_inventory(0)
     by_filename = ledger_by_filename()
+    artifact_names = frozenset(dependency_artifact_records())
     eligible: list[tuple[int, dict[str, object]]] = []
     excluded_statuses = {
         "certified", "computing", "blocked", "preserving", "deferred", "draw",
@@ -433,6 +436,15 @@ def _selected_rows(count: int) -> list[tuple[int, dict[str, object]]]:
         filename = str(row["filename"])
         entry = by_filename.get(filename)
         if entry is None or entry.status != "planned":
+            continue
+        # These public filenames need a hidden-information solve and are
+        # tracked by that pipeline's exact certificates.  Running the concrete
+        # generator would duplicate work and could publish semantically weaker
+        # counts under the same ledger cell.
+        if filename in information.AFFECTED_FILENAMES:
+            continue
+        dependencies = tuple(runner.class_dependency_filenames(row))
+        if any(name not in artifact_names for name in dependencies):
             continue
         if entry.status in excluded_statuses:
             continue

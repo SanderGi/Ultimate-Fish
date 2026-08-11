@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 import build_ultimate_concrete_wave0_batch as batch  # noqa: E402
 import run_ultimate_concrete_tablebase_shard_aws as runner  # noqa: E402
 import supervise_ultimate_aws as supervisor  # noqa: E402
+import ultimate_information_tablebases as information  # noqa: E402
 
 
 class ConcreteWave0BatchTest(unittest.TestCase):
@@ -112,9 +113,11 @@ class ConcreteWave0BatchTest(unittest.TestCase):
         }
         rows = {str(row["filename"]): (index, row)
                 for index, row in enumerate(inventory)}
+        dependency_inventory = batch.dependency_artifact_records()
         selected_indices = []
         for unit in units:
             filename = unit["filename"]
+            self.assertNotIn(filename, information.AFFECTED_FILENAMES)
             self.assertIn(filename, rows)
             index, row = rows[filename]
             self.assertEqual(unit["inventory_index"], index)
@@ -126,6 +129,8 @@ class ConcreteWave0BatchTest(unittest.TestCase):
                 self.assertNotIn(row["secondary"], {"penguin", "mage", "fisherman"})
 
             expected_dependencies = list(runner.class_dependency_filenames(row))
+            self.assertTrue(all(name in dependency_inventory
+                                for name in expected_dependencies))
             self.assertEqual(unit["dependencies"], expected_dependencies)
             self.assertEqual(unit["dependencies"], sorted(set(unit["dependencies"])))
             self.assertEqual(

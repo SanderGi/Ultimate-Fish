@@ -1108,7 +1108,13 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
     changed_jobs = [identifier for identifier, value in jobs.items()
                     if previous_jobs.get(identifier, {}).get("status") !=
                     value["status"]]
-    selected_jobs = sorted(jobs) if heartbeat or not last_digest else changed_jobs
+    # The host bridge can advance only jobs present in this compact event.  A
+    # READY job may remain READY across samples while measured capacity changes
+    # and makes it newly selected; include every scheduler/rebalance selection
+    # even when its classification itself did not change.
+    selected_jobs = (sorted(jobs) if heartbeat or not last_digest else
+                     sorted(set(changed_jobs) | set(ready) |
+                            set(rebalance_jobs)))
     compact_jobs = {
         identifier: {
             "status": jobs[identifier]["status"],

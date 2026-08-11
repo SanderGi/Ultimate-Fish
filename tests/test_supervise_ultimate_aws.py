@@ -396,6 +396,9 @@ class SupervisionTests(unittest.TestCase):
         self.assertTrue(second["delegate_sol"])
         self.assertEqual("UNDERUTILIZED",
                          second["report"]["errors"][-1]["fleet"])
+        self.assertIn("second", second["ready_jobs"])
+        self.assertEqual(
+            "READY", second["report"]["jobs"]["second"]["status"])
 
     @mock.patch.object(SUPERVISOR, "local_probe")
     def test_uninstalled_queue_records_do_not_consume_remote_budget(

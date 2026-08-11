@@ -6932,7 +6932,8 @@
         }
       ],
       "s3_certificates": [],
-      "advanceable": true
+      "queue_stage": true,
+      "superseded_by": "bishop-ghost-same-full"
     },
     {
       "id": "concrete-wave0-batch-v3-03-class056",
