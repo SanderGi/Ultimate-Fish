@@ -105,6 +105,64 @@ def sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def uftb_extent(path: Path) -> dict[str, int | str]:
+    """Authenticate a packed UFTB header and return its exact byte extent.
+
+    Planner ``packed_bytes`` is the payload estimate (WDL + DTW + exception
+    records), while a stored UFTB also carries a version-dependent header.  A
+    dependency manifest binds the full file, so callers must use this parser
+    rather than adding a format-specific constant to the planner estimate.
+    """
+    base = struct.Struct("<8sIIIIIIII")
+    with path.open("rb") as stream:
+        header = stream.read(base.size)
+        if len(header) != base.size:
+            raise RuntimeError("truncated UFTB header")
+        (magic, version, primary, states, legacy_edges, substates,
+         wdl_bytes, dtw_bytes, exceptions) = base.unpack(header)
+        if magic != b"UFTB1\0\0\0" or version not in (4, 5, 6, 7):
+            raise RuntimeError("invalid UFTB magic/version")
+        header_bytes = base.size
+        secondary = -1
+        secondary_color = 0
+        if version >= 5:
+            payload = stream.read(8)
+            if len(payload) != 8:
+                raise RuntimeError("truncated UFTB secondary header")
+            secondary, secondary_color = struct.unpack("<II", payload)
+            header_bytes += 8
+        exact_edges = legacy_edges
+        if version >= 6:
+            payload = stream.read(8)
+            if len(payload) != 8:
+                raise RuntimeError("truncated UFTB exact-edge header")
+            exact_edges = struct.unpack("<Q", payload)[0]
+            header_bytes += 8
+        codec_tag = 0
+        if version >= 7:
+            payload = stream.read(8)
+            if len(payload) != 8:
+                raise RuntimeError("truncated UFTB codec header")
+            codec_tag = struct.unpack("<Q", payload)[0]
+            header_bytes += 8
+    payload_bytes = wdl_bytes + dtw_bytes + exceptions * 6
+    file_bytes = header_bytes + payload_bytes
+    actual_bytes = path.stat().st_size
+    if actual_bytes != file_bytes:
+        raise RuntimeError(
+            f"UFTB extent residual: expected {file_bytes}, got {actual_bytes}")
+    return {
+        "magic": magic.hex(), "version": version, "primary": primary,
+        "states": states, "legacy_edges": legacy_edges,
+        "substates": substates, "wdl_bytes": wdl_bytes,
+        "dtw_bytes": dtw_bytes, "exceptions": exceptions,
+        "secondary": secondary, "secondary_color": secondary_color,
+        "exact_edges": exact_edges, "codec_tag": codec_tag,
+        "header_bytes": header_bytes, "payload_bytes": payload_bytes,
+        "file_bytes": file_bytes,
+    }
+
+
 def normalized_record(record: Mapping[str, object]) -> dict[str, object]:
     normalized = {
         key: record[key] for key in (

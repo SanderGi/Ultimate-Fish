@@ -33,6 +33,7 @@ TEMPLATE = TOOLS / "ultimatefish-concrete-wave0-batch.service.template"
 MANIFEST = TOOLS / "ultimate_concrete_wave0_batch.json"
 JOB_FRAGMENT = TOOLS / "ultimate_concrete_wave0_batch_jobs.json"
 SUPERVISION_CONFIG = TOOLS / "ultimate_aws_supervision.json"
+DEPENDENCY_ARTIFACTS = TOOLS / "ultimate_concrete_base_dependency_artifacts.json"
 sys.path.insert(0, str(TOOLS))
 
 import run_ultimate_concrete_tablebase_shard_aws as runner  # noqa: E402
@@ -50,7 +51,7 @@ GIB = 1 << 30
 # targets, so systemd created ``service.log`` before the runner's fail-closed
 # empty-root check.  Keep those roots and units immutable, and publish a
 # distinct v2 namespace for retries.
-BATCH_VERSION = "v2"
+BATCH_VERSION = "v3"
 UNIT_PREFIX = f"ultimatefish-concrete-wave0-batch-{BATCH_VERSION}"
 SOURCE_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish"
 DEPENDENCY_BASE_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/dependencies"
@@ -136,6 +137,7 @@ def require_committed_sources() -> str:
         Path(__file__).relative_to(ROOT).as_posix(),
         TEMPLATE.relative_to(ROOT).as_posix(),
         SUPERVISION_CONFIG.relative_to(ROOT).as_posix(),
+        DEPENDENCY_ARTIFACTS.relative_to(ROOT).as_posix(),
     )
     try:
         tracked = subprocess.run(
@@ -226,6 +228,7 @@ def source_hashes() -> dict[str, str]:
     if TEMPLATE.exists():
         paths += (TEMPLATE.relative_to(ROOT).as_posix(),)
     paths += (SUPERVISION_CONFIG.relative_to(ROOT).as_posix(),)
+    paths += (DEPENDENCY_ARTIFACTS.relative_to(ROOT).as_posix(),)
     result: dict[str, str] = {}
     for relative in paths:
         path = ROOT / relative
@@ -233,6 +236,82 @@ def source_hashes() -> dict[str, str]:
             raise RuntimeError(f"missing source/template path: {relative}")
         result[relative] = sha256_path(path)
     return dict(sorted(result.items()))
+
+
+def dependency_artifact_records() -> dict[str, dict[str, object]]:
+    """Load the authenticated full-file dependency inventory.
+
+    Planner ``packed_bytes`` excludes the versioned UFTB header.  The
+    committed inventory was restored from the versioned dependency bundle and
+    records the exact full extent plus the parsed header proof.  Requiring all
+    header arithmetic here prevents silently rebuilding a manifest with a
+    planner estimate or a stale dependency artifact.
+    """
+    if not DEPENDENCY_ARTIFACTS.is_file():
+        raise RuntimeError("base dependency artifact inventory is missing")
+    try:
+        document = json.loads(DEPENDENCY_ARTIFACTS.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise RuntimeError("base dependency artifact inventory is malformed") from exc
+    if document.get("schema") != runner.DEPENDENCY_SCHEMA:
+        raise RuntimeError("base dependency artifact schema mismatch")
+    provenance = document.get("provenance")
+    if not isinstance(provenance, Mapping):
+        raise RuntimeError("base dependency artifact provenance is missing")
+    for key in ("bucket", "key", "version_id", "archive_sha256",
+                "full_manifest_sha256", "canonical_source"):
+        if not isinstance(provenance.get(key), str) or not provenance[key]:
+            raise RuntimeError(f"base dependency provenance missing {key}")
+    if (not re.fullmatch(r"[0-9a-f]{64}", str(provenance["archive_sha256"])) or
+            not re.fullmatch(r"[0-9a-f]{64}",
+                             str(provenance["full_manifest_sha256"]))):
+        raise RuntimeError("base dependency provenance hash is malformed")
+    records = runner.load_dependency_manifest(DEPENDENCY_ARTIFACTS)
+    raw_files = document.get("files")
+    if not isinstance(raw_files, list) or len(records) != 10:
+        raise RuntimeError("base dependency artifact cardinality residual")
+    raw_by_name = {}
+    for raw in raw_files:
+        if not isinstance(raw, Mapping):
+            raise RuntimeError("base dependency artifact record is malformed")
+        name = str(raw.get("filename", ""))
+        if name in raw_by_name:
+            raise RuntimeError("duplicate base dependency artifact")
+        raw_by_name[name] = raw
+    if set(raw_by_name) != set(records):
+        raise RuntimeError("base dependency artifact file set residual")
+    result: dict[str, dict[str, object]] = {}
+    for name in sorted(records):
+        record = dict(records[name])
+        raw = raw_by_name[name]
+        header = raw.get("header")
+        if not isinstance(header, Mapping):
+            raise RuntimeError(f"missing UFTB header proof: {name}")
+        try:
+            version = int(header["version"])
+            header_bytes = int(header["header_bytes"])
+            states = int(header["states"])
+            wdl_bytes = int(header["wdl_bytes"])
+            dtw_bytes = int(header["dtw_bytes"])
+            exceptions = int(header["exceptions"])
+            payload_bytes = int(header["payload_bytes"])
+            file_bytes = int(header["file_bytes"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise RuntimeError(f"malformed UFTB header proof: {name}") from exc
+        expected_header = 40 + (8 if version >= 5 else 0) + \
+            (8 if version >= 6 else 0) + (8 if version >= 7 else 0)
+        expected_payload = wdl_bytes + dtw_bytes + exceptions * 6
+        if (header.get("magic") != "UFTB1\\0\\0\\0" or
+                version not in (4, 5, 6, 7) or states <= 0 or
+                header_bytes != expected_header or
+                payload_bytes != expected_payload or
+                file_bytes != header_bytes + payload_bytes or
+                file_bytes != int(record["bytes"]) or
+                str(record["sha256"]) != str(raw.get("sha256"))):
+            raise RuntimeError(f"UFTB header/extent proof residual: {name}")
+        record["header"] = dict(header)
+        result[name] = record
+    return result
 
 
 def _safe_atom(value: str, *, label: str) -> None:
@@ -289,6 +368,7 @@ def _dependency_records(
         str(row["filename"]): row
         for row in (*runner.plan.inventory(0), *runner.supported_inventory())
     }
+    artifacts = dependency_artifact_records()
     records: list[dict[str, object]] = []
     for name in names:
         if Path(name).name != name or not re.fullmatch(r"k[a-z]+k(?:[a-z]+)?\.uftb", name):
@@ -299,13 +379,21 @@ def _dependency_records(
         planner_record = inventory_by_filename.get(name)
         if planner_record is None:
             raise RuntimeError(f"class dependency absent from committed planner: {name}")
+        artifact = artifacts.get(name)
+        if artifact is None:
+            raise RuntimeError(f"class dependency absent from artifact inventory: {name}")
+        if entry.digest != artifact["sha256"]:
+            raise RuntimeError(f"class dependency digest residual: {name}")
         records.append({
             "filename": name,
             "ledger_status": entry.status,
             "states": entry.states,
-            "bytes": int(planner_record["packed_bytes"]),
+            # Bind the full stored UFTB extent.  planner packed_bytes omits
+            # the versioned header and is not a file-size certificate.
+            "bytes": int(artifact["bytes"]),
             "storage": entry.storage,
             "sha256": entry.digest,
+            "header": dict(artifact["header"]),
             "authenticated": (
                 entry.status in CERTIFIED_DEPENDENCY_STATUSES and
                 bool(re.fullmatch(r"[0-9a-f]{64}", entry.digest))),
@@ -515,6 +603,10 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
         "inventory_sha256": inventory,
         "generator_model_sha256": model,
         "source_hashes": source,
+        "dependency_artifact_inventory": str(
+            DEPENDENCY_ARTIFACTS.relative_to(ROOT)),
+        "dependency_artifact_inventory_sha256": source[str(
+            DEPENDENCY_ARTIFACTS.relative_to(ROOT))],
         "service_template": str(TEMPLATE.relative_to(ROOT)),
         "service_template_sha256": template_sha,
         "supervision_fragment": str(JOB_FRAGMENT.relative_to(ROOT)),
@@ -592,6 +684,15 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
             "path": f"{runner_source}/tools/ultimate_concrete_wave0_batch.json",
             "sha256": raw_manifest_sha256,
         })
+        artifact_relative = str(DEPENDENCY_ARTIFACTS.relative_to(ROOT))
+        artifact_digest = source_hashes_for_unit.get(artifact_relative)
+        if not isinstance(artifact_digest, str) or not re.fullmatch(
+                r"[0-9a-f]{64}", artifact_digest):
+            raise RuntimeError("missing dependency artifact inventory hash")
+        bindings.append({
+            "path": f"{runner_source}/{artifact_relative}",
+            "sha256": artifact_digest,
+        })
         bindings.append({
             "path": f"{unit['dependency_root']}/manifest.json",
             "sha256": str(unit["dependency_manifest_sha256"]),
@@ -651,6 +752,11 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
             "sha256": raw_manifest_sha256,
             "semantic_sha256": document["manifest_sha256"],
         },
+        "dependency_artifact_inventory": {
+            "path": f"{SOURCE_ROOT}/{DEPENDENCY_ARTIFACTS.relative_to(ROOT)}",
+            "sha256": str(document["source_hashes"][
+                str(DEPENDENCY_ARTIFACTS.relative_to(ROOT))]),
+        },
         "jobs": jobs,
         "replace_job_ids": ["concrete-wave0-remaining"],
         "retained_placeholder_updates": [
@@ -705,7 +811,7 @@ def merge_supervision_config(document: Mapping[str, object],
         if identifier.startswith("concrete-wave0-batch-"):
             job["queue_stage"] = True
             job["advanceable"] = False
-            job["superseded_by"] = "versioned-concrete-wave0-batch-v2"
+            job["superseded_by"] = f"versioned-concrete-wave0-batch-{BATCH_VERSION}"
         if identifier in updates:
             job["dependencies"] = list(updates[identifier]["dependencies"])
             job["queue_stage"] = True

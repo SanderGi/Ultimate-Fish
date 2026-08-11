@@ -254,6 +254,26 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "codec header"):
                 runner.parse_uftb(output, record, log)
 
+    def test_uftb_extent_uses_versioned_header_not_planner_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for version, extra, expected_header in (
+                    (4, b"", 40),
+                    (5, struct.pack("<II", runner.PIECE_INDEX["queen"], 0), 48)):
+                path = root / f"synthetic-v{version}.uftb"
+                header = struct.pack(
+                    "<8sIIIIIIII", b"UFTB1\0\0\0", version,
+                    runner.PIECE_INDEX["bishop"], 4, 7, 1, 1, 4, 0)
+                path.write_bytes(header + extra + bytes(5))
+                extent = runner.uftb_extent(path)
+                self.assertEqual(expected_header, extent["header_bytes"])
+                self.assertEqual(5, extent["payload_bytes"])
+                self.assertEqual(expected_header + 5, extent["file_bytes"])
+                self.assertEqual(path.stat().st_size, extent["file_bytes"])
+                path.write_bytes(path.read_bytes() + b"x")
+                with self.assertRaisesRegex(RuntimeError, "extent residual"):
+                    runner.uftb_extent(path)
+
     def test_dependency_manifest_rejects_duplicates(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "manifest.json"
