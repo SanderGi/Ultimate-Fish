@@ -381,6 +381,19 @@ def head_certificate(region: str, certificate: dict[str, Any]) -> dict[str, Any]
     }
 
 
+def cached_certificates(definition: dict[str, Any], previous_job: dict[str, Any]
+                       ) -> list[dict[str, Any]]:
+    """Reuse proofs for immutable, version-pinned S3 objects."""
+    expected = {(item["bucket"], item["key"], item["version_id"],
+                 item["sha256"], int(item.get("size", -1)))
+                for item in definition.get("s3_certificates", [])}
+    cached = previous_job.get("certificates", [])
+    actual = {(item.get("bucket"), item.get("key"), item.get("version_id"),
+               item.get("sha256"), int(item.get("size", -1)))
+              for item in cached if item.get("exact")}
+    return list(cached) if expected and expected == actual else []
+
+
 def unit_status(properties: dict[str, Any]) -> str:
     if properties.get("probe_error"):
         return "FAILED"
@@ -563,11 +576,19 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         certificates: list[dict[str, Any]] = []
         s3_only = bool(definition.get("s3_only_certified"))
         if (completion or s3_only) and definition.get("s3_certificates"):
-            try:
-                certificates = [head_certificate(config["region"], certificate)
-                                for certificate in definition["s3_certificates"]]
-            except Exception as error:
-                errors.append({"job": identifier, "error": str(error)})
+            previous_job = previous.get("report", {}).get("jobs", {}).get(
+                identifier, {})
+            certificates = cached_certificates(definition, previous_job)
+            if not certificates:
+                try:
+                    with ThreadPoolExecutor(
+                            max_workers=len(definition["s3_certificates"])) as executor:
+                        certificates = list(executor.map(
+                            lambda certificate: head_certificate(
+                                config["region"], certificate),
+                            definition["s3_certificates"]))
+                except Exception as error:
+                    errors.append({"job": identifier, "error": str(error)})
         if ((completion or s3_only) and certificates and
                 all(item["exact"] for item in certificates)):
             status = "CERTIFIED"

@@ -236,6 +236,18 @@ class SupervisionTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "requires certificates"):
             SUPERVISOR.validate_config(document)
 
+    def test_version_pinned_exact_certificate_is_cached(self) -> None:
+        definition = config()["jobs"][0]
+        previous = {"certificates": [{
+            "bucket": "private", "key": "results/first", "version_id": "v1",
+            "sha256": SHA_B, "size": 12, "exact": True,
+        }]}
+        self.assertEqual(
+            previous["certificates"],
+            SUPERVISOR.cached_certificates(definition, previous))
+        previous["certificates"][0]["version_id"] = "wrong"
+        self.assertEqual([], SUPERVISOR.cached_certificates(definition, previous))
+
     @mock.patch.object(SUPERVISOR, "local_probe")
     @mock.patch.object(SUPERVISOR, "ec2_inventory")
     def test_failure_requests_sol_without_restart(
