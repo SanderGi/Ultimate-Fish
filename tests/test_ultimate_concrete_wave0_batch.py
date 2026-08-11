@@ -232,12 +232,12 @@ class ConcreteWave0BatchTest(unittest.TestCase):
             self.assertTrue(any(path.startswith("/etc/systemd/system/")
                                 for path in paths))
             self.assertTrue(any(
-                "/concrete-wave0-batch/dependencies/" in path and
+                path.startswith(unit["dependency_root"] + "/") and
                 path.endswith("/manifest.json") for path in paths))
             dependency_manifest_path = next(
                 path for path in paths
                 if path.endswith("/manifest.json") and
-                "/concrete-wave0-batch/dependencies/" in path)
+                path.startswith(unit["dependency_root"] + "/"))
             self.assertEqual(
                 dependency_manifest_path,
                 f"{unit['dependency_root']}/manifest.json")
