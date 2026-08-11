@@ -92,9 +92,10 @@ class MergeTest(unittest.TestCase):
         self.assertEqual(
             "tAdN0u.rzOc.IA_wXc1xM.rhFPlifb8m",
             verification["s3_certificates"][0]["version_id"])
-        self.assertEqual(
-            "185d4b6404c7fd95e493c82fd96e779b58ac7a6446f5e7eeecff88630eb58768",
-            jobs["jester-ghost-merge"]["source_bindings"][0]["sha256"])
+        self.assertTrue(verification["s3_only_certified"])
+        self.assertEqual([], verification["source_bindings"])
+        self.assertTrue(jobs["jester-ghost-merge"]["s3_only_certified"])
+        self.assertEqual([], jobs["jester-ghost-merge"]["source_bindings"])
 
 
 if __name__ == "__main__":

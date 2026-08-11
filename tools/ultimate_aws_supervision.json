@@ -332,7 +332,7 @@
       "dependencies": [
         "jester-ghost-transition-rebind"
       ],
-      "queue_stage": true,
+      "s3_only_certified": true,
       "checkpoint_paths": [
         "/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/state/service.log",
         "/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/state/logs/*.log",
@@ -341,16 +341,7 @@
       "completion_paths": [
         "/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/state/verification-summary.json"
       ],
-      "source_bindings": [
-        {
-          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/bin/verify_ultimate_jester_ghost_rebound_aws.py",
-          "sha256": "4238b837a1478fe8c68f2d5434839244a5f37dee8117b4a54a1aaae64bbe38ba"
-        },
-        {
-          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/ultimate_jester_ghost_information_tablebase",
-          "sha256": "978fdf69362577c824d9e456a28a51d133cca4b6823fcab9e8e7555e2c11a147"
-        }
-      ],
+      "source_bindings": [],
       "s3_certificates": [
         {
           "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
@@ -372,7 +363,7 @@
       "dependencies": [
         "jester-ghost-verify-shards"
       ],
-      "queue_stage": true,
+      "s3_only_certified": true,
       "checkpoint_paths": [
         "/mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work/service.log",
         "/mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work/output/merge.log"
@@ -380,24 +371,7 @@
       "completion_paths": [
         "/mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work/output/merge-certificate.json"
       ],
-      "source_bindings": [
-        {
-          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/merge-7328-third-work/bin/merge_ultimate_jester_ghost_rebound_aws.py",
-          "sha256": "185d4b6404c7fd95e493c82fd96e779b58ac7a6446f5e7eeecff88630eb58768"
-        },
-        {
-          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/verification-7328/bin/verify_ultimate_jester_ghost_rebound_aws.py",
-          "sha256": "4238b837a1478fe8c68f2d5434839244a5f37dee8117b4a54a1aaae64bbe38ba"
-        },
-        {
-          "path": "/mnt/ultimatefish/jester-ghost-migration-7328-prep/bundle/ultimate_jester_ghost_information_tablebase",
-          "sha256": "978fdf69362577c824d9e456a28a51d133cca4b6823fcab9e8e7555e2c11a147"
-        },
-        {
-          "path": "/etc/systemd/system/ultimatefish-jg7328-merge.service",
-          "sha256": "166d613695abc30b1f8dbcdb4587d71acee93556eecb2ffba09f5a3d75bf8efe"
-        }
-      ],
+      "source_bindings": [],
       "s3_certificates": [
         {
           "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
