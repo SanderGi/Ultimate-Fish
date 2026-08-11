@@ -749,20 +749,35 @@ def probe_instance(config: dict[str, Any], definition: dict[str, Any],
     state = ec2.get("State", {}).get("Name", "unknown")
     remote: dict[str, Any] = {}
     error: str | None = None
+    queued = [job for job in jobs
+              if job.get("queue_stage") and not job.get("advanceable")]
+    probed = [job for job in jobs if job not in queued]
     if state == "running":
         try:
-            command = remote_script(definition, jobs)
+            # Uninstalled queue records have no live state.  Sending their
+            # future paths and synthetic systemd properties wastes the fixed
+            # SSM output budget and can blind a busy host.  They are restored
+            # locally as minimal inactive records after a successful probe.
+            command = remote_script(definition, probed)
             remote = (local_probe(command)
                       if definition.get("transport", "ssm") == "local"
                       else ssm_probe(config["region"], definition["instance_id"],
                                      command))
             if remote.get("probe_error"):
                 error = str(remote["probe_error"])
+            else:
+                remote.setdefault("jobs", []).extend({
+                    "id": job["id"],
+                    "unit": {"LoadState": "not-found",
+                             "ActiveState": "inactive", "Result": "success",
+                             "ExecMainStatus": "0"},
+                    "checkpoints": [], "completion": [], "sources": [],
+                } for job in queued)
         except Exception as exception:  # one host must not hide the other four
             error = str(exception)
     warnings = resource_warnings(definition, remote) if remote else []
     allocation = cpu_allocation(
-        definition, remote, jobs, previous_remote, sample_seconds) if remote else {
+        definition, remote, probed, previous_remote, sample_seconds) if remote else {
         "vcpus": int(definition["vcpus"]), "allocated_vcpus": 0,
         "idle_vcpus": int(definition["vcpus"]), "allocation_known": False,
         "unknown_jobs": [], "overlaps": [], "active_jobs": {},

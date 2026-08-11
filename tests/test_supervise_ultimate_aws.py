@@ -292,6 +292,29 @@ class SupervisionTests(unittest.TestCase):
         self.assertEqual("UNDERUTILIZED",
                          second["report"]["errors"][-1]["fleet"])
 
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    def test_uninstalled_queue_records_do_not_consume_remote_budget(
+            self, probe: mock.Mock) -> None:
+        document = config()
+        definition = document["instances"][0]
+        ec2 = self.ec2[definition["instance_id"]]
+        probe.return_value = {
+            "memory": {"MemAvailable": 100},
+            "mounts": [{"path": "/", "free_bytes": 100,
+                        "total_bytes": 200}],
+            "jobs": [],
+        }
+        result, error = SUPERVISOR.probe_instance(
+            document, definition, ec2, [document["jobs"][2]], self.now,
+            None, None)
+        self.assertIsNone(error)
+        encoded = probe.call_args.args[0]
+        self.assertNotIn("third", encoded)
+        queued = result["remote"]["jobs"][0]
+        self.assertEqual("third", queued["id"])
+        self.assertEqual("not-found", queued["unit"]["LoadState"])
+        self.assertEqual({}, result["cpu_allocation"]["active_jobs"])
+
     @mock.patch.object(SUPERVISOR, "head_certificate")
     @mock.patch.object(SUPERVISOR, "local_probe")
     @mock.patch.object(SUPERVISOR, "ec2_inventory")
