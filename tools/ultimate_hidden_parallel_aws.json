@@ -5,12 +5,13 @@
   "jobs": [
     {
       "id": "bomb-ghost-same-measure",
+      "canonical_commit": "02c6811d9b84016f336efa5a5d0c8d18945dd427",
       "instance_id": "i-0986ed3d272721f02",
       "work_directory": "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2",
-      "bundle_key": "bundles/hidden/commit/7af5dec2/sha256/e8d335c603fb66e79c1a96ffcc12965a831463b7600b58df6a456bf29e49a22b/ultimate-kbombghostk.tar",
-      "bundle_sha256": "e8d335c603fb66e79c1a96ffcc12965a831463b7600b58df6a456bf29e49a22b",
-      "bundle_version_id": "J.lmPtL4NjFtDluHx0JSotztzyhIv_qQ",
-      "unit": "tools/ultimatefish-hidden-kbombghostk-7af5dec2.service",
+      "bundle_key": "bundles/hidden/commit/02c6811d9b84016f336efa5a5d0c8d18945dd427/sha256/2c604198223d75ebd102edc104beaf94ede122e83b1b0b6a6528d282d26a16e2/ultimate-kbombghostk-solvefix-v2.tar",
+      "bundle_sha256": "2c604198223d75ebd102edc104beaf94ede122e83b1b0b6a6528d282d26a16e2",
+      "bundle_version_id": "nDh2WQmmIHu8Xue3J4O1WL78ToTDXX17",
+      "unit": "tools/ultimatefish-hidden-kbombghostk-solvefix-v2.service",
       "runner_sha256": "f392a79fe0fe6be4bfd42daa771399af3c11d8e633978d5f9b670a4c07d6d079"
     },
     {
