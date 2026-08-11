@@ -40,6 +40,12 @@ REMOTE_PREFIX = "ULTIMATE_SUPERVISION_JSON="
 # Run Command truncates StandardOutputContent at roughly 24 KiB.  Keep a
 # deliberate margin for the sentinel and any provider-side decoration.
 REMOTE_OUTPUT_BUDGET = 20_000
+# SSM rejects an oversized ``commands`` parameter before the remote program
+# runs (the effective limit is just under 100 KiB in this path).  Keep a
+# stricter local bound so a crowded host fails closed instead of producing a
+# transport-only supervision error.  Source paths are deduplicated below,
+# which keeps the concrete batch comfortably below this bound.
+REMOTE_REQUEST_BUDGET = 97_000
 TERMINAL_OK = {"CERTIFIED"}
 TERMINAL_BAD = {"FAILED", "SOURCE_MISMATCH", "RESOURCE_LIMIT"}
 UNIT = re.compile(r"[A-Za-z0-9_.@-]+\.service")
@@ -273,16 +279,53 @@ def parse_cpu_set(value: object, capacity: int) -> set[int]:
     return result
 
 
-def remote_script(instance: dict[str, Any], jobs: list[dict[str, Any]]) -> str:
-    payload = {
-        "mounts": instance.get("mounts", ["/"]),
-        "jobs": [{
+def compact_source_bindings(
+        jobs: list[dict[str, Any]]) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
+    """Build one exact host binding table and per-job references.
+
+    The same source files are authenticated by many jobs on a host.  Sending
+    every ``{path, sha256}`` pair once per job can exceed SSM's command-size
+    limit even though the remote probe's *response* is compact.  Keep one
+    table entry for each exact path/digest pair and preserve each job's
+    original order through integer references.  A path with two different
+    expected digests intentionally gets two entries; the remote checker then
+    hashes that path once and compares both expectations fail-closed.
+    """
+    table: list[dict[str, str]] = []
+    indices: dict[tuple[str, str], int] = {}
+    compact_jobs: list[dict[str, Any]] = []
+    for job in jobs:
+        references: list[int] = []
+        for binding in job.get("source_bindings", []):
+            if not isinstance(binding, dict):
+                raise RuntimeError(f"{job.get('id', '<job>')} has invalid source binding")
+            path = str(binding.get("path", ""))
+            digest = validate_sha(
+                binding.get("sha256"),
+                f"{job.get('id', '<job>')} source binding")
+            key = (path, digest)
+            index = indices.get(key)
+            if index is None:
+                index = len(table)
+                indices[key] = index
+                table.append({"path": path, "sha256": digest})
+            references.append(index)
+        compact_jobs.append({
             "id": job["id"],
             "unit": job["unit"],
             "checkpoint_paths": job.get("checkpoint_paths", []),
             "completion_paths": job.get("completion_paths", []),
-            "source_bindings": job.get("source_bindings", []),
-        } for job in jobs],
+            "binding_refs": references,
+        })
+    return table, compact_jobs
+
+
+def remote_script(instance: dict[str, Any], jobs: list[dict[str, Any]]) -> str:
+    bindings, compact_jobs = compact_source_bindings(jobs)
+    payload = {
+        "mounts": instance.get("mounts", ["/"]),
+        "bindings": bindings,
+        "jobs": compact_jobs,
     }
     encoded = base64.b64encode(canonical_json(payload).encode()).decode()
     program = r'''
@@ -323,25 +366,40 @@ def aggregate(patterns):
    digest.update(len(record).to_bytes(8,'big')); digest.update(record)
   result.append([1,len(matches),total,allocated,newest,digest.hexdigest()])
  return result
-def sources_exact(bindings):
- exact=True
+def checked_bindings(bindings):
+ # Hash each physical path at most once, while retaining one result for each
+ # exact path/digest table entry.  This accepts duplicate identical entries
+ # and rejects a missing path, a divergent digest, or malformed table data.
+ by_path={}; result=[]
  for binding in bindings:
-  path=binding['path']
-  # Source paths and metadata are already authenticated in the local job
-  # definition.  Returning them again for every binding wastes the fixed SSM
-  # output budget, especially for the 24-class concrete batch.  The immutable
-  # probe compares every requested path to its committed digest and returns a
-  # bounded exactness bit plus the checked binding count.
-  if not os.path.isfile(path):
-   exact=False; continue
-  stat=os.stat(path)
-  if stat.st_size>16*1024*1024:
-   exact=False; continue
-  digest=hashlib.sha256()
-  with open(path,'rb') as stream:
-   for block in iter(lambda:stream.read(1024*1024),b''): digest.update(block)
-  if digest.hexdigest()!=binding['sha256']: exact=False
- return exact
+  if not isinstance(binding,dict): result.append(False); continue
+  path=binding.get('path'); expected=binding.get('sha256')
+  if not isinstance(path,str) or not isinstance(expected,str):
+   result.append(False); continue
+  if path in by_path:
+   actual=by_path[path]
+  elif not os.path.isfile(path):
+   actual=None; by_path[path]=actual
+  else:
+   stat=os.stat(path)
+   if stat.st_size>16*1024*1024:
+    actual=None; by_path[path]=actual
+   else:
+    digest=hashlib.sha256()
+    with open(path,'rb') as stream:
+     for block in iter(lambda:stream.read(1024*1024),b''): digest.update(block)
+    actual=digest.hexdigest(); by_path[path]=actual
+  result.append(actual==expected)
+ return result
+
+source_results=checked_bindings(payload.get('bindings',[]))
+def sources_exact(references):
+ if not isinstance(references,list): return False
+ for reference in references:
+  if isinstance(reference,bool) or not isinstance(reference,int): return False
+  if reference<0 or reference>=len(source_results) or not source_results[reference]:
+   return False
+ return True
 memory={}
 try:
  stream=open('/proc/meminfo',encoding='ascii')
@@ -362,8 +420,8 @@ for job in payload['jobs']:
  jobs.append({'i':job['id'],'u':props(job['unit']),
               'k':aggregate(job['checkpoint_paths']),
               'c':aggregate(job['completion_paths']),
-              'n':len(job['source_bindings']),
-              'x':sources_exact(job['source_bindings'])})
+              'n':len(job.get('binding_refs',[])),
+              'x':sources_exact(job.get('binding_refs',[]))})
 document={'memory':memory,'mounts':mounts,'jobs':jobs}
 encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
 document['b']=len(encoded.encode())
@@ -382,6 +440,11 @@ print('ULTIMATE_SUPERVISION_JSON='+encoded)
     wrapper = (
         "python3 -c 'import base64,sys;exec(base64.b64decode(sys.argv[1]))' "
         f"{encoded_program} {encoded}")
+    request_bytes = len(wrapper.encode())
+    if request_bytes >= REMOTE_REQUEST_BUDGET:
+        raise RuntimeError(
+            f"bounded remote request exceeded {REMOTE_REQUEST_BUDGET} bytes "
+            f"({request_bytes})")
     return wrapper
 
 

@@ -288,6 +288,39 @@ class SupervisionTests(unittest.TestCase):
                  for instance_id, jobs in all_jobs_by_host.items()}
         self.assertLessEqual(max(sizes.values()), SUPERVISOR.REMOTE_OUTPUT_BUDGET)
 
+    def test_source_binding_table_deduplicates_worst_host_request(self) -> None:
+        document = json.loads(
+            (ROOT / "tools/ultimate_aws_supervision.json").read_text())
+        for definition in document["instances"]:
+            jobs = [job for job in document["jobs"]
+                    if job["instance_id"] == definition["instance_id"]
+                    and not job.get("queue_stage")
+                    and not job.get("superseded_by")]
+            table, compact_jobs = SUPERVISOR.compact_source_bindings(jobs)
+            self.assertLess(
+                len(table),
+                sum(len(job.get("source_bindings", [])) for job in jobs))
+            self.assertEqual(len(jobs), len(compact_jobs))
+            for original, compact in zip(jobs, compact_jobs):
+                references = compact["binding_refs"]
+                self.assertEqual(len(original.get("source_bindings", [])),
+                                 len(references))
+                self.assertTrue(all(
+                    isinstance(reference, int) and not isinstance(reference, bool)
+                    and 0 <= reference < len(table)
+                    for reference in references))
+            command = SUPERVISOR.remote_script(definition, jobs)
+            self.assertLess(len(command.encode()),
+                            SUPERVISOR.REMOTE_REQUEST_BUDGET)
+        worst = next(item for item in document["instances"]
+                     if item["instance_id"] == "i-0b4523116b2f7765c")
+        worst_jobs = [job for job in document["jobs"]
+                      if job["instance_id"] == worst["instance_id"]
+                      and not job.get("queue_stage")
+                      and not job.get("superseded_by")]
+        table, _ = SUPERVISOR.compact_source_bindings(worst_jobs)
+        self.assertEqual(107, len(table))
+
     def test_cpu_allocation_reports_idle_capacity_and_overlap(self) -> None:
         definition = config()["instances"][0]
         report = SUPERVISOR.cpu_allocation(definition, remote())
