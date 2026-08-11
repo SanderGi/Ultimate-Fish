@@ -26,7 +26,7 @@ generated exclusively from the canonical ledger below by
 `python3 tools/plot_ultimate_tablebases.py`.
 
 <!-- COMPUTATION_LEDGER_START -->
-Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact draws**, **234 planned**, **10 blocked**, and **147 deferred**; 624 unique material classes.
+Ledger totals: **9 certified**, **186 preserving**, **14 computing**, **34 exact draws**, **229 planned**, **5 blocked**, and **147 deferred**; 624 unique material classes.
 
 | Key | Class | Domain | File | Status | Indexed states | Result domain | First starts W / L / D | Second starts W / L / D | Reachable / unreachable (first; second) | Canonical storage |
 | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | --- |
@@ -140,7 +140,7 @@ Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact 
 | `same:queen+prince` | King+Queen+Prince vs King | same | `kqueenprincek.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
 | `same:queen+checker` | King+Queen+Checker vs King | same | `kqueencheckerk.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `same:queen+giant` | King+Queen+Giant vs King | same | `kqueengiantk.uftb` | **PRESERVING** | 37,957,920 | concrete | 7,071,014 (6,215,686) / 0 / 0 (5,692,260) | 0 (1,142,116) / 11,256,584 / 888,000 (5,692,260) | 7,071,014 / 11,907,946; 12,144,584 / 6,834,376 | S3 preservation pending |
-| `same:queen+copycat` | King+Queen+Copycat vs King | same | `kcopycatqueenk.uftb` | **BLOCKED** | 75,915,840 | concrete | — | — | — | — |
+| `same:queen+copycat` | King+Queen+Copycat vs King | same | `kcopycatqueenk.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `same:queen+angel` | King+Queen+Angel vs King | same | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `same:queen+fisherman` | King+Queen+Fisherman vs King | same | `kqueenfishermank.uftb` | **PRESERVING** | 37,957,920 | concrete | 11,943,344 (7,035,616) / 0 / 0 | 0 (1,609,608) / 15,912,942 / 1,456,410 | 11,943,344 / 7,035,616; 17,369,352 / 1,609,608 | S3 preservation pending |
 | `same:queen+dragon` | King+Queen+Dragon vs King | same | `kqueendragonk.uftb` | **PRESERVING** | 37,957,920 | concrete | 9,653,298 (9,325,662) / 0 / 0 | 0 (1,609,608) / 17,238,014 / 131,338 | 9,653,298 / 9,325,662; 17,369,352 / 1,609,608 | S3 preservation pending |
@@ -160,7 +160,7 @@ Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact 
 | `same:rook+prince` | King+Rook+Prince vs King | same | `krookprincek.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
 | `same:rook+checker` | King+Rook+Checker vs King | same | `krookcheckerk.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `same:rook+giant` | King+Rook+Giant vs King | same | `krookgiantk.uftb` | **PRESERVING** | 37,957,920 | concrete | 8,246,894 (5,039,806) / 0 / 0 (5,692,260) | 0 (1,142,116) / 11,296,414 / 848,170 (5,692,260) | 8,246,894 / 10,732,066; 12,144,584 / 6,834,376 | S3 preservation pending |
-| `same:rook+copycat` | King+Rook+Copycat vs King | same | `kcopycatrookk.uftb` | **BLOCKED** | 75,915,840 | concrete | — | — | — | — |
+| `same:rook+copycat` | King+Rook+Copycat vs King | same | `kcopycatrookk.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `same:rook+angel` | King+Rook+Angel vs King | same | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `same:rook+fisherman` | King+Rook+Fisherman vs King | same | `krookfishermank.uftb` | **PRESERVING** | 37,957,920 | concrete | 14,027,524 (4,951,436) / 0 / 0 | 0 (1,609,608) / 15,950,608 / 1,418,744 | 14,027,524 / 4,951,436; 17,369,352 / 1,609,608 | S3 preservation pending |
 | `same:rook+dragon` | King+Rook+Dragon vs King | same | `krookdragonk.uftb` | **PRESERVING** | 37,957,920 | concrete | 11,413,200 (7,565,760) / 0 / 0 | 0 (1,609,608) / 17,325,054 / 44,298 | 11,413,200 / 7,565,760; 17,369,352 / 1,609,608 | S3 preservation pending |
@@ -230,7 +230,7 @@ Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact 
 | `same:ninja+prince` | King+Ninja+Prince vs King | same | `kninjaprincek.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
 | `same:ninja+checker` | King+Ninja+Checker vs King | same | `kninjacheckerk.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `same:ninja+giant` | King+Ninja+Giant vs King | same | `kninjagiantk.uftb` | **PRESERVING** | 37,957,920 | concrete | 8,088,164 (5,198,536) / 0 / 0 (5,692,260) | 0 (1,142,116) / 11,260,640 / 883,944 (5,692,260) | 8,088,164 / 10,890,796; 12,144,584 / 6,834,376 | S3 preservation pending |
-| `same:ninja+copycat` | King+Ninja+Copycat vs King | same | `kcopycatninjak.uftb` | **BLOCKED** | 75,915,840 | concrete | — | — | — | — |
+| `same:ninja+copycat` | King+Ninja+Copycat vs King | same | `kcopycatninjak.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `same:ninja+angel` | King+Ninja+Angel vs King | same | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `same:ninja+fisherman` | King+Ninja+Fisherman vs King | same | `kninjafishermank.uftb` | **PRESERVING** | 37,957,920 | concrete | 13,719,860 (5,259,100) / 0 / 0 | 0 (1,609,608) / 15,914,976 / 1,454,376 | 13,719,860 / 5,259,100; 17,369,352 / 1,609,608 | S3 preservation pending |
 | `same:ninja+dragon` | King+Ninja+Dragon vs King | same | `kninjadragonk.uftb` | **PRESERVING** | 37,957,920 | concrete | 11,131,336 (7,847,624) / 0 / 0 | 0 (1,609,608) / 17,252,356 / 116,996 | 11,131,336 / 7,847,624; 17,369,352 / 1,609,608 | S3 preservation pending |
@@ -245,7 +245,7 @@ Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact 
 | `same:turtle+prince` | King+Turtle+Prince vs King | same | `kturtleprincek.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
 | `same:turtle+checker` | King+Turtle+Checker vs King | same | `kturtlecheckerk.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `same:turtle+giant` | King+Turtle+Giant vs King | same | `kturtlegiantk.uftb` | **PRESERVING** | 37,957,920 | concrete | 8,823,608 (3,504,624) / 0 / 958,468 (5,692,260) | 0 (1,142,116) / 7,851,670 / 4,292,914 (5,692,260) | 9,782,076 / 9,196,884; 12,144,584 / 6,834,376 | S3 preservation pending |
-| `same:turtle+copycat` | King+Turtle+Copycat vs King | same | `kcopycatturtlek.uftb` | **BLOCKED** | 75,915,840 | concrete | — | — | — | — |
+| `same:turtle+copycat` | King+Turtle+Copycat vs King | same | `kcopycatturtlek.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
 | `same:turtle+angel` | King+Turtle+Angel vs King | same | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `same:turtle+fisherman` | King+Turtle+Fisherman vs King | same | — | **DRAW** | — | insufficient material | 0 / 0 / 1 | 0 / 0 / 1 | closed-form draw | — |
 | `same:turtle+dragon` | King+Turtle+Dragon vs King | same | `kturtledragonk.uftb` | **PRESERVING** | 37,957,920 | concrete | 13,456,552 (5,522,408) / 0 / 0 | 0 (1,609,608) / 15,996,498 / 1,372,854 | 13,456,552 / 5,522,408; 17,369,352 / 1,609,608 | S3 preservation pending |
@@ -295,7 +295,7 @@ Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact 
 | `same:parasite+prince` | King+Parasite+Prince vs King | same | `kparasiteprincek.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
 | `same:parasite+checker` | King+Parasite+Checker vs King | same | `kparasitecheckerk.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `same:parasite+giant` | King+Parasite+Giant vs King | same | `kparasitegiantk.uftb` | **PRESERVING** | 37,957,920 | concrete | 9,347,536 (3,939,164) / 0 / 0 (5,692,260) | 0 (1,142,116) / 12,141,428 / 3,156 (5,692,260) | 9,347,536 / 9,631,424; 12,144,584 / 6,834,376 | S3 preservation pending |
-| `same:parasite+copycat` | King+Parasite+Copycat vs King | same | `kcopycatparasitek.uftb` | **BLOCKED** | 75,915,840 | concrete | — | — | — | — |
+| `same:parasite+copycat` | King+Parasite+Copycat vs King | same | `kcopycatparasitek.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `same:parasite+angel` | King+Parasite+Angel vs King | same | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `same:parasite+fisherman` | King+Parasite+Fisherman vs King | same | `kparasitefishermank.uftb` | **PRESERVING** | 37,957,920 | concrete | 15,885,716 (3,093,244) / 0 / 0 | 0 (1,609,608) / 17,368,120 / 1,232 | 15,885,716 / 3,093,244; 17,369,352 / 1,609,608 | S3 preservation pending |
 | `same:parasite+dragon` | King+Parasite+Dragon vs King | same | `kparasitedragonk.uftb` | **PRESERVING** | 37,957,920 | concrete | 12,877,956 (6,101,004) / 0 / 0 | 0 (1,609,608) / 17,350,088 / 19,264 | 12,877,956 / 6,101,004; 17,369,352 / 1,609,608 | S3 preservation pending |
@@ -374,7 +374,7 @@ Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact 
 | `opposed:jester+prince` | King+Jester vs King+Prince | opposed | `kjesterkprince.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:jester+checker` | King+Jester vs King+Checker | opposed | `kjesterkchecker.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `opposed:jester+giant` | King+Jester vs King+Giant | opposed | `kjesterkgiant.uftb` | **PRESERVING** | 37,957,920 | information v2 | 10,988,108 (2,193,308) / 32 / 105,252 (5,692,260) | 516,144 / 7,775,374 / 4,995,182 (5,692,260) | 11,093,392 / 7,885,568; 13,286,700 / 5,692,260 | S3 preservation pending |
-| `opposed:jester+copycat` | King+Jester vs King+Copycat | opposed | `kcopycatkjester.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
+| `opposed:jester+copycat` | King+Jester vs King+Copycat | opposed | `kcopycatkjester.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:jester+angel` | King+Jester vs King+Angel | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `opposed:jester+fisherman` | King+Jester vs King+Fisherman | opposed | `kjesterkfisherman.uftb` | **PRESERVING** | 37,957,920 | information v2 | 2,499,754 (3,093,244) / 0 / 13,385,962 | 125,972 / 11,842 / 18,841,146 | 15,885,716 / 3,093,244; 18,978,960 / 0 | S3 preservation pending |
 | `opposed:jester+dragon` | King+Jester vs King+Dragon | opposed | `kjesterkdragon.uftb` | **PRESERVING** | 37,957,920 | information v2 | 2,493,996 (3,093,244) / 6,688,516 / 6,703,204 | 15,063,608 / 5,426 / 3,909,926 | 15,885,716 / 3,093,244; 18,978,960 / 0 | S3 preservation pending |
@@ -440,7 +440,7 @@ Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact 
 | `opposed:queen+prince` | King+Queen vs King+Prince | opposed | `kqueenkprince.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:queen+checker` | King+Queen vs King+Checker | opposed | `kqueenkchecker.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `opposed:queen+giant` | King+Queen vs King+Giant | opposed | `kqueenkgiant.uftb` | **PRESERVING** | 37,957,920 | concrete | 8,452,246 (4,821,246) / 7,090 / 6,118 (5,692,260) | 20,818 (3,051,612) / 7,900,780 / 2,313,490 (5,692,260) | 8,465,454 / 10,513,506; 10,235,088 / 8,743,872 | S3 preservation pending |
-| `opposed:queen+copycat` | King+Queen vs King+Copycat | opposed | `kcopycatkqueen.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
+| `opposed:queen+copycat` | King+Queen vs King+Copycat | opposed | `kcopycatkqueen.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:queen+angel` | King+Queen vs King+Angel | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `opposed:queen+fisherman` | King+Queen vs King+Fisherman | opposed | `kqueenkfisherman.uftb` | **PRESERVING** | 37,957,920 | concrete | 11,943,344 (7,035,616) / 0 / 0 | 0 (1,609,608) / 15,953,468 / 1,415,884 | 11,943,344 / 7,035,616; 17,369,352 / 1,609,608 | S3 preservation pending |
 | `opposed:queen+dragon` | King+Queen vs King+Dragon | opposed | `kqueenkdragon.uftb` | **PRESERVING** | 37,957,920 | concrete | 7,965,806 (7,035,616) / 108,042 / 3,869,496 | 4,290,082 (4,893,140) / 1,437,880 / 8,357,858 | 11,943,344 / 7,035,616; 14,085,820 / 4,893,140 | S3 preservation pending |
@@ -460,7 +460,7 @@ Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact 
 | `opposed:rook+prince` | King+Rook vs King+Prince | opposed | `krookkprince.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:rook+checker` | King+Rook vs King+Checker | opposed | `krookkchecker.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `opposed:rook+giant` | King+Rook vs King+Giant | opposed | `krookkgiant.uftb` | **PRESERVING** | 37,957,920 | concrete | 9,768,484 (3,443,644) / 13,856 / 60,716 (5,692,260) | 30,722 (3,051,612) / 7,888,652 / 2,315,714 (5,692,260) | 9,843,056 / 9,135,904; 10,235,088 / 8,743,872 | S3 preservation pending |
-| `opposed:rook+copycat` | King+Rook vs King+Copycat | opposed | `kcopycatkrook.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
+| `opposed:rook+copycat` | King+Rook vs King+Copycat | opposed | `kcopycatkrook.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:rook+angel` | King+Rook vs King+Angel | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `opposed:rook+fisherman` | King+Rook vs King+Fisherman | opposed | `krookkfisherman.uftb` | **PRESERVING** | 37,957,920 | concrete | 4,422,744 (4,951,436) / 0 / 9,604,780 | 0 (1,609,608) / 461,572 / 16,907,780 | 14,027,524 / 4,951,436; 17,369,352 / 1,609,608 | S3 preservation pending |
 | `opposed:rook+dragon` | King+Rook vs King+Dragon | opposed | `krookkdragon.uftb` | **PRESERVING** | 37,957,920 | concrete | 4,376,160 (4,951,436) / 437,638 / 9,213,726 | 5,782,264 (4,893,140) / 324,630 / 7,978,926 | 14,027,524 / 4,951,436; 14,085,820 / 4,893,140 | S3 preservation pending |
@@ -530,7 +530,7 @@ Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact 
 | `opposed:ninja+prince` | King+Ninja vs King+Prince | opposed | `kninjakprince.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:ninja+checker` | King+Ninja vs King+Checker | opposed | `kninjakchecker.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `opposed:ninja+giant` | King+Ninja vs King+Giant | opposed | `kninjakgiant.uftb` | **PRESERVING** | 37,957,920 | concrete | 9,568,874 (3,695,184) / 13,504 / 9,138 (5,692,260) | 29,382 (3,051,612) / 7,890,026 / 2,315,680 (5,692,260) | 9,591,516 / 9,387,444; 10,235,088 / 8,743,872 | S3 preservation pending |
-| `opposed:ninja+copycat` | King+Ninja vs King+Copycat | opposed | `kcopycatkninja.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
+| `opposed:ninja+copycat` | King+Ninja vs King+Copycat | opposed | `kcopycatkninja.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:ninja+angel` | King+Ninja vs King+Angel | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `opposed:ninja+fisherman` | King+Ninja vs King+Fisherman | opposed | `kninjakfisherman.uftb` | **PRESERVING** | 37,957,920 | concrete | 13,719,860 (5,259,100) / 0 / 0 | 0 (1,609,608) / 15,953,476 / 1,415,876 | 13,719,860 / 5,259,100; 17,369,352 / 1,609,608 | S3 preservation pending |
 | `opposed:ninja+dragon` | King+Ninja vs King+Dragon | opposed | `kninjakdragon.uftb` | **PRESERVING** | 37,957,920 | concrete | 4,589,520 (5,259,100) / 186,156 / 8,944,184 | 4,806,436 (4,893,140) / 276,566 / 9,002,818 | 13,719,860 / 5,259,100; 14,085,820 / 4,893,140 | S3 preservation pending |
@@ -545,7 +545,7 @@ Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact 
 | `opposed:turtle+prince` | King+Turtle vs King+Prince | opposed | `kturtlekprince.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:turtle+checker` | King+Turtle vs King+Checker | opposed | — | **DRAW** | — | insufficient material | 0 / 0 / 1 | 0 / 0 / 1 | closed-form draw | — |
 | `opposed:turtle+giant` | King+Turtle vs King+Giant | opposed | `kturtlekgiant.uftb` | **PRESERVING** | 37,957,920 | concrete | 0 (1,705,440) / 24,002 / 11,557,258 (5,692,260) | 42,846 (3,051,612) / 4 / 10,192,238 (5,692,260) | 11,581,260 / 7,397,700; 10,235,088 / 8,743,872 | S3 preservation pending |
-| `opposed:turtle+copycat` | King+Turtle vs King+Copycat | opposed | `kcopycatkturtle.uftb` | **BLOCKED** | 75,915,840 | concrete | — | — | — | — |
+| `opposed:turtle+copycat` | King+Turtle vs King+Copycat | opposed | `kcopycatkturtle.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:turtle+angel` | King+Turtle vs King+Angel | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `opposed:turtle+fisherman` | King+Turtle vs King+Fisherman | opposed | — | **DRAW** | — | insufficient material | 0 / 0 / 1 | 0 / 0 / 1 | closed-form draw | — |
 | `opposed:turtle+dragon` | King+Turtle vs King+Dragon | opposed | `kturtlekdragon.uftb` | **PRESERVING** | 37,957,920 | concrete | 0 (2,397,164) / 14,530,158 / 2,051,638 | 14,056,448 (4,893,140) / 0 / 29,372 | 16,581,796 / 2,397,164; 14,085,820 / 4,893,140 | S3 preservation pending |
@@ -558,7 +558,7 @@ Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact 
 | `opposed:ghost+sniper` | King+Ghost vs King+Sniper | opposed | `kghostksniper.uftb` | **PLANNED** | 303,663,360 | concrete | — | — | — | — |
 | `opposed:ghost+prince` | King+Ghost vs King+Prince | opposed | `kghostkprince.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `opposed:ghost+checker` | King+Ghost vs King+Checker | opposed | `kghostkchecker.uftb` | **PLANNED** | 303,663,360 | concrete | — | — | — | concrete S3 `6166644c…` / `g2ZfdZC3PS4PAyhGElYcMa0TKWDoa4AZ`; information pending |
-| `opposed:ghost+giant` | King+Ghost vs King+Giant | opposed | `kghostkgiant.uftb` | **COMPUTING** | 75,915,840 | information required | — | — | — | — |
+| `opposed:ghost+giant` | King+Ghost vs King+Giant | opposed | `kghostkgiant.uftb` | **BLOCKED** | 75,915,840 | information required | — | — | — | — |
 | `opposed:ghost+copycat` | King+Ghost vs King+Copycat | opposed | `kcopycatkghost.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `opposed:ghost+angel` | King+Ghost vs King+Angel | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `opposed:ghost+fisherman` | King+Ghost vs King+Fisherman | opposed | `kghostkfisherman.uftb` | **PLANNED** | 75,915,840 | information required | — | — | — | — |
@@ -595,7 +595,7 @@ Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact 
 | `opposed:parasite+prince` | King+Parasite vs King+Prince | opposed | `kparasitekprince.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:parasite+checker` | King+Parasite vs King+Checker | opposed | `kparasitekchecker.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `opposed:parasite+giant` | King+Parasite vs King+Giant | opposed | `kparasitekgiant.uftb` | **PRESERVING** | 37,957,920 | concrete | 4,429,348 (2,193,308) / 22,222 / 6,641,822 (5,692,260) | 39,116 (3,051,612) / 1,811,896 / 8,384,076 (5,692,260) | 11,093,392 / 7,885,568; 10,235,088 / 8,743,872 | S3 preservation pending |
-| `opposed:parasite+copycat` | King+Parasite vs King+Copycat | opposed | `kcopycatkparasite.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
+| `opposed:parasite+copycat` | King+Parasite vs King+Copycat | opposed | `kcopycatkparasite.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:parasite+angel` | King+Parasite vs King+Angel | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `opposed:parasite+fisherman` | King+Parasite vs King+Fisherman | opposed | `kfishermankparasite.uftb` | **PRESERVING** | 37,957,920 | concrete | 0 (1,609,608) / 314,868 / 17,054,484 | 1,742,400 (3,093,244) / 0 / 14,143,316 | 17,369,352 / 1,609,608; 15,885,716 / 3,093,244 | S3 preservation pending |
 | `opposed:parasite+dragon` | King+Parasite vs King+Dragon | opposed | `kparasitekdragon.uftb` | **PRESERVING** | 37,957,920 | concrete | 4,898,546 (3,093,244) / 314,622 / 10,672,548 | 887,716 (4,893,140) / 1,657,392 / 11,540,712 | 15,885,716 / 3,093,244; 14,085,820 / 4,893,140 | S3 preservation pending |
@@ -644,7 +644,7 @@ Ledger totals: **9 certified**, **186 preserving**, **4 computing**, **34 exact 
 | `opposed:giant+angel` | King+Giant vs King+Angel | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `opposed:giant+fisherman` | King+Giant vs King+Fisherman | opposed | `kgiantkfisherman.uftb` | **PRESERVING** | 37,957,920 | concrete | 30,332 (3,051,612) / 0 / 10,204,756 (5,692,260) | 0 (1,313,848) / 12,816 / 11,960,036 (5,692,260) | 10,235,088 / 8,743,872; 11,972,852 / 7,006,108 | S3 preservation pending |
 | `opposed:giant+dragon` | King+Giant vs King+Dragon | opposed | `kgiantkdragon.uftb` | **PRESERVING** | 37,957,920 | concrete | 31,726 (3,051,612) / 7,071,638 / 3,131,724 (5,692,260) | 9,668,900 (3,346,434) / 12,978 / 258,388 (5,692,260) | 10,235,088 / 8,743,872; 9,940,266 / 9,038,694 | S3 preservation pending |
-| `opposed:copycat+copycat` | King+Copycat vs King+Copycat | opposed | `kcopycatkcopycat.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
+| `opposed:copycat+copycat` | King+Copycat vs King+Copycat | opposed | `kcopycatkcopycat.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:copycat+angel` | King+Copycat vs King+Angel | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `opposed:copycat+fisherman` | King+Copycat vs King+Fisherman | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `opposed:copycat+dragon` | King+Copycat vs King+Dragon | opposed | `kcopycatkdragon.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
