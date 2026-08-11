@@ -26,7 +26,7 @@ generated exclusively from the canonical ledger below by
 `python3 tools/plot_ultimate_tablebases.py`.
 
 <!-- COMPUTATION_LEDGER_START -->
-Ledger totals: **12 certified**, **186 preserving**, **42 computing**, **34 exact draws**, **199 planned**, **4 blocked**, and **147 deferred**; 624 unique material classes.
+Ledger totals: **12 certified**, **186 preserving**, **43 computing**, **34 exact draws**, **198 planned**, **4 blocked**, and **147 deferred**; 624 unique material classes.
 
 | Key | Class | Domain | File | Status | Indexed states | Result domain | First starts W / L / D | Second starts W / L / D | Reachable / unreachable (first; second) | Canonical storage |
 | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | --- |
@@ -430,7 +430,7 @@ Ledger totals: **12 certified**, **186 preserving**, **42 computing**, **34 exac
 | `opposed:queen+bomb` | King+Queen vs King+Bomb | opposed | `kqueenkbomb.uftb` | **PRESERVING** | 37,957,920 | concrete | 1,421,172 (7,353,252) / 1,282,090 (46,244) / 8,873,510 (2,692) | 3,611,678 (3,842,796) / 670,572 (528) / 10,850,686 (2,700) | 11,576,772 / 7,402,188; 15,132,936 / 3,846,024 | S3 preservation pending |
 | `opposed:queen+ninja` | King+Queen vs King+Ninja | opposed | `kqueenkninja.uftb` | **PRESERVING** | 37,957,920 | concrete | 7,529,430 (7,035,616) / 9,456 / 4,404,458 | 3,622,556 (5,259,100) / 1,365,734 / 8,731,570 | 11,943,344 / 7,035,616; 13,719,860 / 5,259,100 | S3 preservation pending |
 | `opposed:queen+turtle` | King+Queen vs King+Turtle | opposed | `kqueenkturtle.uftb` | **PRESERVING** | 37,957,920 | concrete | 11,943,312 (7,035,616) / 0 / 32 | 0 (2,397,164) / 14,534,402 / 2,047,394 | 11,943,344 / 7,035,616; 16,581,796 / 2,397,164 | S3 preservation pending |
-| `opposed:queen+ghost` | King+Queen vs King+Ghost | opposed | `kqueenkghost.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
+| `opposed:queen+ghost` | King+Queen vs King+Ghost | opposed | `kqueenkghost.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:queen+mage` | King+Queen vs King+Mage | opposed | `kqueenkmage.uftb` | **PRESERVING** | 37,957,920 | concrete | 11,943,344 (7,035,616) / 0 / 0 | 0 (1,609,608) / 15,938,592 / 1,430,760 | 11,943,344 / 7,035,616; 17,369,352 / 1,609,608 | S3 preservation pending |
 | `opposed:queen+penguin` | King+Queen vs King+Penguin | opposed | `kqueenkpenguin.uftb` | **PLANNED** | 303,663,360 | concrete | — | — | — | — |
 | `opposed:queen+parasite` | King+Queen vs King+Parasite | opposed | `kqueenkparasite.uftb` | **PRESERVING** | 37,957,920 | concrete | 2,353,096 (7,035,616) / 794,236 / 8,796,012 | 3,740,612 (3,093,244) / 1,561,098 / 10,584,006 | 11,943,344 / 7,035,616; 15,885,716 / 3,093,244 | S3 preservation pending |
