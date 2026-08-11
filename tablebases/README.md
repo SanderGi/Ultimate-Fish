@@ -26,7 +26,7 @@ generated exclusively from the canonical ledger below by
 `python3 tools/plot_ultimate_tablebases.py`.
 
 <!-- COMPUTATION_LEDGER_START -->
-Ledger totals: **12 certified**, **186 preserving**, **40 computing**, **34 exact draws**, **201 planned**, **4 blocked**, and **147 deferred**; 624 unique material classes.
+Ledger totals: **12 certified**, **186 preserving**, **42 computing**, **34 exact draws**, **199 planned**, **4 blocked**, and **147 deferred**; 624 unique material classes.
 
 | Key | Class | Domain | File | Status | Indexed states | Result domain | First starts W / L / D | Second starts W / L / D | Reachable / unreachable (first; second) | Canonical storage |
 | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | --- |
@@ -177,7 +177,7 @@ Ledger totals: **12 certified**, **186 preserving**, **40 computing**, **34 exac
 | `same:bishop+sludge` | King+Bishop+Sludge vs King | same | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `same:bishop+sniper` | King+Bishop+Sniper vs King | same | `kbishopsniperk.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `same:bishop+prince` | King+Bishop+Prince vs King | same | `kbishopprincek.uftb` | **PRESERVING** | 75,915,840 | concrete | 31,456,226 (5,013,372) / 0 (1,483,636) / 4,686 | 0 (1,609,608) / 16,113,394 (18,972,918) / 1,255,958 (6,042) | 31,460,912 / 6,497,008; 17,369,352 / 20,588,568 | S3 preservation pending |
-| `same:bishop+checker` | King+Bishop+Checker vs King | same | `kbishopcheckerk.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
+| `same:bishop+checker` | King+Bishop+Checker vs King | same | `kbishopcheckerk.uftb` | **COMPUTING** | 151,831,680 | concrete | — | — | — | — |
 | `same:bishop+giant` | King+Bishop+Giant vs King | same | `kbishopgiantk.uftb` | **PRESERVING** | 37,957,920 | concrete | 5,668,664 (4,150,080) / 0 / 3,467,956 (5,692,260) | 0 (1,142,116) / 5,650,886 / 6,493,698 (5,692,260) | 9,136,620 / 9,842,340; 12,144,584 / 6,834,376 | S3 preservation pending |
 | `same:bishop+copycat` | King+Bishop+Copycat vs King | same | `kcopycatbishopk.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `same:bishop+angel` | King+Bishop+Angel vs King | same | — | **DEFERRED** | — | concrete | — | — | — | — |
@@ -512,7 +512,7 @@ Ledger totals: **12 certified**, **186 preserving**, **40 computing**, **34 exac
 | `opposed:bomb+sludge` | King+Bomb vs King+Sludge | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `opposed:bomb+sniper` | King+Bomb vs King+Sniper | opposed | `kbombksniper.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
 | `opposed:bomb+prince` | King+Bomb vs King+Prince | opposed | `kbombkprince.uftb` | **PRESERVING** | 75,915,840 | concrete | 5,503,540 (7,726,596) / 4,450,992 (10,145,276) / 5,178,404 (4,953,112) | 17,973,414 (3,162,508) / 5,324,652 (3,453,840) / 8,043,154 (352) | 15,132,936 / 22,824,984; 31,341,220 / 6,616,700 | S3 preservation pending |
-| `opposed:bomb+checker` | King+Bomb vs King+Checker | opposed | `kbombkchecker.uftb` | **PLANNED** | 151,831,680 | concrete | — | — | — | — |
+| `opposed:bomb+checker` | King+Bomb vs King+Checker | opposed | `kbombkchecker.uftb` | **COMPUTING** | 151,831,680 | concrete | — | — | — | — |
 | `opposed:bomb+giant` | King+Bomb vs King+Giant | opposed | `kbombkgiant.uftb` | **PRESERVING** | 37,957,920 | concrete | 9,796,534 (2,726,186) / 19,520 / 744,452 (5,692,268) | 30,670 (3,121,728) / 7,645,810 (43,224) / 2,444,248 (5,693,280) | 10,560,506 / 8,418,454; 10,120,728 / 8,858,232 | S3 preservation pending |
 | `opposed:bomb+copycat` | King+Bomb vs King+Copycat | opposed | `kcopycatkbomb.uftb` | **COMPUTING** | 75,915,840 | concrete | — | — | — | — |
 | `opposed:bomb+angel` | King+Bomb vs King+Angel | opposed | — | **DEFERRED** | — | concrete | — | — | — | — |
