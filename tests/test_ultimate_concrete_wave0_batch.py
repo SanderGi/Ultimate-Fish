@@ -140,7 +140,14 @@ class ConcreteWave0BatchTest(unittest.TestCase):
             self.assertTrue(job["advanceable"])
             self.assertTrue(job["queue_stage"])
             self.assertEqual(job["dependencies"], [])
-            self.assertTrue(job["ledger_certifies"])
+            unit = next(item for item in units
+                        if item["unit"] == job["unit"])
+            if unit["ledger_result_kind"] == "concrete":
+                self.assertTrue(job["ledger_certifies"])
+                self.assertEqual(job["ledger_files"], [unit["filename"]])
+            else:
+                self.assertFalse(job["ledger_certifies"])
+                self.assertEqual(job["ledger_files"], [])
             self.assertEqual(set(job["resource_requirements"]), {
                 "cpu_threads", "memory_peak_bytes", "disk_peak_bytes"})
             self.assertEqual(job["s3_certificates"], [])

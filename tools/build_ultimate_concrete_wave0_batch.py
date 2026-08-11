@@ -464,6 +464,7 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
             "wave": 0,
             "inventory_index": index,
             "filename": filename,
+            "ledger_result_kind": by_filename[filename].result_kind,
             "record": runner.normalized_record(row),
             "unit": unit_name,
             "instance_id": slot["instance_id"],
@@ -587,6 +588,7 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
             })
         bindings.sort(key=lambda binding: binding["path"])
         job_id = f"concrete-wave0-batch-{int(unit['ordinal']):02d}-class{int(unit['inventory_index']):03d}"
+        certifies_public_result = unit["ledger_result_kind"] == "concrete"
         jobs.append({
             "id": job_id,
             "instance_id": unit["instance_id"],
@@ -596,8 +598,12 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
             "expected_allowed_cpus": unit["expected_allowed_cpus"],
             "resource_requirements": unit["resource_requirements"],
             "dependencies": [],
-            "ledger_files": [unit["filename"]],
-            "ledger_certifies": True,
+            # A concrete lower table for an information-required class is a
+            # dependency, not the public class result.  Keep that ledger row
+            # PLANNED until its observation-game solver is certified.
+            "ledger_files": ([unit["filename"]]
+                             if certifies_public_result else []),
+            "ledger_certifies": certifies_public_result,
             "checkpoint_paths": [
                 f"{unit['work_directory']}/scratch/*",
                 f"{unit['work_directory']}/logs/*",
