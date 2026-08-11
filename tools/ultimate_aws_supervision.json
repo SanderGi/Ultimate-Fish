@@ -64,8 +64,15 @@
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-solve-v2-compact.service",
       "dependencies": [],
-      "checkpoint_paths": ["/mnt/ultimatefish/work-v2/solve.log", "/mnt/ultimatefish/work-v2/run.bdd-*.nodes"],
-      "completion_paths": ["/mnt/ultimatefish/work-v2/results/*.ufiw"],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/bishop-ghost-v2/solve.log",
+        "/mnt/ultimatefish/bishop-ghost-v2/solve/run.bdd-*.nodes"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/bishop-ghost-v2/SOLVE_COMPLETE",
+        "/mnt/ultimatefish/bishop-ghost-v2/kbishopghostk.ufiw",
+        "/mnt/ultimatefish/bishop-ghost-v2/kbishopghostk-proof.tar.gz"
+      ],
       "source_bindings": [],
       "s3_certificates": []
     },
