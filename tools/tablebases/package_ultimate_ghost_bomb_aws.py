@@ -8,6 +8,7 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import subprocess
 import tarfile
 from typing import Mapping
 
@@ -97,6 +98,7 @@ BUILD_INPUTS_COMMON = (
     "tablebases/kbombk.uftb",
     "tools/tablebases/run_ultimate_reciprocal_bishop_ghost_aws.py",
     "tools/tablebases/run_ultimate_ghost_bomb_aws.py",
+    "tools/tablebases/package_ultimate_ghost_bomb_aws.py",
     "tools/tablebases/stage_ultimate_ghost_bomb_resume_aws.py",
 )
 SERVICE_FILES = {
@@ -113,6 +115,20 @@ TEXTUAL_CPP = {
 
 def sha256_bytes(payload: bytes) -> str:
     return hashlib.sha256(payload).hexdigest()
+
+
+def canonical_commit(paths: tuple[str, ...]) -> str:
+    def git(*arguments: str) -> str:
+        return subprocess.run(
+            ["git", *arguments], cwd=ROOT, text=True,
+            capture_output=True, check=True).stdout.strip()
+
+    commit = git("rev-parse", "HEAD")
+    if (git("rev-parse", "origin/master") != commit or
+            git("status", "--porcelain", "--", *paths)):
+        raise RuntimeError(
+            "Bomb resume bundle requires clean pushed canonical sources")
+    return commit
 
 
 def file_record(path: str, payload: bytes | None = None) -> dict[str, object]:
@@ -200,6 +216,8 @@ def build_manifest(filename: str,
     model = str(row["model_sha256"])
     build_inputs = (*BUILD_INPUTS_COMMON, SERVICE_FILES[filename],
                     f"tablebases/{filename}")
+    commit = canonical_commit(tuple(path for path in build_inputs
+                                    if not path.startswith("tablebases/")))
     def data(path: str) -> bytes:
         if data_payloads is not None and path in data_payloads:
             return data_payloads[path]
@@ -275,6 +293,7 @@ def build_manifest(filename: str,
     ]
     return {
         "schema": "ultimate-bomb-ghost-aws-v3",
+        "canonical_commit": commit,
         "filename": filename, "orientation": orientation,
         "source_sha256": row["source_sha256"], "model_sha256": model,
         "implementation_sha256": implementation,

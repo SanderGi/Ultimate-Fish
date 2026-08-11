@@ -31,9 +31,12 @@ def validate_manifest(manifest: dict[str, object]) -> None:
         "kbombkghost.uftb": "opposing",
     }.get(manifest.get("filename"))
     implementation = manifest.get("implementation_sha256")
+    commit = manifest.get("canonical_commit")
     if (manifest.get("schema") != "ultimate-bomb-ghost-aws-v3" or
             expected_orientation is None or
             manifest.get("orientation") != expected_orientation or
+            not isinstance(commit, str) or len(commit) != 40 or
+            any(character not in "0123456789abcdef" for character in commit) or
             not isinstance(implementation, str) or
             len(implementation) != 64 or
             any(character not in "0123456789abcdef"

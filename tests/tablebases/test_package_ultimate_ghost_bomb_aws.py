@@ -39,6 +39,7 @@ class BombGhostResumeUnitTests(unittest.TestCase):
     def manifest(self, filename="kbombghostk.uftb", orientation="same"):
         return {
             "schema": "ultimate-bomb-ghost-aws-v3",
+            "canonical_commit": "d" * 40,
             "filename": filename,
             "orientation": orientation,
             "implementation_sha256": "a" * 64,
@@ -159,6 +160,7 @@ class BombGhostAwsBundleTests(unittest.TestCase):
                 manifest = package.build_manifest(filename)
                 self.assertEqual(manifest["schema"],
                                  "ultimate-bomb-ghost-aws-v3")
+                self.assertEqual(len(manifest["canonical_commit"]), 40)
                 self.assertEqual(manifest["implementation_sha256"],
                                  package.ROWS[filename][
                                      "implementation_sha256"])
