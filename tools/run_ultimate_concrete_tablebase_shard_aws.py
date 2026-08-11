@@ -105,6 +105,48 @@ def sha256_path(path: Path) -> str:
     return digest.hexdigest()
 
 
+def authenticated_dependency_source(
+    root: Path, filename: str, expected_bytes: int, expected_sha256: str
+) -> Path:
+    """Select a deterministic exact copy from a replicated dependency store.
+
+    Prior per-job dependency roots intentionally contain identical copies of a
+    base table. A unique pathname is therefore not an integrity property. We
+    inspect every candidate with the requested basename, require each one to
+    be a regular file with the exact bound extent and SHA-256, and only then
+    choose the lexicographically first path. Missing, truncated, or divergent
+    duplicates fail closed before any copy/stage operation.
+    """
+    base = Path(root)
+    name = str(filename)
+    if not name or Path(name).name != name:
+        raise RuntimeError(f"invalid dependency filename: {name!r}")
+    expected_size = int(expected_bytes)
+    expected_digest = str(expected_sha256).lower()
+    if expected_size < 0 or len(expected_digest) != 64:
+        raise RuntimeError(f"invalid dependency binding: {name}")
+    candidates = sorted(base.rglob(name))
+    if not candidates:
+        raise RuntimeError(f"no authenticated dependency source: {name}")
+    divergent: list[str] = []
+    for candidate in candidates:
+        if not candidate.is_file():
+            divergent.append(f"{candidate}:not-a-file")
+            continue
+        actual_size = candidate.stat().st_size
+        actual_digest = sha256_path(candidate)
+        if actual_size != expected_size or actual_digest != expected_digest:
+            divergent.append(
+                f"{candidate}:bytes={actual_size}:sha256={actual_digest}"
+            )
+    if divergent:
+        raise RuntimeError(
+            "divergent authenticated dependency source(s): "
+            + name + " " + "; ".join(divergent)
+        )
+    return candidates[0]
+
+
 def uftb_extent(path: Path) -> dict[str, int | str]:
     """Authenticate a packed UFTB header and return its exact byte extent.
 

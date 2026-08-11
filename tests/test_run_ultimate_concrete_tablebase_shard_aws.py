@@ -161,6 +161,40 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
             'environment["ULTIMATE_TABLEBASE_PRESERVE_SCRATCH"] = "1"',
             runner_source)
 
+    def test_authenticated_dependency_source_accepts_identical_replicas(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            payload = b"authenticated dependency\n"
+            first = root / "batch-02" / "kcopycatk.uftb"
+            second = root / "batch-01" / "kcopycatk.uftb"
+            first.parent.mkdir(parents=True)
+            second.parent.mkdir(parents=True)
+            first.write_bytes(payload)
+            second.write_bytes(payload)
+            expected = runner.sha256_path(first)
+            selected = runner.authenticated_dependency_source(
+                root, "kcopycatk.uftb", len(payload), expected)
+            self.assertEqual(second, selected)
+
+    def test_authenticated_dependency_source_rejects_divergent_replica(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            good = root / "batch-01" / "kcopycatk.uftb"
+            bad = root / "batch-02" / "kcopycatk.uftb"
+            good.parent.mkdir(parents=True)
+            bad.parent.mkdir(parents=True)
+            good.write_bytes(b"good")
+            bad.write_bytes(b"bad")
+            with self.assertRaisesRegex(RuntimeError, "divergent"):
+                runner.authenticated_dependency_source(
+                    root, "kcopycatk.uftb", 4, runner.sha256_path(good))
+
+    def test_authenticated_dependency_source_rejects_missing_replica(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaisesRegex(RuntimeError, "no authenticated"):
+                runner.authenticated_dependency_source(
+                    Path(temporary), "kcopycatk.uftb", 4, "0" * 64)
+
     def test_full_is_forbidden_on_mac_and_requires_explicit_gates(self) -> None:
         args = mock.Mock(
             aws_execution_ack="EC2", s3_prefix="s3://bucket/base",
