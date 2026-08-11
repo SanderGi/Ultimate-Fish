@@ -310,12 +310,17 @@ def source_candidate_root(candidate: Path) -> Path:
 
 
 def materialize_source_root(target: Path, candidate: Path,
-                            expected_hashes: Mapping[str, object]) -> None:
+                            expected_hashes: Mapping[str, object],
+                            extra_hashes: Mapping[str, str] | None = None) -> None:
     """Validate an existing source-v4 root or copy a fresh one exactly."""
     if "/source-v4/" not in str(target):
         raise StageError(f"source root is not a v4 root: {target}")
     source = source_candidate_root(candidate)
     expected = {str(path): str(digest) for path, digest in expected_hashes.items()}
+    for relative, digest in (extra_hashes or {}).items():
+        if relative in expected and expected[relative] != digest:
+            raise StageError(f"source hash binding conflict: {relative}")
+        expected[relative] = str(digest)
     for relative, digest in expected.items():
         path = source / relative
         if not path.is_file() or sha256_path(path) != digest:
@@ -432,7 +437,19 @@ def stage_host(*, plan: Mapping[str, object], jobs_document: Mapping[str, object
         validate_dependency_archive(candidate)
         dependency_candidates.append(candidate)
     expected_hashes = dict(plan.get("source_hashes", {}))
-    materialize_source_root(source_target, source_candidate, expected_hashes)
+    source_candidate_root_path = source_candidate_root(source_candidate)
+    plan_relative = "tools/ultimate_concrete_wave0_batch_v4.json"
+    candidate_plan = source_candidate_root_path / plan_relative
+    if not candidate_plan.is_file():
+        raise StageError("source archive lacks v4 plan manifest")
+    expected_plan_sha = str(
+        jobs_document.get("batch_manifest", {}).get("sha256", ""))
+    if expected_plan_sha and sha256_path(candidate_plan) != expected_plan_sha:
+        raise StageError("source archive v4 plan differs from jobs binding")
+    materialize_source_root(
+        source_target, source_candidate, expected_hashes,
+        extra_hashes={plan_relative: sha256_path(candidate_plan)},
+    )
     unit_records = list(all_units)
     materialize_units(units_target, unit_candidate, unit_records)
     by_name: dict[str, Path] = {}

@@ -136,6 +136,24 @@ class StageV4Test(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "pre-existing destination mismatch"):
                 stage.materialize_units(target, candidate, units)
 
+    def test_source_materialization_includes_bound_plan_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            candidate = root / "source-candidate"
+            source = candidate / "ultimatefish"
+            (source / "tools").mkdir(parents=True)
+            (source / "src").mkdir(parents=True)
+            plan = b"{\"schema\":\"ultimate-concrete-wave0-batch-plan-v4\"}\n"
+            (source / "tools/ultimate_concrete_wave0_batch_v4.json").write_bytes(plan)
+            (source / "src/probe.cpp").write_bytes(b"probe")
+            target = root / "concrete-wave0-batch/source-v4/ultimatefish"
+            stage.materialize_source_root(
+                target, candidate, {"src/probe.cpp": digest(b"probe")},
+                extra_hashes={
+                    "tools/ultimate_concrete_wave0_batch_v4.json": digest(plan)})
+            self.assertEqual(plan,
+                             (target / "tools/ultimate_concrete_wave0_batch_v4.json").read_bytes())
+
 
 if __name__ == "__main__":
     unittest.main()
