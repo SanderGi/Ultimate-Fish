@@ -263,9 +263,10 @@ def materialize_dependency_root(
     candidates: Mapping[str, Path],
     expected_manifest_sha: str,
 ) -> None:
-    """Fill/validate one distinct v4 dependency root without replacement."""
-    if "/dependencies-v4/" not in str(root):
-        raise StageError(f"dependency root is not a v4 root: {root}")
+    """Fill/validate one distinct v4/v4r2 dependency root without replacement."""
+    root_text = str(root)
+    if "/dependencies-v4/" not in root_text and "/dependencies-v4r2/" not in root_text:
+        raise StageError(f"dependency root is not a v4/v4r2 root: {root}")
     root.mkdir(parents=True, exist_ok=True)
     expected_names = {str(record["filename"]) for record in records}
     allowed = expected_names | {"manifest.json"}
@@ -304,18 +305,23 @@ def _find_unique_relative(root: Path, relative: str) -> Path:
     return matches[0]
 
 
-def source_candidate_root(candidate: Path) -> Path:
-    marker = _find_unique_relative(candidate, "tools/ultimate_concrete_wave0_batch_v4.json")
+def source_candidate_root(
+    candidate: Path,
+    plan_relative: str = "tools/ultimate_concrete_wave0_batch_v4.json",
+) -> Path:
+    marker = _find_unique_relative(candidate, plan_relative)
     return marker.parent.parent
 
 
 def materialize_source_root(target: Path, candidate: Path,
                             expected_hashes: Mapping[str, object],
-                            extra_hashes: Mapping[str, str] | None = None) -> None:
-    """Validate an existing source-v4 root or copy a fresh one exactly."""
-    if "/source-v4/" not in str(target):
-        raise StageError(f"source root is not a v4 root: {target}")
-    source = source_candidate_root(candidate)
+                            extra_hashes: Mapping[str, str] | None = None,
+                            plan_relative: str = "tools/ultimate_concrete_wave0_batch_v4.json") -> None:
+    """Validate an existing source-v4/v4r2 root or copy a fresh one exactly."""
+    target_text = str(target)
+    if "/source-v4/" not in target_text and "/source-v4r2/" not in target_text:
+        raise StageError(f"source root is not a v4/v4r2 root: {target}")
+    source = source_candidate_root(candidate, plan_relative)
     expected = {str(path): str(digest) for path, digest in expected_hashes.items()}
     for relative, digest in (extra_hashes or {}).items():
         if relative in expected and expected[relative] != digest:
@@ -352,8 +358,9 @@ def materialize_units(units_target: Path, candidate: Path,
     units_target.mkdir(parents=True, exist_ok=True)
     for unit in units:
         name = str(unit["unit"])
-        if not name.startswith("ultimatefish-concrete-wave0-batch-v4-"):
-            raise StageError(f"non-v4 unit in plan: {name}")
+        if not (name.startswith("ultimatefish-concrete-wave0-batch-v4-")
+                or name.startswith("ultimatefish-concrete-wave0-batch-v4r2-")):
+            raise StageError(f"non-v4/v4r2 unit in plan: {name}")
         source = _find_unique_relative(candidate, name)
         expected = (int(unit["service_text"].encode().__len__()),
                     str(unit["service_sha256"]))
@@ -406,8 +413,11 @@ def load_plan(path: Path) -> dict[str, object]:
         document = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError) as exc:
         raise StageError(f"malformed v4 plan: {path}") from exc
-    if document.get("schema") != "ultimate-concrete-wave0-batch-plan-v4":
-        raise StageError("unexpected v4 plan schema")
+    if document.get("schema") not in {
+        "ultimate-concrete-wave0-batch-plan-v4",
+        "ultimate-concrete-wave0-batch-plan-v4r2",
+    }:
+        raise StageError("unexpected v4/v4r2 plan schema")
     if not isinstance(document.get("units"), list) or not document["units"]:
         raise StageError("v4 plan has no units")
     return document
@@ -437,8 +447,11 @@ def stage_host(*, plan: Mapping[str, object], jobs_document: Mapping[str, object
         validate_dependency_archive(candidate)
         dependency_candidates.append(candidate)
     expected_hashes = dict(plan.get("source_hashes", {}))
-    source_candidate_root_path = source_candidate_root(source_candidate)
-    plan_relative = "tools/ultimate_concrete_wave0_batch_v4.json"
+    plan_relative = "tools/" + Path(
+        str(jobs_document.get("batch_manifest", {}).get("path", ""))).name
+    if plan_relative == "tools/." or not plan_relative.endswith(".json"):
+        raise StageError("jobs document lacks a valid batch manifest path")
+    source_candidate_root_path = source_candidate_root(source_candidate, plan_relative)
     candidate_plan = source_candidate_root_path / plan_relative
     if not candidate_plan.is_file():
         raise StageError("source archive lacks v4 plan manifest")
@@ -449,6 +462,7 @@ def stage_host(*, plan: Mapping[str, object], jobs_document: Mapping[str, object
     materialize_source_root(
         source_target, source_candidate, expected_hashes,
         extra_hashes={plan_relative: sha256_path(candidate_plan)},
+        plan_relative=plan_relative,
     )
     unit_records = list(all_units)
     materialize_units(units_target, unit_candidate, unit_records)

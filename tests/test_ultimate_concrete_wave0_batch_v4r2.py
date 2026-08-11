@@ -61,7 +61,14 @@ class ConcreteWave0BatchV4R2Test(unittest.TestCase):
             root = Path(temporary)
             config = root / "config.json"
             fragment_path = root / "jobs.json"
-            config.write_text(r2.SUPERVISION_CONFIG.read_text())
+            base_config = json.loads(r2.SUPERVISION_CONFIG.read_text())
+            # The committed config already contains v4r2; exercise the merge
+            # against its pre-publication shape to avoid synthetic duplicates.
+            base_config["jobs"] = [
+                job for job in base_config["jobs"]
+                if not str(job.get("id", "")).startswith(
+                    "concrete-wave0-batch-v4r2-")]
+            config.write_text(json.dumps(base_config, indent=2) + "\n")
             fragment_path.write_text(json.dumps(fragment, indent=2, sort_keys=True) + "\n")
             old_fragment = r2.JOB_FRAGMENT
             try:
