@@ -11,7 +11,8 @@ this local-only event consumer exactly once:
 python3 tools/ultimate_aws_supervision_bridge.py consume --json \
   --health /private/tmp/ultimatefish-aws-supervision/health.json \
   --events /private/tmp/ultimatefish-aws-supervision/events \
-  --cursor /private/tmp/ultimatefish-aws-supervision/luna-cursor.json
+  --cursor /private/tmp/ultimatefish-aws-supervision/luna-cursor.json \
+  --reconcile-ledger --commit-ledger
 ```
 
 If stdout is exactly `NO_CHANGE`, finish silently: do not notify, summarize,
@@ -24,6 +25,11 @@ For a JSON event:
    action. Do not query AWS or perform a second general fleet poll. The host
    collector has already advanced any `READY` job through the committed
    supervisor's exact `--advance` gate; report its `host_actions` result.
+   The consumer has already reconciled RUNNING/BLOCKED material states into the
+   canonical README, regenerated the plot, and committed/pushed those two files
+   when needed. A `pending_certification` entry means storage is proved but the
+   exact per-side W/L/D and reachability certificate still must be imported;
+   never mark it CERTIFIED from an S3 HEAD alone.
 2. A job with `AWAITING_STAGE` needs a new canonical, explicit service stage.
    Delegate one bounded task to a **Sol sub-agent**. Sol must inspect read-only
    evidence first, preserve all scratch, prepare and test the smallest canonical
@@ -41,6 +47,10 @@ For a JSON event:
 4. For resource warnings, inspect only the affected unit/cgroup/mount. Stop or
    throttle safely before a hard limit; preserve resumable state. Do not launch
    another job on that host until the warning clears.
+   For an AWAITING_STAGE job, use the reported `cpu_allocation` to assign a
+   disjoint idle CPU set whenever RAM and durable disk gates also fit. Prefer
+   two independently checkpointed 16-vCPU jobs on a 32-vCPU host over leaving
+   half the host idle; never overlap AllowedCPUs or weaken either job's gates.
 5. Never exceed five EC2 instances or the $5,000 budget. Treat the supervisor's
    spend as an estimate and report the current estimate and fleet burn rate.
 

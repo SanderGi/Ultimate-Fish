@@ -35,6 +35,7 @@ def config() -> dict[str, object]:
         "instances": [{
             "instance_id": "i-0123456789abcdef0", "name": "test",
             "hourly_usd": 2.0, "transport": "local", "mounts": ["/"],
+            "vcpus": 32,
             "minimum_memory_available_bytes": 1,
             "minimum_disk_free_bytes": {"/": 1},
         }],
@@ -72,7 +73,7 @@ def remote(first: str = "active", complete: bool = False) -> dict[str, object]:
         "jobs": [{
             "id": "first",
             "unit": {"ActiveState": first, "Result": "success",
-                     "ExecMainStatus": "0"},
+                     "ExecMainStatus": "0", "AllowedCPUs": "0-15"},
             "checkpoints": [{"path": "/tmp/checkpoint", "exists": True,
                              "size": 100, "mtime_ns": 1}],
             "completion": ([{"path": "/tmp/result", "exists": True,
@@ -83,14 +84,14 @@ def remote(first: str = "active", complete: bool = False) -> dict[str, object]:
         }, {
             "id": "second",
             "unit": {"ActiveState": "inactive", "Result": "success",
-                     "ExecMainStatus": "0"},
+                     "ExecMainStatus": "0", "AllowedCPUs": "16-31"},
             "checkpoints": [], "completion": [],
             "sources": [{"path": "/tmp/source", "exists": True,
                          "sha256": SHA_A}],
         }, {
             "id": "third",
             "unit": {"ActiveState": "inactive", "Result": "success",
-                     "ExecMainStatus": "0"},
+                     "ExecMainStatus": "0", "AllowedCPUs": "16-31"},
             "checkpoints": [], "completion": [], "sources": [],
         }],
     }
@@ -153,6 +154,19 @@ class SupervisionTests(unittest.TestCase):
         invalid["jobs"][0]["source_bindings"][0]["path"] = "/tmp/source-*"
         with self.assertRaisesRegex(RuntimeError, "one explicit path"):
             SUPERVISOR.validate_config(invalid)
+
+    def test_cpu_allocation_reports_idle_capacity_and_overlap(self) -> None:
+        definition = config()["instances"][0]
+        report = SUPERVISOR.cpu_allocation(definition, remote())
+        self.assertEqual(16, report["allocated_vcpus"])
+        self.assertEqual(16, report["idle_vcpus"])
+        self.assertTrue(report["allocation_known"])
+        document = remote()
+        document["jobs"][1]["unit"]["ActiveState"] = "active"
+        document["jobs"][1]["unit"]["AllowedCPUs"] = "8-23"
+        report = SUPERVISOR.cpu_allocation(definition, document)
+        self.assertEqual(24, report["allocated_vcpus"])
+        self.assertTrue(report["overlaps"])
 
     @mock.patch.object(SUPERVISOR, "head_certificate")
     @mock.patch.object(SUPERVISOR, "local_probe")

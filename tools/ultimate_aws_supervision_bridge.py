@@ -83,6 +83,88 @@ def parse_supervisor_output(output: str) -> dict[str, Any] | None:
     return value
 
 
+def ledger_statuses(path: Path) -> dict[str, str]:
+    result: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("| `"):
+            continue
+        fields = [field.strip() for field in line.strip().strip("|").split("|")]
+        if len(fields) != 11 or fields[3] == "—":
+            continue
+        result[fields[3].strip("`")] = fields[4].strip("*").lower()
+    return result
+
+
+def reconcile_ledger(repo: Path, event: dict[str, Any], *, commit: bool,
+                     python: Path) -> dict[str, Any]:
+    """Apply monotone material state transitions from one durable event."""
+    readme = repo / "tablebases/README.md"
+    plot = repo / "tablebases/ultimate-tablebase-grid.png"
+    current = ledger_statuses(readme)
+    updates: dict[str, str] = {}
+    pending: list[dict[str, str]] = []
+    terminal = {"certified", "draw", "deferred"}
+    for job_id, job in event.get("report", {}).get("jobs", {}).items():
+        status = str(job.get("status", ""))
+        for filename in job.get("ledger_files", []):
+            existing = current.get(str(filename))
+            if existing is None or existing in terminal:
+                continue
+            if status == "RUNNING":
+                updates[str(filename)] = "computing"
+            elif status in {"FAILED", "SOURCE_MISMATCH", "RESOURCE_LIMIT"}:
+                updates[str(filename)] = "blocked"
+            elif status == "CERTIFIED" and job.get("ledger_certifies"):
+                # A VersionId proves storage, not the per-side W/L/D and
+                # reachability cells.  Keep the current state until the exact
+                # result certificate is imported instead of exposing a stale
+                # pre-information result as current.
+                pending.append({"job": str(job_id), "filename": str(filename)})
+    updates = {filename: status for filename, status in updates.items()
+               if current.get(filename) != status}
+    if not updates:
+        return {"changed": False, "updates": {},
+                "pending_certification": pending, "commit": ""}
+    if commit:
+        branch = subprocess.run(
+            ["git", "branch", "--show-current"], cwd=repo, text=True,
+            capture_output=True, check=True).stdout.strip()
+        head = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=repo, text=True,
+            capture_output=True, check=True).stdout.strip()
+        upstream = subprocess.run(
+            ["git", "rev-parse", "origin/master"], cwd=repo, text=True,
+            capture_output=True, check=True).stdout.strip()
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain", "--", str(readme), str(plot)],
+            cwd=repo, text=True, capture_output=True, check=True).stdout.strip()
+        if branch != "master" or head != upstream or dirty:
+            raise RuntimeError(
+                "ledger auto-commit requires clean canonical master==origin/master")
+    command = [str(python), str(repo / "tools/update_ultimate_tablebase_ledger.py")]
+    for filename, status in sorted(updates.items()):
+        command.extend(["--set-status", f"{filename}={status}"])
+    subprocess.run(command, cwd=repo, check=True)
+    subprocess.run([
+        str(python), str(repo / "tools/plot_ultimate_tablebases.py"),
+        "--output", str(plot)], cwd=repo, check=True)
+    commit_sha = ""
+    if commit:
+        subprocess.run([str(python), str(repo / "tests/test_ultimate_tablebase_ledger.py")],
+                       cwd=repo, check=True)
+        subprocess.run(["git", "add", "--", str(readme), str(plot)],
+                       cwd=repo, check=True)
+        subprocess.run([
+            "git", "commit", "-m", "tablebases: reconcile AWS ledger",
+            "--", str(readme), str(plot)], cwd=repo, check=True)
+        commit_sha = subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=repo, text=True,
+            capture_output=True, check=True).stdout.strip()
+        subprocess.run(["git", "push", "origin", "master"], cwd=repo, check=True)
+    return {"changed": True, "updates": updates,
+            "pending_certification": pending, "commit": commit_sha}
+
+
 def spool_event(events: Path, event: dict[str, Any]) -> str:
     payload = canonical_json(event).encode("utf-8")
     digest = hashlib.sha256(payload).hexdigest()
@@ -204,6 +286,9 @@ def main() -> int:
     parser.add_argument("--cursor", type=Path, default=DEFAULT_CURSOR)
     parser.add_argument("--stale-seconds", type=int, default=900)
     parser.add_argument("--no-auto-advance", action="store_true")
+    parser.add_argument("--reconcile-ledger", action="store_true")
+    parser.add_argument("--commit-ledger", action="store_true")
+    parser.add_argument("--ledger-repo", type=Path, default=ROOT)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     if args.mode == "collect":
@@ -217,6 +302,13 @@ def main() -> int:
     event = consume(
         health=args.health.resolve(), events=args.events.resolve(),
         cursor=args.cursor.resolve(), stale_seconds=args.stale_seconds)
+    if args.commit_ledger and not args.reconcile_ledger:
+        parser.error("--commit-ledger requires --reconcile-ledger")
+    if event is not None and args.reconcile_ledger:
+        event = dict(event)
+        event["ledger"] = reconcile_ledger(
+            args.ledger_repo.resolve(), event, commit=args.commit_ledger,
+            python=args.python.resolve())
     print(canonical_json(event) if event is not None else "NO_CHANGE")
     return 0
 

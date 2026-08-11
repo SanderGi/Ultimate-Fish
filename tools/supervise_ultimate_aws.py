@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import datetime as dt
 import fcntl
 import hashlib
@@ -42,6 +43,7 @@ REMOTE_OUTPUT_BUDGET = 20_000
 TERMINAL_OK = {"CERTIFIED"}
 TERMINAL_BAD = {"FAILED", "SOURCE_MISMATCH", "RESOURCE_LIMIT"}
 UNIT = re.compile(r"[A-Za-z0-9_.@-]+\.service")
+CPU_SET = re.compile(r"[0-9,-]+")
 
 
 def canonical_json(value: object) -> str:
@@ -119,6 +121,8 @@ def validate_config(config: dict[str, Any]) -> None:
         instance_ids.add(identifier)
         if float(instance.get("hourly_usd", 0)) <= 0:
             raise RuntimeError(f"{identifier} requires a positive hourly_usd")
+        if int(instance.get("vcpus", 0)) <= 0:
+            raise RuntimeError(f"{identifier} requires a positive vcpus count")
         if instance.get("transport", "ssm") not in {"ssm", "local"}:
             raise RuntimeError(f"{identifier} has unsupported transport")
     job_ids: set[str] = set()
@@ -156,6 +160,11 @@ def validate_config(config: dict[str, Any]) -> None:
             if job.get("advanceable") or job.get("source_bindings"):
                 raise RuntimeError(
                     f"{identifier} S3-only certification is archival only")
+        ledger_files = job.get("ledger_files", [])
+        if (not isinstance(ledger_files, list) or
+                any(not re.fullmatch(r"[a-z0-9]+\.uftb", str(item))
+                    for item in ledger_files)):
+            raise RuntimeError(f"{identifier} has invalid ledger_files")
     for job in jobs:
         for dependency in job.get("dependencies", []):
             if dependency not in job_ids or dependency == job["id"]:
@@ -164,6 +173,27 @@ def validate_config(config: dict[str, Any]) -> None:
 
 def glob_magic(path: str) -> bool:
     return any(character in path for character in "*?[")
+
+
+def parse_cpu_set(value: object, capacity: int) -> set[int]:
+    text = str(value or "").strip()
+    if not text:
+        return set()
+    if not CPU_SET.fullmatch(text):
+        raise ValueError(f"invalid CPU set: {text!r}")
+    result: set[int] = set()
+    for component in text.split(","):
+        if "-" in component:
+            first_text, last_text = component.split("-", 1)
+            first, last = int(first_text), int(last_text)
+            if first > last:
+                raise ValueError(f"reversed CPU range: {component}")
+            result.update(range(first, last + 1))
+        else:
+            result.add(int(component))
+    if any(cpu < 0 or cpu >= capacity for cpu in result):
+        raise ValueError(f"CPU set {text!r} exceeds capacity {capacity}")
+    return result
 
 
 def remote_script(instance: dict[str, Any], jobs: list[dict[str, Any]]) -> str:
@@ -186,7 +216,8 @@ def command(argv):
  return p.returncode,p.stdout.strip(),p.stderr.strip()
 def props(unit):
  names=['LoadState','ActiveState','SubState','Result','ExecMainCode',
-        'ExecMainStatus','MemoryCurrent','MemoryPeak','StateChangeTimestamp']
+        'ExecMainStatus','MemoryCurrent','MemoryPeak','StateChangeTimestamp',
+        'AllowedCPUs','CPUUsageNSec','TasksCurrent']
  try:
   rc,out,err=command(['systemctl','show',unit,*sum((['-p',n] for n in names),[])])
  except OSError as error:
@@ -390,6 +421,80 @@ def resource_warnings(instance: dict[str, Any], remote: dict[str, Any]) -> list[
     return warnings
 
 
+def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any]) -> dict[str, Any]:
+    capacity = int(instance["vcpus"])
+    active_sets: dict[str, set[int]] = {}
+    unknown: list[str] = []
+    for job in remote.get("jobs", []):
+        unit = job.get("unit", {})
+        if unit.get("ActiveState") not in {"active", "activating", "reloading"}:
+            continue
+        try:
+            cpus = parse_cpu_set(unit.get("AllowedCPUs"), capacity)
+        except ValueError:
+            cpus = set()
+        if cpus:
+            active_sets[str(job["id"])] = cpus
+        else:
+            unknown.append(str(job["id"]))
+    allocated = set().union(*active_sets.values()) if active_sets else set()
+    overlaps: list[str] = []
+    names = sorted(active_sets)
+    for index, first in enumerate(names):
+        for second in names[index + 1:]:
+            shared = active_sets[first] & active_sets[second]
+            if shared:
+                overlaps.append(
+                    f"{first}+{second}:{','.join(map(str, sorted(shared)))}")
+    return {
+        "vcpus": capacity,
+        "allocated_vcpus": len(allocated),
+        "idle_vcpus": capacity - len(allocated),
+        "allocation_known": not unknown,
+        "unknown_jobs": unknown,
+        "overlaps": overlaps,
+        "active_jobs": {name: len(cpus) for name, cpus in active_sets.items()},
+    }
+
+
+def probe_instance(config: dict[str, Any], definition: dict[str, Any],
+                   ec2: dict[str, Any], jobs: list[dict[str, Any]],
+                   now: dt.datetime) -> tuple[dict[str, Any], str | None]:
+    launch = parse_time(ec2["LaunchTime"])
+    hours = max(0.0, (now - launch).total_seconds() / 3600)
+    spend = hours * float(definition["hourly_usd"])
+    state = ec2.get("State", {}).get("Name", "unknown")
+    remote: dict[str, Any] = {}
+    error: str | None = None
+    if state == "running":
+        try:
+            command = remote_script(definition, jobs)
+            remote = (local_probe(command)
+                      if definition.get("transport", "ssm") == "local"
+                      else ssm_probe(config["region"], definition["instance_id"],
+                                     command))
+            if remote.get("probe_error"):
+                error = str(remote["probe_error"])
+        except Exception as exception:  # one host must not hide the other four
+            error = str(exception)
+    warnings = resource_warnings(definition, remote) if remote else []
+    allocation = cpu_allocation(definition, remote) if remote else {
+        "vcpus": int(definition["vcpus"]), "allocated_vcpus": 0,
+        "idle_vcpus": int(definition["vcpus"]), "allocation_known": False,
+        "unknown_jobs": [], "overlaps": [], "active_jobs": {},
+    }
+    if allocation["overlaps"]:
+        warnings.append("cpu_overlap=" + ";".join(allocation["overlaps"]))
+    return ({
+        "name": definition.get("name", definition["instance_id"]),
+        "ec2_state": state, "instance_type": ec2.get("InstanceType", ""),
+        "launch_time": ec2.get("LaunchTime", ""),
+        "estimated_spend_usd": round(spend, 2),
+        "resource_warnings": warnings, "cpu_allocation": allocation,
+        "remote": remote,
+    }, error)
+
+
 def supervise(config: dict[str, Any], previous: dict[str, Any],
               now: dt.datetime) -> tuple[dict[str, Any], dict[str, Any]]:
     inventory = ec2_inventory(config)
@@ -399,37 +504,37 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
     instance_results: dict[str, Any] = {}
     total_spend = 0.0
     errors: list[dict[str, str]] = []
-    for definition in config["instances"]:
-        identifier = definition["instance_id"]
-        ec2 = inventory.get(identifier)
-        if not ec2:
-            errors.append({"instance": identifier, "error": "EC2 instance missing"})
-            continue
-        launch = parse_time(ec2["LaunchTime"])
-        hours = max(0.0, (now - launch).total_seconds() / 3600)
-        spend = hours * float(definition["hourly_usd"])
-        total_spend += spend
-        state = ec2.get("State", {}).get("Name", "unknown")
-        remote: dict[str, Any] = {}
-        if state == "running":
+    futures: dict[Any, tuple[str, dict[str, Any]]] = {}
+    with ThreadPoolExecutor(max_workers=len(config["instances"])) as executor:
+        for definition in config["instances"]:
+            identifier = definition["instance_id"]
+            ec2 = inventory.get(identifier)
+            if not ec2:
+                errors.append({"instance": identifier,
+                               "error": "EC2 instance missing"})
+                continue
+            futures[executor.submit(
+                probe_instance, config, definition, ec2,
+                jobs_by_instance.get(identifier, []), now)] = (
+                    identifier, definition)
+        for future in as_completed(futures):
+            identifier, definition = futures[future]
             try:
-                command = remote_script(definition, jobs_by_instance.get(identifier, []))
-                remote = (local_probe(command)
-                          if definition.get("transport", "ssm") == "local"
-                          else ssm_probe(config["region"], identifier, command))
-                if remote.get("probe_error"):
-                    errors.append({"instance": identifier,
-                                   "error": str(remote["probe_error"])})
-            except Exception as error:  # one host must not hide the other four
-                errors.append({"instance": identifier, "error": str(error)})
-        warnings = resource_warnings(definition, remote) if remote else []
-        instance_results[identifier] = {
-            "name": definition.get("name", identifier), "ec2_state": state,
-            "instance_type": ec2.get("InstanceType", ""),
-            "launch_time": ec2.get("LaunchTime", ""),
-            "estimated_spend_usd": round(spend, 2),
-            "resource_warnings": warnings, "remote": remote,
-        }
+                result, error = future.result()
+            except Exception as exception:
+                errors.append({"instance": identifier, "error": str(exception)})
+                continue
+            instance_results[identifier] = result
+            total_spend += float(result["estimated_spend_usd"])
+            if error:
+                errors.append({"instance": identifier, "error": error})
+
+    # Preserve config order in emitted state despite parallel collection.
+    instance_results = {
+        definition["instance_id"]: instance_results[definition["instance_id"]]
+        for definition in config["instances"]
+        if definition["instance_id"] in instance_results
+    }
 
     jobs: dict[str, Any] = {}
     definitions = {job["id"]: job for job in config["jobs"]}
@@ -475,6 +580,8 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
             "source_exact": source_exact(definition, remote) if remote else False,
             "certificates": certificates,
             "dependencies": definition.get("dependencies", []),
+            "ledger_files": definition.get("ledger_files", []),
+            "ledger_certifies": bool(definition.get("ledger_certifies")),
         }
 
     # Resolve readiness only after every job's observed status is known.
@@ -510,6 +617,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         "instances": {identifier: {
             "ec2_state": value["ec2_state"],
             "resource_warnings": value["resource_warnings"],
+            "cpu_allocation": value["cpu_allocation"],
         } for identifier, value in instance_results.items()},
         "jobs": {identifier: value["status"] for identifier, value in jobs.items()},
         "errors": errors,
@@ -555,6 +663,8 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                 "size": certificate["size"],
                 "exact": certificate["exact"],
             } for certificate in jobs[identifier]["certificates"]],
+            "ledger_files": jobs[identifier]["ledger_files"],
+            "ledger_certifies": jobs[identifier]["ledger_certifies"],
         } for identifier in selected_jobs
     }
     output = {
@@ -567,6 +677,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
             "instances": {identifier: {
                 "ec2_state": value["ec2_state"],
                 "resource_warnings": value["resource_warnings"],
+                "cpu_allocation": value["cpu_allocation"],
             } for identifier, value in instance_results.items()
                if heartbeat or not last_digest or value["resource_warnings"]},
             "jobs": compact_jobs,

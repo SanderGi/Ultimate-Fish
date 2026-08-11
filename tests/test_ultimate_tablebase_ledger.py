@@ -56,6 +56,14 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         catalog = plot.OutcomeCatalog(summary)
         self.assertEqual("computing", catalog.together("bomb", "berserker").kind)
 
+    def test_computing_hatch_is_clipped_parallel_diagonal_lines(self):
+        hatch = plot.diagonal_hatch(30, 20, 10, 1)
+        alpha = hatch.getchannel("A")
+        for point in ((0, 0), (1, 1), (10, 0), (11, 1), (29, 19)):
+            self.assertEqual(255, alpha.getpixel(point), point)
+        for point in ((0, 5), (5, 0), (20, 5), (5, 19)):
+            self.assertEqual(0, alpha.getpixel(point), point)
+
     def test_reachability_counts_include_all_outcome_buckets(self):
         self.assertEqual(
             "412,616 / 80,344; 492,960 / 0",

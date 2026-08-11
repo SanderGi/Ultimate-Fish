@@ -102,6 +102,45 @@ class BridgeTests(unittest.TestCase):
             health=self.health, events=self.events, cursor=self.cursor,
             now=self.now + dt.timedelta(minutes=17)))
 
+    @mock.patch.object(BRIDGE.subprocess, "run")
+    def test_event_reconciles_running_ledger_without_downgrading_certified(
+            self, command: mock.Mock) -> None:
+        repo = self.root / "repo"
+        tablebases = repo / "tablebases"
+        tablebases.mkdir(parents=True)
+        (repo / "tools").mkdir()
+        (repo / "tests").mkdir()
+        (tablebases / "README.md").write_text(
+            "| `same:a+b` | A | same | `kabk.uftb` | **PLANNED** | 1 | concrete | — | — | — | — |\n"
+            "| `same:c+d` | C | same | `kcdk.uftb` | **CERTIFIED** | 1 | concrete | 1 / 0 / 0 | 1 / 0 / 0 | 1 / 0; 1 / 0 | S3 |\n")
+        event = {"report": {"jobs": {"job": {
+            "status": "RUNNING", "ledger_files": ["kabk.uftb", "kcdk.uftb"],
+            "ledger_certifies": True,
+        }}}}
+        result = BRIDGE.reconcile_ledger(
+            repo, event, commit=False, python=Path("/python"))
+        self.assertTrue(result["changed"])
+        self.assertEqual({"kabk.uftb": "computing"}, result["updates"])
+        self.assertEqual(2, command.call_count)
+        self.assertIn("kabk.uftb=computing", command.call_args_list[0].args[0])
+
+    def test_certification_requires_exact_result_import(self) -> None:
+        repo = self.root / "repo"
+        tablebases = repo / "tablebases"
+        tablebases.mkdir(parents=True)
+        (tablebases / "README.md").write_text(
+            "| `same:a+b` | A | same | `kabk.uftb` | **COMPUTING** | 1 | concrete | — | — | — | — |\n")
+        event = {"report": {"jobs": {"job": {
+            "status": "CERTIFIED", "ledger_files": ["kabk.uftb"],
+            "ledger_certifies": True,
+        }}}}
+        result = BRIDGE.reconcile_ledger(
+            repo, event, commit=False, python=Path("/python"))
+        self.assertFalse(result["changed"])
+        self.assertEqual(
+            [{"job": "job", "filename": "kabk.uftb"}],
+            result["pending_certification"])
+
     def test_launch_agent_is_host_level_five_minute_singleton(self) -> None:
         value = INSTALLER.launch_agent(
             Path("/Application Support/UltimateFishAWS/commit"),

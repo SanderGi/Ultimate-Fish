@@ -9,6 +9,7 @@
     {
       "instance_id": "i-03c81f90d2c59a2e7",
       "name": "hidden-primary",
+      "vcpus": 32,
       "hourly_usd": 2.35136,
       "transport": "ssm",
       "mounts": ["/", "/mnt/ultimatefish"],
@@ -18,6 +19,7 @@
     {
       "instance_id": "i-0986ed3d272721f02",
       "name": "giant-ghost-same",
+      "vcpus": 32,
       "hourly_usd": 1.56768,
       "transport": "ssm",
       "mounts": ["/", "/mnt/ultimatefish"],
@@ -27,6 +29,7 @@
     {
       "instance_id": "i-024a2073283e4336e",
       "name": "giant-ghost-opposing",
+      "vcpus": 32,
       "hourly_usd": 1.56768,
       "transport": "ssm",
       "mounts": ["/", "/mnt/ultimatefish"],
@@ -36,6 +39,7 @@
     {
       "instance_id": "i-08c0f44a1776cb34a",
       "name": "crossed-and-jester-ghost",
+      "vcpus": 32,
       "hourly_usd": 1.56768,
       "transport": "ssm",
       "mounts": ["/", "/mnt/ultimatefish"],
@@ -45,6 +49,7 @@
     {
       "instance_id": "i-0b4523116b2f7765c",
       "name": "concrete-primary",
+      "vcpus": 32,
       "hourly_usd": 2.35136,
       "transport": "ssm",
       "mounts": ["/", "/mnt/ultimatefish", "/mnt/ultimatefish-overflow", "/mnt/ultimatefish-resume"],
@@ -61,6 +66,8 @@
   "jobs": [
     {
       "id": "bishop-ghost-same-full",
+      "ledger_files": ["kbishopghostk.uftb"],
+      "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-solve-v2-compact.service",
       "dependencies": [],
@@ -93,6 +100,8 @@
     },
     {
       "id": "ghost-pair-full",
+      "ledger_files": ["kghostghostk.uftb"],
+      "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-kghostghost-tail-2280445e.service",
       "dependencies": [],
@@ -103,6 +112,8 @@
     },
     {
       "id": "double-jester-authoritative",
+      "ledger_files": ["kjesterjesterk.uftb"],
+      "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-double-jester-authoritative-7a753e4b-v1.service",
       "dependencies": [],
@@ -116,6 +127,8 @@
     },
     {
       "id": "giant-ghost-same-full",
+      "ledger_files": ["kghostgiantk.uftb"],
+      "ledger_certifies": true,
       "instance_id": "i-0986ed3d272721f02",
       "unit": "ultimatefish-giant-ghost-same-31ca4c39-full-v1.service",
       "dependencies": [],
@@ -145,6 +158,8 @@
     },
     {
       "id": "giant-ghost-opposing-full",
+      "ledger_files": ["kghostkgiant.uftb"],
+      "ledger_certifies": true,
       "instance_id": "i-024a2073283e4336e",
       "unit": "ultimatefish-giant-ghost-opposing-8be6f990-full-v1.service",
       "dependencies": [],
@@ -168,6 +183,7 @@
     },
     {
       "id": "jester-ghost-transition-rebind",
+      "ledger_files": ["kjesterghostk.uftb", "kjesterkghost.uftb"],
       "instance_id": "i-08c0f44a1776cb34a",
       "unit": "ultimatefish-jg7328-transition-rebind-v2.service",
       "dependencies": [],
@@ -186,6 +202,7 @@
     },
     {
       "id": "jester-ghost-verify-shards",
+      "ledger_files": ["kjesterghostk.uftb", "kjesterkghost.uftb"],
       "instance_id": "i-08c0f44a1776cb34a",
       "unit": "ultimatefish-jg7328-verify-shards.service",
       "dependencies": ["jester-ghost-transition-rebind"],
@@ -220,6 +237,7 @@
     },
     {
       "id": "jester-ghost-merge",
+      "ledger_files": ["kjesterghostk.uftb", "kjesterkghost.uftb"],
       "instance_id": "i-08c0f44a1776cb34a",
       "unit": "ultimatefish-jg7328-merge.service",
       "dependencies": ["jester-ghost-verify-shards"],
@@ -261,6 +279,7 @@
     },
     {
       "id": "jester-ghost-measure",
+      "ledger_files": ["kjesterghostk.uftb", "kjesterkghost.uftb"],
       "instance_id": "i-08c0f44a1776cb34a",
       "unit": "ultimatefish-jg7328-measure-v3.service",
       "dependencies": ["jester-ghost-merge"],
@@ -560,6 +579,8 @@
     },
     {
       "id": "concrete-wave0-001",
+      "ledger_files": ["kberserkerbombk.uftb"],
+      "ledger_certifies": true,
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-concrete-wave0-001-ac9b2d32-resume-v1.service",
       "dependencies": ["concrete-wave0-011"],
@@ -628,6 +649,8 @@
     },
     {
       "id": "bomb-ghost-same-measure",
+      "ledger_files": ["kbombghostk.uftb"],
+      "ledger_certifies": true,
       "instance_id": "i-0986ed3d272721f02",
       "unit": "ultimatefish-hidden-kbombghostk-solvefix-v2.service",
       "dependencies": [],
@@ -648,6 +671,8 @@
     },
     {
       "id": "bomb-ghost-opposing-measure",
+      "ledger_files": ["kbombkghost.uftb"],
+      "ledger_certifies": true,
       "instance_id": "i-024a2073283e4336e",
       "unit": "ultimatefish-hidden-kbombkghost-solvefix-v2.service",
       "dependencies": [],
@@ -668,6 +693,8 @@
     },
     {
       "id": "parasite-ghost-same-measure",
+      "ledger_files": ["kghostparasitek.uftb"],
+      "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-hidden-kghostparasitek-7af5dec2.service",
       "dependencies": [],
@@ -688,6 +715,8 @@
     },
     {
       "id": "parasite-ghost-opposing-measure",
+      "ledger_files": ["kghostkparasite.uftb"],
+      "ledger_certifies": true,
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-hidden-kghostkparasite-abe24c3a.service",
       "dependencies": [],

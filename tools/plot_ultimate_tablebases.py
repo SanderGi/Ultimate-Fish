@@ -303,6 +303,18 @@ def cell_text(cell: Cell) -> str:
     return "\n".join(lines)
 
 
+def diagonal_hatch(width: int, height: int, spacing: int,
+                   line_width: int) -> "Image.Image":
+    """Return a clipped overlay of parallel down-right hatch segments."""
+    hatch = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    hatch_draw = ImageDraw.Draw(hatch)
+    for offset in range(-height, width + height, spacing):
+        hatch_draw.line(
+            (offset, 0, offset + height, height),
+            fill="#6E8FA9", width=line_width)
+    return hatch
+
+
 def draw_rotated_text(
     image: Image.Image,
     xy: tuple[int, int],
@@ -402,13 +414,12 @@ def draw_grid(
             )
             if cell.kind == "computing":
                 spacing = max(7, 10 * max(1, cell_width // 102))
-                for offset in range(-cell_height, cell_width + cell_height, spacing):
-                    x_start = max(left, left + offset)
-                    y_start = top + max(0, -offset)
-                    x_end = min(left + cell_width, left + offset + cell_height)
-                    y_end = top + min(cell_height, cell_height + offset)
-                    draw.line((x_start, y_start, x_end, y_end),
-                              fill="#6E8FA9", width=max(1, spacing // 5))
+                # Draw into a cell-sized overlay so clipping cannot bend the
+                # end points or leak into neighbouring cells.  Every segment
+                # has the same +1 slope in local coordinates.
+                hatch = diagonal_hatch(
+                    cell_width, cell_height, spacing, max(1, spacing // 5))
+                image.alpha_composite(hatch, (left, top))
             text = cell_text(cell)
             if not text:
                 continue
