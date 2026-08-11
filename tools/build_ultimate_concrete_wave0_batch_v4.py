@@ -211,6 +211,11 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
     # The shared builder has already performed all runner/dependency/resource
     # checks.  Add this wrapper's own source and immutable-namespace proofs.
     source = dict(document["source_hashes"])
+    # The supervisor config is the queue consumer that this planner updates;
+    # binding its digest into the queue it contains would create a circular
+    # self-hash on every promotion commit.  Its canonical Git commit is still
+    # recorded below, while installed runner inputs remain content-addressed.
+    source.pop(SUPERVISION_CONFIG.relative_to(ROOT).as_posix(), None)
     source[WRAPPER_RELATIVE] = _sha256_path(Path(__file__))
     source = dict(sorted(source.items()))
     document["schema"] = SCHEMA
