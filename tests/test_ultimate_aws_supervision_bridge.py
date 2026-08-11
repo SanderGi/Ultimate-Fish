@@ -226,6 +226,31 @@ class BridgeTests(unittest.TestCase):
         self.assertIn("kabk.uftb=computing", command.call_args_list[0].args[0])
 
     @mock.patch.object(BRIDGE.subprocess, "run")
+    def test_successful_start_action_hatches_ready_ledger_immediately(
+            self, command: mock.Mock) -> None:
+        repo = self.root / "repo"
+        tablebases = repo / "tablebases"
+        tablebases.mkdir(parents=True)
+        (repo / "tools").mkdir()
+        (tablebases / "README.md").write_text(
+            "| `same:a+b` | A | same | `kabk.uftb` | **PLANNED** | 1 | concrete | — | — | — | — |\n")
+        event = {
+            "report": {"jobs": {"job": {
+                "status": "READY", "ledger_files": ["kabk.uftb"],
+            }}},
+            "host_actions": [{
+                "status": "STARTED", "job": "job", "exit_code": 0,
+                "resumable": True,
+            }],
+        }
+
+        result = BRIDGE.reconcile_ledger(
+            repo, event, commit=False, python=Path("/python"))
+
+        self.assertEqual({"kabk.uftb": "computing"}, result["updates"])
+        self.assertIn("kabk.uftb=computing", command.call_args_list[0].args[0])
+
+    @mock.patch.object(BRIDGE.subprocess, "run")
     def test_superseded_failure_cannot_override_current_generation(
             self, command: mock.Mock) -> None:
         repo = self.root / "repo"

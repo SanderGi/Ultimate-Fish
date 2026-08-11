@@ -113,11 +113,22 @@ def reconcile_ledger(repo: Path, event: dict[str, Any], *, commit: bool,
             str(job.get("id")) for job in configuration.get("jobs", [])
             if isinstance(job, dict) and job.get("superseded_by")
         }
+    started = {
+        str(action.get("job")) for action in event.get("host_actions", [])
+        if isinstance(action, dict) and action.get("status") == "STARTED" and
+        action.get("exit_code") in (0, "0")
+    }
     observations: dict[str, list[str]] = {}
     for job_id, job in event.get("report", {}).get("jobs", {}).items():
         if str(job_id) in superseded or job.get("status") == "SUPERSEDED":
             continue
         status = str(job.get("status", ""))
+        # The report is intentionally captured before the host bridge applies
+        # READY actions.  A successful, resumable STARTED action is the exact
+        # state transition; reflect it in the ledger immediately instead of
+        # leaving the public plot PLANNED until the next five-minute probe.
+        if str(job_id) in started and status == "READY":
+            status = "RUNNING"
         for filename in job.get("ledger_files", []):
             filename = str(filename)
             existing = current.get(filename)
