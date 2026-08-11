@@ -47,12 +47,14 @@
       "name": "concrete-primary",
       "hourly_usd": 2.35136,
       "transport": "ssm",
-      "mounts": ["/", "/mnt/ultimatefish", "/mnt/ultimatefish-overflow"],
+      "mounts": ["/", "/mnt/ultimatefish", "/mnt/ultimatefish-overflow", "/mnt/ultimatefish-resume"],
+      "retained_volume_ids": ["vol-06296911f0b4cb2a6"],
       "minimum_memory_available_bytes": 17179869184,
       "minimum_disk_free_bytes": {
         "/": 2147483648,
         "/mnt/ultimatefish": 322122547200,
-        "/mnt/ultimatefish-overflow": 285615325184
+        "/mnt/ultimatefish-overflow": 285615325184,
+        "/mnt/ultimatefish-resume": 214748364800
       }
     }
   ],
@@ -416,10 +418,45 @@
       ]
     },
     {
+      "id": "concrete-wave0-006",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-concrete-wave0-006-ac9b2d32-resume-v1.service",
+      "dependencies": ["concrete-wave0-003"],
+      "advanceable": true,
+      "checkpoint_paths": ["/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-006-resume-v1/work/scratch/*"],
+      "completion_paths": [
+        "/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-006-resume-v1/work/certificates/wave-certificate.json",
+        "/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-006-resume-v1/work/s3-verify/wave-certificate.json"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-006-resume-v1/source/ultimatefish/tools/resume_ultimate_concrete_frontier_aws.py",
+          "sha256": "c84ef0b8d082c24a62f6ca18e6e11df67d35792162a6d9a1ff07c6d329ba0ff0"
+        },
+        {
+          "path": "/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-006-resume-v1/source/ultimatefish/tools/ultimate_concrete_wave0_006_resume.json",
+          "sha256": "3661992c45bc6b9849e6d5c80e06d76cd9bd0ac9669ffc3c21964bcc70ae67b7"
+        },
+        {
+          "path": "/mnt/ultimatefish-resume/concrete-penguin-1083b6f8/wave0-006-resume-v1/source/ultimatefish/tools/ultimatefish-concrete-wave0-006-ac9b2d32-resume-v1.service",
+          "sha256": "820fef00044ab57f7af1032fb30e482a624abe5e2a5b0f15f739f1e2ee8b0c1d"
+        },
+        {
+          "path": "/etc/systemd/system/mnt-ultimatefish\\x2dresume.mount",
+          "sha256": "a5b5b3a39f3bf8f9b881e9b3706e09cc2ef8b4a9fe4590c545ad440bd2b75069"
+        },
+        {
+          "path": "/mnt/ultimatefish-overflow/concrete-penguin-1083b6f8/wave0-006-full-v4/dependencies/manifest.json",
+          "sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504"
+        }
+      ],
+      "s3_certificates": []
+    },
+    {
       "id": "concrete-wave0-remaining",
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-concrete-wave0-next.service",
-      "dependencies": ["concrete-wave0-003"],
+      "dependencies": ["concrete-wave0-006"],
       "queue_stage": true,
       "checkpoint_paths": [],
       "completion_paths": [],

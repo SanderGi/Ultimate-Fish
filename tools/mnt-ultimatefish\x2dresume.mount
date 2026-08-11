@@ -1,0 +1,12 @@
+[Unit]
+Description=Ultimate Fish retained concrete resume work volume
+Before=ultimatefish-concrete-wave0-006-ac9b2d32-resume-v1.service
+
+[Mount]
+What=/dev/disk/by-uuid/d71ca950-588b-4ff8-9160-e9b7d2d78fe2
+Where=/mnt/ultimatefish-resume
+Type=xfs
+Options=noatime
+
+[Install]
+WantedBy=multi-user.target

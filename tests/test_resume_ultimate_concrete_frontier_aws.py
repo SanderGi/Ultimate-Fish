@@ -215,6 +215,27 @@ class FrontierResumeTests(unittest.TestCase):
             "--work-directory /mnt/ultimatefish/concrete-penguin-1083b6f8/"
             "wave0-003-resume-v1/work", service)
 
+    def test_class006_resume_binds_retained_volume_and_mount(self) -> None:
+        manifest = json.loads((
+            ROOT / "tools/ultimate_concrete_wave0_006_resume.json").read_text())
+        self.assertEqual(
+            RESUME.concrete.normalized_record(
+                RESUME.concrete.wave_inventory(0)[6]), manifest["record"])
+        self.assertLess(
+            manifest["planes"]["predecessors"]["allocated_bytes"],
+            manifest["planes"]["predecessors"]["bytes"])
+        service = (ROOT / "tools/ultimatefish-concrete-wave0-006-"
+                   "ac9b2d32-resume-v1.service").read_text()
+        self.assertIn("Requires=mnt-ultimatefish\\x2dresume.mount", service)
+        self.assertIn("--minimum-free-bytes 214748364800", service)
+        self.assertIn("--reverse-edge-bytes-limit 34359738368", service)
+        self.assertIn("Restart=no", service)
+        mount = (ROOT / "tools/mnt-ultimatefish\\x2dresume.mount").read_text()
+        self.assertIn(
+            "What=/dev/disk/by-uuid/d71ca950-588b-4ff8-9160-e9b7d2d78fe2",
+            mount)
+        self.assertIn("Where=/mnt/ultimatefish-resume", mount)
+
 
 if __name__ == "__main__":
     unittest.main()
