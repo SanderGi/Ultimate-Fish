@@ -823,13 +823,9 @@ def merge_supervision_config(document: Mapping[str, object],
         if (identifier in replacements or identifier in batch_ids or
                 identifier.startswith(current_batch_prefix)):
             continue
-        # Preserve the v1 records and their scratch as an immutable audit
-        # trail, but make them monitor-only so the scheduler cannot relaunch
-        # a unit whose work root already contains its historical service.log.
-        if identifier.startswith("concrete-wave0-batch-"):
-            job["queue_stage"] = True
-            job["advanceable"] = False
-            job["superseded_by"] = f"versioned-concrete-wave0-batch-{BATCH_VERSION}"
+        # Other immutable batch namespaces are independent audit records.
+        # Never rewrite their scheduling or provenance fields while merging
+        # this namespace.
         if identifier in updates:
             job["dependencies"] = list(updates[identifier]["dependencies"])
             job["queue_stage"] = True
