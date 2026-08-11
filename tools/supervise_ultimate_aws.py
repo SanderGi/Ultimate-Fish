@@ -304,7 +304,7 @@ def props(unit):
  if result.get('ActiveState') not in {'active','activating','reloading'}:
   result={key:result[key] for key in (
    'LoadState','ActiveState','Result',
-   'ExecMainStatus','AllowedCPUs') if key in result}
+   'ExecMainStatus') if key in result}
  return result
 def aggregate(patterns):
  result=[]

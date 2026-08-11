@@ -151,6 +151,9 @@ class SupervisionTests(unittest.TestCase):
         self.assertNotIn("TasksCurrent", program)
         self.assertNotIn("SubState", program)
         self.assertNotIn("ExecMainCode", program)
+        # CPU allocation is consumed only for active/activating units; an
+        # inactive historical record must not carry its stale CPU assignment.
+        self.assertIn("'ExecMainStatus'", program)
 
     @mock.patch.object(SUPERVISOR.subprocess, "run")
     def test_timeout_error_redacts_encoded_aws_payload(self, command: mock.Mock) -> None:
