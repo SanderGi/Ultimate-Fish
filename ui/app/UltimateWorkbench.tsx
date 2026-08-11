@@ -70,7 +70,15 @@ type EngineAnalysis = {
   historyPreservingPlies?: number;
 };
 
-type MoveRecord = { color: Color; notation: string; upn?: string };
+type MoveRecord = { color: Color; notation: string; upn?: string; moveNumber?: number };
+type MoveVariation = { id: number; parentId: number | null; anchorPly: number; moves: MoveRecord[] };
+
+type LinePreview = {
+  ply: number;
+  move: string;
+  pieces: PositionPiece[];
+  turn: Color;
+};
 
 type BeliefContext = {
   positions: string[];
@@ -265,6 +273,13 @@ function historyNotation(move: string, result: EngineAnalysis, viewer: Color): s
   return moved ? "•••" : move;
 }
 
+function commonMovePrefix(first: MoveRecord[], second: MoveRecord[]): number {
+  let count = 0;
+  while (count < first.length && count < second.length &&
+    first[count].color === second[count].color && first[count].notation === second[count].notation) count += 1;
+  return count;
+}
+
 function displayScore(analysis: EngineAnalysis | null, turn: Color): { label: string; percent: number } {
   if (!analysis) return { label: "—", percent: 50 };
   const ivoryScore = turn === "white" ? analysis.score : -analysis.score;
@@ -276,6 +291,19 @@ function displayScore(analysis: EngineAnalysis | null, turn: Color): { label: st
     label: `${ivoryScore >= 0 ? "+" : ""}${(ivoryScore / 100).toFixed(2)}`,
     percent: Math.max(3, Math.min(97, 50 + 47 * Math.tanh(ivoryScore / 550))),
   };
+}
+
+function numberedMoveLabel(move: MoveRecord, fallbackPly: number, previous?: MoveRecord): string | null {
+  const moveNumber = move.moveNumber ?? Math.floor(fallbackPly / 2) + 1;
+  if (move.color === "white") return `${moveNumber}.`;
+  return previous ? null : `${moveNumber}...`;
+}
+
+function engineMoveLabel(ply: number, turn: Color, fullmove: number): string | null {
+  const color = ply % 2 === 0 ? turn : (turn === "white" ? "black" : "white");
+  const moveNumber = fullmove + Math.floor((ply + (turn === "black" ? 1 : 0)) / 2);
+  if (color === "white") return `${moveNumber}.`;
+  return ply === 0 ? `${moveNumber}...` : null;
 }
 
 function PieceToken({ piece, view, playerSide, publicBelief = false, large = false }: {
@@ -297,6 +325,28 @@ function PieceToken({ piece, view, playerSide, publicBelief = false, large = fal
     >
       <PieceIcon id={shown?.id ?? piece.id} color={piece.color} />
     </span>
+  );
+}
+
+function EngineLinePreview({ preview, playerSide }: { preview: LinePreview; playerSide: Color }) {
+  const board = Array.from({ length: 80 }, () => null as PositionPiece | null);
+  preview.pieces.filter((piece) => piece.onBoard).forEach((piece) => {
+    footprintSquares(piece).forEach((square) => { if (square >= 0 && square < 80) board[square] = piece; });
+  });
+  return (
+    <div className="engine-line-preview" aria-live="polite">
+      <span className="engine-line-preview-arrow" />
+      <div className="engine-line-preview-head"><strong>{preview.move}</strong><span>{preview.turn === "white" ? "Ivory" : "Onyx"} to move</span></div>
+      <div className="engine-preview-board" aria-label={`Position after ${preview.move}`}>
+        {board.map((piece, index) => {
+          const dark = (Math.floor(index / 8) + index % 8) % 2 === 1;
+          const isGiantExtension = piece?.id === "giant" && piece.square !== index;
+          return <span key={index} className={`engine-preview-square ${dark ? "dark" : "light"}`}>
+            {piece && !isGiantExtension && <PieceToken piece={piece} view="analysis" playerSide={playerSide} />}
+          </span>;
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -397,6 +447,7 @@ export function UltimateWorkbench() {
   const [analysisMaxDepth, setAnalysisMaxDepth] = useState(16);
   const [playDepth, setPlayDepth] = useState(7);
   const [analysis, setAnalysis] = useState<EngineAnalysis | null>(null);
+  const [linePreview, setLinePreview] = useState<LinePreview | null>(null);
   const [analysisRunning, setAnalysisRunning] = useState(false);
   const [engineStatus, setEngineStatus] = useState<"offline" | "thinking" | "ready" | "error">("offline");
   const [engineMessage, setEngineMessage] = useState("Engine bridge not queried yet.");
@@ -404,6 +455,9 @@ export function UltimateWorkbench() {
   const [gameActive, setGameActive] = useState(false);
   const [gameResult, setGameResult] = useState<{ result: GameResult; reason: string | null }>({ result: "ongoing", reason: null });
   const [moveHistory, setMoveHistory] = useState<MoveRecord[]>([]);
+  const [historyCursor, setHistoryCursor] = useState(0);
+  const [variations, setVariations] = useState<MoveVariation[]>([]);
+  const [activeVariation, setActiveVariation] = useState<number | null>(null);
   const [draftPhase, setDraftPhase] = useState(0);
   const [draftTeams, setDraftTeams] = useState<Record<Color, PieceId[]>>({ white: ["king"], black: ["king"] });
   const [draftPending, setDraftPending] = useState<PieceId[]>([]);
@@ -421,6 +475,8 @@ export function UltimateWorkbench() {
   const [belief, setBelief] = useState<BeliefContext | null>(null);
   const analysisAbort = useRef<AbortController | null>(null);
   const requestSequence = useRef(0);
+  const linePreviewSequence = useRef(0);
+  const variationSequence = useRef(0);
   const draftAiRequest = useRef<string | null>(null);
   const liveGameUpn = useRef<string | null>(null);
 
@@ -454,7 +510,8 @@ export function UltimateWorkbench() {
     selectedPiece.id === "jester" ? "king" : selectedPiece?.id;
   const score = displayScore(analysis, turn);
   const showEvaluation = view === "analysis" || (view === "play" && !gameActive);
-  const boardLocked = gameActive || Boolean(belief) ||
+  const analysisLocked = view === "analysis" && analysisRunning;
+  const boardLocked = gameActive || Boolean(belief) || analysisLocked ||
     (view === "draft" && !draftPlacementActive);
   const initialDraftKingUnlocked = draftPlacementActive && draftPhase === firstDraftPickPhase[playerSide];
   const topColor: Color = flipped ? "white" : "black";
@@ -552,14 +609,117 @@ export function UltimateWorkbench() {
     setGameResult({ result: result.result ?? "ongoing", reason: result.resultReason ?? null });
   }, []);
 
-  const loadHistoryPosition = useCallback((snapshot?: string) => {
+  const loadHistoryPosition = useCallback((snapshot?: string, historyPly = moveHistory.length) => {
     if (!snapshot) return;
     const loaded = parseUpn(snapshot);
     setBelief(null);
     setPieces(loaded.pieces); setTurn(loaded.turn); setMeta(loaded.meta);
     setAnalysis(null); setLegalMoves([]); setSelected(null);
+    setHistoryCursor(historyPly); setActiveVariation(null);
+    setGameResult({ result: "ongoing", reason: null });
+  }, [moveHistory.length]);
+
+  const loadVariationPosition = useCallback((variation: MoveVariation, ply: number) => {
+    const snapshot = variation.moves[ply - 1]?.upn;
+    if (!snapshot) return;
+    const loaded = parseUpn(snapshot);
+    setBelief(null);
+    setPieces(loaded.pieces); setTurn(loaded.turn); setMeta(loaded.meta);
+    setAnalysis(null); setLegalMoves([]); setSelected(null);
+    setHistoryCursor(ply); setActiveVariation(variation.id);
     setGameResult({ result: "ongoing", reason: null });
   }, []);
+
+  const clearLinePreview = useCallback(() => {
+    linePreviewSequence.current += 1;
+    setLinePreview(null);
+  }, []);
+
+  const previewEngineLine = useCallback(async (ply: number) => {
+    if (belief || !analysis?.pv[ply]) return;
+    const sequence = ++linePreviewSequence.current;
+    const moves = analysis.pv.slice(0, ply + 1);
+    let previewUpn = upn;
+    try {
+      for (const move of moves) {
+        const result = await engineRequest("/move", { upn: previewUpn, move });
+        if (!result.upn) return;
+        previewUpn = result.upn;
+      }
+      if (sequence !== linePreviewSequence.current) return;
+      const position = parseUpn(previewUpn);
+      setLinePreview({ ply, move: moves.at(-1)!, pieces: position.pieces, turn: position.turn });
+    } catch {
+      if (sequence === linePreviewSequence.current) setLinePreview(null);
+    }
+  }, [analysis, belief, engineRequest, upn]);
+
+  const commitAnalysisMoves = useCallback(async (moves: string[]) => {
+    if (belief || !moves.length) return;
+    clearLinePreview();
+    requestSequence.current += 1;
+    analysisAbort.current?.abort();
+    let nextUpn = upn;
+    let nextTurn = turn;
+    const records: MoveRecord[] = [];
+    setEngineStatus("thinking"); setEngineMessage(`Playing ${moves.at(-1)}…`); setSelected(null);
+    try {
+      let result: EngineAnalysis | null = null;
+      for (const move of moves) {
+        result = await engineRequest("/move", { upn: nextUpn, move });
+        if (!result.upn) throw new Error("Engine did not return the resulting position.");
+        records.push({ color: nextTurn, notation: move, upn: result.upn, moveNumber: parseUpn(nextUpn).meta.fullmove });
+        nextUpn = result.upn;
+        nextTurn = nextTurn === "white" ? "black" : "white";
+      }
+      if (!result) return;
+      loadEnginePosition(result);
+      const currentVariation = variations.find((variation) => variation.id === activeVariation);
+      if (currentVariation) {
+        const shared = commonMovePrefix(records, currentVariation.moves.slice(historyCursor));
+        const remainder = records.slice(shared);
+        const branchPly = historyCursor + shared;
+        if (!remainder.length) {
+          setHistoryCursor(branchPly);
+        } else if (branchPly < currentVariation.moves.length) {
+          const id = ++variationSequence.current;
+          setVariations((items) => [...items, { id, parentId: currentVariation.id, anchorPly: branchPly, moves: remainder }]);
+          setActiveVariation(id); setHistoryCursor(remainder.length);
+        } else {
+          setVariations((items) => items.map((variation) => variation.id === currentVariation.id
+            ? { ...variation, moves: [...variation.moves, ...remainder] } : variation));
+          setHistoryCursor(branchPly + remainder.length);
+        }
+      } else if (historyCursor < moveHistory.length) {
+        const shared = commonMovePrefix(records, moveHistory.slice(historyCursor));
+        const remainder = records.slice(shared);
+        const branchPly = historyCursor + shared;
+        if (!remainder.length) {
+          setHistoryCursor(branchPly);
+        } else if (branchPly < moveHistory.length) {
+          const id = ++variationSequence.current;
+          setVariations((items) => [...items, { id, parentId: null, anchorPly: branchPly, moves: remainder }]);
+          setActiveVariation(id); setHistoryCursor(remainder.length);
+        } else {
+          setMoveHistory((history) => [...history, ...remainder]);
+          setHistoryCursor(branchPly + remainder.length);
+        }
+      } else {
+        setMoveHistory((history) => [...history, ...records]);
+        setHistoryCursor((cursor) => cursor + records.length);
+      }
+      setAnalysis(null); setEngineStatus("ready");
+      setEngineMessage(`${result.moves.length} legal moves · line applied.`);
+    } catch (error) {
+      setEngineStatus("error");
+      setEngineMessage(error instanceof Error ? error.message : "Could not apply the engine line.");
+    }
+  }, [activeVariation, belief, clearLinePreview, engineRequest, historyCursor, loadEnginePosition, moveHistory, turn, upn, variations]);
+
+  const commitEngineLine = useCallback(async (ply: number) => {
+    if (!analysis?.pv[ply]) return;
+    await commitAnalysisMoves(analysis.pv.slice(0, ply + 1));
+  }, [analysis, commitAnalysisMoves]);
 
   const runAnalysis = useCallback(async () => {
     const sequence = ++requestSequence.current;
@@ -688,14 +848,14 @@ export function UltimateWorkbench() {
 
   function resetTransient() {
     setBelief(null);
-    setMeta(emptyMeta()); setAnalysis(null); setLegalMoves([]); setSelected(null);
-    setGameResult({ result: "ongoing", reason: null }); setMoveHistory([]);
+    clearLinePreview(); setMeta(emptyMeta()); setAnalysis(null); setLegalMoves([]); setSelected(null);
+    setGameResult({ result: "ongoing", reason: null }); setMoveHistory([]); setHistoryCursor(0); setVariations([]); setActiveVariation(null);
   }
 
   function replacePosition(next: ReturnType<typeof classicPosition>) {
     setBelief(null);
-    setPieces(next.pieces); setTurn(next.turn); setMeta(next.meta); setAnalysis(null);
-    setLegalMoves([]); setSelected(null); setMoveHistory([]); setGameResult({ result: "ongoing", reason: null });
+    clearLinePreview(); setPieces(next.pieces); setTurn(next.turn); setMeta(next.meta); setAnalysis(null);
+    setLegalMoves([]); setSelected(null); setMoveHistory([]); setHistoryCursor(0); setVariations([]); setActiveVariation(null); setGameResult({ result: "ongoing", reason: null });
   }
 
   function removeOccupants(current: PositionPiece[], squares: number[], exceptUid?: string) {
@@ -789,8 +949,8 @@ export function UltimateWorkbench() {
   }
 
   function dragPiece(to: number) {
-    if (!draggedUid || gameActive || belief ||
-        (view !== "analysis" && !draftPlacementActive)) return;
+    if (!draggedUid || gameActive || belief || analysisLocked ||
+        (view !== "analysis" && view !== "play" && !draftPlacementActive)) return;
     const moving = pieces.find((piece) => piece.uid === draggedUid);
     if (!moving) return;
     setDraggedUid(null);
@@ -867,7 +1027,8 @@ export function UltimateWorkbench() {
 
   async function startGame(startingUpn = upn) {
     setAnalysisRunning(false); analysisAbort.current?.abort(); setEditing(false); setGameActive(true);
-    setMoveHistory([]); setGameResult({ result: "ongoing", reason: null }); setFlipped(playerSide === "black");
+    setVariations([]); setActiveVariation(null); setHistoryCursor(moveHistory.length);
+    setGameResult({ result: "ongoing", reason: null }); setFlipped(playerSide === "black");
     setEngineStatus("thinking"); setEngineMessage("Starting Ultimate game…");
     try {
       let result = await engineRequest("/state", { upn: startingUpn });
@@ -881,9 +1042,13 @@ export function UltimateWorkbench() {
       loadEnginePosition(result);
       if (result.upn) liveGameUpn.current = result.upn;
       const opponent: Color = playerSide === "white" ? "black" : "white";
-      setMoveHistory((result.engineMoves ?? []).map((notation) => ({
+      const resumedMoves = (result.engineMoves ?? []).map((notation) => ({
         color: opponent, notation: historyNotation(notation, result, playerSide), upn: result.upn ?? undefined,
-      })));
+      }));
+      if (resumedMoves.length) {
+        setMoveHistory((history) => [...history, ...resumedMoves]);
+        setHistoryCursor((cursor) => cursor + resumedMoves.length);
+      }
       setAnalysis(result.engine ?? null); setEngineStatus("ready");
       setEngineMessage(result.result === "ongoing" ? "Your move." : "Game complete.");
       if (result.result !== "ongoing") setGameActive(false);
@@ -902,9 +1067,14 @@ export function UltimateWorkbench() {
     const occupant = boardMap[index]?.piece;
     const clicked = occupant && view === "play" && occupant.color !== playerSide &&
       occupant.id === "ghost" && !occupant.visible ? undefined : occupant;
-    if (view === "play" && gameActive && selectedPiece && selected !== index) {
+    if (selectedPiece && selected !== index &&
+        ((view === "play" && gameActive) || (view === "analysis" && analysisRunning))) {
       const move = legalTargetMoves.get(index);
-      if (move) { void playMove(move); return; }
+      if (move) {
+        if (view === "play") void playMove(move);
+        else void commitAnalysisMoves([move]);
+        return;
+      }
     }
     setSelected((current) => current === index ? null : (clicked?.square ?? index));
   }
@@ -913,7 +1083,7 @@ export function UltimateWorkbench() {
     if (next !== "analysis") {
       setAnalysisRunning(false); analysisAbort.current?.abort(); setBelief(null);
     }
-    if (next === "draft" && gameActive) stopGame();
+    if ((next === "draft" || next === "analysis") && gameActive) stopGame();
     if (view === "draft" && next !== "draft") {
       setDraftPlayerPieces(pieces.filter((piece) => piece.color === playerSide));
     }
@@ -921,7 +1091,15 @@ export function UltimateWorkbench() {
       setPieces([...draftPlayerPieces, ...draftOpponentPieces]); setTurn("white"); setMeta(emptyMeta()); setAnalysis(null); setLegalMoves([]);
       setFlipped(playerSide === "black"); setEditing(draftWindow?.player === playerSide && draftWindow.action === "pick");
     } else {
-      if (next === "play" && gameActive && liveGameUpn.current) loadHistoryPosition(liveGameUpn.current);
+      if (next === "play") {
+        const mainlineSnapshot = moveHistory.at(-1)?.upn;
+        setVariations([]); setActiveVariation(null); setHistoryCursor(moveHistory.length);
+        if (mainlineSnapshot) {
+          loadHistoryPosition(mainlineSnapshot, moveHistory.length);
+          liveGameUpn.current = mainlineSnapshot;
+        }
+      }
+      if (next === "analysis") { setHistoryCursor(moveHistory.length); setActiveVariation(null); }
       setEditing(false);
     }
     setSelected(null); setView(next);
@@ -999,7 +1177,7 @@ export function UltimateWorkbench() {
     const draftedPieces = [...draftPlayerPieces, ...draftOpponentPieces];
     const draftedMeta = emptyMeta();
     setPieces(draftedPieces);
-    setTurn("white"); setMeta(draftedMeta); setAnalysis(null); setLegalMoves([]); setMoveHistory([]);
+    setTurn("white"); setMeta(draftedMeta); setAnalysis(null); setLegalMoves([]); setMoveHistory([]); setHistoryCursor(0); setVariations([]); setActiveVariation(null);
     setGameResult({ result: "ongoing", reason: null }); setEditing(false); setSelected(null); setView("play");
     setFlipped(playerSide === "black");
     void startGame(positionUpn(draftedPieces, "white", draftedMeta));
@@ -1056,7 +1234,7 @@ export function UltimateWorkbench() {
         };
         setBelief(nextBelief); setPlayerSide(nextBelief.observer);
         setPieces(representative.pieces); setTurn(representative.turn); setMeta(representative.meta);
-        setAnalysis(null); setLegalMoves([]); setSelected(null); setMoveHistory([]);
+        setAnalysis(null); setLegalMoves([]); setSelected(null); setMoveHistory([]); setHistoryCursor(0); setVariations([]); setActiveVariation(null);
         setGameResult({ result: "ongoing", reason: null }); setEditing(false);
         setPositionMessage(
           `Loaded ${positions.length.toLocaleString()} exact public beliefs` +
@@ -1083,11 +1261,63 @@ export function UltimateWorkbench() {
 
   const historyCell = (records: MoveRecord[]) => {
     const label = records.map((record) => record.notation).join(" · ") || "—";
-    const snapshot = records[records.length - 1]?.upn;
+    const record = records.at(-1);
+    const snapshot = record?.upn;
+    const historyPly = record ? moveHistory.indexOf(record) + 1 : moveHistory.length;
     return view === "analysis" && snapshot
-      ? <button type="button" className="history-cell history-link" onClick={() => loadHistoryPosition(snapshot)} title="Load this half-turn position">{label}</button>
+      ? <button type="button" className="history-cell history-link" onClick={() => loadHistoryPosition(snapshot, historyPly)} title="Load this half-turn position">{label}</button>
       : <span className="history-cell">{label}</span>;
   };
+
+  const variationsForRow = (row: { white: MoveRecord[]; black: MoveRecord[] }, rowIndex: number) => {
+    const records = [...row.white, ...row.black];
+    const plies = records.map((record) => moveHistory.indexOf(record) + 1).filter((ply) => ply > 0);
+    if (!plies.length) return [];
+    return variations.filter((variation) => {
+      if (variation.parentId !== null) return false;
+      const startsWithWhite = variation.moves[0]?.color === "white";
+      const displayPly = startsWithWhite && variation.anchorPly < moveHistory.length
+        ? variation.anchorPly + 1 : variation.anchorPly;
+      return displayPly === 0 ? rowIndex === 0 : displayPly >= Math.min(...plies) && displayPly <= Math.max(...plies);
+    });
+  };
+
+  function renderVariation(variation: MoveVariation, depth: number, forceIndent = false, startPly = 0, consumedAnchor = -1) {
+    const children = variations.filter((candidate) => candidate.parentId === variation.id &&
+      candidate.anchorPly >= startPly && candidate.anchorPly !== consumedAnchor);
+    const groups = [...children.reduce((byAnchor, child) => {
+      const group = byAnchor.get(child.anchorPly) ?? [];
+      group.push(child); byAnchor.set(child.anchorPly, group);
+      return byAnchor;
+    }, new Map<number, MoveVariation[]>()).entries()].sort(([first], [second]) => first - second);
+    const split = groups.find(([, group]) => depth === 1 || group.some((child) =>
+      variations.some((candidate) => candidate.parentId === child.id)));
+    const endPly = split?.[0] ?? variation.moves.length;
+    const inlineGroups = new Map(groups.filter(([anchor]) => anchor <= endPly && anchor !== split?.[0]));
+
+    const renderInlineGroup = (anchor: number) => (inlineGroups.get(anchor) ?? []).map((child) =>
+      renderVariation(child, depth + 1));
+    const moveElements = variation.moves.slice(startPly, endPly).map((record, offset) => {
+      const ply = startPly + offset;
+      const label = numberedMoveLabel(record, variation.anchorPly + ply, offset > 0 ? variation.moves[ply - 1] : undefined);
+      const contents = <>{label && <span>{label}</span>}{record.notation}</>;
+      const move = view === "analysis" && record.upn
+        ? <button type="button" className="variation-move history-link" onClick={() => loadVariationPosition(variation, ply + 1)} title="Load this variation position">{contents}</button>
+        : <span className="variation-move">{contents}</span>;
+      return <span className="variation-segment" key={`${variation.id}-${ply}`}>{move}{renderInlineGroup(ply + 1)}</span>;
+    });
+    const lineContents = <>{renderInlineGroup(startPly)}{moveElements}</>;
+
+    const siblings = split ? <div className="variation-sibling-group">
+      {endPly < variation.moves.length && renderVariation(variation, depth + 1, true, endPly, endPly)}
+      {split[1].map((child) => renderVariation(child, depth + 1, true))}
+    </div> : null;
+    const indented = depth === 1 || forceIndent || children.length > 0;
+    const key = `${variation.id}-${startPly}`;
+    if (depth === 1) return <div className="history-variation" key={key}><div className="variation-line">{lineContents}</div>{siblings}</div>;
+    if (indented) return <div className="history-variation nested" key={key}><div className="variation-line">{lineContents}</div>{siblings}</div>;
+    return <span className="variation-inline" key={key}><span className="variation-paren">(</span><span className="variation-inline-line">{lineContents}</span><span className="variation-paren">)</span></span>;
+  }
 
   return (
     <main className="workbench">
@@ -1139,17 +1369,17 @@ export function UltimateWorkbench() {
               </button>
             ))}
           </div>
-          <p className="rail-note">{view === "draft" ? draftPlacementActive ? `${draftMessage || "Place this window's picks in your home zone."} ${draftPlacementPool.length} remaining.` : "The board is locked during bans and Ultimate Fish windows." : boardLocked ? "Board setup is locked while the game is active." : view === "analysis" ? "Use a palette tool, or drag any placed character to a new square." : editing ? "Choose a character, then click a square." : "Set the starting position, then start the game."}</p>
+          <p className="rail-note">{view === "draft" ? draftPlacementActive ? `${draftMessage || "Place this window's picks in your home zone."} ${draftPlacementPool.length} remaining.` : "The board is locked during bans and Ultimate Fish windows." : analysisLocked ? "Setup tools are locked while analysis runs; make legal moves or use a move line instead." : gameActive ? "Board setup is locked while the game is active." : view === "analysis" ? "Use a palette tool, or drag any placed character to a new square." : editing ? "Choose a character, then click a square." : "Drag characters, edit the setup, or start the game."}</p>
         </aside>
 
         <section className="board-stage">
           <div className="board-meta">
             <div className="player-card opponent"><span className={`player-token ${topColor === "white" ? "light" : ""}`}>{topColor === "white" ? "I" : "O"}</span><div><small>{topColor === "white" ? "IVORY" : "ONYX"}</small><strong>{playerSide === topColor ? "You" : "Ultimate Fish"}</strong></div><span className={`material-total ${turn === topColor ? "active" : ""}`}>{material[topColor]} pts</span></div>
             <div className="board-actions">
-              <button disabled={gameActive || view === "draft"} onClick={() => replacePosition(classicPosition())}>Reset</button>
-              <button disabled={gameActive || view === "draft"} onClick={() => replacePosition({ pieces: [], turn: "white", meta: emptyMeta() })}>Clear</button>
+              <button disabled={boardLocked || view === "draft"} onClick={() => replacePosition(classicPosition())}>Reset</button>
+              <button disabled={boardLocked || view === "draft"} onClick={() => replacePosition({ pieces: [], turn: "white", meta: emptyMeta() })}>Clear</button>
               <button onClick={() => setFlipped(!flipped)}>Flip ↻</button>
-              <button disabled={gameActive || view === "draft"} onClick={openPositionEditor}>Position code</button>
+              <button disabled={boardLocked || view === "draft"} onClick={openPositionEditor}>Position code</button>
             </div>
           </div>
 
@@ -1167,12 +1397,12 @@ export function UltimateWorkbench() {
                   <button key={index} role="gridcell" aria-label={squareName(index)}
                     className={`square ${dark ? "dark" : "light"} ${selected === index || (Boolean(piece) && selected !== null && boardMap[selected]?.piece.uid === piece?.uid) ? "selected" : ""} ${legalTargets.has(index) ? "legal-target" : ""}`}
                     onClick={() => handleSquare(index)}
-                    onDragOver={(event) => { if (!gameActive && (view === "analysis" || draftPlacementActive)) event.preventDefault(); }}
+                    onDragOver={(event) => { if (!boardLocked && (view === "analysis" || view === "play" || draftPlacementActive)) event.preventDefault(); }}
                     onDrop={() => dragPiece(index)}>
                     {col === 0 && <span className="rank-label">{flipped ? row + 1 : 10 - row}</span>}
                     {row === 9 && <span className="file-label">{flipped ? files[7 - col] : files[col]}</span>}
                     {legalTargets.has(index) && <span className={mapped && !concealedTarget ? "capture-ring" : "move-dot"} />}
-                    {showPiece && <span className="board-piece-wrap" draggable={!boardLocked && (view === "analysis" || draftPieceIsMovable(piece))} onDragStart={() => setDraggedUid(piece.uid)}><PieceToken piece={piece} view={view} playerSide={playerSide} publicBelief={Boolean(belief)} /></span>}
+                    {showPiece && <span className="board-piece-wrap" draggable={!boardLocked && (view === "analysis" || view === "play" || draftPieceIsMovable(piece))} onDragStart={() => setDraggedUid(piece.uid)}><PieceToken piece={piece} view={view} playerSide={playerSide} publicBelief={Boolean(belief)} /></span>}
                   </button>
                 );
               })}
@@ -1183,7 +1413,7 @@ export function UltimateWorkbench() {
                 return (
                   <div key={piece.uid} className={`giant-piece ${piece.color}`}
                     style={{ top: `${Math.min(...rows) * 10}%`, left: `${Math.min(...cols) * 12.5}%`, width: "25%", height: "20%" }}>
-                    <button type="button" className="giant-drag-handle" draggable={!boardLocked && (view === "analysis" || (draftPlacementActive && piece.color === playerSide && draftPlacedUids.includes(piece.uid)))}
+                    <button type="button" className="giant-drag-handle" draggable={!boardLocked && (view === "analysis" || view === "play" || (draftPlacementActive && piece.color === playerSide && draftPlacedUids.includes(piece.uid)))}
                       onDragStart={() => setDraggedUid(piece.uid)} onClick={() => handleSquare(piece.square)}>
                       <PieceToken piece={piece} view={view} playerSide={playerSide} publicBelief={Boolean(belief)} large />
                     </button>
@@ -1220,10 +1450,10 @@ export function UltimateWorkbench() {
             <>
               <section className={`panel evaluation-panel ${!showEvaluation ? "game-only" : ""}`}>
                 <div className="panel-heading"><div><p className="eyebrow">{view === "play" ? "GAME" : "ENGINE"}</p><h2>{view === "play" ? (gameActive ? "Ultimate game" : "Game setup") : "Analysis"}</h2></div>{showEvaluation && <span className="eval-score">{score.label}</span>}</div>
-                {showEvaluation && <><div className="eval-track" aria-label={`Ivory evaluation ${score.label}`}><span style={{ width: `${score.percent}%` }} /></div><div className="engine-line"><strong>{analysis?.pv.slice(0, 8).join(" ") || "No engine line yet"}</strong></div></>}
-                <div className="move-history"><div className="history-head"><span>#</span><span>Ivory</span><span>Onyx</span></div>{historyRows.length ? historyRows.map((row, index) => <div className="history-row" key={index}><span>{index + 1}.</span>{historyCell(row.white)}{historyCell(row.black)}</div>) : <p className="empty-state">Moves will appear here as the game is played.</p>}</div>
+                {showEvaluation && <><div className="eval-track" aria-label={`Ivory evaluation ${score.label}`}><span style={{ width: `${score.percent}%` }} /></div><div className="engine-line">{analysis?.pv.length ? <div className="engine-moves" aria-label="Engine line">{analysis.pv.slice(0, 8).map((move, ply) => { const label = engineMoveLabel(ply, turn, meta.fullmove); return <button key={`${ply}-${move}`} type="button" className="engine-move" onPointerEnter={() => void previewEngineLine(ply)} onPointerLeave={clearLinePreview} onFocus={() => void previewEngineLine(ply)} onBlur={clearLinePreview} onClick={() => void commitEngineLine(ply)} disabled={Boolean(belief)} title={belief ? "Line previews are unavailable for a public-information belief." : `Preview and play through ${move}`}>{label && <span>{label}</span>}{move}</button>; })}</div> : <strong>No engine line yet</strong>}{linePreview && <EngineLinePreview preview={linePreview} playerSide={playerSide} />}</div></>}
+                <div className="move-history"><div className="history-head"><span>#</span><span>Ivory</span><span>Onyx</span></div>{historyRows.length ? historyRows.map((row, index) => <div key={index}><div className="history-row"><span>{index + 1}.</span>{historyCell(row.white)}{historyCell(row.black)}</div>{variationsForRow(row, index).map((variation) => renderVariation(variation, 1))}</div>) : <p className="empty-state">Moves will appear here as the game is played.</p>}</div>
                 <div className="engine-settings">{view === "analysis" ? <label>Max depth <output>{analysisMaxDepth}</output><input type="range" min="1" max="50" value={analysisMaxDepth} onChange={(event) => setAnalysisMaxDepth(Number(event.target.value))} /></label> : <label>Depth <output>{playDepth}</output><input type="range" min="1" max="16" value={playDepth} onChange={(event) => setPlayDepth(Number(event.target.value))} /></label>}</div>
-                {view === "analysis" ? <button className={`primary-button ${analysisRunning ? "stop-button" : ""}`} onClick={() => { if (analysisRunning) { setAnalysisRunning(false); analysisAbort.current?.abort(); setEngineStatus("ready"); setEngineMessage(`${legalMoves.length} legal moves · ${(analysis?.nodes ?? 0).toLocaleString()} nodes in ${analysis?.time ?? 0} ms`); } else setAnalysisRunning(true); }}>{analysisRunning ? "Stop Ultimate Analysis" : "Start Ultimate Analysis"}</button> : <button className={`primary-button ${gameActive ? "stop-button" : ""}`} onClick={() => gameActive ? stopGame() : void startGame()}>{gameActive ? "Stop Ultimate Game" : "Start Ultimate Game"}</button>}
+                {view === "analysis" ? <button className={`primary-button ${analysisRunning ? "stop-button" : ""}`} onClick={() => { if (analysisRunning) { setAnalysisRunning(false); analysisAbort.current?.abort(); setEngineStatus("ready"); setEngineMessage(`${legalMoves.length} legal moves · ${(analysis?.nodes ?? 0).toLocaleString()} nodes in ${analysis?.time ?? 0} ms`); } else { setEditing(false); setDraggedUid(null); setAnalysisRunning(true); } }}>{analysisRunning ? "Stop Ultimate Analysis" : "Start Ultimate Analysis"}</button> : <button className={`primary-button ${gameActive ? "stop-button" : ""}`} onClick={() => gameActive ? stopGame() : void startGame()}>{gameActive ? "Stop Ultimate Game" : "Start Ultimate Game"}</button>}
                 <p className="disabled-note">{engineStatus === "thinking" ? view === "analysis" ? `Ultimate Fish is thinking… (current depth: ${analysis?.depth ?? 0})` : "Ultimate Fish is thinking…" : engineMessage}</p>
               </section>
               <section className="panel inspector-panel">

@@ -200,8 +200,22 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
 .eval-score { color: var(--amber); font: 800 24px Georgia, serif; }
 .eval-track { height: 7px; margin: 15px 0 12px; overflow: hidden; background: #080c11; border-radius: 10px; box-shadow: inset 0 1px 2px rgba(0,0,0,.5); }
 .eval-track span { display: block; height: 100%; background: linear-gradient(90deg, var(--amber-deep), #f5c56d); transition: width .28s ease; }
-.engine-line { min-height: 38px; padding: 10px; border: 1px solid #273142; border-radius: 8px; background: #111822; }
+.engine-line { position: relative; min-height: 38px; padding: 10px; border: 1px solid #273142; border-radius: 8px; background: #111822; }
 .engine-line strong { font: 720 10px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; color: #d5dce7; overflow-wrap: anywhere; }
+.engine-moves { display: flex; flex-wrap: wrap; gap: 3px; }
+.engine-move { padding: 1px 3px; border: 0; background: transparent; color: #d5dce7; font: 720 10px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; cursor: pointer; transition: color .12s ease; }
+.engine-move:hover:not(:disabled), .engine-move:focus-visible { color: #f0c777; outline: 0; }
+.engine-move > span, .variation-move > span { margin-right: 3px; color: var(--faint); }
+.engine-move:disabled { cursor: default; }
+.engine-line-preview { position: absolute; z-index: 20; right: 8px; top: calc(100% + 9px); width: min(238px, calc(100vw - 56px)); padding: 8px; border: 1px solid #4b5869; border-radius: 8px; background: #d9d7d4; box-shadow: 0 12px 28px rgba(0,0,0,.42); color: #182029; }
+.engine-line-preview-arrow { position: absolute; top: -6px; right: 24px; width: 12px; height: 12px; border-top: 1px solid #4b5869; border-left: 1px solid #4b5869; background: #d9d7d4; transform: rotate(45deg); }
+.engine-line-preview-head { position: relative; z-index: 1; display: flex; justify-content: space-between; gap: 8px; margin-bottom: 6px; font: 750 8px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.engine-line-preview-head span { color: #59626c; }
+.engine-preview-board { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(8, 1fr); grid-template-rows: repeat(10, 1fr); aspect-ratio: 8 / 10; overflow: hidden; border: 1px solid #68705f; }
+.engine-preview-square { display: grid; place-items: center; min-width: 0; min-height: 0; }
+.engine-preview-square.light { background: #e5ecd0; }
+.engine-preview-square.dark { background: #799a5a; }
+.engine-preview-square .board-piece { width: 88%; height: 88%; }
 .move-history { margin-top: 11px; overflow: hidden; border: 1px solid #26303e; border-radius: 8px; background: #111720; }
 .history-head, .history-row { display: grid; grid-template-columns: 28px 1fr 1fr; }
 .history-head { color: var(--faint); background: #0d131b; font-size: 8px; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; }
@@ -212,6 +226,14 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
 .history-cell { display: block; width: 100%; overflow-wrap: anywhere; background: transparent; color: inherit; text-align: left; }
 .history-link { cursor: pointer; transition: background .14s, color .14s; }
 .history-link:hover { background: #1d2835; color: var(--amber); }
+.history-variation { margin: 0 7px 0 13px; padding: 7px 0 7px 12px; border-left: 1px solid #697587; color: #cbd4df; font: 700 9px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+.history-variation.nested { display: block; margin: 6px 0 0 12px; padding: 6px 0 0 12px; }
+.variation-line { display: flex; flex-wrap: wrap; gap: 3px 7px; align-items: baseline; }
+.variation-segment, .variation-inline, .variation-inline-line { display: inline-flex; flex-wrap: wrap; gap: 3px 7px; align-items: baseline; }
+.variation-inline { margin-left: 4px; }
+.variation-sibling-group { display: block; width: 100%; }
+.variation-move { padding: 0; border: 0; background: transparent; color: inherit; font: inherit; white-space: nowrap; }
+.variation-paren { color: var(--faint); }
 .move-history .empty-state { margin: 0; padding: 14px; }
 .engine-settings { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 14px 0; padding-top: 13px; border-top: 1px solid var(--line); }
 .engine-settings label { color: var(--muted); font-size: 9px; }
