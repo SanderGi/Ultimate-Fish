@@ -34,6 +34,11 @@ class ConcreteWave0BatchTest(unittest.TestCase):
         self.assertEqual(fragment["schema"], "ultimate-aws-supervision-job-fragment-v1")
         self.assertEqual(len(fragment["jobs"]), 24)
         self.assertEqual(fragment["replace_job_ids"], ["concrete-wave0-remaining"])
+        raw_manifest_sha = hashlib.sha256(
+            batch.serialized_manifest(document)).hexdigest()
+        self.assertEqual(fragment["batch_manifest"]["sha256"], raw_manifest_sha)
+        self.assertEqual(fragment["batch_manifest"]["semantic_sha256"],
+                         document["manifest_sha256"])
         self.assertEqual(
             [update["id"] for update in fragment["retained_placeholder_updates"]],
             ["concrete-wave1", "concrete-wave2"])
@@ -160,6 +165,10 @@ class ConcreteWave0BatchTest(unittest.TestCase):
                                 for path in paths))
             self.assertTrue(any(path.endswith("ultimate_concrete_wave0_batch.json")
                                 for path in paths))
+            manifest_binding = next(
+                binding for binding in job["staging_source_bindings"]
+                if binding["path"].endswith("ultimate_concrete_wave0_batch.json"))
+            self.assertEqual(manifest_binding["sha256"], raw_manifest_sha)
             self.assertTrue(any(path.startswith("/etc/systemd/system/")
                                 for path in paths))
             self.assertTrue(any(path.endswith("/dependencies/manifest.json")

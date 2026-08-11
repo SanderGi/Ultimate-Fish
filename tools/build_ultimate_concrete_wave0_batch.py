@@ -121,6 +121,10 @@ def canonical_commit() -> str:
     return commit
 
 
+def serialized_manifest(document: Mapping[str, object]) -> bytes:
+    return (json.dumps(document, indent=2, sort_keys=True) + "\n").encode()
+
+
 def require_committed_sources() -> str:
     """Require every manifest-generating input to be present and clean."""
     paths = tuple(runner.MODEL_SOURCES) + (
@@ -550,6 +554,7 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
     after source staging and remote preflight have authenticated every path.
     """
     jobs: list[dict[str, object]] = []
+    raw_manifest_sha256 = sha256_bytes(serialized_manifest(document))
     for unit in document.get("units", []):
         if not isinstance(unit, Mapping):
             raise RuntimeError("batch unit record is malformed")
@@ -576,7 +581,7 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
         })
         bindings.append({
             "path": f"{runner_source}/tools/ultimate_concrete_wave0_batch.json",
-            "sha256": str(document["manifest_sha256"]),
+            "sha256": raw_manifest_sha256,
         })
         bindings.append({
             "path": f"{unit['dependency_root']}/manifest.json",
@@ -632,7 +637,8 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
         "canonical_commit": document["canonical_commit"],
         "batch_manifest": {
             "path": f"{SOURCE_ROOT}/tools/ultimate_concrete_wave0_batch.json",
-            "sha256": document["manifest_sha256"],
+            "sha256": raw_manifest_sha256,
+            "semantic_sha256": document["manifest_sha256"],
         },
         "jobs": jobs,
         "replace_job_ids": ["concrete-wave0-remaining"],
@@ -648,7 +654,7 @@ def build_supervision_jobs(document: Mapping[str, object]) -> dict[str, object]:
 
 
 def write_manifest(document: Mapping[str, object], path: Path = MANIFEST) -> None:
-    path.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n")
+    path.write_bytes(serialized_manifest(document))
 
 
 def write_job_fragment(document: Mapping[str, object],
