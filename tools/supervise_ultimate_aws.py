@@ -290,8 +290,8 @@ def command(argv):
  return p.returncode,p.stdout.strip(),p.stderr.strip()
 def props(unit):
  names=['LoadState','ActiveState','SubState','Result','ExecMainCode',
-        'ExecMainStatus','MemoryCurrent','MemoryPeak','StateChangeTimestamp',
-        'AllowedCPUs','CPUUsageNSec','TasksCurrent']
+        'ExecMainStatus','MemoryCurrent','StateChangeTimestamp',
+        'AllowedCPUs','CPUUsageNSec']
  try:
   rc,out,err=command(['systemctl','show',unit,*sum((['-p',n] for n in names),[])])
  except OSError as error:

@@ -145,6 +145,10 @@ class SupervisionTests(unittest.TestCase):
         payload = json.loads(base64.b64decode(arguments[4]))
         self.assertIn("sys.argv[2]", program)
         self.assertEqual("first", payload["jobs"][0]["id"])
+        # Keep the SSM response compact: these systemd properties are not
+        # consumed by classification, resource safety, or scheduling.
+        self.assertNotIn("MemoryPeak", program)
+        self.assertNotIn("TasksCurrent", program)
 
     @mock.patch.object(SUPERVISOR.subprocess, "run")
     def test_timeout_error_redacts_encoded_aws_payload(self, command: mock.Mock) -> None:
