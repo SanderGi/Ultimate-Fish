@@ -48,7 +48,7 @@ DEFAULT_CLASSES = 24
 GIB = 1 << 30
 UNIT_PREFIX = "ultimatefish-concrete-wave0-batch"
 SOURCE_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/source/ultimatefish"
-DEPENDENCY_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/dependencies"
+DEPENDENCY_BASE_ROOT = "/mnt/ultimatefish/concrete-wave0-batch/dependencies"
 S3_PREFIX = (
     "s3://ultimatefish-info-20260808-a4e679c6-831688117652/"
     "results/concrete/penguin-causal-1083b6f8"
@@ -413,6 +413,8 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
         unit_name = f"{UNIT_PREFIX}-{ordinal:02d}-class{index:03d}-{stem}.service"
         work_mount = str(slot["work_mount"])
         work = f"{work_mount}/concrete-wave0-batch/batch-{ordinal:02d}-class{index:03d}-{stem}"
+        dependency_root = (
+            f"{DEPENDENCY_BASE_ROOT}/batch-{ordinal:02d}-class{index:03d}-{stem}")
         _safe_atom(unit_name.removesuffix(".service"), label="unit")
         _safe_atom(stem, label="class stem")
         if unit_name in seen_units or work in seen_work:
@@ -451,8 +453,8 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
             "CANONICAL_COMMIT": commit,
             "SOURCE_ROOT": SOURCE_ROOT,
             "WORK_DIRECTORY": work,
-            "DEPENDENCY_ROOT": DEPENDENCY_ROOT,
-            "DEPENDENCY_MANIFEST": f"{DEPENDENCY_ROOT}/manifest.json",
+            "DEPENDENCY_ROOT": dependency_root,
+            "DEPENDENCY_MANIFEST": f"{dependency_root}/manifest.json",
             "S3_PREFIX": S3_PREFIX,
             "HOST_NAME": str(slot["host_name"]),
             "INSTANCE_ID": str(slot["instance_id"]),
@@ -482,7 +484,7 @@ def build_document(count: int = DEFAULT_CLASSES) -> dict[str, object]:
             "scheduler_state": "queued-supervisor-selects-safe-subset",
             "work_directory": work,
             "source_root": SOURCE_ROOT,
-            "dependency_root": DEPENDENCY_ROOT,
+            "dependency_root": dependency_root,
             "dependencies": dependencies,
             "dependency_records": dependency_records,
             "resource_requirements": scheduler_resources,

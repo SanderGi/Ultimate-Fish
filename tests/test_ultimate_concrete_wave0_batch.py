@@ -142,6 +142,16 @@ class ConcreteWave0BatchTest(unittest.TestCase):
         for cpus in cpu_by_host.values():
             self.assertEqual(len(cpus), len(set(cpus)))
 
+        dependency_roots = [unit["dependency_root"] for unit in units]
+        self.assertEqual(len(dependency_roots), len(set(dependency_roots)))
+        for unit in units:
+            self.assertIn(
+                f"--dependency-manifest {unit['dependency_root']}/manifest.json",
+                unit["service_text"])
+            self.assertIn(
+                f"ReadOnlyPaths={unit['source_root']} {unit['dependency_root']}",
+                unit["service_text"])
+
         for job in fragment["jobs"]:
             self.assertNotIn("advanceable", job)
             self.assertTrue(job["queue_stage"])
@@ -173,6 +183,13 @@ class ConcreteWave0BatchTest(unittest.TestCase):
                                 for path in paths))
             self.assertTrue(any(path.endswith("/dependencies/manifest.json")
                                 for path in paths))
+            dependency_manifest_path = next(
+                path for path in paths
+                if path.endswith("/manifest.json") and
+                "/concrete-wave0-batch/dependencies/" in path)
+            self.assertEqual(
+                dependency_manifest_path,
+                f"{unit['dependency_root']}/manifest.json")
             for binding in job["staging_source_bindings"]:
                 self.assertRegex(binding["sha256"], r"^[0-9a-f]{64}$")
                 self.assertFalse(any(character in binding["path"]
