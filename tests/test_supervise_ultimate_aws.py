@@ -73,7 +73,9 @@ def remote(first: str = "active", complete: bool = False) -> dict[str, object]:
         "jobs": [{
             "id": "first",
             "unit": {"ActiveState": first, "Result": "success",
-                     "ExecMainStatus": "0", "AllowedCPUs": "0-15"},
+                     "ExecMainStatus": "0", "AllowedCPUs": "0-15",
+                     "CPUUsageNSec": "10000000000",
+                     "StateChangeTimestamp": "Sun 2026-08-10 10:00:00 UTC"},
             "checkpoints": [{"path": "/tmp/checkpoint", "exists": True,
                              "size": 100, "mtime_ns": 1}],
             "completion": ([{"path": "/tmp/result", "exists": True,
@@ -84,7 +86,9 @@ def remote(first: str = "active", complete: bool = False) -> dict[str, object]:
         }, {
             "id": "second",
             "unit": {"ActiveState": "inactive", "Result": "success",
-                     "ExecMainStatus": "0", "AllowedCPUs": "16-31"},
+                     "ExecMainStatus": "0", "AllowedCPUs": "16-31",
+                     "CPUUsageNSec": "0",
+                     "StateChangeTimestamp": "Sun 2026-08-10 10:00:00 UTC"},
             "checkpoints": [], "completion": [],
             "sources": [{"path": "/tmp/source", "exists": True,
                          "sha256": SHA_A}],
@@ -181,6 +185,26 @@ class SupervisionTests(unittest.TestCase):
         self.assertEqual(24, report["allocated_vcpus"])
         self.assertTrue(report["overlaps"])
 
+    def test_cpu_allocation_reports_interval_utilization(self) -> None:
+        definition = config()["instances"][0]
+        before = remote()
+        after = remote()
+        after["jobs"][0]["unit"]["CPUUsageNSec"] = "130000000000"
+        report = SUPERVISOR.cpu_allocation(
+            definition, after, before, sample_seconds=60)
+        sample = report["measured_jobs"]["first"]
+        self.assertEqual(120_000_000_000, sample["cpu_delta_nsec"])
+        self.assertEqual(2.0, sample["average_busy_vcpus"])
+        self.assertEqual(12.5, sample["allocated_utilization_percent"])
+        self.assertEqual(6.2, report["measured_fleet_capacity_percent"])
+        self.assertTrue(report["measurement_complete"])
+
+        after["jobs"][0]["unit"]["StateChangeTimestamp"] = "new activation"
+        report = SUPERVISOR.cpu_allocation(
+            definition, after, before, sample_seconds=60)
+        self.assertFalse(report["measurement_complete"])
+        self.assertEqual({}, report["measured_jobs"])
+
     @mock.patch.object(SUPERVISOR, "head_certificate")
     @mock.patch.object(SUPERVISOR, "local_probe")
     @mock.patch.object(SUPERVISOR, "ec2_inventory")
@@ -193,9 +217,14 @@ class SupervisionTests(unittest.TestCase):
         self.assertEqual("CHANGE", first["status"])
         probe.return_value = remote()
         probe.return_value["jobs"][0]["checkpoints"][0]["size"] = 200
+        probe.return_value["jobs"][0]["unit"]["CPUUsageNSec"] = "70000000000"
         second, _ = SUPERVISOR.supervise(
             config(), state, self.now + dt.timedelta(minutes=5))
         self.assertEqual("NO_CHANGE", second["status"])
+        measured = second["report"]["instances"]
+        # Quiet polls do not emit a full instance report, while the returned
+        # durable state still retains the utilization sample.
+        self.assertEqual({}, measured)
         head.assert_not_called()
 
     @mock.patch.object(SUPERVISOR, "head_certificate")

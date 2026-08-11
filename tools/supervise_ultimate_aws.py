@@ -441,10 +441,25 @@ def resource_warnings(instance: dict[str, Any], remote: dict[str, Any]) -> list[
     return warnings
 
 
-def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any]) -> dict[str, Any]:
+def integer_property(unit: dict[str, Any], name: str) -> int | None:
+    value = unit.get(name)
+    try:
+        result = int(value)
+    except (TypeError, ValueError):
+        return None
+    return result if result >= 0 else None
+
+
+def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
+                   previous_remote: dict[str, Any] | None = None,
+                   sample_seconds: float | None = None) -> dict[str, Any]:
     capacity = int(instance["vcpus"])
     active_sets: dict[str, set[int]] = {}
     unknown: list[str] = []
+    previous_jobs = {
+        str(job.get("id")): job for job in (previous_remote or {}).get("jobs", [])
+    }
+    utilization: dict[str, dict[str, Any]] = {}
     for job in remote.get("jobs", []):
         unit = job.get("unit", {})
         if unit.get("ActiveState") not in {"active", "activating", "reloading"}:
@@ -457,6 +472,26 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any]) -> dict[str
             active_sets[str(job["id"])] = cpus
         else:
             unknown.append(str(job["id"]))
+        current_cpu = integer_property(unit, "CPUUsageNSec")
+        previous_unit = previous_jobs.get(str(job["id"]), {}).get("unit", {})
+        previous_cpu = integer_property(previous_unit, "CPUUsageNSec")
+        same_activation = (
+            unit.get("StateChangeTimestamp") and
+            unit.get("StateChangeTimestamp") ==
+            previous_unit.get("StateChangeTimestamp"))
+        if (cpus and current_cpu is not None and previous_cpu is not None and
+                current_cpu >= previous_cpu and same_activation and
+                sample_seconds is not None and sample_seconds > 0):
+            delta = current_cpu - previous_cpu
+            busy = delta / (sample_seconds * 1_000_000_000)
+            utilization[str(job["id"])] = {
+                "cpu_usage_nsec": current_cpu,
+                "cpu_delta_nsec": delta,
+                "sample_seconds": round(sample_seconds, 3),
+                "average_busy_vcpus": round(busy, 3),
+                "allocated_utilization_percent": round(
+                    100 * busy / len(cpus), 1),
+            }
     allocated = set().union(*active_sets.values()) if active_sets else set()
     overlaps: list[str] = []
     names = sorted(active_sets)
@@ -466,6 +501,8 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any]) -> dict[str
             if shared:
                 overlaps.append(
                     f"{first}+{second}:{','.join(map(str, sorted(shared)))}")
+    measured_busy = sum(float(item["average_busy_vcpus"])
+                        for item in utilization.values())
     return {
         "vcpus": capacity,
         "allocated_vcpus": len(allocated),
@@ -474,12 +511,20 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any]) -> dict[str
         "unknown_jobs": unknown,
         "overlaps": overlaps,
         "active_jobs": {name: len(cpus) for name, cpus in active_sets.items()},
+        "measured_jobs": utilization,
+        "measured_busy_vcpus": round(measured_busy, 3),
+        "measured_fleet_capacity_percent": round(
+            100 * measured_busy / capacity, 1),
+        "measurement_complete": bool(active_sets) and
+        set(utilization) == set(active_sets),
     }
 
 
 def probe_instance(config: dict[str, Any], definition: dict[str, Any],
                    ec2: dict[str, Any], jobs: list[dict[str, Any]],
-                   now: dt.datetime) -> tuple[dict[str, Any], str | None]:
+                   now: dt.datetime, previous_remote: dict[str, Any] | None,
+                   sample_seconds: float | None
+                   ) -> tuple[dict[str, Any], str | None]:
     launch = parse_time(ec2["LaunchTime"])
     hours = max(0.0, (now - launch).total_seconds() / 3600)
     spend = hours * float(definition["hourly_usd"])
@@ -498,10 +543,14 @@ def probe_instance(config: dict[str, Any], definition: dict[str, Any],
         except Exception as exception:  # one host must not hide the other four
             error = str(exception)
     warnings = resource_warnings(definition, remote) if remote else []
-    allocation = cpu_allocation(definition, remote) if remote else {
+    allocation = cpu_allocation(
+        definition, remote, previous_remote, sample_seconds) if remote else {
         "vcpus": int(definition["vcpus"]), "allocated_vcpus": 0,
         "idle_vcpus": int(definition["vcpus"]), "allocation_known": False,
         "unknown_jobs": [], "overlaps": [], "active_jobs": {},
+        "measured_jobs": {}, "measured_busy_vcpus": 0.0,
+        "measured_fleet_capacity_percent": 0.0,
+        "measurement_complete": False,
     }
     if allocation["overlaps"]:
         warnings.append("cpu_overlap=" + ";".join(allocation["overlaps"]))
@@ -518,6 +567,14 @@ def probe_instance(config: dict[str, Any], definition: dict[str, Any],
 def supervise(config: dict[str, Any], previous: dict[str, Any],
               now: dt.datetime) -> tuple[dict[str, Any], dict[str, Any]]:
     inventory = ec2_inventory(config)
+    previous_report = previous.get("report", {})
+    previous_instances = previous_report.get("instances", {})
+    sample_seconds: float | None = None
+    try:
+        sample_seconds = (now - parse_time(
+            str(previous_report["observed_at"]))).total_seconds()
+    except (KeyError, TypeError, ValueError):
+        pass
     jobs_by_instance: dict[str, list[dict[str, Any]]] = {}
     for job in config["jobs"]:
         jobs_by_instance.setdefault(job["instance_id"], []).append(job)
@@ -537,7 +594,9 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                 continue
             futures[executor.submit(
                 probe_instance, config, definition, ec2,
-                jobs_by_instance.get(identifier, []), now)] = (
+                jobs_by_instance.get(identifier, []), now,
+                previous_instances.get(identifier, {}).get("remote"),
+                sample_seconds)] = (
                     identifier, definition)
         for future in as_completed(futures):
             identifier, definition = futures[future]
@@ -643,11 +702,19 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                                               for instance in config["instances"]), 2),
         "instances": instance_results, "jobs": jobs, "errors": errors,
     }
+    # Utilization is sampled every poll and belongs in the durable state and
+    # regular report, but it must not turn quiet progress into a five-minute
+    # event stream.  Scheduling topology and warnings remain event-significant.
     event_view = {
         "instances": {identifier: {
             "ec2_state": value["ec2_state"],
             "resource_warnings": value["resource_warnings"],
-            "cpu_allocation": value["cpu_allocation"],
+            "cpu_allocation": {
+                key: value["cpu_allocation"][key] for key in (
+                    "vcpus", "allocated_vcpus", "idle_vcpus",
+                    "allocation_known", "unknown_jobs", "overlaps",
+                    "active_jobs")
+            },
         } for identifier, value in instance_results.items()},
         "jobs": {identifier: value["status"] for identifier, value in jobs.items()},
         "errors": errors,
