@@ -210,7 +210,7 @@ class SupervisionTests(unittest.TestCase):
         self.assertEqual(173, max(
             sum(len(job["source_bindings"]) for job in jobs)
             for jobs in jobs_by_host.values()))
-        for instance_id, jobs in jobs_by_host.items():
+        def check_host_payload(instance_id, jobs):
             definition = next(item for item in document["instances"]
                               if item["instance_id"] == instance_id)
             definition = json.loads(json.dumps(definition))
@@ -241,6 +241,21 @@ class SupervisionTests(unittest.TestCase):
                 self.assertTrue(all(
                     isinstance(digest, str) and len(digest) == 64
                     for job in observed["jobs"] for digest in job["sources"]))
+            return len(encoded)
+
+        for instance_id, jobs in jobs_by_host.items():
+            check_host_payload(instance_id, jobs)
+        # The promoted batch shares hosts with existing authenticated jobs.
+        # Exercise the complete per-host probe too; otherwise a legacy job's
+        # checkpoint metadata could push the combined response over the SSM
+        # budget even when the 24 batch records fit in isolation.
+        all_jobs_by_host = {}
+        for job in document["jobs"]:
+            if not job.get("queue_stage"):
+                all_jobs_by_host.setdefault(job["instance_id"], []).append(job)
+        sizes = {instance_id: check_host_payload(instance_id, jobs)
+                 for instance_id, jobs in all_jobs_by_host.items()}
+        self.assertLessEqual(max(sizes.values()), SUPERVISOR.REMOTE_OUTPUT_BUDGET)
 
     def test_cpu_allocation_reports_idle_capacity_and_overlap(self) -> None:
         definition = config()["instances"][0]

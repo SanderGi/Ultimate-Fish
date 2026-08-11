@@ -306,7 +306,7 @@ def aggregate(patterns):
  result=[]
  for pattern in patterns:
   matches=sorted(glob.glob(pattern))
-  if not matches: result.append({'path':pattern,'exists':False}); continue
+  if not matches: result.append({'exists':False}); continue
   digest=hashlib.sha256(); total=0; allocated=0; newest=0
   for path in matches:
    stat=os.stat(path); total+=stat.st_size; allocated+=stat.st_blocks*512
@@ -314,7 +314,7 @@ def aggregate(patterns):
    record=json.dumps([path,stat.st_size,stat.st_mtime_ns],
                      separators=(',',':')).encode()
    digest.update(len(record).to_bytes(8,'big')); digest.update(record)
-  result.append({'path':pattern,'exists':True,'match_count':len(matches),
+  result.append({'exists':True,'match_count':len(matches),
                  'total_size':total,'allocated_bytes':allocated,
                  'newest_mtime_ns':newest,
                  'metadata_sha256':digest.hexdigest()})
