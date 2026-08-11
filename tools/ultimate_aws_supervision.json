@@ -398,7 +398,22 @@
           "sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504"
         }
       ],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/bbbfcb3df46108d7562ff6305b85b03cc0deffe7f5192eab16574ec6cb94a899/kberserkerdragonk-bbbfcb3df46108d7562ff6305b85b03cc0deffe7f5192eab16574ec6cb94a899.tar.zst",
+          "version_id": "ziGJ3OQj8DQorqRiy9uVx07S5uk5Bial",
+          "sha256": "bbbfcb3df46108d7562ff6305b85b03cc0deffe7f5192eab16574ec6cb94a899",
+          "size": 6954020
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/b12bdf67f1a8dee1a5d9decccf2526bc67536f5825dddd8b58b6df34ec98888f/wave-certificate.json",
+          "version_id": "dVI_mmoemHiAwz6xDGlSTQG9ffhMZVOZ",
+          "sha256": "b12bdf67f1a8dee1a5d9decccf2526bc67536f5825dddd8b58b6df34ec98888f",
+          "size": 2557
+        }
+      ]
     },
     {
       "id": "concrete-wave0-remaining",
