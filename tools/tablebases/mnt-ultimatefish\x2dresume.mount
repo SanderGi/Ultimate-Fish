@@ -1,5 +1,5 @@
 [Unit]
-Description=Ultimate Fish retained concrete resume work volume
+Description=Ultimate Fish retained tablebase resume work volume
 Before=ultimatefish-concrete-wave0-006-ac9b2d32-resume-v1.service
 
 [Mount]
