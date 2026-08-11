@@ -26,7 +26,7 @@ generated exclusively from the canonical ledger below by
 `python3 tools/plot_ultimate_tablebases.py`.
 
 <!-- COMPUTATION_LEDGER_START -->
-Ledger totals: **9 certified**, **186 preserving**, **6 computing**, **34 exact draws**, **240 planned**, **2 blocked**, and **147 deferred**; 624 unique material classes.
+Ledger totals: **9 certified**, **186 preserving**, **5 computing**, **34 exact draws**, **240 planned**, **3 blocked**, and **147 deferred**; 624 unique material classes.
 
 | Key | Class | Domain | File | Status | Indexed states | Result domain | First starts W / L / D | Second starts W / L / D | Reachable / unreachable (first; second) | Canonical storage |
 | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | --- |
@@ -504,7 +504,7 @@ Ledger totals: **9 certified**, **186 preserving**, **6 computing**, **34 exact 
 | `opposed:bomb+bomb` | King+Bomb vs King+Bomb | opposed | `kbombkbomb.uftb` | **PRESERVING** | 37,957,920 | concrete | 6,440,274 (3,841,414) / 4,746,170 (60,466) / 3,889,740 (896) | 6,440,274 (3,841,414) / 4,746,170 (60,466) / 3,889,740 (896) | 15,076,184 / 3,902,776; 15,076,184 / 3,902,776 | S3 preservation pending |
 | `opposed:bomb+ninja` | King+Bomb vs King+Ninja | opposed | `kbombkninja.uftb` | **PRESERVING** | 37,957,920 | concrete | 4,900,960 (3,842,796) / 489,142 (528) / 9,742,834 (2,700) | 1,190,298 (5,421,572) / 2,177,708 (53,280) / 10,136,102 | 15,132,936 / 3,846,024; 13,504,108 / 5,474,852 | S3 preservation pending |
 | `opposed:bomb+turtle` | King+Bomb vs King+Turtle | opposed | `kbombkturtle.uftb` | **PRESERVING** | 37,957,920 | concrete | 15,132,776 (3,845,820) / 0 (4) / 160 (200) | 0 (2,437,986) / 15,822,016 (64,838) / 654,120 | 15,132,936 / 3,846,024; 16,476,136 / 2,502,824 | S3 preservation pending |
-| `opposed:bomb+ghost` | King+Bomb vs King+Ghost | opposed | `kbombkghost.uftb` | **COMPUTING** | 75,915,840 | information required | — | — | — | — |
+| `opposed:bomb+ghost` | King+Bomb vs King+Ghost | opposed | `kbombkghost.uftb` | **BLOCKED** | 75,915,840 | information required | — | — | — | — |
 | `opposed:bomb+mage` | King+Bomb vs King+Mage | opposed | `kbombkmage.uftb` | **PRESERVING** | 37,957,920 | concrete | 15,132,936 (3,846,024) / 0 / 0 | 0 (1,609,608) / 17,296,088 (67,760) / 5,504 | 15,132,936 / 3,846,024; 17,301,592 / 1,677,368 | S3 preservation pending |
 | `opposed:bomb+penguin` | King+Bomb vs King+Penguin | opposed | `kbombkpenguin.uftb` | **PRESERVING** | 303,663,360 | concrete | 6,593,680 (4,340,536) / 406,090 (6,876) / 12,086,542 (14,524,196) | 1,559,586 (1,826,880) / 3,972,334 (31,726) / 15,915,376 (14,652,018) | 19,086,312 / 18,871,608; 21,447,296 / 16,510,624 | S3 preservation pending |
 | `opposed:bomb+parasite` | King+Bomb vs King+Parasite | opposed | `kbombkparasite.uftb` | **PRESERVING** | 37,957,920 | concrete | 6,976,158 (3,842,796) / 3,007,200 (3,224) / 5,149,578 (4) | 5,374,364 (3,093,268) / 5,237,688 (59,260) / 5,211,320 (3,060) | 15,132,936 / 3,846,024; 15,823,372 / 3,155,588 | S3 preservation pending |
