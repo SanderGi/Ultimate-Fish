@@ -123,6 +123,12 @@ class SupervisionTests(unittest.TestCase):
         invalid["probe_workers"] = 5
         with self.assertRaisesRegex(RuntimeError, "between one and three"):
             SUPERVISOR.validate_config(invalid)
+        invalid = config()
+        invalid["jobs"][0]["ledger_files"] = ["kabk.uftb"]
+        invalid["jobs"][0]["ledger_results"] = {
+            "other.uftb": {"result_kind": "concrete"}}
+        with self.assertRaisesRegex(RuntimeError, "invalid ledger_results"):
+            SUPERVISOR.validate_config(invalid)
 
     def test_remote_probe_command_has_no_configured_shell_text(self) -> None:
         definition = config()["instances"][0]

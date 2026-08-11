@@ -115,6 +115,15 @@
       "id": "double-jester-authoritative",
       "ledger_files": ["kjesterjesterk.uftb"],
       "ledger_certifies": true,
+      "ledger_results": {
+        "kjesterjesterk.uftb": {
+          "result_kind": "information v2",
+          "first": "7,259,568 (2,229,912) / 0 / 0",
+          "second": "122,242 / 8,682,564 / 684,674",
+          "reachability": "7,259,568 / 2,229,912; 9,489,480 / 0",
+          "storage": "S3 raw sha256:31bfe84a VersionId lYyE49iRP0WafZ4oGBBkqBNAbUDrbhts; arbitrary sha256:5da56e0c VersionId y7GdR.MtNb_mLQ_nRgj9L.0r6yFCuZtM; certificate sha256:536632ab VersionId Z07XOZA77U_9fLhNKU_lL3dltu3fBrHh"
+        }
+      },
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-double-jester-authoritative-7a753e4b-v1.service",
       "dependencies": [],
@@ -124,7 +133,29 @@
         "/mnt/ultimatefish/double-jester-authoritative-7a753e4b-v2/full-authoritative/results/kjesterjesterk.uficapture"
       ],
       "source_bindings": [],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/double-jester/model-7a753e4b/canonical-73602271/results/sha256/31bfe84a37ce8aa09a56de4ca9b00efc25b9f06512f60373aa964ab4ff9caa5e/double-jester-raw-31bfe84a37ce8aa09a56de4ca9b00efc25b9f06512f60373aa964ab4ff9caa5e.tar.zst",
+          "version_id": "lYyE49iRP0WafZ4oGBBkqBNAbUDrbhts",
+          "sha256": "31bfe84a37ce8aa09a56de4ca9b00efc25b9f06512f60373aa964ab4ff9caa5e",
+          "size": 8925879086
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/double-jester/model-7a753e4b/canonical-73602271/results/sha256/5da56e0c79efea44c8588fd046513f10995265f1540910e3cdbe7a9ab95cba89/double-jester-arbitrary-5da56e0c79efea44c8588fd046513f10995265f1540910e3cdbe7a9ab95cba89.tar.zst",
+          "version_id": "y7GdR.MtNb_mLQ_nRgj9L.0r6yFCuZtM",
+          "sha256": "5da56e0c79efea44c8588fd046513f10995265f1540910e3cdbe7a9ab95cba89",
+          "size": 256748350
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/double-jester/model-7a753e4b/canonical-73602271/certificates/sha256/536632ab0d673f791f1f78920325ac9b0578ab37cf7454b4818806847f8ac62d/s3-preservation-certificate.json",
+          "version_id": "Z07XOZA77U_9fLhNKU_lL3dltu3fBrHh",
+          "sha256": "536632ab0d673f791f1f78920325ac9b0578ab37cf7454b4818806847f8ac62d",
+          "size": 6266
+        }
+      ]
     },
     {
       "id": "giant-ghost-same-full",
@@ -583,6 +614,15 @@
       "id": "concrete-wave0-001",
       "ledger_files": ["kberserkerbombk.uftb"],
       "ledger_certifies": true,
+      "ledger_results": {
+        "kberserkerbombk.uftb": {
+          "result_kind": "concrete",
+          "first": "49,719,592 (140,070,008) / 0 / 0",
+          "second": "0 (16,096,080) / 172,804,228 (677,600) / 211,692",
+          "reachability": "49,719,592 / 140,070,008; 173,015,920 / 16,773,680",
+          "storage": "S3 sha256:3addd3e3 VersionId wB7rq2TjG0O6HGb14C9Fq8G5zrsduq6u; certificate sha256:82e18a2b VersionId tulbqrZAz.5MooPj5XUWFjphdAB2Buvl"
+        }
+      },
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-concrete-wave0-001-ac9b2d32-resume-v1.service",
       "dependencies": ["concrete-wave0-011"],
@@ -614,7 +654,22 @@
           "sha256": "2dbfb5cd23d4f4a9902c099fd0e94a6f62b890f21a6ac06942a818ae65411504"
         }
       ],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/3addd3e350e38e9234eee0800c56cefbe7e89f403c5cd0288677fe29906a82ab/kberserkerbombk-3addd3e350e38e9234eee0800c56cefbe7e89f403c5cd0288677fe29906a82ab.tar.zst",
+          "version_id": "wB7rq2TjG0O6HGb14C9Fq8G5zrsduq6u",
+          "sha256": "3addd3e350e38e9234eee0800c56cefbe7e89f403c5cd0288677fe29906a82ab",
+          "size": 4024865
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/82e18a2b210253cb399c9091cda30f9aded9f295137c637170c3e7f33bf834ce/wave-certificate.json",
+          "version_id": "tulbqrZAz.5MooPj5XUWFjphdAB2Buvl",
+          "sha256": "82e18a2b210253cb399c9091cda30f9aded9f295137c637170c3e7f33bf834ce",
+          "size": 2549
+        }
+      ]
     },
     {
       "id": "concrete-wave0-remaining",

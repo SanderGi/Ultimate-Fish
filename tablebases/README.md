@@ -26,7 +26,7 @@ generated exclusively from the canonical ledger below by
 `python3 tools/plot_ultimate_tablebases.py`.
 
 <!-- COMPUTATION_LEDGER_START -->
-Ledger totals: **7 certified**, **186 preserving**, **8 computing**, **34 exact draws**, **240 planned**, **2 blocked**, and **147 deferred**; 624 unique material classes.
+Ledger totals: **9 certified**, **186 preserving**, **6 computing**, **34 exact draws**, **240 planned**, **2 blocked**, and **147 deferred**; 624 unique material classes.
 
 | Key | Class | Domain | File | Status | Indexed states | Result domain | First starts W / L / D | Second starts W / L / D | Reachable / unreachable (first; second) | Canonical storage |
 | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | --- |
@@ -54,7 +54,7 @@ Ledger totals: **7 certified**, **186 preserving**, **8 computing**, **34 exact 
 | `single:angel` | King+Angel vs King | single | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `single:fisherman` | King+Fisherman vs King | single | — | **DRAW** | — | insufficient material | 0 / 0 / 1 | 0 / 0 / 1 | closed-form draw | — |
 | `single:dragon` | King+Dragon vs King | single | `kdragonk.uftb` | **PRESERVING** | 985,920 | concrete | 364,756 (128,204) / 0 / 0 | 0 (41,808) / 414,164 / 36,988 | 364,756 / 128,204; 451,152 / 41,808 | S3 preservation pending |
-| `same:jester+jester` | King+2 Jesters vs King | same | `kjesterjesterk.uftb` | **COMPUTING** | 18,978,960 | information required | — | — | — | — |
+| `same:jester+jester` | King+2 Jesters vs King | same | `kjesterjesterk.uftb` | **CERTIFIED** | 18,978,960 | information v2 | 7,259,568 (2,229,912) / 0 / 0 | 122,242 / 8,682,564 / 684,674 | 7,259,568 / 2,229,912; 9,489,480 / 0 | S3 raw sha256:31bfe84a VersionId lYyE49iRP0WafZ4oGBBkqBNAbUDrbhts; arbitrary sha256:5da56e0c VersionId y7GdR.MtNb_mLQ_nRgj9L.0r6yFCuZtM; certificate sha256:536632ab VersionId Z07XOZA77U_9fLhNKU_lL3dltu3fBrHh |
 | `same:jester+knight` | King+Jester+Knight vs King | same | `kjesterknightk.uftb` | **PRESERVING** | 37,957,920 | information v2 | 14,798,084 (4,180,876) / 0 / 0 | 242,136 / 16,055,072 / 2,681,752 | 14,798,084 / 4,180,876; 18,978,960 / 0 | S3 preservation pending |
 | `same:jester+pawn` | King+Jester+Pawn vs King | same | `kjesterpawnk.uftb` | **PLANNED** | 75,915,840 | concrete | — | — | — | — |
 | `same:jester+queen` | King+Jester+Queen vs King | same | `kjesterqueenk.uftb` | **PRESERVING** | 37,957,920 | information v2 | 10,877,572 (8,101,388) / 0 / 0 | 611,994 / 17,307,456 / 1,059,510 | 10,877,572 / 8,101,388; 18,978,960 / 0 | S3 preservation pending |
@@ -184,7 +184,7 @@ Ledger totals: **7 certified**, **186 preserving**, **8 computing**, **34 exact 
 | `same:bishop+fisherman` | King+Bishop+Fisherman vs King | same | `kbishopfishermank.uftb` | **PRESERVING** | 37,957,920 | concrete | 0 (3,693,788) / 0 / 15,285,172 | 0 (1,609,608) / 0 / 17,369,352 | 15,285,172 / 3,693,788; 17,369,352 / 1,609,608 | S3 preservation pending |
 | `same:bishop+dragon` | King+Bishop+Dragon vs King | same | `kbishopdragonk.uftb` | **PRESERVING** | 37,957,920 | concrete | 12,325,918 (6,653,042) / 0 / 0 | 0 (1,609,608) / 16,094,422 / 1,274,930 | 12,325,918 / 6,653,042; 17,369,352 / 1,609,608 | S3 preservation pending |
 | `same:berserker+berserker` | King+2 Berserkers vs King | same | `kberserkerberserkerk.uftb` | **PLANNED** | 1,897,896,000 | concrete | — | — | — | — |
-| `same:berserker+bomb` | King+Berserker+Bomb vs King | same | `kberserkerbombk.uftb` | **COMPUTING** | 379,579,200 | concrete | — | — | — | S3 preservation pending |
+| `same:berserker+bomb` | King+Berserker+Bomb vs King | same | `kberserkerbombk.uftb` | **CERTIFIED** | 379,579,200 | concrete | 49,719,592 (140,070,008) / 0 / 0 | 0 (16,096,080) / 172,804,228 (677,600) / 211,692 | 49,719,592 / 140,070,008; 173,015,920 / 16,773,680 | S3 sha256:3addd3e3 VersionId wB7rq2TjG0O6HGb14C9Fq8G5zrsduq6u; certificate sha256:82e18a2b VersionId tulbqrZAz.5MooPj5XUWFjphdAB2Buvl |
 | `same:berserker+ninja` | King+Berserker+Ninja vs King | same | `kberserkerninjak.uftb` | **PLANNED** | 379,579,200 | concrete | — | — | — | — |
 | `same:berserker+turtle` | King+Berserker+Turtle vs King | same | `kberserkerturtlek.uftb` | **PLANNED** | 379,579,200 | concrete | — | — | — | — |
 | `same:berserker+ghost` | King+Berserker+Ghost vs King | same | `kberserkerghostk.uftb` | **PLANNED** | 759,158,400 | concrete | — | — | — | — |

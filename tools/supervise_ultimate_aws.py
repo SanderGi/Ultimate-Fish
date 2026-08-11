@@ -174,6 +174,17 @@ def validate_config(config: dict[str, Any]) -> None:
                 any(not re.fullmatch(r"[a-z0-9]+\.uftb", str(item))
                     for item in ledger_files)):
             raise RuntimeError(f"{identifier} has invalid ledger_files")
+        ledger_results = job.get("ledger_results", {})
+        if (not isinstance(ledger_results, dict) or
+                set(ledger_results) - set(map(str, ledger_files))):
+            raise RuntimeError(f"{identifier} has invalid ledger_results")
+        for filename, result in ledger_results.items():
+            if (not isinstance(result, dict) or set(result) != {
+                    "result_kind", "first", "second", "reachability",
+                    "storage"} or any(not isinstance(value, str) or not value
+                                      for value in result.values())):
+                raise RuntimeError(
+                    f"{identifier} has invalid ledger result for {filename}")
         expected_cpus = job.get("expected_allowed_cpus")
         if expected_cpus is not None:
             try:
@@ -703,6 +714,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
             "dependencies": definition.get("dependencies", []),
             "ledger_files": definition.get("ledger_files", []),
             "ledger_certifies": bool(definition.get("ledger_certifies")),
+            "ledger_results": definition.get("ledger_results", {}),
         }
 
     # Resolve readiness only after every job's observed status is known.
@@ -794,6 +806,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
             } for certificate in jobs[identifier]["certificates"]],
             "ledger_files": jobs[identifier]["ledger_files"],
             "ledger_certifies": jobs[identifier]["ledger_certifies"],
+            "ledger_results": jobs[identifier]["ledger_results"],
         } for identifier in selected_jobs
     }
     output = {

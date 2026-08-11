@@ -102,6 +102,7 @@ def reconcile_ledger(repo: Path, event: dict[str, Any], *, commit: bool,
     plot = repo / "tablebases/ultimate-tablebase-grid.png"
     current = ledger_statuses(readme)
     updates: dict[str, str] = {}
+    certified: dict[str, dict[str, str]] = {}
     pending: list[dict[str, str]] = []
     terminal = {"certified", "draw", "deferred"}
     for job_id, job in event.get("report", {}).get("jobs", {}).items():
@@ -119,10 +120,21 @@ def reconcile_ledger(repo: Path, event: dict[str, Any], *, commit: bool,
                 # reachability cells.  Keep the current state until the exact
                 # result certificate is imported instead of exposing a stale
                 # pre-information result as current.
-                pending.append({"job": str(job_id), "filename": str(filename)})
+                result = job.get("ledger_results", {}).get(str(filename))
+                if isinstance(result, dict):
+                    certified[str(filename)] = {
+                        name: str(result[name]) for name in (
+                            "result_kind", "first", "second",
+                            "reachability", "storage")
+                    }
+                else:
+                    pending.append({"job": str(job_id),
+                                    "filename": str(filename)})
     updates = {filename: status for filename, status in updates.items()
                if current.get(filename) != status}
-    if not updates:
+    certified = {filename: result for filename, result in certified.items()
+                 if current.get(filename) != "certified"}
+    if not updates and not certified:
         return {"changed": False, "updates": {},
                 "pending_certification": pending, "commit": ""}
     if commit:
@@ -144,6 +156,9 @@ def reconcile_ledger(repo: Path, event: dict[str, Any], *, commit: bool,
     command = [str(python), str(repo / "tools/update_ultimate_tablebase_ledger.py")]
     for filename, status in sorted(updates.items()):
         command.extend(["--set-status", f"{filename}={status}"])
+    for filename, result in sorted(certified.items()):
+        command.extend(["--set-certified",
+                        f"{filename}={canonical_json(result)}"])
     subprocess.run(command, cwd=repo, check=True)
     subprocess.run([
         str(python), str(repo / "tools/plot_ultimate_tablebases.py"),
@@ -162,6 +177,7 @@ def reconcile_ledger(repo: Path, event: dict[str, Any], *, commit: bool,
             capture_output=True, check=True).stdout.strip()
         subprocess.run(["git", "push", "origin", "master"], cwd=repo, check=True)
     return {"changed": True, "updates": updates,
+            "certified": sorted(certified),
             "pending_certification": pending, "commit": commit_sha}
 
 

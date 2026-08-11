@@ -50,14 +50,14 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
     def test_current_computation_hides_stale_result_and_hatches_plot(self):
         text = ledger.README.read_text()
         rows = ledger.apply_overrides(
-            ledger.entries(text), {"kberserkerbombk.uftb": "computing"}, {})
-        row = next(row for row in rows if row.filename == "kberserkerbombk.uftb")
+            ledger.entries(text), {"kghostghostk.uftb": "computing"}, {})
+        row = next(row for row in rows if row.filename == "kghostghostk.uftb")
         self.assertEqual("computing", row.status)
         self.assertEqual("—", row.first)
         self.assertEqual("—", row.reachability)
         summary = plot.read_summary(ledger.README)
         catalog = plot.OutcomeCatalog(summary)
-        self.assertEqual("computing", catalog.together("bomb", "berserker").kind)
+        self.assertEqual("computing", catalog.together("ghost", "ghost").kind)
 
     def test_computing_hatch_is_clipped_parallel_diagonal_lines(self):
         hatch = plot.diagonal_hatch(30, 20, 10, 1)
@@ -76,14 +76,32 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "malformed W/L/D"):
             ledger.reachability("not a result", "0 / 0 / 1")
 
+    def test_exact_certified_import_is_validated_and_persistent(self):
+        rows = ledger.entries(ledger.README.read_text())
+        encoded = json.dumps({
+            "result_kind": "information v2",
+            "first": "1 (1) / 0 / 0", "second": "0 / 1 / 1",
+            "reachability": "1 / 1; 2 / 0", "storage": "S3 exact",
+        })
+        certified = ledger.parse_certified([f"kjesterjesterk.uftb={encoded}"])
+        updated = ledger.apply_certified(rows, certified)
+        row = next(item for item in updated
+                   if item.filename == "kjesterjesterk.uftb")
+        self.assertEqual("certified", row.status)
+        self.assertEqual("information v2", row.result_kind)
+        self.assertEqual("1 / 1; 2 / 0", row.reachability)
+        with self.assertRaisesRegex(ValueError, "invalid certified result"):
+            ledger.parse_certified([
+                f"kjesterjesterk.uftb={encoded.replace('1 / 1; 2 / 0', 'bad')}"])
+
     def test_launch_gate_refuses_certified_and_untracked_recomputation(self):
         with self.assertRaisesRegex(RuntimeError, "status preserving"):
             ledger.check_launch(ledger.README, "krk.uftb", resume=False)
         with self.assertRaisesRegex(RuntimeError, "status computing"):
             ledger.check_launch(
-                ledger.README, "kberserkerbombk.uftb", resume=False)
+                ledger.README, "kbombghostk.uftb", resume=False)
         ledger.check_launch(
-            ledger.README, "kberserkerbombk.uftb", resume=True)
+            ledger.README, "kbombghostk.uftb", resume=True)
         ledger.check_launch(
             ledger.README, "kcopycatjesterk.uftb", resume=False)
 

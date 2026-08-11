@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 from dataclasses import dataclass, replace
 from pathlib import Path
+import json
 import re
 import sys
 from typing import Iterable
@@ -200,6 +201,16 @@ def entries(text: str) -> list[Entry]:
             first_cell, second_cell = exact.first, exact.second
             audited = reachability(first_cell, second_cell)
             digest = exact.digest
+        elif (old is not None and old.status in {"certified", "preserving"} and
+              old.first != "—" and old.second != "—" and
+              old.reachability != "—"):
+            # S3-only information results may not have a concrete UFTB row in
+            # the legacy generated-details table.  Once their exact values
+            # enter the canonical ledger, retain them across status-only
+            # regeneration instead of silently reverting to placeholders.
+            kind, first_cell, second_cell = (
+                old.result_kind, old.first, old.second)
+            audited, digest = old.reachability, ""
         elif status == "draw":
             kind, first_cell, second_cell = "insufficient material", "0 / 0 / 1", "0 / 0 / 1"
             audited, digest = "closed-form draw", ""
@@ -263,6 +274,50 @@ def apply_overrides(rows: Iterable[Entry], statuses: dict[str, str],
     return result
 
 
+def parse_certified(values: list[str]) -> dict[str, dict[str, str]]:
+    result: dict[str, dict[str, str]] = {}
+    for value in values:
+        key, separator, encoded = value.partition("=")
+        if not separator or not key:
+            raise ValueError(f"expected KEY=JSON: {value!r}")
+        record = json.loads(encoded)
+        if not isinstance(record, dict):
+            raise ValueError(f"certified result is not an object: {key}")
+        fields = {name: str(record.get(name, "")) for name in
+                  ("result_kind", "first", "second", "reachability", "storage")}
+        if (fields["result_kind"] not in {"concrete", "information v2"} or
+                not fields["storage"] or fields["storage"] == "—" or
+                reachability(fields["first"], fields["second"]) !=
+                fields["reachability"]):
+            raise ValueError(f"invalid certified result: {key}")
+        result[key] = fields
+    return result
+
+
+def apply_certified(rows: Iterable[Entry],
+                    certified: dict[str, dict[str, str]]) -> list[Entry]:
+    result: list[Entry] = []
+    seen: set[str] = set()
+    for row in rows:
+        matches = ({row.key, row.filename} - {""}) & certified.keys()
+        if len(matches) > 1:
+            raise ValueError(f"ambiguous certified result for {row.key}")
+        if not matches:
+            result.append(row)
+            continue
+        name = next(iter(matches))
+        record = certified[name]
+        seen.add(name)
+        result.append(replace(
+            row, status="certified", result_kind=record["result_kind"],
+            first=record["first"], second=record["second"],
+            reachability=record["reachability"], storage=record["storage"]))
+    missing = set(certified) - seen
+    if missing:
+        raise ValueError(f"certified result did not match: {sorted(missing)}")
+    return result
+
+
 def render(rows: list[Entry]) -> str:
     counts = {status: sum(row.status == status for row in rows)
               for status in sorted(STATUSES)}
@@ -301,11 +356,13 @@ def parse_assignments(values: list[str], *, statuses: bool) -> dict[str, str]:
 
 
 def update(path: Path, status_values: list[str], storage_values: list[str],
-           result_storage: str | None = None) -> None:
+           result_storage: str | None = None,
+           certified_values: list[str] | None = None) -> None:
     text = path.read_text(encoding="utf-8")
     rows = apply_overrides(
         entries(text), parse_assignments(status_values, statuses=True),
         parse_assignments(storage_values, statuses=False))
+    rows = apply_certified(rows, parse_certified(certified_values or []))
     if result_storage is not None:
         rows = [replace(row, storage=result_storage)
                 if row.digest and row.storage == "S3 preservation pending" else row
@@ -346,19 +403,24 @@ def main() -> None:
                         metavar="KEY=DESCRIPTION")
     parser.add_argument("--result-storage",
                         help="storage description for completed result rows still pending preservation")
+    parser.add_argument("--set-certified", action="append", default=[],
+                        metavar="KEY=JSON",
+                        help="install exact certified result cells and storage")
     parser.add_argument("--check-launch", metavar="KEY_OR_FILE",
                         help="fail closed unless a new computation is PLANNED")
     parser.add_argument("--resume", action="store_true",
                         help="with --check-launch, require COMPUTING instead")
     args = parser.parse_args()
     if args.check_launch:
-        if args.set_status or args.set_storage or args.result_storage:
+        if (args.set_status or args.set_storage or args.result_storage or
+                args.set_certified):
             parser.error("--check-launch cannot be combined with ledger edits")
         check_launch(args.readme, args.check_launch, args.resume)
         return
     if args.resume:
         parser.error("--resume requires --check-launch")
-    update(args.readme, args.set_status, args.set_storage, args.result_storage)
+    update(args.readme, args.set_status, args.set_storage, args.result_storage,
+           args.set_certified)
 
 
 if __name__ == "__main__":

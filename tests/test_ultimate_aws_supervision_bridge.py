@@ -141,6 +141,34 @@ class BridgeTests(unittest.TestCase):
             [{"job": "job", "filename": "kabk.uftb"}],
             result["pending_certification"])
 
+    @mock.patch.object(BRIDGE.subprocess, "run")
+    def test_certification_imports_exact_ledger_result(
+            self, command: mock.Mock) -> None:
+        repo = self.root / "repo"
+        tablebases = repo / "tablebases"
+        tablebases.mkdir(parents=True)
+        (repo / "tools").mkdir()
+        (tablebases / "README.md").write_text(
+            "| `same:a+b` | A | same | `kabk.uftb` | **COMPUTING** | 2 | concrete | — | — | — | — |\n")
+        exact = {
+            "result_kind": "information v2", "first": "1 (1) / 0 / 0",
+            "second": "0 / 1 / 1", "reachability": "1 / 1; 2 / 0",
+            "storage": "S3 exact",
+        }
+        event = {"report": {"jobs": {"job": {
+            "status": "CERTIFIED", "ledger_files": ["kabk.uftb"],
+            "ledger_certifies": True,
+            "ledger_results": {"kabk.uftb": exact},
+        }}}}
+        result = BRIDGE.reconcile_ledger(
+            repo, event, commit=False, python=Path("/python"))
+        self.assertTrue(result["changed"])
+        self.assertEqual(["kabk.uftb"], result["certified"])
+        arguments = command.call_args_list[0].args[0]
+        self.assertIn("--set-certified", arguments)
+        self.assertTrue(any(value.startswith("kabk.uftb={")
+                            for value in arguments))
+
     def test_launch_agent_is_host_level_five_minute_singleton(self) -> None:
         value = INSTALLER.launch_agent(
             Path("/Application Support/UltimateFishAWS/commit"),
