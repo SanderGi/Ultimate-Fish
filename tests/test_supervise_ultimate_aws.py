@@ -211,6 +211,15 @@ class SupervisionTests(unittest.TestCase):
                     job, {"sources": sources}))
         self.assertTrue(SUPERVISOR.source_exact(
             {"source_bindings": []}, {"sources": []}))
+        self.assertTrue(SUPERVISOR.source_exact(job, {
+            "sources_exact": True, "source_binding_count": 2}))
+        for compact in (
+                {"sources_exact": False, "source_binding_count": 2},
+                {"sources_exact": True, "source_binding_count": 1},
+                {"sources_exact": 1, "source_binding_count": 2},
+                {"source_binding_count": 2}):
+            with self.subTest(compact=compact):
+                self.assertFalse(SUPERVISOR.source_exact(job, compact))
 
     def test_compact_source_probe_fits_each_batch_host_budget(self) -> None:
         document = json.loads(
@@ -249,6 +258,8 @@ class SupervisionTests(unittest.TestCase):
                 for job in probe_jobs:
                     for binding in job["source_bindings"]:
                         binding["path"] = replacements[binding["path"]]
+                        binding["sha256"] = SUPERVISOR.sha256_bytes(
+                            b"compact-probe")
                 observed = SUPERVISOR.local_probe(
                     SUPERVISOR.remote_script(definition, probe_jobs))
                 encoded = SUPERVISOR.canonical_json(observed).encode()
@@ -257,10 +268,10 @@ class SupervisionTests(unittest.TestCase):
                                      SUPERVISOR.REMOTE_OUTPUT_BUDGET)
                 self.assertEqual(
                     sum(len(job["source_bindings"]) for job in jobs),
-                    sum(len(job["sources"]) for job in observed["jobs"]))
+                    sum(job["source_binding_count"]
+                        for job in observed["jobs"]))
                 self.assertTrue(all(
-                    isinstance(digest, str) and len(digest) == 64
-                    for job in observed["jobs"] for digest in job["sources"]))
+                    job["sources_exact"] for job in observed["jobs"]))
             return len(encoded)
 
         for instance_id, jobs in jobs_by_host.items():

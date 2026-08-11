@@ -326,24 +326,25 @@ def aggregate(patterns):
                  'newest_mtime_ns':newest,
                  'metadata_sha256':digest.hexdigest()})
  return result
-def sources(paths):
- result=[]
- for path in paths:
+def sources_exact(bindings):
+ exact=True
+ for binding in bindings:
+  path=binding['path']
   # Source paths and metadata are already authenticated in the local job
   # definition.  Returning them again for every binding wastes the fixed SSM
-  # output budget, especially for the 24-class concrete batch.  Preserve only
-  # the positional digest (or null for a missing/unhashable path); the local
-  # side validates count and order against the requested bindings.
+  # output budget, especially for the 24-class concrete batch.  The immutable
+  # probe compares every requested path to its committed digest and returns a
+  # bounded exactness bit plus the checked binding count.
   if not os.path.isfile(path):
-   result.append(None); continue
+   exact=False; continue
   stat=os.stat(path)
   if stat.st_size>16*1024*1024:
-   result.append(None); continue
+   exact=False; continue
   digest=hashlib.sha256()
   with open(path,'rb') as stream:
    for block in iter(lambda:stream.read(1024*1024),b''): digest.update(block)
-  result.append(digest.hexdigest())
- return result
+  if digest.hexdigest()!=binding['sha256']: exact=False
+ return exact
 memory={}
 try:
  stream=open('/proc/meminfo',encoding='ascii')
@@ -361,11 +362,11 @@ for path in payload['mounts']:
                 'total_bytes':stat.f_blocks*stat.f_frsize})
 jobs=[]
 for job in payload['jobs']:
- source_paths=[binding['path'] for binding in job['source_bindings']]
  jobs.append({'id':job['id'],'unit':props(job['unit']),
              'checkpoints':aggregate(job['checkpoint_paths']),
              'completion':aggregate(job['completion_paths']),
-             'sources':sources(source_paths)})
+             'source_binding_count':len(job['source_bindings']),
+             'sources_exact':sources_exact(job['source_bindings'])})
 document={'memory':memory,'mounts':mounts,'jobs':jobs}
 encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
 if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
@@ -503,6 +504,9 @@ def source_exact(job: dict[str, Any], remote: dict[str, Any]) -> bool:
         return False
     if not expected:
         return True
+    if "sources_exact" in remote or "source_binding_count" in remote:
+        return (remote.get("sources_exact") is True and
+                remote.get("source_binding_count") == len(expected))
     actual = remote.get("sources")
     if not isinstance(actual, list) or len(actual) != len(expected):
         return False
