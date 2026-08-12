@@ -159,8 +159,14 @@ def reconcile_ledger(repo: Path, event: dict[str, Any], *, commit: bool,
         observed = set(statuses)
         if filename in certified:
             continue
-        if observed & {"RUNNING", "COMPLETED_UNCERTIFIED"}:
+        if observed & {"RUNNING"}:
             updates[filename] = "computing"
+        elif observed & {"COMPLETED_UNCERTIFIED"}:
+            # The expensive solve has finished and its authenticated local
+            # output must be retained while S3 preservation/certification is
+            # completed.  It is not consuming solver CPU and therefore must
+            # not be rendered with the active-computation hatch.
+            updates[filename] = "preserving"
         elif observed & {"FAILED", "SOURCE_MISMATCH", "RESOURCE_LIMIT"}:
             updates[filename] = "blocked"
         elif observed & {"READY", "INACTIVE", "AWAITING_STAGE"} and \

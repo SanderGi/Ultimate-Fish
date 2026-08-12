@@ -552,8 +552,17 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
         const PieceState& piece = position.pieces_[id];
         if (!piece.alive)
             continue;
+        // Forced Mage/Fisherman relocation can promote an unmoved Pawn or
+        // Checker without marking the displaced model as having taken a
+        // turn.  The promoted Queen/CheckerKing has no first-move privilege,
+        // so its moved bit is outcome-irrelevant and maps exactly to the
+        // ordinary lower-material table.
+        const bool promotedWithoutTurn =
+          piece.type == PieceType::Queen ||
+          piece.type == PieceType::CheckerKing;
         if (!piece.onBoard || piece.host != Position::NoPiece ||
-            (!piece.moved && piece.type != PieceType::Pawn))
+            (!piece.moved && piece.type != PieceType::Pawn &&
+             !promotedWithoutTurn))
             return std::nullopt;
         ++alive;
         if (piece.type == PieceType::King)
@@ -565,6 +574,96 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
     if ((alive < 3 || alive > 6) || whiteKing == Position::NoPiece ||
         blackKing == Position::NoPiece || extraCount != alive - 2)
         return std::nullopt;
+
+    // A native Pawn can use its first-move two-step directly onto the
+    // promotion rank.  The resulting Queen temporarily remains the nominal
+    // en-passant victim.  If no legal Pawn can use that marker, it changes no
+    // move or outcome and is exactly representable by the ordinary lower
+    // Queen table.  Keep the marker distinct whenever a real capture exists,
+    // which is essential for the later two-Pawn dependency wave.
+    const auto actionableEnPassant = [&] {
+        if (position.enPassantSquare_ == Position::NoSquare ||
+            position.enPassantVictim_ == Position::NoPiece)
+            return false;
+        for (const Move& move : position.legal_moves()) {
+            const int actor = move.from >= 0 && move.from < Position::BoardSquares
+              ? position.board_[move.from] : Position::NoPiece;
+            if (move.to == position.enPassantSquare_ &&
+                actor != Position::NoPiece &&
+                position.pieces_[actor].type == PieceType::Pawn)
+                return true;
+        }
+        return false;
+    };
+
+    // A promoted two-step victim with a genuinely available en-passant
+    // capture is not a persistent tablebase state: every legal reply clears
+    // the marker.  Resolve that one-ply frontier exactly from the ordinary
+    // lower-material tables instead of either discarding the legal capture or
+    // requiring a separate transient-state file.
+    if (position.enPassantVictim_ != Position::NoPiece &&
+        position.enPassantVictim_ < position.pieceCount_ &&
+        position.pieces_[position.enPassantVictim_].alive &&
+        position.pieces_[position.enPassantVictim_].type != PieceType::Pawn &&
+        actionableEnPassant()) {
+        const auto moves = position.legal_moves();
+        if (moves.empty()) {
+            const auto winner = position.winner();
+            return TablebaseResult{
+              winner && *winner != position.sideToMove_
+                ? TablebaseWdl::Loss : TablebaseWdl::Draw,
+              0};
+        }
+
+        bool hasDraw = false;
+        bool hasWin = false;
+        std::uint16_t shortestWin = std::numeric_limits<std::uint16_t>::max();
+        std::uint16_t longestLoss = 0;
+        for (const Move& move : moves) {
+            Position child = position;
+            if (!child.apply_move_unchecked(move))
+                return std::nullopt;
+
+            TablebaseWdl outcome = TablebaseWdl::Draw;
+            std::uint16_t distance = 0;
+            if (child.forced_timeout_winner() ||
+                !child.has_real_king(Color::White) ||
+                !child.has_real_king(Color::Black) ||
+                !child.is_checkmate_possible()) {
+                const auto winner = child.winner();
+                if (winner)
+                    outcome = *winner == position.sideToMove_
+                      ? TablebaseWdl::Win : TablebaseWdl::Loss;
+            }
+            else {
+                const auto result = probe(child);
+                if (!result)
+                    return std::nullopt;
+                const bool sameSide = child.sideToMove_ == position.sideToMove_;
+                outcome = sameSide || result->wdl == TablebaseWdl::Draw
+                  ? result->wdl
+                  : result->wdl == TablebaseWdl::Win
+                      ? TablebaseWdl::Loss : TablebaseWdl::Win;
+                distance = result->dtw;
+            }
+
+            if (outcome == TablebaseWdl::Win) {
+                hasWin = true;
+                shortestWin = std::min<std::uint16_t>(
+                  shortestWin, static_cast<std::uint16_t>(distance + 1));
+            }
+            else if (outcome == TablebaseWdl::Draw)
+                hasDraw = true;
+            else
+                longestLoss = std::max<std::uint16_t>(
+                  longestLoss, static_cast<std::uint16_t>(distance + 1));
+        }
+        if (hasWin)
+            return TablebaseResult{TablebaseWdl::Win, shortestWin};
+        if (hasDraw)
+            return TablebaseResult{TablebaseWdl::Draw, 0};
+        return TablebaseResult{TablebaseWdl::Loss, longestLoss};
+    }
 
     const auto typeMatches = [](PieceType represented, PieceType actual) {
         return represented == PieceType::Checker
@@ -877,7 +976,8 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 continue;
             if (position.enPassantVictim_ != Position::NoPiece) {
                 if (position.enPassantVictim_ != material ||
-                    secondary.type != PieceType::Pawn)
+                    (secondary.type != PieceType::Pawn &&
+                     actionableEnPassant()))
                     continue;
             }
             else if (position.enPassantSquare_ != Position::NoSquare)
@@ -956,7 +1056,8 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 if (position.enPassantVictim_ != Position::NoPiece) {
                     const int victim = position.enPassantVictim_;
                     if ((victim != first && victim != second) ||
-                        position.pieces_[victim].type != PieceType::Pawn)
+                        (position.pieces_[victim].type != PieceType::Pawn &&
+                         actionableEnPassant()))
                         continue;
                 }
                 else if (position.enPassantSquare_ != Position::NoSquare)

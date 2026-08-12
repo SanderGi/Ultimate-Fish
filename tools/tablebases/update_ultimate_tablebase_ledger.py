@@ -171,6 +171,19 @@ def _is_deferred(first: str, second: str = "") -> bool:
     return "copycat" in names and bool(names & SEPARATORS)
 
 
+def _requires_information(record: dict[str, object] | None) -> bool:
+    """Return whether material contains public hidden information.
+
+    The solver inventory is intentionally narrower than the complete K+K+2
+    campaign.  Material truth, rather than membership in that implemented
+    solver subset, decides whether concrete W/L/D may be published.
+    """
+    if record is None:
+        return False
+    return bool({str(record.get("primary", "")),
+                 str(record.get("secondary", ""))} & {"jester", "ghost"})
+
+
 def entries(text: str) -> list[Entry]:
     results = result_rows(text)
     previous = old_entries(text)
@@ -195,9 +208,10 @@ def entries(text: str) -> list[Entry]:
         if old is not None and old.status in STATUSES:
             status = old.status
         states = int(record["states"]) if record else None
-        if exact is not None:
-            kind = ("information v2" if filename in information.AFFECTED_FILENAMES
-                    else "concrete")
+        hidden = _requires_information(record)
+        if exact is not None and (not hidden or
+                                  filename in information.AFFECTED_FILENAMES):
+            kind = "information v2" if hidden else "concrete"
             first_cell, second_cell = exact.first, exact.second
             audited = reachability(first_cell, second_cell)
             digest = exact.digest
@@ -215,8 +229,7 @@ def entries(text: str) -> list[Entry]:
             kind, first_cell, second_cell = "insufficient material", "0 / 0 / 1", "0 / 0 / 1"
             audited, digest = "closed-form draw", ""
         else:
-            kind = ("information required" if filename in information.AFFECTED_FILENAMES
-                    else "concrete")
+            kind = "information required" if hidden else "concrete"
             first_cell = second_cell = audited = "—"
             digest = ""
         storage = old.storage if old is not None else (

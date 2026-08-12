@@ -56,6 +56,8 @@ type EngineAnalysis = {
   nodes: number;
   time: number;
   pv: string[];
+  pvNotation?: string[];
+  publicPvNotation?: string[];
   moves: string[];
   upn: string | null;
   material: Record<Color, number>;
@@ -63,6 +65,10 @@ type EngineAnalysis = {
   resultReason: string | null;
   engine?: EngineAnalysis | null;
   engineMoves?: string[];
+  engineNotations?: string[];
+  publicEngineNotations?: string[];
+  notation?: string;
+  publicNotation?: string;
   beliefs?: number;
   decisionMode?: "exact-cell" | "merged-conservative";
   decisionPartitions?: number;
@@ -70,7 +76,14 @@ type EngineAnalysis = {
   historyPreservingPlies?: number;
 };
 
-type MoveRecord = { color: Color; notation: string; upn?: string; moveNumber?: number };
+type MoveRecord = {
+  color: Color;
+  move: string;
+  notation: string;
+  publicNotation?: string;
+  upn?: string;
+  moveNumber?: number;
+};
 type MoveVariation = { id: number; parentId: number | null; anchorPly: number; moves: MoveRecord[] };
 
 type LinePreview = {
@@ -263,20 +276,10 @@ function removeLast<T>(items: T[], value: T): T[] {
   return index < 0 ? items : [...items.slice(0, index), ...items.slice(index + 1)];
 }
 
-function historyNotation(move: string, result: EngineAnalysis, viewer: Color): string {
-  if (!result.upn) return move;
-  const match = move.match(/^[a-h](?:10|[1-9])[-~@x!&]([a-h](?:10|[1-9]))$/);
-  if (!match) return move;
-  const destination = squareIndex(match[1]);
-  const moved = parseUpn(result.upn).pieces.find((piece) => piece.onBoard &&
-    piece.square === destination && piece.color !== viewer && piece.id === "ghost" && !piece.visible);
-  return moved ? "•••" : move;
-}
-
 function commonMovePrefix(first: MoveRecord[], second: MoveRecord[]): number {
   let count = 0;
   while (count < first.length && count < second.length &&
-    first[count].color === second[count].color && first[count].notation === second[count].notation) count += 1;
+    first[count].color === second[count].color && first[count].move === second[count].move) count += 1;
   return count;
 }
 
@@ -648,11 +651,12 @@ export function UltimateWorkbench() {
       }
       if (sequence !== linePreviewSequence.current) return;
       const position = parseUpn(previewUpn);
-      setLinePreview({ ply, move: moves.at(-1)!, pieces: position.pieces, turn: position.turn });
+      const displayMoves = view === "play" ? analysis.publicPvNotation : analysis.pvNotation;
+      setLinePreview({ ply, move: displayMoves?.[ply] ?? moves.at(-1)!, pieces: position.pieces, turn: position.turn });
     } catch {
       if (sequence === linePreviewSequence.current) setLinePreview(null);
     }
-  }, [analysis, belief, engineRequest, upn]);
+  }, [analysis, belief, engineRequest, upn, view]);
 
   const commitAnalysisMoves = useCallback(async (moves: string[]) => {
     if (belief || !moves.length) return;
@@ -662,13 +666,15 @@ export function UltimateWorkbench() {
     let nextUpn = upn;
     let nextTurn = turn;
     const records: MoveRecord[] = [];
-    setEngineStatus("thinking"); setEngineMessage(`Playing ${moves.at(-1)}…`); setSelected(null);
+    setEngineStatus("thinking"); setEngineMessage("Playing move…"); setSelected(null);
     try {
       let result: EngineAnalysis | null = null;
       for (const move of moves) {
         result = await engineRequest("/move", { upn: nextUpn, move });
         if (!result.upn) throw new Error("Engine did not return the resulting position.");
-        records.push({ color: nextTurn, notation: move, upn: result.upn, moveNumber: parseUpn(nextUpn).meta.fullmove });
+        records.push({ color: nextTurn, move, notation: result.notation ?? move,
+          publicNotation: result.publicNotation ?? result.notation ?? move,
+          upn: result.upn, moveNumber: parseUpn(nextUpn).meta.fullmove });
         nextUpn = result.upn;
         nextTurn = nextTurn === "white" ? "black" : "white";
       }
@@ -993,12 +999,15 @@ export function UltimateWorkbench() {
 
   async function playMove(move: string) {
     if (!gameActive || turn !== playerSide) return;
-    setEngineStatus("thinking"); setEngineMessage(`Playing ${move}…`); setSelected(null);
+    setEngineStatus("thinking"); setEngineMessage("Playing move…"); setSelected(null);
     try {
       const humanResult = await engineRequest("/move", { upn, move });
       loadEnginePosition(humanResult);
       if (humanResult.upn) liveGameUpn.current = humanResult.upn;
-      setMoveHistory((history) => [...history, { color: playerSide, notation: move, upn: humanResult.upn ?? undefined }]);
+      setMoveHistory((history) => [...history, { color: playerSide, move,
+        notation: humanResult.notation ?? move,
+        publicNotation: humanResult.publicNotation ?? humanResult.notation ?? move,
+        upn: humanResult.upn ?? undefined }]);
       setAnalysis(null);
       if (humanResult.result !== "ongoing") {
         setGameActive(false); setEngineStatus("ready"); setEngineMessage("Game complete."); return;
@@ -1014,8 +1023,12 @@ export function UltimateWorkbench() {
       loadEnginePosition(result);
       if (result.upn) liveGameUpn.current = result.upn;
       const opponent: Color = playerSide === "white" ? "black" : "white";
-      setMoveHistory((history) => [...history, ...(result.engineMoves ?? []).map((notation) => ({
-        color: opponent, notation: historyNotation(notation, result, playerSide), upn: result.upn ?? undefined,
+      setMoveHistory((history) => [...history, ...(result.engineMoves ?? []).map((move, index) => ({
+        color: opponent, move,
+        notation: result.engineNotations?.[index] ?? move,
+        publicNotation: result.publicEngineNotations?.[index] ??
+          result.engineNotations?.[index] ?? move,
+        upn: result.upn ?? undefined,
       }))]);
       setAnalysis(result.engine ?? null); setEngineStatus("ready");
       setEngineMessage(`${result.moves.length} legal moves · ${(result.engine?.nodes ?? 0).toLocaleString()} nodes in ${result.engine?.time ?? 0} ms`);
@@ -1042,8 +1055,12 @@ export function UltimateWorkbench() {
       loadEnginePosition(result);
       if (result.upn) liveGameUpn.current = result.upn;
       const opponent: Color = playerSide === "white" ? "black" : "white";
-      const resumedMoves = (result.engineMoves ?? []).map((notation) => ({
-        color: opponent, notation: historyNotation(notation, result, playerSide), upn: result.upn ?? undefined,
+      const resumedMoves = (result.engineMoves ?? []).map((move, index) => ({
+        color: opponent, move,
+        notation: result.engineNotations?.[index] ?? move,
+        publicNotation: result.publicEngineNotations?.[index] ??
+          result.engineNotations?.[index] ?? move,
+        upn: result.upn ?? undefined,
       }));
       if (resumedMoves.length) {
         setMoveHistory((history) => [...history, ...resumedMoves]);
@@ -1260,7 +1277,8 @@ export function UltimateWorkbench() {
     : gameResult.result === playerSide ? `You win · ${(gameResult.reason ?? "game complete").replaceAll("-", " ")}` : `Ultimate Fish wins · ${(gameResult.reason ?? "game complete").replaceAll("-", " ")}`;
 
   const historyCell = (records: MoveRecord[]) => {
-    const label = records.map((record) => record.notation).join(" · ") || "—";
+    const label = records.map((record) => view === "play"
+      ? record.publicNotation ?? record.notation : record.notation).join(" · ") || "—";
     const record = records.at(-1);
     const snapshot = record?.upn;
     const historyPly = record ? moveHistory.indexOf(record) + 1 : moveHistory.length;
@@ -1300,7 +1318,8 @@ export function UltimateWorkbench() {
     const moveElements = variation.moves.slice(startPly, endPly).map((record, offset) => {
       const ply = startPly + offset;
       const label = numberedMoveLabel(record, variation.anchorPly + ply, offset > 0 ? variation.moves[ply - 1] : undefined);
-      const contents = <>{label && <span>{label}</span>}{record.notation}</>;
+      const notation = view === "play" ? record.publicNotation ?? record.notation : record.notation;
+      const contents = <>{label && <span>{label}</span>}{notation}</>;
       const move = view === "analysis" && record.upn
         ? <button type="button" className="variation-move history-link" onClick={() => loadVariationPosition(variation, ply + 1)} title="Load this variation position">{contents}</button>
         : <span className="variation-move">{contents}</span>;
@@ -1450,7 +1469,7 @@ export function UltimateWorkbench() {
             <>
               <section className={`panel evaluation-panel ${!showEvaluation ? "game-only" : ""}`}>
                 <div className="panel-heading"><div><p className="eyebrow">{view === "play" ? "GAME" : "ENGINE"}</p><h2>{view === "play" ? (gameActive ? "Ultimate game" : "Game setup") : "Analysis"}</h2></div>{showEvaluation && <span className="eval-score">{score.label}</span>}</div>
-                {showEvaluation && <><div className="eval-track" aria-label={`Ivory evaluation ${score.label}`}><span style={{ width: `${score.percent}%` }} /></div><div className="engine-line">{analysis?.pv.length ? <div className="engine-moves" aria-label="Engine line">{analysis.pv.slice(0, 8).map((move, ply) => { const label = engineMoveLabel(ply, turn, meta.fullmove); return <button key={`${ply}-${move}`} type="button" className="engine-move" onPointerEnter={() => void previewEngineLine(ply)} onPointerLeave={clearLinePreview} onFocus={() => void previewEngineLine(ply)} onBlur={clearLinePreview} onClick={() => void commitEngineLine(ply)} disabled={Boolean(belief)} title={belief ? "Line previews are unavailable for a public-information belief." : `Preview and play through ${move}`}>{label && <span>{label}</span>}{move}</button>; })}</div> : <strong>No engine line yet</strong>}{linePreview && <EngineLinePreview preview={linePreview} playerSide={playerSide} />}</div></>}
+                {showEvaluation && <><div className="eval-track" aria-label={`Ivory evaluation ${score.label}`}><span style={{ width: `${score.percent}%` }} /></div><div className="engine-line">{analysis?.pv.length ? <div className="engine-moves" aria-label="Engine line">{analysis.pv.slice(0, 8).map((move, ply) => { const label = engineMoveLabel(ply, turn, meta.fullmove); const notation = (view === "play" ? analysis.publicPvNotation : analysis.pvNotation)?.[ply] ?? move; return <button key={`${ply}-${move}`} type="button" className="engine-move" onPointerEnter={() => void previewEngineLine(ply)} onPointerLeave={clearLinePreview} onFocus={() => void previewEngineLine(ply)} onBlur={clearLinePreview} onClick={() => void commitEngineLine(ply)} disabled={Boolean(belief)} title={belief ? "Line previews are unavailable for a public-information belief." : `Preview and play through ${notation}`}>{label && <span>{label}</span>}{notation}</button>; })}</div> : <strong>No engine line yet</strong>}{linePreview && <EngineLinePreview preview={linePreview} playerSide={playerSide} />}</div></>}
                 <div className="move-history"><div className="history-head"><span>#</span><span>Ivory</span><span>Onyx</span></div>{historyRows.length ? historyRows.map((row, index) => <div key={index}><div className="history-row"><span>{index + 1}.</span>{historyCell(row.white)}{historyCell(row.black)}</div>{variationsForRow(row, index).map((variation) => renderVariation(variation, 1))}</div>) : <p className="empty-state">Moves will appear here as the game is played.</p>}</div>
                 <div className="engine-settings">{view === "analysis" ? <label>Max depth <output>{analysisMaxDepth}</output><input type="range" min="1" max="50" value={analysisMaxDepth} onChange={(event) => setAnalysisMaxDepth(Number(event.target.value))} /></label> : <label>Depth <output>{playDepth}</output><input type="range" min="1" max="16" value={playDepth} onChange={(event) => setPlayDepth(Number(event.target.value))} /></label>}</div>
                 {view === "analysis" ? <button className={`primary-button ${analysisRunning ? "stop-button" : ""}`} onClick={() => { if (analysisRunning) { setAnalysisRunning(false); analysisAbort.current?.abort(); setEngineStatus("ready"); setEngineMessage(`${legalMoves.length} legal moves · ${(analysis?.nodes ?? 0).toLocaleString()} nodes in ${analysis?.time ?? 0} ms`); } else { setEditing(false); setDraggedUid(null); setAnalysisRunning(true); } }}>{analysisRunning ? "Stop Ultimate Analysis" : "Start Ultimate Analysis"}</button> : <button className={`primary-button ${gameActive ? "stop-button" : ""}`} onClick={() => gameActive ? stopGame() : void startGame()}>{gameActive ? "Stop Ultimate Game" : "Start Ultimate Game"}</button>}

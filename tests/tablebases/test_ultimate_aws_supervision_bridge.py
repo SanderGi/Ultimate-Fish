@@ -297,7 +297,7 @@ class BridgeTests(unittest.TestCase):
         self.assertEqual({"kabk.uftb": "planned"}, result["updates"])
 
     @mock.patch.object(BRIDGE.subprocess, "run")
-    def test_completed_uncertified_remains_hatched_until_import(
+    def test_completed_uncertified_is_preserving_until_import(
             self, command: mock.Mock) -> None:
         repo = self.root / "repo"
         tablebases = repo / "tablebases"
@@ -313,7 +313,8 @@ class BridgeTests(unittest.TestCase):
         result = BRIDGE.reconcile_ledger(
             repo, event, commit=False, python=Path("/python"))
 
-        self.assertEqual({"kabk.uftb": "computing"}, result["updates"])
+        self.assertEqual({"kabk.uftb": "preserving"}, result["updates"])
+        self.assertIn("kabk.uftb=preserving", command.call_args_list[0].args[0])
 
     def test_certification_requires_exact_result_import(self) -> None:
         repo = self.root / "repo"

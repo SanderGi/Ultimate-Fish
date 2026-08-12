@@ -293,7 +293,15 @@ def parse_log(path: Path) -> dict[str, Any]:
             "log_sha256": sha256_file(path)}
 
 
+def validate_upper_bdd_gates(max_nodes: int, unique_slots: int) -> None:
+    if (max_nodes <= 0 or unique_slots <= 0 or
+            (unique_slots & (unique_slots - 1))):
+        raise ValueError("invalid upper ProductRobdd measurement gates")
+
+
 def run(args: argparse.Namespace) -> dict[str, Any]:
+    validate_upper_bdd_gates(
+        args.bdd_max_upper_nodes, args.bdd_upper_unique_slots)
     if (not args.runner_source.is_file() or
             sha256_file(args.runner_source) != args.runner_sha256):
         raise ValueError("measurement runner SHA-256 mismatch")
@@ -354,6 +362,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "--max-disk-bytes", str(args.maximum_disk_bytes),
         "--max-resident-bytes", str(args.maximum_resident_bytes),
         "--min-free-disk-bytes", str(args.minimum_free_bytes),
+        "--bdd-max-upper-nodes", str(args.bdd_max_upper_nodes),
+        "--bdd-upper-unique-slots", str(args.bdd_upper_unique_slots),
     ]
     plan = {
         "schema": RUN_PLAN_SCHEMA,
@@ -372,6 +382,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "maximum_disk_bytes": args.maximum_disk_bytes,
             "maximum_resident_bytes": args.maximum_resident_bytes,
             "minimum_free_bytes": args.minimum_free_bytes,
+            "bdd_max_upper_nodes": args.bdd_max_upper_nodes,
+            "bdd_upper_unique_slots": args.bdd_upper_unique_slots,
         },
     }
     plan_path = prepare_measurement_work(args.work, plan)
@@ -445,7 +457,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         "free_bytes_after": stats.f_bavail * stats.f_frsize,
         "gates": {"maximum_disk_bytes": args.maximum_disk_bytes,
                   "maximum_resident_bytes": args.maximum_resident_bytes,
-                  "minimum_free_bytes": args.minimum_free_bytes},
+                  "minimum_free_bytes": args.minimum_free_bytes,
+                  "bdd_max_upper_nodes": args.bdd_max_upper_nodes,
+                  "bdd_upper_unique_slots": args.bdd_upper_unique_slots},
         "full_solve_launched": False,
         "residuals": {"binding": 0, "transition": 0, "measurement": 0,
                       "proof_output": 0, "resource": 0},
@@ -483,6 +497,10 @@ def main() -> None:
     parser.add_argument("--maximum-disk-bytes", type=int, required=True)
     parser.add_argument("--maximum-resident-bytes", type=int, required=True)
     parser.add_argument("--minimum-free-bytes", type=int, required=True)
+    parser.add_argument("--bdd-max-upper-nodes", type=int,
+                        default=500_000_000)
+    parser.add_argument("--bdd-upper-unique-slots", type=int,
+                        default=1 << 30)
     args = parser.parse_args()
     print(json.dumps(run(args), sort_keys=True))
 

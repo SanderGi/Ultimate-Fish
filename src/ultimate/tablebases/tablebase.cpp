@@ -816,6 +816,11 @@ class TablebaseGenerator {
 
     void self_test() const {
         self_test_penguin_causal_codec();
+        if (copycatOnly_ &&
+            (encoded_side(0) != Color::White ||
+             encoded_side(stateCount_ / 2) != Color::Black))
+            throw std::runtime_error(
+              "single Copycat side-to-move codec is not partitioned");
         if (compoundCopycat_) {
             constexpr std::uint32_t samples = 20'000;
             for (std::uint32_t sample = 0; sample < samples; ++sample) {
@@ -1020,6 +1025,7 @@ class TablebaseGenerator {
           4, std::max(1u, std::thread::hardware_concurrency()));
         std::atomic<std::uint32_t> next{0};
         std::vector<Counts> local(workers);
+        std::vector<Counts> localAll(workers);
         std::vector<Examples> localExamples(workers);
         for (Examples& examples : localExamples)
             for (auto& side : examples)
@@ -1033,14 +1039,7 @@ class TablebaseGenerator {
                         break;
                     const std::uint32_t end = std::min(stateCount_, begin + Block);
                     for (std::uint32_t index = begin; index < end; ++index) {
-                        const Color encodedSide = identicalCompoundCopycats_
-                          ? decode_identical_compound_copycat(index / substates_).side
-                          : compoundCopycat_
-                          ? decode_compound_copycat(index / substates_).side
-                          : fourModels_ ? (identicalExtras_
-                               ? decode_identical_four(index / substates_).side
-                               : decode_four(index / substates_).side)
-                          : decode(index).side;
+                        const Color encodedSide = encoded_side(index);
                         Position position;
                         bool unreachable = !make_position_at(index, position);
                         if (!unreachable && !position.has_forced_action())
@@ -1140,6 +1139,7 @@ class TablebaseGenerator {
                         const std::uint32_t result =
                           (wdl[index / 4] >> (2 * (index % 4))) & 3;
                         const std::size_t side = static_cast<std::size_t>(encodedSide);
+                        ++localAll[worker][side][result];
                         if (!unreachable) {
                             localExamples[worker][side][result] = std::min(
                               localExamples[worker][side][result], index);
@@ -1151,7 +1151,7 @@ class TablebaseGenerator {
             });
         for (std::thread& task : tasks)
             task.join();
-        Counts totals{};
+        Counts totals{}, allTotals{};
         Examples examples{};
         for (auto& side : examples)
             side.fill(std::numeric_limits<std::uint32_t>::max());
@@ -1159,6 +1159,10 @@ class TablebaseGenerator {
             for (std::size_t side = 0; side < 2; ++side)
                 for (std::size_t result = 0; result < 4; ++result)
                     totals[side][result] += part[side][result];
+        for (const Counts& part : localAll)
+            for (std::size_t side = 0; side < 2; ++side)
+                for (std::size_t result = 0; result < 4; ++result)
+                    allTotals[side][result] += part[side][result];
         for (const Examples& part : localExamples)
             for (std::size_t side = 0; side < 2; ++side)
                 for (std::size_t result = 0; result < 4; ++result)
@@ -1171,6 +1175,14 @@ class TablebaseGenerator {
                       << " win " << totals[side][1]
                       << " loss " << totals[side][2]
                       << " draw " << totals[side][3] << '\n';
+        for (std::size_t side = 0; side < 2; ++side)
+            std::cout << (full ? "reachability_total" :
+                                      "predecessor_safety_total")
+                      << " side " << side
+                      << " unknown " << allTotals[side][0]
+                      << " win " << allTotals[side][1]
+                      << " loss " << allTotals[side][2]
+                      << " draw " << allTotals[side][3] << '\n';
         if (full)
             for (std::size_t side = 0; side < 2; ++side)
                 for (std::size_t result = 1; result < 4; ++result)
@@ -2630,6 +2642,8 @@ class TablebaseGenerator {
     }
 
     [[nodiscard]] Color encoded_side(std::uint32_t index) const {
+        if (copycatOnly_)
+            return decode_placement(index / substates_).side;
         if (identicalCompoundCopycats_)
             return decode_identical_compound_copycat(index / substates_).side;
         if (compoundCopycat_)

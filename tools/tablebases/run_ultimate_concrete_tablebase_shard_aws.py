@@ -297,6 +297,10 @@ def class_dependency_filenames(
     if wave:
         promoted = list(names)
         promoted[promoted.index("pawn")] = "queen"
+        # After promotion, either remaining extra can be captured.  The
+        # promoted Queen is therefore a proper-lower single-piece child even
+        # though it was not present in the root material signature.
+        result.add(singles["queen"])
         signature = (bool(record["opposing"]), tuple(sorted(
             promoted, key=PIECE_INDEX.__getitem__)))
         dependency_inventory = {
@@ -893,6 +897,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--range-end", type=int)
     parser.add_argument("--bootstrap-penguin", action="store_true")
     parser.add_argument("--full", action="store_true")
+    parser.add_argument(
+        "--resume-existing", action="store_true",
+        help="resume a retained full-run checkpoint after a resource stop")
     parser.add_argument("--aws-execution-ack")
     parser.add_argument("--scratch-limit", type=int, default=0)
     parser.add_argument("--resident-limit", type=int, default=0)
@@ -954,46 +961,78 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     work = args.work_directory.resolve()
-    work.mkdir(parents=True, exist_ok=True)
-    if any(work.iterdir()):
-        raise RuntimeError(f"AWS concrete work directory must be empty: {work}")
+    if args.resume_existing:
+        if not work.is_dir() or not any(work.iterdir()):
+            raise RuntimeError("--resume-existing requires a retained work directory")
+        bundle = work / "bundle"
+        binary = work / "binary/ultimate_tablebase"
+        retained_plan = json.loads((work / "run-plan.json").read_text())
+        binary_sha = sha256_path(binary)
+        if (retained_plan.get("status") != "full-preflight" or
+                retained_plan.get("generator_model_sha256") != model or
+                retained_plan.get("inventory_sha256") != inventory_sha256() or
+                retained_plan.get("selected") !=
+                [normalized_record(row) for row in selected] or
+                retained_plan.get("binary_sha256") != binary_sha or
+                retained_plan.get("dependency_manifest_sha256") !=
+                sha256_path(work / "dependencies/manifest.json") or
+                generator_model_sha256(bundle) != model or
+                not (work / "outputs").is_dir() or
+                not (work / "scratch").is_dir()):
+            raise RuntimeError("retained concrete checkpoint binding residual")
+        if any((work / "outputs" / str(row["filename"])).exists()
+               for row in selected):
+            raise RuntimeError("retained checkpoint already has a completed output")
+    else:
+        work.mkdir(parents=True, exist_ok=True)
+        if any(work.iterdir()):
+            raise RuntimeError(f"AWS concrete work directory must be empty: {work}")
+        bundle = stage_sources(work, model)
+        staged_manifest = stage_dependencies(
+            args.dependencies.resolve(), work / "dependencies",
+            dependency_records, required)
+        preservation.write_json(
+            work / "dependencies/manifest.json", staged_manifest)
+        binary, build_command = build_binary(work)
+        binary_sha = sha256_path(binary)
+        if generator_model_sha256(bundle) != model:
+            raise RuntimeError("concrete generator source changed during build")
+        (work / "outputs").mkdir()
+        (work / "scratch").mkdir()
+        preservation.write_json(work / "run-plan.json", {
+            **plan_document, "status": "full-preflight", "build": build_command,
+            "binary_sha256": binary_sha,
+            "dependency_manifest_sha256": sha256_path(
+                work / "dependencies/manifest.json"),
+        })
     require_aws_full(args, measurement, work)
-    bundle = stage_sources(work, model)
-    staged_manifest = stage_dependencies(
-        args.dependencies.resolve(), work / "dependencies", dependency_records, required)
-    preservation.write_json(work / "dependencies/manifest.json", staged_manifest)
-    binary, build_command = build_binary(work)
-    binary_sha = sha256_path(binary)
-    if generator_model_sha256(bundle) != model:
-        raise RuntimeError("concrete generator source changed during build")
-    (work / "outputs").mkdir()
-    (work / "scratch").mkdir()
-    preservation.write_json(work / "run-plan.json", {
-        **plan_document, "status": "full-preflight", "build": build_command,
-        "binary_sha256": binary_sha,
-        "dependency_manifest_sha256": sha256_path(
-            work / "dependencies/manifest.json"),
-    })
     environment = dict(os.environ)
     environment["ULTIMATE_TABLEBASE_PRESERVE_SCRATCH"] = "1"
     environment["ULTIMATE_TABLEBASE_PATH"] = os.pathsep.join(
         (str(work / "dependencies"), str(work / "outputs")))
 
-    # Four deterministic strata catch codec/dependency defects without
-    # allocating any state plane.  This is preflight, not a solve.
-    for record in selected:
-        for sample in range(4):
-            count = min(args.dry_run_samples, int(record["states"]))
-            begin = (int(record["states"]) - count) * sample // 3
-            log = work / "logs/preflight" / (
-                f"{Path(str(record['filename'])).stem}-{sample}.log")
-            run_logged(class_command(record, dry_run=count, dry_run_begin=begin),
-                       log, work, environment)
+    if not args.resume_existing:
+        # Four deterministic strata catch codec/dependency defects without
+        # allocating any state plane.  This is preflight, not a solve.
+        for record in selected:
+            for sample in range(4):
+                count = min(args.dry_run_samples, int(record["states"]))
+                begin = (int(record["states"]) - count) * sample // 3
+                log = work / "logs/preflight" / (
+                    f"{Path(str(record['filename'])).stem}-{sample}.log")
+                run_logged(
+                    class_command(record, dry_run=count, dry_run_begin=begin),
+                    log, work, environment)
 
     completed = []
     for record in selected:
         filename = str(record["filename"])
         log = work / "logs/generate" / f"{Path(filename).stem}.log"
+        retained_log = log.with_suffix(".resource-stop.log")
+        if args.resume_existing:
+            if not log.is_file() or retained_log.exists():
+                raise RuntimeError("retained concrete proof-log binding residual")
+            log.rename(retained_log)
         resources = run_logged_monitored(
             class_command(record), log, work, environment,
             checkpoint_stem=Path(filename).stem, output_name=filename,
@@ -1008,6 +1047,8 @@ def main(argv: list[str] | None = None) -> int:
             "schema": ARCHIVE_SCHEMA, "generator_model_sha256": model,
             "inventory_sha256": inventory_sha256(), "record": normalized_record(record),
             "output": verification, "proof_log_sha256": sha256_path(log),
+            "retained_resource_stop_log_sha256":
+                sha256_path(retained_log) if args.resume_existing else None,
             "binary_sha256": binary_sha,
             "dependency_manifest_sha256": sha256_path(
                 work / "dependencies/manifest.json"),
@@ -1023,6 +1064,8 @@ def main(argv: list[str] | None = None) -> int:
             "proof/dependency-manifest.json": work / "dependencies/manifest.json",
             "binary/ultimate_tablebase": binary,
         }
+        if args.resume_existing:
+            files[f"proof/{retained_log.name}"] = retained_log
         for relative in MODEL_SOURCES:
             files[f"sources/{relative}"] = work / "bundle" / relative
         archive_path, archive_sha = preservation.content_address_archive(

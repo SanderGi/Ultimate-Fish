@@ -203,6 +203,8 @@ class Position {
     [[nodiscard]] std::string upn() const;
     bool set_upn(std::string_view text, std::string* error = nullptr);
     [[nodiscard]] std::string move_to_string(const Move& move) const;
+    [[nodiscard]] std::string move_to_display_string(
+      const Move& move, bool concealJester = false) const;
     [[nodiscard]] std::optional<Move> move_from_string(std::string_view text) const;
 
     static const PieceInfo& info(PieceType type);

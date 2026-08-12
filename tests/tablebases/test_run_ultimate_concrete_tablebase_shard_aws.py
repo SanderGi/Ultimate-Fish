@@ -100,13 +100,14 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
             row for row in runner.wave_inventory(1)
             if row["filename"] == "kpawnbombk.uftb")
         self.assertEqual(
-            {"kpawnk.uftb", "kbombk.uftb", "kqueenbombk.uftb"},
+            {"kpawnk.uftb", "kqk.uftb", "kbombk.uftb",
+             "kqueenbombk.uftb"},
             set(runner.class_dependency_filenames(pawn_bomb)))
         pawn_pair = next(
             row for row in runner.wave_inventory(2)
             if row["filename"] == "kpawnpawnk.uftb")
         self.assertEqual(
-            {"kpawnk.uftb", "kpawnqueenk.uftb"},
+            {"kpawnk.uftb", "kqk.uftb", "kpawnqueenk.uftb"},
             set(runner.class_dependency_filenames(pawn_pair)))
 
     def test_default_is_plan_only(self) -> None:

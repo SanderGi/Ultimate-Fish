@@ -31,6 +31,54 @@ constexpr int rank_of(int square) { return square >> 3; }
 constexpr int make_square(int file, int rank) { return rank * 8 + file; }
 constexpr Bitboard square_bb(int square) { return Bitboard{1} << square; }
 
+std::string_view display_letter(PieceType type, bool concealJester) {
+    switch (type) {
+    case PieceType::King: return "K";
+    case PieceType::Jester: return concealJester ? "K" : "J";
+    case PieceType::Knight: return "N";
+    case PieceType::Pawn: return "";
+    case PieceType::Queen: return "Q";
+    case PieceType::Rook: return "R";
+    case PieceType::Bishop: return "B";
+    case PieceType::Berserker: return "BS";
+    case PieceType::Bomb: return "BM";
+    case PieceType::Ninja: return "NJ";
+    case PieceType::Turtle: return "T";
+    case PieceType::Ghost: return "GH";
+    case PieceType::Mage: return "M";
+    case PieceType::Goop: return "GO";
+    case PieceType::Penguin: return "PN";
+    case PieceType::Parasite: return "P";
+    case PieceType::Devil: return "DV";
+    case PieceType::Minion: return "MN";
+    case PieceType::Sludge: return "S";
+    case PieceType::Sniper: return "SN";
+    case PieceType::Prince: return "PR";
+    case PieceType::Checker: return "C";
+    case PieceType::CheckerKing: return "CK";
+    case PieceType::Giant: return "G";
+    case PieceType::Copycat:
+    case PieceType::CopycatClone: return "CC";
+    case PieceType::Angel: return "A";
+    case PieceType::Halo: return "H";
+    case PieceType::Fisherman: return "F";
+    case PieceType::Dragon: return "D";
+    case PieceType::Count: return "";
+    }
+    return "";
+}
+
+bool same_display_role(PieceType lhs, PieceType rhs, bool concealJester) {
+    if ((lhs == PieceType::Copycat || lhs == PieceType::CopycatClone) &&
+        (rhs == PieceType::Copycat || rhs == PieceType::CopycatClone))
+        return true;
+    if (concealJester &&
+        (lhs == PieceType::King || lhs == PieceType::Jester) &&
+        (rhs == PieceType::King || rhs == PieceType::Jester))
+        return true;
+    return lhs == rhs;
+}
+
 struct ThreatGeometry {
     std::array<Bitboard, Position::BoardSquares> king{};
     std::array<Bitboard, Position::BoardSquares> knight{};
@@ -2927,6 +2975,85 @@ std::string Position::move_to_string(const Move& move) const {
     case MoveKind::Normal: break;
     }
     return square_name(move.from) + separator + square_name(move.to);
+}
+
+std::string Position::move_to_display_string(const Move& move,
+                                             bool concealJester) const {
+    if (move.kind == MoveKind::Pass)
+        return "pass";
+    if (!valid_square(move.from) || !valid_square(move.to))
+        return move_to_string(move);
+    const int actorId = board_[move.from];
+    if (actorId == NoPiece)
+        return move_to_string(move);
+    const PieceState& actor = pieces_[actorId];
+
+    std::string notation;
+    if (move.kind == MoveKind::Castle) {
+        int castles = 0;
+        for (const Move& candidate : legal_moves())
+            if (candidate.kind == MoveKind::Castle && candidate.from == move.from)
+                ++castles;
+        notation = "0-0";
+        if (castles > 1 && move.auxiliary < pieceCount_)
+            notation += square_name(pieces_[move.auxiliary].square);
+    }
+    else {
+        notation = display_letter(actor.type, concealJester);
+        const bool capture = is_capture(move);
+        if (actor.type == PieceType::Pawn && capture)
+            notation += static_cast<char>('a' + file_of(move.from));
+        else if (actor.type != PieceType::Pawn) {
+            std::vector<int> alternatives;
+            for (const Move& candidate : legal_moves()) {
+                if (candidate.from == move.from || candidate.to != move.to ||
+                    !valid_square(candidate.from))
+                    continue;
+                const int candidateId = board_[candidate.from];
+                if (candidateId != NoPiece &&
+                    same_display_role(actor.type, pieces_[candidateId].type,
+                                      concealJester))
+                    alternatives.push_back(candidate.from);
+            }
+            if (!alternatives.empty()) {
+                const bool fileUnique = std::none_of(
+                  alternatives.begin(), alternatives.end(), [&](int square) {
+                      return file_of(square) == file_of(move.from);
+                  });
+                const bool rankUnique = std::none_of(
+                  alternatives.begin(), alternatives.end(), [&](int square) {
+                      return rank_of(square) == rank_of(move.from);
+                  });
+                if (fileUnique)
+                    notation += static_cast<char>('a' + file_of(move.from));
+                else if (rankUnique)
+                    notation += std::to_string(rank_of(move.from) + 1);
+                else
+                    notation += square_name(move.from);
+            }
+        }
+        if (capture)
+            notation += 'x';
+        notation += square_name(move.to);
+        if (actor.type == PieceType::Pawn &&
+            rank_of(move.to) == (actor.color == Color::White ? BoardRanks - 1 : 0))
+            notation += "=Q";
+    }
+
+    Position child = *this;
+    Undo undo;
+    if (child.make_move(move, undo)) {
+        if (concealJester && actor.type == PieceType::Ghost && !actor.visible &&
+            (!child.piece(actorId).alive || !child.piece(actorId).onBoard ||
+             !child.piece(actorId).visible))
+            return "GH";
+        if (child.winner() == actor.color)
+            notation += '#';
+        else if (child.has_real_king(~actor.color) &&
+                 child.real_king_threatened(~actor.color))
+            notation += '+';
+    }
+    return notation;
 }
 
 std::optional<Move> Position::move_from_string(std::string_view text) const {

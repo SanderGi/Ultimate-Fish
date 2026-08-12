@@ -83,13 +83,19 @@ async function state(upn, signal) {
 }
 
 async function applyMove(upn, move, signal) {
-  const lines = await runEngine([`position upn ${upn}`, `move ${move}`], signal);
+  const lines = await runEngine([`position upn ${upn}`, `notation ${move}`, `move ${move}`], signal);
   if (lines.includes("illegalmove"))
     throw new Error(`Illegal move: ${move}`);
   const positionLine = lines.find((line) => line.startsWith("position "));
   if (!positionLine)
     throw new Error("Engine did not return a resulting position");
-  return positionLine.slice(9);
+  const notationLine = lines.find((line) => line.startsWith("notation ")) ?? "";
+  const notation = notationLine.match(/^notation (\S+) public (\S+)$/);
+  return {
+    upn: positionLine.slice(9),
+    notation: notation?.[1] ?? move,
+    publicNotation: notation?.[2] ?? notation?.[1] ?? move,
+  };
 }
 
 function parseAnalysis(lines, infoLine) {
@@ -97,6 +103,8 @@ function parseAnalysis(lines, infoLine) {
   const info = infoLine ?? [...lines].reverse().find((line) => line.startsWith("info depth ")) ?? "";
   const best = [...lines].reverse().find((line) => line.startsWith("bestmove "))?.slice(9) ?? null;
   const match = info.match(/^info depth (\d+) score (cp|mate) (-?\d+) nodes (\d+) time (\d+) pv(?: (.*))?$/);
+  const display = [...lines].reverse().find((line) => line === "displaypv" || line.startsWith("displaypv "));
+  const publicDisplay = [...lines].reverse().find((line) => line === "publicpv" || line.startsWith("publicpv "));
   return {
     ...result,
     bestmove: best === "(none)" ? null : best,
@@ -106,6 +114,8 @@ function parseAnalysis(lines, infoLine) {
     nodes: match ? Number(match[4]) : 0,
     time: match ? Number(match[5]) : 0,
     pv: match?.[6]?.split(" ").filter(Boolean) ?? [],
+    pvNotation: display?.slice(9).trim().split(/\s+/).filter(Boolean) ?? [],
+    publicPvNotation: publicDisplay?.slice(8).trim().split(/\s+/).filter(Boolean) ?? [],
   };
 }
 
@@ -234,14 +244,19 @@ async function computerTurn(upn, player, requestedDepth, requestedTime, signal) 
   let currentState = await state(current, signal);
   let engine = null;
   const engineMoves = [];
+  const engineNotations = [];
+  const publicEngineNotations = [];
   for (let action = 0; action < 16 && current[0] !== playerCode && currentState.result === "ongoing"; ++action) {
     engine = await analyze(current, requestedDepth, requestedTime, signal, 16);
     if (!engine.bestmove) break;
     engineMoves.push(engine.bestmove);
-    current = await applyMove(current, engine.bestmove, signal);
+    const applied = await applyMove(current, engine.bestmove, signal);
+    engineNotations.push(applied.notation);
+    publicEngineNotations.push(applied.publicNotation);
+    current = applied.upn;
     currentState = await state(current, signal);
   }
-  return { ...currentState, engine, engineMoves };
+  return { ...currentState, engine, engineMoves, engineNotations, publicEngineNotations };
 }
 
 function send(response, status, body) {
@@ -318,8 +333,9 @@ const server = createServer(async (request, response) => {
       return;
     }
     if (request.url === "/move") {
-      const upn = await applyMove(body.upn, String(body.move ?? ""), cancellation.signal);
-      send(response, 200, await state(upn, cancellation.signal));
+      const applied = await applyMove(body.upn, String(body.move ?? ""), cancellation.signal);
+      send(response, 200, { ...await state(applied.upn, cancellation.signal),
+        notation: applied.notation, publicNotation: applied.publicNotation });
       return;
     }
 
@@ -328,14 +344,18 @@ const server = createServer(async (request, response) => {
       return;
     }
 
-    const afterHuman = await applyMove(body.upn, String(body.move ?? ""), cancellation.signal);
+    const appliedHuman = await applyMove(body.upn, String(body.move ?? ""), cancellation.signal);
+    const afterHuman = appliedHuman.upn;
     const afterState = await state(afterHuman, cancellation.signal);
     const playerCode = body.player === "black" ? "b" : "w";
     if (afterState.result !== "ongoing" || afterHuman[0] === playerCode) {
-      send(response, 200, { ...afterState, engine: null, engineMoves: [] });
+      send(response, 200, { ...afterState, notation: appliedHuman.notation,
+        publicNotation: appliedHuman.publicNotation, engine: null, engineMoves: [],
+        engineNotations: [], publicEngineNotations: [] });
       return;
     }
-    send(response, 200, await computerTurn(afterHuman, body.player, body.depth, body.movetime, cancellation.signal));
+    send(response, 200, { ...await computerTurn(afterHuman, body.player, body.depth, body.movetime, cancellation.signal),
+      notation: appliedHuman.notation, publicNotation: appliedHuman.publicNotation });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") return;
     if (response.headersSent) {

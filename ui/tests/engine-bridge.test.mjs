@@ -110,6 +110,28 @@ test("bridge exposes state, mate scores, results, continuations, and the complet
   }
 });
 
+test("bridge keeps raw actions while exposing chess-style public notation", async () => {
+  const captureUpn = "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,a1;queen,w,h9;king,b,a8;pawn,b,h10";
+  const capture = await post("/move", { upn: captureUpn, move: "h9-h10" });
+  assert.equal(capture.notation, "Qxh10");
+  assert.equal(capture.publicNotation, "Qxh10");
+
+  const jesterUpn = "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,h1;jester,w,c2;king,b,h10";
+  const jester = await post("/move", { upn: jesterUpn, move: "c2-d3" });
+  assert.equal(jester.notation, "Jd3");
+  assert.equal(jester.publicNotation, "Kd3");
+
+  const ghostUpn = "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,a1;ghost,w,c3,0,0,0,0,0,0;king,b,h10";
+  const ghost = await post("/move", { upn: ghostUpn, move: "c3-d4" });
+  assert.equal(ghost.notation, "GHd4");
+  assert.equal(ghost.publicNotation, "GH");
+
+  const analysis = await post("/analyze", { upn: captureUpn, depth: 1 });
+  assert.equal(analysis.pvNotation.length, analysis.pv.length);
+  assert.equal(analysis.publicPvNotation.length, analysis.pv.length);
+  assert.ok(analysis.pvNotation.every((move) => !/[-~@!&]/.test(move)));
+});
+
 test("aborting auto-analysis leaves the bridge responsive", async () => {
   const analysisUpn = "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,e1;jester,w,d1;ninja,w,b2;penguin,w,c2;devil,w,f2;sniper,w,g2;checker,w,h2;sludge,w,a2;king,b,e10;jester,b,d10;ninja,b,b9;penguin,b,c9;devil,b,f9;sniper,b,g9;checker,b,h9;sludge,b,a9";
   const streamed = await streamAnalysis({ upn: analysisUpn, depth: 3 });

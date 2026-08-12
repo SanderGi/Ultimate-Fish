@@ -72,10 +72,9 @@ and reverse-engineering trail are in:
 - [`docs/reverse-engineering.md`](docs/reverse-engineering.md)
 - [`docs/benchmarks/ultimate-search.md`](docs/benchmarks/ultimate-search.md)
 
-Special move notation uses `~` for Mage swaps, `@` for Devil spawns, `x` for
-Sniper shots, `!` for Fisherman pulls, and `&` for Angel links. UPN preserves
-every search-relevant state field, including continuations, cooldowns, freeze,
-visibility, attachments, Giant footprints, and the exact en-passant victim.
+UPN preserves every search-relevant state field, including continuations,
+cooldowns, freeze, visibility, attachments, Giant footprints, and the exact
+en-passant victim.
 
 ## Setup evolution and engine matches
 

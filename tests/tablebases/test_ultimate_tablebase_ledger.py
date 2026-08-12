@@ -105,7 +105,7 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
                 f"kjesterjesterk.uftb={encoded.replace('1 / 1; 2 / 0', 'bad')}"])
 
     def test_launch_gate_refuses_certified_and_untracked_recomputation(self):
-        with self.assertRaisesRegex(RuntimeError, "status preserving"):
+        with self.assertRaisesRegex(RuntimeError, "status certified"):
             ledger.check_launch(ledger.README, "krk.uftb", resume=False)
         with self.assertRaisesRegex(RuntimeError, "status computing"):
             ledger.check_launch(

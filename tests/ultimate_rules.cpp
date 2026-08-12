@@ -108,6 +108,121 @@ void test_roster_and_position_round_trip() {
            "custom UPN rejects non-Boolean and overflowing state fields");
 }
 
+void test_chess_style_move_notation() {
+    const auto kings = [](Position& position, std::string_view white,
+                          std::string_view black) {
+        position.add_piece(PieceType::King, Color::White,
+                           Position::square_from_name(white));
+        position.add_piece(PieceType::King, Color::Black,
+                           Position::square_from_name(black));
+    };
+
+    Position queenCapture;
+    kings(queenCapture, "a1", "a8");
+    queenCapture.add_piece(PieceType::Queen, Color::White,
+                           Position::square_from_name("h9"));
+    queenCapture.add_piece(PieceType::Pawn, Color::Black,
+                           Position::square_from_name("h10"));
+    expect(queenCapture.move_to_display_string(
+             require_move(queenCapture, "h9-h10")) == "Qxh10",
+           "display notation uses the piece letter, capture marker, and destination");
+
+    Position ambiguousRooks;
+    kings(ambiguousRooks, "b1", "g10");
+    ambiguousRooks.add_piece(PieceType::Rook, Color::White,
+                             Position::square_from_name("a2"));
+    ambiguousRooks.add_piece(PieceType::Rook, Color::White,
+                             Position::square_from_name("h2"));
+    expect(ambiguousRooks.move_to_display_string(
+             require_move(ambiguousRooks, "a2-d2")) == "Rad2" &&
+           ambiguousRooks.move_to_display_string(
+             require_move(ambiguousRooks, "h2-d2")) == "Rhd2",
+           "display notation uses orthodox file disambiguation");
+
+    Position promotion;
+    kings(promotion, "a1", "a8");
+    promotion.add_piece(PieceType::Pawn, Color::White,
+                        Position::square_from_name("h9"));
+    expect(promotion.move_to_display_string(
+             require_move(promotion, "h9-h10")) == "h10=Q",
+           "auto-queen promotion uses equals-Q notation");
+
+    Position check;
+    kings(check, "a1", "e10");
+    check.add_piece(PieceType::Rook, Color::White,
+                    Position::square_from_name("e2"));
+    check.add_piece(PieceType::Pawn, Color::Black,
+                    Position::square_from_name("e8"));
+    expect(check.move_to_display_string(require_move(check, "e2-e8")) ==
+             "Rxe8+",
+           "a checking move receives the plus suffix");
+
+    Position mate;
+    kings(mate, "c8", "a10");
+    mate.add_piece(PieceType::Queen, Color::White,
+                   Position::square_from_name("b8"));
+    expect(mate.move_to_display_string(require_move(mate, "b8-b9")) ==
+             "Qb9#",
+           "a mating move receives the hash suffix");
+
+    Position castle;
+    kings(castle, "d2", "g10");
+    castle.add_piece(PieceType::Rook, Color::White,
+                     Position::square_from_name("h2"));
+    expect(castle.move_to_display_string(require_move(castle, "d2-f2")) ==
+             "0-0",
+           "an unambiguous native castle uses zero-zero notation");
+    castle.add_piece(PieceType::Rook, Color::White,
+                     Position::square_from_name("a2"));
+    expect(castle.move_to_display_string(require_move(castle, "d2-f2")) ==
+             "0-0h2" &&
+           castle.move_to_display_string(require_move(castle, "d2-b2")) ==
+             "0-0a2",
+           "multiple native castles append the participating Rook square");
+
+    Position special;
+    kings(special, "a1", "h10");
+    special.add_piece(PieceType::Mage, Color::White,
+                      Position::square_from_name("c2"));
+    special.add_piece(PieceType::Rook, Color::White,
+                      Position::square_from_name("f6"));
+    expect(special.move_to_display_string(require_move(special, "c2~f6")) ==
+             "Mf6",
+           "special actions use the clicked destination without protocol punctuation");
+
+    Position sniper;
+    kings(sniper, "a1", "h8");
+    sniper.add_piece(PieceType::Sniper, Color::White,
+                     Position::square_from_name("d2"));
+    sniper.add_piece(PieceType::Rook, Color::Black,
+                     Position::square_from_name("d7"));
+    expect(sniper.move_to_display_string(require_move(sniper, "d2xd7")) ==
+             "SNxd7",
+           "Sniper shots render as ordinary piece captures");
+
+    Position royal;
+    kings(royal, "h1", "h10");
+    royal.add_piece(PieceType::Jester, Color::White,
+                    Position::square_from_name("c2"));
+    const Move jesterMove = require_move(royal, "c2-d3");
+    expect(royal.move_to_display_string(jesterMove) == "Jd3" &&
+           royal.move_to_display_string(jesterMove, true) == "Kd3",
+           "public notation conceals Jester identity as King");
+
+    Position ghost;
+    kings(ghost, "a1", "h10");
+    const int hiddenGhost = ghost.add_piece(PieceType::Ghost, Color::White,
+                                            Position::square_from_name("c3"));
+    ghost.piece(hiddenGhost).visible = false;
+    const Move hiddenMove = require_move(ghost, "c3-d4");
+    expect(ghost.move_to_display_string(hiddenMove) == "GHd4" &&
+           ghost.move_to_display_string(hiddenMove, true) == "GH",
+           "public notation conceals an unrevealed Ghost destination");
+    ghost.piece(hiddenGhost).visible = true;
+    expect(ghost.move_to_display_string(hiddenMove, true) == "GHd4",
+           "public notation includes a revealed Ghost destination");
+}
+
 void test_bomb_and_undo() {
     Position position;
     position.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
@@ -2123,8 +2238,11 @@ void test_exact_tablebase_probing() {
            "an exact root tablebase result stops after selecting its optimal action");
 
     queen.piece(1).moved = false;
-    expect(!TablebaseProbe::probe(queen),
-           "tablebase declines an unmoved state whose castling class is absent");
+    const auto displacedPromotion = TablebaseProbe::probe(queen);
+    expect(displacedPromotion && white &&
+             displacedPromotion->wdl == white->wdl &&
+             displacedPromotion->dtw == white->dtw,
+           "an unmoved forced-promotion Queen reuses the exact ordinary table");
 }
 
 void test_native_information_set_search() {
@@ -3546,6 +3664,7 @@ void test_public_information_projection() {
 
 int main() {
     test_roster_and_position_round_trip();
+    test_chess_style_move_notation();
     test_bomb_and_undo();
     test_bomb_check_legality();
     test_native_castling();

@@ -57,6 +57,24 @@ void print_score(int score, const std::optional<int>& exactMateActions = std::nu
 }
 
 void print_search_info(const Position& position, const SearchResult& result) {
+    Position line = position;
+    std::vector<std::string> display;
+    std::vector<std::string> publicDisplay;
+    for (const Move& move : result.principalVariation) {
+        display.push_back(line.move_to_display_string(move));
+        publicDisplay.push_back(line.move_to_display_string(move, true));
+        Undo undo;
+        if (!line.make_move(move, undo))
+            break;
+    }
+    std::cout << "displaypv";
+    for (const std::string& notation : display)
+        std::cout << ' ' << notation;
+    std::cout << '\n';
+    std::cout << "publicpv";
+    for (const std::string& notation : publicDisplay)
+        std::cout << ' ' << notation;
+    std::cout << '\n';
     std::cout << "info depth " << result.completedDepth << " score ";
     print_score(result.score, result.mateActions);
     std::cout << " nodes " << result.nodes << " time " << result.elapsed.count() << " pv";
@@ -390,6 +408,16 @@ int main() {
                 std::cout << "illegalmove\n";
             else
                 std::cout << "position " << position.upn() << '\n';
+            continue;
+        }
+        if (line.rfind("notation ", 0) == 0) {
+            const auto move = position.move_from_string(line.substr(9));
+            if (!move)
+                std::cout << "illegalmove\n";
+            else
+                std::cout << "notation " << position.move_to_display_string(*move)
+                          << " public " << position.move_to_display_string(*move, true)
+                          << '\n';
             continue;
         }
         if (line.rfind("perft ", 0) == 0) {
