@@ -1,0 +1,35 @@
+[Unit]
+Description=Ultimate Fish Bomb/Ghost same exact solve from authenticated measurement
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3
+ExecStartPre=/usr/bin/mkdir -p /mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/tmp
+ExecStart=/usr/bin/python3 /mnt/ultimatefish/resume-runners/bomb-ghost-0e1f5e22/run_ultimate_ghost_bomb_aws.py --manifest bundle-manifest.json --transition-resume-manifest transition-resume-manifest.json --full --resume-completed-measurement
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONPATH=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/tools/tablebases
+Environment=TMPDIR=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/tmp
+Nice=10
+IOSchedulingClass=idle
+AllowedCPUs=0
+CPUQuota=100%
+MemoryHigh=22G
+MemoryMax=24G
+TasksMax=32
+LimitNOFILE=1048576
+TimeoutStartSec=infinity
+Restart=no
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v2
+ReadOnlyPaths=/mnt/ultimatefish/resume-runners/bomb-ghost-0e1f5e22
+ReadWritePaths=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3
+StandardOutput=append:/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/exact-from-measure-v2.log
+StandardError=append:/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/exact-from-measure-v2.log
+
+[Install]
+WantedBy=multi-user.target

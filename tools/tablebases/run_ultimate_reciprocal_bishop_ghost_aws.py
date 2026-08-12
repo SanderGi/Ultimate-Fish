@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 from typing import Sequence
 
@@ -151,13 +152,49 @@ def artifact_manifest(root: Path, manifest: dict[str, object]) -> None:
     }, indent=2, sort_keys=True) + "\n")
 
 
+def validate_completed_measurement(root: Path,
+                                   manifest: dict[str, object]) -> None:
+    """Authenticate the completed sizing pass before an exact continuation."""
+    log = root / "work/logs/measure.log"
+    artifact = json.loads((root / "work/artifact-manifest.json").read_text())
+    records = artifact.get("artifacts")
+    match = next((record for record in records
+                  if isinstance(record, dict) and
+                  record.get("path") == "work/logs/measure.log"), None) \
+            if isinstance(records, list) else None
+    if (artifact.get("source_sha256") != manifest.get("source_sha256") or
+            artifact.get("model_sha256") != manifest.get("model_sha256") or
+            not isinstance(match, dict) or
+            match.get("bytes") != log.stat().st_size or
+            match.get("sha256") != sha256(log)):
+        raise RuntimeError(
+            "completed reciprocal Bishop/Ghost measurement binding residual")
+    text = log.read_text()
+    measurement = re.findall(
+        r"^reciprocal_ghost_extra_measurement iterations 1 bdd_nodes [1-9][0-9]* "
+        r"peak_rss_bytes [1-9][0-9]* proof_complete 0 overlay_written 0$",
+        text, flags=re.MULTILINE)
+    certificate = re.findall(
+        r"^reciprocal_bishop_ghost_certificate dual_force_residual 0 "
+        r"structural_residual 0 singleton_residual 0 .*$",
+        text, flags=re.MULTILINE)
+    if len(measurement) != 1 or len(certificate) != 1:
+        raise RuntimeError(
+            "completed reciprocal Bishop/Ghost measurement proof residual")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path,
                         default=Path("bundle-manifest.json"))
     parser.add_argument("--full", action="store_true",
                         help="continue after measurement to the exact solve")
+    parser.add_argument(
+        "--resume-completed-measurement", action="store_true",
+        help="authenticate and skip an already completed one-iteration sizing pass")
     args = parser.parse_args()
+    if args.resume_completed_measurement and not args.full:
+        parser.error("--resume-completed-measurement requires --full")
     root = args.manifest.resolve().parent
     manifest = json.loads(args.manifest.read_text())
     verify_inputs(root, manifest)
@@ -180,8 +217,11 @@ def main() -> None:
     merge = manifest["commands"]["merge"]
     if not merged_transition_is_complete(root, merge):
         run(merge, root, work / "logs" / "merge.log")
-    run(manifest["commands"]["measure"], root,
-        work / "logs" / "measure.log")
+    if args.resume_completed_measurement:
+        validate_completed_measurement(root, manifest)
+    else:
+        run(manifest["commands"]["measure"], root,
+            work / "logs" / "measure.log")
     if args.full:
         run(manifest["commands"]["solve"], root,
             work / "logs" / "solve.log")

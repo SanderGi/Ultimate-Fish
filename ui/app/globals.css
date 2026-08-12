@@ -128,6 +128,24 @@ h2 { margin: 0; font-size: 16px; letter-spacing: -.01em; }
   overflow: hidden;
   border: 1px solid #171a1d;
 }
+.board-highlights, .board-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.board-highlights { z-index: 2; }
+.board-arrows { z-index: 6; overflow: visible; }
+.board-highlight { position: absolute; width: 12.5%; height: 10%; opacity: .58; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .08); }
+.board-highlight.yellow { background: #edb84f; }
+.board-highlight.red { background: #d95656; }
+.board-highlight.blue { background: #4b8fd2; }
+.board-highlight.green { background: #55a46c; }
+.board-arrow { fill: none; stroke-width: 18; stroke-linecap: round; opacity: .76; vector-effect: non-scaling-stroke; }
+.board-arrow.draft { opacity: .48; }
+.board-arrow.yellow { stroke: #edb84f; }
+.board-arrow.red { stroke: #d95656; }
+.board-arrow.blue { stroke: #4b8fd2; }
+.board-arrow.green { stroke: #55a46c; }
+#board-arrow-yellow path { fill: #edb84f; }
+#board-arrow-red path { fill: #d95656; }
+#board-arrow-blue path { fill: #4b8fd2; }
+#board-arrow-green path { fill: #55a46c; }
 .square { position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; border: 0; padding: 0; display: grid; place-items: center; cursor: pointer; }
 .square.light { background: var(--board-light); }
 .square.dark { background: var(--board-dark); }

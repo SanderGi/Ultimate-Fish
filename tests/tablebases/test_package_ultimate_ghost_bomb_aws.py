@@ -112,8 +112,19 @@ class BombGhostResumeUnitTests(unittest.TestCase):
     def test_completed_measurement_requires_authenticated_zero_residual_proof(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            executable = root / "ultimate_ghost_bomb_information_tablebase"
+            executable.write_text("binary")
+            executable.chmod(0o755)
+            build = root / "work/logs/build.log"
+            build.parent.mkdir(parents=True)
+            build.write_text("successful build\n")
+            self_test = root / "work/logs/self-test.log"
+            self_test.write_text(
+                "ghost_bomb_exact_self_test codec_states 151831680 "
+                "remap_residual 0 belief_cap none\n"
+                "bomb_ghost_resource geometries 492960 concrete_worlds "
+                "37957920 owner_roots 39436800\n")
             log = root / "work/logs/measure.log"
-            log.parent.mkdir(parents=True)
             log.write_text(
                 "reciprocal_ghost_extra_measurement iterations 1 "
                 "bdd_nodes 190808071 peak_rss_bytes 7278997504 "
@@ -125,19 +136,20 @@ class BombGhostResumeUnitTests(unittest.TestCase):
             artifact = {
                 "filename": "kbombghostk.uftb",
                 "model_sha256": "b" * 64,
-                "artifacts": [{
-                    "path": "work/logs/measure.log",
-                    "bytes": log.stat().st_size,
-                    "sha256": runner.shared.sha256(log),
-                }],
+                "artifacts": [
+                    {"path": str(path.relative_to(root)),
+                     "bytes": path.stat().st_size,
+                     "sha256": runner.shared.sha256(path)}
+                    for path in (build, self_test, log)
+                ],
             }
             (root / "work/artifact-manifest.json").write_text(
                 json.dumps(artifact))
-            runner.validate_completed_measurement(root, self.manifest())
+            runner.validate_completed_setup(root, self.manifest())
             log.write_text(log.read_text().replace(
                 "structural_residual 0", "structural_residual 1"))
             with self.assertRaises(RuntimeError):
-                runner.validate_completed_measurement(root, self.manifest())
+                runner.validate_completed_setup(root, self.manifest())
 
     def test_runner_rejects_old_schema(self):
         manifest = self.manifest()

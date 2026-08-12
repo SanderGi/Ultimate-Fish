@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import os
 from pathlib import Path
 import re
 
@@ -102,24 +103,42 @@ def resumed_measure_command(command: list[str], prefix: Path) -> list[str]:
     return result
 
 
-def validate_completed_measurement(root: Path,
-                                   manifest: dict[str, object]) -> None:
-    """Authenticate a finished one-iteration sizing pass before skipping it."""
-    log = root / "work/logs/measure.log"
+def validate_completed_setup(root: Path,
+                             manifest: dict[str, object]) -> None:
+    """Authenticate the built binary and finished sizing pass before resuming."""
+    logs = {
+        "work/logs/build.log": root / "work/logs/build.log",
+        "work/logs/self-test.log": root / "work/logs/self-test.log",
+        "work/logs/measure.log": root / "work/logs/measure.log",
+    }
     artifact_path = root / "work/artifact-manifest.json"
     artifact = json.loads(artifact_path.read_text())
     records = artifact.get("artifacts")
-    match = next((record for record in records
-                  if isinstance(record, dict) and
-                  record.get("path") == "work/logs/measure.log"), None) \
-            if isinstance(records, list) else None
+    matches = {
+        name: next((record for record in records
+                    if isinstance(record, dict) and
+                    record.get("path") == name), None)
+        for name in logs
+    } if isinstance(records, list) else {}
     if (artifact.get("filename") != manifest.get("filename") or
             artifact.get("model_sha256") != manifest.get("model_sha256") or
-            not isinstance(match, dict) or
-            match.get("bytes") != log.stat().st_size or
-            match.get("sha256") != shared.sha256(log)):
-        raise RuntimeError("completed Bomb/Ghost measurement binding residual")
-    text = log.read_text()
+            any(not isinstance(matches.get(name), dict) or
+                matches[name].get("bytes") != path.stat().st_size or
+                matches[name].get("sha256") != shared.sha256(path)
+                for name, path in logs.items())):
+        raise RuntimeError("completed Bomb/Ghost setup binding residual")
+    executable = root / "ultimate_ghost_bomb_information_tablebase"
+    if (not executable.is_file() or
+            not os.access(executable, os.X_OK) or
+            executable.stat().st_mtime_ns > logs["work/logs/measure.log"].stat().st_mtime_ns):
+        raise RuntimeError("completed Bomb/Ghost executable residual")
+    self_test = logs["work/logs/self-test.log"].read_text()
+    if ("ghost_bomb_exact_self_test codec_states 151831680 remap_residual 0 "
+            "belief_cap none" not in self_test or
+            "bomb_ghost_resource geometries 492960 concrete_worlds 37957920 "
+            not in self_test):
+        raise RuntimeError("completed Bomb/Ghost self-test proof residual")
+    text = logs["work/logs/measure.log"].read_text()
     measurements = re.findall(
         r"^reciprocal_ghost_extra_measurement iterations 1 bdd_nodes [1-9][0-9]* "
         r"peak_rss_bytes [1-9][0-9]* proof_complete 0 overlay_written 0$",
@@ -154,15 +173,18 @@ def main() -> None:
     shared.prepare_workdirs(root)
     work = root / "work"
     commands = manifest["commands"]
-    shared.run(commands["build"], root, work / "logs" / "build.log")
-    shared.run(commands["self_test"], root,
-               work / "logs" / "self-test.log")
+    if args.resume_completed_measurement:
+        validate_completed_setup(root, manifest)
+        shared.run(commands["self_test"], root,
+                   work / "logs" / "resume-self-test.log")
+    else:
+        shared.run(commands["build"], root, work / "logs" / "build.log")
+        shared.run(commands["self_test"], root,
+                   work / "logs" / "self-test.log")
     resume_path = args.transition_resume_manifest.resolve()
     resume = json.loads(resume_path.read_text())
     prefix = validate_transition_resume(resume, manifest)
-    if args.resume_completed_measurement:
-        validate_completed_measurement(root, manifest)
-    else:
+    if not args.resume_completed_measurement:
         shared.run(resumed_measure_command(commands["measure"], prefix), root,
                    work / "logs" / "measure.log")
     # Reauthenticate after the expensive read to prove the preserved graph was

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import PieceIcon from "./PieceIcon";
 import {
   buildReplayBelief,
@@ -14,6 +21,13 @@ type Color = "white" | "black";
 type View = "play" | "analysis" | "draft";
 type DraftAction = "ban" | "pick";
 type GameResult = "ongoing" | "white" | "black" | "draw";
+type AnnotationColor = "yellow" | "red" | "blue" | "green";
+type BoardArrow = {
+  from: number;
+  to: number;
+  color: AnnotationColor;
+};
+type SquareHighlight = { square: number; color: AnnotationColor };
 
 type PieceId =
   | "king"
@@ -926,6 +940,13 @@ export function UltimateWorkbench() {
   const [toolColor, setToolColor] = useState<Color>("white");
   const [selected, setSelected] = useState<number | null>(null);
   const [draggedUid, setDraggedUid] = useState<string | null>(null);
+  const [boardArrows, setBoardArrows] = useState<BoardArrow[]>([]);
+  const [squareHighlights, setSquareHighlights] = useState<SquareHighlight[]>(
+    [],
+  );
+  const [annotationDraft, setAnnotationDraft] = useState<BoardArrow | null>(
+    null,
+  );
   const [query, setQuery] = useState("");
   const [analysisMaxDepth, setAnalysisMaxDepth] = useState(16);
   const [playDepth, setPlayDepth] = useState(7);
@@ -1009,6 +1030,7 @@ export function UltimateWorkbench() {
   const variationSequence = useRef(0);
   const draftAiRequest = useRef<string | null>(null);
   const liveGameUpn = useRef<string | null>(null);
+  const annotationStart = useRef<number | null>(null);
 
   const upn = useMemo(
     () => positionUpn(pieces, turn, meta),
@@ -1017,6 +1039,16 @@ export function UltimateWorkbench() {
   const orderedSquares = useMemo(
     () =>
       Array.from({ length: 80 }, (_, index) => (flipped ? 79 - index : index)),
+    [flipped],
+  );
+  const boardAnnotationPoint = useCallback(
+    (square: number) => {
+      const displayIndex = flipped ? 79 - square : square;
+      return {
+        x: (displayIndex % 8) * 100 + 50,
+        y: Math.floor(displayIndex / 8) * 100 + 50,
+      };
+    },
     [flipped],
   );
   const boardMap = useMemo(() => {
@@ -2403,6 +2435,102 @@ export function UltimateWorkbench() {
     setEngineMessage("Game stopped. The position is editable again.");
   }
 
+  function annotationColor(
+    event: ReactPointerEvent<HTMLDivElement>,
+    forHighlight: boolean,
+  ): AnnotationColor {
+    if (event.altKey) return "blue";
+    if (event.shiftKey) return "green";
+    if (event.ctrlKey) return forHighlight ? "yellow" : "red";
+    return forHighlight ? "red" : "yellow";
+  }
+
+  function annotationSquare(
+    event: ReactPointerEvent<HTMLDivElement>,
+  ): number | null {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const column = Math.floor(((event.clientX - bounds.left) / bounds.width) * 8);
+    const row = Math.floor(((event.clientY - bounds.top) / bounds.height) * 10);
+    if (column < 0 || column >= 8 || row < 0 || row >= 10) return null;
+    const displayIndex = row * 8 + column;
+    return flipped ? 79 - displayIndex : displayIndex;
+  }
+
+  function beginBoardAnnotation(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 2) return;
+    event.preventDefault();
+    const square = annotationSquare(event);
+    if (square === null) return;
+    annotationStart.current = square;
+    setAnnotationDraft({
+      from: square,
+      to: square,
+      color: annotationColor(event, false),
+    });
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function updateBoardAnnotation(event: ReactPointerEvent<HTMLDivElement>) {
+    if (annotationStart.current === null || !(event.buttons & 2)) return;
+    const square = annotationSquare(event);
+    if (square === null) return;
+    setAnnotationDraft({
+      from: annotationStart.current,
+      to: square,
+      color: annotationColor(event, false),
+    });
+  }
+
+  function finishBoardAnnotation(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 2 || annotationStart.current === null) return;
+    event.preventDefault();
+    const from = annotationStart.current;
+    const to = annotationSquare(event) ?? from;
+    annotationStart.current = null;
+    setAnnotationDraft(null);
+    if (event.currentTarget.hasPointerCapture(event.pointerId))
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    if (from === to) {
+      const color = annotationColor(event, true);
+      setSquareHighlights((items) => {
+        const exists = items.some(
+          (item) => item.square === from && item.color === color,
+        );
+        return exists
+          ? items.filter(
+              (item) => item.square !== from || item.color !== color,
+            )
+          : [...items, { square: from, color }];
+      });
+      return;
+    }
+    const color = annotationColor(event, false);
+    setBoardArrows((items) => {
+      const exists = items.some(
+        (item) => item.from === from && item.to === to && item.color === color,
+      );
+      return exists
+        ? items.filter(
+            (item) =>
+              item.from !== from || item.to !== to || item.color !== color,
+          )
+        : [...items, { from, to, color }];
+    });
+  }
+
+  function cancelBoardAnnotation(event: ReactPointerEvent<HTMLDivElement>) {
+    annotationStart.current = null;
+    setAnnotationDraft(null);
+    if (event.currentTarget.hasPointerCapture(event.pointerId))
+      event.currentTarget.releasePointerCapture(event.pointerId);
+  }
+
+  function clearBoardAnnotations() {
+    if (!boardArrows.length && !squareHighlights.length) return;
+    setBoardArrows([]);
+    setSquareHighlights([]);
+  }
+
   function handleSquare(index: number) {
     setKnowledgeHoverSquares([]);
     if ((editing || draftPlacementActive) && !boardLocked) {
@@ -3326,7 +3454,77 @@ export function UltimateWorkbench() {
               className="chessboard"
               role="grid"
               aria-label="Chess Ultimate board"
+              onPointerDown={beginBoardAnnotation}
+              onPointerMove={updateBoardAnnotation}
+              onPointerUp={finishBoardAnnotation}
+              onPointerCancel={cancelBoardAnnotation}
+              onContextMenu={(event) => event.preventDefault()}
+              onClickCapture={clearBoardAnnotations}
             >
+              <div className="board-highlights" aria-hidden="true">
+                {squareHighlights.map((highlight) => {
+                  const point = boardAnnotationPoint(highlight.square);
+                  return (
+                    <span
+                      key={`${highlight.square}-${highlight.color}`}
+                      className={`board-highlight ${highlight.color}`}
+                      style={{
+                        left: `${(point.x - 50) / 8}%`,
+                        top: `${(point.y - 50) / 10}%`,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              <svg
+                className="board-arrows"
+                viewBox="0 0 800 1000"
+                preserveAspectRatio="none"
+                aria-hidden="true"
+              >
+                <defs>
+                  {(["yellow", "red", "blue", "green"] as const).map(
+                    (color) => (
+                      <marker
+                        key={color}
+                        id={`board-arrow-${color}`}
+                        markerWidth="3"
+                        markerHeight="3"
+                        refX="0"
+                        refY="5"
+                        orient="auto"
+                        viewBox="0 0 10 10"
+                      >
+                        <path d="M 0 0 L 10 5 L 0 10 z" />
+                      </marker>
+                    ),
+                  )}
+                </defs>
+                {[...boardArrows, ...(annotationDraft && annotationDraft.from !== annotationDraft.to ? [annotationDraft] : [])].map(
+                  (arrow, index) => {
+                    const start = boardAnnotationPoint(arrow.from);
+                    const end = boardAnnotationPoint(arrow.to);
+                    const dx = end.x - start.x;
+                    const dy = end.y - start.y;
+                    const length = Math.sqrt(dx * dx + dy * dy);
+                    if (length === 0) return null;
+                    const trimDistance = 42; 
+                    const trimmedX2 = end.x - (dx / length) * trimDistance;
+                    const trimmedY2 = end.y - (dy / length) * trimDistance;
+                    return (
+                      <line
+                        key={`${arrow.from}-${arrow.to}-${arrow.color}-${index}`}
+                        className={`board-arrow ${arrow.color} ${index >= boardArrows.length ? "draft" : ""}`}
+                        x1={start.x}
+                        y1={start.y}
+                        x2={trimmedX2}
+                        y2={trimmedY2}
+                        markerEnd={`url(#board-arrow-${arrow.color})`}
+                      />
+                    );
+                  },
+                )}
+              </svg>
               {orderedSquares.map((index, displayIndex) => {
                 const row = Math.floor(displayIndex / 8);
                 const col = displayIndex % 8;
