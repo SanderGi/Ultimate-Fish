@@ -114,6 +114,14 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
         self.assertTrue(record["opposing"])
         self.assertEqual(303_663_360, record["states"])
 
+    def test_single_class_finalizer_swaps_encoded_alias_side_rows(self):
+        record = finalize.encoded_record_for("kdragonkpenguin.uftb")
+        self.assertEqual("kpenguinkdragon.uftb", record["filename"])
+        self.assertEqual((1, 0), finalize.ledger_side_order(
+            "kdragonkpenguin.uftb"))
+        self.assertEqual((0, 1), finalize.ledger_side_order(
+            "kpenguinksniper.uftb"))
+
     def test_single_class_finalizer_rejects_certified_before_remote_upload(self):
         with tempfile.TemporaryDirectory() as directory:
             readme = Path(directory) / "README.md"
@@ -124,6 +132,22 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "already CERTIFIED"):
                     finalize.preflight(SimpleNamespace(
                         filename="kknightprincek.uftb", readme=readme))
+
+    def test_hidden_dependency_preservation_is_explicit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            readme = Path(directory) / "README.md"
+            readme.write_text("unused")
+            row = SimpleNamespace(filename="kjesterprincek.uftb",
+                                  result_kind="information required",
+                                  status="computing")
+            with mock.patch.object(finalize.ledger, "entries", return_value=[row]):
+                finalize.preflight(SimpleNamespace(
+                    filename="kjesterprincek.uftb", readme=readme,
+                    preserve_information_dependency=True))
+                with self.assertRaisesRegex(ValueError, "cannot be concrete-certified"):
+                    finalize.preflight(SimpleNamespace(
+                        filename="kjesterprincek.uftb", readme=readme,
+                        preserve_information_dependency=False))
 
     def test_single_class_launcher_preflights_exact_index_before_systemd(self):
         args = SimpleNamespace(
@@ -145,8 +169,13 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
 
     def test_single_class_launcher_uses_ledger_assignment_syntax(self):
         source = (TOOLS / "launch_ultimate_aws_concrete_class.py").read_text()
-        self.assertIn("record[\"filename\"]}=computing", source)
+        self.assertIn("ledger_filename(str(record[\"filename\"]))}=computing",
+                      source)
         self.assertNotIn("[(str(record[\"filename\"]), \"computing\")]", source)
+        self.assertEqual("kdragonkpenguin.uftb",
+                         launch.ledger_filename("kpenguinkdragon.uftb"))
+        self.assertEqual("kexample.uftb",
+                         launch.ledger_filename("kexample.uftb"))
 
     def test_primary_jester_outcome_cell_parenthesizes_unreachable(self):
         entry = {"sides": {"first": {"outcomes": {

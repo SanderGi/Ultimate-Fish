@@ -47,6 +47,23 @@ SCHEMA = "ultimate-concrete-k2-aws-run-v2"
 DEPENDENCY_SCHEMA = "ultimate-concrete-k2-dependencies-v2"
 ARCHIVE_SCHEMA = "ultimate-concrete-k2-result-v2"
 CERTIFICATE_SCHEMA = "ultimate-concrete-k2-s3-certificate-v2"
+LEDGER_FILENAME_ALIASES = {
+    # This opposed pair is physically encoded with Penguin as White/primary,
+    # while the canonical ledger keeps the historical Dragon-primary name.
+    "kpenguinkdragon.uftb": "kdragonkpenguin.uftb",
+}
+
+
+def ledger_filename(filename: str) -> str:
+    return LEDGER_FILENAME_ALIASES.get(filename, filename)
+
+
+def encoded_filename(filename: str) -> str:
+    matches = [encoded for encoded, canonical in LEDGER_FILENAME_ALIASES.items()
+               if canonical == filename]
+    if len(matches) > 1:
+        raise RuntimeError(f"ambiguous encoded filename alias for {filename}")
+    return matches[0] if matches else filename
 GIANT_TAG = 0x32474E4149474655
 PIECE_TYPES = (
     "king", "jester", "knight", "pawn", "queen", "rook", "bishop",
@@ -826,6 +843,25 @@ def run_logged_monitored(command: list[str], log: Path, work: Path,
     return certificate
 
 
+def rotate_resource_stop_log(log: Path) -> tuple[Path, ...]:
+    """Retain every failed monitored attempt in one gap-free proof chain."""
+    if not log.is_file():
+        raise RuntimeError("retained concrete proof-log binding residual")
+    first = log.with_suffix(".resource-stop.log")
+    found = tuple(log.parent.glob(f"{log.stem}.resource-stop*.log"))
+    expected = ([first] + [
+        log.with_suffix(f".resource-stop-{index:04d}.log")
+        for index in range(2, len(found) + 1)
+    ]) if found else []
+    if set(found) != set(expected) or any(
+            not path.is_file() for path in expected):
+        raise RuntimeError("retained concrete proof-log binding residual")
+    target = (first if not expected else
+              log.with_suffix(f".resource-stop-{len(expected) + 1:04d}.log"))
+    log.rename(target)
+    return (*expected, target)
+
+
 def selection_plan(wave: int, begin: int, end: int) -> tuple[
         tuple[dict[str, object], ...], dict[str, object]]:
     rows = wave_inventory(wave)
@@ -1028,11 +1064,8 @@ def main(argv: list[str] | None = None) -> int:
     for record in selected:
         filename = str(record["filename"])
         log = work / "logs/generate" / f"{Path(filename).stem}.log"
-        retained_log = log.with_suffix(".resource-stop.log")
-        if args.resume_existing:
-            if not log.is_file() or retained_log.exists():
-                raise RuntimeError("retained concrete proof-log binding residual")
-            log.rename(retained_log)
+        retained_logs = (rotate_resource_stop_log(log)
+                         if args.resume_existing else ())
         resources = run_logged_monitored(
             class_command(record), log, work, environment,
             checkpoint_stem=Path(filename).stem, output_name=filename,
@@ -1048,7 +1081,11 @@ def main(argv: list[str] | None = None) -> int:
             "inventory_sha256": inventory_sha256(), "record": normalized_record(record),
             "output": verification, "proof_log_sha256": sha256_path(log),
             "retained_resource_stop_log_sha256":
-                sha256_path(retained_log) if args.resume_existing else None,
+                sha256_path(retained_logs[-1]) if retained_logs else None,
+            "retained_resource_stop_logs": [
+                {"name": path.name, "sha256": sha256_path(path)}
+                for path in retained_logs
+            ],
             "binary_sha256": binary_sha,
             "dependency_manifest_sha256": sha256_path(
                 work / "dependencies/manifest.json"),
@@ -1064,7 +1101,7 @@ def main(argv: list[str] | None = None) -> int:
             "proof/dependency-manifest.json": work / "dependencies/manifest.json",
             "binary/ultimate_tablebase": binary,
         }
-        if args.resume_existing:
+        for retained_log in retained_logs:
             files[f"proof/{retained_log.name}"] = retained_log
         for relative in MODEL_SOURCES:
             files[f"sources/{relative}"] = work / "bundle" / relative

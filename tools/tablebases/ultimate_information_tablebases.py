@@ -334,6 +334,25 @@ AFFECTED_FILENAMES = (
     "kghostparasitek.uftb",
     "kjesterghostk.uftb",
     "kjesterkghost.uftb",
+    "kjesterkpawn.uftb", "kjesterkprince.uftb",
+    "kjesterpawnk.uftb", "kjesterprincek.uftb",
+    "kknightghostk.uftb", "kknightkghost.uftb",
+    "kninjaghostk.uftb", "kninjakghost.uftb",
+    "kqueenghostk.uftb", "kqueenkghost.uftb",
+    "krookghostk.uftb", "krookkghost.uftb",
+    "kturtleghostk.uftb", "kturtlekghost.uftb",
+    "kghostkghost.uftb", "kghostkprince.uftb", "kghostprincek.uftb",
+    "kjestercheckerk.uftb", "kjesterkchecker.uftb",
+    "kjesterksniper.uftb", "kjestersniperk.uftb",
+    "kpawnghostk.uftb", "kpawnkghost.uftb",
+    "kghostcheckerk.uftb", "kghostkchecker.uftb",
+    "kghostksniper.uftb", "kghostsniperk.uftb",
+    "kjesterkpenguin.uftb", "kjesterpenguink.uftb",
+    "kjesterberserkerk.uftb", "kjesterkberserker.uftb",
+    "kghostkpenguin.uftb", "kghostpenguink.uftb",
+    "kberserkerghostk.uftb", "kberserkerkghost.uftb",
+    "kcopycatghostk.uftb", "kcopycatjesterk.uftb",
+    "kcopycatkghost.uftb", "kcopycatkjester.uftb",
 )
 
 # Exact source domains currently implemented by the repository.  Keep this
@@ -353,6 +372,12 @@ PRIMARY_JESTER_FILENAMES = (
     "kjesterparasitek.uftb", "kjesterkparasite.uftb",
     "kjesterfishermank.uftb", "kjesterkfisherman.uftb",
     "kjesterdragonk.uftb", "kjesterkdragon.uftb",
+    "kjesterpawnk.uftb", "kjesterkpawn.uftb",
+    "kjesterberserkerk.uftb", "kjesterkberserker.uftb",
+    "kjesterpenguink.uftb", "kjesterkpenguin.uftb",
+    "kjestersniperk.uftb", "kjesterksniper.uftb",
+    "kjesterprincek.uftb", "kjesterkprince.uftb",
+    "kjestercheckerk.uftb", "kjesterkchecker.uftb",
 )
 PRIMARY_JESTER_GIANT_FILENAMES = (
     "kjestergiantk.uftb", "kjesterkgiant.uftb",
@@ -372,9 +397,14 @@ PRIMARY_JESTER_EXTRA_LOWER_TABLES = {
     "parasite": "kparasitek.uftb",
     "giant": "kgiantk.uftb",
     "dragon": "kdragonk.uftb",
+    "pawn": "kpawnk.uftb",
+    "berserker": "kberserkerk.uftb",
+    "penguin": "kpenguink.uftb",
+    "sniper": "ksniperk.uftb",
+    "prince": "kprincek.uftb",
 }
 PRIMARY_JESTER_INSUFFICIENT_EXTRAS = frozenset({
-    "knight", "bishop", "turtle", "mage", "fisherman",
+    "knight", "bishop", "turtle", "mage", "fisherman", "checker",
 })
 SOLVER_DOMAIN_FILENAMES = {
     "primary-jester": PRIMARY_JESTER_FILENAMES,
@@ -487,8 +517,11 @@ def _planner() -> Any:
 
 def affected_inventory(*, root: Path = ROOT,
                        require_files: bool = True) -> tuple[dict[str, object], ...]:
-    """Return the 45 stored classes whose public view hides a Jester or Ghost."""
-    planned = _planner().inventory()
+    """Return all 84 closed classes whose public view hides Jester or Ghost."""
+    # Storage-budget selection was never an epistemic boundary. Enumerate all
+    # closed classes and the requested symmetric Copycat catalog explicitly.
+    planned = (*_planner().inventory(1 << 60),
+               *_planner().mirror_copycat_candidates())
     selected = tuple(
         dict(record) for record in planned
         if ({str(record["primary"]), str(record["secondary"])}
@@ -665,7 +698,9 @@ def concrete_tablebase_model_fingerprint(filename: str,
                                          *, root: Path = ROOT) -> str:
     """Bind a probed concrete lower table to its native generator model."""
     if filename not in {"kdragonk.uftb", "kbombk.uftb",
-                        "kparasitek.uftb", "kgiantk.uftb"}:
+                        "kparasitek.uftb", "kgiantk.uftb", "kpawnk.uftb",
+                        "kberserkerk.uftb", "kpenguink.uftb",
+                        "ksniperk.uftb", "kprincek.uftb"}:
         raise SummaryValidationError(
             f"unsupported concrete dependency model {filename}")
     sources = (
@@ -746,7 +781,7 @@ def validate_summary(document: object, *, root: Path = ROOT,
                      verify_source_hashes: bool = True) -> None:
     """Validate completeness, conservation, SHA binding, and exactness.
 
-    Validation succeeds only for all 45 affected classes.  Every starting-side
+    Validation succeeds only for all 84 affected classes. Every starting-side
     result must account for every dense concrete realization, and every exact-
     solver residual must be zero.  ``belief_cap`` must be JSON null.
     """

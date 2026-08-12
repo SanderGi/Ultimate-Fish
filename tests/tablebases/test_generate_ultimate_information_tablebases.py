@@ -24,6 +24,11 @@ SPEC.loader.exec_module(generate)
 
 
 class InformationGenerationDriverTests(unittest.TestCase):
+    def test_record_catalog_includes_unbudgeted_hidden_classes(self):
+        records = generate._records()
+        self.assertIn("kjestercheckerk.uftb", records)
+        self.assertIn("kcopycatkghost.uftb", records)
+
     @staticmethod
     def _args(root):
         return argparse.Namespace(

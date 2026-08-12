@@ -4,7 +4,7 @@
 The C++ solver emits proof counters and a per-concrete-world ``.ufiw`` overlay.
 This driver binds a completed run to its logical ``.uftb`` SHA-256 and records
 the strict JSON schema consumed by the README updater. Partial checkpoints live
-outside the repository by default; only a complete 45-row, fully validated
+outside the repository by default; only a complete 84-row, fully validated
 catalog may be promoted to ``tablebases/information_summary.json``.
 """
 
@@ -70,7 +70,8 @@ PIECE_TYPE_IDS = {
 
 
 def _records() -> dict[str, Mapping[str, object]]:
-    return {str(record["filename"]): record for record in plan.inventory()}
+    records = (*plan.inventory(1 << 60), *plan.mirror_copycat_candidates())
+    return {str(record["filename"]): record for record in records}
 
 
 def _empty_document() -> dict[str, object]:

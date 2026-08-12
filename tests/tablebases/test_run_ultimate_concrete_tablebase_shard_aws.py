@@ -231,6 +231,36 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
             self.assertIsNotNone(
                 runner.resource_limit_violation(damaged, **arguments))
 
+    def test_repeated_resume_retains_gap_free_proof_log_chain(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            log = Path(temporary) / "class.log"
+            log.write_text("attempt one\n")
+            retained = runner.rotate_resource_stop_log(log)
+            self.assertEqual(["class.resource-stop.log"],
+                             [path.name for path in retained])
+            self.assertEqual("attempt one\n", retained[0].read_text())
+
+            log.write_text("attempt two\n")
+            retained = runner.rotate_resource_stop_log(log)
+            self.assertEqual(
+                ["class.resource-stop.log", "class.resource-stop-0002.log"],
+                [path.name for path in retained])
+            self.assertEqual("attempt two\n", retained[-1].read_text())
+
+            log.write_text("attempt three\n")
+            retained = runner.rotate_resource_stop_log(log)
+            self.assertEqual("class.resource-stop-0003.log",
+                             retained[-1].name)
+
+    def test_repeated_resume_rejects_a_gapped_proof_log_chain(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            log = root / "class.log"
+            log.write_text("current\n")
+            (root / "class.resource-stop-0002.log").write_text("orphan\n")
+            with self.assertRaisesRegex(RuntimeError, "proof-log binding"):
+                runner.rotate_resource_stop_log(log)
+
     def test_structural_and_log_verification(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

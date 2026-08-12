@@ -37,7 +37,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / "tablebases").mkdir()
         records = info.affected_inventory(root=self.root, require_files=False)
-        self.assertEqual(len(records), 45)
+        self.assertEqual(len(records), 84)
         self.document = {
             "schema_version": info.SCHEMA_VERSION,
             "semantics": dict(info.SEMANTICS),
@@ -114,7 +114,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
 
     def test_inventory_is_exactly_all_stored_jester_or_ghost_rows(self):
         records = info.affected_inventory(require_files=False)
-        self.assertEqual(len(records), 45)
+        self.assertEqual(len(records), 84)
         self.assertEqual(tuple(record["filename"] for record in records),
                          info.AFFECTED_FILENAMES)
         for record in records:
@@ -123,12 +123,12 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             self.assertIn(f"`{record['filename']}`",
                           (ROOT / "tablebases" / "README.md").read_text())
 
-    def test_solver_inventory_classifies_all_45_exactly_once(self):
+    def test_solver_inventory_classifies_all_hidden_classes_exactly_once(self):
         supported = info.supported_solver_inventory()
         unsupported = info.unsupported_solver_inventory()
         names = [filename for filename, _ in supported] + list(unsupported)
-        self.assertEqual(len(supported), 44)
-        self.assertEqual(len(unsupported), 1)
+        self.assertEqual(len(supported), 56)
+        self.assertEqual(len(unsupported), 28)
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(set(names), set(info.AFFECTED_FILENAMES))
         counts = {}
@@ -136,7 +136,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             self.assertEqual(info.solver_domain(filename), domain)
             counts[domain] = counts.get(domain, 0) + 1
         self.assertEqual(counts, {
-            "primary-jester": 23,
+            "primary-jester": 35,
             "primary-jester-giant": 2,
             "ghost": 1,
             "double-jester": 1,
@@ -176,7 +176,9 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "queen": "kqk.uftb", "rook": "krk.uftb",
             "bomb": "kbombk.uftb", "ninja": "kninjak.uftb",
             "parasite": "kparasitek.uftb", "giant": "kgiantk.uftb",
-            "dragon": "kdragonk.uftb",
+            "dragon": "kdragonk.uftb", "pawn": "kpawnk.uftb",
+            "berserker": "kberserkerk.uftb", "penguin": "kpenguink.uftb",
+            "sniper": "ksniperk.uftb", "prince": "kprincek.uftb",
         }
         records = {str(record["filename"]): record for record in
                    info.affected_inventory(root=ROOT, require_files=False)}
@@ -472,22 +474,22 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
 
         self.assertEqual(
             info.solver_model_fingerprint("kbishopghostk.uftb"),
-            "416f3792dfa0b5f5317a0ee4f8ae91b2a4dd874807d7223c5918dc0b291a2dcf")
+            "8ac99b8bda009dd92be1d2ab818ac1562525faaf9293930faf63918a3b3f9a4d")
         self.assertEqual(
             info.solver_model_fingerprint("kghostghostk.uftb"),
-            "84807bb96f10a77240b2e0c0584e0739d33d5135241b9e1b567f682b67e085af")
+            "16be1bcb6d741d90ec38a2776bc19dd00fe811cd87d2f9563b58a8a050630550")
         self.assertEqual(
             info.solver_model_fingerprint("kghostmagek.uftb"),
-            "bd2190f61f6b7fc113609118f637643ed65e63e4d8a3da289a2529861758340e")
+            "79ae6fa95b27f6871a4f34e13183136dd4e303da76a298d9a701791389796a2a")
         self.assertEqual(
             info.solver_model_fingerprint("kghostkmage.uftb"),
-            "d33a2aa6dbe3a75f9d8f4d3c66d2496b266fdda0b1f22fa0aa0fba9f1da2f9a0")
+            "b2da3a47647e23ecbfb524280c4bf697b4186e4bfe2d61fba1e32bf7d9dfe3c7")
         self.assertEqual(
             info.solver_model_fingerprint("kghostparasitek.uftb"),
-            "7b90bb730f3ee264928e671d11635df91723a7d688c60ba5b244fb1fc9ef513b")
+            "b1acf95138653c4cde2e136831cc04fc5ad3752bc1e0c6aaf00d0ae67a6621df")
         self.assertEqual(
             info.solver_model_fingerprint("kghostkparasite.uftb"),
-            "519b3d4f0ea6452d5d1bf2d2d5e3288cf49628d6ac491424bd3054bf73db011c")
+            "37dbd664658ac918d3711c73e19dbe620eb08ac84bff931822178ff4712250a4")
         self.assertNotEqual(
             info.double_jester_capture_model_fingerprint(),
             info.solver_model_fingerprint("kjesterjesterk.uftb"))
@@ -571,7 +573,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                 {"solver_model_sha256": "0" * 64}),
             "solver_model_sha256.*expected")
 
-    def test_requires_all_45_rows(self):
+    def test_requires_all_hidden_rows(self):
         missing = info.AFFECTED_FILENAMES[-1]
         self.assert_invalid(
             lambda document: document["files"].pop(missing),

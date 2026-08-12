@@ -69,6 +69,31 @@
       "sha256": "abeef6191dd9baa87918f74a379592dde9683be81675691e8d8e6550dcd1ce44",
       "bytes": 1232440,
       "header": {"magic": "UFTB1\\0\\0\\0", "version": 4, "header_bytes": 40, "states": 985920, "wdl_bytes": 246480, "dtw_bytes": 985920, "exceptions": 0, "payload_bytes": 1232400, "file_bytes": 1232440}
+    },
+    {
+      "filename": "kberserkerk.uftb",
+      "sha256": "f41245a06eb280136c458e6337ef4a588a0d5142b606413b92f84c248487e2b1",
+      "bytes": 12324040
+    },
+    {
+      "filename": "kpawnk.uftb",
+      "sha256": "42a2cd002c3e1b9c15f78fa895f9a9e030e93ac2ddfd2f416c9301ba2a791844",
+      "bytes": 2464840
+    },
+    {
+      "filename": "kpenguink.uftb",
+      "sha256": "5abd70c847e799b85ed08c49f01c4e5deb3d253505583b8bc145290a84417edd",
+      "bytes": 4929640
+    },
+    {
+      "filename": "kprincek.uftb",
+      "sha256": "7bce11ab717f49e1e2b6e1e0844825139382fe324b2ad88a59b5fc027ba0e6c0",
+      "bytes": 2464840
+    },
+    {
+      "filename": "ksniperk.uftb",
+      "sha256": "473022c95908a45eec7ac8aab7752482d30033cb24f66b65bdf329a7c49c49c5",
+      "bytes": 4929640
     }
   ]
 }

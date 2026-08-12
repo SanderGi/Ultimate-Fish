@@ -51,6 +51,22 @@ def record_for(filename: str) -> Mapping[str, object]:
     return matches[0]
 
 
+def encoded_record_for(filename: str) -> Mapping[str, object]:
+    encoded = concrete.encoded_filename(filename)
+    if encoded == filename:
+        return record_for(filename)
+    matches = [row for row in concrete.supported_inventory()
+               if row["filename"] == encoded]
+    if len(matches) != 1:
+        raise ValueError(f"missing encoded concrete alias: {filename} -> {encoded}")
+    return matches[0]
+
+
+def ledger_side_order(filename: str) -> tuple[int, int]:
+    return ((1, 0) if concrete.encoded_filename(filename) != filename
+            else (0, 1))
+
+
 def counts(pattern: re.Pattern[str], text: str) -> list[list[int]]:
     result = [[0, 0, 0, 0] for _ in range(2)]
     matches = pattern.findall(text)
@@ -81,21 +97,27 @@ def aws(*arguments: str) -> str:
 def preflight(args: argparse.Namespace) -> None:
     rows = {row.filename: row for row in ledger.entries(args.readme.read_text())}
     row = rows[args.filename]
-    if row.result_kind != "concrete":
+    preserve = getattr(args, "preserve_information_dependency", False)
+    if row.result_kind != "concrete" and not preserve:
         raise ValueError(
             f"{args.filename}: hidden-information row cannot be concrete-certified")
+    if (preserve and
+            row.result_kind != "information required"):
+        raise ValueError(
+            f"{args.filename}: preservation mode requires an information row")
     if row.status == "certified":
         raise ValueError(f"{args.filename}: already CERTIFIED; refusing a second upload")
 
 
 def remote_script(args: argparse.Namespace, record: Mapping[str, object]) -> str:
+    encoded = concrete.encoded_filename(args.filename)
     command = ["$work/binary/ultimate_tablebase", "--piece",
                str(record["primary"]), "--checkpoint-every", "0"]
     if record.get("secondary"):
         command += ["--piece2", str(record["secondary"])]
     if record.get("opposing"):
         command.append("--opposing")
-    command += ["--audit-reachability", f"$work/outputs/{args.filename}"]
+    command += ["--audit-reachability", f"$work/outputs/{encoded}"]
     audit_command = " ".join(command)
     unit_check = ""
     if args.unit:
@@ -108,7 +130,7 @@ def remote_script(args: argparse.Namespace, record: Mapping[str, object]) -> str
     return f"""set -euo pipefail
 work={args.work_directory}
 test -f "$work/certificates/wave-certificate.json"
-test -f "$work/outputs/{args.filename}"
+test -f "$work/outputs/{encoded}"
 {unit_check}{audit_command} >"$work/{Path(args.filename).stem}.reachability-v2.txt"
 sidecar="$work/{Path(args.filename).stem}.reachability-v2.txt"
 side_sha=$(sha256sum "$sidecar" | cut -d' ' -f1)
@@ -190,7 +212,8 @@ def import_result(args: argparse.Namespace, output: str,
             len(certificate.get("completed", [])) != 1):
         raise ValueError("concrete certificate schema/cardinality residual")
     completed = certificate["completed"][0]
-    if completed.get("filename") != args.filename:
+    encoded = concrete.encoded_filename(args.filename)
+    if completed.get("filename") != encoded:
         raise ValueError("concrete certificate filename residual")
     table = completed["s3"]
     if any(table.get(key) in (None, "") for key in ("sha256", "version_id")):
@@ -204,16 +227,28 @@ def import_result(args: argparse.Namespace, output: str,
     states = int(record["states"])
     if any(sum(side) != states // 2 for side in totals):
         raise ValueError("native total W/L/D conservation residual")
-    first, second = (render(totals[side], omitted[side]) for side in range(2))
+    first, second = (render(totals[side], omitted[side])
+                     for side in ledger_side_order(args.filename))
     rows = {row.filename: row for row in ledger.entries(args.readme.read_text())}
     row = rows[args.filename]
-    if row.result_kind != "concrete":
+    preserve = getattr(args, "preserve_information_dependency", False)
+    if row.result_kind != "concrete" and not preserve:
         raise ValueError(
             f"{args.filename}: hidden-information row cannot be concrete-certified")
     storage = (
         f"S3 table sha256:{table['sha256']} VersionId {table['version_id']}; "
         f"certificate sha256:{cert_sha} VersionId {head['VersionId']}; "
         f"reachability sha256:{side_sha} VersionId {side_put['VersionId']}")
+    if preserve:
+        ledger.update(args.readme,
+                      [f"{args.filename}=preserving"],
+                      [f"{args.filename}={storage}"])
+        return {
+            "filename": args.filename,
+            "result_kind": "concrete dependency only",
+            "status": "preserving",
+            "storage": storage,
+        }
     value = {
         "result_kind": "concrete", "first": first, "second": second,
         "reachability": ledger.reachability(first, second), "storage": storage,
@@ -230,6 +265,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--filename", required=True)
     parser.add_argument("--unit")
     parser.add_argument(
+        "--preserve-information-dependency", action="store_true",
+        help="preserve/audit a concrete hidden-material oracle without publishing W/L/D")
+    parser.add_argument(
         "--command-id",
         help="resume/import an already submitted remote finalization command")
     parser.add_argument("--bucket", required=True)
@@ -242,7 +280,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    record = record_for(args.filename)
+    record = encoded_record_for(args.filename)
     preflight(args)
     output = (wait_for_command(args, args.command_id) if args.command_id else
               send_and_wait(args, remote_script(args, record)))

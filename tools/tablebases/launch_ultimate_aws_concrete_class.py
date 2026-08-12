@@ -26,6 +26,8 @@ ROOT = Path(__file__).resolve().parents[2]
 README = ROOT / "tablebases/README.md"
 PLOT = ROOT / "tools/tablebases/plot_ultimate_tablebases.py"
 SAFE_UNIT = re.compile(r"[A-Za-z0-9_.@-]+\Z")
+def ledger_filename(filename: str) -> str:
+    return concrete.ledger_filename(filename)
 
 
 def aws(*arguments: str) -> str:
@@ -40,7 +42,7 @@ def selected(args: argparse.Namespace) -> dict[str, object]:
     record = rows[args.index]
     ledger_rows = {
         row.filename: row for row in ledger.entries(args.readme.read_text())}
-    row = ledger_rows[str(record["filename"])]
+    row = ledger_rows[ledger_filename(str(record["filename"]))]
     if row.status != "planned":
         raise ValueError(
             f"{row.filename}: launch requires PLANNED, got {row.status.upper()}")
@@ -165,7 +167,7 @@ def main() -> None:
     record = selected(args)
     command_id = send_and_wait(args, remote_commands(args, record))
     ledger.update(
-        args.readme, [f'{record["filename"]}=computing'], [])
+        args.readme, [f'{ledger_filename(str(record["filename"]))}=computing'], [])
     subprocess.run(["python3", str(PLOT)], cwd=ROOT, check=True)
     print(json.dumps({
         "filename": record["filename"], "instance": args.instance,
