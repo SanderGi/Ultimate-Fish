@@ -31,10 +31,14 @@ from typing import Iterable, Iterator, Sequence
 
 try:
     from evolve_ultimate_army import position as draft_evaluation_position
-    from evolve_ultimate_draft import PublicDraftState, search_public_draft
+    from evolve_ultimate_draft import (
+        first_group_king_candidates, PublicDraftState, search_public_draft,
+    )
 except ModuleNotFoundError:  # Imported as tools.ultimate_phone.
     from tools.evolve_ultimate_army import position as draft_evaluation_position
-    from tools.evolve_ultimate_draft import PublicDraftState, search_public_draft
+    from tools.evolve_ultimate_draft import (
+        first_group_king_candidates, PublicDraftState, search_public_draft,
+    )
 
 
 PIECE_NAMES = (
@@ -2271,6 +2275,61 @@ class EngineClient:
             score = (1 if score >= 0 else -1) * (30000 - abs(score))
         return (None if best == "(none)" else best), score, info
 
+    def search_history(self, initial_upn: str, moves: Sequence[str], depth: int,
+                       observer: str = "white", enemy_king_known: bool = False,
+                       initial_deployment_known: bool = False,
+                       enemy_king_candidates: Sequence[str] | None = None,
+                       nodes: int = 0,
+                       movetime_ms: int = 0) -> tuple[str | None, int, str]:
+        """Reconstruct and search the observer's belief from a private record.
+
+        The authoritative UPN and actions identify only the public observation
+        bucket that occurred. Ultimate Fish expands hidden coordinates and royal
+        identity internally, so callers never select the concrete leaked world.
+        A completed draft sets ``initial_deployment_known`` because its root is
+        known to precede all board moves; arbitrary imported snapshots do not.
+        """
+        if observer not in ("white", "black"):
+            raise ValueError("history observer must be white or black")
+        candidate_token = ""
+        if enemy_king_candidates is not None:
+            candidates = tuple(enemy_king_candidates)
+            if (not candidates or len(set(candidates)) != len(candidates)
+                    or any(not re.fullmatch(r"[a-h](?:10|[1-9])", square)
+                           for square in candidates)):
+                raise ValueError(
+                    "enemy King candidates must be distinct board squares"
+                )
+            candidate_token = " kc=" + ",".join(candidates)
+        self.send(
+            f"history start {observer} {int(enemy_king_known)} "
+            f"{int(initial_deployment_known)}{candidate_token} {initial_upn}"
+        )
+        result = self.until(("historyok", "info string invalid public history"))
+        if not result.startswith("historyok"):
+            raise ValueError(f"engine rejected public history: {result}")
+        for move in moves:
+            self.send("history move " + move)
+            result = self.until(("historyok", "info string invalid public history"))
+            if not result.startswith("historyok"):
+                raise ValueError(f"engine rejected public history move: {result}")
+        limits = ["history", "go", "depth", str(depth)]
+        if nodes:
+            limits += ["nodes", str(nodes)]
+        if movetime_ms:
+            limits += ["movetime", str(movetime_ms)]
+        self.send(" ".join(limits))
+        info = self.until(("info depth ",
+                           "info string invalid belief decision cell"))
+        best = self.until("bestmove ").split(" ", 1)[1]
+        if info.startswith("info string invalid belief decision cell"):
+            raise RuntimeError(info.removeprefix("info string "))
+        score_match = re.search(r" score (cp|mate) (-?\d+)", info)
+        score = int(score_match.group(2)) if score_match else 0
+        if score_match and score_match.group(1) == "mate":
+            score = (1 if score >= 0 else -1) * (30000 - abs(score))
+        return (None if best == "(none)" else best), score, info
+
     def draft_new(self) -> None:
         self.send("draft new")
         result = self.until(("draftok", "info string draft error"))
@@ -3833,7 +3892,9 @@ class PhoneGame:
         self.events = EventStream(adb, device)
         self.engine = EngineClient(engine_path)
         self.draft_evaluator: EngineClient | None = None
-        self.draft_evaluation_cache: dict[str, float] = {}
+        self.draft_evaluation_cache: dict[
+            tuple[str, tuple[str, ...]], float
+        ] = {}
         self.draft_ban_time_seconds = float(os.environ.get(
             "ULTIMATE_DRAFT_BAN_SECONDS", "1.5"
         ))
@@ -6556,25 +6617,32 @@ class PhoneGame:
             local = planned_armies[outcome_key(outcome)]
             opponent = outcome.black if local_color == "w" else outcome.white
             upn = draft_evaluation_position(local, opponent, local_color)
-            if upn not in self.draft_evaluation_cache:
+            enemy_color = "b" if local_color == "w" else "w"
+            king_candidates = first_group_king_candidates(
+                outcome, enemy_color,
+            )
+            cache_key = upn, king_candidates
+            if cache_key not in self.draft_evaluation_cache:
                 remaining_ms = max(40, int((deadline - time.monotonic()) * 1000))
                 # Ban windows need breadth over several candidate denials;
                 # pick windows can afford a deeper judgment of each complete
                 # roster. Both limits stop a single leaf before it consumes
                 # the whole public draft clock.
                 leaf_ms = min(180 if is_ban else 600, remaining_ms)
-                _move, score, _info = self.draft_evaluator.search(
-                    upn, depth=24,
+                _move, score, _info = self.draft_evaluator.search_history(
+                    upn, (), depth=24,
+                    observer="white" if local_color == "w" else "black",
+                    enemy_king_known=len(king_candidates) == 1,
+                    initial_deployment_known=True,
+                    enemy_king_candidates=king_candidates,
                     nodes=(
                         min(getattr(self, "draft_leaf_nodes", 10_000), 4_000)
                         if is_ban else getattr(self, "draft_leaf_nodes", 10_000)
                     ),
                     movetime_ms=leaf_ms,
                 )
-                self.draft_evaluation_cache[upn] = float(
-                    score if local_color == "w" else -score
-                )
-            return self.draft_evaluation_cache[upn]
+                self.draft_evaluation_cache[cache_key] = float(score)
+            return self.draft_evaluation_cache[cache_key]
 
         result = search_public_draft(
             public_state, local_color, evaluate,

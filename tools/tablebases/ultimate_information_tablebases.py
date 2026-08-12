@@ -691,6 +691,9 @@ def solver_concrete_dependencies(filename: str) -> tuple[str, ...]:
         raise SummaryValidationError(
             f"{filename}: primary-Jester lower dependency for {secondary} "
             "is not classified")
+    if secondary == "pawn":
+        dependencies.append("kjesterkqueen.uftb" if bool(record["opposing"])
+                            else "kjesterqueenk.uftb")
     return tuple(dependencies)
 
 

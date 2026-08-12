@@ -9,6 +9,7 @@
 
 #include <charconv>
 #include <iostream>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -83,6 +84,99 @@ void print_search_info(const Position& position, const SearchResult& result) {
     std::cout << '\n';
 }
 
+void print_belief_search_info(const PublicBeliefState& beliefs,
+                              const BeliefSearchResult& result,
+                              bool conservativeMergedCells) {
+    if (!result.validInformationCell) {
+        std::cout << "info string invalid belief decision cell spans "
+                  << beliefs.decision_partitions()
+                  << " privately distinguishable observations\n"
+                  << "bestmove (none)\n";
+        return;
+    }
+    std::cout << "info depth " << result.completedDepth << " score ";
+    print_score(result.score, result.mateActions);
+    std::cout << " nodes " << result.nodes << " time " << result.elapsed.count()
+              << " beliefs " << result.beliefs << " deepbeliefs " << result.deepBeliefs
+              << " common " << result.commonMoves << " candidates " << result.candidates
+              << " beliefmode history-preserving historyplies "
+              << result.historyPreservingPlies
+              << " decisionmode "
+              << (conservativeMergedCells
+                    ? "merged-conservative" : "exact-cell")
+              << " decisionpartitions " << beliefs.decision_partitions()
+              << " beliefworst " << result.worstScore
+              << " beliefmean " << result.meanScore << " pv";
+    for (const std::string& move : result.principalVariation)
+        std::cout << ' ' << move;
+    std::cout << '\n';
+    std::cout << "bestmove " << (result.bestMove ? *result.bestMove : "(none)") << '\n';
+}
+
+void print_piece_knowledge(const Position& representative,
+                           const PublicBeliefState& beliefs) {
+    for (int id = 0; id < representative.piece_count(); ++id) {
+        const PieceState& piece = representative.piece(id);
+        if (!piece.alive || !piece.onBoard)
+            continue;
+        if (piece.type == PieceType::Ghost) {
+            std::vector<int> equivalentIds{id};
+            // Canonical initial beliefs intentionally do not retain factorial
+            // identity permutations for identical hidden enemy Ghosts. Their
+            // diagnostic location is therefore the union for the whole
+            // indistinguishable group, not an arbitrary canonical id subset.
+            if (piece.color != beliefs.disclosure().observer && !piece.visible) {
+                equivalentIds.clear();
+                for (int candidateId = 0;
+                     candidateId < representative.piece_count(); ++candidateId) {
+                    const PieceState& candidate = representative.piece(candidateId);
+                    if (candidate.alive && candidate.onBoard &&
+                        candidate.type == PieceType::Ghost &&
+                        candidate.color == piece.color &&
+                        candidate.visible == piece.visible &&
+                        candidate.action == piece.action &&
+                        candidate.cooldown == piece.cooldown &&
+                        candidate.freezeCount == piece.freezeCount &&
+                        candidate.power == piece.power &&
+                        candidate.moved == piece.moved &&
+                        candidate.link == piece.link &&
+                        candidate.host == piece.host &&
+                        candidate.attachmentOrder == piece.attachmentOrder)
+                        equivalentIds.push_back(candidateId);
+                }
+            }
+            std::set<int> candidateSet;
+            for (int candidateId : equivalentIds) {
+                const std::vector<int> locations =
+                  beliefs.piece_location_candidates(candidateId);
+                candidateSet.insert(locations.begin(), locations.end());
+            }
+            const std::vector<int> candidates(
+              candidateSet.begin(), candidateSet.end());
+            const bool known = equivalentIds.size() == 1 &&
+              beliefs.piece_location_known(equivalentIds.front());
+            std::cout << "knowledge ghost "
+                      << Position::square_name(piece.square) << ' '
+                      << int(known) << ' ';
+            if (candidates.empty())
+                std::cout << '-';
+            else
+                for (std::size_t index = 0; index < candidates.size(); ++index) {
+                    if (index)
+                        std::cout << ',';
+                    std::cout << Position::square_name(candidates[index]);
+                }
+            std::cout << '\n';
+        }
+        else if (piece.type == PieceType::Jester)
+            std::cout << "knowledge jester "
+                      << Position::square_name(piece.square) << ' '
+                      << int(beliefs.piece_type_known(id, PieceType::Jester))
+                      << '\n';
+    }
+    std::cout << "knowledgeend\n";
+}
+
 SearchLimits parse_limits(std::istringstream& input, const Position* position = nullptr,
                           int moveOverhead = 50) {
     SearchLimits limits;
@@ -148,6 +242,7 @@ int main() {
     Search search;
     DraftState draft;
     PublicBeliefState beliefs;
+    PublicHistoryState history;
     int configuredMoveOverhead = 50;
     std::string line;
     while (std::getline(std::cin, line)) {
@@ -175,7 +270,177 @@ int main() {
         if (line == "ucinewgame") {
             position.clear();
             beliefs = PublicBeliefState{};
+            history = PublicHistoryState{};
             search.clear();
+            continue;
+        }
+        if (line == "history clear") {
+            history = PublicHistoryState{};
+            std::cout << "historyok\n";
+            continue;
+        }
+        if (line.rfind("history start ", 0) == 0) {
+            std::istringstream input(line);
+            std::string historyToken, startToken, colorToken, knownToken;
+            std::string deploymentToken;
+            input >> historyToken >> startToken >> colorToken >> knownToken
+                  >> deploymentToken;
+            int enemyKingKnown = 0;
+            int initialDeploymentKnown = 0;
+            std::string upn;
+            if (parse_int(deploymentToken, initialDeploymentKnown) &&
+                (initialDeploymentKnown == 0 || initialDeploymentKnown == 1))
+                std::getline(input >> std::ws, upn);
+            else {
+                // Backward-compatible spelling: the old protocol omitted the
+                // root-provenance bit and therefore means arbitrary snapshot.
+                upn = deploymentToken;
+                initialDeploymentKnown = 0;
+            }
+            bool hasKingCandidates = false;
+            std::vector<int> kingCandidates;
+            if (upn.rfind("kc=", 0) == 0) {
+                const std::size_t separator = upn.find(' ');
+                const std::string candidateToken = upn.substr(
+                  3, separator == std::string::npos
+                     ? std::string::npos : separator - 3);
+                upn = separator == std::string::npos
+                    ? std::string() : upn.substr(separator + 1);
+                hasKingCandidates = true;
+                std::size_t begin = 0;
+                while (begin <= candidateToken.size()) {
+                    const std::size_t comma = candidateToken.find(',', begin);
+                    const std::string square = candidateToken.substr(
+                      begin, comma == std::string::npos
+                           ? std::string::npos : comma - begin);
+                    const int parsed = Position::square_from_name(square);
+                    if (parsed == Position::NoSquare) {
+                        kingCandidates.clear();
+                        break;
+                    }
+                    kingCandidates.push_back(parsed);
+                    if (comma == std::string::npos)
+                        break;
+                    begin = comma + 1;
+                }
+            }
+            const bool validColor = colorToken == "white" || colorToken == "black";
+            const bool validKnown = parse_int(knownToken, enemyKingKnown) &&
+              (enemyKingKnown == 0 || enemyKingKnown == 1);
+            Position initial;
+            std::string error;
+            if (!validColor || !validKnown || upn.empty() ||
+                (hasKingCandidates && kingCandidates.empty()))
+                error = "expected history start white|black 0|1 [0|1] "
+                        "[kc=square,...] <upn>";
+            else if (!initial.set_upn(upn, &error))
+                error = "invalid initial UPN: " + error;
+            else {
+                const DisclosureContext disclosure{
+                  colorToken == "black" ? Color::Black : Color::White,
+                  enemyKingKnown != 0};
+                const bool started = hasKingCandidates
+                  ? history.start(std::move(initial), disclosure,
+                                  initialDeploymentKnown != 0,
+                                  kingCandidates, &error)
+                  : history.start(std::move(initial), disclosure,
+                                  initialDeploymentKnown != 0, &error);
+                if (started) {
+                    std::cout << "historyok beliefs "
+                              << history.beliefs().size() << '\n';
+                    continue;
+                }
+            }
+            std::cout << "info string invalid public history " << error << '\n';
+            continue;
+        }
+        if (line.rfind("history move ", 0) == 0) {
+            std::string error;
+            if (!history.apply_actual(line.substr(13), &error))
+                std::cout << "info string invalid public history " << error << '\n';
+            else
+                std::cout << "historyok beliefs " << history.beliefs().size()
+                          << '\n';
+            continue;
+        }
+        if (line == "history count") {
+            if (!history.initialized())
+                std::cout << "info string invalid public history not initialized\n";
+            else {
+                const std::vector<int> kingCandidates =
+                  history.beliefs().enemy_king_candidate_squares();
+                std::cout << "historycount " << history.beliefs().size()
+                          << " observer "
+                          << (history.beliefs().disclosure().observer == Color::White
+                                ? "white" : "black")
+                          << " enemykingknown "
+                          << int(history.beliefs().disclosure().enemyKingKnown)
+                          << " decisionpartitions "
+                          << history.beliefs().decision_partitions()
+                          << " royalknown "
+                          << int(history.beliefs().enemy_king_known())
+                          << " kingcandidates ";
+                if (kingCandidates.empty())
+                    std::cout << '-';
+                else
+                    for (std::size_t index = 0;
+                         index < kingCandidates.size(); ++index) {
+                        if (index)
+                            std::cout << ',';
+                        std::cout << Position::square_name(
+                          kingCandidates[index]);
+                    }
+                std::cout << '\n';
+            }
+            continue;
+        }
+        if (line == "history d") {
+            if (!history.initialized())
+                std::cout << "info string invalid public history not initialized\n";
+            else
+                print_position(history.actual_position());
+            continue;
+        }
+        if (line == "history knowledge") {
+            if (!history.initialized())
+                std::cout << "info string invalid public history not initialized\n";
+            else
+                print_piece_knowledge(history.actual_position(), history.beliefs());
+            continue;
+        }
+        if (line == "history dump") {
+            if (!history.initialized()) {
+                std::cout << "info string invalid public history not initialized\n";
+                continue;
+            }
+            for (const Position& world : history.beliefs().positions())
+                std::cout << "historybelief " << world.upn() << '\n';
+            std::cout << "historyend " << history.beliefs().size() << '\n';
+            continue;
+        }
+        if (line == "history go" || line.rfind("history go ", 0) == 0) {
+            if (!history.initialized()) {
+                std::cout << "info string invalid public history not initialized\n"
+                             "bestmove (none)\n";
+                continue;
+            }
+            std::istringstream input(line);
+            std::string token;
+            input >> token >> token;
+            SearchLimits limits = parse_limits(
+              input, nullptr, configuredMoveOverhead);
+            const bool streamIterations =
+              line.find(" stream") != std::string::npos;
+            if (streamIterations)
+                limits.onBeliefIteration = [&](const BeliefSearchResult& iteration) {
+                    print_belief_search_info(
+                      history.beliefs(), iteration, false);
+                    std::cout.flush();
+                };
+            const BeliefSearchResult result = search.think_beliefs(
+              history.beliefs(), limits, true);
+            if (!streamIterations)
+                print_belief_search_info(history.beliefs(), result, false);
             continue;
         }
         if (line == "belief clear") {
@@ -229,6 +494,24 @@ int main() {
                 std::cout << "beliefok\n";
             continue;
         }
+        if (line == "belief knowledge" ||
+            line.rfind("belief knowledge ", 0) == 0) {
+            if (beliefs.empty()) {
+                std::cout << "info string invalid belief no retained worlds\n";
+                continue;
+            }
+            Position representative;
+            std::string error;
+            if (line == "belief knowledge")
+                representative = beliefs.positions().front();
+            else if (!representative.set_upn(line.substr(17), &error)) {
+                std::cout << "info string invalid belief representative "
+                          << error << '\n';
+                continue;
+            }
+            print_piece_knowledge(representative, beliefs);
+            continue;
+        }
         if (line == "belief observe" || line.rfind("belief observe ", 0) == 0) {
             std::istringstream input(line);
             std::string token;
@@ -278,30 +561,8 @@ int main() {
             // is sampled or discarded. Ordinary `belief go` remains strict.
             const BeliefSearchResult result = search.think_beliefs(
               beliefs, limits, !conservativeMergedCells);
-            if (!result.validInformationCell) {
-                std::cout << "info string invalid belief decision cell spans "
-                          << beliefs.decision_partitions()
-                          << " privately distinguishable observations\n"
-                          << "bestmove (none)\n";
-                continue;
-            }
-            std::cout << "info depth " << result.completedDepth << " score ";
-            print_score(result.score, result.mateActions);
-            std::cout << " nodes " << result.nodes << " time " << result.elapsed.count()
-                      << " beliefs " << result.beliefs << " deepbeliefs " << result.deepBeliefs
-                      << " common " << result.commonMoves << " candidates " << result.candidates
-                      << " beliefmode history-preserving historyplies "
-                      << result.historyPreservingPlies
-                      << " decisionmode "
-                      << (conservativeMergedCells
-                            ? "merged-conservative" : "exact-cell")
-                      << " decisionpartitions " << beliefs.decision_partitions()
-                      << " beliefworst " << result.worstScore
-                      << " beliefmean " << result.meanScore << " pv";
-            for (const std::string& move : result.principalVariation)
-                std::cout << ' ' << move;
-            std::cout << '\n';
-            std::cout << "bestmove " << (result.bestMove ? *result.bestMove : "(none)") << '\n';
+            print_belief_search_info(
+              beliefs, result, conservativeMergedCells);
             continue;
         }
         if (line == "draft new") {

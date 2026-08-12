@@ -174,6 +174,27 @@ def overlay_is_current(path: Path, record: Mapping[str, object],
         return False
 
 
+def lower_overlay_model(path: Path, record: Mapping[str, object],
+                        source_sha256: str) -> str:
+    """Return an exact lower overlay's self-authenticated solver model.
+
+    A parent-only implementation change must not force regeneration of a
+    certified lower material stratum. The lower UFIW binds its own concrete
+    source and exact solver model; validate that complete header/domain here
+    and pass the embedded model to the native cross-probe.
+    """
+    try:
+        with path.open("rb") as stream:
+            header = stream.read(160)
+        model_sha256 = header[96:160].decode()
+    except (OSError, UnicodeDecodeError):
+        model_sha256 = ""
+    if (len(model_sha256) != 64 or not overlay_is_current(
+            path, record, source_sha256, model_sha256)):
+        raise RuntimeError(f"{path}: invalid authenticated lower UFIW")
+    return model_sha256
+
+
 def arbitrary_is_current(path: Path, source_sha256: str,
                          model_sha256: str, *,
                          lower_jester_overlay_sha256: str | None = None,
@@ -536,14 +557,36 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             if bool(record["opposing"]):
                 command[5:5] = ["--opposing"]
             lower_table = ROOT / "tablebases" / "kjesterk.uftb"
+            lower_record = _records()["kjesterk.uftb"]
+            lower_overlay = args.overlays / "kjesterk.ufiw"
+            lower_source = shards.logical_sha256(lower_table)
             command.extend([
                 "--lower-information-overlay",
-                str(args.overlays / "kjesterk.ufiw"),
+                str(lower_overlay),
                 "--lower-information-source-sha256",
-                shards.logical_sha256(lower_table),
+                lower_source,
                 "--lower-information-model-sha256",
-                information.solver_model_fingerprint("kjesterk.uftb"),
+                lower_overlay_model(lower_overlay, lower_record, lower_source),
             ])
+            if secondary == "pawn":
+                promoted = ("kjesterkqueen.uftb" if bool(record["opposing"])
+                            else "kjesterqueenk.uftb")
+                promoted_table = ROOT / "tablebases" / promoted
+                promoted_overlay = args.overlays / Path(promoted).with_suffix(
+                    ".ufiw").name
+                if not promoted_overlay.exists():
+                    raise RuntimeError(
+                        f"{promoted_overlay}: required exact promoted-Pawn "
+                        "Jester+Queen overlay")
+                command.extend([
+                    "--lower-extra-information-overlay", str(promoted_overlay),
+                    "--lower-extra-information-source-sha256",
+                    shards.logical_sha256(promoted_table),
+                    "--lower-extra-information-model-sha256",
+                    lower_overlay_model(
+                        promoted_overlay, _records()[promoted],
+                        shards.logical_sha256(promoted_table)),
+                ])
         return command
     if domain == "ghost":
         return [

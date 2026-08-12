@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <limits>
 #include <numeric>
 #include <set>
@@ -19,6 +20,190 @@ namespace {
 constexpr int Infinity = 32000;
 constexpr int Mate = 30000;
 constexpr int MateThreshold = Mate - 128;
+
+std::vector<std::string> decision_markers(const Position& position) {
+    std::vector<std::string> result;
+    for (const Move& move : position.legal_moves())
+        result.push_back(move.kind == MoveKind::Pass
+          ? "pass"
+          : Position::square_name(move.from) + ">" +
+            Position::square_name(move.to));
+    std::sort(result.begin(), result.end());
+    result.erase(std::unique(result.begin(), result.end()), result.end());
+    return result;
+}
+
+std::string observed_transition(const Position& before, const Move& move,
+                                const Position& after,
+                                const DisclosureContext& disclosure) {
+    std::string result = transition_observation_key(
+      before, move, after, disclosure);
+    if (!after.game_over() && after.side_to_move() == disclosure.observer) {
+        const std::string decision = decision_observation_key(after, disclosure);
+        result += "|nextDecision=" + std::to_string(decision.size()) + ':' +
+                  decision;
+    }
+    return result;
+}
+
+bool rebuild_position(const Position& mutated, Position& rebuilt) {
+    std::string ignored;
+    return rebuilt.set_upn(mutated.upn(), &ignored);
+}
+
+bool initial_public_beliefs(const Position& actual,
+                            const DisclosureContext& disclosure,
+                            bool initialDeploymentKnown,
+                            PublicBeliefState& beliefs,
+                            std::string* error) {
+    beliefs = PublicBeliefState(disclosure);
+    const Color enemy = disclosure.observer == Color::White
+                      ? Color::Black : Color::White;
+    std::vector<int> hiddenGhosts;
+    std::vector<int> enemyRoyals;
+    for (int id = 0; id < actual.piece_count(); ++id) {
+        const PieceState& piece = actual.piece(id);
+        if (!piece.alive || !piece.onBoard || piece.color != enemy)
+            continue;
+        if (piece.type == PieceType::Ghost && !piece.visible)
+            hiddenGhosts.push_back(id);
+        if (piece.type == PieceType::King || piece.type == PieceType::Jester)
+            enemyRoyals.push_back(id);
+    }
+    const auto ghostStateKey = [&](int id) {
+        const PieceState& piece = actual.piece(id);
+        return std::tie(piece.type, piece.color, piece.onBoard, piece.action,
+                        piece.cooldown, piece.freezeCount, piece.power,
+                        piece.link, piece.host, piece.attachmentOrder,
+                        piece.alive, piece.moved, piece.visible);
+    };
+    std::stable_sort(hiddenGhosts.begin(), hiddenGhosts.end(),
+      [&](int left, int right) {
+          return ghostStateKey(left) < ghostStateKey(right);
+      });
+
+    const std::set<int> hiddenIds(hiddenGhosts.begin(), hiddenGhosts.end());
+    std::vector<int> observerRoyals;
+    for (int id = 0; id < actual.piece_count(); ++id) {
+        const PieceState& piece = actual.piece(id);
+        if (piece.alive && piece.onBoard &&
+            piece.color == disclosure.observer &&
+            (piece.type == PieceType::King ||
+             piece.type == PieceType::Jester))
+            observerRoyals.push_back(piece.square);
+    }
+    const auto wouldBeVisible = [&](int square) {
+        const int file = square % Position::BoardFiles;
+        const int rank = square / Position::BoardFiles;
+        return std::any_of(observerRoyals.begin(), observerRoyals.end(),
+          [&](int royalSquare) {
+              const int royalFile = royalSquare % Position::BoardFiles;
+              const int royalRank = royalSquare / Position::BoardFiles;
+              return std::max(std::abs(file - royalFile),
+                              std::abs(rank - royalRank)) <= 1;
+          });
+    };
+    std::vector<int> ghostSquares;
+    // A history root may be an arbitrary midgame snapshot rather than the
+    // original deployment. Only a draft/deployment history proves that an
+    // invisible Ghost is still inside its home zone at the root.
+    const int firstRank = initialDeploymentKnown
+                        ? (enemy == Color::White ? 1 : 8) : 1;
+    const int lastRank = initialDeploymentKnown
+                       ? (enemy == Color::White ? 3 : 10)
+                       : Position::BoardRanks;
+    for (int rank = firstRank; rank <= lastRank; ++rank)
+        for (char file = 'a'; file <= 'h'; ++file) {
+            const int square = Position::square_from_name(
+              std::string(1, file) + std::to_string(rank));
+            const int occupant = actual.piece_on(square);
+            if ((occupant == Position::NoPiece || hiddenIds.count(occupant)) &&
+                !wouldBeVisible(square))
+                ghostSquares.push_back(square);
+        }
+    if (ghostSquares.size() < hiddenGhosts.size()) {
+        if (error)
+            *error = "not enough publicly possible cells for hidden Ghosts";
+        return false;
+    }
+
+    const std::string expectedView = view_key(actual, disclosure);
+    std::vector<int> kingCandidates;
+    if (!disclosure.enemyKingKnown && enemyRoyals.size() > 1) {
+        for (const int id : enemyRoyals)
+            if (!disclosure.enemyRoyalCandidatesSpecified ||
+                disclosure.is_enemy_royal_candidate(id))
+                kingCandidates.push_back(id);
+    }
+    else
+        kingCandidates.push_back(Position::NoPiece);
+
+    if (kingCandidates.empty()) {
+        if (error)
+            *error = "no enemy royal matches the retained King candidates";
+        return false;
+    }
+
+    for (const int king : kingCandidates) {
+        Position royalVariant = actual;
+        if (king != Position::NoPiece)
+            for (const int id : enemyRoyals)
+                royalVariant.piece(id).type = id == king
+                                            ? PieceType::King
+                                            : PieceType::Jester;
+
+        std::vector<bool> used(ghostSquares.size(), false);
+        std::vector<std::size_t> assigned(hiddenGhosts.size(), 0);
+        std::function<void(std::size_t, Position)> place =
+          [&](std::size_t index, Position variant) {
+            if (index == hiddenGhosts.size()) {
+                Position candidate;
+                std::string addError;
+                if (!rebuild_position(variant, candidate) ||
+                    view_key(candidate, disclosure) != expectedView)
+                    return;
+                if (!beliefs.add(std::move(candidate), &addError) && error &&
+                    error->empty())
+                    *error = addError;
+                return;
+            }
+            const bool sameAsPrevious = index > 0 &&
+              ghostStateKey(hiddenGhosts[index]) ==
+                ghostStateKey(hiddenGhosts[index - 1]);
+            for (std::size_t squareIndex = 0;
+                 squareIndex < ghostSquares.size(); ++squareIndex) {
+                if (used[squareIndex] ||
+                    (sameAsPrevious && squareIndex <= assigned[index - 1]))
+                    continue;
+                Position next = variant;
+                next.piece(hiddenGhosts[index]).square =
+                  ghostSquares[squareIndex];
+                used[squareIndex] = true;
+                assigned[index] = squareIndex;
+                place(index + 1, std::move(next));
+                used[squareIndex] = false;
+            }
+          };
+        place(0, std::move(royalVariant));
+    }
+
+    if (beliefs.empty()) {
+        if (error && error->empty())
+            *error = "initial public view has no legal concrete worlds";
+        return false;
+    }
+    if (!actual.game_over() && actual.side_to_move() == disclosure.observer) {
+        std::string observationError;
+        if (!beliefs.condition_on_decision_markers(
+              decision_markers(actual), &observationError)) {
+            if (error)
+                *error = "initial legal-dot observation is inconsistent: " +
+                         observationError;
+            return false;
+        }
+    }
+    return true;
+}
 
 int piece_order_value(PieceType type) {
     return type == PieceType::Count ? 0 : Position::material_value(type);
@@ -194,6 +379,101 @@ std::size_t PublicBeliefState::decision_partitions() const {
         observations.insert(decision_observation_key(position, disclosure_));
     }
     return observations.size();
+}
+
+bool PublicBeliefState::enemy_king_known() const {
+    if (worlds_.empty())
+        return false;
+    if (disclosure_.enemyKingKnown)
+        return true;
+    const Color enemy = disclosure_.observer == Color::White
+                      ? Color::Black : Color::White;
+    int expectedSquare = Position::NoSquare;
+    bool first = true;
+    for (const auto& [upn, world] : worlds_) {
+        (void)upn;
+        int kingSquare = Position::NoSquare;
+        for (int id = 0; id < world.piece_count(); ++id) {
+            const PieceState& piece = world.piece(id);
+            if (piece.alive && piece.onBoard && piece.color == enemy &&
+                piece.type == PieceType::King) {
+                kingSquare = piece.square;
+                break;
+            }
+        }
+        if (first) {
+            expectedSquare = kingSquare;
+            first = false;
+        }
+        else if (kingSquare != expectedSquare)
+            return false;
+    }
+    return true;
+}
+
+std::vector<int> PublicBeliefState::enemy_king_candidate_squares() const {
+    const Color enemy = disclosure_.observer == Color::White
+                      ? Color::Black : Color::White;
+    std::set<int> candidates;
+    for (const auto& [upn, world] : worlds_) {
+        (void)upn;
+        for (int id = 0; id < world.piece_count(); ++id) {
+            const PieceState& piece = world.piece(id);
+            if (piece.alive && piece.onBoard && piece.color == enemy &&
+                piece.type == PieceType::King)
+                candidates.insert(piece.square);
+        }
+    }
+    return {candidates.begin(), candidates.end()};
+}
+
+bool PublicBeliefState::piece_location_known(int pieceId) const {
+    if (worlds_.empty())
+        return false;
+    int expectedSquare = Position::NoSquare;
+    bool first = true;
+    for (const auto& [upn, world] : worlds_) {
+        (void)upn;
+        if (pieceId < 0 || pieceId >= world.piece_count())
+            return false;
+        const PieceState& piece = world.piece(pieceId);
+        if (!piece.alive || !piece.onBoard)
+            return false;
+        if (first) {
+            expectedSquare = piece.square;
+            first = false;
+        }
+        else if (piece.square != expectedSquare)
+            return false;
+    }
+    return !first;
+}
+
+std::vector<int> PublicBeliefState::piece_location_candidates(int pieceId) const {
+    std::set<int> candidates;
+    for (const auto& [upn, world] : worlds_) {
+        (void)upn;
+        if (pieceId < 0 || pieceId >= world.piece_count())
+            continue;
+        const PieceState& piece = world.piece(pieceId);
+        if (piece.alive && piece.onBoard)
+            candidates.insert(piece.square);
+    }
+    return {candidates.begin(), candidates.end()};
+}
+
+bool PublicBeliefState::piece_type_known(int pieceId, PieceType type) const {
+    if (worlds_.empty())
+        return false;
+    for (const auto& [upn, world] : worlds_) {
+        (void)upn;
+        if (pieceId < 0 || pieceId >= world.piece_count())
+            return false;
+        const PieceState& piece = world.piece(pieceId);
+        if (!piece.alive || !piece.onBoard || piece.type != type)
+            return false;
+    }
+    return true;
 }
 
 bool PublicBeliefState::condition_on_decision_markers(
@@ -390,6 +670,163 @@ BeliefTransitionResult PublicBeliefState::apply_known(
     result.applied = true;
     return result;
 }
+
+bool PublicHistoryState::start(Position initial,
+                               DisclosureContext disclosure,
+                               std::string* error) {
+    return start(std::move(initial), disclosure, false, error);
+}
+
+bool PublicHistoryState::start(Position initial,
+                               DisclosureContext disclosure,
+                               bool initialDeploymentKnown,
+                               std::string* error) {
+    PublicBeliefState initialBeliefs(disclosure);
+    std::string localError;
+    if (!initial_public_beliefs(
+          initial, disclosure, initialDeploymentKnown,
+          initialBeliefs, &localError)) {
+        initialized_ = false;
+        if (error)
+            *error = localError;
+        return false;
+    }
+    actual_ = std::move(initial);
+    beliefs_ = std::move(initialBeliefs);
+    initialized_ = true;
+    return true;
+}
+
+bool PublicHistoryState::start(
+  Position initial, DisclosureContext disclosure,
+  bool initialDeploymentKnown,
+  const std::vector<int>& enemyKingCandidateSquares,
+  std::string* error) {
+    if (enemyKingCandidateSquares.empty()) {
+        if (error)
+            *error = "an exact enemy King candidate set cannot be empty";
+        initialized_ = false;
+        return false;
+    }
+    const Color enemy = disclosure.observer == Color::White
+                      ? Color::Black : Color::White;
+    std::set<int> requested;
+    std::vector<int> candidateIds;
+    int actualKing = Position::NoPiece;
+    for (int id = 0; id < initial.piece_count(); ++id) {
+        const PieceState& piece = initial.piece(id);
+        if (!piece.alive || !piece.onBoard || piece.color != enemy ||
+            (piece.type != PieceType::King && piece.type != PieceType::Jester))
+            continue;
+        if (piece.type == PieceType::King)
+            actualKing = id;
+        if (std::find(enemyKingCandidateSquares.begin(),
+                      enemyKingCandidateSquares.end(), piece.square) !=
+            enemyKingCandidateSquares.end()) {
+            candidateIds.push_back(id);
+            requested.insert(piece.square);
+        }
+    }
+    const std::set<int> supplied(
+      enemyKingCandidateSquares.begin(), enemyKingCandidateSquares.end());
+    if (supplied.size() != enemyKingCandidateSquares.size() ||
+        requested != supplied) {
+        if (error)
+            *error = "enemy King candidates must be distinct current enemy "
+                     "royal squares";
+        initialized_ = false;
+        return false;
+    }
+    if (actualKing == Position::NoPiece ||
+        std::find(candidateIds.begin(), candidateIds.end(), actualKing) ==
+          candidateIds.end()) {
+        if (error)
+            *error = "the authoritative enemy King is absent from its public "
+                     "candidate set";
+        initialized_ = false;
+        return false;
+    }
+    if (disclosure.enemyKingKnown && candidateIds.size() != 1) {
+        if (error)
+            *error = "known enemy King disclosure requires one candidate";
+        initialized_ = false;
+        return false;
+    }
+    if (candidateIds.size() == 1)
+        disclosure.enemyKingKnown = true;
+    else {
+        disclosure.enemyRoyalCandidatesSpecified = true;
+        disclosure.enemyRoyalCandidatesLow = 0;
+        disclosure.enemyRoyalCandidatesHigh = 0;
+        for (const int id : candidateIds)
+            disclosure.set_enemy_royal_candidate(id);
+    }
+    return start(std::move(initial), disclosure, initialDeploymentKnown, error);
+}
+
+bool PublicHistoryState::apply_actual(std::string_view moveText,
+                                      std::string* error) {
+    if (!initialized_) {
+        if (error)
+            *error = "public history has not been initialized";
+        return false;
+    }
+    const std::optional<Move> move = unique_notated_move(actual_, moveText);
+    if (!move) {
+        if (error)
+            *error = "actual history action is illegal or ambiguous";
+        return false;
+    }
+    Position after = actual_;
+    Undo undo;
+    if (!after.make_move(*move, undo)) {
+        if (error)
+            *error = "actual history action could not be applied";
+        return false;
+    }
+
+    const bool observerMoved =
+      actual_.side_to_move() == beliefs_.disclosure().observer;
+    const BeliefSuccessorPartitions partitions = observerMoved
+      ? beliefs_.successor_partitions(moveText)
+      : beliefs_.adversarial_successor_partitions();
+    const std::string observed = observed_transition(
+      actual_, *move, after, beliefs_.disclosure());
+    const BeliefSuccessorBucket* selected = nullptr;
+    for (const BeliefSuccessorBucket& bucket : partitions.buckets) {
+        if (bucket.observation != observed)
+            continue;
+        if (selected) {
+            if (error)
+                *error = "actual history observation matched multiple buckets";
+            return false;
+        }
+        selected = &bucket;
+    }
+    if (!selected) {
+        if (error)
+            *error = "actual history observation matches no retained belief";
+        return false;
+    }
+
+    PublicBeliefState next(beliefs_.disclosure());
+    std::string addError;
+    for (const Position& world : selected->worlds)
+        if (!next.add(world, &addError)) {
+            if (error)
+                *error = addError;
+            return false;
+        }
+    actual_ = std::move(after);
+    beliefs_ = std::move(next);
+    return true;
+}
+
+bool PublicHistoryState::initialized() const { return initialized_; }
+
+const Position& PublicHistoryState::actual_position() const { return actual_; }
+
+const PublicBeliefState& PublicHistoryState::beliefs() const { return beliefs_; }
 
 Search::Search(std::size_t hashMegabytes) {
     const std::size_t bytes = std::max<std::size_t>(1, hashMegabytes) * 1024 * 1024;
@@ -951,23 +1388,38 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
     // principal variation as history preserving.
     if (beliefs.size() == 1) {
         Position position = beliefs.positions().front();
-        SearchResult exact = think(position, limits);
-        result.bestMove = exact.bestMove
-                        ? std::optional<std::string>(
-                            position.move_to_string(*exact.bestMove))
-                        : std::nullopt;
-        result.score = result.worstScore = result.meanScore = exact.score;
-        result.mateActions = exact.mateActions;
-        result.completedDepth = exact.completedDepth;
-        result.historyPreservingPlies = exact.completedDepth;
-        result.nodes = exact.nodes;
-        result.deepBeliefs = 1;
-        result.commonMoves = position.legal_moves().size();
-        result.candidates = result.commonMoves;
-        for (const Move& move : exact.principalVariation)
-            result.principalVariation.push_back(position.move_to_string(move));
-        result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::steady_clock::now() - beliefStart);
+        const auto converted = [&](const SearchResult& exact) {
+            const int perspective =
+              position.side_to_move() == beliefs.disclosure().observer ? 1 : -1;
+            BeliefSearchResult iteration;
+            iteration.beliefs = iteration.deepBeliefs = 1;
+            iteration.bestMove = exact.bestMove
+              ? std::optional<std::string>(
+                  position.move_to_string(*exact.bestMove))
+              : std::nullopt;
+            iteration.score = iteration.worstScore =
+              iteration.meanScore = perspective * exact.score;
+            if (exact.mateActions)
+                iteration.mateActions = perspective * *exact.mateActions;
+            iteration.completedDepth = exact.completedDepth;
+            iteration.historyPreservingPlies = exact.completedDepth;
+            iteration.nodes = exact.nodes;
+            iteration.commonMoves = position.legal_moves().size();
+            iteration.candidates = iteration.commonMoves;
+            for (const Move& move : exact.principalVariation)
+                iteration.principalVariation.push_back(
+                  position.move_to_string(move));
+            iteration.elapsed = std::chrono::duration_cast<
+              std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - beliefStart);
+            return iteration;
+        };
+        SearchLimits exactLimits = limits;
+        if (limits.onBeliefIteration)
+            exactLimits.onIteration = [&](const SearchResult& iteration) {
+                limits.onBeliefIteration(converted(iteration));
+            };
+        result = converted(think(position, exactLimits));
         return result;
     }
 
@@ -979,6 +1431,9 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
     // introduced, use the exact handcrafted evaluator at information leaves.
     useNnue_ = false;
     const Color observer = beliefs.disclosure().observer;
+    result.deepBeliefs = beliefs.size();
+    result.commonMoves = beliefs.common_moves().size();
+    result.candidates = result.commonMoves;
     std::set<std::string> rootRestriction;
     if (!limits.rootMoves.empty()) {
         const Position& reference = beliefs.concrete_worlds().begin()->second;
@@ -993,7 +1448,12 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
             (void)upn;
             int score = 0;
             const Color mover = position.side_to_move();
-            if (const auto winner = position.forced_timeout_winner())
+            if (position.game_over()) {
+                const std::optional<Color> winner = position.winner();
+                score = !winner ? 0
+                      : *winner == mover ? Mate - ply : -Mate + ply;
+            }
+            else if (const auto winner = position.forced_timeout_winner())
                 score = *winner == mover ? Mate - ply : -Mate + ply;
             else {
                 const bool ownKing = position.has_real_king(mover);
@@ -1276,11 +1736,14 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
                         ? std::nullopt
                         : std::optional<std::string>(
                             result.principalVariation.front());
+        result.nodes = nodes_;
+        result.elapsed = std::chrono::duration_cast<
+          std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - beliefStart);
+        if (limits.onBeliefIteration)
+            limits.onBeliefIteration(result);
     }
     result.nodes = nodes_;
-    result.deepBeliefs = beliefs.size();
-    result.commonMoves = beliefs.common_moves().size();
-    result.candidates = result.commonMoves;
     result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - beliefStart);
     return result;

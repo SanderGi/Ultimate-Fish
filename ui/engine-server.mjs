@@ -2,11 +2,19 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import {
+  MAX_ENGINE_SEARCH_DEPTH,
+  normalizedSearchDepth,
+} from "./engine-settings.mjs";
 
 const uiDirectory = path.dirname(fileURLToPath(import.meta.url));
 const engineBinary = process.env.ULTIMATE_FISH_BINARY
   ? path.resolve(process.env.ULTIMATE_FISH_BINARY)
   : path.resolve(uiDirectory, "../src/ultimatefish");
+const pythonBinary = process.env.ULTIMATE_FISH_PYTHON ?? "python3";
+const draftSearchScript = path.resolve(
+  uiDirectory, "../tools/search_ultimate_public_draft.py",
+);
 const port = Number(process.env.ULTIMATE_FISH_PORT ?? 3001);
 
 function runEngine(commands, signal, onLine) {
@@ -75,6 +83,28 @@ function parseState(lines) {
   };
 }
 
+function parsePieceKnowledge(lines) {
+  const ghostKnowledge = {};
+  const jesterKnowledge = {};
+  for (const line of lines) {
+    const ghost = line.match(
+      /^knowledge ghost ([a-h](?:10|[1-9])) ([01]) (\S+)$/,
+    );
+    if (ghost) {
+      ghostKnowledge[ghost[1]] = {
+        known: ghost[2] === "1",
+        candidates: ghost[3] === "-" ? [] : ghost[3].split(","),
+      };
+      continue;
+    }
+    const jester = line.match(
+      /^knowledge jester ([a-h](?:10|[1-9])) ([01])$/,
+    );
+    if (jester) jesterKnowledge[jester[1]] = jester[2] === "1";
+  }
+  return { ghostKnowledge, jesterKnowledge };
+}
+
 async function state(upn, signal) {
   const lines = await runEngine([`position upn ${upn}`, "d"], signal);
   if (lines.some((line) => line.startsWith("info string invalid upn")))
@@ -119,8 +149,15 @@ function parseAnalysis(lines, infoLine) {
   };
 }
 
-async function analyze(upn, requestedDepth, requestedTime, signal, maximumDepth = 50, onIteration) {
-  const depth = Math.max(1, Math.min(maximumDepth, Number(requestedDepth) || 6));
+async function analyze(
+  upn,
+  requestedDepth,
+  requestedTime,
+  signal,
+  maximumDepth = MAX_ENGINE_SEARCH_DEPTH,
+  onIteration,
+) {
+  const depth = normalizedSearchDepth(requestedDepth, 6, maximumDepth);
   const moveTime = Math.max(0, Math.min(120_000, Number(requestedTime) || 0));
   const baseGo = moveTime ? `go depth ${depth} movetime ${moveTime}` : `go depth ${depth}`;
   const go = onIteration ? `${baseGo} stream` : baseGo;
@@ -160,37 +197,7 @@ function beliefError(lines) {
   return lines.find((line) => line.startsWith("info string invalid belief"));
 }
 
-async function beliefState(positions, observer, enemyKingKnown, legalMarkers, signal) {
-  const lines = await runEngine([
-    ...beliefCommands(positions, observer, enemyKingKnown, legalMarkers),
-    "belief count",
-  ], signal);
-  const error = beliefError(lines);
-  if (error) throw new Error(error);
-  const count = [...lines].reverse().find((line) => line.startsWith("beliefcount ")) ?? "";
-  const match = count.match(/^beliefcount (\d+) observer (white|black) enemykingknown ([01]) mode (\S+)$/);
-  if (!match) throw new Error("Engine did not return exact belief metadata");
-  return {
-    beliefs: Number(match[1]),
-    observer: match[2],
-    enemyKingKnown: match[3] === "1",
-    mode: match[4],
-  };
-}
-
-async function analyzeBeliefs(positions, observer, enemyKingKnown,
-                              legalMarkers, requestedDepth, requestedTime, signal) {
-  const depth = Math.max(1, Math.min(16, Number(requestedDepth) || 4));
-  const moveTime = Math.max(0, Math.min(120_000, Number(requestedTime) || 0));
-  const decisionMode = legalMarkers === undefined ? " conservative" : "";
-  const go = moveTime
-    ? `belief go${decisionMode} depth ${depth} movetime ${moveTime}`
-    : `belief go${decisionMode} depth ${depth}`;
-  const lines = await runEngine([
-    ...beliefCommands(positions, observer, enemyKingKnown, legalMarkers), go,
-  ], signal);
-  const error = beliefError(lines);
-  if (error) throw new Error(error);
+function parseBeliefAnalysis(lines, observer, enemyKingKnown) {
   const info = [...lines].reverse().find((line) => line.startsWith("info depth ")) ?? "";
   const match = info.match(
     /^info depth (\d+) score (cp|mate) (-?\d+) nodes (\d+) time (\d+) beliefs (\d+) deepbeliefs (\d+) common (\d+) candidates (\d+) beliefmode (\S+) historyplies (\d+) decisionmode (\S+) decisionpartitions (\d+) beliefworst (-?\d+) beliefmean (-?\d+) pv(?: (.*))?$/,
@@ -198,6 +205,8 @@ async function analyzeBeliefs(positions, observer, enemyKingKnown,
   if (!match) throw new Error("Engine did not return belief analysis metadata");
   const best = [...lines].reverse().find((line) => line.startsWith("bestmove "))?.slice(9) ?? null;
   return {
+    ...parseState(lines),
+    ...parsePieceKnowledge(lines),
     bestmove: best === "(none)" ? null : best,
     depth: Number(match[1]),
     scoreType: match[2],
@@ -214,26 +223,207 @@ async function analyzeBeliefs(positions, observer, enemyKingKnown,
     decisionPartitions: Number(match[13]),
     worstScore: Number(match[14]),
     meanScore: Number(match[15]),
-    pv: match[16]?.split(" ").filter(Boolean) ?? [],
+    // Later plies can name one representative action from an opponent's
+    // indistinguishable observation bucket. Only the observer's robust root
+    // action is safe to expose as a concrete clickable line.
+    pv: match[16]?.split(" ").filter(Boolean).slice(0, 1) ?? [],
     observer,
     enemyKingKnown,
   };
 }
 
-async function draftAuto(history, signal) {
+async function beliefState(positions, observer, enemyKingKnown, legalMarkers, signal) {
+  const lines = await runEngine([
+    ...beliefCommands(positions, observer, enemyKingKnown, legalMarkers),
+    "belief count",
+    `belief knowledge ${positions[0]}`,
+  ], signal);
+  const error = beliefError(lines);
+  if (error) throw new Error(error);
+  const count = [...lines].reverse().find((line) => line.startsWith("beliefcount ")) ?? "";
+  const match = count.match(/^beliefcount (\d+) observer (white|black) enemykingknown ([01]) mode (\S+)$/);
+  if (!match) throw new Error("Engine did not return exact belief metadata");
+  return {
+    ...parsePieceKnowledge(lines),
+    beliefs: Number(match[1]),
+    observer: match[2],
+    enemyKingKnown: match[3] === "1",
+    mode: match[4],
+  };
+}
+
+async function analyzeBeliefs(positions, observer, enemyKingKnown,
+                              legalMarkers, requestedDepth, requestedTime, signal) {
+  const depth = normalizedSearchDepth(requestedDepth);
+  const moveTime = Math.max(0, Math.min(120_000, Number(requestedTime) || 0));
+  const decisionMode = legalMarkers === undefined ? " conservative" : "";
+  const go = moveTime
+    ? `belief go${decisionMode} depth ${depth} movetime ${moveTime}`
+    : `belief go${decisionMode} depth ${depth}`;
+  const lines = await runEngine([
+    ...beliefCommands(positions, observer, enemyKingKnown, legalMarkers),
+    `belief knowledge ${positions[0]}`,
+    go,
+  ], signal);
+  const error = beliefError(lines);
+  if (error) throw new Error(error);
+  return parseBeliefAnalysis(lines, observer, enemyKingKnown);
+}
+
+function historyCommands(initialUpn, moves, observer, enemyKingKnown,
+                         initialDeploymentKnown, enemyKingCandidates) {
+  if (typeof initialUpn !== "string" || initialUpn.length > 20_000 ||
+      /[\r\n]/.test(initialUpn))
+    throw new Error("A valid initial UPN string is required");
+  if (!Array.isArray(moves) || moves.length > 2_000 ||
+      moves.some((move) => typeof move !== "string" || move.length > 80 ||
+        /[\r\n]/.test(move)))
+    throw new Error("History moves must be a bounded string array");
+  if (observer !== "white" && observer !== "black")
+    throw new Error("History observer must be white or black");
+  if (typeof enemyKingKnown !== "boolean")
+    throw new Error("enemyKingKnown must be a boolean");
+  if (typeof initialDeploymentKnown !== "boolean")
+    throw new Error("initialDeploymentKnown must be a boolean");
+  let candidateToken = "";
+  if (enemyKingCandidates !== undefined && enemyKingCandidates !== null) {
+    if (!Array.isArray(enemyKingCandidates) || enemyKingCandidates.length === 0 ||
+        enemyKingCandidates.length > 96 ||
+        enemyKingCandidates.some((square) => typeof square !== "string" ||
+          !/^[a-h](?:10|[1-9])$/.test(square)) ||
+        new Set(enemyKingCandidates).size !== enemyKingCandidates.length)
+      throw new Error("enemyKingCandidates must be distinct board squares");
+    candidateToken = ` kc=${enemyKingCandidates.join(",")}`;
+  }
+  return [
+    `history start ${observer} ${enemyKingKnown ? 1 : 0} ${initialDeploymentKnown ? 1 : 0}${candidateToken} ${initialUpn}`,
+    ...moves.map((move) => `history move ${move}`),
+  ];
+}
+
+function historyError(lines) {
+  return lines.find((line) => line.startsWith("info string invalid public history"));
+}
+
+function parseHistoryMetadata(lines) {
+  const count = [...lines].reverse().find((line) => line.startsWith("historycount ")) ?? "";
+  const match = count.match(
+    /^historycount (\d+) observer (white|black) enemykingknown ([01]) decisionpartitions (\d+) royalknown ([01]) kingcandidates (\S+)$/,
+  );
+  if (!match) throw new Error("Engine did not return public-history metadata");
+  return {
+    ...parsePieceKnowledge(lines),
+    beliefs: Number(match[1]),
+    observer: match[2],
+    disclosureEnemyKingKnown: match[3] === "1",
+    decisionPartitions: Number(match[4]),
+    enemyKingKnown: match[5] === "1",
+    enemyKingCandidates: match[6] === "-" ? [] : match[6].split(","),
+  };
+}
+
+async function historyState(initialUpn, moves, observer, enemyKingKnown,
+                            initialDeploymentKnown, enemyKingCandidates,
+                            signal) {
+  const lines = await runEngine([
+    ...historyCommands(initialUpn, moves, observer, enemyKingKnown,
+      initialDeploymentKnown, enemyKingCandidates),
+    "history count", "history knowledge", "history d",
+  ], signal);
+  const error = historyError(lines);
+  if (error) throw new Error(error);
+  const metadata = parseHistoryMetadata(lines);
+  return {
+    ...parseState(lines),
+    ...metadata,
+    decisionMode: "exact-cell",
+    beliefMode: "history-preserving",
+  };
+}
+
+async function analyzeHistory(initialUpn, moves, observer, enemyKingKnown,
+                              initialDeploymentKnown, enemyKingCandidates,
+                              requestedDepth,
+                              requestedTime, signal, onIteration) {
+  const depth = normalizedSearchDepth(requestedDepth);
+  const moveTime = Math.max(0, Math.min(120_000, Number(requestedTime) || 0));
+  const baseGo = moveTime
+    ? `history go depth ${depth} movetime ${moveTime}`
+    : `history go depth ${depth}`;
+  const go = onIteration ? `${baseGo} stream` : baseGo;
+  const lines = await runEngine([
+    ...historyCommands(initialUpn, moves, observer, enemyKingKnown,
+      initialDeploymentKnown, enemyKingCandidates),
+    "history count", "history knowledge", "history d", go,
+  ], signal, (line, currentLines) => {
+    if (line.startsWith("bestmove "))
+      onIteration?.({
+        ...parseBeliefAnalysis(currentLines, observer, enemyKingKnown),
+        ...parseHistoryMetadata(currentLines),
+      });
+  });
+  const error = historyError(lines);
+  if (error) throw new Error(error);
+  return {
+    ...parseBeliefAnalysis(lines, observer, enemyKingKnown),
+    ...parseHistoryMetadata(lines),
+  };
+}
+
+async function draftAuto(history, player, requestedDepth, requestedTimeLimit, signal) {
   if (!Array.isArray(history) || history.length > 160 ||
       history.some((command) => typeof command !== "string" ||
         !/^(?:draft choose [A-Za-z]+|draft commit)$/.test(command)))
     throw new Error("Invalid draft history");
-  const lines = await runEngine(["draft new", ...history, "draft auto", "draft status"], signal);
-  const error = lines.find((line) => line.startsWith("info string draft error "));
-  if (error) throw new Error(error.slice(24));
-  const auto = lines.find((line) => line === "draftauto" || line.startsWith("draftauto "));
-  const status = [...lines].reverse().find((line) => line.startsWith("draft phase ")) ?? "";
-  return {
-    choices: auto ? auto.slice(9).trim().split(/\s+/).filter(Boolean) : [],
-    status,
-  };
+  if (player !== "white" && player !== "black")
+    throw new Error("Draft player must be white or black");
+  const depth = normalizedSearchDepth(requestedDepth, 4, 16);
+  const timeLimit = Math.max(
+    0.5, Math.min(20, Number(requestedTimeLimit) || 6),
+  );
+  return new Promise((resolve, reject) => {
+    const child = spawn(pythonBinary, [draftSearchScript], {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener("abort", abort);
+      callback(value);
+    };
+    const abort = () => {
+      child.kill("SIGTERM");
+      const error = new Error("Draft search cancelled");
+      error.name = "AbortError";
+      finish(reject, error);
+    };
+    if (signal?.aborted) { abort(); return; }
+    signal?.addEventListener("abort", abort, { once: true });
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => { stdout += chunk; });
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.on("error", (error) => finish(reject, error));
+    child.on("close", (code) => {
+      let result;
+      try { result = JSON.parse(stdout); }
+      catch { result = null; }
+      if (code !== 0 || !result || result.error) {
+        finish(reject, new Error(
+          (result?.error ?? stderr.trim()) ||
+          `draft search exited with status ${code}`,
+        ));
+        return;
+      }
+      finish(resolve, result);
+    });
+    child.stdin.end(JSON.stringify({
+      history, player, depth, timeLimit, engine: engineBinary,
+    }));
+  });
 }
 
 async function computerTurn(upn, player, requestedDepth, requestedTime, signal) {
@@ -259,6 +449,65 @@ async function computerTurn(upn, player, requestedDepth, requestedTime, signal) 
   return { ...currentState, engine, engineMoves, engineNotations, publicEngineNotations };
 }
 
+async function computerHistory(
+  initialUpn, moves, player, playerEnemyKingKnown,
+  initialDeploymentKnown, playerEnemyKingCandidates,
+  engineEnemyKingKnown, engineEnemyKingCandidates, requestedDepth,
+                               requestedTime, signal) {
+  if (player !== "white" && player !== "black")
+    throw new Error("Player side must be white or black");
+  const playerCode = player === "white" ? "w" : "b";
+  const observer = player === "white" ? "black" : "white";
+  const engineKnown = typeof engineEnemyKingKnown === "boolean"
+    ? engineEnemyKingKnown : playerEnemyKingKnown;
+  const engineCandidates = engineEnemyKingCandidates ??
+    playerEnemyKingCandidates;
+  const history = [...moves];
+  let currentState = await historyState(
+    initialUpn, history, observer, engineKnown,
+    initialDeploymentKnown, engineCandidates, signal);
+  let engine = null;
+  const engineMoves = [];
+  const engineNotations = [];
+  const publicEngineNotations = [];
+  const engineUpns = [];
+  for (let action = 0;
+       action < 16 && currentState.upn?.[0] !== playerCode &&
+         currentState.result === "ongoing";
+       ++action) {
+    engine = await analyzeHistory(
+      initialUpn, history, observer, engineKnown,
+      initialDeploymentKnown, engineCandidates, requestedDepth,
+      requestedTime, signal);
+    if (!engine.bestmove || !currentState.upn) break;
+    engineMoves.push(engine.bestmove);
+    const applied = await applyMove(
+      currentState.upn, engine.bestmove, signal);
+    engineNotations.push(applied.notation);
+    publicEngineNotations.push(applied.publicNotation);
+    engineUpns.push(applied.upn);
+    history.push(engine.bestmove);
+    currentState = await historyState(
+      initialUpn, history, observer, engineKnown,
+      initialDeploymentKnown, engineCandidates, signal);
+  }
+  // Return the board and disclosure metadata from the human player's
+  // perspective. The internal loop above deliberately used the engine's
+  // perspective to choose its actions.
+  const playerState = await historyState(
+    initialUpn, history, player, playerEnemyKingKnown,
+    initialDeploymentKnown, playerEnemyKingCandidates, signal);
+  if (engine && publicEngineNotations.length)
+    engine = {
+      ...engine,
+      publicPvNotation: [publicEngineNotations.at(-1)],
+    };
+  return {
+    ...playerState, engine, engineMoves, engineNotations,
+    publicEngineNotations, engineUpns,
+  };
+}
+
 function send(response, status, body) {
   response.writeHead(status, {
     "access-control-allow-origin": "*",
@@ -281,7 +530,7 @@ const server = createServer(async (request, response) => {
     send(response, 200, { ok: true, engineBinary });
     return;
   }
-  if (request.method !== "POST" || !["/state", "/analyze", "/analyze-stream", "/move", "/play", "/computer", "/draft-ai", "/belief-state", "/analyze-beliefs"].includes(request.url)) {
+  if (request.method !== "POST" || !["/state", "/analyze", "/analyze-stream", "/move", "/play", "/computer", "/draft-ai", "/belief-state", "/analyze-beliefs", "/history-state", "/analyze-history", "/analyze-history-stream", "/computer-history"].includes(request.url)) {
     send(response, 404, { error: "Not found" });
     return;
   }
@@ -293,7 +542,9 @@ const server = createServer(async (request, response) => {
       throw new Error("Request is too large");
     const body = JSON.parse(raw || "{}");
     if (request.url === "/draft-ai") {
-      send(response, 200, await draftAuto(body.history, cancellation.signal));
+      send(response, 200, await draftAuto(
+        body.history, body.player, body.depth, body.timeLimit,
+        cancellation.signal));
       return;
     }
     if (request.url === "/belief-state") {
@@ -306,6 +557,47 @@ const server = createServer(async (request, response) => {
       send(response, 200, await analyzeBeliefs(
         body.positions, body.observer, body.enemyKingKnown,
         body.legalMarkers, body.depth, body.movetime,
+        cancellation.signal));
+      return;
+    }
+    if (request.url === "/history-state") {
+      send(response, 200, await historyState(
+        body.initialUpn, body.moves, body.observer, body.enemyKingKnown,
+        body.initialDeploymentKnown ?? false, body.enemyKingCandidates,
+        cancellation.signal));
+      return;
+    }
+    if (request.url === "/analyze-history-stream") {
+      response.writeHead(200, {
+        "access-control-allow-origin": "*",
+        "access-control-allow-headers": "content-type",
+        "content-type": "application/x-ndjson; charset=utf-8",
+        "cache-control": "no-store",
+      });
+      const result = await analyzeHistory(
+        body.initialUpn, body.moves, body.observer, body.enemyKingKnown,
+        body.initialDeploymentKnown ?? false, body.enemyKingCandidates,
+        body.depth, body.movetime,
+        cancellation.signal,
+        (iteration) => response.write(`${JSON.stringify({ type: "iteration", analysis: iteration })}\n`),
+      );
+      response.end(`${JSON.stringify({ type: "result", analysis: result })}\n`);
+      return;
+    }
+    if (request.url === "/analyze-history") {
+      send(response, 200, await analyzeHistory(
+        body.initialUpn, body.moves, body.observer, body.enemyKingKnown,
+        body.initialDeploymentKnown ?? false, body.enemyKingCandidates,
+        body.depth, body.movetime,
+        cancellation.signal));
+      return;
+    }
+    if (request.url === "/computer-history") {
+      send(response, 200, await computerHistory(
+        body.initialUpn, body.moves, body.player, body.enemyKingKnown,
+        body.initialDeploymentKnown ?? false, body.enemyKingCandidates,
+        body.engineEnemyKingKnown, body.engineEnemyKingCandidates,
+        body.depth, body.movetime,
         cancellation.signal));
       return;
     }

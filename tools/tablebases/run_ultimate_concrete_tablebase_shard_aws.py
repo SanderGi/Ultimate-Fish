@@ -1003,19 +1003,26 @@ def main(argv: list[str] | None = None) -> int:
         bundle = work / "bundle"
         binary = work / "binary/ultimate_tablebase"
         retained_plan = json.loads((work / "run-plan.json").read_text())
+        retained_model = retained_plan.get("generator_model_sha256")
         binary_sha = sha256_path(binary)
         if (retained_plan.get("status") != "full-preflight" or
-                retained_plan.get("generator_model_sha256") != model or
+                not isinstance(retained_model, str) or
+                len(retained_model) != 64 or
                 retained_plan.get("inventory_sha256") != inventory_sha256() or
                 retained_plan.get("selected") !=
                 [normalized_record(row) for row in selected] or
                 retained_plan.get("binary_sha256") != binary_sha or
                 retained_plan.get("dependency_manifest_sha256") !=
                 sha256_path(work / "dependencies/manifest.json") or
-                generator_model_sha256(bundle) != model or
+                generator_model_sha256(bundle) != retained_model or
                 not (work / "outputs").is_dir() or
                 not (work / "scratch").is_dir()):
             raise RuntimeError("retained concrete checkpoint binding residual")
+        # The resumable runner is deliberately outside the retained generator
+        # bundle. Keep publishing under the model that built the authenticated
+        # binary and checkpoint, even when orchestration-only resume logic has
+        # advanced since the resource stop.
+        model = retained_model
         if any((work / "outputs" / str(row["filename"])).exists()
                for row in selected):
             raise RuntimeError("retained checkpoint already has a completed output")

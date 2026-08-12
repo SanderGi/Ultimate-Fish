@@ -426,8 +426,14 @@ determinization: the position retains an invisible Ghost's coordinate, while
 move generation applies the native blind-square, ray pass-through, pawn
 collision, royal reveal, and Sniper/Fisherman exceptions. Play mode additionally
 conceals enemy Ghost rendering, inspector data, capture-ring styling, invisible
-Ghost move coordinates, and enemy Jester identity. Analysis mode deliberately
-shows that state with a dashed translucent treatment.
+Ghost move coordinates, and enemy Jester identity. Analysis always draws every
+Ghost, using the top-right player-side selector—not the side to move—to make a
+Ghost translucent when that player would not see it. Search separately uses
+the side to move as the observer of its private legal dots. The fixed King and
+every Jester in the first simultaneously revealed Ranked pick group remain
+indistinguishable royal silhouettes. Jesters first appearing in later groups
+are public Jesters. Draft, analysis, and play retain that exact first-group
+candidate set instead of reducing it to a known/unknown boolean.
 
 The lossless `visible` flag is relative to each Ghost's opponent, not the local
 UI. A player's own deployed Ghost is visible on that player's screen but begins
@@ -447,6 +453,17 @@ is maximin, with complete-set shallow safety and mean score as deterministic
 tie-breaks. The phone controller
 only supplies public observations and verifies the returned root; it contains
 no piece-value, Ghost-adjacency, plurality, or repetition move override.
+
+The `history start` / `history move` / `history go` protocol reconstructs that
+information set from one authoritative initial UPN and an action journal. The
+initial concrete Ghost cells and pre-reveal King/Jester assignment are treated
+as private data. An arbitrary imported snapshot expands the Ghost over every
+publicly possible board cell; a root explicitly known to be freshly deployed
+uses only its home zone. The engine then applies the mover's initial legal-dot
+frontier and uses each concrete journal action only to identify the public
+transition and next private-dot observation that actually occurred. UI play,
+UI history analysis, and controller draft-leaf evaluation share this
+reconstruction path.
 
 A public continuing-turn event removes royal hypotheses in which the captured
 silhouette was the real King. A quiet invisible Ghost move expands over all

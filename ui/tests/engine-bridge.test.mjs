@@ -61,7 +61,18 @@ async function streamAnalysis(body) {
   return (await response.text()).trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
 }
 
-test("bridge exposes state, mate scores, results, continuations, and the complete AI draft", async () => {
+async function streamHistoryAnalysis(body) {
+  const response = await fetch(`${base}/analyze-history-stream`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  assert.equal(response.status, 200);
+  return (await response.text()).trim().split("\n").filter(Boolean)
+    .map((line) => JSON.parse(line));
+}
+
+test("bridge exposes state, mate scores, results, and continuations", async () => {
   const health = await fetch(`${base}/health`).then((response) => response.json());
   assert.equal(health.ok, true);
 
@@ -100,14 +111,176 @@ test("bridge exposes state, mate scores, results, continuations, and the complet
   assert.equal(secondAction.upn[0], "w");
   assert.ok(secondAction.engineMoves.length >= 1);
 
+});
+
+test("bridge searches every public draft window", async () => {
   const history = [];
   for (let phase = 0; phase < 12; phase += 1) {
-    const result = await post("/draft-ai", { history });
+    const result = await post("/draft-ai", {
+      history, player: phase % 2 ? "black" : "white",
+      depth: 1, timeLimit: 0.5,
+    });
     if ([0, 1, 4, 5, 8, 9].includes(phase)) assert.equal(result.choices.length, 1);
     else assert.ok(Array.isArray(result.choices));
     history.push(...result.choices.map((piece) => `draft choose ${piece}`), "draft commit");
     assert.match(result.status, new RegExp(`^draft phase ${phase + 1}\\b`));
   }
+});
+
+test("history analysis forgets leaked Ghost cells and replays public observations", async () => {
+  const ghostStart = (side, square) =>
+    `${side};king,w,a1;ghost,w,${square},0,0,0,0,0,0,-1,1,-1,0;king,b,h10`;
+  const c3 = await post("/history-state", {
+    initialUpn: ghostStart("b", "c3"), moves: [], observer: "black",
+    enemyKingKnown: false,
+  });
+  const f3 = await post("/history-state", {
+    initialUpn: ghostStart("b", "f3"), moves: [], observer: "black",
+    enemyKingKnown: false,
+  });
+  assert.equal(c3.beliefs, 75);
+  assert.equal(f3.beliefs, 75);
+  assert.equal(c3.decisionPartitions, 1);
+  assert.equal(c3.ghostKnowledge.c3.known, false);
+  assert.equal(c3.ghostKnowledge.c3.candidates.length, 75);
+  assert.equal(f3.ghostKnowledge.f3.known, false);
+  const ownGhost = await post("/history-state", {
+    initialUpn: ghostStart("b", "c3"), moves: [], observer: "white",
+    enemyKingKnown: false,
+  });
+  assert.deepEqual(ownGhost.ghostKnowledge.c3, {
+    known: true, candidates: ["c3"],
+  });
+  const deployed = await post("/history-state", {
+    initialUpn: ghostStart("b", "c3"), moves: [], observer: "black",
+    enemyKingKnown: false, initialDeploymentKnown: true,
+  });
+  assert.equal(deployed.beliefs, 23);
+
+  const analysisC3 = await post("/analyze-history", {
+    initialUpn: ghostStart("b", "c3"), moves: [], observer: "black",
+    enemyKingKnown: false, depth: 1,
+  });
+  const analysisF3 = await post("/analyze-history", {
+    initialUpn: ghostStart("b", "f3"), moves: [], observer: "black",
+    enemyKingKnown: false, depth: 1,
+  });
+  assert.equal(analysisC3.bestmove, analysisF3.bestmove);
+  assert.equal(analysisC3.score, analysisF3.score);
+  assert.equal(analysisC3.beliefs, 75);
+
+  const computerC3 = await post("/computer-history", {
+    initialUpn: ghostStart("b", "c3"), moves: [], player: "white",
+    enemyKingKnown: false, depth: 1, movetime: 0,
+  });
+  const computerF3 = await post("/computer-history", {
+    initialUpn: ghostStart("b", "f3"), moves: [], player: "white",
+    enemyKingKnown: false, depth: 1, movetime: 0,
+  });
+  assert.equal(computerC3.engineMoves[0], computerF3.engineMoves[0]);
+  assert.equal(computerC3.engine.beliefs, 75);
+
+  const reportedMidgame = await post("/computer-history", {
+    initialUpn: "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,d8,0,0,0,0,0,1,-1,1,-1,0;king,b,d10,0,0,0,0,0,1,-1,1,-1,0;ghost,w,b10,0,0,0,0,0,0,-1,1,-1,0",
+    moves: [], player: "white", enemyKingKnown: false,
+    depth: 1, movetime: 0,
+  });
+  assert.ok(["d10-c10", "d10-e10"].includes(reportedMidgame.engineMoves[0]));
+  assert.equal(reportedMidgame.upn[0], "w");
+  const streamed = await streamHistoryAnalysis({
+    initialUpn: "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,d8,0,0,0,0,0,1,-1,1,-1,0;king,b,d10,0,0,0,0,0,1,-1,1,-1,0;ghost,w,b10,0,0,0,0,0,0,-1,1,-1,0",
+    moves: [], observer: "black", enemyKingKnown: false, depth: 2,
+  });
+  assert.deepEqual(
+    streamed.filter((event) => event.type === "iteration")
+      .map((event) => event.analysis.depth),
+    [1, 2],
+  );
+  assert.equal(streamed.at(-1).type, "result");
+  assert.equal(streamed.at(-1).analysis.depth, 2);
+  assert.equal(streamed.at(-1).analysis.moves.length, 2);
+
+  const afterInvisibleMove = await post("/history-state", {
+    initialUpn: ghostStart("w", "c3"), moves: ["c3-d3"],
+    observer: "black", enemyKingKnown: false,
+  });
+  assert.ok(afterInvisibleMove.beliefs > 1);
+  assert.equal(afterInvisibleMove.decisionPartitions, 1);
+
+  const royalUpn = "b;king,w,a1;jester,w,b1;king,b,h10";
+  const concealed = await post("/history-state", {
+    initialUpn: royalUpn, moves: [], observer: "black",
+    enemyKingKnown: false,
+  });
+  const revealed = await post("/history-state", {
+    initialUpn: royalUpn, moves: [], observer: "black",
+    enemyKingKnown: true,
+  });
+  assert.equal(concealed.beliefs, 2);
+  assert.equal(concealed.enemyKingKnown, false);
+  assert.equal(revealed.beliefs, 1);
+  assert.equal(revealed.enemyKingKnown, true);
+  assert.equal(concealed.jesterKnowledge.b1, false);
+  assert.equal(revealed.jesterKnowledge.b1, true);
+
+  const chronologicalRoyals =
+    "b;king,w,a1;jester,w,b1;jester,w,c1;king,b,h10";
+  const firstGroup = await post("/history-state", {
+    initialUpn: chronologicalRoyals, moves: [], observer: "black",
+    enemyKingKnown: false, enemyKingCandidates: ["a1", "b1"],
+  });
+  assert.equal(firstGroup.beliefs, 2);
+  assert.equal(firstGroup.enemyKingKnown, false);
+  assert.deepEqual(firstGroup.enemyKingCandidates, ["a1", "b1"]);
+  assert.equal(firstGroup.jesterKnowledge.b1, false);
+  assert.equal(firstGroup.jesterKnowledge.c1, true);
+  const singletonFirstGroup = await post("/history-state", {
+    initialUpn: chronologicalRoyals, moves: [], observer: "black",
+    enemyKingKnown: false, enemyKingCandidates: ["a1"],
+  });
+  assert.equal(singletonFirstGroup.beliefs, 1);
+  assert.equal(singletonFirstGroup.enemyKingKnown, true);
+
+  const draftAmbiguityRegression =
+    "b;hm=41;fm=19;ep=-;cont=0;forced=-1;epv=-1;king,w,h1,0,0,0,0,1,1,-1,1,-1,0;jester,w,a1,0,0,0,0,0,1,-1,1,-1,0;rook,w,e1,0,0,0,0,1,1,-1,1,-1,0;berserker,w,e4,0,0,0,0,1,1,-1,1,-1,0;pawn,w,a3,0,0,0,0,0,1,-1,1,-1,0;pawn,w,b3,0,0,0,0,0,1,-1,1,-1,0;pawn,w,c3,0,0,0,0,0,1,-1,1,-1,0;sniper,w,g2,0,0,0,0,1,1,-1,1,-1,0;pawn,w,f3,0,0,0,0,0,1,-1,1,-1,0;king,b,d10,0,0,0,0,0,1,-1,1,-1,0;prince,b,f5,0,0,0,0,1,1,-1,1,-1,0;prince,b,d9,0,0,0,0,1,1,-1,1,-1,0";
+  const informationSearch = await post("/analyze-history", {
+    initialUpn: draftAmbiguityRegression, moves: [], observer: "black",
+    enemyKingKnown: false, enemyKingCandidates: ["h1", "a1"], depth: 3,
+  });
+  assert.equal(informationSearch.beliefs, 2);
+  assert.equal(informationSearch.scoreType, "cp");
+  assert.ok(informationSearch.nodes > 0);
+
+  const bothSidesAmbiguous =
+    "b;king,w,a1;jester,w,b1;king,b,h10;jester,b,g10;rook,b,e9";
+  const computerBeliefs = await post("/computer-history", {
+    initialUpn: bothSidesAmbiguous, moves: [], player: "white",
+    enemyKingKnown: false, enemyKingCandidates: ["h10", "g10"],
+    engineEnemyKingKnown: false, engineEnemyKingCandidates: ["a1", "b1"],
+    depth: 1, movetime: 0,
+  });
+  assert.equal(computerBeliefs.engine.beliefs, 2);
+  assert.deepEqual(computerBeliefs.enemyKingCandidates, ["g10", "h10"]);
+});
+
+test("history-preserving analysis scores terminal worlds and observer perspective", async () => {
+  const matingUpn =
+    "b;hm=3;fm=2;ep=-;cont=0;forced=-1;epv=-1;king,w,a1,0,0,0,0,1,1,-1,1,-1,0;jester,w,h1,0,0,0,0,0,1,-1,1,-1,0;rook,w,d1,0,0,0,0,0,1,-1,1,-1,0;rook,w,d8,0,0,0,0,1,1,-1,1,-1,0;ninja,w,b2,0,0,0,0,0,1,-1,1,-1,0;ghost,w,g2,0,0,0,0,0,0,-1,1,-1,0;rook,w,e1,0,0,0,0,0,1,-1,1,-1,0;pawn,w,f2,0,0,0,0,0,1,-1,1,-1,0;king,b,d10,0,0,0,0,0,1,-1,1,-1,0;giant,b,e9,0,0,0,0,0,1,-1,1,-1,0;giant,b,b9,0,0,0,0,0,1,-1,1,-1,0;prince,b,g10,0,0,0,0,0,1,-1,1,-1,0;prince,b,a10,0,0,0,0,0,1,-1,1,-1,0;checker,b,h10,0,0,0,0,0,1,-1,1,-1,0;giant,b,g8,0,0,0,0,0,1,-1,1,-1,0;prince,b,a9,0,0,0,0,0,1,-1,1,-1,0;knight,b,e8,0,0,0,0,0,1,-1,1,-1,0;checker,b,c8,0,0,0,0,0,1,-1,1,-1,0;checker,b,f8,0,0,0,0,0,1,-1,1,-1,0";
+  const historyMate = await post("/analyze-history", {
+    initialUpn: matingUpn, moves: [], observer: "black",
+    enemyKingKnown: false, enemyKingCandidates: ["a1", "h1"], depth: 1,
+  });
+  assert.ok(historyMate.beliefs > 1);
+  assert.equal(historyMate.scoreType, "mate");
+  assert.equal(historyMate.score, -1);
+  assert.equal(historyMate.bestmove, null);
+
+  const singletonForWinner = await post("/analyze-beliefs", {
+    positions: [matingUpn], observer: "white", enemyKingKnown: true,
+    depth: 1,
+  });
+  assert.equal(singletonForWinner.scoreType, "mate");
+  assert.equal(singletonForWinner.score, 1);
 });
 
 test("bridge keeps raw actions while exposing chess-style public notation", async () => {

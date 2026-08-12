@@ -34,10 +34,10 @@ constexpr int NoClass = -1;
         && piece.color != disclosure.observer;
 }
 
-[[nodiscard]] std::string public_type(const PieceState& piece,
+[[nodiscard]] std::string public_type(const PieceState& piece, int id,
                                       const DisclosureContext& disclosure) {
     if ((piece.type == PieceType::King || piece.type == PieceType::Jester)
-        && !disclosure.knows_royal_identity(piece.color))
+        && !disclosure.knows_royal_identity(piece.color, id))
         return "royal";
     return std::string(Position::type_name(piece.type));
 }
@@ -105,7 +105,7 @@ struct PublicNode {
   const DisclosureContext& disclosure) {
     const PieceState& piece = position.piece(id);
     std::ostringstream out;
-    out << public_type(piece, disclosure) << ',' << color_name(piece.color)
+    out << public_type(piece, id, disclosure) << ',' << color_name(piece.color)
         << ',' << square_token(position, id, disclosure)
         << ",board=" << int(piece.onBoard)
         << ",action=" << int(piece.action)
@@ -242,7 +242,7 @@ struct PublicNode {
   const DisclosureContext& disclosure) {
     if (actor < 0 || actor >= position.piece_count())
         return "none";
-    return public_type(position.piece(actor), disclosure);
+    return public_type(position.piece(actor), actor, disclosure);
 }
 
 [[nodiscard]] std::string move_kind_name(MoveKind kind) {

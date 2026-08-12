@@ -24,6 +24,19 @@ SPEC.loader.exec_module(generate)
 
 
 class InformationGenerationDriverTests(unittest.TestCase):
+    @staticmethod
+    def _write_overlay(path, record, source, model):
+        count = generate.information.states_per_side(record) * 2
+        header = struct.pack(
+            "<8s6I", b"UFIW2\0\0\0", 2,
+            generate.PIECE_TYPE_IDS[str(record["primary"])],
+            generate.PIECE_TYPE_IDS[str(record["secondary"])],
+            int(bool(record["opposing"])), count, 1)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("wb") as stream:
+            stream.write(header + source.encode() + model.encode())
+            stream.truncate(160 + count)
+
     def test_record_catalog_includes_unbudgeted_hidden_classes(self):
         records = generate._records()
         self.assertIn("kjestercheckerk.uftb", records)
@@ -581,8 +594,11 @@ class InformationGenerationDriverTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             args = self._args(root)
-            args.overlays.mkdir(parents=True)
-            (args.overlays / "kjesterk.ufiw").write_bytes(b"lower")
+            lower_source = generate.shards.logical_sha256(
+                ROOT / "tablebases" / "kjesterk.uftb")
+            self._write_overlay(
+                args.overlays / "kjesterk.ufiw", records["kjesterk.uftb"],
+                lower_source, "4" * 64)
             cases = {
                 "kjesterk.uftb": (str(args.binary), "--solve-jester-information"),
                 "kjestergiantk.uftb": (
@@ -784,6 +800,11 @@ class InformationGenerationDriverTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             args = self._args(root)
+            lower_source = generate.shards.logical_sha256(
+                ROOT / "tablebases" / "kjesterk.uftb")
+            self._write_overlay(
+                args.overlays / "kjesterk.ufiw", records["kjesterk.uftb"],
+                lower_source, "4" * 64)
             command = generate.solver_command(
                 args, records["kjesterkknight.uftb"], root / "out.ufiw",
                 "1" * 64,
@@ -795,7 +816,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
                 command.index("--lower-information-model-sha256") + 1]
             self.assertEqual(
                 lower_model,
-                generate.information.solver_model_fingerprint("kjesterk.uftb"))
+                (args.overlays / "kjesterk.ufiw").read_bytes()[96:160].decode())
 
             giant = generate.solver_command(
                 args, records["kjestergiantk.uftb"], root / "giant.ufiw",
@@ -804,11 +825,70 @@ class InformationGenerationDriverTests(unittest.TestCase):
                     "kjestergiantk.uftb"))
             self.assertEqual(
                 giant[giant.index("--lower-information-model-sha256") + 1],
-                generate.information.solver_model_fingerprint("kjesterk.uftb"))
+                (args.overlays / "kjesterk.ufiw").read_bytes()[96:160].decode())
             self.assertNotEqual(
                 generate.information.solver_model_fingerprint(
                     "kjestergiantk.uftb"),
                 generate.information.solver_model_fingerprint("kjesterk.uftb"))
+
+            for filename, promoted in (
+                    ("kjesterpawnk.uftb", "kjesterqueenk.uftb"),
+                    ("kjesterkpawn.uftb", "kjesterkqueen.uftb")):
+                promoted_overlay = args.overlays / Path(promoted).with_suffix(
+                    ".ufiw").name
+                self._write_overlay(
+                    promoted_overlay, records[promoted], "3" * 64, "5" * 64)
+                with mock.patch.object(generate.shards, "logical_sha256",
+                                       return_value="3" * 64):
+                    pawn = generate.solver_command(
+                        args, records[filename], root / f"{filename}.ufiw",
+                        "1" * 64,
+                        generate.information.solver_model_fingerprint(filename))
+                self.assertEqual(
+                    pawn[pawn.index("--lower-extra-information-overlay") + 1],
+                    str(promoted_overlay))
+                self.assertEqual(
+                    pawn[pawn.index(
+                        "--lower-extra-information-source-sha256") + 1],
+                    "3" * 64)
+                self.assertEqual(
+                    pawn[pawn.index(
+                        "--lower-extra-information-model-sha256") + 1],
+                    "5" * 64)
+
+    def test_pawn_route_cross_probes_certified_promoted_queen_overlay(self):
+        records = generate._records()  # pylint: disable=protected-access
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            tables = root / "tablebases"
+            tables.mkdir()
+            for filename in ("kjesterk.uftb", "kjesterqueenk.uftb",
+                             "kjesterkqueen.uftb"):
+                (tables / filename).write_bytes(filename.encode())
+            args = self._args(root)
+            for lower, model in (("kjesterk.uftb", "4" * 64),
+                                 ("kjesterqueenk.uftb", "5" * 64),
+                                 ("kjesterkqueen.uftb", "6" * 64)):
+                source = generate.shards.logical_sha256(tables / lower)
+                self._write_overlay(
+                    args.overlays / Path(lower).with_suffix(".ufiw").name,
+                    records[lower], source, model)
+            with mock.patch.object(generate, "ROOT", root):
+                for filename, promoted_model in (
+                        ("kjesterpawnk.uftb", "5" * 64),
+                        ("kjesterkpawn.uftb", "6" * 64)):
+                    command = generate.solver_command(
+                        args, records[filename], root / f"{filename}.ufiw",
+                        "1" * 64,
+                        generate.information.solver_model_fingerprint(filename))
+                    self.assertEqual(
+                        command[command.index(
+                            "--lower-information-model-sha256") + 1],
+                        "4" * 64)
+                    self.assertEqual(
+                        command[command.index(
+                            "--lower-extra-information-model-sha256") + 1],
+                        promoted_model)
 
     def test_ghost_pair_route_rejects_stale_lower_sidecar(self):
         require_artifacts(ROOT, "tablebases/kghostk.ufgm")

@@ -7,6 +7,7 @@ import argparse
 import copy
 import json
 from pathlib import Path
+import re
 
 import run_ultimate_reciprocal_bishop_ghost_aws as shared
 
@@ -101,16 +102,51 @@ def resumed_measure_command(command: list[str], prefix: Path) -> list[str]:
     return result
 
 
+def validate_completed_measurement(root: Path,
+                                   manifest: dict[str, object]) -> None:
+    """Authenticate a finished one-iteration sizing pass before skipping it."""
+    log = root / "work/logs/measure.log"
+    artifact_path = root / "work/artifact-manifest.json"
+    artifact = json.loads(artifact_path.read_text())
+    records = artifact.get("artifacts")
+    match = next((record for record in records
+                  if isinstance(record, dict) and
+                  record.get("path") == "work/logs/measure.log"), None) \
+            if isinstance(records, list) else None
+    if (artifact.get("filename") != manifest.get("filename") or
+            artifact.get("model_sha256") != manifest.get("model_sha256") or
+            not isinstance(match, dict) or
+            match.get("bytes") != log.stat().st_size or
+            match.get("sha256") != shared.sha256(log)):
+        raise RuntimeError("completed Bomb/Ghost measurement binding residual")
+    text = log.read_text()
+    measurements = re.findall(
+        r"^reciprocal_ghost_extra_measurement iterations 1 bdd_nodes [1-9][0-9]* "
+        r"peak_rss_bytes [1-9][0-9]* proof_complete 0 overlay_written 0$",
+        text, flags=re.MULTILINE)
+    certificates = re.findall(
+        r"^bomb_ghost_certificate dual_force_residual 0 structural_residual 0 "
+        r"singleton_residual 0 source_remap_residual 0 .*$",
+        text, flags=re.MULTILINE)
+    if len(measurements) != 1 or len(certificates) != 1:
+        raise RuntimeError("completed Bomb/Ghost measurement proof residual")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path,
                         default=Path("bundle-manifest.json"))
     parser.add_argument("--full", action="store_true",
                         help="continue after measurement to the exact solve")
+    parser.add_argument(
+        "--resume-completed-measurement", action="store_true",
+        help="authenticate and skip an already completed one-iteration sizing pass")
     parser.add_argument("--transition-resume-manifest", type=Path,
                         required=True,
                         help="authenticate a preserved read-only merged graph")
     args = parser.parse_args()
+    if args.resume_completed_measurement and not args.full:
+        parser.error("--resume-completed-measurement requires --full")
     root = args.manifest.resolve().parent
     manifest = json.loads(args.manifest.read_text())
     validate_manifest(manifest)
@@ -124,8 +160,11 @@ def main() -> None:
     resume_path = args.transition_resume_manifest.resolve()
     resume = json.loads(resume_path.read_text())
     prefix = validate_transition_resume(resume, manifest)
-    shared.run(resumed_measure_command(commands["measure"], prefix), root,
-               work / "logs" / "measure.log")
+    if args.resume_completed_measurement:
+        validate_completed_measurement(root, manifest)
+    else:
+        shared.run(resumed_measure_command(commands["measure"], prefix), root,
+                   work / "logs" / "measure.log")
     # Reauthenticate after the expensive read to prove the preserved graph was
     # neither regenerated nor mutated by the corrected measurement pass.
     validate_transition_resume(resume, manifest)

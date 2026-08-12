@@ -1,5 +1,6 @@
 import hashlib
 import importlib.util
+import json
 from pathlib import Path
 import sys
 import tarfile
@@ -107,6 +108,36 @@ class BombGhostResumeUnitTests(unittest.TestCase):
         self.assertEqual(rewritten[4], "/read-only/kbombghost")
         self.assertEqual(rewritten[:4] + rewritten[5:],
                          command[:4] + command[5:])
+
+    def test_completed_measurement_requires_authenticated_zero_residual_proof(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            log = root / "work/logs/measure.log"
+            log.parent.mkdir(parents=True)
+            log.write_text(
+                "reciprocal_ghost_extra_measurement iterations 1 "
+                "bdd_nodes 190808071 peak_rss_bytes 7278997504 "
+                "proof_complete 0 overlay_written 0\n"
+                "bomb_ghost_certificate dual_force_residual 0 "
+                "structural_residual 0 singleton_residual 0 "
+                "source_remap_residual 0 normalized_source_sha256 "
+                f"{'a' * 64} transition_payload_sha256  arbitrary_sha256 \n")
+            artifact = {
+                "filename": "kbombghostk.uftb",
+                "model_sha256": "b" * 64,
+                "artifacts": [{
+                    "path": "work/logs/measure.log",
+                    "bytes": log.stat().st_size,
+                    "sha256": runner.shared.sha256(log),
+                }],
+            }
+            (root / "work/artifact-manifest.json").write_text(
+                json.dumps(artifact))
+            runner.validate_completed_measurement(root, self.manifest())
+            log.write_text(log.read_text().replace(
+                "structural_residual 0", "structural_residual 1"))
+            with self.assertRaises(RuntimeError):
+                runner.validate_completed_measurement(root, self.manifest())
 
     def test_runner_rejects_old_schema(self):
         manifest = self.manifest()

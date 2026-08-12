@@ -22,6 +22,7 @@
 namespace Stockfish::Ultimate {
 
 struct SearchResult;
+struct BeliefSearchResult;
 
 struct SearchLimits {
     int depth = 10;
@@ -38,6 +39,7 @@ struct SearchLimits {
     // Optional reporting hook invoked after each fully completed iterative-
     // deepening pass. Callers that do not opt in retain the single final result.
     std::function<void(const SearchResult&)> onIteration;
+    std::function<void(const BeliefSearchResult&)> onBeliefIteration;
 };
 
 struct SearchResult {
@@ -134,6 +136,13 @@ class PublicBeliefState {
     [[nodiscard]] std::vector<std::string> common_moves() const;
     [[nodiscard]] std::vector<BeliefDecisionBucket> decision_cells() const;
     [[nodiscard]] std::size_t decision_partitions() const;
+    [[nodiscard]] bool enemy_king_known() const;
+    [[nodiscard]] std::vector<int> enemy_king_candidate_squares() const;
+    // Exact per-piece knowledge retained by this information set. Piece ids
+    // are stable across worlds reconstructed from one public history.
+    [[nodiscard]] bool piece_location_known(int pieceId) const;
+    [[nodiscard]] std::vector<int> piece_location_candidates(int pieceId) const;
+    [[nodiscard]] bool piece_type_known(int pieceId, PieceType type) const;
 
     // Condition the exact mover-private legal-dot frontier observed by a UI.
     // Markers use ``source>destination`` or ``pass`` and are deduplicated;
@@ -178,6 +187,32 @@ class PublicBeliefState {
     std::optional<Color> side_;
     std::string publicView_;
     std::map<std::string, Position> worlds_;
+};
+
+// Reconstruct one player's exact public information set from a private
+// authoritative game record. The concrete cursor identifies only the
+// observation which occurred; it is never selected as the search world.
+class PublicHistoryState {
+   public:
+    bool start(Position initial, DisclosureContext disclosure,
+               std::string* error = nullptr);
+    bool start(Position initial, DisclosureContext disclosure,
+               bool initialDeploymentKnown,
+               std::string* error = nullptr);
+    bool start(Position initial, DisclosureContext disclosure,
+               bool initialDeploymentKnown,
+               const std::vector<int>& enemyKingCandidateSquares,
+               std::string* error = nullptr);
+    bool apply_actual(std::string_view move, std::string* error = nullptr);
+
+    [[nodiscard]] bool initialized() const;
+    [[nodiscard]] const Position& actual_position() const;
+    [[nodiscard]] const PublicBeliefState& beliefs() const;
+
+   private:
+    Position actual_;
+    PublicBeliefState beliefs_;
+    bool initialized_ = false;
 };
 
 class Search {

@@ -24,6 +24,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -476,7 +477,15 @@ class JesterInformationOverlay {
 
     explicit JesterInformationOverlay(const std::string& path,
                                       const std::string& expectedSourceSha256,
-                                      const std::string& expectedModelSha256) {
+                                      const std::string& expectedModelSha256,
+                                      PieceType secondary = PieceType::Count,
+                                      Color secondaryColor = Color::White)
+        : secondary_(secondary), secondaryColor_(secondaryColor),
+          stateCount_(secondary == PieceType::Count
+                        ? PlacementStateCount : FourPlacementStateCount) {
+        if (secondary_ != PieceType::Count && secondary_ != PieceType::Queen)
+            throw std::runtime_error(
+              "unsupported lower Jester information-overlay material");
         if (path.empty())
             return;
         std::ifstream input(path, std::ios::binary);
@@ -494,9 +503,9 @@ class JesterInformationOverlay {
         };
         if (word(8) != 2 ||
             word(12) != static_cast<std::uint32_t>(PieceType::Jester) ||
-            word(16) != static_cast<std::uint32_t>(PieceType::Count) ||
-            word(20) != static_cast<std::uint32_t>(Color::White) ||
-            word(24) != PlacementStateCount || word(28) != 1)
+            word(16) != static_cast<std::uint32_t>(secondary_) ||
+            word(20) != static_cast<std::uint32_t>(secondaryColor_) ||
+            word(24) != stateCount_ || word(28) != 1)
             throw std::runtime_error("lower Jester overlay has the wrong material class");
         const std::string sourceSha256(header.data() + 32, 64);
         const std::string modelSha256(header.data() + 96, 64);
@@ -506,7 +515,7 @@ class JesterInformationOverlay {
         if (expectedModelSha256.size() != 64 || modelSha256 != expectedModelSha256)
             throw std::runtime_error(
               "lower Jester overlay does not match the information model SHA-256");
-        flags_.resize(PlacementStateCount);
+        flags_.resize(stateCount_);
         input.read(reinterpret_cast<char*>(flags_.data()), flags_.size());
         if (static_cast<std::size_t>(input.gcount()) != flags_.size())
             throw std::runtime_error("truncated lower Jester information overlay");
@@ -517,6 +526,7 @@ class JesterInformationOverlay {
     [[nodiscard]] std::optional<ConcreteWorld> concrete_world(
       const Position& position) const {
         int jester = Position::NoPiece;
+        int secondary = Position::NoPiece;
         std::array<int, 2> kings{{Position::NoPiece, Position::NoPiece}};
         int alive = 0;
         for (int id = 0; id < position.piece_count(); ++id) {
@@ -531,23 +541,33 @@ class JesterInformationOverlay {
             }
             else if (piece.type == PieceType::King)
                 kings[static_cast<std::size_t>(piece.color)] = id;
+            else if (secondary_ != PieceType::Count &&
+                     piece.type == secondary_ && piece.color == secondaryColor_ &&
+                     secondary == Position::NoPiece)
+                secondary = id;
             else
                 return std::nullopt;
         }
-        if (alive != 3 || jester == Position::NoPiece ||
+        const int expectedAlive = secondary_ == PieceType::Count ? 3 : 4;
+        if (alive != expectedAlive || jester == Position::NoPiece ||
             kings[0] == Position::NoPiece || kings[1] == Position::NoPiece)
             return std::nullopt;
+        if ((secondary_ == PieceType::Count) !=
+            (secondary == Position::NoPiece))
+            return std::nullopt;
         const Color owner = position.piece(jester).color;
-        const Color mappedSide = owner == Color::White
-                               ? position.side_to_move() : ~position.side_to_move();
-        const int ownerKing = kings[static_cast<std::size_t>(owner)];
-        const int enemyKing = kings[static_cast<std::size_t>(~owner)];
-        const std::uint32_t index = encode_placement({
-          mappedSide,
-          position.piece(ownerKing).square,
-          position.piece(enemyKing).square,
-          position.piece(jester).square,
-          0});
+        if (owner != Color::White)
+            return std::nullopt;
+        const std::uint32_t index = secondary_ == PieceType::Count
+          ? encode_placement({position.side_to_move(),
+                              position.piece(kings[0]).square,
+                              position.piece(kings[1]).square,
+                              position.piece(jester).square, 0})
+          : encode_four({position.side_to_move(),
+                         position.piece(kings[0]).square,
+                         position.piece(kings[1]).square,
+                         position.piece(jester).square,
+                         position.piece(secondary).square});
         return ConcreteWorld{index, owner};
     }
 
@@ -573,9 +593,17 @@ class JesterInformationOverlay {
             throw std::runtime_error(
               "lower Jester pair must be probed for its uninformed side");
 
-        State decoded = decode_placement(firstWorld->index);
-        std::swap(decoded.whiteKing, decoded.attacker);
-        const std::uint32_t alternative = encode_placement(decoded);
+        std::uint32_t alternative = 0;
+        if (secondary_ == PieceType::Count) {
+            State decoded = decode_placement(firstWorld->index);
+            std::swap(decoded.whiteKing, decoded.attacker);
+            alternative = encode_placement(decoded);
+        }
+        else {
+            FourState decoded = decode_four(firstWorld->index);
+            std::swap(decoded.whiteKing, decoded.first);
+            alternative = encode_four(decoded);
+        }
         if (alternative != secondWorld->index ||
             firstWorld->index == secondWorld->index)
             throw std::runtime_error(
@@ -597,6 +625,9 @@ class JesterInformationOverlay {
     }
 
    private:
+    PieceType secondary_ = PieceType::Count;
+    Color secondaryColor_ = Color::White;
+    std::uint32_t stateCount_ = PlacementStateCount;
     std::vector<std::uint8_t> flags_;
 };
 
@@ -811,6 +842,29 @@ class TablebaseGenerator {
             position.piece(1).freezeCount != 0)
             throw std::runtime_error(
               "Penguin partial causal freeze mask reconstructed the wrong aura");
+        if (attackerType_ == PieceType::Jester &&
+            secondaryType_ == PieceType::Penguin &&
+            secondaryColor_ == Color::White) {
+            // The Penguin on a2 froze both adjacent Kings in the first world.
+            // Swapping the hidden a1/c1 King/Jester identities must preserve
+            // the frozen public silhouettes, changing target bits 3 -> 6.
+            constexpr std::uint32_t First = 151'831'723;
+            constexpr std::uint32_t Swapped = 159'471'358;
+            Position first, swapped;
+            if (primary_jester_alternative(First) != Swapped ||
+                primary_jester_alternative(Swapped) != First ||
+                !make_primary_jester_world(First, false, first) ||
+                !make_primary_jester_world(First, true, swapped) ||
+                child_index(first) != First || child_index(swapped) != Swapped ||
+                primary_jester_view_key(first) !=
+                  primary_jester_view_key(swapped) ||
+                primary_jester_decision_markers(first) !=
+                  primary_jester_decision_markers(swapped))
+                throw std::runtime_error(
+                  "Penguin/Jester causal royal-pair regression failed");
+            std::cout << "penguinjesterroyalswap first " << First
+                      << " swapped " << Swapped << " substate 3 6\n";
+        }
         std::cout << "penguincausalfreezemaskok partial_mask 1 action 4\n";
     }
 
@@ -1707,6 +1761,9 @@ class TablebaseGenerator {
                                   const std::string& lowerOverlay,
                                   const std::string& lowerSourceSha256,
                                   const std::string& lowerModelSha256,
+                                  const std::string& lowerExtraOverlay,
+                                  const std::string& lowerExtraSourceSha256,
+                                  const std::string& lowerExtraModelSha256,
                                   const std::string& sourceSha256,
                                   const std::string& modelSha256,
                                   const std::string& overlayOutput,
@@ -1772,16 +1829,37 @@ class TablebaseGenerator {
             return value;
         };
 
+        // Forced Prince continuations are not legal turn-boundary roots, so
+        // they remain excluded from the causal reachability totals below.
+        // They are nevertheless genuine internal information-game nodes: the
+        // Prince owner observes the compulsory second-step dots before making
+        // that choice. Keep those nodes in the paired graph without making
+        // them appear reachable as standalone positions in the ledger.
+        std::vector<std::int8_t> graphNodeCache(stateCount_, -1);
+        const auto graph_node = [&](std::uint32_t index) {
+            std::int8_t& cached = graphNodeCache[index];
+            if (cached >= 0)
+                return cached != 0;
+            Position position;
+            const bool reconstructed = make_position_at(index, position);
+            const bool value = reconstructed &&
+              (position.has_forced_action()
+                ? !position.legal_moves().empty()
+                : position.ordinary_predecessor_king_safe());
+            cached = value ? 1 : 0;
+            return value;
+        };
+
         std::vector<std::uint32_t> pairs;
         pairs.reserve(stateCount_ / 2);
         std::vector<std::int32_t> pairForIndex(stateCount_, -1);
         std::array<std::uint64_t, 2> dotSplitPairs{};
         const auto frontierStart = std::chrono::steady_clock::now();
         for (std::uint32_t index = 0; index < stateCount_; ++index) {
-            if (!admitted(index))
+            if (!graph_node(index))
                 continue;
             const std::uint32_t other = primary_jester_alternative(index);
-            if (index >= other || !admitted(other))
+            if (index >= other || !graph_node(other))
                 continue;
             Position first, second;
             if (!make_primary_jester_world(index, false, first) ||
@@ -1894,6 +1972,9 @@ class TablebaseGenerator {
               "exact information solve requires 64-digit source/model SHA-256 bindings");
         const JesterInformationOverlay lower(
           lowerOverlay, lowerSourceSha256, lowerModelSha256);
+        const JesterInformationOverlay lowerPromotedQueen(
+          lowerExtraOverlay, lowerExtraSourceSha256, lowerExtraModelSha256,
+          PieceType::Queen, secondaryColor_);
         const auto concrete_position_forces = [&](const Position& position,
                                                   Color target) {
             if (position.game_over()) {
@@ -2021,15 +2102,33 @@ class TablebaseGenerator {
                 bool ambiguous = false;
                 std::optional<JesterInformationOverlay::PairForces>
                   lowerPairForces;
+                const JesterInformationOverlay* lowerPairOverlay = nullptr;
                 if (!sameClass.empty()) {
                     if (sameClass.size() == 1)
                         groupOnyx = boolean_token(exact_index_forces(
                           sameClass.front(), Color::Black));
                     else if (sameClass.size() == 2) {
                         const std::int32_t pair = pairForIndex[sameClass.front()];
-                        if (pair < 0 || pairForIndex[sameClass.back()] != pair)
+                        if (pair < 0 || pairForIndex[sameClass.back()] != pair) {
+                            Position firstChild, secondChild;
+                            const bool firstOk = make_position_at(
+                              sameClass.front(), firstChild);
+                            const bool secondOk = make_position_at(
+                              sameClass.back(), secondChild);
                             throw std::runtime_error(
-                              "observation produced a noncanonical royal pair");
+                              "observation produced a noncanonical royal pair: " +
+                              std::to_string(sameClass.front()) + " alternative " +
+                              std::to_string(primary_jester_alternative(
+                                sameClass.front())) + " pair " +
+                              std::to_string(pair) + " upn " +
+                              (firstOk ? firstChild.upn() : "invalid") + "; " +
+                              std::to_string(sameClass.back()) + " alternative " +
+                              std::to_string(primary_jester_alternative(
+                                sameClass.back())) + " pair " +
+                              std::to_string(pairForIndex[sameClass.back()]) +
+                              " upn " +
+                              (secondOk ? secondChild.upn() : "invalid"));
+                        }
                         groupOnyx = static_cast<InformationToken>(pair);
                         ambiguous = true;
                     }
@@ -2066,14 +2165,19 @@ class TablebaseGenerator {
                             blackForces = winner && *winner == Color::Black;
                         }
                         else {
-                            // The only continuing two-world lower-material
-                            // observation in a one-Jester class is the exact
-                            // canonical KJ-v-K royal pair. Preserve that
-                            // narrowed belief and cross-probe its information
-                            // overlay; never reset either member separately to
-                            // a fresh maximal root.
+                            // Preserve a continuing canonical royal pair as a
+                            // narrowed belief. Pawn promotion is the one closed
+                            // transition that retains a fourth piece here, so
+                            // cross-probe its exact Jester+Queen overlay rather
+                            // than resetting either world to a maximal root.
                             ++lowerPairProbes;
-                            lowerPairForces = lower.pair_forces(
+                            lowerPairOverlay = lower.concrete_world(*external[0])
+                              ? &lower : lowerPromotedQueen.concrete_world(
+                                  *external[0]) ? &lowerPromotedQueen : nullptr;
+                            if (!lowerPairOverlay)
+                                throw std::runtime_error(
+                                  "paired lower Jester successor has unsupported material");
+                            lowerPairForces = lowerPairOverlay->pair_forces(
                               *external[0], *external[1], Color::Black);
                             blackForces = lowerPairForces->uninformed;
                         }
@@ -2094,7 +2198,7 @@ class TablebaseGenerator {
                               edge.child.index, Color::White));
                     }
                     else if (lowerPairForces) {
-                        const auto actual = lower.concrete_world(
+                        const auto actual = lowerPairOverlay->concrete_world(
                           edge.child.external);
                         if (!actual || actual->owner != Color::White)
                             throw std::runtime_error(
@@ -2326,32 +2430,46 @@ class TablebaseGenerator {
             std::atomic<std::uint32_t> completed{scanBegin};
             std::atomic<std::uint32_t> nextReport{
               static_cast<std::uint32_t>((scanBegin / progressEvery + 1) * progressEvery)};
+            std::atomic<bool> failed{false};
+            std::exception_ptr failure;
+            std::mutex failureMutex;
             std::vector<std::thread> tasks;
             for (std::uint32_t worker = 0; worker < workers; ++worker)
                 tasks.emplace_back([&] {
-                    for (;;) {
-                        const std::uint32_t blockBegin = next.fetch_add(
-                          Block, std::memory_order_relaxed);
-                        if (blockBegin >= stateCount_)
-                            break;
-                        const std::uint32_t blockEnd = std::min(
-                          stateCount_, static_cast<std::uint32_t>(blockBegin + Block));
-                        for (std::uint32_t index = blockBegin; index < blockEnd; ++index)
-                            action(index, true);
-                        const std::uint32_t done = completed.fetch_add(
-                          blockEnd - blockBegin, std::memory_order_relaxed) +
-                          blockEnd - blockBegin;
-                        std::uint32_t report = nextReport.load(std::memory_order_relaxed);
-                        while (done >= report && report <= stateCount_ &&
-                               !nextReport.compare_exchange_weak(
-                                 report, static_cast<std::uint32_t>(report + progressEvery),
-                                 std::memory_order_relaxed)) {}
-                        if (done >= report && report <= stateCount_)
-                            progress(phase, report, start);
+                    try {
+                        while (!failed.load(std::memory_order_relaxed)) {
+                            const std::uint32_t blockBegin = next.fetch_add(
+                              Block, std::memory_order_relaxed);
+                            if (blockBegin >= stateCount_)
+                                break;
+                            const std::uint32_t blockEnd = std::min(
+                              stateCount_, static_cast<std::uint32_t>(blockBegin + Block));
+                            for (std::uint32_t index = blockBegin; index < blockEnd; ++index)
+                                action(index, true);
+                            const std::uint32_t done = completed.fetch_add(
+                              blockEnd - blockBegin, std::memory_order_relaxed) +
+                              blockEnd - blockBegin;
+                            std::uint32_t report = nextReport.load(std::memory_order_relaxed);
+                            while (done >= report && report <= stateCount_ &&
+                                   !nextReport.compare_exchange_weak(
+                                     report,
+                                     static_cast<std::uint32_t>(report + progressEvery),
+                                     std::memory_order_relaxed)) {}
+                            if (done >= report && report <= stateCount_)
+                                progress(phase, report, start);
+                        }
+                    }
+                    catch (...) {
+                        failed.store(true, std::memory_order_relaxed);
+                        std::lock_guard<std::mutex> lock(failureMutex);
+                        if (!failure)
+                            failure = std::current_exception();
                     }
                 });
             for (auto& task : tasks)
                 task.join();
+            if (failure)
+                std::rethrow_exception(failure);
         };
         scan("frontier", begin, [&](std::uint32_t index, bool atomic) {
             analyze_node(index, true, [&](std::uint32_t child, bool) {
@@ -2799,7 +2917,24 @@ class TablebaseGenerator {
             return encode({state.side, state.attacker, state.blackKing,
                            state.whiteKing, state.substate});
         }
-        const std::uint32_t combinedSubstate = index % substates_;
+        std::uint32_t combinedSubstate = index % substates_;
+        if (secondaryType_ == PieceType::Penguin) {
+            const std::uint32_t primarySubstate =
+              combinedSubstate / secondarySubstates_;
+            const std::uint32_t secondarySubstate =
+              combinedSubstate % secondarySubstates_;
+            // Penguin bits name concrete identities: 1 is the White King and
+            // 4 is the other non-King (the Jester here). A hidden royal swap
+            // must exchange those bits so the same public silhouettes remain
+            // frozen. Keeping the numeric substate unchanged pairs a
+            // different causal aura history.
+            const std::uint32_t swappedSecondary =
+              (secondarySubstate & 2u) |
+              (secondarySubstate & 1u ? 4u : 0u) |
+              (secondarySubstate & 4u ? 1u : 0u);
+            combinedSubstate =
+              primarySubstate * secondarySubstates_ + swappedSecondary;
+        }
         FourState state = decode_four(index / substates_);
         std::swap(state.whiteKing, state.first);
         return encode_four_material(state) * substates_ + combinedSubstate;
@@ -2817,11 +2952,17 @@ class TablebaseGenerator {
         const std::uint32_t combinedSubstate = representative % substates_;
         const std::uint32_t primarySubstate =
           combinedSubstate / secondarySubstates_;
-        const std::uint32_t secondarySubstate =
+        std::uint32_t secondarySubstate =
           combinedSubstate % secondarySubstates_;
         FourState state = decode_four(representative / substates_);
-        if (swapped)
+        if (swapped) {
             std::swap(state.whiteKing, state.first);
+            if (secondaryType_ == PieceType::Penguin)
+                secondarySubstate =
+                  (secondarySubstate & 2u) |
+                  (secondarySubstate & 1u ? 4u : 0u) |
+                  (secondarySubstate & 4u ? 1u : 0u);
+        }
 
         position.clear();
         const int whiteKing = position.add_piece(
@@ -2840,6 +2981,10 @@ class TablebaseGenerator {
             position.piece(id).moved = true;
         if (!apply_substate(position, jester, attackerType_, primarySubstate) ||
             !apply_substate(position, secondary, secondaryType_, secondarySubstate))
+            return false;
+        if (secondaryType_ == PieceType::Penguin &&
+            !apply_penguin_substate(
+              position, secondary, jester, secondarySubstate))
             return false;
         position.set_side_to_move(state.side);
         return true;
@@ -3657,6 +3802,9 @@ int main(int argc, char** argv) {
     std::string lowerInformationOverlay;
     std::string lowerInformationSourceSha256;
     std::string lowerInformationModelSha256;
+    std::string lowerExtraInformationOverlay;
+    std::string lowerExtraInformationSourceSha256;
+    std::string lowerExtraInformationModelSha256;
     std::string informationSourceSha256;
     std::string informationModelSha256;
     std::string informationScratch = "/tmp";
@@ -3707,6 +3855,14 @@ int main(int argc, char** argv) {
             lowerInformationSourceSha256 = value("--lower-information-source-sha256");
         else if (argument == "--lower-information-model-sha256")
             lowerInformationModelSha256 = value("--lower-information-model-sha256");
+        else if (argument == "--lower-extra-information-overlay")
+            lowerExtraInformationOverlay = value("--lower-extra-information-overlay");
+        else if (argument == "--lower-extra-information-source-sha256")
+            lowerExtraInformationSourceSha256 =
+              value("--lower-extra-information-source-sha256");
+        else if (argument == "--lower-extra-information-model-sha256")
+            lowerExtraInformationModelSha256 =
+              value("--lower-extra-information-model-sha256");
         else if (argument == "--information-source-sha256")
             informationSourceSha256 = value("--information-source-sha256");
         else if (argument == "--information-model-sha256")
@@ -3756,6 +3912,9 @@ int main(int argc, char** argv) {
                 generator.solve_jester_information(
                   solveJesterInformation, lowerInformationOverlay,
                   lowerInformationSourceSha256, lowerInformationModelSha256,
+                  lowerExtraInformationOverlay,
+                  lowerExtraInformationSourceSha256,
+                  lowerExtraInformationModelSha256,
                   informationSourceSha256,
                   informationModelSha256, informationOverlay,
                   informationScratch);

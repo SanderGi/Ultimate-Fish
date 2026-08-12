@@ -10,6 +10,7 @@
 
 #include "position.h"
 
+#include <cstdint>
 #include <string>
 
 namespace Stockfish::Ultimate {
@@ -22,9 +23,43 @@ namespace Stockfish::Ultimate {
 struct DisclosureContext {
     Color observer = Color::White;
     bool enemyKingKnown = false;
+    // When present, only these enemy royal piece identities came from the
+    // first simultaneously revealed Ranked pick group and can still be the
+    // real King. Later-group Jesters are public Jesters, even while two or
+    // more first-group silhouettes remain ambiguous. An unspecified mask
+    // retains the legacy/fresh-snapshot meaning that every enemy royal is a
+    // candidate.
+    bool enemyRoyalCandidatesSpecified = false;
+    std::uint64_t enemyRoyalCandidatesLow = 0;
+    std::uint64_t enemyRoyalCandidatesHigh = 0;
 
     [[nodiscard]] constexpr bool knows_royal_identity(Color color) const {
         return color == observer || enemyKingKnown;
+    }
+
+    [[nodiscard]] constexpr bool is_enemy_royal_candidate(int piece) const {
+        if (!enemyRoyalCandidatesSpecified || piece < 0 ||
+            piece >= Position::MaxPieces)
+            return false;
+        return piece < 64
+             ? bool(enemyRoyalCandidatesLow & (std::uint64_t{1} << piece))
+             : bool(enemyRoyalCandidatesHigh &
+                    (std::uint64_t{1} << (piece - 64)));
+    }
+
+    [[nodiscard]] constexpr bool knows_royal_identity(Color color,
+                                                       int piece) const {
+        return knows_royal_identity(color) ||
+               (enemyRoyalCandidatesSpecified &&
+                !is_enemy_royal_candidate(piece));
+    }
+
+    constexpr void set_enemy_royal_candidate(int piece) {
+        enemyRoyalCandidatesSpecified = true;
+        if (piece >= 0 && piece < 64)
+            enemyRoyalCandidatesLow |= std::uint64_t{1} << piece;
+        else if (piece >= 64 && piece < Position::MaxPieces)
+            enemyRoyalCandidatesHigh |= std::uint64_t{1} << (piece - 64);
     }
 };
 

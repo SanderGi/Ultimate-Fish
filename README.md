@@ -36,7 +36,13 @@ tools/benchmark_ultimate.sh
 `src/ultimatefish` is a self-contained command-line engine. It accepts lossless
 Ultimate Position Notation (UPN), `position upn ...`, `go depth N`, `go nodes
 N`, `go movetime N`, `moves`, `perft N`, and the native draft commands exposed
-by `help`.
+by `help`. Public-history clients can use `history start <observer>
+<enemy-king-known-0|1> <initial-deployment-known-0|1>
+[kc=<square,...>] <upn>`, replay
+authoritative actions with `history move <move>`, and call
+`history go ...`; the concrete record selects observation buckets but is never
+selected as the search world. `kc=` carries the exact enemy royal squares from
+the first Ranked pick group that may still be the real King.
 
 ## Local workbench
 

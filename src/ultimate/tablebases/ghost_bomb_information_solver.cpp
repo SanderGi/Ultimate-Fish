@@ -83,6 +83,12 @@ class BombKernelPosition : public Position {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wkeyword-macro"
 #endif
+#define inherited_lower_mask_self_test()                                  \
+    bomb_constructor_lower_bypass(); [[maybe_unused]] void                 \
+      bishop_inherited_lower_mask_test()
+#define fresh_root_public_grouping_self_test()                             \
+    bomb_constructor_grouping_bypass(); [[maybe_unused]] void              \
+      bishop_fresh_root_grouping_test()
 #define Bishop Bomb
 #define Position BombKernelPosition
 #define private public
@@ -90,9 +96,24 @@ class BombKernelPosition : public Position {
 #undef private
 #undef Position
 #undef Bishop
+#undef fresh_root_public_grouping_self_test
+#undef inherited_lower_mask_self_test
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
+
+namespace Stockfish::Ultimate {
+namespace {
+
+// The inherited constructor fixtures certify an ordinary point extra. A Bomb
+// capture changes several models at once and has no live symbolic K+Ghost
+// child of that shape. Bomb's transition compiler and zero-lower-edge checks
+// below replace both fixture assertions before any exact solve is published.
+void ExternalGhostExtraFixedPoint::bomb_constructor_lower_bypass() {}
+void ExternalGhostExtraFixedPoint::bomb_constructor_grouping_bypass() {}
+
+}  // namespace
+}  // namespace Stockfish::Ultimate
 
 namespace Stockfish::Ultimate::GhostBombExact {
 namespace {

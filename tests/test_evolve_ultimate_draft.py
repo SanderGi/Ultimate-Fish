@@ -55,6 +55,23 @@ class DraftEvolutionTests(unittest.TestCase):
                     occupied.update(draft.footprint(piece, square))
             self.assertTrue(draft.KING_SHIELD <= occupied)
 
+    def test_only_first_pick_jesters_are_king_candidates(self) -> None:
+        outcome = draft.DraftOutcome(
+            (("king", "a1"), ("jester", "b1"), ("jester", "c1")),
+            (("king", "a1"), ("jester", "b1"), ("jester", "c1")),
+            (("jester",), ("jester",), ()),
+            (("jester",), ("jester",), ()),
+            (),
+        )
+        self.assertEqual(
+            draft.first_group_king_candidates(outcome, "w"),
+            ("a1", "b1"),
+        )
+        self.assertEqual(
+            draft.first_group_king_candidates(outcome, "b"),
+            ("a10", "b10"),
+        )
+
     def test_mutation_and_crossover_preserve_policy_shape(self) -> None:
         rng = random.Random(5732)
         mutations = [draft.mutate_policy(draft.BASE_POLICY, rng) for _ in range(20)]

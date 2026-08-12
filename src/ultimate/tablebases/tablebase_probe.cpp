@@ -596,6 +596,19 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
         return false;
     };
 
+    // Once no Pawn has a legal capture onto the stored square, the marker is
+    // observationally and strategically inert. Normalize it before material
+    // dispatch so every codec gets the same exact equivalence; the older
+    // per-codec checks accidentally rejected promoted Jester/Queen children
+    // even though their legal move sets were identical to the stored class.
+    if (position.enPassantSquare_ != Position::NoSquare &&
+        !actionableEnPassant()) {
+        Position normalized = position;
+        normalized.enPassantSquare_ = Position::NoSquare;
+        normalized.enPassantVictim_ = Position::NoPiece;
+        return probe(normalized);
+    }
+
     // A promoted two-step victim with a genuinely available en-passant
     // capture is not a persistent tablebase state: every legal reply clears
     // the marker.  Resolve that one-ply frontier exactly from the ordinary

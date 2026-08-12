@@ -26,12 +26,12 @@ from typing import Iterable, Sequence
 try:
     from evolve_ultimate_army import (
         Army, Engine, PIECE_COST, footprint, footprint_size, play_game,
-        position, result_summary,
+        mirror_square, position, result_summary,
     )
 except ModuleNotFoundError:  # Imported as tools.evolve_ultimate_draft.
     from tools.evolve_ultimate_army import (
         Army, Engine, PIECE_COST, footprint, footprint_size, play_game,
-        position, result_summary,
+        mirror_square, position, result_summary,
     )
 
 
@@ -256,6 +256,38 @@ def deploy_groups(groups: Sequence[Sequence[str]]) -> Army:
     """
     roster = tuple(piece for group in groups for piece in group)
     return _deploy_roster(roster)
+
+
+def first_group_king_candidates(
+    outcome: DraftOutcome, color: str,
+) -> tuple[str, ...]:
+    """Return exact UPN squares that can hold ``color``'s real King.
+
+    The fixed King and every Jester locked in the first simultaneous pick
+    group are indistinguishable royal silhouettes. Jesters drafted in either
+    later group are public Jesters and must not enter this candidate set.
+    """
+    if color not in ("w", "b"):
+        raise ValueError("draft royal color must be w or b")
+    army = outcome.white if color == "w" else outcome.black
+    groups = outcome.white_groups if color == "w" else outcome.black_groups
+    if not groups:
+        raise ValueError("draft outcome has no first pick group")
+    king_squares = [square for piece, square in army if piece == "king"]
+    if len(king_squares) != 1:
+        raise ValueError("draft outcome must contain exactly one fixed King")
+    first_jesters = groups[0].count("jester")
+    jester_squares = [
+        square for piece, square in army if piece == "jester"
+    ][:first_jesters]
+    if len(jester_squares) != first_jesters:
+        raise ValueError("draft deployment lost a first-group Jester")
+    candidates = (*king_squares, *jester_squares)
+    if color == "b":
+        candidates = tuple(
+            mirror_square("king", square) for square in candidates
+        )
+    return tuple(candidates)
 
 
 @functools.lru_cache(maxsize=None)

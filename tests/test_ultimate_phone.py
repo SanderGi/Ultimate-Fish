@@ -508,6 +508,37 @@ class EngineDraftProtocolTests(unittest.TestCase):
         self.assertEqual(commands[-1], "belief go depth 3 nodes 200")
         self.assertNotIn("conservative", commands[-1])
 
+    def test_history_search_delegates_hidden_state_reconstruction_to_engine(self):
+        client, commands = self.client_with_lines(
+            "historyok beliefs 23", "historyok beliefs 31",
+            "info depth 2 score cp -17 beliefs 31", "bestmove h10-g10",
+        )
+        move, score, _info = client.search_history(
+            "w;king,w,a1;jester,w,b1;ghost,w,c3;king,b,h10",
+            ("c3-d3",), depth=2, observer="black",
+            enemy_king_known=False,
+            enemy_king_candidates=("a1", "b1"), nodes=400,
+        )
+        self.assertEqual((move, score), ("h10-g10", -17))
+        self.assertEqual(commands, [
+            "history start black 0 0 kc=a1,b1 "
+            "w;king,w,a1;jester,w,b1;ghost,w,c3;king,b,h10",
+            "history move c3-d3",
+            "history go depth 2 nodes 400",
+        ])
+
+    def test_history_search_preserves_observer_relative_mate_scores(self):
+        client, _commands = self.client_with_lines(
+            "historyok beliefs 104",
+            "info depth 1 score mate -1 beliefs 104",
+            "bestmove (none)",
+        )
+        move, score, _info = client.search_history(
+            "b;king,w,a1;king,b,h10", (), depth=1, observer="black",
+        )
+        self.assertIsNone(move)
+        self.assertEqual(score, -29999)
+
 
 class AdbDeviceTests(unittest.TestCase):
     @unittest.skipUnless(importlib.util.find_spec("PIL"), "Pillow not installed")

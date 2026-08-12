@@ -12,6 +12,8 @@ concrete worlds are dependencies, not publishable public results.
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
+import fcntl
 import json
 from pathlib import Path
 import re
@@ -94,6 +96,18 @@ def aws(*arguments: str) -> str:
         ["aws", *arguments], check=True, text=True, capture_output=True).stdout
 
 
+@contextmanager
+def readme_lock(path: Path):
+    """Serialize imports from independent remote audits."""
+    lock = path.with_suffix(path.suffix + ".lock")
+    with lock.open("a", encoding="utf-8") as stream:
+        fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+
 def preflight(args: argparse.Namespace) -> None:
     rows = {row.filename: row for row in ledger.entries(args.readme.read_text())}
     row = rows[args.filename]
@@ -111,7 +125,8 @@ def preflight(args: argparse.Namespace) -> None:
 
 def remote_script(args: argparse.Namespace, record: Mapping[str, object]) -> str:
     encoded = concrete.encoded_filename(args.filename)
-    command = ["$work/binary/ultimate_tablebase", "--piece",
+    audit_binary = args.audit_binary or "$work/binary/ultimate_tablebase"
+    command = [audit_binary, "--piece",
                str(record["primary"]), "--checkpoint-every", "0"]
     if record.get("secondary"):
         command += ["--piece2", str(record["secondary"])]
@@ -119,6 +134,11 @@ def remote_script(args: argparse.Namespace, record: Mapping[str, object]) -> str
         command.append("--opposing")
     command += ["--audit-reachability", f"$work/outputs/{encoded}"]
     audit_command = " ".join(command)
+    sidecar = f'$work/{Path(args.filename).stem}.reachability-v2.txt'
+    if args.reuse_reachability_sidecar:
+        audit_step = f'test -s "{sidecar}"'
+    else:
+        audit_step = f'{audit_command} >"{sidecar}"'
     unit_check = ""
     if args.unit:
         unit_check = (
@@ -131,7 +151,7 @@ def remote_script(args: argparse.Namespace, record: Mapping[str, object]) -> str
 work={args.work_directory}
 test -f "$work/certificates/wave-certificate.json"
 test -f "$work/outputs/{encoded}"
-{unit_check}{audit_command} >"$work/{Path(args.filename).stem}.reachability-v2.txt"
+{unit_check}{audit_step}
 sidecar="$work/{Path(args.filename).stem}.reachability-v2.txt"
 side_sha=$(sha256sum "$sidecar" | cut -d' ' -f1)
 cert_sha=$(sha256sum "$work/certificates/wave-certificate.json" | cut -d' ' -f1)
@@ -229,32 +249,34 @@ def import_result(args: argparse.Namespace, output: str,
         raise ValueError("native total W/L/D conservation residual")
     first, second = (render(totals[side], omitted[side])
                      for side in ledger_side_order(args.filename))
-    rows = {row.filename: row for row in ledger.entries(args.readme.read_text())}
-    row = rows[args.filename]
     preserve = getattr(args, "preserve_information_dependency", False)
-    if row.result_kind != "concrete" and not preserve:
-        raise ValueError(
-            f"{args.filename}: hidden-information row cannot be concrete-certified")
     storage = (
         f"S3 table sha256:{table['sha256']} VersionId {table['version_id']}; "
         f"certificate sha256:{cert_sha} VersionId {head['VersionId']}; "
         f"reachability sha256:{side_sha} VersionId {side_put['VersionId']}")
-    if preserve:
-        ledger.update(args.readme,
-                      [f"{args.filename}=preserving"],
-                      [f"{args.filename}={storage}"])
-        return {
-            "filename": args.filename,
-            "result_kind": "concrete dependency only",
-            "status": "preserving",
-            "storage": storage,
-        }
     value = {
         "result_kind": "concrete", "first": first, "second": second,
         "reachability": ledger.reachability(first, second), "storage": storage,
     }
-    ledger.update(args.readme, [], [], certified_values=[
-        args.filename + "=" + json.dumps(value, separators=(",", ":"))])
+    with readme_lock(args.readme):
+        rows = {row.filename: row
+                for row in ledger.entries(args.readme.read_text())}
+        row = rows[args.filename]
+        if row.result_kind != "concrete" and not preserve:
+            raise ValueError(
+                f"{args.filename}: hidden-information row cannot be concrete-certified")
+        if preserve:
+            ledger.update(args.readme,
+                          [f"{args.filename}=preserving"],
+                          [f"{args.filename}={storage}"])
+            return {
+                "filename": args.filename,
+                "result_kind": "concrete dependency only",
+                "status": "preserving",
+                "storage": storage,
+            }
+        ledger.update(args.readme, [], [], certified_values=[
+            args.filename + "=" + json.dumps(value, separators=(",", ":"))])
     return {"filename": args.filename, **value}
 
 
@@ -265,11 +287,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--filename", required=True)
     parser.add_argument("--unit")
     parser.add_argument(
+        "--audit-binary",
+        help="remote current native binary used only for causal audit output")
+    parser.add_argument(
         "--preserve-information-dependency", action="store_true",
         help="preserve/audit a concrete hidden-material oracle without publishing W/L/D")
     parser.add_argument(
         "--command-id",
         help="resume/import an already submitted remote finalization command")
+    parser.add_argument(
+        "--reuse-reachability-sidecar", action="store_true",
+        help="reuse a retained nonempty native audit sidecar; parsed totals and zero unknown states are still verified")
     parser.add_argument("--bucket", required=True)
     parser.add_argument("--s3-prefix", required=True)
     parser.add_argument("--region", default="us-west-2")

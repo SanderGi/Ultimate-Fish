@@ -2243,6 +2243,33 @@ void test_exact_tablebase_probing() {
              displacedPromotion->wdl == white->wdl &&
              displacedPromotion->dtw == white->dtw,
            "an unmoved forced-promotion Queen reuses the exact ordinary table");
+
+    Position promotedPawnMarker;
+    std::string promotedMarkerError;
+    expect(promotedPawnMarker.set_upn(
+      "b;hm=1;fm=1;ep=a9;cont=0;forced=-1;epv=3;win=-;"
+      "king,w,a1,0,0,0,0,1,1,-1,1,-1,0;"
+      "king,b,b1,0,0,0,0,1,1,-1,1,-1,0;"
+      "jester,w,c1,0,0,0,0,1,1,-1,1,-1,0;"
+      "queen,w,a10,0,0,0,0,1,1,-1,1,-1,0",
+      &promotedMarkerError),
+      "promoted-Pawn inert-marker regression parses: " + promotedMarkerError);
+    Position normalizedPromotion;
+    std::string normalizedPromotionError;
+    expect(normalizedPromotion.set_upn(
+      "b;hm=1;fm=1;ep=-;cont=0;forced=-1;epv=-1;win=-;"
+      "king,w,a1,0,0,0,0,1,1,-1,1,-1,0;"
+      "king,b,b1,0,0,0,0,1,1,-1,1,-1,0;"
+      "jester,w,c1,0,0,0,0,1,1,-1,1,-1,0;"
+      "queen,w,a10,0,0,0,0,1,1,-1,1,-1,0",
+      &normalizedPromotionError),
+      "promoted-Pawn normalized regression parses: " + normalizedPromotionError);
+    const auto markerResult = TablebaseProbe::probe(promotedPawnMarker);
+    const auto normalizedResult = TablebaseProbe::probe(normalizedPromotion);
+    expect(markerResult && normalizedResult &&
+             markerResult->wdl == normalizedResult->wdl &&
+             markerResult->dtw == normalizedResult->dtw,
+           "a promoted two-step Pawn's inert en-passant marker reuses the exact lower table");
 }
 
 void test_native_information_set_search() {
@@ -2604,6 +2631,229 @@ void test_public_belief_state_core() {
     expect(!split.applied && split.before == 2 && split.after == 0 &&
              split.observations == 2 && royal.size() == 2,
            "distinguishable terminal/continuing outcomes never merge histories");
+}
+
+void test_public_history_reconstruction() {
+    const auto parse = [](std::string_view upn) {
+        Position result;
+        std::string error;
+        expect(result.set_upn(upn, &error),
+               "public-history fixture parses: " + error);
+        return result;
+    };
+    const auto hiddenGhost = [](std::string_view side,
+                                std::string_view square) {
+        Position result;
+        std::string error;
+        const std::string upn = std::string(side) +
+          ";king,w,a1;ghost,w," + std::string(square) +
+          ",0,0,0,0,0,0,-1,1,-1,0;king,b,h10";
+        expect(result.set_upn(upn, &error),
+               "hidden-Ghost history fixture parses: " + error);
+        return result;
+    };
+    PublicHistoryState fromC3;
+    PublicHistoryState fromF3;
+    std::string error;
+    expect(fromC3.start(hiddenGhost("b", "c3"), {Color::Black, false},
+                        &error),
+           "public history accepts a private authoritative Ghost start: " +
+             error);
+    expect(fromF3.start(hiddenGhost("b", "f3"), {Color::Black, false},
+                        &error),
+           "public history accepts an indistinguishable Ghost start: " +
+             error);
+    const std::vector<Position> c3Worlds = fromC3.beliefs().positions();
+    const std::vector<Position> f3Worlds = fromF3.beliefs().positions();
+    expect(c3Worlds.size() == 75 && c3Worlds.size() == f3Worlds.size() &&
+             std::equal(c3Worlds.begin(), c3Worlds.end(), f3Worlds.begin(),
+               [](const Position& left, const Position& right) {
+                   return left.upn() == right.upn();
+               }),
+           "initial history forgets the leaked Ghost coordinate and retains "
+           "every publicly possible board world");
+    expect(fromC3.beliefs().decision_partitions() == 1,
+           "the mover's initial legal dots select one exact information cell");
+    expect(!fromC3.beliefs().piece_location_known(1) &&
+             fromC3.beliefs().piece_location_candidates(1).size() == 75,
+           "per-piece knowledge reports every still-possible hidden Ghost square");
+    PublicHistoryState deploymentRoot;
+    expect(deploymentRoot.start(
+             hiddenGhost("b", "c3"), {Color::Black, false}, true, &error) &&
+             deploymentRoot.beliefs().size() == 23,
+           "a known freshly deployed root limits hidden Ghosts to their home "
+           "zone: " + error);
+
+    Position twoGhosts;
+    twoGhosts.add_piece(PieceType::King, Color::White,
+                        Position::square_from_name("a1"));
+    const int firstGhost = twoGhosts.add_piece(
+      PieceType::Ghost, Color::White, Position::square_from_name("c2"));
+    const int secondGhost = twoGhosts.add_piece(
+      PieceType::Ghost, Color::White, Position::square_from_name("d2"));
+    twoGhosts.piece(firstGhost).visible = false;
+    twoGhosts.piece(secondGhost).visible = false;
+    twoGhosts.add_piece(PieceType::King, Color::Black,
+                        Position::square_from_name("h10"));
+    twoGhosts.set_side_to_move(Color::Black);
+    PublicHistoryState interchangeableGhosts;
+    expect(interchangeableGhosts.start(
+             twoGhosts, {Color::Black, false}, &error) &&
+             interchangeableGhosts.beliefs().size() == 2775,
+           "two identical hidden Ghosts use all board-cell combinations "
+           "without duplicate identity permutations: " + error);
+    twoGhosts.piece(secondGhost).action = 1;
+    PublicHistoryState statefulGhosts;
+    expect(statefulGhosts.start(
+             twoGhosts, {Color::Black, false}, &error) &&
+             statefulGhosts.beliefs().size() == 5550,
+           "distinguishable hidden Ghost state retains both square "
+           "assignments: " + error);
+
+    PublicHistoryState afterHiddenMove;
+    expect(afterHiddenMove.start(
+             hiddenGhost("w", "c3"), {Color::Black, false}, &error) &&
+             afterHiddenMove.apply_actual("c3-d3", &error),
+           "public history replays an invisible enemy Ghost action: " + error);
+    expect(afterHiddenMove.actual_position().piece_on(
+             Position::square_from_name("d3")) != Position::NoPiece &&
+             afterHiddenMove.beliefs().size() > 1 &&
+             afterHiddenMove.beliefs().decision_partitions() == 1,
+           "an invisible Ghost action advances the private cursor without "
+           "collapsing the observer's information set");
+
+    const Position ambiguousRoyal = parse(
+      "b;king,w,a1;jester,w,b1;king,b,h10");
+    PublicHistoryState concealedRoyal;
+    PublicHistoryState revealedRoyal;
+    expect(concealedRoyal.start(
+             ambiguousRoyal, {Color::Black, false}, &error) &&
+             concealedRoyal.beliefs().size() == 2 &&
+             !concealedRoyal.beliefs().enemy_king_known(),
+           "pre-reveal history branches over enemy King/Jester identity: " +
+             error);
+    expect(revealedRoyal.start(
+             ambiguousRoyal, {Color::Black, true}, &error) &&
+             revealedRoyal.beliefs().size() == 1 &&
+             revealedRoyal.beliefs().enemy_king_known(),
+           "post-first-pick history preserves the now-public enemy King "
+           "identity: " + error);
+
+    const Position chronologicalRoyals = parse(
+      "b;king,w,a1;jester,w,b1;jester,w,c1;king,b,h10");
+    PublicHistoryState firstGroupRoyal;
+    expect(firstGroupRoyal.start(
+             chronologicalRoyals, {Color::Black, false}, false,
+             {Position::square_from_name("a1"),
+              Position::square_from_name("b1")}, &error) &&
+             firstGroupRoyal.beliefs().size() == 2 &&
+             firstGroupRoyal.beliefs().enemy_king_candidate_squares() ==
+               std::vector<int>{Position::square_from_name("a1"),
+                                Position::square_from_name("b1")} &&
+             !firstGroupRoyal.beliefs().enemy_king_known(),
+           "only first-pick royal silhouettes remain King candidates while "
+           "a later Jester is public: " + error);
+    expect(!firstGroupRoyal.beliefs().piece_type_known(1, PieceType::Jester) &&
+             firstGroupRoyal.beliefs().piece_type_known(2, PieceType::Jester),
+           "per-piece knowledge distinguishes an ambiguous first-group Jester "
+           "from a known later-group Jester");
+    PublicHistoryState oneFirstGroupRoyal;
+    expect(oneFirstGroupRoyal.start(
+             chronologicalRoyals, {Color::Black, false}, false,
+             {Position::square_from_name("a1")}, &error) &&
+             oneFirstGroupRoyal.beliefs().size() == 1 &&
+             oneFirstGroupRoyal.beliefs().enemy_king_known(),
+           "a singleton first-group candidate discloses the King: " + error);
+    PublicHistoryState impossibleRoyalChronology;
+    expect(!impossibleRoyalChronology.start(
+             chronologicalRoyals, {Color::Black, false}, false,
+             {Position::square_from_name("b1"),
+              Position::square_from_name("c1")}, &error),
+           "the authoritative King must remain inside the supplied public "
+           "candidate set");
+    PublicHistoryState contradictoryRoyalDisclosure;
+    expect(!contradictoryRoyalDisclosure.start(
+             chronologicalRoyals, {Color::Black, true}, false,
+             {Position::square_from_name("a1"),
+              Position::square_from_name("b1")}, &error),
+           "known-King disclosure cannot retain multiple royal candidates");
+
+    PublicHistoryState midgameSnapshot;
+    expect(midgameSnapshot.start(parse(
+             "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+             "king,w,d8,0,0,0,0,0,1,-1,1,-1,0;"
+             "king,b,d10,0,0,0,0,0,1,-1,1,-1,0;"
+             "ghost,w,b10,0,0,0,0,0,0,-1,1,-1,0"),
+             {Color::Black, false}, &error) &&
+             midgameSnapshot.beliefs().size() == 73 &&
+             midgameSnapshot.beliefs().common_moves().size() == 2,
+           "a history root outside the deployment zone is conditioned by its "
+           "two known legal moves: " + error);
+    SearchLimits historyLimits;
+    historyLimits.depth = 1;
+    Search historySearch(1);
+    const BeliefSearchResult historyChoice = historySearch.think_beliefs(
+      midgameSnapshot.beliefs(), historyLimits);
+    expect(historyChoice.bestMove &&
+             (*historyChoice.bestMove == "d10-c10" ||
+              *historyChoice.bestMove == "d10-e10") &&
+             midgameSnapshot.apply_actual(*historyChoice.bestMove, &error),
+           "every displayed legal King move remains a searchable and "
+           "replayable belief action: " + error);
+}
+
+void test_belief_terminal_and_observer_scoring() {
+    const std::string matingUpn =
+      "b;hm=3;fm=2;ep=-;cont=0;forced=-1;epv=-1;"
+      "king,w,a1,0,0,0,0,1,1,-1,1,-1,0;"
+      "jester,w,h1,0,0,0,0,0,1,-1,1,-1,0;"
+      "rook,w,d1,0,0,0,0,0,1,-1,1,-1,0;"
+      "rook,w,d8,0,0,0,0,1,1,-1,1,-1,0;"
+      "ninja,w,b2,0,0,0,0,0,1,-1,1,-1,0;"
+      "ghost,w,g2,0,0,0,0,0,0,-1,1,-1,0;"
+      "rook,w,e1,0,0,0,0,0,1,-1,1,-1,0;"
+      "pawn,w,f2,0,0,0,0,0,1,-1,1,-1,0;"
+      "king,b,d10,0,0,0,0,0,1,-1,1,-1,0;"
+      "giant,b,e9,0,0,0,0,0,1,-1,1,-1,0;"
+      "giant,b,b9,0,0,0,0,0,1,-1,1,-1,0;"
+      "prince,b,g10,0,0,0,0,0,1,-1,1,-1,0;"
+      "prince,b,a10,0,0,0,0,0,1,-1,1,-1,0;"
+      "checker,b,h10,0,0,0,0,0,1,-1,1,-1,0;"
+      "giant,b,g8,0,0,0,0,0,1,-1,1,-1,0;"
+      "prince,b,a9,0,0,0,0,0,1,-1,1,-1,0;"
+      "knight,b,e8,0,0,0,0,0,1,-1,1,-1,0;"
+      "checker,b,c8,0,0,0,0,0,1,-1,1,-1,0;"
+      "checker,b,f8,0,0,0,0,0,1,-1,1,-1,0";
+    Position mating;
+    std::string error;
+    expect(mating.set_upn(matingUpn, &error) && mating.game_over() &&
+             mating.winner() == Color::White && mating.legal_moves().empty(),
+           "reported drafted mating position is a terminal Ivory win: " + error);
+
+    PublicHistoryState hiddenHistory;
+    expect(hiddenHistory.start(
+             mating, {Color::Black, false}, false,
+             {Position::square_from_name("a1"),
+              Position::square_from_name("h1")}, &error) &&
+             hiddenHistory.beliefs().size() > 1,
+           "reported mate reconstructs a nontrivial Ghost/royal belief: " + error);
+    SearchLimits limits;
+    limits.depth = 1;
+    Search hiddenSearch(1);
+    const BeliefSearchResult hiddenMate = hiddenSearch.think_beliefs(
+      hiddenHistory.beliefs(), limits);
+    expect(!hiddenMate.bestMove && hiddenMate.score <= -29900,
+           "every terminal world scores as mate, never as a centipawn leaf");
+
+    PublicBeliefState singleton({Color::White, true});
+    expect(singleton.add(mating, &error),
+           "singleton observer-perspective fixture forms a belief: " + error);
+    Search singletonSearch(1);
+    const BeliefSearchResult observerMate = singletonSearch.think_beliefs(
+      singleton, limits);
+    expect(observerMate.score >= 29900,
+           "singleton belief scores and mate distance are converted from the "
+           "side to move to the configured observer");
 }
 
 void test_native_insufficient_material() {
@@ -3680,6 +3930,8 @@ int main() {
     test_exact_tablebase_probing();
     test_native_information_set_search();
     test_public_belief_state_core();
+    test_public_history_reconstruction();
+    test_belief_terminal_and_observer_scoring();
     test_native_insufficient_material();
     test_pawn_en_passant_lifetime();
     test_cooldowns_minions_and_freeze_stacking();
