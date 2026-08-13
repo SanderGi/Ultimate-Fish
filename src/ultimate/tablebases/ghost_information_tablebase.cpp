@@ -627,7 +627,10 @@ class Robdd {
             return False;
         if (const auto found = notCache_.find(root); found != notCache_.end())
             return found->second;
-        const Node& node = nodes_.at(root);
+        // Recursive calls can append to nodes_ and reallocate its storage.
+        // Keep a value copy so the second child is not read through a dangling
+        // reference after the first child has been processed.
+        const Node node = nodes_.at(root);
         const Id result = make(node.variable, logical_not(node.low),
                                logical_not(node.high));
         notCache_.emplace(root, result);
@@ -689,7 +692,9 @@ class Robdd {
         if (const auto found = restrictCache_.find(key);
             found != restrictCache_.end())
             return found->second;
-        const Node& node = nodes_.at(root);
+        // restrict_variable() can create nodes recursively, invalidating
+        // references into nodes_.
+        const Node node = nodes_.at(root);
         Id result;
         if (node.variable > variable)
             result = root;
@@ -909,7 +914,9 @@ class Robdd {
         if (const auto found = composeCache_.find(key);
             found != composeCache_.end())
             return found->second;
-        const Node& node = nodes_.at(root);
+        // Composing the low branch can grow nodes_ before the high branch is
+        // visited, so this node must outlive any vector reallocation.
+        const Node node = nodes_.at(root);
         const Id low = compose_uncached(node.low, image, relation);
         const Id high = compose_uncached(node.high, image, relation);
         const Id result = ite(image[node.variable], high, low);
