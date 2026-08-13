@@ -12263,18 +12263,35 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-current-wave0-028-bishop-berserker-retry-48g-v5.service",
+      "unit": "ultimatefish-resume-bishop-berserker-same-local-v1.service",
       "expected_allowed_cpus": "27",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 77309411328,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish-penguin": 236223201280
+        }
+      },
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish-penguin/current-wave0-028-bishop-berserker-retry-48g-v5/scratch/*",
-        "/mnt/ultimatefish-penguin/current-wave0-028-bishop-berserker-retry-48g-v5/logs/*"
+        "/mnt/ultimatefish-penguin/resume-bishop-berserker-same-local-v1/scratch/*",
+        "/mnt/ultimatefish-penguin/resume-bishop-berserker-same-local-v1/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-penguin/current-wave0-028-bishop-berserker-retry-48g-v5/outputs/kbishopberserkerk.uftb",
-        "/mnt/ultimatefish-penguin/current-wave0-028-bishop-berserker-retry-48g-v5/certificates/wave-certificate.json"
+        "/mnt/ultimatefish-penguin/resume-bishop-berserker-same-local-v1/outputs/kbishopberserkerk.uftb",
+        "/mnt/ultimatefish-penguin/resume-bishop-berserker-same-local-v1/certificates/wave-certificate.json"
       ],
-      "source_bindings": [],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/resume-source-4fcfb03a/repo/tools/tablebases/resume_ultimate_concrete_frontier_aws.py",
+          "sha256": "43423cc7b9925046224e93cfc188d3fc6d5128d956f771ae99c4b8d30fb7fc1a"
+        },
+        {
+          "path": "/mnt/ultimatefish-penguin/current-wave0-028-bishop-berserker-retry-48g-v5/resume-local-manifest.json",
+          "sha256": "221555c2248b316b5c97c388526c75072d87c376b8f99bff325681e916aba836"
+        }
+      ],
       "s3_certificates": []
     },
     {
