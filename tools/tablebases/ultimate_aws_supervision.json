@@ -12531,16 +12531,16 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-0986ed3d272721f02",
-      "unit": "ultimatefish-current-wave0-021-mage-same-40g-v5.service",
+      "unit": "ultimatefish-current-wave0-021-mage-same-48g-v6.service",
       "expected_allowed_cpus": "15",
       "dependencies": [],
       "checkpoint_paths": [
-        "/mnt/ultimatefish/current-wave0-021-mage-same-40g-v5/scratch/*",
-        "/mnt/ultimatefish/current-wave0-021-mage-same-40g-v5/logs/*"
+        "/mnt/ultimatefish/current-wave0-021-mage-same-48g-v6/scratch/*",
+        "/mnt/ultimatefish/current-wave0-021-mage-same-48g-v6/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/current-wave0-021-mage-same-40g-v5/outputs/kberserkermagek.uftb",
-        "/mnt/ultimatefish/current-wave0-021-mage-same-40g-v5/certificates/wave-certificate.json"
+        "/mnt/ultimatefish/current-wave0-021-mage-same-48g-v6/outputs/kberserkermagek.uftb",
+        "/mnt/ultimatefish/current-wave0-021-mage-same-48g-v6/certificates/wave-certificate.json"
       ],
       "source_bindings": [],
       "s3_certificates": []
