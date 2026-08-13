@@ -12324,18 +12324,35 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-current-wave0-025-prince-same-40g-v2.service",
+      "unit": "ultimatefish-resume-prince-same-local-v1.service",
       "expected_allowed_cpus": "31",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 73014444032,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 236223201280
+        }
+      },
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/current-wave0-025-prince-same-40g-v2/scratch/*",
-        "/mnt/ultimatefish/current-wave0-025-prince-same-40g-v2/logs/*"
+        "/mnt/ultimatefish/resume-prince-same-local-v1/scratch/*",
+        "/mnt/ultimatefish/resume-prince-same-local-v1/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/current-wave0-025-prince-same-40g-v2/outputs/kberserkerprincek.uftb",
-        "/mnt/ultimatefish/current-wave0-025-prince-same-40g-v2/certificates/wave-certificate.json"
+        "/mnt/ultimatefish/resume-prince-same-local-v1/outputs/kberserkerprincek.uftb",
+        "/mnt/ultimatefish/resume-prince-same-local-v1/certificates/wave-certificate.json"
       ],
-      "source_bindings": [],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/current-wave0-025-prince-same-40g-v2/resume-local-manifest.json",
+          "sha256": "acc024898afd5c0fd27955d309ddc040a3112ed96a0000d115470c9305109987"
+        },
+        {
+          "path": "/mnt/ultimatefish/resume-source-4fcfb03a/repo/tools/tablebases/resume_ultimate_concrete_frontier_aws.py",
+          "sha256": "43423cc7b9925046224e93cfc188d3fc6d5128d956f771ae99c4b8d30fb7fc1a"
+        }
+      ],
       "s3_certificates": []
     },
     {
