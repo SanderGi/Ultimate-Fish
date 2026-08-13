@@ -1792,17 +1792,16 @@
       "s3_certificates": []
     },
     {
-      "id": "ninja-ghost-opposing-decision-v2",
+      "id": "ninja-ghost-opposing-decision-v3",
       "ledger_files": [
         "kninjakghost.uftb"
       ],
       "ledger_certifies": true,
       "instance_id": "i-0986ed3d272721f02",
-      "unit": "ultimatefish-ordinary-kninjakghost-decision-v2.service",
+      "unit": "ultimatefish-ordinary-kninjakghost-decision-v3.service",
       "expected_allowed_cpus": "27",
       "dependencies": [],
       "checkpoint_paths": [
-        "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/logs/measure-decision-v1.log",
         "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/logs/solve.log",
         "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/solve/*",
         "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/transitions/kninjakghost.*"
@@ -1814,12 +1813,12 @@
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/logs/measure-decision-v1.log",
+          "path": "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/logs/solve.log",
           "max_bytes": 4096
         },
         {
           "kind": "journal",
-          "unit": "ultimatefish-ordinary-kninjakghost-decision-v2.service",
+          "unit": "ultimatefish-ordinary-kninjakghost-decision-v3.service",
           "max_bytes": 4096
         }
       ],
@@ -1833,6 +1832,26 @@
           "sha256": "cea9a27216a3a29c852e2c37fc05a4dbc6191cfba73aa82331cc04d073776997"
         }
       ],
+      "s3_certificates": []
+    },
+    {
+      "id": "ninja-ghost-opposing-preserve-v3",
+      "ledger_files": [],
+      "ledger_certifies": false,
+      "instance_id": "i-0986ed3d272721f02",
+      "unit": "ultimatefish-preserve-kninjakghost-decision-v3.service",
+      "expected_allowed_cpus": "28,29,30,31",
+      "dependencies": [
+        "ninja-ghost-opposing-decision-v3"
+      ],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/preserve-v3/put.json",
+        "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/preserve-v3/restore.tar.zst"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/preserve-v3/version-pinned-receipt.txt"
+      ],
+      "source_bindings": [],
       "s3_certificates": []
     },
     {
