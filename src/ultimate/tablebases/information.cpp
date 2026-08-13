@@ -620,7 +620,7 @@ std::string decision_observation_key(
     std::ostringstream out;
     out << "UFDECISION1|view=" << ordinaryView->size() << ':' << *ordinaryView
         << "|markers=" << markers.size();
-    for (const auto [source, destination] : markers) {
+    for (const auto& [source, destination] : markers) {
         if (source < 0)
             out << "|pass";
         else

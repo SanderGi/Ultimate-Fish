@@ -2238,7 +2238,7 @@ class GhostInformationGraph {
             std::vector<std::uint32_t> sameClass;
             bool hasExternal = false;
             bool allBlackWin = true;
-            for (const auto [world, edge] : members) {
+            for (const auto& [world, edge] : members) {
                 const RawChild& child = edges[world][edge].child;
                 if (child.sameClass)
                     sameClass.push_back(child.index);
@@ -2258,7 +2258,7 @@ class GhostInformationGraph {
                 childBelief = allowNewBeliefs ? intern(sameClass)
                                               : find_belief(sameClass);
             }
-            for (const auto [world, edge] : members) {
+            for (const auto& [world, edge] : members) {
                 const RawChild& child = edges[world][edge].child;
                 Successor& successor = edges[world][edge].successor;
                 if (child.sameClass) {
@@ -2584,7 +2584,7 @@ class GhostSymbolicFixedPoint {
             return child;
         std::array<Robdd::Id, Squares> image{};
         image.fill(Robdd::False);
-        for (const auto [square, formula] : relation_image(relation))
+        for (const auto& [square, formula] : relation_image(relation))
             image[square] = formula;
         return bdd_.compose(child, image, relation);
     }
