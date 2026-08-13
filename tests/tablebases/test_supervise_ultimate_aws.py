@@ -548,7 +548,9 @@ class SupervisionTests(unittest.TestCase):
                       and not job.get("queue_stage")
                       and not job.get("superseded_by")]
         table, _ = SUPERVISOR.compact_source_bindings(worst_jobs)
-        self.assertEqual(120, len(table))
+        # Four completed Copycat batch records are retired from live probes;
+        # their version-pinned ledger results remain authoritative.
+        self.assertEqual(106, len(table))
 
     def test_cpu_allocation_reports_idle_capacity_and_overlap(self) -> None:
         definition = config()["instances"][0]

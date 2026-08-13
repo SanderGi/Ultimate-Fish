@@ -73,6 +73,11 @@ struct BeliefSearchResult {
     std::size_t deepBeliefs = 0;
     std::size_t commonMoves = 0;
     std::size_t candidates = 0;
+    std::uint64_t beliefNodes = 0;
+    std::uint64_t beliefTtHits = 0;
+    std::uint64_t singletonHandoffs = 0;
+    std::uint64_t observationBuckets = 0;
+    std::size_t peakBeliefs = 0;
     // False when the configured observer is to move but the supplied state
     // still spans multiple privately visible legal-dot observations.
     bool validInformationCell = true;
@@ -93,6 +98,11 @@ struct BeliefTransitionResult {
 struct BeliefSuccessorBucket {
     std::string observation;
     std::vector<Position> worlds;
+    // Exact keys and the already-computed common public view are retained so
+    // the search can move this verified bucket into a child without
+    // serializing every Position a second time.
+    std::vector<std::string> worldKeys;
+    std::string publicView;
     // Distinct protocol spellings whose concrete outcomes contributed to this
     // observation. Multiple entries are expected for indistinguishable hidden
     // actions and are diagnostic only; they never condition the belief.
@@ -128,6 +138,8 @@ class PublicBeliefState {
     [[nodiscard]] std::optional<Color> side_to_move() const;
     [[nodiscard]] const std::string& public_view() const;
     [[nodiscard]] const std::map<std::string, Position>& concrete_worlds() const;
+    [[nodiscard]] std::uint64_t transposition_key() const;
+    [[nodiscard]] std::uint64_t transposition_verification() const;
 
     // Returns true for both a new world and an exact duplicate. `size()`
     // distinguishes the two. No hash-only identity or world bound is used.
@@ -183,10 +195,29 @@ class PublicBeliefState {
                                        std::string* error = nullptr);
 
    private:
+    friend class Search;
+
+    bool add_prevalidated(std::string upn, Position position,
+                          std::string_view publicView,
+                          std::string* error = nullptr);
+    bool add_compact_prevalidated(std::string upn, Position position,
+                                  const InformationViewKey& publicView,
+                                  std::optional<std::vector<Move>> legalMoves = std::nullopt,
+                                  std::string* error = nullptr);
+    [[nodiscard]] const std::vector<Move>& cached_legal_moves(
+      const std::string& upn, const Position& position) const;
+    void rebuild_transposition_digest();
+
     DisclosureContext disclosure_{};
     std::optional<Color> side_;
     std::string publicView_;
+    std::optional<InformationViewKey> compactPublicView_;
     std::map<std::string, Position> worlds_;
+    mutable std::map<std::string, std::vector<Move>> legalMovesCache_;
+    std::uint64_t worldKeyXor_ = 0;
+    std::uint64_t worldKeySum_ = 0;
+    std::uint64_t worldVerificationXor_ = 0;
+    std::uint64_t worldVerificationSum_ = 0;
 };
 
 // Reconstruct one player's exact public information set from a private
@@ -264,6 +295,19 @@ class Search {
         std::array<Entry, ClusterSize> entries{};
     };
 
+    struct BeliefEntry {
+        std::uint64_t key = 0;
+        std::uint64_t verification = 0;
+        std::uint64_t actionHash = 0;
+        std::int16_t score = 0;
+        std::int8_t depth = -1;
+        Bound bound = Bound::None;
+        std::uint8_t generation = 0;
+    };
+    struct BeliefCluster {
+        std::array<BeliefEntry, ClusterSize> entries{};
+    };
+
     int negamax(Position& position, int depth, int alpha, int beta, int ply,
                 std::vector<Move>& pv, const Move* excludedMove = nullptr);
     int quiescence(Position& position, int alpha, int beta, int ply);
@@ -273,8 +317,13 @@ class Search {
     bool stopped();
     Entry* find_entry(std::uint64_t key);
     Entry& replacement_entry(std::uint64_t key);
+    BeliefEntry* find_belief_entry(std::uint64_t key,
+                                   std::uint64_t verification);
+    BeliefEntry& replacement_belief_entry(std::uint64_t key,
+                                          std::uint64_t verification);
 
     std::vector<Cluster> table_;
+    std::vector<BeliefCluster> beliefTable_;
     SearchLimits limits_;
     std::chrono::steady_clock::time_point start_;
     std::chrono::milliseconds softTime_{0};

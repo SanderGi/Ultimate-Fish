@@ -22,22 +22,20 @@ visit. These are deterministic development measurements, not an Elo claim.
 
 ## Exact public-belief search
 
-`tools/tablebases/benchmark_ultimate_beliefs.cpp` plays a color-balanced hidden-Ghost trap
-from both compatible concrete worlds. The production player retains the full
-public belief and branches on every public/private observation; its deliberately
-weak opponent searches one canonical determinization. At depth 3 and 3,000
-nodes per move, exact belief search scores **3.0/4.0** (2 wins, 2 draws) against
-the determinization baseline's **2.0/4.0** (2 wins, 2 losses). The result is
-color symmetric and the exact player chooses the robust `d4-d7`/`d7-d4`
-action instead of the unsafe determinized `d4-e5`/`d7-e6` action.
+`tools/tablebases/benchmark_ultimate_beliefs.cpp` plays a color-balanced
+hidden-Ghost trap from both compatible concrete worlds. The production player
+retains the full public belief and branches on every public/private observation;
+its deliberately weak opponent searches one canonical determinization. The
+color-symmetric root result is the regression contract: exact search chooses
+the robust `d4-d7`/`d7-d4` action, while determinization chooses the unsafe
+`d4-e5`/`d7-e6` capture.
 
-Reusing the previous completed belief score as an aspiration window does not
-change any world, action, legal-dot cell, or successor-observation quantifier;
-a failed probe is repeated at full width. It preserves the 3.0/4.0 depth-3
-result while reducing exact focal nodes from 49,129 to 47,774 (**2.76%**). At
-depth 4 and 12,000 nodes per move, it preserves the same four draws while
-reducing exact focal nodes from 186,715 to 181,298 (**2.90%**). These small
-matches are deterministic regression and pruning evidence, not an Elo claim.
+Older benchmark revisions reported a 3.0/4.0 adjudicated match score. That
+number is retired: once a Ghost belief temporarily collapsed to one world, the
+old solver transferred to concrete search and remained omniscient after the
+Ghost hid again. The match output and color balance remain useful diagnostics,
+but only the robust root choice is asserted. The exact collapse/re-expansion
+regression is described in the 2026-08-12 section below.
 
 Rejected belief-search experiments are kept out of production. Ordering the
 opponent's observation buckets from the previous PV increased nodes by 5.7%.
@@ -531,3 +529,64 @@ per 10-second request at depths 9–12. Ultimate Fish held the worst belief near
 **Victory, +21 ranking** (and the 25/25 knockout-character milestone), so the
 corrected pipeline's Ranked strength record advances to **2 wins, 0 draws,
 0 losses**; controller-only abandoned games remain excluded.
+
+## 2026-08-12 exact hidden-information search
+
+The history-preserving belief search now has its own verified transposition
+table, PVS-style action and observation windows, mature move ordering, guarded
+LMR/LMP/futility pruning, exact structured observation keys, cached child legal
+frontiers, and unchecked application of moves already obtained from an exact
+legal frontier. A child with one retained world transfers immediately to the
+concrete search only when knowledge is monotone. Any live enemy Ghost keeps the
+belief solver active because a later quiet move can hide the Ghost and expand
+the state again.
+
+King/Jester ambiguity uses monotone candidate semantics. Candidate identities
+remain attached to piece IDs as silhouettes move, terminal capture and legal-dot
+observations split the candidates exactly, and the incremental
+`swap_royal_roles` primitive provides a reversible, bitboard-correct basis for
+factored candidate transitions. Royal-only belief states can use one-sided TT
+bounds; Ghost states conservatively use only exact TT cutoffs because their
+domains can collapse and re-expand.
+
+`make -C src ultimate-hidden-search-benchmark` builds a deterministic fixture
+suite. The JSON output includes concrete nodes, belief nodes, exact belief-TT
+hits, singleton handoffs, observation buckets, and peak retained worlds. Three
+consecutive release runs on an Apple Silicon macOS host produced identical
+scores, best moves, node counts, and information counters. Median elapsed times
+are below; the baseline is a clean `HEAD` archive built with the same compiler
+and `-O3 -DNDEBUG` flags.
+
+| Fixture | Depth | Root worlds | Baseline | Optimized | Speedup | Nodes before / after |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| King/Jester endgame | 6 | 2 | 3,847 ms | 37 ms | 104.0x | 76,382 / 4,782 |
+| 12-piece King/Jester midgame | 3 | 2 | 7,160 ms | 228 ms | 31.4x | 52,494 / 7,506 |
+| one hidden Ghost | 3 | 75 | 212 ms | 38 ms | 5.6x | 3,588 / 3,729 |
+| conditioned hidden Ghost | 2 | 73 | 84 ms | 12 ms | 7.0x | 1,462 / 1,586 |
+| two hidden Ghosts | 2 | 2,775 | 5,893 ms | 1,104 ms | 5.3x | 65,817 / 72,899 |
+
+The small concrete King/Jester control remains 1 ms and 1,474 nodes at depth
+6. The exact two-world search necessarily retains both adversarial assignments,
+but is now within 36 ms of that mature path instead of 3.8 seconds. The mixed
+midgame reaches the concrete engine nine times after observation collapse.
+
+The two-Ghost fixture is intentionally large: 2,775 initial combinations grow
+to 6,257 exact correlated worlds after hidden movement. This is not replaced by
+an unsound independent square union. Such a union loses injective occupancy,
+piece-state identity, legal-path, royal-reveal, and capture correlations. The
+current implementation performs lazy adversarial choice at observation
+boundaries while retaining exact correlated worlds. A dedicated symbolic Ghost
+domain can replace that storage later only if it preserves those correlations.
+
+A separate visible-Ghost singleton fixture starts with one world, performs zero
+concrete handoffs, and reaches eight worlds after a quiet move. Its score remains
+`-583`; the old concrete handoff returned the same static score but selected a
+continuation using the leaked exact destination. This fixture is the regression
+guard for collapse/de-collapse behavior.
+
+The color-balanced trap benchmark remains a deterministic tactical regression,
+not an Elo claim. It now reports whether exact search avoids the losing
+single-determinization root capture in both colors and both actual Ghost worlds;
+long adjudicated point totals are retained as diagnostics but are not used as a
+strength assertion because the previous singleton shortcut was omniscient after
+Ghost knowledge collapsed.

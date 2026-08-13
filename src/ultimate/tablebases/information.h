@@ -12,6 +12,8 @@
 
 #include <cstdint>
 #include <string>
+#include <tuple>
+#include <vector>
 
 namespace Stockfish::Ultimate {
 
@@ -63,6 +65,76 @@ struct DisclosureContext {
     }
 };
 
+// Allocation-light, collision-free equivalents of the textual keys below.
+// Search uses these structured records in its inner loop; protocol diagnostics
+// and standalone proof artifacts retain the stable textual spellings.
+struct InformationPieceKey {
+    std::uint64_t intrinsic = 0;
+    std::int16_t linkClass = -1;
+    std::int16_t hostClass = -1;
+
+    friend bool operator==(const InformationPieceKey& lhs,
+                           const InformationPieceKey& rhs) {
+        return std::tie(lhs.intrinsic, lhs.linkClass, lhs.hostClass) ==
+               std::tie(rhs.intrinsic, rhs.linkClass, rhs.hostClass);
+    }
+    friend bool operator<(const InformationPieceKey& lhs,
+                          const InformationPieceKey& rhs) {
+        return std::tie(lhs.intrinsic, lhs.linkClass, lhs.hostClass) <
+               std::tie(rhs.intrinsic, rhs.linkClass, rhs.hostClass);
+    }
+};
+
+struct InformationViewKey {
+    std::uint64_t state = 0;
+    std::vector<InformationPieceKey> pieces;
+
+    friend bool operator==(const InformationViewKey& lhs,
+                           const InformationViewKey& rhs) {
+        return lhs.state == rhs.state && lhs.pieces == rhs.pieces;
+    }
+    friend bool operator<(const InformationViewKey& lhs,
+                          const InformationViewKey& rhs) {
+        return lhs.state != rhs.state ? lhs.state < rhs.state
+                                      : lhs.pieces < rhs.pieces;
+    }
+};
+
+struct InformationObservationKey {
+    std::uint64_t action = 0;
+    InformationViewKey view;
+    std::vector<std::uint16_t> decisionMarkers;
+
+    friend bool operator==(const InformationObservationKey& lhs,
+                           const InformationObservationKey& rhs) {
+        return lhs.action == rhs.action && lhs.view == rhs.view &&
+               lhs.decisionMarkers == rhs.decisionMarkers;
+    }
+    friend bool operator<(const InformationObservationKey& lhs,
+                          const InformationObservationKey& rhs) {
+        return std::tie(lhs.action, lhs.view, lhs.decisionMarkers) <
+               std::tie(rhs.action, rhs.view, rhs.decisionMarkers);
+    }
+};
+
+[[nodiscard]] InformationViewKey compact_view_key(
+  const Position& position,
+  const DisclosureContext& disclosure,
+  const std::vector<Move>* legalMoves = nullptr);
+
+[[nodiscard]] std::vector<std::uint16_t> compact_decision_markers(
+  const Position& position,
+  const DisclosureContext& disclosure,
+  const std::vector<Move>* legalMoves = nullptr);
+
+[[nodiscard]] InformationObservationKey compact_transition_observation_key(
+  const Position& before,
+  const Move& move,
+  const Position& after,
+  const DisclosureContext& disclosure,
+  bool includeDecisionObservation,
+  const std::vector<Move>* afterLegalMoves = nullptr);
+
 // Return a collision-free, canonical description of everything visible to one
 // observer at a decision boundary.  Equal strings mean equal observations; the
 // function intentionally returns the complete serialization rather than a
@@ -99,7 +171,8 @@ struct DisclosureContext {
 // accidentally disclosing the mover's frontier to the opponent.
 [[nodiscard]] std::string decision_observation_key(
   const Position& position,
-  const DisclosureContext& disclosure);
+  const DisclosureContext& disclosure,
+  const std::string* ordinaryView = nullptr);
 
 // Return the complete public observation of one legal transition.  The key
 // includes the public action animation and the resulting view.  In particular,
@@ -114,7 +187,8 @@ struct DisclosureContext {
   const Position& before,
   const Move& move,
   const Position& after,
-  const DisclosureContext& disclosure);
+  const DisclosureContext& disclosure,
+  std::string* resultingView = nullptr);
 
 }  // namespace Stockfish::Ultimate
 

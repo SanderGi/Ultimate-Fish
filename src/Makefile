@@ -59,7 +59,7 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/tablebases/inf
 	ultimate/tablebases/information_solver.cpp ultimate/nnue.cpp
 ULTIMATE_TABLEBASE_INCLUDE = -Iultimate -Iultimate/tablebases
 
-.PHONY: ultimatefish ultimate-test ultimate-belief-benchmark ultimate-information-test \
+.PHONY: ultimatefish ultimate-test ultimate-belief-benchmark ultimate-hidden-search-benchmark ultimate-information-test \
 	ultimate-ghost-information-probe-test ultimate-tablebase \
 	ultimate-nnue-reference ultimate-information-solvers \
 	ultimate-ghost-information-tablebase ultimate-double-jester-information-tablebase \
@@ -522,6 +522,12 @@ ultimate-belief-benchmark:
 		../tools/tablebases/benchmark_ultimate_beliefs.cpp ultimate/position.cpp \
 		ultimate/search.cpp ultimate/tablebases/tablebase_probe.cpp ultimate/tablebases/information.cpp \
 		ultimate/nnue.cpp -o ultimate_belief_benchmark
+
+ultimate-hidden-search-benchmark:
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror -Iultimate -Iultimate/tablebases \
+		../tools/benchmark_ultimate_hidden_search.cpp ultimate/position.cpp \
+		ultimate/search.cpp ultimate/tablebases/tablebase_probe.cpp ultimate/tablebases/information.cpp \
+		ultimate/nnue.cpp -o ultimate_hidden_search_benchmark
 
 ultimate-crossed-jester-ghost-information-model-test:
 	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \

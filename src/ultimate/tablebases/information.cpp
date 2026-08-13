@@ -72,6 +72,14 @@ struct PublicNode {
     int refinementClass = NoClass;
 };
 
+struct NumericPublicNode {
+    int id = Position::NoPiece;
+    std::uint64_t intrinsic = 0;
+    int link = Position::NoPiece;
+    int host = Position::NoPiece;
+    std::int16_t refinementClass = NoClass;
+};
+
 [[nodiscard]] std::vector<int> normalized_attachment_orders(
   const Position& position) {
     std::vector<int> normalized(position.piece_count(), 0);
@@ -198,6 +206,106 @@ struct PublicNode {
     return nodes;
 }
 
+[[nodiscard]] std::uint8_t public_type_code(
+  const PieceState& piece, int id, const DisclosureContext& disclosure) {
+    if ((piece.type == PieceType::King || piece.type == PieceType::Jester) &&
+        !disclosure.knows_royal_identity(piece.color, id))
+        return static_cast<std::uint8_t>(PieceType::Count) + 1;
+    return static_cast<std::uint8_t>(piece.type);
+}
+
+[[nodiscard]] std::uint64_t numeric_intrinsic_key(
+  const Position& position, int id, int attachmentOrder,
+  const DisclosureContext& disclosure) {
+    const PieceState& piece = position.piece(id);
+    const std::uint64_t square = concealed_location(position, id, disclosure)
+                               ? 0 : std::uint64_t(piece.square) + 1;
+    std::uint64_t key = public_type_code(piece, id, disclosure);
+    key |= std::uint64_t(piece.color) << 6;
+    key |= square << 7;
+    key |= std::uint64_t(piece.onBoard) << 14;
+    key |= std::uint64_t(piece.action) << 15;
+    key |= std::uint64_t(piece.cooldown) << 23;
+    key |= std::uint64_t(piece.freezeCount) << 31;
+    key |= std::uint64_t(piece.power) << 39;
+    key |= std::uint64_t(piece.moved) << 47;
+    key |= std::uint64_t(piece.visible) << 48;
+    key |= std::uint64_t(attachmentOrder) << 49;
+    return key;
+}
+
+[[nodiscard]] int numeric_relation_class(
+  const std::vector<int>& idToNode,
+  const std::vector<NumericPublicNode>& nodes,
+  int relation) {
+    if (relation < 0 || relation >= static_cast<int>(idToNode.size()))
+        return NoClass;
+    const int node = idToNode[relation];
+    return node == Position::NoPiece ? NoClass
+                                     : nodes[node].refinementClass;
+}
+
+[[nodiscard]] std::vector<NumericPublicNode> numeric_public_nodes(
+  const Position& position, const DisclosureContext& disclosure,
+  std::vector<int>* finalIdToNode) {
+    const auto attachmentOrders = normalized_attachment_orders(position);
+    std::vector<int> idToNode(position.piece_count(), Position::NoPiece);
+    std::vector<NumericPublicNode> nodes;
+    nodes.reserve(position.piece_count());
+    for (int id = 0; id < position.piece_count(); ++id) {
+        const PieceState& piece = position.piece(id);
+        if (!piece.alive)
+            continue;
+        idToNode[id] = static_cast<int>(nodes.size());
+        nodes.push_back({
+          id, numeric_intrinsic_key(
+                position, id, attachmentOrders[id], disclosure),
+          piece.link, piece.host, NoClass});
+    }
+
+    std::vector<std::uint64_t> intrinsicClasses;
+    intrinsicClasses.reserve(nodes.size());
+    for (const NumericPublicNode& node : nodes)
+        intrinsicClasses.push_back(node.intrinsic);
+    std::sort(intrinsicClasses.begin(), intrinsicClasses.end());
+    intrinsicClasses.erase(
+      std::unique(intrinsicClasses.begin(), intrinsicClasses.end()),
+      intrinsicClasses.end());
+    for (NumericPublicNode& node : nodes)
+        node.refinementClass = static_cast<std::int16_t>(std::lower_bound(
+          intrinsicClasses.begin(), intrinsicClasses.end(), node.intrinsic) -
+          intrinsicClasses.begin());
+
+    using Signature = std::tuple<std::uint64_t, int, int>;
+    for (std::size_t iteration = 0; iteration <= nodes.size(); ++iteration) {
+        std::vector<Signature> signatures;
+        signatures.reserve(nodes.size());
+        for (const NumericPublicNode& node : nodes)
+            signatures.emplace_back(
+              node.intrinsic,
+              numeric_relation_class(idToNode, nodes, node.link),
+              numeric_relation_class(idToNode, nodes, node.host));
+        std::vector<Signature> unique = signatures;
+        std::sort(unique.begin(), unique.end());
+        unique.erase(std::unique(unique.begin(), unique.end()), unique.end());
+        std::vector<std::int16_t> next(nodes.size(), NoClass);
+        for (std::size_t index = 0; index < nodes.size(); ++index)
+            next[index] = static_cast<std::int16_t>(std::lower_bound(
+              unique.begin(), unique.end(), signatures[index]) -
+              unique.begin());
+        bool unchanged = true;
+        for (std::size_t index = 0; index < nodes.size(); ++index)
+            unchanged = unchanged &&
+                        next[index] == nodes[index].refinementClass;
+        for (std::size_t index = 0; index < nodes.size(); ++index)
+            nodes[index].refinementClass = next[index];
+        if (unchanged)
+            break;
+    }
+    *finalIdToNode = std::move(idToNode);
+    return nodes;
+}
+
 [[nodiscard]] std::string terminal_token(const Position& position) {
     if (!position.game_over())
         return "ongoing";
@@ -261,6 +369,135 @@ struct PublicNode {
 
 }  // namespace
 
+InformationViewKey compact_view_key(
+  const Position& position, const DisclosureContext& disclosure,
+  const std::vector<Move>* legalMoves) {
+    std::vector<int> idToNode;
+    const std::vector<NumericPublicNode> nodes = numeric_public_nodes(
+      position, disclosure, &idToNode);
+    const auto relation = [&](int id) {
+        return numeric_relation_class(idToNode, nodes, id);
+    };
+
+    int timeout = 0;
+    if (const std::optional<Color> winner = position.forced_timeout_winner())
+        timeout = *winner == Color::White ? 1 : 2;
+    int terminal = timeout == 1 ? 2 : timeout == 2 ? 3 : 0;
+    if (!terminal) {
+        const bool white = position.has_real_king(Color::White);
+        const bool black = position.has_real_king(Color::Black);
+        if (white != black)
+            terminal = white ? 2 : 3;
+        else if (!white || !position.is_checkmate_possible())
+            terminal = 1;
+        else {
+            std::vector<Move> generated;
+            if (!legalMoves) {
+                generated = position.legal_moves();
+                legalMoves = &generated;
+            }
+            if (legalMoves->empty()) {
+                const std::optional<Color> winner = position.winner();
+                terminal = !winner ? 1
+                         : *winner == Color::White ? 2 : 3;
+            }
+        }
+    }
+
+    std::uint64_t state = static_cast<std::uint64_t>(disclosure.observer);
+    state |= std::uint64_t(disclosure.enemyKingKnown) << 1;
+    state |= std::uint64_t(position.side_to_move()) << 2;
+    state |= std::uint64_t(position.continuation()) << 3;
+    state |= std::uint64_t(relation(position.forced_piece()) + 1) << 7;
+    state |= std::uint64_t(position.en_passant_square() + 1) << 14;
+    state |= std::uint64_t(relation(position.en_passant_victim()) + 1) << 21;
+    state |= std::uint64_t(timeout) << 28;
+    state |= std::uint64_t(terminal) << 30;
+
+    InformationViewKey result;
+    result.state = state;
+    result.pieces.reserve(nodes.size());
+    for (const NumericPublicNode& node : nodes)
+        result.pieces.push_back({
+          node.intrinsic,
+          static_cast<std::int16_t>(relation(node.link)),
+          static_cast<std::int16_t>(relation(node.host))});
+    std::sort(result.pieces.begin(), result.pieces.end());
+    return result;
+}
+
+std::vector<std::uint16_t> compact_decision_markers(
+  const Position& position, const DisclosureContext& disclosure,
+  const std::vector<Move>* legalMoves) {
+    if (disclosure.observer != position.side_to_move())
+        throw std::invalid_argument(
+          "legal-dot decision observation is private to the side to move");
+    std::vector<std::uint16_t> markers;
+    std::vector<Move> generated;
+    if (!legalMoves) {
+        generated = position.legal_moves();
+        legalMoves = &generated;
+    }
+    for (const Move& move : *legalMoves)
+        markers.push_back(move.kind == MoveKind::Pass
+          ? 0
+          : static_cast<std::uint16_t>(
+              ((std::uint16_t(move.from) + 1) << 7) |
+              (std::uint16_t(move.to) + 1)));
+    std::sort(markers.begin(), markers.end());
+    markers.erase(std::unique(markers.begin(), markers.end()), markers.end());
+    return markers;
+}
+
+InformationObservationKey compact_transition_observation_key(
+  const Position& before, const Move& move, const Position& after,
+  const DisclosureContext& disclosure, bool includeDecisionObservation,
+  const std::vector<Move>* afterLegalMoves) {
+    constexpr std::uint64_t UnknownSquare = Position::BoardSquares + 1;
+    constexpr std::uint64_t NoSquare = Position::BoardSquares + 2;
+    constexpr std::uint64_t NoActor = 63;
+
+    std::uint64_t actorType = NoActor;
+    std::uint64_t from = NoSquare;
+    std::uint64_t to = NoSquare;
+    if (move.kind != MoveKind::Pass) {
+        const int actor = before.piece_on(move.from);
+        const PieceState* actorBefore =
+          actor >= 0 && actor < before.piece_count()
+            ? &before.piece(actor) : nullptr;
+        if (actorBefore)
+            actorType = public_type_code(*actorBefore, actor, disclosure);
+        const bool enemyGhost = actorBefore &&
+          actorBefore->type == PieceType::Ghost &&
+          actorBefore->color != disclosure.observer;
+        const bool sourceKnown = !enemyGhost || actorBefore->visible;
+        bool destinationKnown = !enemyGhost;
+        if (enemyGhost) {
+            destinationKnown = before.is_capture(move);
+            if (!destinationKnown && actor < after.piece_count()) {
+                const PieceState& actorAfter = after.piece(actor);
+                destinationKnown = actorAfter.alive && actorAfter.visible;
+            }
+        }
+        from = sourceKnown ? std::uint64_t(move.from) + 1 : UnknownSquare;
+        to = destinationKnown ? std::uint64_t(move.to) + 1 : UnknownSquare;
+    }
+    const std::uint64_t promotion = move.promotion == PieceType::Count
+                                  ? 0
+                                  : std::uint64_t(move.promotion) + 1;
+    InformationObservationKey result;
+    result.action = actorType |
+                    (std::uint64_t(move.kind) << 6) |
+                    (from << 10) | (to << 17) | (promotion << 24);
+    result.view = compact_view_key(after, disclosure, afterLegalMoves);
+    const bool ongoing = ((result.view.state >> 30) & 3) == 0;
+    if (includeDecisionObservation && ongoing &&
+        after.side_to_move() == disclosure.observer)
+        result.decisionMarkers = compact_decision_markers(
+          after, disclosure, afterLegalMoves);
+    return result;
+}
+
 std::string view_key(const Position& position,
                      const DisclosureContext& disclosure) {
     std::vector<int> idToNode;
@@ -301,7 +538,8 @@ std::string view_key(const Position& position,
 
 std::string decision_observation_key(
   const Position& position,
-  const DisclosureContext& disclosure) {
+  const DisclosureContext& disclosure,
+  const std::string* ordinaryView) {
     if (disclosure.observer != position.side_to_move())
         throw std::invalid_argument(
           "legal-dot decision observation is private to the side to move");
@@ -323,9 +561,13 @@ std::string decision_observation_key(
     std::sort(markers.begin(), markers.end());
     markers.erase(std::unique(markers.begin(), markers.end()), markers.end());
 
-    const std::string ordinary = view_key(position, disclosure);
+    std::string generatedView;
+    if (!ordinaryView) {
+        generatedView = view_key(position, disclosure);
+        ordinaryView = &generatedView;
+    }
     std::ostringstream out;
-    out << "UFDECISION1|view=" << ordinary.size() << ':' << ordinary
+    out << "UFDECISION1|view=" << ordinaryView->size() << ':' << *ordinaryView
         << "|markers=" << markers.size();
     for (const auto [source, destination] : markers) {
         if (source < 0)
@@ -341,11 +583,14 @@ std::string transition_observation_key(
   const Position& before,
   const Move& move,
   const Position& after,
-  const DisclosureContext& disclosure) {
+  const DisclosureContext& disclosure,
+  std::string* resultingView) {
     if (move.kind == MoveKind::Pass) {
-        const std::string resultingView = view_key(after, disclosure);
+        const std::string view = view_key(after, disclosure);
+        if (resultingView)
+            *resultingView = view;
         return "UFTRANS1|actor=none|kind=pass|from=-|to=-|promotion=-|view="
-             + std::to_string(resultingView.size()) + ':' + resultingView;
+             + std::to_string(view.size()) + ':' + view;
     }
 
     const int actor = before.piece_on(move.from);
@@ -371,7 +616,9 @@ std::string transition_observation_key(
     std::string promotion = "-";
     if (move.promotion != PieceType::Count)
         promotion = std::string(Position::type_name(move.promotion));
-    const std::string resultingView = view_key(after, disclosure);
+    const std::string view = view_key(after, disclosure);
+    if (resultingView)
+        *resultingView = view;
 
     std::ostringstream out;
     out << "UFTRANS1"
@@ -380,7 +627,7 @@ std::string transition_observation_key(
         << "|from=" << (sourceKnown ? Position::square_name(move.from) : "?")
         << "|to=" << (destinationKnown ? Position::square_name(move.to) : "?")
         << "|promotion=" << promotion
-        << "|view=" << resultingView.size() << ':' << resultingView;
+        << "|view=" << view.size() << ':' << view;
     return out.str();
 }
 

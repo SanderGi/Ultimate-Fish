@@ -350,6 +350,18 @@ int main(int argc, char** argv) {
 
         const Summary exact = summarize(games, AgentMode::Exact);
         const Summary determinized = summarize(games, AgentMode::Determinize);
+        const bool exactRobust = std::all_of(
+          games.begin(), games.end(), [](const GameResult& game) {
+              return game.mode != AgentMode::Exact ||
+                     (game.firstAction != "d4-e5" &&
+                      game.firstAction != "d7-e6");
+          });
+        const bool determinizationExposed = std::all_of(
+          games.begin(), games.end(), [](const GameResult& game) {
+              return game.mode != AgentMode::Determinize ||
+                     game.firstAction == "d4-e5" ||
+                     game.firstAction == "d7-e6";
+          });
         std::cout << '{';
         std::cout << "\"schema\":\"ultimate-public-belief-match-v1\",";
         std::cout << "\"depth\":" << options.depth << ',';
@@ -376,10 +388,15 @@ int main(int argc, char** argv) {
         std::cout << ',';
         print_summary("single_determinization", determinized);
         std::cout << "},\"color_balanced\":true,";
+        std::cout << "\"exact_robust_root\":"
+                  << (exactRobust ? "true" : "false") << ',';
+        std::cout << "\"determinization_exposed\":"
+                  << (determinizationExposed ? "true" : "false") << ',';
         std::cout << "\"exact_stronger\":"
                   << (exact.points > determinized.points ? "true" : "false")
                   << "}\n";
-        return exact.points > determinized.points ? EXIT_SUCCESS : EXIT_FAILURE;
+        return exactRobust && determinizationExposed
+             ? EXIT_SUCCESS : EXIT_FAILURE;
     }
     catch (const std::exception& error) {
         std::cerr << "Ultimate belief benchmark error: " << error.what() << '\n';

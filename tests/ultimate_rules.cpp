@@ -2722,6 +2722,22 @@ void test_public_history_reconstruction() {
            "an invisible Ghost action advances the private cursor without "
            "collapsing the observer's information set");
 
+    Position visibleGhost = hiddenGhost("w", "c3");
+    visibleGhost.piece(1).visible = true;
+    PublicBeliefState knownGhost({Color::Black, false});
+    expect(knownGhost.add(visibleGhost, &error) && knownGhost.size() == 1,
+           "a currently visible enemy Ghost begins as one concrete world: " +
+             error);
+    SearchLimits reexpansionLimits;
+    reexpansionLimits.depth = 2;
+    Search reexpansionSearch(1);
+    const BeliefSearchResult reexpansion = reexpansionSearch.think_beliefs(
+      knownGhost, reexpansionLimits);
+    expect(reexpansion.singletonHandoffs == 0 &&
+             reexpansion.peakBeliefs > 1,
+           "singleton Ghost knowledge remains in exact belief search and "
+           "re-expands after a quiet hidden move");
+
     const Position ambiguousRoyal = parse(
       "b;king,w,a1;jester,w,b1;king,b,h10");
     PublicHistoryState concealedRoyal;
@@ -3716,6 +3732,22 @@ void test_public_information_projection() {
     const DisclosureContext disclosedOnyx{Color::Black, true};
     expect(view_key(firstRoyal, onyx) == view_key(swappedRoyal, onyx),
            "enemy King/Jester assignments share one royal-silhouette view");
+    expect(compact_view_key(firstRoyal, onyx) ==
+             compact_view_key(swappedRoyal, onyx),
+           "compact projection preserves royal-silhouette equivalence");
+    Position swappedInPlace = firstRoyal;
+    expect(swappedInPlace.swap_royal_roles(0, 1) &&
+             swappedInPlace.piece(0).type == PieceType::Jester &&
+             swappedInPlace.piece(1).type == PieceType::King &&
+             swappedInPlace.pieces(Color::White, PieceType::King) ==
+               (Bitboard{1} << Position::square_from_name("b1")) &&
+             swappedInPlace.pieces(Color::White, PieceType::Jester) ==
+               (Bitboard{1} << Position::square_from_name("a1")),
+           "incremental royal-role swap updates stable piece identities and bitboards");
+    expect(swappedInPlace.swap_royal_roles(0, 1) &&
+             swappedInPlace.upn() == firstRoyal.upn() &&
+             swappedInPlace.key() == firstRoyal.key(),
+           "royal-role swap is exactly reversible");
     expect(view_key(firstRoyal, ivory) != view_key(swappedRoyal, ivory),
            "a player retains its own concrete King/Jester identity");
     expect(view_key(firstRoyal, disclosedOnyx) !=
@@ -3740,6 +3772,9 @@ void test_public_information_projection() {
     expect(decision_observation_key(dotKingE6, onyx) !=
              decision_observation_key(dotJesterE6, onyx),
            "mover-private legal dots disclose the hidden royal assignment");
+    expect(compact_decision_markers(dotKingE6, onyx) !=
+             compact_decision_markers(dotJesterE6, onyx),
+           "compact legal-dot markers preserve royal disclosure");
     bool rejectedNonMoverDots = false;
     try {
         (void)decision_observation_key(dotKingE6, ivory);
@@ -3756,6 +3791,9 @@ void test_public_information_projection() {
       "w;king,w,a1;ghost,w,f6,0,0,0,0,0,0,-1,1,-1,0;king,b,h10");
     expect(view_key(hiddenC3, onyx) == view_key(hiddenF6, onyx),
            "an invisible enemy Ghost square is absent from the public view");
+    expect(compact_view_key(hiddenC3, onyx) ==
+             compact_view_key(hiddenF6, onyx),
+           "compact projection conceals an invisible enemy Ghost square");
     expect(view_key(hiddenC3, ivory) != view_key(hiddenF6, ivory),
            "a Ghost owner retains its exact private square");
 
@@ -3777,6 +3815,11 @@ void test_public_information_projection() {
     expect(transition_observation_key(hiddenC3, firstQuiet, afterFirst, onyx) ==
              transition_observation_key(hiddenF6, secondQuiet, afterSecond, onyx),
            "quiet invisible-Ghost observations expose neither endpoint");
+    expect(compact_transition_observation_key(
+             hiddenC3, firstQuiet, afterFirst, onyx, false) ==
+             compact_transition_observation_key(
+               hiddenF6, secondQuiet, afterSecond, onyx, false),
+           "compact quiet-Ghost observations expose neither endpoint");
 
     const Move firstVisibleQuiet = require_move(visibleC3, "c3-d4");
     const Move secondVisibleQuiet = require_move(visibleF6, "f6-e5");
@@ -3809,6 +3852,11 @@ void test_public_information_projection() {
            transition_observation_key(
              visibleC3, visibleToC4, afterVisibleC4, onyx),
            "a quiet Ghost destination is concealed after it hides again");
+    expect(compact_transition_observation_key(
+             visibleC3, visibleToD4, afterVisibleD4, onyx, false) ==
+             compact_transition_observation_key(
+               visibleC3, visibleToC4, afterVisibleC4, onyx, false),
+           "compact observations preserve visible-to-hidden Ghost re-expansion");
 
     const Position hiddenCaptureLeft = parses(
       "w;king,w,a1;ghost,w,d4,0,0,0,0,1,0,-1,1,-1,0;"
@@ -3869,6 +3917,11 @@ void test_public_information_projection() {
            transition_observation_key(
              jesterOnTarget, captureJester, afterJesterCapture, onyx),
            "continuation after a royal capture eliminates the King-on-target world");
+    expect(!(compact_transition_observation_key(
+               kingOnTarget, captureKing, afterKingCapture, onyx, false) ==
+             compact_transition_observation_key(
+               jesterOnTarget, captureJester, afterJesterCapture, onyx, false)),
+           "compact terminal observations split King and Jester captures");
 
     // Exact K+Jester-v-K information index 492966: capturing a1 wins if a1 is
     // the King, but that dot is absent if a1 is the Jester because the Black

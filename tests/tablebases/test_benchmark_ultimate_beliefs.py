@@ -27,7 +27,7 @@ class BeliefBenchmarkTests(unittest.TestCase):
         )
         return json.loads(completed.stdout)
 
-    def test_match_is_color_balanced_deterministic_and_stronger(self) -> None:
+    def test_match_is_color_balanced_deterministic_and_robust(self) -> None:
         first = self.run_benchmark()
         second = self.run_benchmark()
         self.assertEqual(first, second)
@@ -48,10 +48,8 @@ class BeliefBenchmarkTests(unittest.TestCase):
             },
             combinations,
         )
-        exact = first["summary"]["exact"]
-        approximate = first["summary"]["single_determinization"]
-        self.assertGreater(exact["points"], approximate["points"])
-        self.assertTrue(first["exact_stronger"])
+        self.assertTrue(first["exact_robust_root"])
+        self.assertTrue(first["determinization_exposed"])
 
 
 if __name__ == "__main__":

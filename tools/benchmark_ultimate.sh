@@ -4,6 +4,7 @@ set -eu
 workspace=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 engine=${ULTIMATE_FISH_BINARY:-"$workspace/src/ultimatefish"}
 belief_benchmark=${ULTIMATE_BELIEF_BENCHMARK_BINARY:-"$workspace/src/ultimate_belief_benchmark"}
+hidden_search_benchmark=${ULTIMATE_HIDDEN_SEARCH_BENCHMARK_BINARY:-"$workspace/src/ultimate_hidden_search_benchmark"}
 
 make -C "$workspace/src" ultimatefish >/dev/null
 
@@ -24,6 +25,12 @@ if [ -z "${ULTIMATE_BELIEF_BENCHMARK_BINARY:-}" ]; then
     make -C "$workspace/src" ultimate-belief-benchmark >/dev/null
 fi
 "$belief_benchmark"
+
+printf '\nHidden-information search scaling\n'
+if [ -z "${ULTIMATE_HIDDEN_SEARCH_BENCHMARK_BINARY:-}" ]; then
+    make -C "$workspace/src" ultimate-hidden-search-benchmark >/dev/null
+fi
+"$hidden_search_benchmark"
 
 if [ "${ULTIMATE_LONG_BENCHMARK:-0}" = 1 ]; then
     printf '\nRecovered Unranked loss opening (10-second horizon)\n'

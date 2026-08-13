@@ -281,6 +281,7 @@
     },
     {
       "id": "crossed-jester-ghost-closure",
+      "superseded_by": "crossed-jester-ghost-closure-resume",
       "instance_id": "i-08c0f44a1776cb34a",
       "unit": "ultimatefish-crossed-jester-ghost-closurefull-e39ccd0a.service",
       "expected_allowed_cpus": "0",
@@ -300,6 +301,45 @@
         "/mnt/ultimatefish/crossed-jester-ghost-e39ccd0a/work/graph.chk"
       ],
       "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "crossed-jester-ghost-closure-resume",
+      "ledger_files": ["kjesterkghost.uftb"],
+      "ledger_certifies": false,
+      "instance_id": "i-024a2073283e4336e",
+      "unit": "ultimatefish-crossed-jester-ghost-b3c5d97e.service",
+      "expected_allowed_cpus": "0",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 53687091200,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 161061273600
+        }
+      },
+      "dependencies": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/crossed-jester-ghost-b3c5d97e/work/graph.chk",
+        "/mnt/ultimatefish/crossed-jester-ghost-b3c5d97e/logs/resume.log"
+      ],
+      "completion_paths": [],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/crossed-jester-ghost-b3c5d97e/source/source.tar",
+          "sha256": "1f8caaf2af07456fe583c12b3e5ab6b9f7f3310c41d8bda05fc98d5ddeec2a3d"
+        },
+        {
+          "path": "/mnt/ultimatefish/crossed-jester-ghost-b3c5d97e/source/ultimatefish-crossed-e39ccd0a/src/ultimate_crossed_jester_ghost_information_tablebase",
+          "sha256": "b177ffc32a0af12ad13a994472d814eb287bfa47b5b3bc195b770cf0e2624485"
+        }
+      ],
+      "diagnostic_sources": [
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/crossed-jester-ghost-b3c5d97e/logs/resume.log",
+          "max_bytes": 4096
+        }
+      ],
       "s3_certificates": []
     },
     {
@@ -391,6 +431,7 @@
     },
     {
       "id": "jester-ghost-measure",
+      "superseded_by": "jester-ghost-same-exact",
       "ledger_files": [
         "kjesterghostk.uftb",
         "kjesterkghost.uftb"
@@ -408,7 +449,7 @@
       "dependencies": [
         "jester-ghost-merge"
       ],
-      "advanceable": true,
+      "advanceable": false,
       "resume_of": "ultimatefish-jg7328-measure-v3.service",
       "checkpoint_paths": [
         "/mnt/ultimatefish/jester-ghost-migration-7328-prep/measurement-binary-compat-b4503336/production-input-preflight-v2.log",
@@ -847,6 +888,7 @@
     },
     {
       "id": "concrete-wave1",
+      "superseded_by": "explicit-wave1-pawn-berserker-dependency-gates",
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-concrete-wave1-next.service",
       "dependencies": [
@@ -883,6 +925,7 @@
     },
     {
       "id": "concrete-wave2",
+      "superseded_by": "version-pinned-certified-pawn-pair-ledger-results",
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-concrete-wave2-next.service",
       "dependencies": [
@@ -1055,10 +1098,6 @@
         {
           "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/src/ultimate/nnue.h",
           "sha256": "7b113d78c3537cc4b7b40d12f605e171dcb3f4b34b3a2e4bf26859971b6d46d0"
-        },
-        {
-          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/tablebases/kghostk.ufgm",
-          "sha256": "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b"
         },
         {
           "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/tablebases/kbombk.uftb",
@@ -1872,33 +1911,40 @@
     {
       "id": "copycat-ghost-same-exact",
       "ledger_files": ["kcopycatghostk.uftb"],
-      "ledger_certifies": true,
+      "ledger_certifies": false,
       "instance_id": "i-024a2073283e4336e",
-      "unit": "ultimatefish-direct-kcopycatghostk-9a4740c0-v2.service",
+      "unit": "ultimatefish-rebind-kcopycatghostk-030f8da6-v2.service",
       "expected_allowed_cpus": "15",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 8589934592,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 17179869184
+        }
+      },
       "dependencies": [],
       "checkpoint_paths": [
-        "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/logs/*",
-        "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/solve/*"
+        "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/transitions/kcopycatghostk.blocks",
+        "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/transitions/kcopycatghostk.verified"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/results/kcopycatghostk-restart-9a4740c0.ufiw",
-        "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/results/kcopycatghostk-restart-9a4740c0.ufgd"
+        "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/results/kcopycatghostk-restart-1b-9a4740c0.ufiw",
+        "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/results/kcopycatghostk-restart-1b-9a4740c0.ufgd"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/ordinary-ghost-source-aae7f817/tools/tablebases/run_ultimate_ghost_ordinary_aws.py",
-          "sha256": "ba99c904199d0d9aa4ea731d7053869999b028f6a2e66b9d1549632c052c0eda"
+          "path": "/mnt/ultimatefish/generic-ordinary-rebind-030f8da6/source.tar.gz",
+          "sha256": "030f8da60a5c8620f3b65180edc823595bd4449ac047dd1e870b73f262a6232c"
         },
         {
-          "path": "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/ultimate_ghost_ordinary_information_tablebase",
-          "sha256": "5a068a0f4ed67ccfc615c8701ad2a0a1213e329474ee0408dc73559cf6f4121c"
+          "path": "/mnt/ultimatefish/generic-ordinary-rebind-030f8da6/ultimate_ghost_ordinary_copycat",
+          "sha256": "5e669fac8c3c6a98638a023e507237ed6533cd5cc4e100555103f00512cbbc99"
         }
       ],
       "diagnostic_sources": [
         {
-          "kind": "file",
-          "path": "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/logs/solve-restart-9a4740c0.log",
+          "kind": "journal",
+          "unit": "ultimatefish-rebind-kcopycatghostk-030f8da6-v2.service",
           "max_bytes": 4096
         }
       ],
@@ -3165,6 +3211,7 @@
     },
     {
       "id": "concrete-wave0-batch-v3-10-class069",
+      "superseded_by": "version-pinned-certified-ledger-result",
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-concrete-wave0-batch-v3-10-class069-kcopycatkdragon.service",
       "expected_allowed_cpus": "9",
@@ -3283,10 +3330,11 @@
         }
       ],
       "s3_certificates": [],
-      "advanceable": true
+      "advanceable": false
     },
     {
       "id": "concrete-wave0-batch-v3-11-class071",
+      "superseded_by": "version-pinned-certified-ledger-result",
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-concrete-wave0-batch-v3-11-class071-kcopycatkgiant.service",
       "expected_allowed_cpus": "10",
@@ -3405,7 +3453,7 @@
         }
       ],
       "s3_certificates": [],
-      "advanceable": true
+      "advanceable": false
     },
     {
       "id": "concrete-wave0-batch-v3-12-class072",
@@ -3553,6 +3601,7 @@
     },
     {
       "id": "concrete-wave0-batch-v3-13-class073",
+      "superseded_by": "version-pinned-certified-ledger-result",
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-concrete-wave0-batch-v3-13-class073-kcopycatkknight.service",
       "expected_allowed_cpus": "12",
@@ -3667,10 +3716,11 @@
         }
       ],
       "s3_certificates": [],
-      "advanceable": true
+      "advanceable": false
     },
     {
       "id": "concrete-wave0-batch-v3-14-class074",
+      "superseded_by": "version-pinned-certified-ledger-result",
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-concrete-wave0-batch-v3-14-class074-kcopycatknightk.service",
       "expected_allowed_cpus": "13",
@@ -3785,7 +3835,7 @@
         }
       ],
       "s3_certificates": [],
-      "advanceable": true
+      "advanceable": false
     },
     {
       "id": "concrete-wave0-batch-v3-15-class075",
@@ -12089,6 +12139,7 @@
       "ledger_certifies": true,
       "instance_id": "i-0986ed3d272721f02",
       "unit": "ultimatefish-current-wave0-000-berserker-pair-resume-v2.service",
+      "superseded_by": "authenticated-frontier-resume-after-transport",
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/current-wave0-000/scratch/*",
@@ -12227,9 +12278,36 @@
       "s3_certificates": []
     },
     {
+      "id": "current-concrete-opposed-berserker-bomb-frontier",
+      "ledger_files": ["kberserkerkbomb.uftb"],
+      "ledger_certifies": false,
+      "instance_id": "i-0986ed3d272721f02",
+      "unit": "ultimatefish-current-wave0-008-bomb-fresh-v2.service",
+      "dependencies": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/current-wave0-008-fresh-v2/resume-manifest.json",
+        "/mnt/ultimatefish/current-wave0-008-fresh-v2/scratch/kberserkerkbomb.nodes",
+        "/mnt/ultimatefish/current-wave0-008-fresh-v2/scratch/kberserkerkbomb.degrees"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/current-wave0-008-fresh-v2/resume-manifest.json"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/current-wave0-008-fresh-v2/resume-manifest.json",
+          "sha256": "91451a0e574dbf4670424493bedb6c66cd1a33dc49e1d9a7903f150e53354523"
+        },
+        {
+          "path": "/mnt/ultimatefish/current-wave0-008-fresh-v2/binary/ultimate_tablebase",
+          "sha256": "f60ef0254b9b7cffa40fe36982f79440d742b690034e95aba9f2d657ba6f20a4"
+        }
+      ],
+      "s3_certificates": []
+    },
+    {
       "id": "current-concrete-same-berserker-fisherman",
       "ledger_files": ["kberserkerfishermank.uftb"],
-      "ledger_certifies": true,
+      "ledger_certifies": false,
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-current-wave0-004-fisherman-resume-7088db91-v1.service",
       "expected_allowed_cpus": "7",

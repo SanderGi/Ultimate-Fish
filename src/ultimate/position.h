@@ -215,6 +215,11 @@ class Position {
       const Move& move, bool concealJester = false) const;
     [[nodiscard]] std::optional<Move> move_from_string(std::string_view text) const;
 
+    // Search-only factored King/Jester support. Swapping these two identical
+    // royal movement roles is the primitive used by the exact lazy-candidate
+    // belief solver; all cached type bitboards are updated incrementally.
+    bool swap_royal_roles(int first, int second);
+
     static const PieceInfo& info(PieceType type);
     static int material_value(PieceType type);
     [[nodiscard]] int material_points(int id) const;

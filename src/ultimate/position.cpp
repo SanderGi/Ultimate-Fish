@@ -640,6 +640,28 @@ const PieceInfo& Position::info(PieceType type) { return PieceTable[index(type)]
 
 int Position::material_value(PieceType type) { return MaterialValue[index(type)]; }
 
+bool Position::swap_royal_roles(int first, int second) {
+    if (first < 0 || first >= pieceCount_ || second < 0 || second >= pieceCount_)
+        return false;
+    PieceState& a = pieces_[first];
+    PieceState& b = pieces_[second];
+    if (!a.alive || !b.alive || a.color != b.color ||
+        !((a.type == PieceType::King && b.type == PieceType::Jester) ||
+          (a.type == PieceType::Jester && b.type == PieceType::King)))
+        return false;
+    const Color color = a.color;
+    if (a.onBoard) {
+        byType_[index(color)][index(a.type)] &= ~square_bb(a.square);
+        byType_[index(color)][index(b.type)] |= square_bb(a.square);
+    }
+    if (b.onBoard) {
+        byType_[index(color)][index(b.type)] &= ~square_bb(b.square);
+        byType_[index(color)][index(a.type)] |= square_bb(b.square);
+    }
+    std::swap(a.type, b.type);
+    return true;
+}
+
 int Position::material_points(int id) const {
     if (id < 0 || id >= pieceCount_ || !pieces_[id].alive)
         return 0;

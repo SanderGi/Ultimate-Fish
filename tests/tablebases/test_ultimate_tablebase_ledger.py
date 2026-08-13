@@ -37,6 +37,13 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual(300, sum(row.domain == "same" for row in rows))
         self.assertEqual(300, sum(row.domain == "opposed" for row in rows))
         self.assertEqual(147, sum(row.status == "deferred" for row in rows))
+        self.assertEqual(477, sum(row.status != "deferred" for row in rows))
+        self.assertEqual(
+            477,
+            sum(row.status == status for row in rows
+                for status in ("certified", "preserving", "computing",
+                               "planned", "draw", "blocked")),
+        )
         # These six stateful opposing cells are exact insufficient draws but
         # were formerly missing from the 450-class compute-scope count.
         stateful_draws = {

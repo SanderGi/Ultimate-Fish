@@ -21,6 +21,75 @@ constexpr int Infinity = 32000;
 constexpr int Mate = 30000;
 constexpr int MateThreshold = Mate - 128;
 
+std::uint64_t mix_key(std::uint64_t value) {
+    value += 0x9e3779b97f4a7c15ULL;
+    value = (value ^ (value >> 30)) * 0xbf58476d1ce4e5b9ULL;
+    value = (value ^ (value >> 27)) * 0x94d049bb133111ebULL;
+    return value ^ (value >> 31);
+}
+
+std::uint64_t string_key(std::string_view value) {
+    std::uint64_t hash = 0xcbf29ce484222325ULL;
+    for (const unsigned char byte : value) {
+        hash ^= byte;
+        hash *= 0x100000001b3ULL;
+    }
+    return hash;
+}
+
+bool belief_stays_concrete(const Position& position, Color observer) {
+    // Royal identity is monotone knowledge, but Ghost location is not: a
+    // currently observed Ghost can make a quiet move, become invisible, and
+    // expand one concrete world into several observer-equivalent worlds.
+    const Color enemy = ~observer;
+    for (int id = 0; id < position.piece_count(); ++id) {
+        const PieceState& piece = position.piece(id);
+        if (piece.alive && piece.onBoard && piece.color == enemy &&
+            piece.type == PieceType::Ghost)
+            return false;
+    }
+    return true;
+}
+
+bool royal_assignment_equivalent(const Position& first,
+                                 const Position& second,
+                                 Color royalOwner) {
+    if (first.piece_count() != second.piece_count())
+        return false;
+    int firstKing = Position::NoPiece;
+    int secondKing = Position::NoPiece;
+    int firstJesters = 0;
+    int secondJesters = 0;
+    for (int id = 0; id < first.piece_count(); ++id) {
+        const PieceState& piece = first.piece(id);
+        if (piece.alive && piece.type == PieceType::Ghost)
+            return false;
+        if (!piece.alive || piece.color != royalOwner)
+            continue;
+        if (piece.type == PieceType::King)
+            firstKing = id;
+        else if (piece.type == PieceType::Jester)
+            ++firstJesters;
+    }
+    for (int id = 0; id < second.piece_count(); ++id) {
+        const PieceState& piece = second.piece(id);
+        if (!piece.alive || piece.color != royalOwner)
+            continue;
+        if (piece.type == PieceType::King)
+            secondKing = id;
+        else if (piece.type == PieceType::Jester)
+            ++secondJesters;
+    }
+    if (firstKing == Position::NoPiece || secondKing == Position::NoPiece ||
+        !firstJesters || !secondJesters)
+        return false;
+    Position swapped = first;
+    if (firstKing != secondKing &&
+        !swapped.swap_royal_roles(firstKing, secondKing))
+        return false;
+    return swapped.upn() == second.upn();
+}
+
 std::vector<std::string> decision_markers(const Position& position) {
     std::vector<std::string> result;
     for (const Move& move : position.legal_moves())
@@ -36,10 +105,12 @@ std::vector<std::string> decision_markers(const Position& position) {
 std::string observed_transition(const Position& before, const Move& move,
                                 const Position& after,
                                 const DisclosureContext& disclosure) {
+    std::string publicView;
     std::string result = transition_observation_key(
-      before, move, after, disclosure);
+      before, move, after, disclosure, &publicView);
     if (!after.game_over() && after.side_to_move() == disclosure.observer) {
-        const std::string decision = decision_observation_key(after, disclosure);
+        const std::string decision = decision_observation_key(
+          after, disclosure, &publicView);
         result += "|nextDecision=" + std::to_string(decision.size()) + ':' +
                   decision;
     }
@@ -144,13 +215,29 @@ bool initial_public_beliefs(const Position& actual,
         return false;
     }
 
+    const auto actualKing = std::find_if(
+      enemyRoyals.begin(), enemyRoyals.end(), [&](int id) {
+          return actual.piece(id).type == PieceType::King;
+      });
+
     for (const int king : kingCandidates) {
         Position royalVariant = actual;
-        if (king != Position::NoPiece)
-            for (const int id : enemyRoyals)
-                royalVariant.piece(id).type = id == king
-                                            ? PieceType::King
-                                            : PieceType::Jester;
+        bool royalNeedsRebuild = false;
+        if (king != Position::NoPiece) {
+            if (actualKing == enemyRoyals.end()) {
+                for (const int id : enemyRoyals)
+                    royalVariant.piece(id).type = id == king
+                                                ? PieceType::King
+                                                : PieceType::Jester;
+                royalNeedsRebuild = true;
+            }
+            else if (king != *actualKing &&
+                     !royalVariant.swap_royal_roles(*actualKing, king)) {
+                if (error)
+                    *error = "could not factor the enemy royal candidate set";
+                return false;
+            }
+        }
 
         std::vector<bool> used(ghostSquares.size(), false);
         std::vector<std::size_t> assigned(hiddenGhosts.size(), 0);
@@ -159,7 +246,10 @@ bool initial_public_beliefs(const Position& actual,
             if (index == hiddenGhosts.size()) {
                 Position candidate;
                 std::string addError;
-                if (!rebuild_position(variant, candidate) ||
+                const bool ready = hiddenGhosts.empty() && !royalNeedsRebuild
+                  ? (candidate = std::move(variant), true)
+                  : rebuild_position(variant, candidate);
+                if (!ready ||
                     view_key(candidate, disclosure) != expectedView)
                     return;
                 if (!beliefs.add(std::move(candidate), &addError) && error &&
@@ -262,7 +352,13 @@ PublicBeliefState::PublicBeliefState(DisclosureContext disclosure) :
 void PublicBeliefState::clear() {
     side_.reset();
     publicView_.clear();
+    compactPublicView_.reset();
     worlds_.clear();
+    legalMovesCache_.clear();
+    worldKeyXor_ = 0;
+    worldKeySum_ = 0;
+    worldVerificationXor_ = 0;
+    worldVerificationSum_ = 0;
 }
 
 bool PublicBeliefState::set_disclosure(DisclosureContext disclosure,
@@ -300,26 +396,122 @@ const std::map<std::string, Position>& PublicBeliefState::concrete_worlds() cons
     return worlds_;
 }
 
+std::uint64_t PublicBeliefState::transposition_key() const {
+    std::uint64_t disclosure = static_cast<std::uint64_t>(disclosure_.observer);
+    disclosure |= std::uint64_t(disclosure_.enemyKingKnown) << 8;
+    disclosure |= std::uint64_t(disclosure_.enemyRoyalCandidatesSpecified) << 9;
+    disclosure ^= mix_key(disclosure_.enemyRoyalCandidatesLow);
+    disclosure ^= mix_key(disclosure_.enemyRoyalCandidatesHigh + 1);
+    return mix_key(worldKeyXor_) ^ mix_key(worldKeySum_) ^
+           mix_key(worlds_.size()) ^ mix_key(disclosure);
+}
+
+std::uint64_t PublicBeliefState::transposition_verification() const {
+    return mix_key(worldVerificationXor_) ^ mix_key(worldVerificationSum_) ^
+           mix_key(worlds_.size() + 0x7f4a7c15ULL);
+}
+
 bool PublicBeliefState::add(Position position, std::string* error) {
+    const std::string view = view_key(position, disclosure_);
+    std::string upn = position.upn();
+    return add_prevalidated(std::move(upn), std::move(position), view, error);
+}
+
+bool PublicBeliefState::add_prevalidated(
+  std::string upn, Position position, std::string_view publicView,
+  std::string* error) {
     if (side_ && position.side_to_move() != *side_) {
         if (error)
             *error = "side-to-move differs from the retained belief";
         return false;
     }
-    const std::string view = view_key(position, disclosure_);
-    if (!publicView_.empty() && view != publicView_) {
+    if (!publicView_.empty() && publicView != publicView_) {
         if (error)
             *error = "ordinary public view differs from the retained belief";
         return false;
     }
-    const std::string upn = position.upn();
+    const std::uint64_t positionKey = position.key();
     const auto [iterator, inserted] = worlds_.emplace(upn, std::move(position));
-    (void)iterator;
+    if (inserted) {
+        const std::uint64_t mixedPosition = mix_key(positionKey);
+        const std::uint64_t mixedVerification = mix_key(string_key(iterator->first));
+        worldKeyXor_ ^= mixedPosition;
+        worldKeySum_ += mixedPosition;
+        worldVerificationXor_ ^= mixedVerification;
+        worldVerificationSum_ += mixedVerification;
+    }
     if (inserted && worlds_.size() == 1) {
         side_ = worlds_.begin()->second.side_to_move();
-        publicView_ = std::move(view);
+        publicView_ = publicView;
     }
     return true;
+}
+
+bool PublicBeliefState::add_compact_prevalidated(
+  std::string upn, Position position, const InformationViewKey& publicView,
+  std::optional<std::vector<Move>> legalMoves, std::string* error) {
+    if (side_ && position.side_to_move() != *side_) {
+        if (error)
+            *error = "side-to-move differs from the retained belief";
+        return false;
+    }
+    if (compactPublicView_ && !(publicView == *compactPublicView_)) {
+        if (error)
+            *error = "ordinary compact public view differs from the retained belief";
+        return false;
+    }
+    const std::uint64_t positionKey = position.key();
+    const auto [iterator, inserted] = worlds_.emplace(upn, std::move(position));
+    if (legalMoves)
+        legalMovesCache_.emplace(std::move(upn), std::move(*legalMoves));
+    if (inserted) {
+        const std::uint64_t mixedPosition = mix_key(positionKey);
+        const std::uint64_t mixedVerification = mix_key(string_key(iterator->first));
+        worldKeyXor_ ^= mixedPosition;
+        worldKeySum_ += mixedPosition;
+        worldVerificationXor_ ^= mixedVerification;
+        worldVerificationSum_ += mixedVerification;
+    }
+    if (inserted && worlds_.size() == 1) {
+        side_ = iterator->second.side_to_move();
+        compactPublicView_ = publicView;
+    }
+    return true;
+}
+
+const std::vector<Move>& PublicBeliefState::cached_legal_moves(
+  const std::string& upn, const Position& position) const {
+    const auto found = legalMovesCache_.find(upn);
+    if (found != legalMovesCache_.end())
+        return found->second;
+    // The hidden royal owner may condition its policy on the fixed identity,
+    // but while one of its Jesters remains alive the King/Jester silhouettes
+    // have identical movement and ordinary check filtering is suspended.
+    // Reuse only the owner's frontier; the observer's legal dots remain
+    // candidate-specific and are generated independently.
+    if (position.side_to_move() != disclosure_.observer)
+        for (const auto& [cachedUpn, moves] : legalMovesCache_) {
+            const auto world = worlds_.find(cachedUpn);
+            if (world != worlds_.end() && royal_assignment_equivalent(
+                  world->second, position, position.side_to_move()))
+                return legalMovesCache_.emplace(upn, moves).first->second;
+        }
+    return legalMovesCache_.emplace(upn, position.legal_moves()).first->second;
+}
+
+void PublicBeliefState::rebuild_transposition_digest() {
+    worldKeyXor_ = 0;
+    worldKeySum_ = 0;
+    worldVerificationXor_ = 0;
+    worldVerificationSum_ = 0;
+    for (const auto& [upn, position] : worlds_) {
+        const std::uint64_t mixedPosition = mix_key(position.key());
+        const std::uint64_t mixedVerification = mix_key(string_key(upn));
+        worldKeyXor_ ^= mixedPosition;
+        worldKeySum_ += mixedPosition;
+        worldVerificationXor_ ^= mixedVerification;
+        worldVerificationSum_ += mixedVerification;
+    }
 }
 
 std::vector<Position> PublicBeliefState::positions() const {
@@ -532,6 +724,9 @@ bool PublicBeliefState::condition_on_decision_markers(
         return false;
     }
     worlds_ = std::move(retained);
+    legalMovesCache_.clear();
+    compactPublicView_.reset();
+    rebuild_transposition_digest();
     return true;
 }
 
@@ -539,7 +734,11 @@ BeliefSuccessorPartitions PublicBeliefState::successor_partitions(
   std::string_view moveText, bool includeDecisionObservation) const {
     BeliefSuccessorPartitions result;
     result.before = worlds_.size();
-    std::map<std::string, std::map<std::string, Position>> observations;
+    struct Observation {
+        std::string publicView;
+        std::map<std::string, Position> worlds;
+    };
+    std::map<std::string, Observation> observations;
     for (const auto& [upn, before] : worlds_) {
         (void)upn;
         const std::optional<Move> move = unique_notated_move(before, moveText);
@@ -553,24 +752,29 @@ BeliefSuccessorPartitions PublicBeliefState::successor_partitions(
             ++result.incompatible;
             continue;
         }
+        std::string publicView;
         std::string observation = transition_observation_key(
-          before, *move, after, disclosure_);
+          before, *move, after, disclosure_, &publicView);
         if (includeDecisionObservation && !after.game_over() &&
             after.side_to_move() == disclosure_.observer) {
             const std::string decision = decision_observation_key(
-              after, disclosure_);
+              after, disclosure_, &publicView);
             observation += "|nextDecision=" +
                            std::to_string(decision.size()) + ':' + decision;
         }
-        observations[observation].emplace(after.upn(), std::move(after));
+        Observation& bucket = observations[observation];
+        bucket.publicView = std::move(publicView);
+        bucket.worlds.emplace(after.upn(), std::move(after));
     }
     result.buckets.reserve(observations.size());
-    for (auto& [observation, worlds] : observations) {
+    for (auto& [observation, contents] : observations) {
         BeliefSuccessorBucket bucket;
         bucket.observation = std::move(observation);
-        bucket.worlds.reserve(worlds.size());
-        for (auto& [upn, position] : worlds) {
-            (void)upn;
+        bucket.publicView = std::move(contents.publicView);
+        bucket.worlds.reserve(contents.worlds.size());
+        bucket.worldKeys.reserve(contents.worlds.size());
+        for (auto& [upn, position] : contents.worlds) {
+            bucket.worldKeys.push_back(std::move(upn));
             bucket.worlds.push_back(std::move(position));
         }
         result.buckets.push_back(std::move(bucket));
@@ -586,6 +790,7 @@ BeliefSuccessorPartitions PublicBeliefState::adversarial_successor_partitions(
     const std::set<std::string> allowed(
       allowedActions.begin(), allowedActions.end());
     struct Observation {
+        std::string publicView;
         std::map<std::string, Position> worlds;
         std::set<std::string> actions;
     };
@@ -600,16 +805,18 @@ BeliefSuccessorPartitions PublicBeliefState::adversarial_successor_partitions(
             Undo undo;
             if (!after.make_move(move, undo))
                 continue;
+            std::string publicView;
             std::string observation = transition_observation_key(
-              before, move, after, disclosure_);
+              before, move, after, disclosure_, &publicView);
             if (includeDecisionObservation && !after.game_over() &&
                 after.side_to_move() == disclosure_.observer) {
                 const std::string decision = decision_observation_key(
-                  after, disclosure_);
+                  after, disclosure_, &publicView);
                 observation += "|nextDecision=" +
                                std::to_string(decision.size()) + ':' + decision;
             }
             Observation& bucket = observations[observation];
+            bucket.publicView = std::move(publicView);
             bucket.actions.insert(notation);
             bucket.worlds.emplace(after.upn(), std::move(after));
         }
@@ -618,9 +825,11 @@ BeliefSuccessorPartitions PublicBeliefState::adversarial_successor_partitions(
     for (auto& [observation, contents] : observations) {
         BeliefSuccessorBucket bucket;
         bucket.observation = std::move(observation);
+        bucket.publicView = std::move(contents.publicView);
         bucket.worlds.reserve(contents.worlds.size());
+        bucket.worldKeys.reserve(contents.worlds.size());
         for (auto& [upn, position] : contents.worlds) {
-            (void)upn;
+            bucket.worldKeys.push_back(std::move(upn));
             bucket.worlds.push_back(std::move(position));
         }
         bucket.actions.assign(
@@ -661,11 +870,15 @@ BeliefTransitionResult PublicBeliefState::apply_known(
         return result;
     }
 
+    const BeliefSuccessorBucket& bucket = partitions.buckets.front();
     worlds_.clear();
-    for (const Position& position : partitions.buckets.front().worlds)
-        worlds_.emplace(position.upn(), position);
+    legalMovesCache_.clear();
+    for (std::size_t world = 0; world < bucket.worlds.size(); ++world)
+        worlds_.emplace(bucket.worldKeys[world], bucket.worlds[world]);
     side_ = worlds_.begin()->second.side_to_move();
-    publicView_ = view_key(worlds_.begin()->second, disclosure_);
+    publicView_ = bucket.publicView;
+    compactPublicView_.reset();
+    rebuild_transposition_digest();
     result.after = worlds_.size();
     result.applied = true;
     return result;
@@ -834,10 +1047,15 @@ Search::Search(std::size_t hashMegabytes) {
     while ((entries << 1) * sizeof(Cluster) <= bytes)
         entries <<= 1;
     table_.resize(entries);
+    std::size_t beliefEntries = 1;
+    while ((beliefEntries << 1) * sizeof(BeliefCluster) <= bytes)
+        beliefEntries <<= 1;
+    beliefTable_.resize(beliefEntries);
 }
 
 void Search::clear() {
     std::fill(table_.begin(), table_.end(), Cluster{});
+    std::fill(beliefTable_.begin(), beliefTable_.end(), BeliefCluster{});
     history_ = {};
     killers_ = {};
     generation_ = 0;
@@ -858,6 +1076,31 @@ Search::Entry& Search::replacement_entry(std::uint64_t key) {
             return entry;
     return *std::max_element(cluster.entries.begin(), cluster.entries.end(),
       [this](const Entry& lhs, const Entry& rhs) {
+          const int lhsAge = static_cast<std::uint8_t>(generation_ - lhs.generation);
+          const int rhsAge = static_cast<std::uint8_t>(generation_ - rhs.generation);
+          return lhsAge * 256 - lhs.depth < rhsAge * 256 - rhs.depth;
+      });
+}
+
+Search::BeliefEntry* Search::find_belief_entry(
+  std::uint64_t key, std::uint64_t verification) {
+    BeliefCluster& cluster = beliefTable_[key & (beliefTable_.size() - 1)];
+    for (BeliefEntry& entry : cluster.entries)
+        if (entry.bound != Bound::None && entry.key == key &&
+            entry.verification == verification)
+            return &entry;
+    return nullptr;
+}
+
+Search::BeliefEntry& Search::replacement_belief_entry(
+  std::uint64_t key, std::uint64_t verification) {
+    BeliefCluster& cluster = beliefTable_[key & (beliefTable_.size() - 1)];
+    for (BeliefEntry& entry : cluster.entries)
+        if (entry.bound == Bound::None ||
+            (entry.key == key && entry.verification == verification))
+            return entry;
+    return *std::max_element(cluster.entries.begin(), cluster.entries.end(),
+      [this](const BeliefEntry& lhs, const BeliefEntry& rhs) {
           const int lhsAge = static_cast<std::uint8_t>(generation_ - lhs.generation);
           const int rhsAge = static_cast<std::uint8_t>(generation_ - rhs.generation);
           return lhsAge * 256 - lhs.depth < rhsAge * 256 - rhs.depth;
@@ -1386,7 +1629,9 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
     // A singleton has no information-set branching. Retain the mature native
     // search (including quiescence/tablebases) and report the whole completed
     // principal variation as history preserving.
-    if (beliefs.size() == 1) {
+    if (beliefs.size() == 1 && belief_stays_concrete(
+          beliefs.concrete_worlds().begin()->second,
+          beliefs.disclosure().observer)) {
         Position position = beliefs.positions().front();
         const auto converted = [&](const SearchResult& exact) {
             const int perspective =
@@ -1406,6 +1651,8 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
             iteration.nodes = exact.nodes;
             iteration.commonMoves = position.legal_moves().size();
             iteration.candidates = iteration.commonMoves;
+            iteration.singletonHandoffs = 1;
+            iteration.peakBeliefs = 1;
             for (const Move& move : exact.principalVariation)
                 iteration.principalVariation.push_back(
                   position.move_to_string(move));
@@ -1427,9 +1674,13 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
     start_ = beliefStart;
     nodes_ = 0;
     stop_ = false;
-    // NNUE accumulators are concrete-path state. Until a belief accumulator is
-    // introduced, use the exact handcrafted evaluator at information leaves.
-    useNnue_ = false;
+    useNnue_ = UltimateNnue::enabled();
+    rootMoves_.clear();
+    rootDrawMoves_.clear();
+    ++generation_;
+    for (auto& bySquare : history_)
+        for (int& value : bySquare)
+            value /= 2;
     const Color observer = beliefs.disclosure().observer;
     result.deepBeliefs = beliefs.size();
     result.commonMoves = beliefs.common_moves().size();
@@ -1445,15 +1696,9 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
     const auto observer_evaluate = [&](const PublicBeliefState& state, int ply) {
         int robust = Infinity;
         for (const auto& [upn, position] : state.concrete_worlds()) {
-            (void)upn;
             int score = 0;
             const Color mover = position.side_to_move();
-            if (position.game_over()) {
-                const std::optional<Color> winner = position.winner();
-                score = !winner ? 0
-                      : *winner == mover ? Mate - ply : -Mate + ply;
-            }
-            else if (const auto winner = position.forced_timeout_winner())
+            if (const auto winner = position.forced_timeout_winner())
                 score = *winner == mover ? Mate - ply : -Mate + ply;
             else {
                 const bool ownKing = position.has_real_king(mover);
@@ -1463,6 +1708,9 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
                           : ownKing ? Mate - ply : -Mate + ply;
                 else if (!position.is_checkmate_possible())
                     score = 0;
+                else if (state.cached_legal_moves(upn, position).empty())
+                    score = position.real_king_threatened(mover)
+                          ? -Mate + ply : 0;
                 else
                     score = position.handcrafted_evaluate();
             }
@@ -1478,20 +1726,235 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
         const Position* position = nullptr;
         std::map<std::string, Move> moves;
     };
+    struct CachedBeliefWorld {
+        Position position;
+        std::vector<Move> legalMoves;
+    };
     BeliefPv previousIterationPv;
     int currentIterationDepth = 0;
+    std::uint64_t beliefNodes = 0;
+    std::uint64_t beliefTtHits = 0;
+    std::uint64_t singletonHandoffs = 0;
+    std::uint64_t observationBuckets = 0;
+    std::size_t peakBeliefs = beliefs.size();
     std::function<int(const PublicBeliefState&, int, int, int, int, BeliefPv&)>
       solve = [&](const PublicBeliefState& state, int depth, int alpha, int beta,
                   int ply, BeliefPv& pv) -> int {
-        nodes_ += std::max<std::size_t>(1, state.size());
-        if (stopped() || depth <= 0 || ply >= MaxPly - 1)
+        pv.clear();
+        ++beliefNodes;
+        peakBeliefs = std::max(peakBeliefs, state.size());
+        if (stopped())
             return observer_evaluate(state, ply);
         const std::optional<Color> side = state.side_to_move();
         if (!side)
             return 0;
 
+        // Information can collapse after a capture, reveal, or legal-dot
+        // observation. Hand the exact child to the mature concrete engine at
+        // any depth, not only when the root happened to be a singleton.
+        if (state.size() == 1 && ply < MaxPly - 1 &&
+            belief_stays_concrete(state.concrete_worlds().begin()->second,
+                                  observer)) {
+            ++singletonHandoffs;
+            Position position = state.concrete_worlds().begin()->second;
+            if (useNnue_)
+                UltimateNnue::refresh(position, accumulators_[ply]);
+            std::vector<Move> concretePv;
+            int score = 0;
+            if (*side == observer)
+                score = negamax(position, depth, alpha, beta, ply, concretePv);
+            else
+                score = -negamax(position, depth, -beta, -alpha, ply, concretePv);
+            for (const Move& move : concretePv)
+                pv.push_back(position.move_to_string(move));
+            return score;
+        }
+
+        nodes_ += state.size();
+        if (depth <= 0 || ply >= MaxPly - 1)
+            return observer_evaluate(state, ply);
+
+        const int originalAlpha = alpha;
+        const int originalBeta = beta;
+        const std::uint64_t observationMode = legalDotObservations
+                                            ? 0x7b1d5a6f3c9428e1ULL
+                                            : 0x13c6e8a9457fb20dULL;
+        const std::uint64_t beliefKey = state.transposition_key() ^
+                                        observationMode;
+        const std::uint64_t beliefVerification =
+          state.transposition_verification() ^ mix_key(observationMode);
+        BeliefEntry* ttEntry = find_belief_entry(
+          beliefKey, beliefVerification);
+        const bool adjustedRoot = ply == 0;
+        if (ttEntry && !adjustedRoot && ttEntry->depth >= depth) {
+            const int ttScore = score_from_tt(ttEntry->score, ply);
+            bool ghostDomain = false;
+            for (const auto& [upn, world] : state.concrete_worlds()) {
+                (void)upn;
+                for (int id = 0; id < world.piece_count(); ++id) {
+                    const PieceState& piece = world.piece(id);
+                    ghostDomain = ghostDomain ||
+                      (piece.alive && piece.onBoard &&
+                       piece.type == PieceType::Ghost &&
+                       piece.color != observer);
+                }
+            }
+            // Exact entries are universal. One-sided fail-soft cutoffs are
+            // also safe for monotone royal candidates. Ghost domains can
+            // collapse and later re-expand, so retain their bounds only as
+            // ordering hints until the symbolic domain key includes that
+            // observation-history state directly.
+            if (ttEntry->bound == Bound::Exact || (!ghostDomain &&
+                ((ttEntry->bound == Bound::Lower && ttScore >= beta) ||
+                 (ttEntry->bound == Bound::Upper && ttScore <= alpha))))
+            {
+                ++beliefTtHits;
+                return ttScore;
+            }
+        }
+        const std::uint64_t ttActionHash = ttEntry ? ttEntry->actionHash : 0;
+        const std::uint64_t pvActionHash =
+          currentIterationDepth >= 2 &&
+          static_cast<std::size_t>(ply) < previousIterationPv.size()
+            ? string_key(previousIterationPv[static_cast<std::size_t>(ply)])
+            : 0;
+        const auto store = [&](int score, std::string_view action) {
+            if (stop_ || adjustedRoot)
+                return;
+            BeliefEntry& replacement = replacement_belief_entry(
+              beliefKey, beliefVerification);
+            replacement.key = beliefKey;
+            replacement.verification = beliefVerification;
+            replacement.actionHash = action.empty() ? 0 : string_key(action);
+            replacement.score = static_cast<std::int16_t>(
+              std::clamp(score_to_tt(score, ply), -Infinity, Infinity));
+            replacement.depth = static_cast<std::int8_t>(
+              std::min(depth, 127));
+            replacement.bound = score <= originalAlpha ? Bound::Upper
+                              : score >= originalBeta  ? Bound::Lower
+                                                       : Bound::Exact;
+            replacement.generation = generation_;
+        };
+
+        const bool maximizing = *side == observer;
+        if (!maximizing) {
+            struct CompactAdversarialBucket {
+                std::map<std::string, CachedBeliefWorld> worlds;
+                std::set<std::string> actions;
+            };
+            std::map<InformationObservationKey, CompactAdversarialBucket>
+              observations;
+            for (const auto& [upn, world] : state.concrete_worlds()) {
+                (void)upn;
+                for (const Move& move : state.cached_legal_moves(upn, world)) {
+                    const std::string notation = world.move_to_string(move);
+                    if (ply == 0 && !rootRestriction.empty() &&
+                        !rootRestriction.count(notation))
+                        continue;
+                    Position after = world;
+                    // `move` came from this exact world's cached legal
+                    // frontier. Apply it once; Position::make_move would
+                    // regenerate that entire frontier merely to revalidate
+                    // the same action.
+                    if (!after.apply_move_unchecked(move))
+                        continue;
+                    std::vector<Move> afterLegalMoves = after.legal_moves();
+                    InformationObservationKey observation =
+                      compact_transition_observation_key(
+                        world, move, after, state.disclosure(),
+                        legalDotObservations, &afterLegalMoves);
+                    CompactAdversarialBucket& bucket =
+                      observations[std::move(observation)];
+                    bucket.actions.insert(notation);
+                    bucket.worlds.emplace(after.upn(), CachedBeliefWorld{
+                      std::move(after), std::move(afterLegalMoves)});
+                }
+            }
+            observationBuckets += observations.size();
+            std::vector<decltype(observations)::iterator> order;
+            order.reserve(observations.size());
+            for (auto iterator = observations.begin();
+                 iterator != observations.end(); ++iterator)
+                order.push_back(iterator);
+            std::map<const CompactAdversarialBucket*, int> priorities;
+            for (const auto& [observation, bucket] : observations) {
+                (void)observation;
+                int priority = 0;
+                for (const std::string& action : bucket.actions) {
+                    const std::uint64_t hash = string_key(action);
+                    if (hash == ttActionHash)
+                        priority = std::max(priority, 2);
+                    else if (hash == pvActionHash)
+                        priority = std::max(priority, 1);
+                }
+                priorities.emplace(&bucket, priority);
+            }
+            std::stable_sort(order.begin(), order.end(),
+              [&](const auto lhs, const auto rhs) {
+                  return priorities.at(&lhs->second) >
+                         priorities.at(&rhs->second);
+              });
+
+            int best = Infinity;
+            std::string bestAction;
+            BeliefPv bestPv;
+            int observationNumber = 0;
+            for (const auto iterator : order) {
+                const InformationObservationKey& observation = iterator->first;
+                const CompactAdversarialBucket& bucket = iterator->second;
+                PublicBeliefState child(state.disclosure());
+                std::string error;
+                bool valid = true;
+                for (const auto& [upn, world] : bucket.worlds)
+                    valid = valid && child.add_compact_prevalidated(
+                      upn, world.position, observation.view,
+                      world.legalMoves, &error);
+                if (!valid || child.empty())
+                    throw std::runtime_error(
+                      "one adversarial observation bucket crosses public views");
+                const bool changedSide = child.side_to_move() &&
+                                         *child.side_to_move() != *side;
+                BeliefPv childPv;
+                const int childDepth = depth - (changedSide ? 1 : 0);
+                int score;
+                if (observationNumber == 0 || beta >= Infinity)
+                    score = solve(child, childDepth, alpha, beta,
+                                  ply + 1, childPv);
+                else {
+                    score = solve(child, childDepth, beta - 1, beta,
+                                  ply + 1, childPv);
+                    if (score > alpha && score < beta)
+                        score = solve(child, childDepth, alpha, beta,
+                                      ply + 1, childPv);
+                }
+                ++observationNumber;
+                if (ply == 0 && std::any_of(
+                      bucket.actions.begin(), bucket.actions.end(),
+                      [&](const std::string& action) {
+                          return rootDraws.count(action) != 0;
+                      }))
+                    score = std::min(score, 0);
+                if (score < best) {
+                    best = score;
+                    bestAction = bucket.actions.empty()
+                               ? std::string() : *bucket.actions.begin();
+                    bestPv.clear();
+                    if (!bestAction.empty())
+                        bestPv.push_back(bestAction);
+                    bestPv.insert(bestPv.end(), childPv.begin(), childPv.end());
+                }
+                beta = std::min(beta, best);
+                if (alpha >= beta || stopped())
+                    break;
+            }
+            if (best == Infinity)
+                return observer_evaluate(state, ply);
+            store(best, bestAction);
+            pv = std::move(bestPv);
+            return best;
+        }
+
         std::set<std::string> actionSet;
-        std::set<std::string> ambiguous;
         std::vector<PreparedBeliefWorld> prepared;
         prepared.reserve(state.size());
         bool firstWorld = true;
@@ -1500,7 +1963,7 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
             PreparedBeliefWorld entry;
             entry.position = &world;
             std::set<std::string> worldAmbiguous;
-            for (const Move& move : world.legal_moves()) {
+            for (const Move& move : state.cached_legal_moves(upn, world)) {
                 const std::string notation = world.move_to_string(move);
                 if (worldAmbiguous.count(notation))
                     continue;
@@ -1510,34 +1973,23 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
                     worldAmbiguous.insert(notation);
                 }
             }
-            if (*side == observer) {
-                std::set<std::string> legal;
-                for (const auto& [notation, move] : entry.moves) {
-                    (void)move;
-                    legal.insert(notation);
-                }
-                if (firstWorld)
-                    actionSet = std::move(legal);
-                else {
-                    std::set<std::string> intersection;
-                    std::set_intersection(
-                      actionSet.begin(), actionSet.end(), legal.begin(), legal.end(),
-                      std::inserter(intersection, intersection.begin()));
-                    actionSet = std::move(intersection);
-                }
+            std::set<std::string> legal;
+            for (const auto& [notation, move] : entry.moves) {
+                (void)move;
+                legal.insert(notation);
             }
+            if (firstWorld)
+                actionSet = std::move(legal);
             else {
-                for (const auto& [notation, move] : entry.moves) {
-                    (void)move;
-                    actionSet.insert(notation);
-                }
-                ambiguous.insert(worldAmbiguous.begin(), worldAmbiguous.end());
+                std::set<std::string> intersection;
+                std::set_intersection(
+                  actionSet.begin(), actionSet.end(), legal.begin(), legal.end(),
+                  std::inserter(intersection, intersection.begin()));
+                actionSet = std::move(intersection);
             }
             prepared.push_back(std::move(entry));
             firstWorld = false;
         }
-        for (const std::string& notation : ambiguous)
-            actionSet.erase(notation);
         if (ply == 0 && !rootRestriction.empty()) {
             std::set<std::string> restricted;
             std::set_intersection(
@@ -1546,165 +1998,189 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
               std::inserter(restricted, restricted.begin()));
             actionSet = std::move(restricted);
         }
-        if (actionSet.empty() && *side == observer)
+        if (actionSet.empty())
             return observer_evaluate(state, ply);
 
-        const bool maximizing = *side == observer;
-        int best = maximizing ? -Infinity : Infinity;
+        int best = -Infinity;
+        std::string bestAction;
         BeliefPv bestPv;
         std::vector<std::string> orderedActions(actionSet.begin(), actionSet.end());
-        // Reuse the prior completed information-set PV as soon as one exists.
-        // This changes only alpha-beta ordering, never observation branching
-        // or the completed score. Color-balanced fixed-node matches showed
-        // that waiting until depth four wasted 4-10% of belief nodes.
-        if (currentIterationDepth >= 2 &&
-            static_cast<std::size_t>(ply) < previousIterationPv.size()) {
-            const auto pvAction = std::find(
-              orderedActions.begin(), orderedActions.end(),
-              previousIterationPv[static_cast<std::size_t>(ply)]);
-            if (pvAction != orderedActions.end())
-                std::rotate(orderedActions.begin(), pvAction, pvAction + 1);
-        }
-        if (!maximizing) {
-            const std::vector<std::string> allowed =
-              ply == 0 && !rootRestriction.empty()
-                ? std::vector<std::string>(
-                    rootRestriction.begin(), rootRestriction.end())
-                : std::vector<std::string>{};
-            const BeliefSuccessorPartitions partitions =
-              state.adversarial_successor_partitions(
-                legalDotObservations, allowed);
-            for (const BeliefSuccessorBucket& bucket : partitions.buckets) {
-                PublicBeliefState child(state.disclosure());
-                std::string error;
-                bool valid = true;
-                for (const Position& world : bucket.worlds)
-                    valid = valid && child.add(world, &error);
-                if (!valid || child.empty())
-                    throw std::runtime_error(
-                      "one adversarial observation bucket crosses public views");
-                const bool changedSide = child.side_to_move() &&
-                                         *child.side_to_move() != *side;
-                BeliefPv childPv;
-                int score = solve(
-                  child, depth - (changedSide ? 1 : 0),
-                  alpha, beta, ply + 1, childPv);
-                if (ply == 0 && std::any_of(
-                      bucket.actions.begin(), bucket.actions.end(),
-                      [&](const std::string& action) {
-                          return rootDraws.count(action) != 0;
-                      }))
-                    score = std::min(score, 0);
-                if (score < best) {
-                    best = score;
-                    bestPv.clear();
-                    if (!bucket.actions.empty())
-                        bestPv.push_back(bucket.actions.front());
-                    bestPv.insert(
-                      bestPv.end(), childPv.begin(), childPv.end());
-                }
-                beta = std::min(beta, best);
-                if (alpha >= beta || stopped())
-                    break;
-            }
-            if (best == Infinity)
-                return observer_evaluate(state, ply);
-            pv = std::move(bestPv);
-            return best;
-        }
+        std::map<std::string, int> actionPriorities;
+        std::map<std::string, bool> actionQuiets;
         for (const std::string& action : orderedActions) {
+            const std::uint64_t hash = string_key(action);
+            int priority = hash == ttActionHash ? 2'000'000
+                         : hash == pvActionHash ? 1'500'000 : -Infinity;
+            if (priority < 1'500'000)
+                for (const PreparedBeliefWorld& entry : prepared) {
+                    const auto found = entry.moves.find(action);
+                    if (found != entry.moves.end())
+                        priority = std::max(priority, move_score(
+                          *entry.position, found->second, nullptr, ply));
+                }
+            actionPriorities.emplace(action, priority);
+            bool quiet = true;
+            for (const PreparedBeliefWorld& entry : prepared) {
+                const auto found = entry.moves.find(action);
+                quiet = quiet && found != entry.moves.end() &&
+                        found->second.kind == MoveKind::Normal &&
+                        !entry.position->is_capture(found->second);
+            }
+            actionQuiets.emplace(action, quiet);
+        }
+        std::stable_sort(orderedActions.begin(), orderedActions.end(),
+          [&](const std::string& lhs, const std::string& rhs) {
+              return actionPriorities.at(lhs) > actionPriorities.at(rhs);
+          });
+        int actionNumber = 0;
+        const bool pvNode = beta - alpha > 1;
+        bool quietPruningNode = ply > 0 && !pvNode && depth <= 3 &&
+          std::abs(alpha) < MateThreshold;
+        for (const PreparedBeliefWorld& entry : prepared) {
+            const Position& position = *entry.position;
+            quietPruningNode = quietPruningNode &&
+              !position.has_forced_action() &&
+              position.supports_ordinary_exchange() &&
+              (position.pieces(*side, PieceType::Jester) ||
+               !position.real_king_threatened(*side));
+        }
+        const int staticEval = quietPruningNode
+                             ? observer_evaluate(state, ply) : 0;
+        for (const std::string& action : orderedActions) {
+            const bool quiet = actionQuiets.at(action);
+#ifndef ULTIMATE_DISABLE_LATE_MOVE_PRUNING
+            if (quietPruningNode && quiet && depth <= 2 &&
+                actionNumber >= 6 + 5 * depth) {
+                ++actionNumber;
+                continue;
+            }
+#endif
+#ifndef ULTIMATE_DISABLE_FORWARD_FUTILITY
+            if (quietPruningNode && quiet &&
+                actionNumber >= 4 + 3 * depth &&
+                staticEval + 140 * depth <= alpha) {
+                ++actionNumber;
+                continue;
+            }
+#endif
             int actionWorst = ply == 0 && rootDraws.count(action)
                             ? 0 : Infinity;
             BeliefPv actionPv;
             if (actionWorst == Infinity) {
-                BeliefSuccessorPartitions partitions;
-                partitions.before = prepared.size();
-                std::map<std::string, std::map<std::string, Position>> observations;
+                std::map<InformationObservationKey,
+                         std::map<std::string, CachedBeliefWorld>> observations;
+                bool incompatible = false;
                 for (const PreparedBeliefWorld& entry : prepared) {
                     const auto found = entry.moves.find(action);
                     if (found == entry.moves.end()) {
-                        ++partitions.incompatible;
+                        incompatible = true;
                         continue;
                     }
                     const Position& before = *entry.position;
                     Position after = before;
-                    Undo undo;
-                    if (!after.make_move(found->second, undo)) {
-                        ++partitions.incompatible;
+                    if (!after.apply_move_unchecked(found->second)) {
+                        incompatible = true;
                         continue;
                     }
-                    std::string observation = transition_observation_key(
-                      before, found->second, after, state.disclosure());
-                    if (legalDotObservations && !after.game_over() &&
-                        after.side_to_move() == state.disclosure().observer) {
-                        const std::string decision = decision_observation_key(
-                          after, state.disclosure());
-                        observation += "|nextDecision=" +
-                          std::to_string(decision.size()) + ':' + decision;
-                    }
-                    observations[observation].emplace(
-                      after.upn(), std::move(after));
+                    std::vector<Move> afterLegalMoves = after.legal_moves();
+                    InformationObservationKey observation =
+                      compact_transition_observation_key(
+                        before, found->second, after, state.disclosure(),
+                        legalDotObservations, &afterLegalMoves);
+                    observations[std::move(observation)].emplace(
+                      after.upn(), CachedBeliefWorld{
+                        std::move(after), std::move(afterLegalMoves)});
                 }
-                partitions.buckets.reserve(observations.size());
-                for (auto& [observation, worlds] : observations) {
-                    BeliefSuccessorBucket bucket;
-                    bucket.observation = std::move(observation);
-                    bucket.worlds.reserve(worlds.size());
-                    for (auto& [upn, position] : worlds) {
-                        (void)upn;
-                        bucket.worlds.push_back(std::move(position));
-                    }
-                    partitions.buckets.push_back(std::move(bucket));
-                }
-                if (partitions.buckets.empty() ||
-                    (maximizing && partitions.incompatible))
+                if (observations.empty() || incompatible)
                     continue;
+                observationBuckets += observations.size();
 
                 // The concrete action is public, so an opponent action may
                 // itself eliminate worlds where that action was illegal. For
                 // either mover, nature then selects the worst compatible
                 // public/private observation bucket. Future strategy branches
                 // only after that bucket has actually been observed.
-                for (const BeliefSuccessorBucket& bucket : partitions.buckets) {
-                    PublicBeliefState child(state.disclosure());
-                    std::string error;
-                    bool valid = true;
-                    for (const Position& world : bucket.worlds)
-                        valid = valid && child.add(world, &error);
-                    if (!valid || child.empty())
-                        throw std::runtime_error(
-                          "one known-action observation bucket crosses public views");
-                    const bool changedSide = child.side_to_move() &&
-                                             *child.side_to_move() != *side;
-                    BeliefPv childPv;
-                    const int score = solve(
-                      child, depth - (changedSide ? 1 : 0),
-                      alpha, beta, ply + 1, childPv);
-                    if (score < actionWorst) {
-                        actionWorst = score;
-                        actionPv = std::move(childPv);
+                const auto evaluateAction = [&](int searchDepth, int windowBeta,
+                                                BeliefPv& evaluatedPv) {
+                    int worst = Infinity;
+                    int natureBeta = windowBeta;
+                    for (const auto& [observation, bucket] : observations) {
+                        PublicBeliefState child(state.disclosure());
+                        std::string error;
+                        bool valid = true;
+                        for (const auto& [upn, world] : bucket)
+                            valid = valid && child.add_compact_prevalidated(
+                              upn, world.position, observation.view,
+                              world.legalMoves, &error);
+                        if (!valid || child.empty())
+                            throw std::runtime_error(
+                              "one known-action observation bucket crosses public views");
+                        const bool changedSide = child.side_to_move() &&
+                                                 *child.side_to_move() != *side;
+                        BeliefPv childPv;
+                        const int score = solve(
+                          child, searchDepth - (changedSide ? 1 : 0),
+                          alpha, natureBeta, ply + 1, childPv);
+                        if (score < worst) {
+                            worst = score;
+                            evaluatedPv = std::move(childPv);
+                        }
+                        natureBeta = std::min(natureBeta, worst);
+                        if (worst <= alpha || stopped())
+                            break;
                     }
-                    if (actionWorst <= alpha || stopped())
-                        break;
+                    return worst;
+                };
+                const int searchBeta = actionNumber == 0 || beta >= Infinity
+                                     ? beta : std::min(beta, alpha + 1);
+                bool handsTurn = true;
+                for (const auto& [observation, bucket] : observations) {
+                    (void)observation;
+                    for (const auto& [upn, child] : bucket) {
+                        (void)upn;
+                        handsTurn = handsTurn &&
+                                    child.position.side_to_move() != *side;
+                    }
+                }
+                int reduction = 0;
+                if (depth >= 3 && actionNumber >= 4 && quiet && handsTurn) {
+                    reduction = 1;
+#ifndef ULTIMATE_CONSERVATIVE_LMR
+                    if (depth >= 6 && actionNumber >= 8)
+                        ++reduction;
+                    if (depth >= 9 && actionNumber >= 16)
+                        ++reduction;
+#endif
+                    reduction = std::min(reduction, depth - 2);
+                }
+                actionWorst = evaluateAction(
+                  depth - reduction, searchBeta, actionPv);
+                if (reduction && actionWorst > alpha && !stopped()) {
+                    actionPv.clear();
+                    actionWorst = evaluateAction(depth, searchBeta, actionPv);
+                }
+                if (searchBeta < beta && actionWorst > alpha &&
+                    actionWorst < beta && !stopped()) {
+                    actionPv.clear();
+                    actionWorst = evaluateAction(depth, beta, actionPv);
                 }
             }
             if (actionWorst == Infinity)
                 continue;
-            if ((maximizing && actionWorst > best) ||
-                (!maximizing && actionWorst < best)) {
+            if (actionWorst > best) {
                 best = actionWorst;
+                bestAction = action;
                 bestPv.assign(1, action);
                 bestPv.insert(bestPv.end(), actionPv.begin(), actionPv.end());
             }
-            if (maximizing)
-                alpha = std::max(alpha, best);
-            else
-                beta = std::min(beta, best);
+            alpha = std::max(alpha, best);
+            ++actionNumber;
             if (alpha >= beta || stopped())
                 break;
         }
-        if (best == (maximizing ? -Infinity : Infinity))
+        if (best == -Infinity)
             return observer_evaluate(state, ply);
+        store(best, bestAction);
         pv = std::move(bestPv);
         return best;
     };
@@ -1737,6 +2213,11 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
                         : std::optional<std::string>(
                             result.principalVariation.front());
         result.nodes = nodes_;
+        result.beliefNodes = beliefNodes;
+        result.beliefTtHits = beliefTtHits;
+        result.singletonHandoffs = singletonHandoffs;
+        result.observationBuckets = observationBuckets;
+        result.peakBeliefs = peakBeliefs;
         result.elapsed = std::chrono::duration_cast<
           std::chrono::milliseconds>(
             std::chrono::steady_clock::now() - beliefStart);
@@ -1744,6 +2225,11 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
             limits.onBeliefIteration(result);
     }
     result.nodes = nodes_;
+    result.beliefNodes = beliefNodes;
+    result.beliefTtHits = beliefTtHits;
+    result.singletonHandoffs = singletonHandoffs;
+    result.observationBuckets = observationBuckets;
+    result.peakBeliefs = peakBeliefs;
     result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - beliefStart);
     return result;
