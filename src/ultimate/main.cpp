@@ -84,7 +84,8 @@ void print_search_info(const Position& position, const SearchResult& result) {
     std::cout << '\n';
 }
 
-void print_belief_search_info(const PublicBeliefState& beliefs,
+void print_belief_search_info(const Position* representative,
+                              const PublicBeliefState& beliefs,
                               const BeliefSearchResult& result,
                               bool conservativeMergedCells) {
     if (!result.validInformationCell) {
@@ -94,6 +95,29 @@ void print_belief_search_info(const PublicBeliefState& beliefs,
                   << "bestmove (none)\n";
         return;
     }
+    std::vector<std::string> display;
+    std::vector<std::string> publicDisplay;
+    if (representative) {
+        Position line = *representative;
+        for (const std::string& notation : result.principalVariation) {
+            const auto move = line.move_from_string(notation);
+            if (!move)
+                break;
+            display.push_back(line.move_to_display_string(*move));
+            publicDisplay.push_back(line.move_to_display_string(*move, true));
+            Undo undo;
+            if (!line.make_move(*move, undo))
+                break;
+        }
+    }
+    std::cout << "displaypv";
+    for (const std::string& notation : display)
+        std::cout << ' ' << notation;
+    std::cout << '\n';
+    std::cout << "publicpv";
+    for (const std::string& notation : publicDisplay)
+        std::cout << ' ' << notation;
+    std::cout << '\n';
     std::cout << "info depth " << result.completedDepth << " score ";
     print_score(result.score, result.mateActions);
     std::cout << " nodes " << result.nodes << " time " << result.elapsed.count()
@@ -414,6 +438,14 @@ int main() {
                 print_piece_knowledge(history.actual_position(), history.beliefs());
             continue;
         }
+        if (line == "history prepare") {
+            std::string error;
+            if (!history.prepare_opponent_transition(&error))
+                std::cout << "info string invalid public history " << error << '\n';
+            else
+                std::cout << "historyprepared\n";
+            continue;
+        }
         if (line == "history dump") {
             if (!history.initialized()) {
                 std::cout << "info string invalid public history not initialized\n";
@@ -440,13 +472,15 @@ int main() {
             if (streamIterations)
                 limits.onBeliefIteration = [&](const BeliefSearchResult& iteration) {
                     print_belief_search_info(
-                      history.beliefs(), iteration, false);
+                      &history.actual_position(), history.beliefs(), iteration,
+                      false);
                     std::cout.flush();
                 };
             const BeliefSearchResult result = search.think_beliefs(
               history.beliefs(), limits, true);
             if (!streamIterations)
-                print_belief_search_info(history.beliefs(), result, false);
+                print_belief_search_info(
+                  &history.actual_position(), history.beliefs(), result, false);
             continue;
         }
         if (line == "belief clear") {
@@ -567,8 +601,10 @@ int main() {
             // is sampled or discarded. Ordinary `belief go` remains strict.
             const BeliefSearchResult result = search.think_beliefs(
               beliefs, limits, !conservativeMergedCells);
+            const Position* representative = beliefs.empty()
+              ? nullptr : &beliefs.concrete_worlds().begin()->second;
             print_belief_search_info(
-              beliefs, result, conservativeMergedCells);
+              representative, beliefs, result, conservativeMergedCells);
             continue;
         }
         if (line == "draft new") {

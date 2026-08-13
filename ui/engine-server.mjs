@@ -113,7 +113,10 @@ async function state(upn, signal) {
 }
 
 async function applyMove(upn, move, signal) {
-  const lines = await runEngine([`position upn ${upn}`, `notation ${move}`, `move ${move}`], signal);
+  const lines = await runEngine(
+    [`position upn ${upn}`, `notation ${move}`, `move ${move}`, "d"],
+    signal,
+  );
   if (lines.includes("illegalmove"))
     throw new Error(`Illegal move: ${move}`);
   const positionLine = lines.find((line) => line.startsWith("position "));
@@ -122,10 +125,57 @@ async function applyMove(upn, move, signal) {
   const notationLine = lines.find((line) => line.startsWith("notation ")) ?? "";
   const notation = notationLine.match(/^notation (\S+) public (\S+)$/);
   return {
+    ...parseState(lines),
+    // The move response is authoritative here. `parseState` normally gets the
+    // same UPN from the trailing `d`, but retaining it makes this robust to an
+    // engine build that reports only `position` after applying a move.
     upn: positionLine.slice(9),
     notation: notation?.[1] ?? move,
     publicNotation: notation?.[2] ?? notation?.[1] ?? move,
   };
+}
+
+async function replayPosition(initialUpn, moves, signal) {
+  // Reuse the strict public-history input validation without constructing its
+  // exponentially larger belief set. This path follows only the concrete
+  // recorded game and is intended for immediate UI hydration.
+  historyCommands(initialUpn, moves, "white", false, false);
+  const commands = [`position upn ${initialUpn}`];
+  for (const move of moves)
+    commands.push(`notation ${move}`, `move ${move}`);
+  commands.push("d");
+  const lines = await runEngine(commands, signal);
+  const invalid = lines.find((line) =>
+    line.startsWith("info string invalid upn"));
+  if (invalid) throw new Error(invalid);
+  if (lines.includes("illegalmove"))
+    throw new Error("Replayable belief contains an illegal concrete move");
+  const positions = lines
+    .filter((line) => line.startsWith("position "))
+    .map((line) => line.slice(9));
+  const notations = lines
+    .filter((line) => line.startsWith("notation "))
+    .map((line) => line.match(/^notation (\S+) public (\S+)$/));
+  if (positions.length !== moves.length || notations.length !== moves.length ||
+      notations.some((notation) => !notation))
+    throw new Error("Engine did not return a complete concrete replay");
+  let before = initialUpn;
+  const history = moves.map((move, index) => {
+    const fullmove = Number(before.match(/(?:^|;)fm=(\d+)/)?.[1] ?? 1);
+    const notation = notations[index];
+    const record = {
+      color: before[0] === "b" ? "black" : "white",
+      move,
+      notation: notation[1],
+      publicNotation: notation[2],
+      upn: positions[index],
+      moveNumber: fullmove,
+      history: moves.slice(0, index + 1),
+    };
+    before = positions[index];
+    return record;
+  });
+  return { ...parseState(lines), history };
 }
 
 function parseAnalysis(lines, infoLine) {
@@ -135,12 +185,16 @@ function parseAnalysis(lines, infoLine) {
   const match = info.match(/^info depth (\d+) score (cp|mate) (-?\d+) nodes (\d+) time (\d+) pv(?: (.*))?$/);
   const display = [...lines].reverse().find((line) => line === "displaypv" || line.startsWith("displaypv "));
   const publicDisplay = [...lines].reverse().find((line) => line === "publicpv" || line.startsWith("publicpv "));
+  const rawScore = match ? Number(match[3]) : 0;
+  const ivoryScore = result.upn?.[0] === "b" ? -rawScore : rawScore;
   return {
     ...result,
     bestmove: best === "(none)" ? null : best,
     depth: match ? Number(match[1]) : 0,
     scoreType: match?.[2] ?? "cp",
-    score: match ? Number(match[3]) : 0,
+    // Engine search is negamax and reports from the side-to-move perspective.
+    // The bridge contract is stable: positive always favors Ivory.
+    score: ivoryScore,
     nodes: match ? Number(match[4]) : 0,
     time: match ? Number(match[5]) : 0,
     pv: match?.[6]?.split(" ").filter(Boolean) ?? [],
@@ -199,6 +253,10 @@ function beliefError(lines) {
 
 function parseBeliefAnalysis(lines, observer, enemyKingKnown) {
   const info = [...lines].reverse().find((line) => line.startsWith("info depth ")) ?? "";
+  const display = [...lines].reverse()
+    .find((line) => line === "displaypv" || line.startsWith("displaypv "));
+  const publicDisplay = [...lines].reverse()
+    .find((line) => line === "publicpv" || line.startsWith("publicpv "));
   const searchPath = [...lines].reverse()
     .find((line) => line.startsWith("info string searchpath "))
     ?.slice("info string searchpath ".length) ?? null;
@@ -213,7 +271,9 @@ function parseBeliefAnalysis(lines, observer, enemyKingKnown) {
     bestmove: best === "(none)" ? null : best,
     depth: Number(match[1]),
     scoreType: match[2],
-    score: Number(match[3]),
+    // Information search reports from its observer's perspective. Normalize
+    // that distinct engine convention to the same Ivory-relative UI contract.
+    score: observer === "black" ? -Number(match[3]) : Number(match[3]),
     nodes: Number(match[4]),
     time: Number(match[5]),
     beliefs: Number(match[6]),
@@ -231,6 +291,10 @@ function parseBeliefAnalysis(lines, observer, enemyKingKnown) {
     // indistinguishable observation bucket. Only the observer's robust root
     // action is safe to expose as a concrete clickable line.
     pv: match[16]?.split(" ").filter(Boolean).slice(0, 1) ?? [],
+    pvNotation: display?.slice(9).trim().split(/\s+/).filter(Boolean)
+      .slice(0, 1) ?? [],
+    publicPvNotation: publicDisplay?.slice(8).trim().split(/\s+/)
+      .filter(Boolean).slice(0, 1) ?? [],
     observer,
     enemyKingKnown,
   };
@@ -326,23 +390,229 @@ function parseHistoryMetadata(lines) {
   };
 }
 
-async function historyState(initialUpn, moves, observer, enemyKingKnown,
-                            initialDeploymentKnown, enemyKingCandidates,
-                            signal) {
-  const lines = await runEngine([
-    ...historyCommands(initialUpn, moves, observer, enemyKingKnown,
-      initialDeploymentKnown, enemyKingCandidates),
-    "history count", "history knowledge", "history d",
-  ], signal);
-  const error = historyError(lines);
-  if (error) throw new Error(error);
-  const metadata = parseHistoryMetadata(lines);
-  return {
-    ...parseState(lines),
-    ...metadata,
-    decisionMode: "exact-cell",
-    beliefMode: "history-preserving",
-  };
+const historyStateCache = new Map();
+const incrementalHistorySessions = new Map();
+
+class IncrementalHistorySession {
+  constructor(initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
+              enemyKingCandidates) {
+    this.initialUpn = initialUpn;
+    this.observer = observer;
+    this.enemyKingKnown = enemyKingKnown;
+    this.initialDeploymentKnown = initialDeploymentKnown;
+    this.enemyKingCandidates = enemyKingCandidates;
+    this.moves = [];
+    this.queue = Promise.resolve();
+    this.child = null;
+    this.pending = "";
+    this.active = null;
+    this.preparedMoves = null;
+  }
+
+  stop(error = new Error("Incremental history session stopped")) {
+    const active = this.active;
+    this.active = null;
+    active?.reject(error);
+    this.child?.kill("SIGTERM");
+    this.child = null;
+  }
+
+  start() {
+    this.stop();
+    this.pending = "";
+    const child = spawn(engineBinary, [], { stdio: ["pipe", "pipe", "pipe"] });
+    this.child = child;
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      this.pending += chunk;
+      const complete = this.pending.split(/\r?\n/);
+      this.pending = complete.pop() ?? "";
+      for (const line of complete) {
+        if (line === "readyok") {
+          const active = this.active;
+          this.active = null;
+          active?.resolve(active.lines);
+        } else if (line) {
+          this.active?.lines.push(line);
+          this.active?.onLine?.(line, this.active.lines);
+        }
+      }
+    });
+    let stderr = "";
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    const fail = (error) => {
+      if (child !== this.child) return;
+      this.child = null;
+      const active = this.active;
+      this.active = null;
+      active?.reject(error instanceof Error ? error : new Error(
+        stderr.trim() || "incremental history engine exited"));
+    };
+    child.on("error", fail);
+    child.on("close", (code) => {
+      fail(new Error(
+        stderr.trim() || `engine exited with status ${code ?? "unknown"}`));
+    });
+  }
+
+  transact(commands, signal, onLine) {
+    if (!this.child) this.start();
+    return new Promise((resolve, reject) => {
+      const abort = () => {
+        const error = new Error("Engine request cancelled");
+        error.name = "AbortError";
+        this.stop(error);
+      };
+      const cleanup = () => signal?.removeEventListener("abort", abort);
+      this.active = {
+        lines: [], onLine,
+        resolve: (lines) => { cleanup(); resolve(lines); },
+        reject: (error) => { cleanup(); reject(error); },
+      };
+      if (signal?.aborted) {
+        abort();
+        return;
+      }
+      signal?.addEventListener("abort", abort, { once: true });
+      this.child.stdin.write(`${commands.join("\n")}\nisready\n`);
+    });
+  }
+
+  execute(requestedMoves, tailCommands, signal, onLine) {
+    const operation = this.queue.then(async () => {
+      historyCommands(
+        this.initialUpn, requestedMoves, this.observer, this.enemyKingKnown,
+        this.initialDeploymentKnown, this.enemyKingCandidates,
+      );
+      const extendsCurrent = this.moves.length <= requestedMoves.length &&
+        this.moves.every((move, index) => requestedMoves[index] === move);
+      const commands = [];
+      if (!extendsCurrent || !this.child) {
+        this.start();
+        commands.push(...historyCommands(
+          this.initialUpn, [], this.observer, this.enemyKingKnown,
+          this.initialDeploymentKnown, this.enemyKingCandidates,
+        ));
+        this.moves = [];
+      }
+      for (const move of requestedMoves.slice(this.moves.length))
+        commands.push(`history move ${move}`);
+      commands.push(...tailCommands);
+      const lines = await this.transact(commands, signal, onLine);
+      const error = historyError(lines);
+      if (error) throw new Error(error);
+      if (this.moves.length !== requestedMoves.length ||
+          this.moves.some((move, index) => requestedMoves[index] !== move))
+        this.preparedMoves = null;
+      this.moves = [...requestedMoves];
+      return lines;
+    });
+    this.queue = operation.catch(() => undefined);
+    return operation;
+  }
+
+  async state(requestedMoves) {
+    const lines = await this.execute(
+      requestedMoves, ["history count", "history knowledge", "history d"]);
+    return {
+        ...parseState(lines),
+        ...parseHistoryMetadata(lines),
+        decisionMode: "exact-cell",
+        beliefMode: "history-preserving",
+    };
+  }
+
+  search(requestedMoves, command, signal, onLine) {
+    return this.execute(requestedMoves, [command], signal, onLine);
+  }
+
+  prepare(requestedMoves) {
+    const key = JSON.stringify(requestedMoves);
+    const operation = this.queue.then(async () => {
+      if (this.preparedMoves === key ||
+          this.moves.length !== requestedMoves.length ||
+          this.moves.some((move, index) => requestedMoves[index] !== move))
+        return;
+      const lines = await this.transact(["history prepare"]);
+      const error = historyError(lines);
+      if (error) throw new Error(error);
+      this.preparedMoves = key;
+    });
+    this.queue = operation.catch(() => undefined);
+    return operation;
+  }
+}
+
+function historySession(initialUpn, observer, enemyKingKnown,
+                        initialDeploymentKnown, enemyKingCandidates) {
+  const sessionKey = JSON.stringify([
+    initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
+    enemyKingCandidates ?? null,
+  ]);
+  let session = incrementalHistorySessions.get(sessionKey);
+  if (!session) {
+    session = new IncrementalHistorySession(
+      initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
+      enemyKingCandidates,
+    );
+    incrementalHistorySessions.set(sessionKey, session);
+    if (incrementalHistorySessions.size > 8) {
+      const oldest = incrementalHistorySessions.keys().next().value;
+      if (oldest && oldest !== sessionKey) {
+        incrementalHistorySessions.get(oldest)?.stop();
+        incrementalHistorySessions.delete(oldest);
+      }
+    }
+  }
+  return session;
+}
+
+function incrementalHistoryState(initialUpn, moves, observer, enemyKingKnown,
+                                 initialDeploymentKnown, enemyKingCandidates) {
+  return historySession(
+    initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
+    enemyKingCandidates,
+  ).state(moves);
+}
+
+async function cachedHistoryState(initialUpn, moves, observer, enemyKingKnown,
+                                  initialDeploymentKnown, enemyKingCandidates) {
+  const key = JSON.stringify([
+    initialUpn, moves, observer, enemyKingKnown, initialDeploymentKnown,
+    enemyKingCandidates ?? null,
+  ]);
+  let pending = historyStateCache.get(key);
+  if (!pending) {
+    pending = incrementalHistoryState(
+      initialUpn, moves, observer, enemyKingKnown, initialDeploymentKnown,
+      enemyKingCandidates,
+    );
+    historyStateCache.set(key, pending);
+    if (historyStateCache.size > 24) {
+      const oldest = historyStateCache.keys().next().value;
+      if (oldest !== key) historyStateCache.delete(oldest);
+    }
+    pending.catch(() => historyStateCache.delete(key));
+  }
+  return pending;
+}
+
+function prepareHistoryIfOpponentMoves(
+  state, initialUpn, moves, observer, enemyKingKnown,
+  initialDeploymentKnown, enemyKingCandidates,
+) {
+  const observerCode = observer === "white" ? "w" : "b";
+  if (!state.upn || state.upn[0] === observerCode || state.result !== "ongoing")
+    return;
+  // Prepared partitions retain successor worlds. Bound speculative memory on
+  // extreme information sets; those still use the exact on-demand path.
+  if (!Number.isFinite(state.beliefs) || state.beliefs > 20_000)
+    return;
+  void historySession(
+    initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
+    enemyKingCandidates,
+  ).prepare(moves).catch(() => undefined);
 }
 
 async function analyzeHistory(initialUpn, moves, observer, enemyKingKnown,
@@ -355,22 +625,29 @@ async function analyzeHistory(initialUpn, moves, observer, enemyKingKnown,
     ? `history go depth ${depth} movetime ${moveTime}`
     : `history go depth ${depth}`;
   const go = onIteration ? `${baseGo} stream` : baseGo;
-  const lines = await runEngine([
-    ...historyCommands(initialUpn, moves, observer, enemyKingKnown,
-      initialDeploymentKnown, enemyKingCandidates),
-    "history count", "history knowledge", "history d", go,
-  ], signal, (line, currentLines) => {
+  // Build or advance the information set once, then search that exact in-memory
+  // state in the same persistent engine. Spawning a fresh process here used to
+  // replay the entire history around every nominally short search.
+  const state = await cachedHistoryState(
+    initialUpn, moves, observer, enemyKingKnown, initialDeploymentKnown,
+    enemyKingCandidates,
+  );
+  const session = historySession(
+    initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
+    enemyKingCandidates,
+  );
+  const lines = await session.search(moves, go, signal, (line, currentLines) => {
     if (line.startsWith("bestmove "))
       onIteration?.({
         ...parseBeliefAnalysis(currentLines, observer, enemyKingKnown),
-        ...parseHistoryMetadata(currentLines),
+        ...state,
       });
   });
   const error = historyError(lines);
   if (error) throw new Error(error);
   return {
     ...parseBeliefAnalysis(lines, observer, enemyKingKnown),
-    ...parseHistoryMetadata(lines),
+    ...state,
   };
 }
 
@@ -448,7 +725,7 @@ async function computerTurn(upn, player, requestedDepth, requestedTime, signal) 
     engineNotations.push(applied.notation);
     publicEngineNotations.push(applied.publicNotation);
     current = applied.upn;
-    currentState = await state(current, signal);
+    currentState = applied;
   }
   return { ...currentState, engine, engineMoves, engineNotations, publicEngineNotations };
 }
@@ -467,17 +744,18 @@ async function computerHistory(
   const engineCandidates = engineEnemyKingCandidates ??
     playerEnemyKingCandidates;
   const history = [...moves];
-  let currentState = await historyState(
+  let currentState = await cachedHistoryState(
     initialUpn, history, observer, engineKnown,
-    initialDeploymentKnown, engineCandidates, signal);
+    initialDeploymentKnown, engineCandidates);
   let engine = null;
   const engineMoves = [];
   const engineNotations = [];
   const publicEngineNotations = [];
   const engineUpns = [];
+  let concreteState = currentState;
   for (let action = 0;
-       action < 16 && currentState.upn?.[0] !== playerCode &&
-         currentState.result === "ongoing";
+       action < 16 && concreteState.upn?.[0] !== playerCode &&
+         concreteState.result === "ongoing";
        ++action) {
     engine = await analyzeHistory(
       initialUpn, history, observer, engineKnown,
@@ -490,22 +768,39 @@ async function computerHistory(
     engineNotations.push(applied.notation);
     publicEngineNotations.push(applied.publicNotation);
     engineUpns.push(applied.upn);
+    concreteState = applied;
     history.push(engine.bestmove);
-    currentState = await historyState(
-      initialUpn, history, observer, engineKnown,
-      initialDeploymentKnown, engineCandidates, signal);
+    // Continuations require the exact next engine information set before a
+    // second action can be selected. Once the turn passes back to the player,
+    // the concrete public move is ready and belief hydration can finish in the
+    // background instead of delaying its board animation.
+    if (concreteState.upn?.[0] !== playerCode &&
+        concreteState.result === "ongoing")
+      currentState = await cachedHistoryState(
+        initialUpn, history, observer, engineKnown,
+        initialDeploymentKnown, engineCandidates);
   }
-  // Return the board and disclosure metadata from the human player's
-  // perspective. The internal loop above deliberately used the engine's
-  // perspective to choose its actions.
-  const playerState = await historyState(
-    initialUpn, history, player, playerEnemyKingKnown,
-    initialDeploymentKnown, playerEnemyKingCandidates, signal);
   if (engine && publicEngineNotations.length)
     engine = {
       ...engine,
       publicPvNotation: [publicEngineNotations.at(-1)],
     };
+  if (engineMoves.length) {
+    void cachedHistoryState(
+      initialUpn, history, observer, engineKnown,
+      initialDeploymentKnown, engineCandidates).catch(() => undefined);
+    void cachedHistoryState(
+      initialUpn, history, player, playerEnemyKingKnown,
+      initialDeploymentKnown, playerEnemyKingCandidates).catch(() => undefined);
+    return {
+      ...concreteState, engine, engineMoves, engineNotations,
+      publicEngineNotations, engineUpns, knowledgePending: true,
+    };
+  }
+  // No engine action was needed, so retain the exact player metadata contract.
+  const playerState = await cachedHistoryState(
+    initialUpn, history, player, playerEnemyKingKnown,
+    initialDeploymentKnown, playerEnemyKingCandidates);
   return {
     ...playerState, engine, engineMoves, engineNotations,
     publicEngineNotations, engineUpns,
@@ -534,7 +829,7 @@ const server = createServer(async (request, response) => {
     send(response, 200, { ok: true, engineBinary });
     return;
   }
-  if (request.method !== "POST" || !["/state", "/analyze", "/analyze-stream", "/move", "/play", "/computer", "/draft-ai", "/belief-state", "/analyze-beliefs", "/history-state", "/analyze-history", "/analyze-history-stream", "/computer-history"].includes(request.url)) {
+  if (request.method !== "POST" || !["/state", "/analyze", "/analyze-stream", "/move", "/replay", "/play", "/computer", "/draft-ai", "/belief-state", "/analyze-beliefs", "/history-state", "/analyze-history", "/analyze-history-stream", "/computer-history"].includes(request.url)) {
     send(response, 404, { error: "Not found" });
     return;
   }
@@ -565,10 +860,38 @@ const server = createServer(async (request, response) => {
       return;
     }
     if (request.url === "/history-state") {
-      send(response, 200, await historyState(
+      const prefetch = body.prefetch;
+      const validPrefetch = prefetch &&
+        (prefetch.observer === "white" || prefetch.observer === "black") &&
+        typeof prefetch.enemyKingKnown === "boolean";
+      // Start the opposite observer from this same browser request. The
+      // visible board was already hydrated by /replay, so both information
+      // sets can use the idle interval without exposing a duplicate fetch.
+      const prefetchedState = validPrefetch ? cachedHistoryState(
+        body.initialUpn, body.moves, prefetch.observer,
+        prefetch.enemyKingKnown, body.initialDeploymentKnown ?? false,
+        prefetch.enemyKingCandidates,
+      ) : null;
+      const result = await cachedHistoryState(
         body.initialUpn, body.moves, body.observer, body.enemyKingKnown,
-        body.initialDeploymentKnown ?? false, body.enemyKingCandidates,
-        cancellation.signal));
+        body.initialDeploymentKnown ?? false, body.enemyKingCandidates);
+      send(response, 200, result);
+      prepareHistoryIfOpponentMoves(
+        result, body.initialUpn, body.moves, body.observer,
+        body.enemyKingKnown, body.initialDeploymentKnown ?? false,
+        body.enemyKingCandidates,
+      );
+      if (prefetchedState)
+        void prefetchedState.then((prefetched) => prepareHistoryIfOpponentMoves(
+          prefetched, body.initialUpn, body.moves, prefetch.observer,
+          prefetch.enemyKingKnown, body.initialDeploymentKnown ?? false,
+          prefetch.enemyKingCandidates,
+        )).catch(() => undefined);
+      return;
+    }
+    if (request.url === "/replay") {
+      send(response, 200, await replayPosition(
+        body.initialUpn, body.moves, cancellation.signal));
       return;
     }
     if (request.url === "/analyze-history-stream") {
@@ -630,8 +953,7 @@ const server = createServer(async (request, response) => {
     }
     if (request.url === "/move") {
       const applied = await applyMove(body.upn, String(body.move ?? ""), cancellation.signal);
-      send(response, 200, { ...await state(applied.upn, cancellation.signal),
-        notation: applied.notation, publicNotation: applied.publicNotation });
+      send(response, 200, applied);
       return;
     }
 
@@ -642,7 +964,7 @@ const server = createServer(async (request, response) => {
 
     const appliedHuman = await applyMove(body.upn, String(body.move ?? ""), cancellation.signal);
     const afterHuman = appliedHuman.upn;
-    const afterState = await state(afterHuman, cancellation.signal);
+    const afterState = appliedHuman;
     const playerCode = body.player === "black" ? "b" : "w";
     if (afterState.result !== "ongoing" || afterHuman[0] === playerCode) {
       send(response, 200, { ...afterState, notation: appliedHuman.notation,
@@ -667,3 +989,15 @@ server.listen(port, "127.0.0.1", () => {
   console.log(`Ultimate Fish engine bridge listening on http://127.0.0.1:${port}`);
   console.log(`Engine: ${engineBinary}`);
 });
+
+function stopIncrementalHistorySessions() {
+  for (const session of incrementalHistorySessions.values()) session.stop();
+  incrementalHistorySessions.clear();
+}
+
+process.once("exit", stopIncrementalHistorySessions);
+for (const signal of ["SIGINT", "SIGTERM"])
+  process.once(signal, () => {
+    stopIncrementalHistorySessions();
+    server.close(() => process.exit(0));
+  });

@@ -127,6 +127,18 @@ std::vector<Fixture> fixtures() {
         "ghost,w,c2,0,0,0,0,0,0,-1,1,-1,0;"
         "king,b,h10;rook,b,h8"), onyx),
       2});
+    result.push_back({
+      "ghost-single-penguin-collision",
+      history_beliefs(parse(
+        "b;king,w,a1;ghost,w,c2,0,0,0,0,0,0,-1,1,-1,0;"
+        "king,b,h10;penguin,b,d4;rook,b,h8"), onyx),
+      3});
+    result.push_back({
+      "ghost-single-fisherman-pull-collision",
+      history_beliefs(parse(
+        "b;king,w,d1;ghost,w,c2,0,0,0,0,0,0,-1,1,-1,0;"
+        "fisherman,b,d8;king,b,h10"), onyx),
+      3});
 
     result.push_back({
       "royal-plus-ghost-148-world-endgame",
@@ -186,21 +198,47 @@ int main(int argc, char** argv) {
     try {
         const std::vector<Fixture> suite = fixtures();
         std::string filter;
-        if (argc == 3 && std::string_view(argv[1]) == "--filter")
-            filter = argv[2];
-        else if (argc != 1)
-            throw std::runtime_error("usage: benchmark [--filter substring]");
+        std::string rootAction;
+        int depthOverride = 0;
+        for (int index = 1; index < argc; ++index) {
+            const std::string_view option = argv[index];
+            if (option == "--filter" && index + 1 < argc)
+                filter = argv[++index];
+            else if (option == "--depth" && index + 1 < argc) {
+                depthOverride = std::stoi(argv[++index]);
+                if (depthOverride < 1 || depthOverride > 16)
+                    throw std::runtime_error("benchmark depth must be 1..16");
+            }
+            else if (option == "--root" && index + 1 < argc)
+                rootAction = argv[++index];
+            else
+                throw std::runtime_error(
+                  "usage: benchmark [--filter substring] [--depth 1..16] "
+                  "[--root action]");
+        }
         std::cout << "{\"schema\":\"ultimate-hidden-search-benchmark-v2\","
                      "\"deterministic\":true,\"seed\":0,\"fixtures\":[";
         bool comma = false;
-        for (const Fixture& fixture : suite) {
-            if (!filter.empty() && fixture.name.find(filter) == std::string::npos)
+        for (const Fixture& configured : suite) {
+            if (!filter.empty() && configured.name.find(filter) == std::string::npos)
                 continue;
+            Fixture fixture = configured;
+            if (depthOverride)
+                fixture.depth = depthOverride;
             for (const bool factored : {false, true}) {
                 Search search(16);
                 SearchLimits limits;
                 limits.depth = fixture.depth;
                 limits.factoredBeliefs = factored;
+                if (!rootAction.empty()) {
+                    const Position& representative =
+                      fixture.beliefs.concrete_worlds().begin()->second;
+                    const auto move = representative.move_from_string(rootAction);
+                    if (!move)
+                        throw std::runtime_error(
+                          "root action is not legal in the representative world");
+                    limits.rootMoves.push_back(*move);
+                }
                 const auto start = std::chrono::steady_clock::now();
                 const BeliefSearchResult result = search.think_beliefs(
                   fixture.beliefs, limits, true);

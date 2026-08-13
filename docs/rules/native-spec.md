@@ -323,14 +323,24 @@ and remaps every relationship so captures cannot corrupt a round trip.
   its current (not necessarily reflected) square. Both targets must be legal,
   both captures resolve, and either half's death removes the other. A frozen
   or cooldown partner stays put, so the pair can cease to be file mirrors.
+  Linked death is atomic with respect to Angel protection: an Angel on the
+  initially struck half can save the pair, but after that half is marked dying
+  the partner's death callback bypasses its own Angel. The app therefore does
+  not leave a singleton CopyCat when only the partner was protected.
 - Fisherman has queen-direction quiet rays. The first visible character on a
   ray can be hooked only at distance two or greater, regardless of team; it is
   pulled to the adjacent ray square while the Fisherman stays put. Hooking a
   Giant translates its anchor so the selected footprint square lands there;
   native forced-Giant movement knocks out allies and enemies in all four
-  destination cells.
-- Penguin/`SimulatedFreeze` steps to any adjacent empty square but cannot
-  attack. It has no aura merely from deployment: after the Penguin moves, it
+  destination cells. If the adjacent landing cell contains an invisible
+  Ghost, the app dispatches death independently to both the dragged character
+  and the Ghost. Thus pulling a King into its own hidden Ghost knocks out both;
+  an attached Angel may still intercept either individual death callback.
+- Penguin/`SimulatedFreeze` steps to any adjacent apparently empty square but
+  cannot attack a visible character. Its inherited invisibility branch still
+  treats an enemy hidden Ghost as an available step; arriving there captures
+  the Ghost through a Penguin-specific mutual knockout, so both pieces die.
+  It has no aura merely from deployment: after an ordinary Penguin move, it
   freezes the adjacent non-Penguin characters until its next move or death,
   with counts stacking across Penguins. The action byte encodes that currently
   frozen direction set for serialization.
@@ -342,10 +352,14 @@ and remaps every relationship so captures cannot corrupt a round trip.
   action plus `ChangeTurn End` is therefore used to apply that exact move. A
   live Ranked `c5-c4` collision reduced the two material totals by 12 and 15,
   respectively, confirming that both characters died.
-- An invisible Ghost makes its square unavailable while ordinary sliding rays
-  continue through it, even for a same-team ray. Pawns cannot deliberately capture it
-  diagonally; a forward pawn move into it uses the native blind-collision path
-  and knocks out both characters.
+- An invisible enemy Ghost is rendered as an empty cell. Ordinary moves onto
+  that cell remain legal and reveal a normal capture only after arrival; the
+  moving character survives unless its own piece-specific callback says
+  otherwise. Sliding rays also continue through the Ghost. A same-team hidden
+  Ghost is private known occupancy, so its cell is unavailable to its owner,
+  but the owner's sliding ray still continues through it. Pawns cannot
+  deliberately capture a hidden Ghost diagonally; a forward Pawn move into it
+  uses the native blind-collision path and knocks out both characters.
 - A Sniper's forward shot also passes through invisible Ghosts to the first
   visible character. Its one-square sideways action is quiet-only; an occupied
   lateral square produces no legal Dot. Only a forward shot starts the reload
@@ -413,7 +427,7 @@ which mechanics have all three kinds of evidence and which still require a
 targeted native fixture.
 
 The latest gap pass added the native Berserker Chebyshev leap/growth behavior,
-ordinary-move exclusion for invisible Ghost squares, Mage-triggered
+ordinary blind captures of invisible enemy Ghosts, Mage-triggered
 pawn/checker promotion, Fisherman relocation of Angel-protected hosts, dynamic
 Berserker material, the 24-cell deployment limit with correct Giant/CopyCat
 footprints, Onyx's color-relative Giant/Halo rescue anchor, and Sniper targeting
@@ -423,7 +437,7 @@ deterministic shipping-app Local fixtures in addition to C++ regressions.
 
 Hidden information follows the shipping simulator rather than a chess-style
 determinization: the position retains an invisible Ghost's coordinate, while
-move generation applies the native blind-square, ray pass-through, pawn
+move generation applies the native apparent-empty capture, ray pass-through, pawn
 collision, royal reveal, and Sniper/Fisherman exceptions. Play mode additionally
 conceals enemy Ghost rendering, inspector data, capture-ring styling, invisible
 Ghost move coordinates, and enemy Jester identity. Analysis always draws every

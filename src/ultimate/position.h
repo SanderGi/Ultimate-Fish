@@ -160,6 +160,7 @@ struct Undo;
 class TablebaseGenerator;
 class TablebaseProbe;
 class UltimateNnue;
+class PublicBeliefState;
 
 class Position {
    public:
@@ -255,6 +256,7 @@ class Position {
    private:
     friend struct Undo;
     friend class Search;
+    friend class PublicBeliefState;
     friend class TablebaseGenerator;
     friend class TablebaseProbe;
     friend class UltimateNnue;
@@ -289,8 +291,7 @@ class Position {
     void add_copycat_moves(std::vector<Move>& moves, int id, bool attacksOnly) const;
     void add_fisherman_moves(std::vector<Move>& moves, int id, bool attacksOnly) const;
 
-    [[nodiscard]] bool can_land(int id, int square, bool attacksOnly,
-                                bool hiddenEnemyTargetable = false) const;
+    [[nodiscard]] bool can_land(int id, int square, bool attacksOnly) const;
     [[nodiscard]] bool frozen(int id) const { return pieces_[id].freezeCount != 0; }
     [[nodiscard]] bool is_melee(PieceType type) const;
     [[nodiscard]] Bitboard footprint(int id, int anchor) const;

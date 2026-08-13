@@ -61,6 +61,43 @@ export function showKnowledgeStatus(view, viewer, pieceColor) {
 }
 
 /**
+ * Apply the same immediate Ghost visibility effects as a normal board move to
+ * an editor drag/placement. A moved Ghost recomputes its own concealment; a
+ * moved royal reveals adjacent enemy Ghosts without hiding any others.
+ *
+ * @template {{uid: string, id: string, color: Color, square: number, visible: boolean}} T
+ * @param {T[]} pieces
+ * @param {string} movedUid
+ * @returns {T[]}
+ */
+export function applyEditorGhostVisibility(pieces, movedUid) {
+  const moved = pieces.find((piece) => piece.uid === movedUid);
+  if (!moved) return pieces;
+  const adjacent = (first, second) =>
+    Math.max(
+      Math.abs(first % 8 - second % 8),
+      Math.abs(Math.floor(first / 8) - Math.floor(second / 8)),
+    ) === 1;
+  const isRoyal = (piece) => piece.id === "king" || piece.id === "jester";
+
+  if (moved.id === "ghost") {
+    const visible = pieces.some((piece) =>
+      piece.color !== moved.color && isRoyal(piece) &&
+      adjacent(piece.square, moved.square));
+    if (visible === moved.visible) return pieces;
+    return pieces.map((piece) => piece.uid === movedUid
+      ? { ...piece, visible }
+      : piece);
+  }
+  if (!isRoyal(moved)) return pieces;
+  return pieces.map((piece) =>
+    piece.id === "ghost" && piece.color !== moved.color &&
+      !piece.visible && adjacent(piece.square, moved.square)
+      ? { ...piece, visible: true }
+      : piece);
+}
+
+/**
  * Select the disclosure used for analysis from the viewer, independently of
  * which color is currently to move.
  *

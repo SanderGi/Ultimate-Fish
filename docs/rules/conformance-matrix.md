@@ -18,17 +18,17 @@ records behavior and public test evidence only.
 | King/Jester steps, hidden-royal check, knockout | yes | yes | self-play | Ranked observations also confirm Jester check suspension and real-King knockout. |
 | Native castling scan and moved flags | yes | yes | pending fixture | Includes enemy Rook eligibility and no through-check test. |
 | Pawn double step, promotion, en passant | yes | yes | fixtures | Allied/enemy hidden-Ghost pass-through and hidden-Ghost en-passant destination are deterministic fixtures. |
-| Queen/Rook/Bishop/Knight/Ninja/Turtle/Dragon movement | yes | yes | self-play | Pairwise mirror profiles now put every deployable type opposite every other type. |
+| Queen/Rook/Bishop/Knight/Ninja/Turtle/Dragon movement | yes | yes | fixture/self-play | A deterministic Rook fixture confirms that an ordinary move may enter and capture an apparently empty enemy Ghost cell while the Rook survives. |
 | Berserker leap radius, growth, dynamic material | yes | yes | partial self-play | Power above level one and ten-rank vertical reach still need a long native capture fixture. |
 | Bomb direct, collateral, chained, ranged and Angel-save effects | yes | yes | self-play | Bomb callbacks are duplicated by the app, so state deltas—not raw callback counts—are the oracle. |
 | Checker jumps, chains, promotion and hidden Ghosts | yes | yes | self-play | A deterministic multi-jump/promotion Local fixture remains desirable. |
 | Prince two-part action and hidden Ghost capture | yes | yes | self-play | Mid-continuation replay import remains fail-closed rather than reconstructed from one byte. |
 | Giant footprint, ordinary and forced collision | yes | yes | self-play | Onyx Angel rescue has a distinguishing-cell fixture in the gate. |
-| CopyCat conditional paired movement, capture, linked death, Ghost and Angel interactions | yes | yes | fixture/self-play | Native gameplay covers both two-callback available pairs and stationary unavailable partners; exact UPN links preserve the resulting asymmetric locations. |
+| CopyCat conditional paired movement, capture, linked death, Ghost and Angel interactions | yes | yes | fixtures/self-play | A partner-only Angel fixture confirms linked death kills both halves without creating a singleton; exact UPN links preserve asymmetric live pairs. |
 | Mage swaps, Giant translation and forced promotion | yes | yes | self-play | Mage, Fisherman and Angel use native drag gestures in Local automation. |
-| Fisherman rays, hidden Ghosts and Giant pull | yes | yes | self-play | Both allied/enemy hooks and a blind hidden-Ghost collision have run in Local. |
-| Penguin move-triggered stacked freeze | yes | yes | self-play | Deployment creates no aura; deterministic multi-Penguin stacking remains pending Local. |
-| Ghost visibility, royal reveal and blind interactions | yes | yes | fixtures/self-play | Exact enemy coordinates remain outside the online belief state. |
+| Fisherman rays, hidden Ghosts and Giant pull | yes | yes | fixtures/self-play | Local confirms direct blind collision and the forced collision produced by pulling a King into its own hidden Ghost. |
+| Penguin move-triggered stacked freeze and hidden-Ghost step | yes | yes | fixture/self-play | Local confirms an apparently empty hidden-Ghost cell is a legal Penguin step and mutually knocks out both pieces; deployment creates no aura, while deterministic multi-Penguin stacking remains pending Local. |
+| Ghost visibility, royal reveal and blind interactions | yes | yes | fixtures/self-play | Ordinary blind capture, piece-specific mutual collisions, and forced Fisherman collision are deterministic Local fixtures; exact enemy coordinates remain outside the belief state. |
 | Devil spawn, cooldown and hidden-Ghost endpoint | yes | yes | fixture/self-play | Blind spawn kills the Ghost without creating a Minion. |
 | Sludge/Goop trail, blind collision and retaliation | yes | yes | fixtures/self-play | Both destination and intervening hidden-Ghost cases are deterministic fixtures. |
 | Parasite possession, CopyCat ownership and Angel transfer | yes | yes | self-play | Pairwise mirrors broaden the native target-type coverage; exact all-type possession remains ongoing. |

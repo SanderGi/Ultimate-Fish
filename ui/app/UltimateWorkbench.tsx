@@ -11,6 +11,7 @@ import {
 import PieceIcon from "./PieceIcon";
 import {
   analysisPerspective,
+  applyEditorGhostVisibility,
   buildReplayBelief,
   concealGhost,
   disguiseJester,
@@ -130,6 +131,8 @@ type EngineAnalysis = {
   observer?: Color;
   ghostKnowledge?: Record<string, { known: boolean; candidates: string[] }>;
   jesterKnowledge?: Record<string, boolean>;
+  knowledgePending?: boolean;
+  history?: MoveRecord[];
 };
 
 type MoveRecord = {
@@ -672,10 +675,9 @@ function commonMovePrefix(first: MoveRecord[], second: MoveRecord[]): number {
 
 function displayScore(
   analysis: EngineAnalysis | null,
-  turn: Color,
 ): { label: string; percent: number } {
   if (!analysis) return { label: "—", percent: 50 };
-  const ivoryScore = turn === "white" ? analysis.score : -analysis.score;
+  const ivoryScore = analysis.score;
   if (analysis.scoreType === "mate") {
     const value = Math.abs(ivoryScore);
     return {
@@ -1030,6 +1032,11 @@ export function UltimateWorkbench() {
   const requestSequence = useRef(0);
   const linePreviewSequence = useRef(0);
   const variationSequence = useRef(0);
+  const pieceKnowledgeGeneration = useRef(0);
+  const playRequestInFlight = useRef(false);
+  const historyKnowledgeCache = useRef(
+    new Map<string, Promise<EngineAnalysis>>(),
+  );
   const draftAiRequest = useRef<string | null>(null);
   const liveGameUpn = useRef<string | null>(null);
   const annotationStart = useRef<number | null>(null);
@@ -1179,11 +1186,16 @@ export function UltimateWorkbench() {
     selectedPiece &&
     showKnowledgeStatus(view, displayObserver, selectedPiece.color),
   );
+  const selectedKnowledgePending = Boolean(
+    showSelectedKnowledge &&
+    selectedKnowledgeObserver &&
+    pieceKnowledgeObserver !== selectedKnowledgeObserver,
+  );
   const ghostCandidateHighlights = useMemo(
     () => new Set(knowledgeHoverSquares),
     [knowledgeHoverSquares],
   );
-  const score = displayScore(analysis, turn);
+  const score = displayScore(analysis);
   const showEvaluation =
     view === "analysis" || (view === "play" && !gameActive);
   const analysisLocked = view === "analysis" && analysisRunning;
@@ -1272,6 +1284,62 @@ export function UltimateWorkbench() {
     [],
   );
 
+  const historyStatePayload = useCallback(
+    (observer: Color) => {
+      const otherObserver: Color = observer === "white" ? "black" : "white";
+      const disclosure = (color: Color) => ({
+        enemyKingKnown:
+          color === historyContextPlayer
+            ? historyEnemyKingKnown
+            : historyEngineEnemyKingKnown,
+        enemyKingCandidates:
+          color === historyContextPlayer
+            ? historyEnemyKingCandidates
+            : historyEngineEnemyKingCandidates,
+      });
+      return {
+        initialUpn: historyRootUpn ?? upn,
+        moves: selectedHistoryMoves,
+        observer,
+        ...disclosure(observer),
+        initialDeploymentKnown: historyInitialDeploymentKnown,
+        prefetch: { observer: otherObserver, ...disclosure(otherObserver) },
+      };
+    },
+    [
+      historyContextPlayer,
+      historyEnemyKingCandidates,
+      historyEnemyKingKnown,
+      historyEngineEnemyKingCandidates,
+      historyEngineEnemyKingKnown,
+      historyInitialDeploymentKnown,
+      historyRootUpn,
+      selectedHistoryMoves,
+      upn,
+    ],
+  );
+
+  const requestHistoryState = useCallback(
+    (observer: Color) => {
+      const payload = historyStatePayload(observer);
+      const key = JSON.stringify(payload);
+      const cached = historyKnowledgeCache.current.get(key);
+      if (cached) return cached;
+      const pending = engineRequest("/history-state", payload).catch((error) => {
+        historyKnowledgeCache.current.delete(key);
+        throw error;
+      });
+      historyKnowledgeCache.current.set(key, pending);
+      if (historyKnowledgeCache.current.size > 24) {
+        const oldest = historyKnowledgeCache.current.keys().next().value;
+        if (oldest && oldest !== key)
+          historyKnowledgeCache.current.delete(oldest);
+      }
+      return pending;
+    },
+    [engineRequest, historyStatePayload],
+  );
+
   const streamEngineRequest = useCallback(
     async (
       endpoint: string,
@@ -1319,7 +1387,20 @@ export function UltimateWorkbench() {
     [],
   );
 
-  const loadPieceKnowledge = useCallback((result: EngineAnalysis) => {
+  const invalidatePieceKnowledge = useCallback(() => {
+    const generation = ++pieceKnowledgeGeneration.current;
+    setGhostKnowledge({});
+    setJesterKnowledge({});
+    setPieceKnowledgeObserver(null);
+    setKnowledgeHoverSquares([]);
+    return generation;
+  }, []);
+
+  const loadPieceKnowledge = useCallback((
+    result: EngineAnalysis,
+    generation = pieceKnowledgeGeneration.current,
+  ) => {
+    if (generation !== pieceKnowledgeGeneration.current) return;
     setGhostKnowledge(result.ghostKnowledge ?? {});
     setJesterKnowledge(result.jesterKnowledge ?? {});
     setPieceKnowledgeObserver(result.observer ?? null);
@@ -1578,6 +1659,8 @@ export function UltimateWorkbench() {
     setAnalysis(null);
     setEngineStatus("thinking");
     setEngineMessage("Searching…");
+    let knowledgeLoaded = false;
+    const knowledgeGeneration = pieceKnowledgeGeneration.current;
     try {
       const perspective = analysisPerspective(
         displayObserver,
@@ -1602,6 +1685,10 @@ export function UltimateWorkbench() {
         if (sequence !== requestSequence.current) return;
         setAnalysis(iteration);
         setLegalMoves(iteration.moves);
+        if (!knowledgeLoaded && iteration.observer === displayObserver) {
+          loadPieceKnowledge(iteration, knowledgeGeneration);
+          knowledgeLoaded = true;
+        }
         setEngineMessage(
           `${(iteration.beliefs ?? 1).toLocaleString()} beliefs · ` +
             `${iteration.moves.length} legal moves · ` +
@@ -1617,6 +1704,8 @@ export function UltimateWorkbench() {
       if (sequence !== requestSequence.current) return;
       setAnalysis(result);
       setLegalMoves(result.moves);
+      if (!knowledgeLoaded && result.observer === displayObserver)
+        loadPieceKnowledge(result, knowledgeGeneration);
       setEngineStatus("ready");
       setEngineMessage(
         `${(result.beliefs ?? 1).toLocaleString()} beliefs · ` +
@@ -1642,6 +1731,7 @@ export function UltimateWorkbench() {
     historyContextPlayer,
     historyInitialDeploymentKnown,
     historyRootUpn,
+    loadPieceKnowledge,
     selectedHistoryMoves,
     streamEngineRequest,
     upn,
@@ -1654,62 +1744,40 @@ export function UltimateWorkbench() {
   }, [analysisRunning, runAnalysis, view]);
 
   useEffect(() => {
-    if (analysisRunning || view === "draft") return;
-    const controller = new AbortController();
+    if (analysisRunning || view === "draft" || playRequestInFlight.current)
+      return;
+    let cancelled = false;
+    const knowledgeGeneration = pieceKnowledgeGeneration.current;
     const timer = window.setTimeout(async () => {
       try {
-        const result = await engineRequest(
-          "/history-state",
-          {
-            initialUpn: historyRootUpn ?? upn,
-            moves: selectedHistoryMoves,
-            observer: displayObserver,
-            enemyKingKnown:
-              displayObserver === historyContextPlayer
-                ? historyEnemyKingKnown
-                : historyEngineEnemyKingKnown,
-            enemyKingCandidates:
-              displayObserver === historyContextPlayer
-                ? historyEnemyKingCandidates
-                : historyEngineEnemyKingCandidates,
-            initialDeploymentKnown: historyInitialDeploymentKnown,
-          },
-          controller.signal,
-        );
+        const result = await requestHistoryState(displayObserver);
+        if (cancelled) return;
         setLegalMoves(result.moves);
         setSelectedEnemyKingKnown(Boolean(result.enemyKingKnown));
         setSelectedEnemyKingCandidates(result.enemyKingCandidates ?? []);
         setGameResult({ result: result.result, reason: result.resultReason });
-        if (engineStatus === "offline") setEngineStatus("ready");
-        if (!analysis)
+        loadPieceKnowledge(result, knowledgeGeneration);
+        if (!analysis && !playRequestInFlight.current) {
+          setEngineStatus("ready");
           setEngineMessage(
             `${(result.beliefs ?? 1).toLocaleString()} beliefs · ` +
               `${result.moves.length} legal moves · 0 nodes in 0 ms`,
           );
+        }
       } catch {
-        if (!controller.signal.aborted) setLegalMoves([]);
+        if (!cancelled) setLegalMoves([]);
       }
     }, 160);
     return () => {
+      cancelled = true;
       window.clearTimeout(timer);
-      controller.abort();
     };
   }, [
     analysis,
     analysisRunning,
-    engineRequest,
-    engineStatus,
     displayObserver,
-    historyEnemyKingCandidates,
-    historyEnemyKingKnown,
-    historyEngineEnemyKingCandidates,
-    historyEngineEnemyKingKnown,
-    historyContextPlayer,
-    historyInitialDeploymentKnown,
-    historyRootUpn,
-    selectedHistoryMoves,
-    turn,
-    upn,
+    loadPieceKnowledge,
+    requestHistoryState,
     view,
   ]);
 
@@ -1721,51 +1789,40 @@ export function UltimateWorkbench() {
       !selectedPiece ||
       (selectedPiece.id !== "ghost" && selectedPiece.id !== "jester") ||
       !showSelectedKnowledge ||
-      !selectedKnowledgeObserver
+      !selectedKnowledgeObserver ||
+      pieceKnowledgeObserver === selectedKnowledgeObserver
     )
       return;
     const knowledgeObserver = selectedKnowledgeObserver;
+    const knowledgeGeneration = pieceKnowledgeGeneration.current;
     const controller = new AbortController();
+    let cancelled = false;
     const timer = window.setTimeout(async () => {
       try {
-        const draftCandidates =
-          view === "draft"
-            ? draftKingCandidateSquares(
-                pieces,
-                draftHistory,
-                selectedPiece.color,
-              )
-            : null;
-        const enemyKingKnown =
-          view === "draft"
-            ? draftCandidates?.length === 1
-            : knowledgeObserver === historyContextPlayer
-              ? historyEnemyKingKnown
-              : historyEngineEnemyKingKnown;
-        const enemyKingCandidates =
-          view === "draft"
-            ? draftCandidates?.length
-              ? draftCandidates
-              : undefined
-            : knowledgeObserver === historyContextPlayer
-              ? historyEnemyKingCandidates
-              : historyEngineEnemyKingCandidates;
-        const result = await engineRequest(
-          "/history-state",
-          {
-            initialUpn: view === "draft" ? upn : (historyRootUpn ?? upn),
-            moves: view === "draft" ? [] : selectedHistoryMoves,
-            observer: knowledgeObserver,
-            enemyKingKnown,
-            enemyKingCandidates,
-            initialDeploymentKnown:
-              view === "draft" ? true : historyInitialDeploymentKnown,
-          },
-          controller.signal,
-        );
-        loadPieceKnowledge(result);
+        const result = view === "draft"
+          ? await (() => {
+              const draftCandidates = draftKingCandidateSquares(
+                pieces, draftHistory, selectedPiece.color,
+              );
+              return engineRequest(
+                "/history-state",
+                {
+                  initialUpn: upn,
+                  moves: [],
+                  observer: knowledgeObserver,
+                  enemyKingKnown: draftCandidates.length === 1,
+                  enemyKingCandidates: draftCandidates.length
+                    ? draftCandidates : undefined,
+                  initialDeploymentKnown: true,
+                },
+                controller.signal,
+              );
+            })()
+          : await requestHistoryState(knowledgeObserver);
+        if (cancelled) return;
+        loadPieceKnowledge(result, knowledgeGeneration);
       } catch {
-        if (!controller.signal.aborted) {
+        if (!cancelled && !controller.signal.aborted) {
           setGhostKnowledge({});
           setJesterKnowledge({});
           setPieceKnowledgeObserver(null);
@@ -1773,25 +1830,20 @@ export function UltimateWorkbench() {
       }
     }, 80);
     return () => {
+      cancelled = true;
       window.clearTimeout(timer);
       controller.abort();
     };
   }, [
     draftHistory,
     engineRequest,
-    historyEnemyKingCandidates,
-    historyEnemyKingKnown,
-    historyEngineEnemyKingCandidates,
-    historyEngineEnemyKingKnown,
-    historyContextPlayer,
-    historyInitialDeploymentKnown,
-    historyRootUpn,
     loadPieceKnowledge,
     playerSide,
     pieces,
+    pieceKnowledgeObserver,
     selectedKnowledgeObserver,
     selectedPiece,
-    selectedHistoryMoves,
+    requestHistoryState,
     showSelectedKnowledge,
     upn,
     view,
@@ -2081,7 +2133,8 @@ export function UltimateWorkbench() {
         clone.link = host.uid;
         return [...next, host, clone];
       }
-      return [...next, basePiece(tool, toolColor, index)];
+      const added = basePiece(tool, toolColor, index);
+      return applyEditorGhostVisibility([...next, added], added.uid);
     });
     resetTransient();
   }
@@ -2176,13 +2229,14 @@ export function UltimateWorkbench() {
       setEngineMessage("That footprint leaves the board.");
       return;
     }
-    setPieces((current) =>
-      removeOccupants(current, targets, moving.uid).map((piece) =>
+    setPieces((current) => {
+      const moved = removeOccupants(current, targets, moving.uid).map((piece) =>
         piece.uid === moving.uid
           ? { ...piece, square: to, moved: true }
           : piece,
-      ),
-    );
+      );
+      return applyEditorGhostVisibility(moved, moving.uid);
+    });
     setDraggedUid(null);
     resetTransient();
     setSelected(to);
@@ -2190,6 +2244,7 @@ export function UltimateWorkbench() {
 
   async function playMove(move: string) {
     if (!gameActive || turn !== playerSide) return;
+    playRequestInFlight.current = true;
     setEngineStatus("thinking");
     setEngineMessage("Playing move…");
     setSelected(null);
@@ -2201,18 +2256,27 @@ export function UltimateWorkbench() {
     }
     try {
       const humanResult = await engineRequest("/move", { upn, move });
-      const humanState = await engineRequest("/history-state", {
+      const knowledgeGeneration = invalidatePieceKnowledge();
+      // Commit the concrete move immediately. Exact public knowledge advances
+      // concurrently and must never hold the visible board behind a potentially
+      // large belief transition.
+      loadEnginePosition(humanResult);
+      setLegalMoves([]);
+      if (humanResult.upn) liveGameUpn.current = humanResult.upn;
+      const humanStatePromise = engineRequest("/history-state", {
         initialUpn: root,
         moves: humanHistory,
         observer: playerSide,
         enemyKingKnown: historyEnemyKingKnown,
         enemyKingCandidates: historyEnemyKingCandidates,
         initialDeploymentKnown: historyInitialDeploymentKnown,
+        prefetch: {
+          observer: playerSide === "white" ? "black" : "white",
+          enemyKingKnown: historyEngineEnemyKingKnown,
+          enemyKingCandidates: historyEngineEnemyKingCandidates,
+        },
       });
-      loadEnginePosition(humanState);
-      setSelectedEnemyKingKnown(Boolean(humanState.enemyKingKnown));
-      setSelectedEnemyKingCandidates(humanState.enemyKingCandidates ?? []);
-      if (humanResult.upn) liveGameUpn.current = humanResult.upn;
+      void humanStatePromise.catch(() => undefined);
       setMoveHistory((history) => [
         ...history,
         {
@@ -2228,7 +2292,7 @@ export function UltimateWorkbench() {
       setSelectedHistoryMoves(humanHistory);
       setHistoryCursor((cursor) => cursor + 1);
       setAnalysis(null);
-      if (humanState.result !== "ongoing") {
+      if (humanResult.result !== "ongoing") {
         setGameActive(false);
         setEngineStatus("ready");
         setEngineMessage("Game complete.");
@@ -2237,12 +2301,23 @@ export function UltimateWorkbench() {
       const humanToMove =
         humanResult.upn?.[0] === (playerSide === "white" ? "w" : "b");
       if (humanToMove) {
+        const humanState = await humanStatePromise;
+        loadEnginePosition(humanState);
+        loadPieceKnowledge(humanState, knowledgeGeneration);
+        setSelectedEnemyKingKnown(Boolean(humanState.enemyKingKnown));
+        setSelectedEnemyKingCandidates(humanState.enemyKingCandidates ?? []);
         setEngineStatus("ready");
         setEngineMessage(
           `${humanState.moves.length} legal moves · continue your turn.`,
         );
         return;
       }
+      void humanStatePromise.then((humanState) => {
+        if (knowledgeGeneration !== pieceKnowledgeGeneration.current) return;
+        loadPieceKnowledge(humanState, knowledgeGeneration);
+        setSelectedEnemyKingKnown(Boolean(humanState.enemyKingKnown));
+        setSelectedEnemyKingCandidates(humanState.enemyKingCandidates ?? []);
+      }).catch(() => undefined);
       setEngineStatus("thinking");
       setEngineMessage("Ultimate Fish is thinking…");
       const result = await engineRequest("/computer-history", {
@@ -2257,9 +2332,13 @@ export function UltimateWorkbench() {
         depth: playDepth,
         movetime: playMoveTime,
       });
+      const finalKnowledgeGeneration = invalidatePieceKnowledge();
       loadEnginePosition(result);
-      setSelectedEnemyKingKnown(Boolean(result.enemyKingKnown));
-      setSelectedEnemyKingCandidates(result.enemyKingCandidates ?? []);
+      if (!result.knowledgePending) {
+        loadPieceKnowledge(result, finalKnowledgeGeneration);
+        setSelectedEnemyKingKnown(Boolean(result.enemyKingKnown));
+        setSelectedEnemyKingCandidates(result.enemyKingCandidates ?? []);
+      }
       if (result.upn) liveGameUpn.current = result.upn;
       const opponent: Color = playerSide === "white" ? "black" : "white";
       let engineHistory = humanHistory;
@@ -2285,12 +2364,14 @@ export function UltimateWorkbench() {
       setAnalysis(result.engine ?? null);
       setEngineStatus("ready");
       setEngineMessage(
-        `${result.moves.length} legal moves · ${(result.engine?.nodes ?? 0).toLocaleString()} nodes in ${result.engine?.time ?? 0} ms`,
+        `${result.moves?.length ?? 0} legal moves · ${(result.engine?.nodes ?? 0).toLocaleString()} nodes in ${result.engine?.time ?? 0} ms`,
       );
       if (result.result !== "ongoing") setGameActive(false);
     } catch (error) {
       setEngineStatus("error");
       setEngineMessage(error instanceof Error ? error.message : "Move failed.");
+    } finally {
+      playRequestInFlight.current = false;
     }
   }
 
@@ -2305,6 +2386,7 @@ export function UltimateWorkbench() {
       initialDeploymentKnown?: boolean;
     } = {},
   ) {
+    playRequestInFlight.current = true;
     const newHistory = options.newHistory ?? !historyRootUpn;
     const root = newHistory ? startingUpn : (historyRootUpn ?? startingUpn);
     const historyMoves = newHistory ? [] : selectedHistoryMoves;
@@ -2363,6 +2445,7 @@ export function UltimateWorkbench() {
     setFlipped(playerSide === "black");
     setEngineStatus("thinking");
     setEngineMessage("Starting Ultimate game…");
+    let knowledgeGeneration = invalidatePieceKnowledge();
     try {
       let result = await engineRequest("/history-state", {
         initialUpn: root,
@@ -2371,10 +2454,18 @@ export function UltimateWorkbench() {
         enemyKingKnown,
         enemyKingCandidates,
         initialDeploymentKnown,
+        prefetch: {
+          observer: playerSide === "white" ? "black" : "white",
+          enemyKingKnown: engineEnemyKingKnown,
+          enemyKingCandidates: engineEnemyKingCandidates,
+        },
       });
       loadEnginePosition(result);
-      setSelectedEnemyKingKnown(Boolean(result.enemyKingKnown));
-      setSelectedEnemyKingCandidates(result.enemyKingCandidates ?? []);
+      if (!result.knowledgePending) {
+        loadPieceKnowledge(result, knowledgeGeneration);
+        setSelectedEnemyKingKnown(Boolean(result.enemyKingKnown));
+        setSelectedEnemyKingCandidates(result.enemyKingCandidates ?? []);
+      }
       if (result.upn) liveGameUpn.current = result.upn;
       const playerCode = playerSide === "white" ? "w" : "b";
       if (result.upn?.[0] !== playerCode && result.result === "ongoing") {
@@ -2391,10 +2482,15 @@ export function UltimateWorkbench() {
           depth: playDepth,
           movetime: playMoveTime,
         });
+        if (result.engineMoves?.length)
+          knowledgeGeneration = invalidatePieceKnowledge();
       }
       loadEnginePosition(result);
-      setSelectedEnemyKingKnown(Boolean(result.enemyKingKnown));
-      setSelectedEnemyKingCandidates(result.enemyKingCandidates ?? []);
+      if (!result.knowledgePending) {
+        loadPieceKnowledge(result, knowledgeGeneration);
+        setSelectedEnemyKingKnown(Boolean(result.enemyKingKnown));
+        setSelectedEnemyKingCandidates(result.enemyKingCandidates ?? []);
+      }
       if (result.upn) liveGameUpn.current = result.upn;
       const opponent: Color = playerSide === "white" ? "black" : "white";
       let resumedHistory = historyMoves;
@@ -2431,6 +2527,8 @@ export function UltimateWorkbench() {
       setEngineMessage(
         error instanceof Error ? error.message : "Could not start game.",
       );
+    } finally {
+      playRequestInFlight.current = false;
     }
   }
 
@@ -2920,6 +3018,23 @@ export function UltimateWorkbench() {
         if (parsed.viewer !== "white" && parsed.viewer !== "black")
           throw new Error("Replayable belief viewer must be white or black.");
         const initial = parseUpn(parsed.initialUpn);
+        // Older editor builds could serialize a hidden Ghost beside an enemy
+        // royal after a drag. A move-less arbitrary belief is an editor
+        // snapshot, so repair that immediate visibility effect on import as
+        // well as preventing new malformed exports in placeTool/dragPiece.
+        const repairedInitialPieces =
+          parsed.initialPositionKind === "arbitrary" && parsed.moves.length === 0
+            ? initial.pieces.reduce(
+                (current, piece) =>
+                  piece.id === "king" || piece.id === "jester"
+                    ? applyEditorGhostVisibility(current, piece.uid)
+                    : current,
+                initial.pieces,
+              )
+            : initial.pieces;
+        const replayInitialUpn = repairedInitialPieces === initial.pieces
+          ? parsed.initialUpn
+          : positionUpn(repairedInitialPieces, initial.turn, initial.meta);
         const readDisclosure = (observer: Color): HistoryDisclosure => {
           const raw = parsed.observers?.[observer] as
             | {
@@ -2979,13 +3094,9 @@ export function UltimateWorkbench() {
         const blackDisclosure = readDisclosure("black");
         const viewerDisclosure =
           parsed.viewer === "white" ? whiteDisclosure : blackDisclosure;
-        const replayed = await engineRequest("/history-state", {
-          initialUpn: parsed.initialUpn,
+        const replayed = await engineRequest("/replay", {
+          initialUpn: replayInitialUpn,
           moves: parsed.moves,
-          observer: parsed.viewer,
-          enemyKingKnown: viewerDisclosure.enemyKingKnown,
-          enemyKingCandidates: viewerDisclosure.enemyKingCandidates,
-          initialDeploymentKnown: parsed.initialPositionKind === "draft",
         });
         if (!replayed.upn)
           throw new Error("The engine did not replay the belief history.");
@@ -2994,7 +3105,7 @@ export function UltimateWorkbench() {
           parsed.viewer === "white" ? blackDisclosure : whiteDisclosure;
         setPlayerSide(parsed.viewer);
         setHistoryContextPlayer(parsed.viewer);
-        setHistoryRootUpn(parsed.initialUpn);
+        setHistoryRootUpn(replayInitialUpn);
         setSelectedHistoryMoves([...(parsed.moves as string[])]);
         setHistoryEnemyKingKnown(viewerDisclosure.enemyKingKnown);
         setHistoryEnemyKingCandidates(
@@ -3013,8 +3124,8 @@ export function UltimateWorkbench() {
         setAnalysis(null);
         setLegalMoves(replayed.moves ?? []);
         setSelected(null);
-        setMoveHistory([]);
-        setHistoryCursor(0);
+        setMoveHistory(replayed.history ?? []);
+        setHistoryCursor(parsed.moves.length);
         setVariations([]);
         setActiveVariation(null);
         setGameResult({
@@ -3022,8 +3133,11 @@ export function UltimateWorkbench() {
           reason: replayed.resultReason ?? null,
         });
         setEditing(false);
+        setPositionOpen(false);
+        setEngineStatus("thinking");
+        setEngineMessage("Position loaded · rebuilding belief knowledge in the background…");
         setPositionMessage(
-          `Loaded replayable two-observer belief at ply ${parsed.moves.length}.`,
+          `Loaded replayable belief at ply ${parsed.moves.length}; belief knowledge is hydrating in the background.`,
         );
         return;
       }
@@ -4068,9 +4182,10 @@ export function UltimateWorkbench() {
                             <button
                               type="button"
                               className="knowledge-chip"
-                              aria-label={`Opponent knowledge of Ghost location: ${selectedGhostKnown ? "known" : `unknown; ${selectedGhostCandidates.length} possible squares`}`}
+                              aria-label={`Opponent knowledge of Ghost location: ${selectedKnowledgePending ? "calculating" : selectedGhostKnown ? "known" : `unknown; ${selectedGhostCandidates.length} possible squares`}`}
                               title="What the opponent knows about this Ghost's location"
                               onPointerEnter={() =>
+                                !selectedKnowledgePending &&
                                 !selectedGhostKnown &&
                                 setKnowledgeHoverSquares(
                                   selectedGhostCandidates,
@@ -4080,6 +4195,7 @@ export function UltimateWorkbench() {
                                 setKnowledgeHoverSquares([])
                               }
                               onFocus={() =>
+                                !selectedKnowledgePending &&
                                 !selectedGhostKnown &&
                                 setKnowledgeHoverSquares(
                                   selectedGhostCandidates,
@@ -4087,7 +4203,9 @@ export function UltimateWorkbench() {
                               }
                               onBlur={() => setKnowledgeHoverSquares([])}
                             >
-                              {selectedGhostKnown ? "known" : "unknown"}
+                              {selectedKnowledgePending
+                                ? "calculating"
+                                : selectedGhostKnown ? "known" : "unknown"}
                             </button>
                           )}
                         {showSelectedKnowledge &&

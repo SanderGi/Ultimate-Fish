@@ -8149,17 +8149,33 @@ class PhoneGame:
                     return confirmed
             next_attempt = _destination_attempt + 1
             if _retry_destination and next_attempt < len(destination_offsets):
-                if verbose:
-                    self.log(
-                        f"destination {target} did not commit; reselecting "
-                        f"{source} with in-cell target retry "
-                        f"({next_attempt + 1}/{len(destination_offsets)})"
+                # A missed/occluded legal Dot leaves the native character
+                # selected. Tapping that source again does not emit another
+                # GetAvailableMoves callback, so the old recursive retry
+                # falsely reported that the source had disappeared. Preserve
+                # the selection and try alternate points inside the target
+                # cell directly; this is especially important for a Giant's
+                # non-anchor footprint cells.
+                while next_attempt < len(destination_offsets):
+                    if verbose:
+                        self.log(
+                            f"destination {target} did not commit; retaining "
+                            f"{source} selection for in-cell target retry "
+                            f"({next_attempt + 1}/{len(destination_offsets)})"
+                        )
+                    x_offset, y_offset = destination_offsets[next_attempt]
+                    target_x, target_y = self.geometry.point(display_target)
+                    self.adb.tap(
+                        round(target_x + x_offset * self.geometry.cell_width),
+                        round(target_y + y_offset * self.geometry.cell_height),
                     )
-                return self.execute(
-                    move, expect_bomb_resolution,
-                    _destination_attempt=next_attempt,
-                    _retry_destination=True,
-                )
+                    try:
+                        return wait_for_completion(5.0)
+                    except TimeoutError:
+                        if action_observed:
+                            raise
+                        raise_if_native_app_exited()
+                        next_attempt += 1
             raise TimeoutError(f"move destination {target} was not accepted")
 
     def locate_public_piece(self, piece: str,

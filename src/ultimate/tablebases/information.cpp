@@ -449,10 +449,9 @@ std::vector<std::uint16_t> compact_decision_markers(
     return markers;
 }
 
-InformationObservationKey compact_transition_observation_key(
+std::uint64_t compact_transition_action_key(
   const Position& before, const Move& move, const Position& after,
-  const DisclosureContext& disclosure, bool includeDecisionObservation,
-  const std::vector<Move>* afterLegalMoves) {
+  const DisclosureContext& disclosure) {
     constexpr std::uint64_t UnknownSquare = Position::BoardSquares + 1;
     constexpr std::uint64_t NoSquare = Position::BoardSquares + 2;
     constexpr std::uint64_t NoActor = 63;
@@ -485,10 +484,62 @@ InformationObservationKey compact_transition_observation_key(
     const std::uint64_t promotion = move.promotion == PieceType::Count
                                   ? 0
                                   : std::uint64_t(move.promotion) + 1;
+    return actorType | (std::uint64_t(move.kind) << 6) |
+           (from << 10) | (to << 17) | (promotion << 24);
+}
+
+bool compact_transition_action_may_match(
+  const Position& before, const Move& move,
+  const DisclosureContext& disclosure, std::uint64_t expectedAction) {
+    constexpr std::uint64_t UnknownSquare = Position::BoardSquares + 1;
+    constexpr std::uint64_t NoSquare = Position::BoardSquares + 2;
+    constexpr std::uint64_t NoActor = 63;
+    const std::uint64_t expectedActor = expectedAction & 63;
+    const std::uint64_t expectedKind = (expectedAction >> 6) & 15;
+    const std::uint64_t expectedFrom = (expectedAction >> 10) & 127;
+    const std::uint64_t expectedTo = (expectedAction >> 17) & 127;
+    const std::uint64_t expectedPromotion = (expectedAction >> 24) & 127;
+    if (expectedKind != std::uint64_t(move.kind))
+        return false;
+    const std::uint64_t promotion = move.promotion == PieceType::Count
+                                  ? 0
+                                  : std::uint64_t(move.promotion) + 1;
+    if (expectedPromotion != promotion)
+        return false;
+    if (move.kind == MoveKind::Pass)
+        return expectedActor == NoActor && expectedFrom == NoSquare &&
+               expectedTo == NoSquare;
+
+    const int actor = before.piece_on(move.from);
+    if (actor < 0 || actor >= before.piece_count())
+        return false;
+    const PieceState& piece = before.piece(actor);
+    if (expectedActor != public_type_code(piece, actor, disclosure))
+        return false;
+    const bool enemyGhost = piece.type == PieceType::Ghost &&
+                            piece.color != disclosure.observer;
+    const std::uint64_t source = !enemyGhost || piece.visible
+                               ? std::uint64_t(move.from) + 1
+                               : UnknownSquare;
+    if (expectedFrom != source)
+        return false;
+    if (!enemyGhost)
+        return expectedTo == std::uint64_t(move.to) + 1;
+    if (before.is_capture(move))
+        return expectedTo == std::uint64_t(move.to) + 1;
+    // A quiet hidden Ghost either remains hidden (unknown destination) or is
+    // revealed at this exact destination. Both are resolved after applying it.
+    return expectedTo == UnknownSquare ||
+           expectedTo == std::uint64_t(move.to) + 1;
+}
+
+InformationObservationKey compact_transition_observation_key(
+  const Position& before, const Move& move, const Position& after,
+  const DisclosureContext& disclosure, bool includeDecisionObservation,
+  const std::vector<Move>* afterLegalMoves) {
     InformationObservationKey result;
-    result.action = actorType |
-                    (std::uint64_t(move.kind) << 6) |
-                    (from << 10) | (to << 17) | (promotion << 24);
+    result.action = compact_transition_action_key(
+      before, move, after, disclosure);
     result.view = compact_view_key(after, disclosure, afterLegalMoves);
     const bool ongoing = ((result.view.state >> 30) & 3) == 0;
     if (includeDecisionObservation && ongoing &&

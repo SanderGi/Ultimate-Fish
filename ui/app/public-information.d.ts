@@ -38,6 +38,13 @@ export function showKnowledgeStatus(
   view: InformationView, viewer: InformationColor,
   pieceColor: InformationColor,
 ): boolean;
+export function applyEditorGhostVisibility<T extends {
+  uid: string;
+  id: string;
+  color: InformationColor;
+  square: number;
+  visible: boolean;
+}>(pieces: T[], movedUid: string): T[];
 export function analysisPerspective(
   viewer: InformationColor, contextPlayer: InformationColor,
   playerDisclosure: HistoryDisclosure,

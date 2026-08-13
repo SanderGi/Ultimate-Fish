@@ -3075,7 +3075,7 @@ class ControllerActionTests(unittest.TestCase):
                          ("move", "b2", "a2"))
         self.assertEqual(game.events.pending, [])
 
-    def test_destination_retry_reselects_before_using_an_in_cell_offset(self):
+    def test_destination_retry_retains_selection_for_in_cell_offset(self):
         class FakeEvents:
             def __init__(self):
                 self.pending = []
@@ -3123,10 +3123,10 @@ class ControllerActionTests(unittest.TestCase):
 
         self.assertEqual((event.kind, event.source, event.target),
                          ("move", "a1", "a2"))
-        self.assertEqual(game.adb.actions[0:3], [
-            ("square", "a1"), ("square", "a2"), ("square", "a1")
+        self.assertEqual(game.adb.actions[0:2], [
+            ("square", "a1"), ("square", "a2")
         ])
-        self.assertEqual(game.adb.actions[3][0], "offset")
+        self.assertEqual(game.adb.actions[2][0], "offset")
 
     def test_mage_swap_uses_drag_and_turn_completion(self):
         class FakeAdb:

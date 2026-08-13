@@ -10,10 +10,12 @@
 #include <cassert>
 #include <cmath>
 #include <functional>
+#include <future>
 #include <limits>
 #include <numeric>
 #include <set>
 #include <stdexcept>
+#include <thread>
 #include <unordered_map>
 
 namespace Stockfish::Ultimate {
@@ -796,33 +798,68 @@ BeliefSuccessorPartitions PublicBeliefState::adversarial_successor_partitions(
         std::map<std::string, Position> worlds;
         std::set<std::string> actions;
     };
-    std::map<std::string, Observation> observations;
+    using ObservationMap = std::map<std::string, Observation>;
+    std::vector<const Position*> sourceWorlds;
+    sourceWorlds.reserve(worlds_.size());
     for (const auto& [upn, before] : worlds_) {
         (void)upn;
-        for (const Move& move : before.legal_moves()) {
-            const std::string notation = before.move_to_string(move);
-            if (!allowed.empty() && !allowed.count(notation))
-                continue;
-            Position after = before;
-            Undo undo;
-            if (!after.make_move(move, undo))
-                continue;
-            std::string publicView;
-            std::string observation = transition_observation_key(
-              before, move, after, disclosure_, &publicView);
-            if (includeDecisionObservation && !after.game_over() &&
-                after.side_to_move() == disclosure_.observer) {
-                const std::string decision = decision_observation_key(
-                  after, disclosure_, &publicView);
-                observation += "|nextDecision=" +
-                               std::to_string(decision.size()) + ':' + decision;
+        sourceWorlds.push_back(&before);
+    }
+    const auto expand = [&](std::size_t begin, std::size_t end) {
+        ObservationMap local;
+        for (std::size_t index = begin; index < end; ++index) {
+            const Position& before = *sourceWorlds[index];
+            for (const Move& move : before.legal_moves()) {
+                const std::string notation = before.move_to_string(move);
+                if (!allowed.empty() && !allowed.count(notation))
+                    continue;
+                Position after = before;
+                Undo undo;
+                if (!after.make_move(move, undo))
+                    continue;
+                std::string publicView;
+                std::string observation = transition_observation_key(
+                  before, move, after, disclosure_, &publicView);
+                if (includeDecisionObservation && !after.game_over() &&
+                    after.side_to_move() == disclosure_.observer) {
+                    const std::string decision = decision_observation_key(
+                      after, disclosure_, &publicView);
+                    observation += "|nextDecision=" +
+                                   std::to_string(decision.size()) + ':' + decision;
+                }
+                Observation& bucket = local[observation];
+                bucket.publicView = std::move(publicView);
+                bucket.actions.insert(notation);
+                bucket.worlds.emplace(after.upn(), std::move(after));
             }
-            Observation& bucket = observations[observation];
-            bucket.publicView = std::move(publicView);
-            bucket.actions.insert(notation);
-            bucket.worlds.emplace(after.upn(), std::move(after));
+        }
+        return local;
+    };
+    const unsigned hardware = std::max(1u, std::thread::hardware_concurrency());
+    const std::size_t workers = sourceWorlds.size() < 512
+      ? 1 : std::min<std::size_t>(4, hardware);
+    std::vector<std::future<ObservationMap>> futures;
+    futures.reserve(workers > 1 ? workers : 0);
+    if (workers > 1) {
+        for (std::size_t worker = 0; worker < workers; ++worker) {
+            const std::size_t begin = sourceWorlds.size() * worker / workers;
+            const std::size_t end = sourceWorlds.size() * (worker + 1) / workers;
+            futures.push_back(std::async(
+              std::launch::async, expand, begin, end));
         }
     }
+    ObservationMap observations = workers == 1
+      ? expand(0, sourceWorlds.size()) : ObservationMap{};
+    for (auto& future : futures)
+        for (auto& [observation, contents] : future.get()) {
+            Observation& merged = observations[observation];
+            if (merged.publicView.empty())
+                merged.publicView = std::move(contents.publicView);
+            merged.actions.insert(
+              std::make_move_iterator(contents.actions.begin()),
+              std::make_move_iterator(contents.actions.end()));
+            merged.worlds.merge(contents.worlds);
+        }
     result.buckets.reserve(observations.size());
     for (auto& [observation, contents] : observations) {
         BeliefSuccessorBucket bucket;
@@ -841,10 +878,129 @@ BeliefSuccessorPartitions PublicBeliefState::adversarial_successor_partitions(
     return result;
 }
 
+BeliefSuccessorPartitions
+PublicBeliefState::adversarial_successor_partitions_compact(
+  bool includeDecisionObservation,
+  const InformationObservationKey* expected) const {
+    BeliefSuccessorPartitions result;
+    result.before = worlds_.size();
+    struct CachedWorld {
+        Position position;
+        std::vector<Move> legalMoves;
+    };
+    struct Observation {
+        std::map<std::string, CachedWorld> worlds;
+        std::set<std::string> actions;
+    };
+    using ObservationMap = std::map<InformationObservationKey, Observation>;
+    struct SourceWorld {
+        const Position* position = nullptr;
+        const std::vector<Move>* cachedMoves = nullptr;
+    };
+    std::vector<SourceWorld> sources;
+    sources.reserve(worlds_.size());
+    for (const auto& [upn, position] : worlds_) {
+        const auto cached = legalMovesCache_.find(upn);
+        sources.push_back({
+          &position,
+          cached == legalMovesCache_.end() ? nullptr : &cached->second});
+    }
+
+    const auto expand = [&](std::size_t begin, std::size_t end) {
+        ObservationMap local;
+        for (std::size_t index = begin; index < end; ++index) {
+            const SourceWorld& source = sources[index];
+            const Position& before = *source.position;
+            std::vector<Move> generated;
+            const std::vector<Move>* moves = source.cachedMoves;
+            if (!moves) {
+                generated = before.legal_moves();
+                moves = &generated;
+            }
+            for (const Move& move : *moves) {
+                if (expected && !compact_transition_action_may_match(
+                      before, move, disclosure_, expected->action))
+                    continue;
+                Position after = before;
+                if (!after.apply_move_unchecked(move))
+                    continue;
+                if (expected && compact_transition_action_key(
+                      before, move, after, disclosure_) != expected->action)
+                    continue;
+                std::vector<Move> afterLegalMoves;
+                const bool ongoing = expected
+                  ? ((expected->view.state >> 30) & 3) == 0
+                  : !after.game_over();
+                const bool observeDecision = includeDecisionObservation &&
+                  ongoing &&
+                  after.side_to_move() == disclosure_.observer;
+                if (observeDecision)
+                    afterLegalMoves = after.legal_moves();
+                InformationObservationKey observation =
+                  compact_transition_observation_key(
+                    before, move, after, disclosure_, observeDecision,
+                    observeDecision ? &afterLegalMoves : nullptr);
+                if (expected && !(observation == *expected))
+                    continue;
+                Observation& bucket = local[std::move(observation)];
+                bucket.actions.insert(before.move_to_string(move));
+                std::string childUpn = after.upn();
+                bucket.worlds.emplace(
+                  std::move(childUpn), CachedWorld{
+                    std::move(after), std::move(afterLegalMoves)});
+            }
+        }
+        return local;
+    };
+
+    const unsigned hardware = std::max(1u, std::thread::hardware_concurrency());
+    const std::size_t workers = sources.size() < 384
+      ? 1 : std::min<std::size_t>(4, hardware);
+    std::vector<std::future<ObservationMap>> futures;
+    if (workers > 1) {
+        futures.reserve(workers);
+        for (std::size_t worker = 0; worker < workers; ++worker) {
+            const std::size_t begin = sources.size() * worker / workers;
+            const std::size_t end = sources.size() * (worker + 1) / workers;
+            futures.push_back(std::async(
+              std::launch::async, expand, begin, end));
+        }
+    }
+    ObservationMap observations = workers == 1
+      ? expand(0, sources.size()) : ObservationMap{};
+    for (auto& future : futures)
+        for (auto& [observation, contents] : future.get()) {
+            Observation& merged = observations[observation];
+            merged.actions.insert(
+              std::make_move_iterator(contents.actions.begin()),
+              std::make_move_iterator(contents.actions.end()));
+            merged.worlds.merge(contents.worlds);
+        }
+
+    result.buckets.reserve(observations.size());
+    for (auto& [observation, contents] : observations) {
+        BeliefSuccessorBucket bucket;
+        bucket.compactPublicView = observation.view;
+        bucket.compactObservation = std::move(observation);
+        bucket.actions.assign(
+          contents.actions.begin(), contents.actions.end());
+        bucket.worlds.reserve(contents.worlds.size());
+        bucket.worldKeys.reserve(contents.worlds.size());
+        bucket.worldLegalMoves.reserve(contents.worlds.size());
+        for (auto& [upn, world] : contents.worlds) {
+            bucket.worldKeys.push_back(std::move(upn));
+            bucket.worlds.push_back(std::move(world.position));
+            bucket.worldLegalMoves.push_back(std::move(world.legalMoves));
+        }
+        result.buckets.push_back(std::move(bucket));
+    }
+    return result;
+}
+
 BeliefTransitionResult PublicBeliefState::apply_known(
   std::string_view moveText, std::string* error) {
     BeliefTransitionResult result;
-    const BeliefSuccessorPartitions partitions = successor_partitions(moveText);
+    BeliefSuccessorPartitions partitions = successor_partitions(moveText);
     result.before = partitions.before;
     result.observations = partitions.buckets.size();
     if (worlds_.empty()) {
@@ -872,18 +1028,37 @@ BeliefTransitionResult PublicBeliefState::apply_known(
         return result;
     }
 
-    const BeliefSuccessorBucket& bucket = partitions.buckets.front();
-    worlds_.clear();
-    legalMovesCache_.clear();
-    for (std::size_t world = 0; world < bucket.worlds.size(); ++world)
-        worlds_.emplace(bucket.worldKeys[world], bucket.worlds[world]);
-    side_ = worlds_.begin()->second.side_to_move();
-    publicView_ = bucket.publicView;
-    compactPublicView_.reset();
-    rebuild_transposition_digest();
-    result.after = worlds_.size();
+    replace_with_successor(std::move(partitions.buckets.front()));
+    result.after = size();
     result.applied = true;
     return result;
+}
+
+void PublicBeliefState::replace_with_successor(BeliefSuccessorBucket bucket) {
+    worlds_.clear();
+    legalMovesCache_.clear();
+    for (std::size_t world = 0; world < bucket.worlds.size(); ++world) {
+        std::string key = std::move(bucket.worldKeys[world]);
+        const auto [iterator, inserted] = worlds_.emplace(
+          key, std::move(bucket.worlds[world]));
+        if (inserted && world < bucket.worldLegalMoves.size() &&
+            !bucket.worldLegalMoves[world].empty())
+            legalMovesCache_.emplace(
+              std::move(key), std::move(bucket.worldLegalMoves[world]));
+        (void)iterator;
+    }
+    side_ = worlds_.empty()
+          ? std::optional<Color>{}
+          : std::optional<Color>{worlds_.begin()->second.side_to_move()};
+    if (bucket.compactPublicView) {
+        publicView_.clear();
+        compactPublicView_ = std::move(bucket.compactPublicView);
+    }
+    else {
+        publicView_ = std::move(bucket.publicView);
+        compactPublicView_.reset();
+    }
+    rebuild_transposition_digest();
 }
 
 bool PublicHistoryState::start(Position initial,
@@ -908,6 +1083,7 @@ bool PublicHistoryState::start(Position initial,
     }
     actual_ = std::move(initial);
     beliefs_ = std::move(initialBeliefs);
+    preparedOpponentTransitions_.reset();
     initialized_ = true;
     return true;
 }
@@ -1002,14 +1178,37 @@ bool PublicHistoryState::apply_actual(std::string_view moveText,
 
     const bool observerMoved =
       actual_.side_to_move() == beliefs_.disclosure().observer;
-    const BeliefSuccessorPartitions partitions = observerMoved
-      ? beliefs_.successor_partitions(moveText)
-      : beliefs_.adversarial_successor_partitions();
-    const std::string observed = observed_transition(
-      actual_, *move, after, beliefs_.disclosure());
-    const BeliefSuccessorBucket* selected = nullptr;
-    for (const BeliefSuccessorBucket& bucket : partitions.buckets) {
-        if (bucket.observation != observed)
+    std::string observed;
+    std::optional<InformationObservationKey> compactObserved;
+    if (observerMoved)
+        observed = observed_transition(
+          actual_, *move, after, beliefs_.disclosure());
+    else {
+        std::vector<Move> afterLegalMoves;
+        const bool observeDecision = !after.game_over() &&
+          after.side_to_move() == beliefs_.disclosure().observer;
+        if (observeDecision)
+            afterLegalMoves = after.legal_moves();
+        compactObserved = compact_transition_observation_key(
+          actual_, *move, after, beliefs_.disclosure(), observeDecision,
+          observeDecision ? &afterLegalMoves : nullptr);
+    }
+    BeliefSuccessorPartitions partitions;
+    if (observerMoved)
+        partitions = beliefs_.successor_partitions(moveText);
+    else if (preparedOpponentTransitions_)
+        partitions = std::move(*preparedOpponentTransitions_);
+    else
+        partitions = beliefs_.adversarial_successor_partitions_compact(
+          true, &*compactObserved);
+    preparedOpponentTransitions_.reset();
+    BeliefSuccessorBucket* selected = nullptr;
+    for (BeliefSuccessorBucket& bucket : partitions.buckets) {
+        const bool matches = compactObserved
+          ? bucket.compactObservation &&
+            *bucket.compactObservation == *compactObserved
+          : bucket.observation == observed;
+        if (!matches)
             continue;
         if (selected) {
             if (error)
@@ -1024,16 +1223,22 @@ bool PublicHistoryState::apply_actual(std::string_view moveText,
         return false;
     }
 
-    PublicBeliefState next(beliefs_.disclosure());
-    std::string addError;
-    for (const Position& world : selected->worlds)
-        if (!next.add(world, &addError)) {
-            if (error)
-                *error = addError;
-            return false;
-        }
     actual_ = std::move(after);
-    beliefs_ = std::move(next);
+    beliefs_.replace_with_successor(std::move(*selected));
+    return true;
+}
+
+bool PublicHistoryState::prepare_opponent_transition(std::string* error) {
+    if (!initialized_) {
+        if (error)
+            *error = "public history has not been initialized";
+        return false;
+    }
+    if (actual_.side_to_move() == beliefs_.disclosure().observer)
+        return true;
+    if (!preparedOpponentTransitions_)
+        preparedOpponentTransitions_ =
+          beliefs_.adversarial_successor_partitions_compact();
     return true;
 }
 
@@ -1199,12 +1404,12 @@ bool Search::stopped() {
         return true;
     if (limits_.nodes && nodes_ >= limits_.nodes)
         return stop_ = true;
-    // Ultimate nodes are substantially more expensive than orthodox chess
-    // nodes because move legality can simulate Bomb blasts, Giant footprints,
-    // and royal survival. Checking only every 1024 nodes overshot a 3-second
-    // phone budget by almost two seconds in a measured Unranked position.
-    // A 64-node cadence keeps the cutoff tight with negligible clock overhead.
-    if (limits_.moveTime.count() && (nodes_ & 63) == 0 &&
+    // Belief nodes advance by whole information-set sizes rather than by one.
+    // A bit-mask cadence can therefore skip the deadline for thousands of
+    // expensive worlds. Callers already invoke stopped() at coarse search
+    // boundaries, so checking the clock on every invocation is both cheap and
+    // necessary for a trustworthy Play movetime.
+    if (limits_.moveTime.count() &&
         std::chrono::steady_clock::now() - start_ >= limits_.moveTime)
         return stop_ = true;
     return false;
@@ -2893,6 +3098,8 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
         std::set<std::string> common;
         bool firstWorld = true;
         for (const auto& assignment : state.assignments) {
+            if (stopped())
+                return robust_eval(state, ply);
             Prepared item;
             item.assignment = &assignment;
             item.world = materialize(state, assignment);
@@ -2939,7 +3146,9 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
             std::map<InformationObservationKey, TupleBucket> observations;
             std::optional<Position> symbolicGeometry;
             std::optional<InformationObservationKey> symbolicBaseObservation;
-            for (const Prepared& item : prepared)
+            for (const Prepared& item : prepared) {
+                if (stopped())
+                    break;
                 for (const auto& [notation, move] : item.moves) {
                     if (ply == 0 && !rootRestriction.empty() &&
                         !rootRestriction.count(notation))
@@ -3039,6 +3248,7 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
                       legalDotObservations, afterMoves ? &*afterMoves : nullptr);
                     add_position(observations[observation], std::move(after),
                                  notation);
+                }
             }
             buckets += observations.size();
             std::vector<decltype(observations)::iterator> ordered;
@@ -3188,6 +3398,8 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
                !item.world.real_king_threatened(side));
         const int staticEval = quietPruningNode ? robust_eval(state, ply) : 0;
         for (const std::string& action : orderedActions) {
+            if (stopped())
+                break;
             const bool quiet = actionQuiet.at(action);
             if (ply == 0 && rootDraws.count(action)) {
                 best = std::max(best, 0);
@@ -3214,6 +3426,8 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
 #endif
             std::map<InformationObservationKey, TupleBucket> observations;
             for (const Prepared& item : prepared) {
+                if (stopped())
+                    break;
                 const Move& move = item.moves.at(action);
                 Position after = item.world;
                 if (!after.apply_move_unchecked(move))
@@ -3560,14 +3774,17 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
                        piece.color != observer);
                 }
             }
-            // Exact entries are universal. One-sided fail-soft cutoffs are
-            // also safe for monotone royal candidates. Ghost domains can
-            // collapse and later re-expand, so retain their bounds only as
-            // ordering hints until the symbolic domain key includes that
-            // observation-history state directly.
-            if (ttEntry->bound == Bound::Exact || (!ghostDomain &&
-                ((ttEntry->bound == Bound::Lower && ttScore >= beta) ||
-                 (ttEntry->bound == Bound::Upper && ttScore <= alpha))))
+            // The current concrete-world digest is sufficient for monotone
+            // royal candidates. It is not yet a complete Ghost-history key:
+            // a Ghost domain can collapse and later re-expand after an
+            // unobserved step. Retain every Ghost-domain entry as an ordering
+            // hint only, including entries labelled Exact. Reusing such an
+            // entry as a value makes an unrestricted root search depend on
+            // move order even though independently restricted actions agree.
+            if (!ghostDomain &&
+                (ttEntry->bound == Bound::Exact ||
+                 (ttEntry->bound == Bound::Lower && ttScore >= beta) ||
+                 (ttEntry->bound == Bound::Upper && ttScore <= alpha)))
             {
                 ++beliefTtHits;
                 return ttScore;
@@ -3606,6 +3823,8 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
             std::map<InformationObservationKey, CompactAdversarialBucket>
               observations;
             for (const auto& [upn, world] : state.concrete_worlds()) {
+                if (stopped())
+                    break;
                 (void)upn;
                 for (const Move& move : state.cached_legal_moves(upn, world)) {
                     const std::string notation = world.move_to_string(move);
@@ -3720,6 +3939,8 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
         prepared.reserve(state.size());
         bool firstWorld = true;
         for (const auto& [upn, world] : state.concrete_worlds()) {
+            if (stopped())
+                return observer_evaluate(state, ply);
             (void)upn;
             PreparedBeliefWorld entry;
             entry.position = &world;
@@ -3830,6 +4051,8 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
         const int staticEval = quietPruningNode
                              ? observer_evaluate(state, ply) : 0;
         for (const std::string& action : orderedActions) {
+            if (stopped())
+                break;
             const bool quiet = actionQuiets.at(action);
 #ifndef ULTIMATE_DISABLE_LATE_MOVE_PRUNING
             if (quietPruningNode && quiet && depth <= 2 &&
@@ -3854,6 +4077,10 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
                          std::map<std::string, CachedBeliefWorld>> observations;
                 bool incompatible = false;
                 for (const PreparedBeliefWorld& entry : prepared) {
+                    if (stopped()) {
+                        incompatible = true;
+                        break;
+                    }
                     const auto found = entry.moves.find(action);
                     if (found == entry.moves.end()) {
                         incompatible = true;

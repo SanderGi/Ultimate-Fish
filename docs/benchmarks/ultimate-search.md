@@ -546,8 +546,11 @@ remain attached to piece IDs as silhouettes move, terminal capture and legal-dot
 observations split the candidates exactly, and the incremental
 `swap_royal_roles` primitive provides a reversible, bitboard-correct basis for
 factored candidate transitions. Royal-only belief states can use one-sided TT
-bounds; Ghost states conservatively use only exact TT cutoffs because their
-domains can collapse and re-expand.
+bounds. The enumerated fallback uses Ghost-domain entries only as ordering
+hints—even entries labelled exact—because its concrete-world digest does not
+encode enough history to distinguish every collapse/re-expansion path. The
+correlated-tuple key does carry the complete compact history and may therefore
+reuse exact bounds safely.
 
 `make -C src ultimate-hidden-search-benchmark` builds a deterministic fixture
 suite. The JSON output includes concrete nodes, belief nodes, exact belief-TT
@@ -688,3 +691,28 @@ single-determinization root capture in both colors and both actual Ghost worlds;
 long adjudicated point totals are retained as diagnostics but are not used as a
 strength assertion because the previous singleton shortcut was omniscient after
 Ghost knowledge collapsed.
+
+### 2026-08-13 native hidden-Ghost capture correction
+
+The shipping app treats an invisible enemy Ghost cell as apparently empty but
+still lets an ordinary action enter it. The Ghost is captured only after the
+move arrives; sliding rays also continue through that cell. Updating the native
+position model changed legal frontiers and observations throughout every Ghost
+search path. Penguin/Ghost is a mutual knockout, and a Fisherman that pulls a
+character into a hidden Ghost dispatches independent death callbacks to both
+occupants.
+
+New depth-3 fixtures compare the corrected correlated solver with the fully
+enumerated oracle. They return the same score and root move:
+
+| Fixture | Root assignments | Enumerated | Correlated | Speedup | Result |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Penguin blind Ghost collision | 73 | 505 ms | 115 ms | 4.4x | `+437`, `d4-c3` |
+| Fisherman forced Ghost collision | 74 | 539 ms | 163 ms | 3.3x | `-545`, `d8-a5` |
+| mixed tactical Ghost material | 72 | 4,170 ms | 1,867 ms | 2.2x | `-145`, `d4-b6` |
+
+The mixed tactical regression exposed an unsafe exact cutoff in the enumerated
+Ghost TT: independently restricted root moves agreed with the correlated
+solver, while an unrestricted search changed with move order. Making those
+history-incomplete entries ordering-only restores the exact unrestricted
+score. The correlated tuple solver retains its history-complete exact TT.

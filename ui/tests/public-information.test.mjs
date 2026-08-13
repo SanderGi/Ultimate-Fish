@@ -2,10 +2,41 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  analysisPerspective, buildReplayBelief, concealGhost, disguiseJester,
+  analysisPerspective, applyEditorGhostVisibility, buildReplayBelief,
+  concealGhost, disguiseJester,
   fadeGhost,
   showKnowledgeStatus,
 } from "../app/public-information.mjs";
+
+test("editor moves apply royal proximity to Ghost visibility", () => {
+  const pieces = [
+    { uid: "jester", id: "jester", color: "white", square: 76,
+      visible: true }, // e1
+    { uid: "ghost", id: "ghost", color: "black", square: 69,
+      visible: false }, // f2
+    { uid: "other", id: "ghost", color: "black", square: 8,
+      visible: false },
+  ];
+  const ghostMoved = applyEditorGhostVisibility(pieces, "ghost");
+  assert.equal(ghostMoved[1].visible, true);
+  assert.equal(ghostMoved[2].visible, false);
+
+  const ghostMovedAway = applyEditorGhostVisibility(
+    ghostMoved.map((piece) => piece.uid === "ghost"
+      ? { ...piece, square: 40 }
+      : piece),
+    "ghost",
+  );
+  assert.equal(ghostMovedAway[1].visible, false);
+
+  const royalMoved = applyEditorGhostVisibility(
+    pieces.map((piece) => piece.uid === "jester"
+      ? { ...piece, square: 9 }
+      : piece),
+    "jester",
+  );
+  assert.equal(royalMoved[2].visible, true);
+});
 
 const hiddenIvoryGhost = {
   id: "ghost", color: "white", visible: false, square: 12,

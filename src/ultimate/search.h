@@ -114,6 +114,11 @@ struct BeliefSuccessorBucket {
     // observation. Multiple entries are expected for indistinguishable hidden
     // actions and are diagnostic only; they never condition the belief.
     std::vector<std::string> actions;
+    // History replay uses allocation-light exact structured keys internally;
+    // the textual fields above remain the stable public diagnostic API.
+    std::optional<InformationObservationKey> compactObservation;
+    std::optional<InformationViewKey> compactPublicView;
+    std::vector<std::vector<Move>> worldLegalMoves;
 };
 
 struct BeliefSuccessorPartitions {
@@ -203,6 +208,7 @@ class PublicBeliefState {
 
    private:
     friend class Search;
+    friend class PublicHistoryState;
 
     bool add_prevalidated(std::string upn, Position position,
                           std::string_view publicView,
@@ -214,6 +220,11 @@ class PublicBeliefState {
     [[nodiscard]] const std::vector<Move>& cached_legal_moves(
       const std::string& upn, const Position& position) const;
     void rebuild_transposition_digest();
+    void replace_with_successor(BeliefSuccessorBucket bucket);
+    [[nodiscard]] BeliefSuccessorPartitions
+      adversarial_successor_partitions_compact(
+        bool includeDecisionObservation = true,
+        const InformationObservationKey* expected = nullptr) const;
 
     DisclosureContext disclosure_{};
     std::optional<Color> side_;
@@ -242,6 +253,10 @@ class PublicHistoryState {
                const std::vector<int>& enemyKingCandidateSquares,
                std::string* error = nullptr);
     bool apply_actual(std::string_view move, std::string* error = nullptr);
+    // Precompute the opponent/nature observation frontier while the UI is
+    // idle. The retained bucket is consumed by apply_actual once the public
+    // move observation arrives.
+    bool prepare_opponent_transition(std::string* error = nullptr);
 
     [[nodiscard]] bool initialized() const;
     [[nodiscard]] const Position& actual_position() const;
@@ -250,6 +265,7 @@ class PublicHistoryState {
    private:
     Position actual_;
     PublicBeliefState beliefs_;
+    std::optional<BeliefSuccessorPartitions> preparedOpponentTransitions_;
     bool initialized_ = false;
 };
 

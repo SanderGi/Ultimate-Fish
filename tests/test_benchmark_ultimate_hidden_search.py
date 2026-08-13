@@ -39,11 +39,31 @@ class HiddenSearchBenchmarkTests(unittest.TestCase):
                 fixture.pop("wall_ms")
         self.assertEqual(first, second)
         self.assertEqual(
-            "ultimate-hidden-search-benchmark-v1", first["schema"])
+            "ultimate-hidden-search-benchmark-v2", first["schema"])
         self.assertTrue(first["deterministic"])
         self.assertEqual(0, first["seed"])
 
-        fixtures = {item["name"]: item for item in first["fixtures"]}
+        paired: dict[str, dict[str, dict[str, object]]] = {}
+        for item in first["fixtures"]:
+            paired.setdefault(item["name"], {})[item["mode"]] = item
+        for name, modes in paired.items():
+            self.assertEqual(
+                {"enumerated-oracle", "factored"}, set(modes), name)
+            # This regression specifically protects the Ghost-domain solver.
+            # The mature lazy-royal native search and the slower enumerated
+            # royal search use different fixed-depth leaf conventions, so a
+            # high-depth royal-only microbenchmark is not an exact oracle.
+            if "ghost" in name:
+                self.assertEqual(
+                    modes["enumerated-oracle"]["score"],
+                    modes["factored"]["score"], name)
+                self.assertEqual(
+                    modes["enumerated-oracle"]["bestmove"],
+                    modes["factored"]["bestmove"], name)
+
+        fixtures = {
+            name: modes["factored"] for name, modes in paired.items()
+        }
         self.assertEqual(2, fixtures["royal-two-world-endgame"]["root_beliefs"])
         self.assertGreater(
             fixtures["royal-two-world-mixed-midgame"]["singleton_handoffs"], 0)

@@ -611,7 +611,12 @@ bool Position::remove_piece_internal(int id, bool allowAngel) {
     }
     if ((type == PieceType::Copycat || type == PieceType::CopycatClone) && linked != NoPiece &&
         linked < pieceCount_ && pieces_[linked].alive)
-        remove_piece(linked);
+        // Native CopyCat death marks the struck half dying before dispatching
+        // SimulateDeath to its partner.  The partner therefore bypasses its
+        // own AngelFunction: an Angel on the struck half can save the whole
+        // pair, but an Angel attached only to the other half cannot leave a
+        // singleton CopyCat behind.
+        remove_piece_internal(linked, false);
     if ((type == PieceType::Angel || type == PieceType::Halo) && linked != NoPiece &&
         linked < pieceCount_ && pieces_[linked].alive)
         remove_piece(linked);
@@ -778,19 +783,16 @@ void Position::rebuild_bitboards() {
             place_on_board(id);
 }
 
-bool Position::can_land(int id, int square, bool attacksOnly,
-                        bool hiddenEnemyTargetable) const {
+bool Position::can_land(int id, int square, bool attacksOnly) const {
     if (!valid_square(square))
         return false;
     const int target = board_[square];
     if (target == NoPiece)
         return !attacksOnly;
-    // SimulatedPiece::GetPieceSimulations marks an unrevealed Ghost square as
-    // unavailable for both leapers and steppers. Slider, Pawn, Sniper, and
-    // Fisherman have their own native blind-interaction branches.
-    if (pieces_[target].type == PieceType::Ghost && !pieces_[target].visible &&
-        !hiddenEnemyTargetable)
-        return false;
+    // An enemy Ghost that is invisible to the mover is rendered as empty in
+    // the app, but the apparent quiet move onto that cell is still available.
+    // MakeMove then reveals that the move captured the Ghost.  A team's own
+    // invisible Ghost is known private occupancy and remains unavailable.
     return pieces_[target].color != pieces_[id].color;
 }
 
@@ -817,11 +819,16 @@ void Position::add_slider_moves(std::vector<Move>& moves, int id, const int (*di
                     moves.push_back({piece.square, static_cast<std::uint8_t>(to)});
                 continue;
             }
-            // SimulatedPiece marks a square occupied by a hidden Ghost
-            // unavailable, but continues scanning the ray through it. The
-            // native simulation applies this to either team.
-            if (pieces_[target].type == PieceType::Ghost && !pieces_[target].visible)
+            // Invisible Ghosts are transparent to rays. An enemy Ghost's
+            // cell is also an available apparent quiet endpoint: entering it
+            // captures the Ghost. Allied hidden occupancy is known to the
+            // mover, so that cell is unavailable even though the ray carries
+            // on beyond it.
+            if (pieces_[target].type == PieceType::Ghost && !pieces_[target].visible) {
+                if (pieces_[target].color != piece.color)
+                    moves.push_back({piece.square, static_cast<std::uint8_t>(to)});
                 continue;
+            }
             if (pieces_[target].color != piece.color)
                 moves.push_back({piece.square, static_cast<std::uint8_t>(to)});
             if (!jump)
@@ -941,10 +948,7 @@ void Position::add_copycat_moves(std::vector<Move>& moves, int id, bool attacksO
         if (toFile < 0 || toFile >= BoardFiles || toRank < 0 || toRank >= BoardRanks)
             continue;
         const int to = make_square(toFile, toRank);
-        // Unlike the generic stepper helper, CopyCat.Check does not mark an
-        // unrevealed enemy Ghost unavailable. Either half can capture one as
-        // its part of the paired move; a hidden allied Ghost still blocks.
-        if (!can_land(id, to, attacksOnly, true))
+        if (!can_land(id, to, attacksOnly))
             continue;
 
         int partnerTo = 0xff;
@@ -956,7 +960,7 @@ void Position::add_copycat_moves(std::vector<Move>& moves, int id, bool attacksO
                 otherRank >= BoardRanks)
                 continue;
             partnerTo = make_square(otherFile, otherRank);
-            if (partnerTo == to || !can_land(partner, partnerTo, attacksOnly, true))
+            if (partnerTo == to || !can_land(partner, partnerTo, attacksOnly))
                 continue;
         }
         moves.push_back({actor.square, static_cast<std::uint8_t>(to),
@@ -1056,10 +1060,9 @@ void Position::append_moves_for(std::vector<Move>& moves, int id,
             if (file < 0 || file >= BoardFiles || rank < 0 || rank >= BoardRanks)
                 continue;
             const int to = make_square(file, rank);
-            // SimulatedPrince's custom generator omits the generic Ghost
-            // visibility gate and treats a hidden enemy as an ordinary first-
-            // step capture, which ends the action without a second move.
-            if (can_land(id, to, attacksOnly, true))
+            // A hidden enemy Ghost is an ordinary first-step capture, which
+            // ends the action without a second move.
+            if (can_land(id, to, attacksOnly))
                 moves.push_back({piece.square, static_cast<std::uint8_t>(to)});
         }
         break;
@@ -1136,10 +1139,9 @@ void Position::append_moves_for(std::vector<Move>& moves, int id,
             for (int rank = std::max(0, rank_of(piece.square) - radius);
                  rank <= std::min(BoardRanks - 1, rank_of(piece.square) + radius); ++rank) {
                 const int to = make_square(file, rank);
-                // The Berserker's box generator, like Prince and CopyCat,
-                // compares occupancy/team directly without testing Ghost
-                // visibility.
-                if (to != piece.square && can_land(id, to, attacksOnly, true))
+                // The box generator compares destination occupancy directly;
+                // hidden enemy Ghost cells are legal blind captures.
+                if (to != piece.square && can_land(id, to, attacksOnly))
                     moves.push_back({piece.square, static_cast<std::uint8_t>(to)});
             }
         break;
@@ -1187,13 +1189,19 @@ void Position::append_moves_for(std::vector<Move>& moves, int id,
     case PieceType::Penguin:
         // Native Freeze/Penguin can step to any adjacent empty square but has
         // no attack action.  Its offensive effect is the adjacent freeze aura;
-        // occupied squares must not be generated as captures or attack-map
-        // entries.  This matters when answering check: the app rejected a
-        // live h1-h2 attempt against an enemy Dragon on h2.
+        // visible occupied squares must not be generated as captures or
+        // attack-map entries. An enemy hidden Ghost is deliberately the one
+        // exception: native SimulatedFreeze routes that apparently empty cell
+        // through SimulateMove(unavailable=false), and ordinary MakeMove then
+        // reveals the blind capture. This matters alongside the live h1-h2
+        // rejection against a visible enemy Dragon.
         if (!attacksOnly) {
             add_step_moves(moves, id, Around, 8, 1, false, false);
             moves.erase(std::remove_if(moves.begin() + first, moves.end(), [this](const Move& move) {
-                            return board_[move.to] != NoPiece;
+                            const int target = board_[move.to];
+                            return target != NoPiece &&
+                              (pieces_[target].visible ||
+                               pieces_[target].type != PieceType::Ghost);
                         }), moves.end());
         }
         break;
@@ -1217,25 +1225,8 @@ void Position::append_moves_for(std::vector<Move>& moves, int id,
         break;
     case PieceType::Sludge:
         add_slider_moves(moves, id, Orthogonal, 4, 2, false, false);
-        // A hidden enemy Ghost is rendered as an empty destination to the
-        // Sludge owner. Native play lets Sludge enter that cell blindly, then
-        // knocks out both models without a Character.Move callback.
-        for (const auto& direction : Orthogonal) {
-            for (int distance = 1; distance <= 2; ++distance) {
-                const int file = file_of(piece.square) + direction[0] * distance;
-                const int rank = rank_of(piece.square) + direction[1] * distance;
-                if (file < 0 || file >= BoardFiles || rank < 0 || rank >= BoardRanks)
-                    break;
-                const int to = make_square(file, rank);
-                const int target = board_[to];
-                if (target == NoPiece)
-                    continue;
-                if (pieces_[target].type == PieceType::Ghost &&
-                    !pieces_[target].visible && pieces_[target].color != piece.color)
-                    moves.push_back({piece.square, static_cast<std::uint8_t>(to)});
-                break;
-            }
-        }
+        // Sludge shares the generic transparent Ghost ray, but its MakeMove
+        // override resolves a blind landing as a mutual knockout.
         moves.erase(std::remove_if(moves.begin() + first, moves.end(), [this](const Move& move) {
                         const int target = board_[move.to];
                         return target != NoPiece &&
@@ -1408,8 +1399,23 @@ bool Position::is_forcing_action(const Move& move) const {
     if (move.kind == MoveKind::Pull) {
         const int target = piece_on(move.to);
         const int actor = piece_on(move.from);
-        return target != NoPiece && actor != NoPiece &&
-               pieces_[target].color != pieces_[actor].color;
+        if (target == NoPiece || actor == NoPiece)
+            return false;
+        if (pieces_[target].color != pieces_[actor].color)
+            return true;
+        if (pieces_[target].type != PieceType::Giant)
+            // A populated landing cell is the native invisible-Ghost branch;
+            // both the dragged character and occupant receive death callbacks.
+            return valid_square(move.auxiliary) &&
+                   piece_on(move.auxiliary) != NoPiece;
+        const int destinationFile = file_of(pieces_[target].square) +
+                                    file_of(move.auxiliary) - file_of(move.to);
+        const int destinationRank = rank_of(pieces_[target].square) +
+                                    rank_of(move.auxiliary) - rank_of(move.to);
+        return destinationFile >= 0 && destinationFile < BoardFiles &&
+               destinationRank >= 0 && destinationRank < BoardRanks &&
+               !victims_on(footprint(target,
+                 make_square(destinationFile, destinationRank)), target).empty();
     }
     // A Mage swap with a Giant delegates to Giant relocation and may knock
     // out multiple characters even though neither selected piece is hostile.
@@ -1444,11 +1450,12 @@ std::vector<Move> Position::pseudo_forcing_moves() const {
         const PieceType type = pieces_[id].type;
         // These pieces have indirect forcing actions which their native
         // attack-only generators omit: a mirrored CopyCat capture, a
-        // Mage/Fisherman Giant relocation, or a blind Sludge/Ghost collision.
+        // Mage/Fisherman Giant relocation, or a blind Sludge/Penguin Ghost
+        // collision.
         const bool needsFullList =
           type == PieceType::Mage || type == PieceType::Fisherman ||
           type == PieceType::Copycat || type == PieceType::CopycatClone ||
-          type == PieceType::Sludge;
+          type == PieceType::Sludge || type == PieceType::Penguin;
         append_moves_for(moves, id, !needsFullList);
     }
     annotate_captures(moves);
@@ -1654,6 +1661,20 @@ bool Position::real_king_threatened(Color color) const {
                         canKnockOut = bool(destination & royalDanger);
                         directlyHitsKing = bool(destination & square_bb(kingSquare));
                     }
+                }
+                else if (pulled != NoPiece && valid_square(reply.auxiliary) &&
+                         attacker.board_[reply.auxiliary] != NoPiece) {
+                    // Fisherman forced collision invokes SimulateDeath on the
+                    // dragged character and invisible landing occupant. It is
+                    // a direct royal threat when the dragged character is the
+                    // real King, and a dragged Bomb can reach the King through
+                    // its landing-square blast/chain.
+                    directlyHitsKing =
+                      attacker.pieces_[pulled].type == PieceType::King &&
+                      attacker.pieces_[pulled].color == color;
+                    canKnockOut = directlyHitsKing ||
+                      (attacker.pieces_[pulled].type == PieceType::Bomb &&
+                       dangerousBlast(reply.auxiliary));
                 }
             }
             else if (actorType == PieceType::Copycat ||
@@ -2429,6 +2450,7 @@ bool Position::apply_move_unchecked(const Move& move) {
             erase_from_board(victim);
             if (pieces_[victim].alive) {
                 int destination = move.auxiliary;
+                bool collisionDispatched = false;
                 if (pieces_[victim].type == PieceType::Giant) {
                     const int deltaFile = file_of(move.auxiliary) - file_of(move.to);
                     const int deltaRank = rank_of(move.auxiliary) - rank_of(move.to);
@@ -2442,13 +2464,36 @@ bool Position::apply_move_unchecked(const Move& move) {
                 }
                 else {
                     const int occupant = board_[move.auxiliary];
-                    if (occupant != NoPiece)
-                        capture_piece(occupant, victim, move);
+                    if (occupant != NoPiece) {
+                        collisionDispatched = true;
+                        // Fisherman.MakeMove assigns the dragged character's
+                        // targetSquare to the landing cell, then invokes
+                        // SimulateDeath on both it and an invisible occupant.
+                        // These are two independent death callbacks rather
+                        // than a normal capture by the dragged character.
+                        // This is observable when, for example, a King is
+                        // pulled into its own hidden Ghost: both are knocked
+                        // out, with an attached Angel still able to intercept
+                        // either individual death.
+                        pieces_[victim].square =
+                          static_cast<std::uint8_t>(destination);
+                        capture_piece(victim, id, move);
+                        capture_piece(occupant, id, move);
+                    }
                 }
                 if (pieces_[victim].alive && pieces_[victim].type != PieceType::Giant) {
-                    pieces_[victim].square = static_cast<std::uint8_t>(destination);
-                    apply_forced_promotion(victim);
-                    place_on_board(victim);
+                    // Surviving this collision means an Angel already moved
+                    // the dragged character to its Halo and installed it on
+                    // the board. Do not overwrite that rescue with the
+                    // nominal landing cell (or leave the same id occupying
+                    // both squares). An ordinary unobstructed pull still
+                    // completes its forced relocation here.
+                    if (!collisionDispatched) {
+                        pieces_[victim].square =
+                          static_cast<std::uint8_t>(destination);
+                        apply_forced_promotion(victim);
+                        place_on_board(victim);
+                    }
                 }
             }
         }
@@ -2517,7 +2562,7 @@ bool Position::apply_move_unchecked(const Move& move) {
         int victim = target;
         const bool blindGhostCollision =
           (actor.type == PieceType::Pawn || actor.type == PieceType::Sludge ||
-           actor.type == PieceType::Sniper ||
+           actor.type == PieceType::Sniper || actor.type == PieceType::Penguin ||
            actor.type == PieceType::Fisherman || actor.type == PieceType::Checker ||
            actor.type == PieceType::CheckerKing) &&
                                        victim != NoPiece &&
@@ -2526,6 +2571,7 @@ bool Position::apply_move_unchecked(const Move& move) {
                                        pieces_[victim].color != actor.color &&
                                        (actor.type == PieceType::Sludge ||
                                         actor.type == PieceType::Sniper ||
+                                        actor.type == PieceType::Penguin ||
                                         actor.type == PieceType::Fisherman ||
                                         actor.type == PieceType::Checker ||
                                         actor.type == PieceType::CheckerKing ||
@@ -3042,9 +3088,10 @@ bool Position::set_upn(std::string_view text, std::string* error) {
             return false;
         }
         // Compact setup notation names only the deployable CopyCat and relies
-        // on construction to create its mirror. A lossless entry explicitly
-        // carries link=-1 when an Angel interaction left one half alive; that
-        // state must remain a singleton rather than regenerating a clone.
+        // on construction to create its mirror. Explicit arbitrary/legacy UPN
+        // may still carry link=-1; preserve that supplied malformed state
+        // rather than silently inventing a companion. Native play itself does
+        // not create a singleton CopyCat.
         implicitCopycatCompanion[id] =
           *type == PieceType::Copycat && values.size() < 10;
         PieceState& piece = parsed.pieces_[id];

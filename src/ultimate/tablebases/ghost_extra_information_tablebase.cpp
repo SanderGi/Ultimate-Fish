@@ -31,6 +31,7 @@
 #include "information.h"
 #include "external_robdd.h"
 #include "ghost_information_probe.h"
+#include "ghost_public_extra_model.h"
 #include "position.h"
 
 #include <algorithm>
@@ -842,7 +843,7 @@ void codec_self_test(const MaterialSpec& material) {
         if (encode_index(state) != placement * ExtraSubstates * 2 + 1)
             throw std::runtime_error("Ghost substate codec is not bijective");
     }
-    FourState sample{Color::Black, 17, 62, 28, 43, true};
+    FourState sample{Color::Black, 17, 62, 28, 43, 0, true};
     FourState reflected = sample;
     reflected.whiteKing = horizontal_reflection(reflected.whiteKing);
     reflected.blackKing = horizontal_reflection(reflected.blackKing);
@@ -880,9 +881,10 @@ void codec_self_test(const MaterialSpec& material) {
 
 // Exhaust all beliefs of a three-square toy domain.  The public Bishop square
 // is fixed; a quiet Ghost observation maps one source to two possible hidden
-// destinations, a reveal maps every source to one singleton, and a private
-// legal-dot partition splits {0,1} from {2}.  This guards the extra public
-// geometry dimension without depending on an 8x10 sample.
+// destinations and a reveal maps every source to one singleton. Ordinary
+// apparent moves remain legal on an enemy hidden-Ghost cell, so that hidden
+// coordinate does not split the observer's legal-dot frontier. This guards
+// the extra public geometry dimension without depending on an 8x10 sample.
 void tiny_public_geometry_self_test() {
     constexpr unsigned Full = 0b111;
     const auto hidden_image = [](unsigned belief) {
@@ -902,8 +904,7 @@ void tiny_public_geometry_self_test() {
         auto nextBlack = black;
         auto nextWhite = white;
         for (unsigned belief = 0; belief <= Full; ++belief) {
-            const bool sameDots = (belief & 0b100) == 0 ||
-                                  (belief & 0b011) == 0;
+            const bool sameDots = true;
             nextBlack[belief] = (belief & ~0b001u) == 0 ||
               (sameDots && black[hidden_image(belief)]);
             for (unsigned actual = 0; actual < 3; ++actual) {
@@ -4298,6 +4299,7 @@ int main(int argc, char** argv) {
                 exhaustiveOracle = true;
             else throw std::runtime_error("unknown argument: " + argument);
         }
+        packed_four_header_self_test();
         codec_self_test(material);
         compact_geometry_identity_self_test();
         tiny_public_geometry_self_test();

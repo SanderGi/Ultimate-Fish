@@ -853,6 +853,156 @@
         {"move": "b8-b2"},
         {"piece": {"type": "rook", "square": "c2"}}
       ]
+    },
+    {
+      "id": "rook-blind-captures-hidden-ghost",
+      "covers": [
+        "ghost.hidden-enemy-cell-is-legal-endpoint",
+        "ghost.hidden-cell-remains-ray-transparent",
+        "rook.blind-hidden-ghost-capture"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["rook", "d3"],
+        ["bomb", "f3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["ghost", "e3"],
+        ["angel", "g3"]
+      ],
+      "steps": [
+        {"move": "b1-b2"},
+        {"move": "d8-d7"},
+        {"move": "b2-b1"},
+        {"move": "d7-d6"},
+        {"move": "b1-b2"},
+        {"move": "d6-d5"},
+        {"move": "b2-b1"},
+        {"move": "d5-d4"},
+        {"move": "d3-d4"},
+        {"native_deaths": ["ghost"]},
+        {"piece": {"type": "rook", "square": "d4"}}
+      ]
+    },
+    {
+      "id": "fisherman-pulls-king-into-own-hidden-ghost",
+      "covers": [
+        "fisherman.forced-hidden-ghost-collision",
+        "ghost.forced-collision-death",
+        "terminal.real-king-forced-collision"
+      ],
+      "player1": [
+        ["king", "d1"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["ghost", "d3"],
+        ["angel", "g3"]
+      ],
+      "player2": [
+        ["king", "e1"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["fisherman", "e3"],
+        ["angel", "g3"],
+        ["pawn", "h3"]
+      ],
+      "steps": [
+        {"move": "d3-d4"},
+        {"move": "g10-g9"},
+        {"move": "d4-d5"},
+        {"move": "g9-g10"},
+        {"move": "d5-d6"},
+        {"move": "g10-g9"},
+        {"move": "d6-d7"},
+        {"terminal_move": {"move": "d8!d1", "label": "knockout"}}
+      ]
+    },
+    {
+      "id": "penguin-blind-steps-onto-hidden-ghost",
+      "covers": [
+        "penguin.hidden-enemy-cell-is-apparently-empty",
+        "penguin.blind-hidden-ghost-mutual-knockout",
+        "ghost.blind-capture-death"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["rook", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["penguin", "d3"],
+        ["bomb", "f3"],
+        ["checker", "g3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["ghost", "e3"],
+        ["angel", "g3"]
+      ],
+      "steps": [
+        {"move": "b1-b2"},
+        {"move": "d8-d7"},
+        {"move": "b2-b1"},
+        {"move": "d7-d6"},
+        {"move": "b1-b2"},
+        {"move": "d6-d5"},
+        {"move": "b2-b1"},
+        {"move": "d5-d4"},
+        {"move": "d3-d4"},
+        {"native_deaths": ["ghost", "penguin"]}
+      ]
+    },
+    {
+      "id": "copycat-partner-angel-cannot-create-singleton",
+      "covers": [
+        "copycat.linked-death-is-atomic",
+        "copycat.partner-angel-bypassed-after-first-half-dies",
+        "angel.orphaned-after-linked-host-death"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["jester", "h1"],
+        ["angel", "b2"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["copycat", "c3"],
+        ["sniper", "e3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["fisherman", "e1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["rook", "f3"],
+        ["pawn", "h3"]
+      ],
+      "steps": [
+        {"move": "b2&f3"},
+        {"move": "c8-c3"},
+        {"native_deaths": ["copycat", "copycat"]},
+        {"reject": "f3-e4"},
+        {"piece": {"type": "rook", "square": "c3"}}
+      ]
     }
   ],
   "selfplay_profiles": [

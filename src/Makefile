@@ -141,7 +141,8 @@ ultimate-ghost-information-tablebase:
 ultimate-ghost-extra-information-preflight:
 	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
 		ultimate/tablebases/ghost_extra_information_tablebase.cpp \
-		ultimate/tablebases/ghost_information_probe.cpp ultimate/tablebases/external_robdd.cpp ultimate/position.cpp \
+		ultimate/tablebases/ghost_information_probe.cpp ultimate/tablebases/ghost_public_extra_model.cpp \
+		ultimate/tablebases/external_robdd.cpp ultimate/position.cpp \
 		ultimate/tablebases/information.cpp ultimate/nnue.cpp \
 		-o ultimate_ghost_extra_information_preflight
 

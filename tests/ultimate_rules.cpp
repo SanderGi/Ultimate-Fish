@@ -82,7 +82,7 @@ void test_roster_and_position_round_trip() {
       "giant,w,c2,0,0,0,0,1,1,-1,1,-1,0;"
       "king,b,c9,0,0,0,0,1,1,-1,1,-1,0";
     expect(singleton.set_upn(singletonUpn, &error),
-           "lossless Angel-surviving CopyCat singleton parses: " + error);
+           "explicit legacy/arbitrary CopyCat singleton parses: " + error);
     expect(singleton.upn() == singletonUpn,
            "explicit CopyCat link=-1 does not regenerate an occupied mirror clone");
 
@@ -848,6 +848,24 @@ void test_checker_chain_and_prince_turns() {
              !hiddenCheckerCollision.piece(adjacentHiddenGhost).alive,
            "adjacent Checker/Ghost blind collision knocks out both characters");
 
+    Position hiddenCheckerKingCollision;
+    hiddenCheckerKingCollision.add_piece(PieceType::King, Color::White,
+                                         Position::square_from_name("a1"));
+    hiddenCheckerKingCollision.add_piece(PieceType::King, Color::Black,
+                                         Position::square_from_name("h10"));
+    const int blindCheckerKing = hiddenCheckerKingCollision.add_piece(
+      PieceType::CheckerKing, Color::White, Position::square_from_name("b4"));
+    const int backwardHiddenGhost = hiddenCheckerKingCollision.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("c3"));
+    hiddenCheckerKingCollision.piece(backwardHiddenGhost).visible = false;
+    Undo checkerKingGhostCollision;
+    expect(hiddenCheckerKingCollision.make_move(
+             require_move(hiddenCheckerKingCollision, "b4-c3"),
+             checkerKingGhostCollision) &&
+             !hiddenCheckerKingCollision.piece(blindCheckerKing).alive &&
+             !hiddenCheckerKingCollision.piece(backwardHiddenGhost).alive,
+           "promoted Checker uses the same backward blind-Ghost collision callback");
+
     Position hiddenCheckerLanding;
     hiddenCheckerLanding.add_piece(PieceType::King, Color::White,
                                    Position::square_from_name("a1"));
@@ -1509,6 +1527,34 @@ void test_native_giant_and_copycat_footprints() {
                    Position::square_from_name("e4"),
            "CopyCat retains its Angel relocation while the paired half completes");
 
+    Position partnerProtectedCopycat;
+    partnerProtectedCopycat.add_piece(PieceType::King, Color::White,
+                                      Position::square_from_name("a1"));
+    const int partnerAngel = partnerProtectedCopycat.add_piece(
+      PieceType::Angel, Color::White, Position::square_from_name("b2"));
+    const int unprotectedHalf = partnerProtectedCopycat.add_piece(
+      PieceType::Copycat, Color::White, Position::square_from_name("c3"));
+    const int protectedPartner = partnerProtectedCopycat.piece(unprotectedHalf).link;
+    partnerProtectedCopycat.add_piece(PieceType::Rook, Color::Black,
+                                      Position::square_from_name("c8"));
+    partnerProtectedCopycat.add_piece(PieceType::King, Color::Black,
+                                      Position::square_from_name("h10"));
+    Undo protectPartnerOnly;
+    expect(partnerProtectedCopycat.make_move(
+             require_move(partnerProtectedCopycat, "b2&f3"),
+             protectPartnerOnly),
+           "Angel can attach specifically to the other CopyCat half");
+    Undo killUnprotectedHalf;
+    expect(partnerProtectedCopycat.make_move(
+             require_move(partnerProtectedCopycat, "c8-c3"),
+             killUnprotectedHalf),
+           "the unprotected CopyCat half can be struck first");
+    expect(!partnerProtectedCopycat.piece(unprotectedHalf).alive &&
+             !partnerProtectedCopycat.piece(protectedPartner).alive &&
+             partnerProtectedCopycat.piece(partnerAngel).alive &&
+             !partnerProtectedCopycat.piece(partnerAngel).onBoard,
+           "linked death bypasses the partner's Angel and never creates a singleton CopyCat");
+
     Position hiddenPrimary;
     hiddenPrimary.add_piece(PieceType::King, Color::White,
                             Position::square_from_name("a1"));
@@ -1704,6 +1750,133 @@ void test_native_fisherman_rays() {
              Position::square_from_name("d5"),
            "Fisherman pull through a hidden Ghost leaves that Ghost untouched");
 
+    Position forcedBlindCollision;
+    std::string forcedBlindError;
+    expect(forcedBlindCollision.set_upn(
+             "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+             "king,w,d1,0,0,0,0,0,1,-1,1,-1,0;"
+             "ghost,w,d7,0,0,0,0,0,0,-1,1,-1,0;"
+             "fisherman,b,d8,0,0,0,0,0,1,-1,1,-1,0;"
+             "king,b,d10,0,0,0,0,0,1,-1,1,-1,0",
+             &forcedBlindError),
+           "Fisherman forced hidden-collision fixture parses: " +
+             forcedBlindError);
+    int pulledKing = Position::NoPiece;
+    int collisionGhost = Position::NoPiece;
+    for (int candidate = 0; candidate < forcedBlindCollision.piece_count(); ++candidate) {
+        if (forcedBlindCollision.piece(candidate).type == PieceType::King &&
+            forcedBlindCollision.piece(candidate).color == Color::White)
+            pulledKing = candidate;
+        if (forcedBlindCollision.piece(candidate).type == PieceType::Ghost)
+            collisionGhost = candidate;
+    }
+    Undo forcedBlindPull;
+    expect(forcedBlindCollision.make_move(
+             require_move(forcedBlindCollision, "d8!d1"), forcedBlindPull),
+           "Fisherman can pull a character into its own hidden Ghost");
+    expect(pulledKing != Position::NoPiece &&
+             collisionGhost != Position::NoPiece &&
+             !forcedBlindCollision.piece(pulledKing).alive &&
+             !forcedBlindCollision.piece(collisionGhost).alive,
+           "forced Fisherman collision dispatches death to both the dragged King and hidden Ghost");
+
+    Position protectedDraggedKing;
+    protectedDraggedKing.add_piece(PieceType::King, Color::White,
+                                    Position::square_from_name("d1"));
+    const int kingAngel = protectedDraggedKing.add_piece(
+      PieceType::Angel, Color::White, Position::square_from_name("a2"));
+    const int savedDraggedKing = protectedDraggedKing.piece_on(
+      Position::square_from_name("d1"));
+    const int doomedCollisionGhost = protectedDraggedKing.add_piece(
+      PieceType::Ghost, Color::White, Position::square_from_name("d7"));
+    protectedDraggedKing.piece(doomedCollisionGhost).visible = false;
+    protectedDraggedKing.add_piece(PieceType::Fisherman, Color::Black,
+                                    Position::square_from_name("d8"));
+    protectedDraggedKing.add_piece(PieceType::King, Color::Black,
+                                    Position::square_from_name("h10"));
+    Undo attachKingAngel;
+    expect(protectedDraggedKing.make_move(
+             require_move(protectedDraggedKing, "a2&d1"), attachKingAngel),
+           "Angel can protect the character dragged into a hidden Ghost");
+    Undo pullProtectedKing;
+    expect(protectedDraggedKing.make_move(
+             require_move(protectedDraggedKing, "d8!d1"), pullProtectedKing),
+           "Fisherman collision invokes the dragged character's Angel callback");
+    expect(protectedDraggedKing.piece(savedDraggedKing).alive &&
+             protectedDraggedKing.piece(savedDraggedKing).square ==
+               Position::square_from_name("a2") &&
+             !protectedDraggedKing.piece(doomedCollisionGhost).alive &&
+             !protectedDraggedKing.piece(kingAngel).alive,
+           "dragged King Angel rescue does not suppress the Ghost's independent death");
+
+    Position protectedCollisionGhost;
+    const int doomedDraggedKing = protectedCollisionGhost.add_piece(
+      PieceType::King, Color::White, Position::square_from_name("d1"));
+    const int ghostAngel = protectedCollisionGhost.add_piece(
+      PieceType::Angel, Color::White, Position::square_from_name("a2"));
+    const int savedCollisionGhost = protectedCollisionGhost.add_piece(
+      PieceType::Ghost, Color::White, Position::square_from_name("d7"));
+    protectedCollisionGhost.piece(savedCollisionGhost).visible = false;
+    protectedCollisionGhost.add_piece(PieceType::Jester, Color::White,
+                                       Position::square_from_name("b1"));
+    protectedCollisionGhost.add_piece(PieceType::Fisherman, Color::Black,
+                                       Position::square_from_name("d8"));
+    protectedCollisionGhost.add_piece(PieceType::King, Color::Black,
+                                       Position::square_from_name("h10"));
+    Undo attachGhostAngel;
+    expect(protectedCollisionGhost.make_move(
+             require_move(protectedCollisionGhost, "a2&d7"),
+             attachGhostAngel),
+           "Angel can protect the hidden Ghost in a Fisherman collision");
+    Undo pullIntoProtectedGhost;
+    expect(protectedCollisionGhost.make_move(
+             require_move(protectedCollisionGhost, "d8!d1"),
+             pullIntoProtectedGhost),
+           "Fisherman collision invokes the hidden Ghost's Angel callback");
+    expect(!protectedCollisionGhost.piece(doomedDraggedKing).alive &&
+             protectedCollisionGhost.piece(savedCollisionGhost).alive &&
+             protectedCollisionGhost.piece(savedCollisionGhost).square ==
+               Position::square_from_name("a2") &&
+             !protectedCollisionGhost.piece(ghostAngel).alive,
+           "Ghost Angel rescue does not suppress the dragged King's independent death");
+
+    Position explosiveCollision;
+    explosiveCollision.add_piece(PieceType::King, Color::White,
+                                  Position::square_from_name("a1"));
+    const int pulledBomb = explosiveCollision.add_piece(
+      PieceType::Bomb, Color::White, Position::square_from_name("d1"));
+    const int explodedGhost = explosiveCollision.add_piece(
+      PieceType::Ghost, Color::White, Position::square_from_name("d7"));
+    explosiveCollision.piece(explodedGhost).visible = false;
+    const int explodedFisherman = explosiveCollision.add_piece(
+      PieceType::Fisherman, Color::Black, Position::square_from_name("d8"));
+    explosiveCollision.add_piece(PieceType::King, Color::Black,
+                                  Position::square_from_name("h10"));
+    explosiveCollision.set_side_to_move(Color::Black);
+    Undo pullBombIntoGhost;
+    expect(explosiveCollision.make_move(
+             require_move(explosiveCollision, "d8!d1"), pullBombIntoGhost),
+           "Fisherman can drag a Bomb into a hidden Ghost collision");
+    expect(!explosiveCollision.piece(pulledBomb).alive &&
+             !explosiveCollision.piece(explodedGhost).alive &&
+             !explosiveCollision.piece(explodedFisherman).alive,
+           "dragged Bomb callback explodes the Ghost and adjacent Fisherman");
+
+    Position forcedBlindThreat;
+    expect(forcedBlindThreat.set_upn(
+             "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+             "king,w,d1,0,0,0,0,0,1,-1,1,-1,0;"
+             "ghost,w,d7,0,0,0,0,0,0,-1,1,-1,0;"
+             "fisherman,b,d8,0,0,0,0,0,1,-1,1,-1,0;"
+             "king,b,d10,0,0,0,0,0,1,-1,1,-1,0",
+             &forcedBlindError),
+           "Fisherman forced-collision check fixture parses: " +
+             forcedBlindError);
+    forcedBlindThreat.add_piece(PieceType::Pawn, Color::White,
+                                Position::square_from_name("a2"));
+    expect(!forcedBlindThreat.move_from_string("a2-a3").has_value(),
+           "a Fisherman pull that would drag the King into its own hidden Ghost filters unrelated replies as check");
+
     Position giantPull;
     giantPull.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     giantPull.add_piece(PieceType::King, Color::Black, Position::square_from_name("h8"));
@@ -1862,9 +2035,17 @@ void test_ghost_visibility_transitions() {
     const int rayGhost = hiddenRay.add_piece(PieceType::Ghost, Color::Black,
                                              Position::square_from_name("d4"));
     hiddenRay.piece(rayGhost).visible = false;
-    expect(!hiddenRay.move_from_string("c4-d4").has_value() &&
+    expect(hiddenRay.move_from_string("c4-d4").has_value() &&
            hiddenRay.move_from_string("c4-e4").has_value(),
-           "an unseen opposing ghost is unavailable but transparent to a sliding ray");
+           "an unseen opposing Ghost is a legal blind endpoint and transparent to a sliding ray");
+    Undo blindRookCapture;
+    expect(hiddenRay.make_move(
+             require_move(hiddenRay, "c4-d4"), blindRookCapture),
+           "an ordinary slider may enter an apparently empty enemy Ghost cell");
+    expect(!hiddenRay.piece(rayGhost).alive &&
+             hiddenRay.piece_on(Position::square_from_name("d4")) !=
+               Position::NoPiece,
+           "the ordinary slider survives while the hidden enemy Ghost is captured");
 
     Position friendlyHiddenRay;
     friendlyHiddenRay.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
@@ -1886,6 +2067,86 @@ void test_ghost_visibility_transitions() {
     hiddenDiagonal.piece(diagonalGhost).visible = false;
     expect(!hiddenDiagonal.move_from_string("d4-e5").has_value(),
            "a pawn cannot deliberately capture an unseen ghost diagonally");
+
+    struct BlindCaptureCase {
+        PieceType type;
+        const char* from;
+        const char* to;
+        bool actorSurvives;
+        bool ghostSurvives;
+    };
+    const std::array<BlindCaptureCase, 11> ordinaryBlindCaptures = {{
+      {PieceType::Queen, "c4", "d4", true, false},
+      {PieceType::Rook, "c4", "d4", true, false},
+      {PieceType::Bishop, "c3", "d4", true, false},
+      {PieceType::Knight, "c3", "d5", true, false},
+      {PieceType::Ninja, "c3", "d4", true, false},
+      {PieceType::Turtle, "c3", "d3", true, false},
+      {PieceType::Penguin, "c3", "d4", false, false},
+      {PieceType::Ghost, "c3", "d4", true, false},
+      {PieceType::Dragon, "c3", "d4", true, false},
+      {PieceType::Bomb, "c3", "d3", false, false},
+      {PieceType::Parasite, "c3", "d4", false, true},
+    }};
+    for (const BlindCaptureCase& fixture : ordinaryBlindCaptures) {
+        Position candidate;
+        candidate.add_piece(PieceType::King, Color::White,
+                            Position::square_from_name("a1"));
+        candidate.add_piece(PieceType::King, Color::Black,
+                            Position::square_from_name("h10"));
+        const int actor = candidate.add_piece(
+          fixture.type, Color::White,
+          Position::square_from_name(fixture.from));
+        const int targetGhost = candidate.add_piece(
+          PieceType::Ghost, Color::Black,
+          Position::square_from_name(fixture.to));
+        candidate.piece(targetGhost).visible = false;
+        const std::string moveText =
+          std::string(fixture.from) + '-' + fixture.to;
+        Undo blindCapture;
+        expect(candidate.make_move(require_move(candidate, moveText), blindCapture),
+               std::string(Position::type_name(fixture.type)) +
+                 " has its native hidden-Ghost endpoint");
+        expect(candidate.piece(actor).alive == fixture.actorSurvives &&
+                 candidate.piece(targetGhost).alive == fixture.ghostSurvives,
+               std::string(Position::type_name(fixture.type)) +
+                 " resolves its own death/capture callback on a hidden Ghost");
+        if (fixture.type == PieceType::Parasite)
+            expect(candidate.piece(targetGhost).color == Color::White,
+                   "Parasite possesses a hidden enemy Ghost instead of killing it");
+    }
+
+    Position royalBlindCapture;
+    const int blindKing = royalBlindCapture.add_piece(
+      PieceType::King, Color::White, Position::square_from_name("c3"));
+    royalBlindCapture.add_piece(PieceType::King, Color::Black,
+                                Position::square_from_name("h10"));
+    const int royalGhost = royalBlindCapture.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("d4"));
+    royalBlindCapture.piece(royalGhost).visible = false;
+    Undo royalBlindMove;
+    expect(royalBlindCapture.make_move(
+             require_move(royalBlindCapture, "c3-d4"), royalBlindMove) &&
+             royalBlindCapture.piece(blindKing).alive &&
+             !royalBlindCapture.piece(royalGhost).alive,
+           "King uses the ordinary native blind-capture path for a hidden Ghost");
+
+    Position jesterBlindCapture;
+    jesterBlindCapture.add_piece(PieceType::King, Color::White,
+                                 Position::square_from_name("a1"));
+    const int blindJester = jesterBlindCapture.add_piece(
+      PieceType::Jester, Color::White, Position::square_from_name("c3"));
+    jesterBlindCapture.add_piece(PieceType::King, Color::Black,
+                                 Position::square_from_name("h10"));
+    const int jesterGhost = jesterBlindCapture.add_piece(
+      PieceType::Ghost, Color::Black, Position::square_from_name("d4"));
+    jesterBlindCapture.piece(jesterGhost).visible = false;
+    Undo jesterBlindMove;
+    expect(jesterBlindCapture.make_move(
+             require_move(jesterBlindCapture, "c3-d4"), jesterBlindMove) &&
+             jesterBlindCapture.piece(blindJester).alive &&
+             !jesterBlindCapture.piece(jesterGhost).alive,
+           "Jester uses the same ordinary blind-capture path as the King silhouette");
 }
 
 void test_search_and_perft_regressions() {
@@ -2401,7 +2662,7 @@ void test_public_belief_state_core() {
     std::size_t cellWorlds = 0;
     for (const BeliefDecisionBucket& cell : forwardCells)
         cellWorlds += cell.worlds.size();
-    expect(forwardCells.size() > 1 &&
+    expect(forwardCells.size() == 1 &&
              forwardCells.size() == reverseCells.size() &&
              cellWorlds == worlds.size() &&
              std::equal(forwardCells.begin(), forwardCells.end(),
@@ -2417,7 +2678,7 @@ void test_public_belief_state_core() {
                          return left.upn() == right.upn();
                      });
                }),
-           "exact decision cells conserve worlds and ignore insertion order");
+           "hidden enemy Ghost coordinates do not leak through legal dots and decision cells conserve worlds");
     const auto renderedMarkers = [](const Position& position) {
         std::vector<std::string> markers;
         for (const Move& move : position.legal_moves())
@@ -2445,9 +2706,9 @@ void test_public_belief_state_core() {
     Search mergedSearch(1);
     const BeliefSearchResult mergedResult =
       mergedSearch.think_beliefs(forward, benchmarkLimits);
-    expect(!mergedResult.validInformationCell && !mergedResult.bestMove &&
-             mergedResult.nodes == 0 && mergedResult.beliefs == worlds.size(),
-           "search fails closed across privately distinguishable decision cells");
+    expect(mergedResult.validInformationCell && mergedResult.bestMove &&
+             mergedResult.beliefs == worlds.size(),
+           "exact search accepts the unified legal-dot cell for hidden enemy Ghost coordinates");
     Search mergedConservative(1);
     const BeliefSearchResult mergedConservativeResult =
       mergedConservative.think_beliefs(
@@ -2503,29 +2764,22 @@ void test_public_belief_state_core() {
     expect(!forward.set_disclosure({Color::Black, false}, &error),
            "belief disclosure cannot change underneath retained worlds");
 
-    std::string incompatibleMove;
     const std::vector<std::string> common = reverse.common_moves();
     const std::set<std::string> commonSet(common.begin(), common.end());
+    bool everyMoveIsCommon = true;
     for (const Position& world : worlds) {
         for (const Move& move : world.legal_moves()) {
             const std::string text = world.move_to_string(move);
             if (!commonSet.count(text)) {
-                incompatibleMove = text;
+                everyMoveIsCommon = false;
                 break;
             }
         }
-        if (!incompatibleMove.empty())
+        if (!everyMoveIsCommon)
             break;
     }
-    expect(!incompatibleMove.empty(),
-           "hidden-Ghost worlds expose a concrete non-common action");
-    const std::size_t incompatibleBefore = reverse.size();
-    const BeliefTransitionResult incompatible = reverse.apply_known(
-      incompatibleMove, &error);
-    expect(!incompatible.applied && incompatible.before == incompatibleBefore &&
-             incompatible.after == 0 && reverse.size() == incompatibleBefore &&
-             error.find("incompatible with") != std::string::npos,
-           "a known action never silently discards incompatible worlds");
+    expect(everyMoveIsCommon,
+           "ordinary apparent moves remain legal in every hidden-enemy-Ghost world");
 
     const std::size_t retained = forward.size();
     const BeliefTransitionResult applied = forward.apply_known("c1-d1", &error);
@@ -2557,14 +2811,14 @@ void test_public_belief_state_core() {
       blackToMove.successor_partitions(splitAction);
     expect(exactPartitions.before == blackToMove.size() &&
              exactPartitions.incompatible == 0 &&
-             exactPartitions.buckets.size() > 1,
-           "non-mutating successor API returns every private-dot bucket");
+             exactPartitions.buckets.size() == 1,
+           "opponent Ghost coordinates do not split the observer's successor legal dots");
     const BeliefSuccessorPartitions conservativePartitions =
       blackToMove.successor_partitions(splitAction, false);
     expect(conservativePartitions.before == blackToMove.size() &&
              conservativePartitions.incompatible == 0 &&
-             conservativePartitions.buckets.size() < exactPartitions.buckets.size(),
-           "search can retain all compatible worlds when legal dots are unavailable");
+             conservativePartitions.buckets.size() == exactPartitions.buckets.size(),
+           "exact and conservative successor observations agree without a legal-dot leak");
     const BeliefSuccessorPartitions adversarialPartitions =
       blackToMove.adversarial_successor_partitions(false);
     expect(adversarialPartitions.before == blackToMove.size() &&
@@ -2576,13 +2830,15 @@ void test_public_belief_state_core() {
                                     bucket.worlds.size() > 1;
                          }),
            "indistinguishable opponent actions share one observation bucket");
-    const std::size_t decisionBefore = blackToMove.size();
-    const BeliefTransitionResult decisionResult = blackToMove.apply_known(
+    PublicBeliefState appliedBlackToMove = blackToMove;
+    const std::size_t decisionBefore = appliedBlackToMove.size();
+    const BeliefTransitionResult decisionResult = appliedBlackToMove.apply_known(
       splitAction, &error);
-    expect(!decisionResult.applied && decisionResult.before == decisionBefore &&
-             decisionResult.after == 0 && decisionResult.observations > 1 &&
-             blackToMove.size() == decisionBefore,
-           "successor private legal-dot partitions fail closed without mutation");
+    expect(decisionResult.applied && decisionResult.before == decisionBefore &&
+             decisionResult.after == decisionBefore &&
+             decisionResult.observations == 1 &&
+             appliedBlackToMove.size() == decisionBefore,
+           "known successor retains every world when hidden Ghost squares do not alter legal dots");
 
     SearchLimits splitLimits;
     splitLimits.depth = 2;
@@ -2722,6 +2978,53 @@ void test_public_history_reconstruction() {
            "an invisible Ghost action advances the private cursor without "
            "collapsing the observer's information set");
 
+    PublicHistoryState preparedHiddenMove;
+    PublicHistoryState directHiddenMove;
+    expect(preparedHiddenMove.start(
+             hiddenGhost("w", "c3"), {Color::Black, false}, &error) &&
+             directHiddenMove.start(
+               hiddenGhost("w", "c3"), {Color::Black, false}, &error) &&
+             preparedHiddenMove.prepare_opponent_transition(&error) &&
+             preparedHiddenMove.apply_actual("c3-d3", &error) &&
+             directHiddenMove.apply_actual("c3-d3", &error),
+           "an idle-prepared hidden transition applies successfully: " + error);
+    const std::vector<Position> preparedWorlds =
+      preparedHiddenMove.beliefs().positions();
+    const std::vector<Position> directWorlds =
+      directHiddenMove.beliefs().positions();
+    expect(preparedWorlds.size() == directWorlds.size() &&
+             std::equal(preparedWorlds.begin(), preparedWorlds.end(),
+               directWorlds.begin(), [](const Position& left,
+                                        const Position& right) {
+                   return left.upn() == right.upn();
+               }),
+           "idle preparation preserves the exact observed successor belief");
+
+    const Position visibleRoyalMove = parse(
+      "w;king,w,a1;jester,w,b1;king,b,h10");
+    PublicHistoryState preparedVisibleMove;
+    PublicHistoryState directVisibleMove;
+    expect(preparedVisibleMove.start(
+             visibleRoyalMove, {Color::Black, false}, &error) &&
+             directVisibleMove.start(
+               visibleRoyalMove, {Color::Black, false}, &error) &&
+             preparedVisibleMove.prepare_opponent_transition(&error) &&
+             preparedVisibleMove.apply_actual("a1-a2", &error) &&
+             directVisibleMove.apply_actual("a1-a2", &error),
+           "an observation-filtered visible transition applies: " + error);
+    const std::vector<Position> preparedVisibleWorlds =
+      preparedVisibleMove.beliefs().positions();
+    const std::vector<Position> directVisibleWorlds =
+      directVisibleMove.beliefs().positions();
+    expect(preparedVisibleWorlds.size() == directVisibleWorlds.size() &&
+             std::equal(
+               preparedVisibleWorlds.begin(), preparedVisibleWorlds.end(),
+               directVisibleWorlds.begin(),
+               [](const Position& left, const Position& right) {
+                   return left.upn() == right.upn();
+               }),
+           "visible action filtering retains the exact full-partition belief");
+
     Position visibleGhost = hiddenGhost("w", "c3");
     visibleGhost.piece(1).visible = true;
     PublicBeliefState knownGhost({Color::Black, false});
@@ -2816,6 +3119,31 @@ void test_public_history_reconstruction() {
              mixedFactored.score == mixedOracle.score &&
              mixedFactored.bestMove == mixedOracle.bestMove,
            "general correlated tuples match arbitrary-material oracle policy");
+
+    PublicHistoryState tacticalGhostMaterial;
+    expect(tacticalGhostMaterial.start(parse(
+             "w;king,w,a1;rook,w,b2;queen,w,d4;king,b,e10;rook,b,h8;"
+             "pawn,b,e5;ghost,b,a9,0,0,0,0,0,0,-1,1,-1,0"),
+             {Color::White, false}, &error) &&
+             tacticalGhostMaterial.beliefs().size() == 72,
+           "mixed tactical Ghost fixture reconstructs its exact domain: " +
+             error);
+    SearchLimits tacticalOracleLimits;
+    tacticalOracleLimits.depth = 3;
+    tacticalOracleLimits.factoredBeliefs = false;
+    Search tacticalOracleSearch(16);
+    const BeliefSearchResult tacticalOracle =
+      tacticalOracleSearch.think_beliefs(
+        tacticalGhostMaterial.beliefs(), tacticalOracleLimits);
+    tacticalOracleLimits.factoredBeliefs = true;
+    Search tacticalFactoredSearch(16);
+    const BeliefSearchResult tacticalFactored =
+      tacticalFactoredSearch.think_beliefs(
+        tacticalGhostMaterial.beliefs(), tacticalOracleLimits);
+    expect(tacticalOracle.score == tacticalFactored.score &&
+             tacticalOracle.bestMove == tacticalFactored.bestMove,
+           "Ghost belief TT ordering cannot change the unrestricted exact "
+           "root result");
 
     const Position chronologicalRoyals = parse(
       "b;king,w,a1;jester,w,b1;jester,w,c1;king,b,h10");
@@ -3619,8 +3947,12 @@ void test_sniper_berserker_and_dragon() {
     const int hiddenGhost = hiddenLeap.add_piece(PieceType::Ghost, Color::Black,
                                                   Position::square_from_name("f5"));
     hiddenLeap.piece(hiddenGhost).visible = false;
-    expect(!hiddenLeap.move_from_string("d4-f5").has_value(),
-           "ordinary leapers cannot deliberately target an unrevealed Ghost");
+    Undo hiddenLeapCapture;
+    expect(hiddenLeap.make_move(
+             require_move(hiddenLeap, "d4-f5"), hiddenLeapCapture),
+           "an ordinary leaper may enter an apparently empty enemy Ghost cell");
+    expect(!hiddenLeap.piece(hiddenGhost).alive,
+           "the ordinary leaper captures the hidden enemy Ghost normally");
 
     Position dragon;
     dragon.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));

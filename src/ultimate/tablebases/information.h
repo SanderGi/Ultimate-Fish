@@ -135,6 +135,17 @@ struct InformationObservationKey {
   bool includeDecisionObservation,
   const std::vector<Move>* afterLegalMoves = nullptr);
 
+// Action-animation component of the structured transition key. This permits
+// exact history replay to discard actions that cannot match an already-known
+// observation before constructing their much larger resulting public views.
+[[nodiscard]] std::uint64_t compact_transition_action_key(
+  const Position& before, const Move& move, const Position& after,
+  const DisclosureContext& disclosure);
+
+[[nodiscard]] bool compact_transition_action_may_match(
+  const Position& before, const Move& move,
+  const DisclosureContext& disclosure, std::uint64_t expectedAction);
+
 // Return a collision-free, canonical description of everything visible to one
 // observer at a decision boundary.  Equal strings mean equal observations; the
 // function intentionally returns the complete serialization rather than a

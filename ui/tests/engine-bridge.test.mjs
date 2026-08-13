@@ -90,7 +90,7 @@ test("bridge exposes state, mate scores, results, and continuations", async () =
   const longTablebaseUpn = "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;win=-;king,w,c2,0,0,0,0,1,1,-1,1,-1,0;king,b,a1,0,0,0,0,1,1,-1,1,-1,0;bishop,w,h1,0,0,0,0,1,1,-1,1,-1,0;dragon,b,c1,0,0,0,0,1,1,-1,1,-1,0";
   const longTablebase = await post("/analyze", { upn: longTablebaseUpn, depth: 16 });
   assert.equal(longTablebase.scoreType, "mate");
-  assert.equal(longTablebase.score, 143);
+  assert.equal(longTablebase.score, -143);
   assert.equal(longTablebase.depth, 1);
 
   const captured = await post("/move", { upn: mateUpn, move: "b2-b4" });
@@ -111,6 +111,16 @@ test("bridge exposes state, mate scores, results, and continuations", async () =
   assert.equal(secondAction.upn[0], "w");
   assert.ok(secondAction.engineMoves.length >= 1);
 
+});
+
+test("concrete analysis scores are positive for Ivory", async () => {
+  const onyxMateUpn = "b;king,w,b7;king,b,a10;queen,b,b9";
+  const onyxAnalysis = await post("/analyze", {
+    upn: onyxMateUpn, depth: 3,
+  });
+  assert.equal(onyxAnalysis.scoreType, "mate");
+  assert.equal(onyxAnalysis.score, -1);
+  assert.equal(onyxAnalysis.bestmove, "b9-b7");
 });
 
 test("bridge searches every public draft window", async () => {
@@ -157,6 +167,15 @@ test("history analysis forgets leaked Ghost cells and replays public observation
   });
   assert.equal(deployed.beliefs, 23);
 
+  const incrementallyAdvanced = await post("/history-state", {
+    initialUpn: ghostStart("b", "c3"),
+    moves: ["h10-g10", "c3-d4", "g10-f10"],
+    observer: "black", enemyKingKnown: false,
+  });
+  assert.equal(incrementallyAdvanced.upn[0], "w");
+  assert.equal(incrementallyAdvanced.ghostKnowledge.d4.known, false);
+  assert.ok(incrementallyAdvanced.ghostKnowledge.d4.candidates.includes("d4"));
+
   const analysisC3 = await post("/analyze-history", {
     initialUpn: ghostStart("b", "c3"), moves: [], observer: "black",
     enemyKingKnown: false, depth: 1,
@@ -168,6 +187,26 @@ test("history analysis forgets leaked Ghost cells and replays public observation
   assert.equal(analysisC3.bestmove, analysisF3.bestmove);
   assert.equal(analysisC3.score, analysisF3.score);
   assert.equal(analysisC3.beliefs, 75);
+  assert.equal(analysisC3.pvNotation[0], "Kg10");
+  assert.equal(analysisC3.publicPvNotation[0], "Kg10");
+
+  const replay = await post("/replay", {
+    initialUpn: ghostStart("b", "c3"), moves: ["h10-g10", "c3-d4"],
+  });
+  assert.equal(replay.upn[0], "b");
+  assert.deepEqual(replay.history.map((record) => ({
+    color: record.color,
+    move: record.move,
+    notation: record.notation,
+    publicNotation: record.publicNotation,
+    moveNumber: record.moveNumber,
+  })), [
+    { color: "black", move: "h10-g10", notation: "Kg10",
+      publicNotation: "Kg10", moveNumber: 1 },
+    { color: "white", move: "c3-d4", notation: "GHd4",
+      publicNotation: "GH", moveNumber: 2 },
+  ]);
+  assert.deepEqual(replay.history[1].history, ["h10-g10", "c3-d4"]);
 
   const computerC3 = await post("/computer-history", {
     initialUpn: ghostStart("b", "c3"), moves: [], player: "white",
@@ -273,10 +312,20 @@ test("history analysis forgets leaked Ghost cells and replays public observation
     depth: 1, movetime: 0,
   });
   assert.equal(computerBeliefs.engine.beliefs, 2);
-  assert.deepEqual(computerBeliefs.enemyKingCandidates, ["g10", "h10"]);
+  assert.equal(computerBeliefs.knowledgePending, true);
+  assert.ok(Array.isArray(computerBeliefs.moves));
+  assert.equal(computerBeliefs.result, "ongoing");
+  const hydratedComputerBeliefs = await post("/history-state", {
+    initialUpn: bothSidesAmbiguous,
+    moves: computerBeliefs.engineMoves,
+    observer: "white", enemyKingKnown: false,
+    enemyKingCandidates: ["h10", "g10"],
+  });
+  assert.deepEqual(
+    hydratedComputerBeliefs.enemyKingCandidates, ["g10", "h10"]);
 });
 
-test("history-preserving analysis scores terminal worlds and observer perspective", async () => {
+test("belief analysis scores are positive for Ivory", async () => {
   const matingUpn =
     "b;hm=3;fm=2;ep=-;cont=0;forced=-1;epv=-1;king,w,a1,0,0,0,0,1,1,-1,1,-1,0;jester,w,h1,0,0,0,0,0,1,-1,1,-1,0;rook,w,d1,0,0,0,0,0,1,-1,1,-1,0;rook,w,d8,0,0,0,0,1,1,-1,1,-1,0;ninja,w,b2,0,0,0,0,0,1,-1,1,-1,0;ghost,w,g2,0,0,0,0,0,0,-1,1,-1,0;rook,w,e1,0,0,0,0,0,1,-1,1,-1,0;pawn,w,f2,0,0,0,0,0,1,-1,1,-1,0;king,b,d10,0,0,0,0,0,1,-1,1,-1,0;giant,b,e9,0,0,0,0,0,1,-1,1,-1,0;giant,b,b9,0,0,0,0,0,1,-1,1,-1,0;prince,b,g10,0,0,0,0,0,1,-1,1,-1,0;prince,b,a10,0,0,0,0,0,1,-1,1,-1,0;checker,b,h10,0,0,0,0,0,1,-1,1,-1,0;giant,b,g8,0,0,0,0,0,1,-1,1,-1,0;prince,b,a9,0,0,0,0,0,1,-1,1,-1,0;knight,b,e8,0,0,0,0,0,1,-1,1,-1,0;checker,b,c8,0,0,0,0,0,1,-1,1,-1,0;checker,b,f8,0,0,0,0,0,1,-1,1,-1,0";
   const historyMate = await post("/analyze-history", {
@@ -285,7 +334,7 @@ test("history-preserving analysis scores terminal worlds and observer perspectiv
   });
   assert.ok(historyMate.beliefs > 1);
   assert.equal(historyMate.scoreType, "mate");
-  assert.equal(historyMate.score, -1);
+  assert.equal(historyMate.score, 1);
   assert.equal(historyMate.bestmove, null);
 
   const singletonForWinner = await post("/analyze-beliefs", {
@@ -340,7 +389,7 @@ test("aborting auto-analysis leaves the bridge responsive", async () => {
   assert.equal(health.ok, true);
 });
 
-test("bridge retains uncapped beliefs and analyzes one exact decision cell", async () => {
+test("bridge retains uncapped beliefs without false Ghost legal-dot partitions", async () => {
   const squares = [];
   for (let rank = 1; rank <= 10; rank += 1)
     for (const file of "abcdefgh") squares.push(`${file}${rank}`);
@@ -359,7 +408,7 @@ test("bridge retains uncapped beliefs and analyzes one exact decision cell", asy
     positions: worlds, observer: "white", enemyKingKnown: false, depth: 1,
   });
   assert.equal(conservative.beliefs, worlds.length);
-  assert.ok(conservative.decisionPartitions > 1);
+  assert.equal(conservative.decisionPartitions, 1);
   assert.equal(conservative.decisionMode, "merged-conservative");
   assert.equal(conservative.beliefMode, "history-preserving");
   assert.equal(conservative.searchPath, "correlated-tuples");
@@ -376,7 +425,7 @@ test("bridge retains uncapped beliefs and analyzes one exact decision cell", asy
     positions: worlds, observer: "white", enemyKingKnown: false,
     legalMarkers,
   });
-  assert.ok(observed.beliefs > 0 && observed.beliefs < worlds.length);
+  assert.equal(observed.beliefs, worlds.length);
   const exact = await post("/analyze-beliefs", {
     positions: worlds, observer: "white", enemyKingKnown: false,
     legalMarkers, depth: 1,
