@@ -75,6 +75,8 @@ int main(int argc, char** argv) {
                 solve.sourceSha256 = value();
             else if (option == "--model-sha256")
                 transition.modelSha256 = solve.modelSha256 = value();
+            else if (option == "--transition-model-sha256")
+                solve.transitionModelSha256 = value();
             else if (option == "--observation-sha256")
                 transition.observationSha256 =
                   solve.observationSha256 = value();

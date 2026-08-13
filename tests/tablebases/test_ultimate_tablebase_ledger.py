@@ -47,6 +47,41 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertTrue(stateful_draws <= {
             row.key for row in rows if row.status == "draw"})
 
+    def test_deferred_rows_exactly_match_campaign_exclusions(self):
+        """No closed K+K+1/K+K+2 class may hide behind DEFERRED.
+
+        Encode the requested campaign boundary independently of the ledger
+        implementation: Devil, Sludge, and Angel are not closed material, and
+        only Penguin, Mage, or Fisherman can split the simplified symmetric
+        Copycat compound within a four-model class.
+        """
+        dynamic = {"devil", "sludge", "angel"}
+        copycat_separators = {"penguin", "mage", "fisherman"}
+        expected_dynamic = set()
+        expected_copycat = set()
+        pieces = [piece.name for piece in ledger.plan.PIECES]
+        for first_index, first in enumerate(pieces):
+            if first in dynamic:
+                expected_dynamic.add(f"single:{first}")
+            for second in pieces[first_index:]:
+                names = {first, second}
+                target = None
+                if names & dynamic:
+                    target = expected_dynamic
+                elif "copycat" in names and names & copycat_separators:
+                    target = expected_copycat
+                if target is not None:
+                    target.add(ledger.material_key("same", first, second))
+                    target.add(ledger.material_key("opposed", first, second))
+
+        actual = {
+            row.key for row in ledger.entries(ledger.README.read_text())
+            if row.status == "deferred"
+        }
+        self.assertEqual(141, len(expected_dynamic))
+        self.assertEqual(6, len(expected_copycat))
+        self.assertEqual(expected_dynamic | expected_copycat, actual)
+
     def test_current_computation_hides_stale_result_and_hatches_plot(self):
         text = ledger.README.read_text()
         rows = ledger.apply_overrides(
@@ -59,6 +94,13 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         catalog = plot.OutcomeCatalog(summary)
         self.assertEqual("computing", catalog.together("ghost", "ghost").kind)
 
+    def test_sleeping_wrappers_are_not_marked_computing(self):
+        for row in ledger.entries(ledger.README.read_text()):
+            if "sleeping" in row.storage.lower():
+                self.assertNotEqual(
+                    "computing", row.status,
+                    f"{row.key} hatches the plot for a sleeping wrapper")
+
     def test_s3_only_certified_ledger_result_is_plotted(self):
         summary = plot.read_summary(ledger.README)
         result = summary["kjesterjesterk.uftb"]
@@ -68,6 +110,14 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         catalog = plot.OutcomeCatalog(summary)
         self.assertNotEqual(
             "unknown", catalog.together("jester", "jester").kind)
+
+    def test_hidden_material_is_never_certified_from_concrete_wdl(self):
+        for row in ledger.entries(ledger.README.read_text()):
+            if (row.status == "certified" and row.filename and
+                    ("jester" in row.filename or "ghost" in row.filename)):
+                self.assertTrue(
+                    row.result_kind.startswith("information"),
+                    f"{row.filename} published concrete hidden-information WDL")
 
     def test_computing_hatch_is_clipped_parallel_diagonal_lines(self):
         hatch = plot.diagonal_hatch(30, 20, 10, 1)

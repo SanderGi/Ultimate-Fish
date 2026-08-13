@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+
 using namespace Stockfish::Ultimate;
 
 namespace {

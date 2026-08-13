@@ -167,6 +167,14 @@ class Position {
     }
     [[nodiscard]] Continuation continuation() const { return continuation_; }
     [[nodiscard]] int forced_piece() const { return forcedPiece_; }
+    // Exact tablebase codecs use these only while constructing/probing a
+    // fully specified public substate. They deliberately expose no hidden
+    // information and reject piece/state combinations outside the native
+    // finite codec.
+    [[nodiscard]] bool apply_tablebase_substate(int id, PieceType logicalType,
+                                                std::uint32_t substate);
+    [[nodiscard]] std::optional<std::uint32_t> tablebase_substate(
+      int id, PieceType logicalType) const;
     [[nodiscard]] bool has_forced_action() const;
     [[nodiscard]] int en_passant_square() const { return enPassantSquare_; }
     [[nodiscard]] int en_passant_victim() const { return enPassantVictim_; }

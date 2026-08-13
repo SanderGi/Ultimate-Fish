@@ -8,6 +8,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -72,6 +73,30 @@ class ResultArchiveTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "extent/full-SHA"):
                 archive.authenticated_inventory(root, manifest, "example")
 
+    def test_runner_files_mapping_is_an_authenticated_inventory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            result = root / "work/results/example.ufiw"
+            result.parent.mkdir(parents=True)
+            result.write_bytes(b"exact result")
+            manifest = root / "work/artifact-manifest.json"
+            manifest.write_text(json.dumps({
+                "schema": "ultimate-ordinary-ghost-artifacts-v1",
+                "filename": "example.uftb",
+                "files": {"work/results/example.ufiw": {
+                    "bytes": result.stat().st_size,
+                    "sha256": digest(result.read_bytes()),
+                }},
+            }))
+            inventory = archive.authenticated_inventory(
+                root, manifest, "ordinary-ghost")
+            self.assertEqual(inventory["artifacts"], [{
+                "path": "work/results/example.ufiw",
+                "bytes": result.stat().st_size,
+                "sha256": digest(result.read_bytes()),
+            }])
+            self.assertNotIn("files", inventory["bindings"])
+
     def test_invalid_compression_level_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -96,6 +121,75 @@ class ResultArchiveTest(unittest.TestCase):
         self.assertEqual("private-bucket", bucket)
         self.assertEqual("ultimate/results/sha256/abc/result.tar.zst", key)
         self.assertEqual("s3://private-bucket/" + key, uri)
+
+    def test_result_restore_is_pinned_to_head_version(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            payload = base / "example.tar.zst"
+            payload.write_bytes(b"archive")
+            certificate = {"sha256": digest(b"archive"), "bytes": 7}
+            version = "exact-result-version"
+
+            def run(command: list[str], **kwargs: object) -> mock.Mock:
+                if command[1:3] == ["s3api", "get-object"]:
+                    Path(command[-1]).write_bytes(payload.read_bytes())
+                return mock.Mock(returncode=0)
+
+            heads = [
+                json.dumps({"Status": "Enabled"}),
+                json.dumps({
+                    "ContentLength": 7,
+                    "Metadata": {"sha256": certificate["sha256"],
+                                 "archive-schema": archive.SCHEMA},
+                    "VersionId": version,
+                }),
+            ]
+            with (mock.patch.object(archive.subprocess, "run",
+                                    side_effect=run) as mocked_run,
+                  mock.patch.object(archive.subprocess, "check_output",
+                                    side_effect=heads),
+                  mock.patch.object(archive, "verify_archive",
+                                    return_value={"archive_restore_residual": 0,
+                                                  "artifacts": 1})):
+                receipt = archive.upload_and_restore(
+                    payload, certificate, "s3://private-bucket/prefix",
+                    base / "verify")
+
+            get = mocked_run.call_args_list[-1].args[0]
+            self.assertEqual(get[1:3], ["s3api", "get-object"])
+            self.assertEqual(get[get.index("--version-id") + 1], version)
+            self.assertEqual(receipt["version_id"], version)
+
+    def test_certificate_restore_is_pinned_to_head_version(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            certificate = base / "certificate.json"
+            certificate.write_bytes(b"certificate")
+            version = "exact-certificate-version"
+
+            def run(command: list[str], **kwargs: object) -> mock.Mock:
+                if command[1:3] == ["s3api", "get-object"]:
+                    Path(command[-1]).write_bytes(certificate.read_bytes())
+                return mock.Mock(returncode=0)
+
+            head = json.dumps({
+                "ContentLength": certificate.stat().st_size,
+                "Metadata": {"sha256": digest(certificate.read_bytes()),
+                             "schema": archive.SCHEMA},
+                "VersionId": version,
+            })
+            with (mock.patch.object(archive.subprocess, "run",
+                                    side_effect=run) as mocked_run,
+                  mock.patch.object(archive.subprocess, "check_output",
+                                    return_value=head)):
+                receipt = archive.upload_certificate(
+                    certificate, "a" * 64, "s3://private-bucket/prefix",
+                    base / "verify")
+
+            get = mocked_run.call_args_list[-1].args[0]
+            self.assertEqual(get[1:3], ["s3api", "get-object"])
+            self.assertEqual(get[get.index("--version-id") + 1], version)
+            self.assertEqual(receipt["version_id"], version)
 
 
 if __name__ == "__main__":

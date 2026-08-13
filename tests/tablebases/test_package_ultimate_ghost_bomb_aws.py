@@ -109,6 +109,25 @@ class BombGhostResumeUnitTests(unittest.TestCase):
         self.assertEqual(rewritten[:4] + rewritten[5:],
                          command[:4] + command[5:])
 
+    def test_exact_solve_gets_an_authenticated_writable_transition_copy(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "preserved" / "kbombghostk"
+            source.parent.mkdir()
+            for index, suffix in enumerate(runner.shared.TRANSITION_SUFFIXES):
+                Path(f"{source}{suffix}").write_bytes(
+                    f"transition-{index}".encode())
+            command = ["solver", "--transition-prefix",
+                       "work/transitions/kbombghostk"]
+            target = runner.prepare_writable_transition_copy(
+                root, source, command)
+            for suffix in runner.shared.TRANSITION_SUFFIXES:
+                self.assertEqual(Path(f"{target}{suffix}").read_bytes(),
+                                 Path(f"{source}{suffix}").read_bytes())
+            Path(f"{target}.blocks").write_bytes(b"patched")
+            self.assertNotEqual(Path(f"{target}.blocks").read_bytes(),
+                                Path(f"{source}.blocks").read_bytes())
+
     def test_completed_measurement_requires_authenticated_zero_residual_proof(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

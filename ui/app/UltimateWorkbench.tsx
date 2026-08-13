@@ -10,6 +10,7 @@ import {
 } from "react";
 import PieceIcon from "./PieceIcon";
 import {
+  analysisPerspective,
   buildReplayBelief,
   concealGhost,
   disguiseJester,
@@ -1079,9 +1080,10 @@ export function UltimateWorkbench() {
     draftWindow?.player === playerSide &&
     draftWindow.action === "pick",
   );
-  // Analysis renders from the explicitly selected player perspective. The
-  // side to move remains the belief-search observer because only that mover
-  // receives the current legal-dot observation.
+  // The selected player controls both rendering and the reconstructed
+  // information set. Side to move controls only which color acts next; the
+  // history engine gives private legal-dot observations to that mover when it
+  // is also the selected observer.
   const displayObserver = playerSide;
   const opponentColor: Color = playerSide === "white" ? "black" : "white";
   const informationEnemyKingKnown =
@@ -1576,18 +1578,22 @@ export function UltimateWorkbench() {
     setEngineStatus("thinking");
     setEngineMessage("Searching…");
     try {
+      const perspective = analysisPerspective(
+        displayObserver,
+        historyContextPlayer,
+        {
+          enemyKingKnown: historyEnemyKingKnown,
+          enemyKingCandidates: historyEnemyKingCandidates ?? undefined,
+        },
+        {
+          enemyKingKnown: historyEngineEnemyKingKnown,
+          enemyKingCandidates: historyEngineEnemyKingCandidates ?? undefined,
+        },
+      );
       const payload = {
         initialUpn: historyRootUpn ?? upn,
         moves: selectedHistoryMoves,
-        observer: turn,
-        enemyKingKnown:
-          turn === historyContextPlayer
-            ? historyEnemyKingKnown
-            : historyEngineEnemyKingKnown,
-        enemyKingCandidates:
-          turn === historyContextPlayer
-            ? historyEnemyKingCandidates
-            : historyEngineEnemyKingCandidates,
+        ...perspective,
         initialDeploymentKnown: historyInitialDeploymentKnown,
         depth: analysisMaxDepth,
       };
@@ -1627,6 +1633,7 @@ export function UltimateWorkbench() {
     }
   }, [
     analysisMaxDepth,
+    displayObserver,
     historyEnemyKingCandidates,
     historyEnemyKingKnown,
     historyEngineEnemyKingCandidates,
@@ -1636,7 +1643,6 @@ export function UltimateWorkbench() {
     historyRootUpn,
     selectedHistoryMoves,
     streamEngineRequest,
-    turn,
     upn,
   ]);
 

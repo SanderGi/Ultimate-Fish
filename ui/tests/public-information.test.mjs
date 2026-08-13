@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  buildReplayBelief, concealGhost, disguiseJester, fadeGhost,
+  analysisPerspective, buildReplayBelief, concealGhost, disguiseJester,
+  fadeGhost,
   showKnowledgeStatus,
 } from "../app/public-information.mjs";
 
@@ -48,6 +49,34 @@ test("knowledge pills respect ownership outside analysis", () => {
   assert.equal(showKnowledgeStatus("play", "white", "black"), false);
   assert.equal(showKnowledgeStatus("draft", "black", "black"), true);
   assert.equal(showKnowledgeStatus("analysis", "white", "black"), true);
+});
+
+test("analysis belief follows the selected viewer, not the side to move", () => {
+  const ivory = {
+    enemyKingKnown: true,
+    enemyKingCandidates: ["d10"],
+  };
+  const onyx = {
+    enemyKingKnown: false,
+    enemyKingCandidates: ["c1", "e1"],
+  };
+
+  assert.deepEqual(
+    analysisPerspective("black", "white", ivory, onyx),
+    {
+      observer: "black",
+      enemyKingKnown: false,
+      enemyKingCandidates: ["c1", "e1"],
+    },
+  );
+  assert.deepEqual(
+    analysisPerspective("white", "white", ivory, onyx),
+    {
+      observer: "white",
+      enemyKingKnown: true,
+      enemyKingCandidates: ["d10"],
+    },
+  );
 });
 
 test("replayable beliefs retain both observers when the viewer changes", () => {

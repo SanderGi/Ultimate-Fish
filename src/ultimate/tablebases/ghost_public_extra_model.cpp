@@ -51,12 +51,14 @@ constexpr std::uint8_t Squares = Position::BoardSquares;
 }
 
 [[nodiscard]] ConcreteState horizontal_canonical(ConcreteState state) {
+#ifndef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
     if (state.whiteKing % Position::BoardFiles >= Position::BoardFiles / 2) {
         state.whiteKing = horizontal_reflection(state.whiteKing);
         state.blackKing = horizontal_reflection(state.blackKing);
         state.first = horizontal_reflection(state.first);
         state.second = horizontal_reflection(state.second);
     }
+#endif
     return state;
 }
 
@@ -94,6 +96,10 @@ void validate_material(const MaterialSpec& material) {
     // auxiliary; fail closed rather than guessing a future piece's encoding.
     if (action.kind == MoveKind::Pull)
         return true;
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+    if (action.kind == MoveKind::Normal && action.auxiliary != 0)
+        return true;
+#endif
     if (action.kind == MoveKind::Normal && action.auxiliary != 0)
         throw std::invalid_argument(
           "nonzero ordinary-move auxiliary needs a material action adapter");
@@ -104,6 +110,8 @@ struct LiveMaterial {
     int whiteKing = Position::NoSquare;
     int blackKing = Position::NoSquare;
     int extra = Position::NoSquare;
+    int extraId = Position::NoPiece;
+    std::uint8_t extraSubstate = 0;
     Color extraColor = Color::White;
     int ghost = Position::NoSquare;
     Color ghostColor = Color::White;
@@ -119,6 +127,11 @@ struct LiveMaterial {
         const PieceState& piece = position.piece(id);
         if (!piece.alive || !piece.onBoard)
             continue;
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+        if (piece.type == PieceType::CopycatClone &&
+            material.extraType == PieceType::Copycat)
+            continue;
+#endif
         ++result.live;
         if (piece.type == PieceType::King && piece.color == Color::White &&
             result.whiteKing == Position::NoSquare)
@@ -126,10 +139,13 @@ struct LiveMaterial {
         else if (piece.type == PieceType::King && piece.color == Color::Black &&
                  result.blackKing == Position::NoSquare)
             result.blackKing = piece.square;
-        else if (piece.type == material.extraType &&
+        else if ((piece.type == material.extraType ||
+                  (material.extraType == PieceType::Checker &&
+                   piece.type == PieceType::CheckerKing)) &&
                  piece.color == material.extraColor &&
                  result.extra == Position::NoSquare) {
             result.extra = piece.square;
+            result.extraId = id;
             result.extraColor = piece.color;
         }
         else if (piece.type == PieceType::Ghost &&
@@ -140,6 +156,14 @@ struct LiveMaterial {
         }
         else
             result.unexpected = true;
+    }
+    if (result.extraId != Position::NoPiece) {
+        const auto substate = position.tablebase_substate(
+          result.extraId, material.extraType);
+        if (!substate || *substate >= ExtraSubstateCount)
+            result.unexpected = true;
+        else
+            result.extraSubstate = static_cast<std::uint8_t>(*substate);
     }
     return result;
 }
@@ -158,6 +182,7 @@ struct LiveMaterial {
     result.whiteKing = static_cast<std::uint8_t>(live.whiteKing);
     result.blackKing = static_cast<std::uint8_t>(live.blackKing);
     result.ghostVisible = live.visible;
+    result.extraSubstate = live.extraSubstate;
     return with_piece_squares(result, material,
       static_cast<std::uint8_t>(live.extra),
       static_cast<std::uint8_t>(live.ghost));
@@ -248,10 +273,16 @@ std::uint32_t encode_index(const ConcreteState& source,
     if (!occupied_squares_distinct(state))
         throw std::invalid_argument(
           "one-Ghost public-extra placement overlaps a model");
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+    const std::uint32_t whiteRank = state.whiteKing;
+    constexpr std::uint32_t WhiteKingCount = Squares;
+#else
     const std::uint32_t whiteRank =
       (state.whiteKing / Position::BoardFiles) *
       (Position::BoardFiles / 2) +
       state.whiteKing % Position::BoardFiles;
+    constexpr std::uint32_t WhiteKingCount = Squares / 2;
+#endif
     const std::uint32_t blackRank = rank_excluding(
       state.blackKing, {state.whiteKing});
     const std::uint32_t firstRank = rank_excluding(
@@ -259,11 +290,14 @@ std::uint32_t encode_index(const ConcreteState& source,
     const std::uint32_t secondRank = rank_excluding(
       state.second, {state.whiteKing, state.blackKing, state.first});
     const std::uint32_t placement =
-      ((((static_cast<std::uint32_t>(state.side) * (Squares / 2) + whiteRank)
+      ((((static_cast<std::uint32_t>(state.side) * WhiteKingCount + whiteRank)
           * (Squares - 1) + blackRank)
          * (Squares - 2) + firstRank)
         * (Squares - 3) + secondRank);
-    return placement * 2 + (state.ghostVisible ? 1u : 0u);
+    if (state.extraSubstate >= ExtraSubstateCount)
+        throw std::invalid_argument("public-extra substate is out of range");
+    return (placement * ExtraSubstateCount + state.extraSubstate) * 2 +
+           (state.ghostVisible ? 1u : 0u);
 }
 
 ConcreteState decode_index(std::uint32_t index,
@@ -274,24 +308,33 @@ ConcreteState decode_index(std::uint32_t index,
           "one-Ghost public-extra state index is out of range");
     const bool visible = index % 2 != 0;
     index /= 2;
+    const std::uint8_t extraSubstate = static_cast<std::uint8_t>(
+      index % ExtraSubstateCount);
+    index /= ExtraSubstateCount;
     const std::uint32_t secondRank = index % (Squares - 3);
     index /= Squares - 3;
     const std::uint32_t firstRank = index % (Squares - 2);
     index /= Squares - 2;
     const std::uint32_t blackRank = index % (Squares - 1);
     index /= Squares - 1;
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+    const std::uint32_t whiteRank = index % Squares;
+    const Color side = static_cast<Color>(index / Squares);
+    const std::uint8_t whiteKing = static_cast<std::uint8_t>(whiteRank);
+#else
     const std::uint32_t whiteRank = index % (Squares / 2);
     const Color side = static_cast<Color>(index / (Squares / 2));
     const std::uint8_t whiteKing = static_cast<std::uint8_t>(
       (whiteRank / (Position::BoardFiles / 2)) * Position::BoardFiles +
       whiteRank % (Position::BoardFiles / 2));
+#endif
     const std::uint8_t blackKing = unrank_excluding(
       blackRank, {whiteKing});
     const std::uint8_t first = unrank_excluding(
       firstRank, {whiteKing, blackKing});
     const std::uint8_t second = unrank_excluding(
       secondRank, {whiteKing, blackKing, first});
-    return {side, whiteKing, blackKing, first, second, visible};
+    return {side, whiteKing, blackKing, first, second, extraSubstate, visible};
 }
 
 RoleState normalize_roles(const ConcreteState& state,
@@ -303,7 +346,8 @@ RoleState normalize_roles(const ConcreteState& state,
       ownerIsWhite ? state.whiteKing : state.blackKing,
       ownerIsWhite ? state.blackKing : state.whiteKing,
       extra_square(state, material), ghost_square(state, material),
-      state.ghostVisible, material.extra_owned_by_ghost_owner()};
+      state.extraSubstate, state.ghostVisible,
+      material.extra_owned_by_ghost_owner()};
 }
 
 ConcreteState denormalize_roles(const RoleState& state,
@@ -324,6 +368,7 @@ ConcreteState denormalize_roles(const RoleState& state,
         result.blackKing = state.ownerKing;
     }
     result.ghostVisible = state.ghostVisible;
+    result.extraSubstate = state.extraSubstate;
     return with_piece_squares(
       result, material, state.extra, state.ghost);
 }
@@ -331,7 +376,7 @@ ConcreteState denormalize_roles(const RoleState& state,
 Position make_position(const ConcreteState& state,
                        const MaterialSpec& material) {
     validate_material(material);
-    if (!occupied_squares_distinct(state))
+    if (!valid_concrete_world(state, material))
         throw std::invalid_argument(
           "cannot construct overlapping one-Ghost public-extra world");
     Position position;
@@ -340,8 +385,11 @@ Position make_position(const ConcreteState& state,
       PieceType::King, Color::White, state.whiteKing);
     const int blackKing = position.add_piece(
       PieceType::King, Color::Black, state.blackKing);
+    const PieceType representedExtra =
+      material.extraType == PieceType::Checker && (state.extraSubstate & 2u)
+        ? PieceType::CheckerKing : material.extraType;
     const int extra = position.add_piece(
-      material.extraType, material.extraColor,
+      representedExtra, material.extraColor,
       extra_square(state, material));
     const int ghost = position.add_piece(
       PieceType::Ghost, material.ghostColor,
@@ -352,9 +400,59 @@ Position make_position(const ConcreteState& state,
           "cannot construct one-Ghost public-extra world");
     for (const int id : {whiteKing, blackKing, extra, ghost})
         position.piece(id).moved = true;
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+    if (material.extraType == PieceType::Copycat) {
+        const int clone = position.piece(extra).link;
+        if (clone == Position::NoPiece)
+            throw std::runtime_error("Copycat public-extra clone is missing");
+        position.piece(clone).moved = true;
+    }
+#endif
     position.piece(ghost).visible = state.ghostVisible;
+    if (!position.apply_tablebase_substate(
+          extra, material.extraType, state.extraSubstate))
+        throw std::runtime_error("cannot apply public-extra substate");
     position.set_side_to_move(state.side);
     return position;
+}
+
+bool valid_concrete_world(const ConcreteState& state,
+                          const MaterialSpec& material) {
+    if (!occupied_squares_distinct(state))
+        return false;
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+    if (material.extraType == PieceType::Copycat) {
+        const std::uint8_t clone = horizontal_reflection(
+          extra_square(state, material));
+        if (clone == state.whiteKing || clone == state.blackKing ||
+            clone == ghost_square(state, material))
+            return false;
+    }
+#endif
+    return tablebase_substate_geometrically_valid(
+      material.extraType, state.whiteKing, state.blackKing,
+      extra_square(state, material), ghost_square(state, material),
+      state.extraSubstate);
+}
+
+bool tablebase_substate_geometrically_valid(
+  PieceType type, std::uint8_t whiteKing, std::uint8_t blackKing,
+  std::uint8_t extra, std::uint8_t other, std::uint32_t substate) {
+    if (type != PieceType::Penguin)
+        return true;
+    if (substate >= 8)
+        return false;
+    const auto adjacent = [](std::uint8_t first, std::uint8_t second) {
+        return std::abs(int(first % Position::BoardFiles) -
+                        int(second % Position::BoardFiles)) <= 1 &&
+               std::abs(int(first / Position::BoardFiles) -
+                        int(second / Position::BoardFiles)) <= 1;
+    };
+    std::uint32_t available = 0;
+    if (adjacent(extra, whiteKing)) available |= 1u;
+    if (adjacent(extra, blackKing)) available |= 2u;
+    if (adjacent(extra, other)) available |= 4u;
+    return (substate & ~available) == 0;
 }
 
 Position make_position(std::uint32_t index,

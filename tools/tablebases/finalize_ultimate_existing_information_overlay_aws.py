@@ -7,9 +7,11 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import struct
 import subprocess
 import tempfile
 import time
+import re
 
 import certify_ultimate_primary_jester_archive as certify
 import generate_ultimate_information_tablebases as generate
@@ -20,6 +22,61 @@ import update_ultimate_tablebase_ledger as ledger
 ROOT = Path(__file__).resolve().parents[2]
 README = ROOT / "tablebases/README.md"
 PLOT = ROOT / "tools/tablebases/plot_ultimate_tablebases.py"
+
+ARBITRARY_FORMATS = {
+    b"UFGX2\0\0\0": (988, 148, 156, 220, 860, 924,
+                         b"fresh-maximal-public-view-v2:reciprocal-bishop-ghost", None),
+    b"UFGD1\0\0\0": (1248, 152, 160, 288, 1120, 1184,
+                         b"fresh-maximal-public-view-v2:dragon-ghost-generic", 32),
+    b"UFGB1\0\0\0": (1248, 152, 160, 288, 1120, 1184,
+                         b"fresh-maximal-public-view-v2:bomb-ghost-generic", 32),
+    b"UFGF1\0\0\0": (1056, 152, 160, 288, 928, 992,
+                         b"fresh-maximal-public-view-v2:fisherman-ghost-generic", 32),
+    b"UFMG1\0\0\0": (1056, 152, 160, 288, 928, 992,
+                         b"fresh-maximal-public-view-v2:mage-ghost-generic", 32),
+    b"UFGP1\0\0\0": (1248, 152, 160, 288, 1120, 1184,
+                         b"fresh-maximal-public-view-v2:parasite-ghost-generic", 32),
+    b"UFGI1\0\0\0": (1248, 152, 160, 288, 1120, 1184,
+                         b"fresh-maximal-public-view-v2:giant-anchor-v2-ghost", 32),
+}
+
+RECIPROCAL_FIXED_RE = re.compile(
+    r"^reciprocal_ghost_extra_iteration \d+ bdd_nodes \d+ "
+    r"changed_owner (?P<owner>\d+) changed_observer (?P<observer>\d+) "
+    r"changed_visible (?P<visible>\d+) .*$")
+RECIPROCAL_CERTIFICATE_RE = re.compile(
+    r"^reciprocal_bishop_ghost_certificate "
+    r"dual_force_residual (?P<dual>\d+) "
+    r"structural_residual (?P<structural>\d+) "
+    r"singleton_residual (?P<singleton>\d+) .*$")
+
+
+def validate_arbitrary(path: Path, source: str, model: str,
+                       opposing: bool) -> None:
+    """Verify a restored arbitrary-belief sidecar without local model drift."""
+    payload = path.read_bytes()
+    format_ = ARBITRARY_FORMATS.get(payload[:8])
+    if format_ is None:
+        raise ValueError("unsupported arbitrary sidecar format")
+    (header_bytes, payload_offset, source_offset, model_offset,
+     payload_sha_offset, semantics_offset, semantics,
+     orientation_offset) = format_
+    if (len(payload) < header_bytes or
+            struct.unpack_from("<I", payload, 12)[0] != header_bytes or
+            payload[source_offset:source_offset + 64].decode() != source or
+            payload[model_offset:model_offset + 64].decode() != model or
+            payload[semantics_offset:semantics_offset + 64].rstrip(b"\0") !=
+                semantics or
+            (orientation_offset is not None and
+             struct.unpack_from("<I", payload, orientation_offset)[0] !=
+                int(opposing))):
+        raise ValueError("arbitrary sidecar header binding residual")
+    payload_bytes = struct.unpack_from("<Q", payload, payload_offset)[0]
+    body = payload[header_bytes:]
+    if (len(body) != payload_bytes or
+            hashlib.sha256(body).hexdigest().encode() !=
+                payload[payload_sha_offset:payload_sha_offset + 64]):
+        raise ValueError("arbitrary sidecar payload residual")
 
 
 def aws(*arguments: str) -> str:
@@ -58,6 +115,19 @@ def remote_script(args: argparse.Namespace) -> str:
         unit_gate = f"""test "$(systemctl show {args.unit} -p ActiveState --value)" = inactive
 test "$(systemctl show {args.unit} -p Result --value)" = success
 """
+    arbitrary_gate = ""
+    archive_members = f"{stem}.ufiw {stem}.proof.log"
+    arbitrary_binding = ""
+    metadata = "sha256=$archive_sha,overlay-sha256=$overlay_sha,proof-sha256=$proof_sha"
+    if args.arbitrary:
+        arbitrary_gate = f"""arbitrary={args.arbitrary}
+test -s "$arbitrary"
+install -m 0644 "$arbitrary" "$stage/{stem}.arbitrary"
+arbitrary_sha=$(sha256sum "$arbitrary" | cut -d' ' -f1)
+"""
+        archive_members += f" {stem}.arbitrary"
+        arbitrary_binding = ' "$arbitrary_sha"'
+        metadata += ",arbitrary-sha256=$arbitrary_sha"
     return f"""set -euo pipefail
 overlay={args.overlay}
 proof={args.proof_log}
@@ -73,9 +143,9 @@ stage=$(dirname "$overlay")/finalize-{stem}
 mkdir -p "$stage"
 install -m 0644 "$overlay" "$stage/{stem}.ufiw"
 install -m 0644 "$proof" "$stage/{stem}.proof.log"
-archive=$(dirname "$overlay")/{stem}.existing-information.tar.zst
+{arbitrary_gate}archive=$(dirname "$overlay")/{stem}.existing-information.tar.zst
 tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C "$stage" \
-  -cf - {stem}.ufiw {stem}.proof.log | zstd -T0 -19 -q -o "$archive"
+  -cf - {archive_members} | zstd -T0 -19 -q -f -o "$archive"
 archive_sha=$(sha256sum "$archive" | cut -d' ' -f1)
 overlay_sha=$(sha256sum "$overlay" | cut -d' ' -f1)
 proof_sha=$(sha256sum "$proof" | cut -d' ' -f1)
@@ -89,15 +159,13 @@ if aws s3api head-object --bucket {args.bucket} --key "$key" \
   cp "$stage/head.json" "$stage/put.json"
 else
   aws s3api put-object --bucket {args.bucket} --key "$key" --body "$archive" \
-    --metadata sha256=$archive_sha,overlay-sha256=$overlay_sha,proof-sha256=$proof_sha \
+    --metadata {metadata} \
     --region {args.region} >"$stage/put.json"
 fi
-echo __PROOF__
-cat "$proof"
 echo __PUT__
 cat "$stage/put.json"
 echo __BINDINGS__
-printf '%s\n' "$archive_sha" "$overlay_sha" "$proof_sha" "$table_sha" "$binary_sha" "$bundle_sha" "$key"
+printf '%s\n' "$archive_sha" "$overlay_sha" "$proof_sha"{arbitrary_binding} "$table_sha" "$binary_sha" "$bundle_sha" "$key"
 """
 
 
@@ -113,23 +181,42 @@ def send(args: argparse.Namespace) -> str:
     return wait(args, command_id)
 
 
-def entry_from_proof(args: argparse.Namespace, proof: str,
-                     overlay: bytes) -> tuple[dict[str, object], dict[str, object]]:
-    record = dict(generate._records()[args.filename])
+def exact_proof_summaries(proof: str) -> dict[int, dict[str, int]]:
     summaries: dict[int, dict[str, int]] = {}
     fixed = False
+    reciprocal_fixed: tuple[int, int, int] | None = None
+    reciprocal_certificate = False
     for line in proof.splitlines():
         if match := generate.FIXED_RE.match(line):
             fixed = True
             if int(match["bellman"]) or int(match["rank"]):
                 raise ValueError("information fixed-point proof residual")
+        if match := RECIPROCAL_FIXED_RE.match(line):
+            reciprocal_fixed = tuple(
+                int(match[name]) for name in ("owner", "observer", "visible"))
+        if match := RECIPROCAL_CERTIFICATE_RE.match(line):
+            reciprocal_certificate = True
+            if any(int(match[name]) for name in
+                   ("dual", "structural", "singleton")):
+                raise ValueError("reciprocal information certificate residual")
         if match := generate.SUMMARY_RE.match(line):
             summaries[int(match["side"])] = {
                 key: int(value) for key, value in match.groupdict().items()
                 if key != "side"
             }
-    if not fixed or set(summaries) != {0, 1}:
+    if reciprocal_fixed is not None and any(reciprocal_fixed):
+        raise ValueError("reciprocal information fixed-point residual")
+    if not (fixed or (reciprocal_fixed is not None and
+                      reciprocal_certificate)) or \
+            set(summaries) != {0, 1}:
         raise ValueError("information proof lacks one exact fixed point and two sides")
+    return summaries
+
+
+def entry_from_proof(args: argparse.Namespace, proof: str,
+                     overlay: bytes) -> tuple[dict[str, object], dict[str, object]]:
+    record = dict(generate._records()[args.filename])
+    summaries = exact_proof_summaries(proof)
     states = information.states_per_side(record)
     source = overlay[32:96].decode()
     model = overlay[96:160].decode()
@@ -172,13 +259,13 @@ def entry_from_proof(args: argparse.Namespace, proof: str,
 
 
 def finalize(args: argparse.Namespace, output: str) -> dict[str, object]:
-    proof = section(output, "__PROOF__", "__PUT__")
     put = json.loads(section(output, "__PUT__", "__BINDINGS__"))
     bindings = output.split("__BINDINGS__\n", 1)[1].strip().splitlines()
-    if len(bindings) != 7 or not put.get("VersionId"):
+    if len(bindings) != (8 if args.arbitrary else 7) or not put.get("VersionId"):
         raise ValueError("existing information S3 binding residual")
-    (archive_sha, overlay_sha, proof_sha, table_sha, binary_sha,
-     bundle_sha, key) = bindings
+    archive_sha, overlay_sha, proof_sha = bindings[:3]
+    arbitrary_sha = bindings[3] if args.arbitrary else None
+    table_sha, binary_sha, bundle_sha, key = bindings[-4:]
     with tempfile.TemporaryDirectory() as directory:
         archive = Path(directory) / "result.tar.zst"
         subprocess.run([
@@ -196,10 +283,24 @@ def finalize(args: argparse.Namespace, output: str) -> dict[str, object]:
             ["tar", "-xOf", str(archive),
              f"{Path(args.filename).stem}.proof.log"],
             check=True, capture_output=True).stdout
-    if (hashlib.sha256(overlay).hexdigest() != overlay_sha or
-            hashlib.sha256(restored_proof).hexdigest() != proof_sha or
-            restored_proof.decode().rstrip("\n") != proof):
-        raise ValueError("fresh information archive restore residual")
+        if args.arbitrary:
+            arbitrary = subprocess.run(
+                ["tar", "-xOf", str(archive),
+                 f"{Path(args.filename).stem}.arbitrary"],
+                check=True, capture_output=True).stdout
+            arbitrary_path = Path(directory) / "arbitrary"
+            arbitrary_path.write_bytes(arbitrary)
+        if (hashlib.sha256(overlay).hexdigest() != overlay_sha or
+                hashlib.sha256(restored_proof).hexdigest() != proof_sha):
+            raise ValueError("fresh information archive restore residual")
+        if args.arbitrary:
+            if hashlib.sha256(arbitrary).hexdigest() != arbitrary_sha:
+                raise ValueError("fresh arbitrary sidecar restore residual")
+            record = generate._records()[args.filename]
+            validate_arbitrary(
+                arbitrary_path, args.expected_source_sha256,
+                args.expected_model_sha256, bool(record["opposing"]))
+    proof = restored_proof.decode().rstrip("\n")
     entry, _record = entry_from_proof(args, proof, overlay)
     certificate = {
         "schema": "ultimate-existing-ufiw-certificate-v1",
@@ -210,6 +311,7 @@ def finalize(args: argparse.Namespace, output: str) -> dict[str, object]:
                     "version_id": put["VersionId"]},
         "bindings": {"overlay_sha256": overlay_sha,
                      "proof_sha256": proof_sha,
+                     "arbitrary_sidecar_sha256": arbitrary_sha,
                      "source_table_full_sha256": table_sha,
                      "solver_binary_sha256": binary_sha,
                      "source_bundle_sha256": bundle_sha},
@@ -231,6 +333,8 @@ def finalize(args: argparse.Namespace, output: str) -> dict[str, object]:
     storage = (f"S3 information archive sha256:{archive_sha} VersionId "
                f"{put['VersionId']}; certificate sha256:{digest} VersionId "
                f"{cert_put['VersionId']}")
+    if arbitrary_sha:
+        storage += f"; arbitrary sidecar sha256:{arbitrary_sha}"
     value = {"result_kind": "information v2", "first": first,
              "second": second,
              "reachability": ledger.reachability(first, second),
@@ -248,6 +352,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--filename", required=True)
     parser.add_argument("--overlay", required=True)
     parser.add_argument("--proof-log", required=True)
+    parser.add_argument("--arbitrary",
+                        help="arbitrary-belief sidecar to preserve and verify")
     parser.add_argument("--source-table", required=True)
     parser.add_argument("--binary", required=True)
     parser.add_argument("--source-bundle", required=True)

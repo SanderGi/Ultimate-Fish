@@ -951,6 +951,11 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     if args.monitor_interval <= 0:
         raise RuntimeError("--monitor-interval must be positive")
+    if args.resume_existing:
+        raise RuntimeError(
+            "--resume-existing is disabled: the current disk-backed generator "
+            "truncates mapped scratch on open, so resource-stop files are "
+            "audit evidence rather than resumable checkpoints")
     if args.bootstrap_penguin:
         if any(value is not None for value in
                (args.wave, args.range_begin, args.range_end)):
@@ -997,7 +1002,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     work = args.work_directory.resolve()
-    if args.resume_existing:
+    if args.resume_existing:  # pragma: no cover - rejected before planning
         if not work.is_dir() or not any(work.iterdir()):
             raise RuntimeError("--resume-existing requires a retained work directory")
         bundle = work / "bundle"

@@ -15,9 +15,9 @@ deployment home zone and carry the exact first-pick royal candidate set into
 play; later-group Jesters are known while first-group silhouettes can remain
 ambiguous. The draft
 depth control sets the engine depth used by the shared adversarial ban/pick
-search. Analysis always draws Ghosts and uses the selected player side only to
-choose whether an unrevealed one is translucent; side to move controls search,
-not rendering.
+search. Analysis always draws Ghosts and uses the selected player side to choose
+both whether an unrevealed one is translucent and which player's public belief
+is analyzed. Side to move independently controls which color acts next.
 
 “Copy current belief” writes Ultimate Belief JSON v1. It stores the private
 initial UPN, the selected move-history prefix, whether that initial position

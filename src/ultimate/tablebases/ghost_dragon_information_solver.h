@@ -63,10 +63,30 @@ struct ProbeBindings {
 };
 
 struct ResourceEstimate {
-    std::uint64_t geometries = 492'960;
-    std::uint64_t concreteWorlds = 37'957'920;
-    std::uint64_t ownerRoots = 39'436'800;
-    std::uint64_t estimatedTransitionBytes = 16'000'000'000ULL;
+    std::uint64_t geometries = 492'960ULL *
+      GhostPublicExtra::ExtraSubstateCount
+#ifdef ULTIMATE_GHOST_EXTRA_HORIZONTAL_ONLY
+      * 2
+#endif
+      ;
+    std::uint64_t concreteWorlds = 37'957'920ULL *
+      GhostPublicExtra::ExtraSubstateCount
+#ifdef ULTIMATE_GHOST_EXTRA_HORIZONTAL_ONLY
+      * 2
+#endif
+      ;
+    std::uint64_t ownerRoots = 39'436'800ULL *
+      GhostPublicExtra::ExtraSubstateCount
+#ifdef ULTIMATE_GHOST_EXTRA_HORIZONTAL_ONLY
+      * 2
+#endif
+      ;
+    std::uint64_t estimatedTransitionBytes = 16'000'000'000ULL *
+      GhostPublicExtra::ExtraSubstateCount
+#ifdef ULTIMATE_GHOST_EXTRA_HORIZONTAL_ONLY
+      * 2
+#endif
+      ;
     std::uint64_t peakScratchBytes = 36ULL << 30;
     std::uint64_t peakResidentBytes = 20ULL << 30;
 };
@@ -86,6 +106,7 @@ void merge_transitions(const TransitionOptions& output,
                        const std::vector<std::string>& shards,
                        std::uint32_t expectedGeometries);
 void verify_transitions(const TransitionOptions& options);
+void rebind_transitions(const TransitionOptions& options);
 [[nodiscard]] ResourceEstimate resource_estimate();
 [[nodiscard]] SolveCertificate solve_exact(const SolveOptions& options);
 void exact_self_test(const std::string& scratchPrefix);

@@ -24,6 +24,23 @@ SPEC.loader.exec_module(runner)
 
 
 class ConcreteAwsRunnerTest(unittest.TestCase):
+    def test_resume_existing_fails_before_touching_audit_scratch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            work = root / "retained"
+            work.mkdir()
+            marker = work / "marker"
+            marker.write_text("retained\n")
+            with self.assertRaisesRegex(RuntimeError, "audit evidence"):
+                runner.main([
+                    "--work-directory", str(work),
+                    "--dependencies", str(root / "dependencies"),
+                    "--dependency-manifest", str(root / "manifest.json"),
+                    "--wave", "0", "--range-begin", "0", "--range-end", "1",
+                    "--resume-existing",
+                ])
+            self.assertEqual("retained\n", marker.read_text())
+
     def test_staged_source_inventory_has_a_closed_python_import_graph(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

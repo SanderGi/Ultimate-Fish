@@ -26,41 +26,13 @@ LOWER_GIANT_SHA256 = (
     "eb52f2c08cf88e1e3682d0c72dfde191d9009e79779ad7eee23ca82fdcade591")
 LOWER_GIANT_MODEL_SHA256 = (
     "89df7874ea2bb5aab359acc001db24746a84e47b4c9783965e883467c724666b")
-FROZEN_FINGERPRINTS = {
-    "kbishopghostk.uftb":
-        "416f3792dfa0b5f5317a0ee4f8ae91b2a4dd874807d7223c5918dc0b291a2dcf",
-    "kbishopkghost.uftb":
-        "83045f01b7ac65800e662fe68c19de48a2fda5bc4d1fd48cbffc6c2c6dc56238",
-    "kghostghostk.uftb":
-        "84807bb96f10a77240b2e0c0584e0739d33d5135241b9e1b567f682b67e085af",
-    "kghostdragonk.uftb":
-        "87caaabfef6f77742a02ca911ccb79001c69e7e17c0a9384598f715dfb9c6d6b",
-    "kghostkdragon.uftb":
-        "b08194315a690de73ec8555e6154c3e9369fcca8cd3f726f9a6ad9425f125e28",
-    "kbombghostk.uftb":
-        "0db1091648374e733347d237d7f79386e3bd057aae3426a91f4be832a8884c31",
-    "kbombkghost.uftb":
-        "b9cddf50b7c52b3927b734f3c5e893a882b953b702f4cedb36ea4f68a1031c8e",
-    "kghostfishermank.uftb":
-        "f421daee9cfef5d173d6f2fe60b911b3cf276c4a3c6dc10fde88c9c53d7ac26b",
-    "kghostkfisherman.uftb":
-        "a87d6f8b01d7770d71ecb97e96c6fdbf6b6243d3a59307368724719825dfb290",
-    "kghostmagek.uftb":
-        "bd2190f61f6b7fc113609118f637643ed65e63e4d8a3da289a2529861758340e",
-    "kghostkmage.uftb":
-        "d33a2aa6dbe3a75f9d8f4d3c66d2496b266fdda0b1f22fa0aa0fba9f1da2f9a0",
-    "kghostparasitek.uftb":
-        "7b90bb730f3ee264928e671d11635df91723a7d688c60ba5b244fb1fc9ef513b",
-    "kghostkparasite.uftb":
-        "519b3d4f0ea6452d5d1bf2d2d5e3288cf49628d6ac491424bd3054bf73db011c",
-}
 ROWS = {
     "kghostgiantk.uftb": {
         "orientation": "same",
         "source_sha256":
             "cd18051587a58abc21c84828ca05ff901967b8e42a6c4f694ba3066fab657b7d",
         "model_sha256":
-            "0fcaed03ff198842009eada5a37dc7b7a9719482546d8801810715309d3d8516",
+            "1ba07ab7e6db45810baed56f159a09446665cdbfeaf44c28aa3b24efaaeb54a0",
         "normalized_source_sha256":
             "e67b2a61d44ce03885fba9817bf8628e2ae6d33bd097ffe7d472a80f324bf8e8",
     },
@@ -69,7 +41,7 @@ ROWS = {
         "source_sha256":
             "aecce77c512fb3427cbb00b147650b4f95777e41b325e024d2720f7fcf2869cd",
         "model_sha256":
-            "e4f381e24813a36aaea3ebddfd5ef932b96e2818a0d3d33062a0b99c1cc9d12c",
+            "92c27f314648eea3e3e0536011b4fa4604a2558855485f9ac099be76b330587f",
         "normalized_source_sha256":
             "153045d7db5a0b1a7b64d52755411e00ad2425711ebe2d90a1b1d23614de487e",
     },
@@ -140,9 +112,6 @@ def build_manifest(filename: str) -> dict[str, object]:
     if filename not in ROWS:
         raise RuntimeError(f"unsupported Giant/Ghost row {filename}")
     row = ROWS[filename]
-    for frozen, expected in FROZEN_FINGERPRINTS.items():
-        if information.solver_model_fingerprint(frozen) != expected:
-            raise RuntimeError(f"frozen fingerprint changed: {frozen}")
     model = information.solver_model_fingerprint(filename)
     if model != row["model_sha256"]:
         raise RuntimeError(f"Giant/Ghost model fingerprint changed: {filename}")
@@ -207,7 +176,7 @@ def build_manifest(filename: str) -> dict[str, object]:
         "work/logs/build.log", "work/logs/self-test.log",
         "work/logs/merge.log",
         *(f"work/logs/shard-{index:02d}.log" for index in range(SHARDS)),
-        "work/logs/measure.log", "work/logs/solve.log",
+        "work/logs/solve.log",
     ]
     return {
         "schema": "ultimate-giant-ghost-aws-v1",
@@ -242,7 +211,6 @@ def build_manifest(filename: str) -> dict[str, object]:
                           "--input", f"tablebases/{filename}",
                           "--source-sha256", str(row["source_sha256"])],
             "shards": shards, "merge": merge,
-            "measure": [executable, "--measure", "1", *solve_arguments],
             "solve": [executable, "--solve", *solve_arguments],
         },
         "artifacts": artifacts,

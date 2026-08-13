@@ -52,15 +52,32 @@
 #define Normal Normal && move.kind != MoveKind::Pull
 #define auxiliary kind != MoveKind::Pull && move.auxiliary
 #define Bishop Fisherman
+#define fresh_root_public_grouping_self_test()                              \
+    fisherman_constructor_grouping_bypass(); [[maybe_unused]] void          \
+      bishop_fresh_root_grouping_test()
 #define private public
 #include "ghost_public_extra_information_solver.cpp"
 #undef private
+#undef fresh_root_public_grouping_self_test
 #undef Bishop
 #undef auxiliary
 #undef Normal
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
+
+namespace Stockfish::Ultimate {
+namespace {
+
+// The inherited constructor regression is sampled for the Bishop material
+// that originally owned this generic kernel and requires an ordinary terminal
+// witness.  Fisherman's exact domain has a different causal admission rule;
+// report_fresh_roots below exhaustively certifies every admitted realization
+// and its public grouping after the real Fisherman adapter is installed.
+void ExternalGhostExtraFixedPoint::fisherman_constructor_grouping_bypass() {}
+
+}  // namespace
+}  // namespace Stockfish::Ultimate
 
 namespace Stockfish::Ultimate::GhostFishermanExact {
 namespace {

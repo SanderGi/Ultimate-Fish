@@ -479,8 +479,10 @@ class JesterInformationOverlay {
                                       const std::string& expectedSourceSha256,
                                       const std::string& expectedModelSha256,
                                       PieceType secondary = PieceType::Count,
-                                      Color secondaryColor = Color::White)
+                                      Color secondaryColor = Color::White,
+                                      Color ownerColor = Color::White)
         : secondary_(secondary), secondaryColor_(secondaryColor),
+          ownerColor_(ownerColor),
           stateCount_(secondary == PieceType::Count
                         ? PlacementStateCount : FourPlacementStateCount) {
         if (secondary_ != PieceType::Count && secondary_ != PieceType::Queen)
@@ -501,10 +503,16 @@ class JesterInformationOverlay {
             std::memcpy(&value, header.data() + offset, sizeof(value));
             return value;
         };
+        // The dense K+Jester overlay keeps the historical placeholder color
+        // in word 20 even though there is no secondary piece.  Only a real
+        // secondary piece changes color under the Black-owner normalization.
+        const Color encodedSecondaryColor =
+          secondary_ == PieceType::Count || ownerColor_ == Color::White
+            ? secondaryColor_ : ~secondaryColor_;
         if (word(8) != 2 ||
             word(12) != static_cast<std::uint32_t>(PieceType::Jester) ||
             word(16) != static_cast<std::uint32_t>(secondary_) ||
-            word(20) != static_cast<std::uint32_t>(secondaryColor_) ||
+            word(20) != static_cast<std::uint32_t>(encodedSecondaryColor) ||
             word(24) != stateCount_ || word(28) != 1)
             throw std::runtime_error("lower Jester overlay has the wrong material class");
         const std::string sourceSha256(header.data() + 32, 64);
@@ -556,18 +564,34 @@ class JesterInformationOverlay {
             (secondary == Position::NoPiece))
             return std::nullopt;
         const Color owner = position.piece(jester).color;
-        if (owner != Color::White)
+        if (owner != ownerColor_)
             return std::nullopt;
+        const auto normalize_square = [&](int id) {
+            const std::uint8_t square = static_cast<std::uint8_t>(
+              position.piece(id).square);
+            return ownerColor_ == Color::White ? square
+              : static_cast<std::uint8_t>(
+                  (Position::BoardRanks - 1 -
+                   square / Position::BoardFiles) * Position::BoardFiles +
+                  square % Position::BoardFiles);
+        };
+        const Color normalizedSide = ownerColor_ == Color::White
+                                   ? position.side_to_move()
+                                   : ~position.side_to_move();
+        const int normalizedWhiteKing = ownerColor_ == Color::White
+                                      ? kings[0] : kings[1];
+        const int normalizedBlackKing = ownerColor_ == Color::White
+                                      ? kings[1] : kings[0];
         const std::uint32_t index = secondary_ == PieceType::Count
-          ? encode_placement({position.side_to_move(),
-                              position.piece(kings[0]).square,
-                              position.piece(kings[1]).square,
-                              position.piece(jester).square, 0})
-          : encode_four({position.side_to_move(),
-                         position.piece(kings[0]).square,
-                         position.piece(kings[1]).square,
-                         position.piece(jester).square,
-                         position.piece(secondary).square});
+          ? encode_placement({normalizedSide,
+                              normalize_square(normalizedWhiteKing),
+                              normalize_square(normalizedBlackKing),
+                              normalize_square(jester), 0})
+          : encode_four({normalizedSide,
+                         normalize_square(normalizedWhiteKing),
+                         normalize_square(normalizedBlackKing),
+                         normalize_square(jester),
+                         normalize_square(secondary)});
         return ConcreteWorld{index, owner};
     }
 
@@ -627,9 +651,46 @@ class JesterInformationOverlay {
    private:
     PieceType secondary_ = PieceType::Count;
     Color secondaryColor_ = Color::White;
+    Color ownerColor_ = Color::White;
     std::uint32_t stateCount_ = PlacementStateCount;
     std::vector<std::uint8_t> flags_;
 };
+
+void self_test_jester_overlay_color_symmetry() {
+    const auto build = [](Color owner) {
+        Position position;
+        position.clear();
+        if (owner == Color::White) {
+            position.add_piece(PieceType::King, Color::White, 0);
+            position.add_piece(PieceType::King, Color::Black, 79);
+            position.add_piece(PieceType::Jester, Color::White, 18);
+            position.set_side_to_move(Color::Black);
+        }
+        else {
+            position.add_piece(PieceType::King, Color::White, 7);
+            position.add_piece(PieceType::King, Color::Black, 72);
+            position.add_piece(PieceType::Jester, Color::Black, 58);
+            position.set_side_to_move(Color::White);
+        }
+        for (int id = 0; id < position.piece_count(); ++id)
+            position.piece(id).moved = true;
+        return position;
+    };
+    const JesterInformationOverlay white(
+      "", "", "", PieceType::Count, Color::White, Color::White);
+    const JesterInformationOverlay black(
+      "", "", "", PieceType::Count, Color::White, Color::Black);
+    const auto whiteWorld = white.concrete_world(build(Color::White));
+    const auto blackWorld = black.concrete_world(build(Color::Black));
+    if (!whiteWorld || !blackWorld ||
+        whiteWorld->index != blackWorld->index ||
+        whiteWorld->owner != Color::White ||
+        blackWorld->owner != Color::Black)
+        throw std::runtime_error(
+          "lower Jester overlay color-symmetry normalization residual");
+    std::cout << "information_lower_jester_color_symmetry index "
+              << whiteWorld->index << " residual 0\n";
+}
 
 const char* wdl_name(Wdl wdl) {
     switch (wdl) {
@@ -869,6 +930,7 @@ class TablebaseGenerator {
     }
 
     void self_test() const {
+        self_test_jester_overlay_color_symmetry();
         self_test_penguin_causal_codec();
         if (copycatOnly_ &&
             (encoded_side(0) != Color::White ||
@@ -918,6 +980,7 @@ class TablebaseGenerator {
             std::cout << "compoundcopycatsubstatecodecok samples " << samples
                       << " transition_samples " << transitionSamples
                       << " transitions " << checkedTransitions << '\n';
+            self_test_jester_royal_codec(samples);
             return;
         }
         if (fourModels_ && !copycatOnly_) {
@@ -932,45 +995,7 @@ class TablebaseGenerator {
                 if (make_position_at(index, position) && child_index(position) != index)
                     throw std::runtime_error("four-model substate codec is not bijective");
             }
-            if (attackerType_ == PieceType::Jester && !identicalExtras_) {
-                for (std::uint32_t sample = 0; sample < samples; ++sample) {
-                    const std::uint32_t index = static_cast<std::uint32_t>(
-                      std::uint64_t(stateCount_) * sample / samples);
-                    Position concrete, concreteAlternative;
-                    if (!make_position_at(index, concrete))
-                        continue;
-                    const std::uint32_t alternative =
-                      primary_jester_alternative(index);
-                    if (
-                        !make_position_at(alternative, concreteAlternative))
-                        throw std::runtime_error(
-                          "valid Jester world reflected to invalid geometry");
-                    Position physical, physicalAlternative;
-                    if (primary_jester_alternative(alternative) != index ||
-                        !make_primary_jester_world(index, false, physical) ||
-                        !make_primary_jester_world(
-                          index, true, physicalAlternative) ||
-                        child_index(physicalAlternative) != alternative)
-                        throw std::runtime_error(
-                          "Jester royal-swap codec is not an involution");
-                    if (physical.side_to_move() == Color::Black) {
-                        const DisclosureContext onyx{Color::Black, false};
-                        const bool compactEqual =
-                          primary_jester_view_key(physical) ==
-                            primary_jester_view_key(physicalAlternative) &&
-                          primary_jester_decision_markers(physical) ==
-                            primary_jester_decision_markers(physicalAlternative);
-                        const bool generalEqual =
-                          decision_observation_key(physical, onyx) ==
-                          decision_observation_key(physicalAlternative, onyx);
-                        if (compactEqual != generalEqual)
-                            throw std::runtime_error(
-                              "compact Jester legal-dot partition diverges from "
-                              "the public-information model");
-                    }
-                }
-                std::cout << "jesterroyalswapcodecok samples " << samples << '\n';
-            }
+            self_test_jester_royal_codec(samples);
             std::cout << "foursubstatecodecok samples " << samples << '\n';
             return;
         }
@@ -1768,10 +1793,11 @@ class TablebaseGenerator {
                                   const std::string& modelSha256,
                                   const std::string& overlayOutput,
                                   const std::string& scratchDirectory) const {
-        if (attackerType_ != PieceType::Jester || identicalExtras_ ||
-            compoundCopycat_ || copycatOnly_)
+        if (!has_single_ivory_jester())
             throw std::runtime_error(
               "exact primary-Jester solver requires exactly one Ivory Jester");
+        const Color ownerColor = jester_owner_color();
+        const Color observerColor = ~ownerColor;
 
         std::ifstream stream(input, std::ios::binary);
         if (!stream)
@@ -1867,10 +1893,10 @@ class TablebaseGenerator {
                 throw std::runtime_error("admitted royal assignment failed reconstruction");
             if (primary_jester_view_key(first) != primary_jester_view_key(second))
                 continue;
-            if (first.side_to_move() == Color::Black) {
+            if (first.side_to_move() == observerColor) {
                 if (primary_jester_decision_markers(first) !=
                     primary_jester_decision_markers(second)) {
-                    ++dotSplitPairs[static_cast<std::size_t>(Color::Black)];
+                    ++dotSplitPairs[static_cast<std::size_t>(observerColor)];
                     continue;
                 }
             }
@@ -1913,7 +1939,8 @@ class TablebaseGenerator {
                   << " black_pairs " << pairedSets[1]
                   << " white_singletons " << singletonSets[0]
                   << " black_singletons " << singletonSets[1]
-                  << " black_dot_split_pairs " << dotSplitPairs[1]
+                  << " observer_dot_split_pairs "
+                  << dotSplitPairs[static_cast<std::size_t>(observerColor)]
                   << " partition_residual 0\n" << std::flush;
 
         // The v1 solver incorrectly forced concrete index 492966 to share an
@@ -1971,10 +1998,11 @@ class TablebaseGenerator {
             throw std::runtime_error(
               "exact information solve requires 64-digit source/model SHA-256 bindings");
         const JesterInformationOverlay lower(
-          lowerOverlay, lowerSourceSha256, lowerModelSha256);
+          lowerOverlay, lowerSourceSha256, lowerModelSha256,
+          PieceType::Count, Color::White, ownerColor);
         const JesterInformationOverlay lowerPromotedQueen(
           lowerExtraOverlay, lowerExtraSourceSha256, lowerExtraModelSha256,
-          PieceType::Queen, secondaryColor_);
+          PieceType::Queen, secondaryColor_, ownerColor);
         const auto concrete_position_forces = [&](const Position& position,
                                                   Color target) {
             if (position.game_over()) {
@@ -2034,13 +2062,13 @@ class TablebaseGenerator {
                 for (std::size_t world = 0; world < worlds.size(); ++world) {
                     const auto winner = positions[world].winner();
                     const std::array<InformationToken, 1> child{{boolean_token(
-                      winner && *winner == Color::White)}};
+                      winner && *winner == ownerColor)}};
                     ivory->define_or(static_cast<std::uint32_t>(2 * pairId + world),
                                      child.data(), child.size());
                 }
                 const auto winner = positions.front().winner();
                 const std::array<InformationToken, 1> child{{boolean_token(
-                  winner && *winner == Color::Black)}};
+                  winner && *winner == observerColor)}};
                 onyx->define_or(static_cast<std::uint32_t>(pairId),
                                 child.data(), child.size());
                 continue;
@@ -2106,7 +2134,7 @@ class TablebaseGenerator {
                 if (!sameClass.empty()) {
                     if (sameClass.size() == 1)
                         groupOnyx = boolean_token(exact_index_forces(
-                          sameClass.front(), Color::Black));
+                          sameClass.front(), observerColor));
                     else if (sameClass.size() == 2) {
                         const std::int32_t pair = pairForIndex[sameClass.front()];
                         if (pair < 0 || pairForIndex[sameClass.back()] != pair) {
@@ -2142,7 +2170,7 @@ class TablebaseGenerator {
                         if (lower.concrete_world(*external.front()))
                             ++lowerSingletonProbes;
                         blackForces = concrete_position_forces(
-                          *external.front(), Color::Black);
+                          *external.front(), observerColor);
                     }
                     else if (external.size() == 2) {
                         const bool firstTerminal = external[0]->game_over();
@@ -2162,7 +2190,7 @@ class TablebaseGenerator {
                                   "one lower Jester observation mixes public terminal outcomes");
                             ++lowerTerminalGroups;
                             const auto winner = external[0]->winner();
-                            blackForces = winner && *winner == Color::Black;
+                            blackForces = winner && *winner == observerColor;
                         }
                         else {
                             // Preserve a continuing canonical royal pair as a
@@ -2178,7 +2206,7 @@ class TablebaseGenerator {
                                 throw std::runtime_error(
                                   "paired lower Jester successor has unsupported material");
                             lowerPairForces = lowerPairOverlay->pair_forces(
-                              *external[0], *external[1], Color::Black);
+                              *external[0], *external[1], observerColor);
                             blackForces = lowerPairForces->uninformed;
                         }
                     }
@@ -2195,12 +2223,12 @@ class TablebaseGenerator {
                         edge.ivory = ambiguous
                           ? white_variable(edge.child.index)
                           : boolean_token(exact_index_forces(
-                              edge.child.index, Color::White));
+                              edge.child.index, ownerColor));
                     }
                     else if (lowerPairForces) {
                         const auto actual = lowerPairOverlay->concrete_world(
                           edge.child.external);
-                        if (!actual || actual->owner != Color::White)
+                        if (!actual || actual->owner != ownerColor)
                             throw std::runtime_error(
                               "paired lower Jester edge lost its Ivory owner");
                         std::size_t member = lowerPairForces->indices.size();
@@ -2213,18 +2241,18 @@ class TablebaseGenerator {
                               "lower Jester edge is outside its exact pair");
                         if (lowerPairForces->owner[member] !=
                             concrete_position_forces(
-                              edge.child.external, Color::White))
+                              edge.child.external, ownerColor))
                             ++lowerOwnerOverlayDifferences;
                         edge.ivory = boolean_token(
                           lowerPairForces->owner[member]);
                     }
                     else
                         edge.ivory = boolean_token(concrete_position_forces(
-                          edge.child.external, Color::White));
+                          edge.child.external, ownerColor));
                 }
             }
 
-            if (positions.front().side_to_move() == Color::White) {
+            if (positions.front().side_to_move() == ownerColor) {
                 std::vector<InformationToken> blackChildren;
                 for (std::size_t world = 0; world < worlds.size(); ++world) {
                     std::vector<InformationToken> whiteChildren;
@@ -2329,8 +2357,8 @@ class TablebaseGenerator {
             bool onyxForces = false;
             if (pair < 0) {
                 ++initialSets[side];
-                ivoryForces = exact_index_forces(index, Color::White);
-                onyxForces = exact_index_forces(index, Color::Black);
+                ivoryForces = exact_index_forces(index, ownerColor);
+                onyxForces = exact_index_forces(index, observerColor);
             }
             else {
                 if (index == pairs[static_cast<std::size_t>(pair)])
@@ -2341,11 +2369,17 @@ class TablebaseGenerator {
             if (ivoryForces && onyxForces)
                 throw std::runtime_error(
                   "both teams have a sure win in one actual information state");
-            epistemicFlags[index] = 4 | (ivoryForces ? 1 : 0) |
-                                    (onyxForces ? 2 : 0);
+            const bool whiteForces = ownerColor == Color::White
+              ? ivoryForces : onyxForces;
+            const bool blackForces = ownerColor == Color::Black
+              ? ivoryForces : onyxForces;
+            epistemicFlags[index] = 4 | (whiteForces ? 1 : 0) |
+                                    (blackForces ? 2 : 0);
             const Color mover = encoded_side(index);
-            const bool moverWins = mover == Color::White ? ivoryForces : onyxForces;
-            const bool moverLoses = mover == Color::White ? onyxForces : ivoryForces;
+            const bool moverWins = mover == Color::White
+              ? whiteForces : blackForces;
+            const bool moverLoses = mover == Color::White
+              ? blackForces : whiteForces;
             const Wdl result = moverWins ? Wdl::Win
                              : moverLoses ? Wdl::Loss : Wdl::Draw;
             ++totals[side][static_cast<std::size_t>(result)];
@@ -2615,27 +2649,67 @@ class TablebaseGenerator {
     }
 
    private:
+    void self_test_jester_royal_codec(std::uint32_t samples) const {
+        if (!has_single_ivory_jester())
+            return;
+        for (std::uint32_t sample = 0; sample < samples; ++sample) {
+            const std::uint32_t index = static_cast<std::uint32_t>(
+              std::uint64_t(stateCount_) * sample / samples);
+            Position concrete, concreteAlternative;
+            if (!make_position_at(index, concrete))
+                continue;
+            const std::uint32_t alternative =
+              primary_jester_alternative(index);
+            if (!make_position_at(alternative, concreteAlternative))
+                throw std::runtime_error(
+                  "valid Jester world reflected to invalid geometry");
+            Position physical, physicalAlternative;
+            if (primary_jester_alternative(alternative) != index ||
+                !make_primary_jester_world(index, false, physical) ||
+                !make_primary_jester_world(index, true, physicalAlternative) ||
+                child_index(physicalAlternative) != alternative)
+                throw std::runtime_error(
+                  "Jester royal-swap codec is not an involution");
+            if (physical.side_to_move() == jester_observer_color()) {
+                const DisclosureContext observer{jester_observer_color(), false};
+                const bool compactEqual =
+                  primary_jester_view_key(physical) ==
+                    primary_jester_view_key(physicalAlternative) &&
+                  primary_jester_decision_markers(physical) ==
+                    primary_jester_decision_markers(physicalAlternative);
+                const bool generalEqual =
+                  decision_observation_key(physical, observer) ==
+                    decision_observation_key(physicalAlternative, observer);
+                if (compactEqual != generalEqual)
+                    throw std::runtime_error(
+                      "compact Jester legal-dot partition diverges from "
+                      "the public-information model");
+            }
+        }
+        std::cout << "jesterroyalswapcodecok samples " << samples << '\n';
+    }
+
     static void append_information_word(std::string& output, std::int32_t value) {
         const std::uint32_t word = static_cast<std::uint32_t>(value);
         for (unsigned shift = 0; shift < 32; shift += 8)
             output.push_back(static_cast<char>((word >> shift) & 0xff));
     }
 
-    static std::int32_t primary_jester_public_type(const PieceState& piece) {
-        if (piece.color == Color::White &&
+    std::int32_t primary_jester_public_type(const PieceState& piece) const {
+        if (piece.color == jester_owner_color() &&
             (piece.type == PieceType::King || piece.type == PieceType::Jester))
             return static_cast<std::int32_t>(PieceType::Count) + 1;
         return static_cast<std::int32_t>(piece.type);
     }
 
     // Collision-free compact projection specialized to the closed stateless
-    // one-primary-Jester strata.  These classes have no hidden Ghost, links,
-    // attachments, forced continuation, or en-passant state.  Avoiding the
+    // one-Jester strata. Copycat's derived mirror link is public and its IDs
+    // are stable across the paired royal assignments. Avoiding the
     // general relationship canonicalizer and text formatting saves billions
     // of allocations during the large exact solves while retaining a complete
     // fixed-width public serialization.
-    static std::string primary_jester_view_key(const Position& position,
-                                               bool* terminalOut = nullptr) {
+    std::string primary_jester_view_key(const Position& position,
+                                        bool* terminalOut = nullptr) const {
         using Record = std::array<std::int32_t, 13>;
         std::vector<Record> records;
         records.reserve(position.piece_count());
@@ -2643,7 +2717,7 @@ class TablebaseGenerator {
             const PieceState& piece = position.piece(id);
             if (!piece.alive)
                 continue;
-            if (piece.link != Position::NoPiece || piece.host != Position::NoPiece)
+            if (piece.host != Position::NoPiece)
                 throw std::runtime_error(
                   "compact Jester projection encountered a relationship piece");
             records.push_back({
@@ -2704,11 +2778,11 @@ class TablebaseGenerator {
     // mover-private rendered dot frontier. One dot is identified solely by
     // source/destination; auxiliary IDs, promotion choices, and internal kinds
     // sharing that dot remain intentionally indistinguishable.
-    static std::string primary_jester_decision_markers(
-      const Position& position) {
-        if (position.side_to_move() != Color::Black)
+    std::string primary_jester_decision_markers(
+      const Position& position) const {
+        if (position.side_to_move() != jester_observer_color())
             throw std::runtime_error(
-              "primary-Jester private dot projection called for non-Onyx turn");
+              "primary-Jester private dot projection called for informed turn");
         std::vector<std::uint32_t> markers;
         for (const Move& move : position.legal_moves()) {
             const std::uint32_t marker = move.kind == MoveKind::Pass ? 0u
@@ -2727,8 +2801,8 @@ class TablebaseGenerator {
         return output;
     }
 
-    static std::string primary_jester_transition_key(
-      const Position& before, const Move& move, const Position& after) {
+    std::string primary_jester_transition_key(
+      const Position& before, const Move& move, const Position& after) const {
         std::string output;
         output.reserve(32 + 13 * 4 * 4);
         append_information_word(output, 1);  // compact transition schema
@@ -2747,7 +2821,7 @@ class TablebaseGenerator {
         // legal-dot signature so its own successor belief is refined before
         // action selection. White never receives this private observation (and
         // already knows its own concrete royal identity in this stratum).
-        if (!terminal && after.side_to_move() == Color::Black) {
+        if (!terminal && after.side_to_move() == jester_observer_color()) {
             const std::string decision =
               primary_jester_decision_markers(after);
             append_information_word(output,
@@ -2908,10 +2982,19 @@ class TablebaseGenerator {
     }
 
     std::uint32_t primary_jester_alternative(std::uint32_t index) const {
-        if (attackerType_ != PieceType::Jester || identicalExtras_ ||
-            compoundCopycat_ || copycatOnly_)
+        if (!has_single_ivory_jester())
             throw std::runtime_error(
               "royal-assignment swap requires exactly one primary Jester");
+        if (compoundCopycat_) {
+            const std::uint32_t combinedSubstate = index % substates_;
+            FourState state = decode_compound_copycat(index / substates_);
+            if (secondaryColor_ == Color::White)
+                std::swap(state.whiteKing, state.second);
+            else
+                std::swap(state.blackKing, state.second);
+            return encode_compound_copycat(state) * substates_ +
+                   combinedSubstate;
+        }
         if (!fourModels_) {
             const State state = decode(index);
             return encode({state.side, state.attacker, state.blackKing,
@@ -2942,6 +3025,10 @@ class TablebaseGenerator {
 
     bool make_primary_jester_world(std::uint32_t representative, bool swapped,
                                    Position& position) const {
+        if (compoundCopycat_ && has_single_ivory_jester())
+            return make_position_at(swapped
+              ? primary_jester_alternative(representative) : representative,
+              position);
         if (!fourModels_)
             return make_position_at(swapped
               ? primary_jester_alternative(representative) : representative,
@@ -2988,6 +3075,27 @@ class TablebaseGenerator {
             return false;
         position.set_side_to_move(state.side);
         return true;
+    }
+
+    [[nodiscard]] bool has_single_ivory_jester() const {
+        const bool primary = attackerType_ == PieceType::Jester &&
+                             !identicalExtras_ && !compoundCopycat_ &&
+                             !copycatOnly_;
+        const bool copycatSecondary = compoundCopycat_ &&
+          secondaryType_ == PieceType::Jester;
+        return primary || copycatSecondary;
+    }
+
+    [[nodiscard]] Color jester_owner_color() const {
+        if (attackerType_ == PieceType::Jester)
+            return Color::White;
+        if (compoundCopycat_ && secondaryType_ == PieceType::Jester)
+            return secondaryColor_;
+        throw std::runtime_error("material has no single Jester owner");
+    }
+
+    [[nodiscard]] Color jester_observer_color() const {
+        return ~jester_owner_color();
     }
 
     static PieceType represented_type(PieceType type, std::uint32_t substate) {

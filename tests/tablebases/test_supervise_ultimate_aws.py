@@ -6,6 +6,7 @@ import base64
 import datetime as dt
 import importlib.util
 import json
+import os
 from pathlib import Path
 import shlex
 import subprocess
@@ -250,6 +251,118 @@ class SupervisionTests(unittest.TestCase):
             self.assertNotIn(
                 "checkpoint-00000", SUPERVISOR.canonical_json(result))
 
+    def test_busy_host_compacts_only_active_job_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            systemctl = root / "systemctl"
+            systemctl.write_text(
+                "#!/bin/sh\n"
+                "if [ \"$1\" = show ]; then\n"
+                "  if [ \"$2\" = ultimatefish-inactive.service ]; then\n"
+                "    printf '%s\\n' 'LoadState=loaded' 'ActiveState=inactive' "
+                "'Result=success' 'ExecMainStatus=0'\n"
+                "  else\n"
+                "    printf '%s\\n' 'LoadState=loaded' 'ActiveState=active' "
+                "'Result=success' 'ExecMainStatus=0' 'MemoryCurrent=1024' "
+                "'AllowedCPUs=0' 'CPUUsageNSec=1000000000'\n"
+                "  fi\n"
+                "elif [ \"$1\" = list-units ]; then\n"
+                "  printf '%s\\n' 'ultimatefish-active.service loaded active "
+                "running test'\n"
+                "fi\n")
+            systemctl.chmod(0o755)
+            diagnostic = root / "diagnostic.log"
+            diagnostic.write_text("x" * 2048)
+            checkpoint = root / "checkpoint"
+            checkpoint.write_text("checkpoint")
+            completion = root / "completion"
+            completion.write_text("completion")
+
+            active = {
+                "id": "active-0", "unit": "ultimatefish-active.service",
+                "checkpoint_paths": [str(checkpoint)],
+                "completion_paths": [str(completion)],
+                "source_bindings": [],
+                "diagnostic_sources": [{
+                    "kind": "file", "path": str(diagnostic),
+                    "max_bytes": 2048,
+                }],
+            }
+            jobs = []
+            for index in range(12):
+                job = json.loads(json.dumps(active))
+                job["id"] = f"active-{index}"
+                jobs.append(job)
+            inactive = json.loads(json.dumps(active))
+            inactive["id"] = "inactive"
+            inactive["unit"] = "ultimatefish-inactive.service"
+            jobs.append(inactive)
+            definition = config()["instances"][0]
+            path = f"{root}:{os.environ['PATH']}"
+            with mock.patch.dict(os.environ, {"PATH": path}):
+                observed = SUPERVISOR.local_probe(
+                    SUPERVISOR.remote_script(definition, jobs))
+
+            self.assertNotIn("probe_error", observed)
+            self.assertTrue(observed["probe_compacted"])
+            self.assertLessEqual(observed["probe_encoded_bytes"],
+                                 SUPERVISOR.REMOTE_OUTPUT_BUDGET)
+            active_records = observed["jobs"][:-1]
+            self.assertTrue(all(
+                record["unit"]["ActiveState"] == "active"
+                and record["checkpoints"] == []
+                and record["completion"] == []
+                and record["diagnostics"] == []
+                for record in active_records))
+            inactive_record = observed["jobs"][-1]
+            self.assertTrue(inactive_record["checkpoints"][0]["exists"])
+            self.assertTrue(inactive_record["completion"][0]["exists"])
+            self.assertEqual("ok", inactive_record["diagnostics"][0]["status"])
+
+    def test_stopped_job_history_retains_completion_when_compacted(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            systemctl = root / "systemctl"
+            systemctl.write_text(
+                "#!/bin/sh\n"
+                "if [ \"$1\" = show ]; then\n"
+                "  printf '%s\\n' 'LoadState=loaded' 'ActiveState=inactive' "
+                "'Result=success' 'ExecMainStatus=0'\n"
+                "fi\n")
+            systemctl.chmod(0o755)
+            diagnostic = root / "diagnostic.log"
+            diagnostic.write_text("x" * 2048)
+            checkpoint = root / "checkpoint"
+            checkpoint.write_text("checkpoint")
+            completion = root / "completion"
+            completion.write_text("completion")
+            jobs = [{
+                "id": f"inactive-{index}",
+                "unit": f"ultimatefish-inactive-{index}.service",
+                "checkpoint_paths": [str(checkpoint)],
+                "completion_paths": [str(completion)],
+                "source_bindings": [],
+                "diagnostic_sources": [{
+                    "kind": "file", "path": str(diagnostic),
+                    "max_bytes": 2048,
+                }],
+            } for index in range(12)]
+            definition = config()["instances"][0]
+            path = f"{root}:{os.environ['PATH']}"
+            with mock.patch.dict(os.environ, {"PATH": path}):
+                observed = SUPERVISOR.local_probe(
+                    SUPERVISOR.remote_script(definition, jobs))
+
+            self.assertNotIn("probe_error", observed)
+            self.assertEqual(2, observed["probe_compaction_level"])
+            self.assertLessEqual(observed["probe_encoded_bytes"],
+                                 SUPERVISOR.REMOTE_OUTPUT_BUDGET)
+            self.assertTrue(all(
+                record["checkpoints"] == []
+                and record["diagnostics"] == []
+                and record["completion"][0]["exists"]
+                for record in observed["jobs"]))
+
     def test_source_binding_globs_are_rejected(self) -> None:
         invalid = config()
         invalid["jobs"][0]["source_bindings"][0]["path"] = "/tmp/source-*"
@@ -435,7 +548,7 @@ class SupervisionTests(unittest.TestCase):
                       and not job.get("queue_stage")
                       and not job.get("superseded_by")]
         table, _ = SUPERVISOR.compact_source_bindings(worst_jobs)
-        self.assertEqual(107, len(table))
+        self.assertEqual(120, len(table))
 
     def test_cpu_allocation_reports_idle_capacity_and_overlap(self) -> None:
         definition = config()["instances"][0]
@@ -469,6 +582,30 @@ class SupervisionTests(unittest.TestCase):
             definition, after, previous_remote=before, sample_seconds=60)
         self.assertFalse(report["measurement_complete"])
         self.assertEqual({}, report["measured_jobs"])
+
+    def test_unconfigured_active_unit_disables_automatic_backfill(self) -> None:
+        document = config()
+        observed = remote(first="inactive", complete=True)
+        observed["unconfigured_active_units"] = {
+            "count": 1, "sha256": SHA_A,
+            "sample": ["ultimatefish-current-retry.service"],
+            "probe_status": 0,
+        }
+        allocation = SUPERVISOR.cpu_allocation(
+            document["instances"][0], observed, document["jobs"])
+        self.assertFalse(allocation["allocation_known"])
+        self.assertFalse(allocation["measurement_complete"])
+        report = {
+            "instances": {"i-0123456789abcdef0": {
+                "remote": observed, "cpu_allocation": allocation}},
+            "jobs": {
+                "first": {"status": "CERTIFIED"},
+                "second": {"status": "READY"},
+                "third": {"status": "AWAITING_STAGE"},
+            },
+        }
+        schedule = SUPERVISOR.schedule_backfill(document, report)
+        self.assertEqual([], schedule["selected"])
 
     def test_expected_cpu_partition_is_validated_and_monitored(self) -> None:
         document = config()

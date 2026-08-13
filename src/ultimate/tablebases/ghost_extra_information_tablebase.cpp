@@ -66,10 +66,33 @@ namespace Stockfish::Ultimate {
 namespace {
 
 constexpr std::uint32_t Squares = Position::BoardSquares;
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+constexpr std::uint32_t PlacementCount =
+  2 * Squares * (Squares - 1) * (Squares - 2) * (Squares - 3);
+constexpr bool ExtraIsCopycat = true;
+#else
 constexpr std::uint32_t PlacementCount =
   2 * (Squares / 2) * (Squares - 1) * (Squares - 2) * (Squares - 3);
+constexpr bool ExtraIsCopycat = false;
+#endif
 constexpr std::uint32_t GhostSubstates = 2;
-constexpr std::uint32_t StateCount = PlacementCount * GhostSubstates;
+#ifdef ULTIMATE_GHOST_EXTRA_SUBSTATES
+constexpr std::uint32_t ExtraSubstates = ULTIMATE_GHOST_EXTRA_SUBSTATES;
+#else
+constexpr std::uint32_t ExtraSubstates = 1;
+#endif
+constexpr std::uint32_t StateCount =
+  PlacementCount * ExtraSubstates * GhostSubstates;
+#ifdef ULTIMATE_GHOST_EXTRA_HORIZONTAL_ONLY
+constexpr std::uint8_t GeometryTransformCount = 2;
+#else
+constexpr std::uint8_t GeometryTransformCount = 4;
+#endif
+#ifdef ULTIMATE_GHOST_EXTRA_IS_CHECKER
+constexpr bool ExtraIsChecker = true;
+#else
+constexpr bool ExtraIsChecker = false;
+#endif
 constexpr std::uint32_t LowerGhostStateCount =
   2 * Squares * (Squares - 1) * (Squares - 2) * GhostSubstates;
 constexpr std::uint32_t NoIndex = std::numeric_limits<std::uint32_t>::max();
@@ -80,6 +103,7 @@ struct FourState {
     std::uint8_t blackKing = 0;
     std::uint8_t bishop = 0;
     std::uint8_t ghost = 0;
+    std::uint8_t extraSubstate = 0;
     bool visible = false;
 };
 
@@ -108,12 +132,14 @@ struct MaterialSpec {
 }
 
 [[nodiscard]] FourState horizontal_canonical(FourState state) {
+#ifndef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
     if (state.whiteKing % Position::BoardFiles >= Position::BoardFiles / 2) {
         state.whiteKing = horizontal_reflection(state.whiteKing);
         state.blackKing = horizontal_reflection(state.blackKing);
         state.bishop = horizontal_reflection(state.bishop);
         state.ghost = horizontal_reflection(state.ghost);
     }
+#endif
     return state;
 }
 
@@ -144,16 +170,22 @@ struct MaterialSpec {
         state.blackKing == state.bishop || state.blackKing == state.ghost ||
         state.bishop == state.ghost)
         throw std::runtime_error("overlapping four-model placement");
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+    const std::uint32_t whiteRank = state.whiteKing;
+    constexpr std::uint32_t WhiteKingCount = Squares;
+#else
     const std::uint32_t whiteRank =
       (state.whiteKing / Position::BoardFiles) *
       (Position::BoardFiles / 2) + state.whiteKing % Position::BoardFiles;
+    constexpr std::uint32_t WhiteKingCount = Squares / 2;
+#endif
     const std::uint32_t blackRank = rank_excluding(
       state.blackKing, {state.whiteKing});
     const std::uint32_t bishopRank = rank_excluding(
       state.bishop, {state.whiteKing, state.blackKing});
     const std::uint32_t ghostRank = rank_excluding(
       state.ghost, {state.whiteKing, state.blackKing, state.bishop});
-    return ((((static_cast<std::uint32_t>(state.side) * (Squares / 2) + whiteRank)
+    return ((((static_cast<std::uint32_t>(state.side) * WhiteKingCount + whiteRank)
                * (Squares - 1) + blackRank)
               * (Squares - 2) + bishopRank)
              * (Squares - 3) + ghostRank);
@@ -168,29 +200,53 @@ struct MaterialSpec {
     index /= Squares - 2;
     const std::uint32_t blackRank = index % (Squares - 1);
     index /= Squares - 1;
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+    const std::uint32_t whiteRank = index % Squares;
+    const Color side = static_cast<Color>(index / Squares);
+    const std::uint8_t whiteKing = static_cast<std::uint8_t>(whiteRank);
+#else
     const std::uint32_t whiteRank = index % (Squares / 2);
     const Color side = static_cast<Color>(index / (Squares / 2));
     const std::uint8_t whiteKing = static_cast<std::uint8_t>(
       (whiteRank / (Position::BoardFiles / 2)) * Position::BoardFiles +
       whiteRank % (Position::BoardFiles / 2));
+#endif
     const std::uint8_t blackKing = unrank_excluding(blackRank, {whiteKing});
     const std::uint8_t bishop = unrank_excluding(
       bishopRank, {whiteKing, blackKing});
     const std::uint8_t ghost = unrank_excluding(
       ghostRank, {whiteKing, blackKing, bishop});
-    return {side, whiteKing, blackKing, bishop, ghost, false};
+    return {side, whiteKing, blackKing, bishop, ghost, 0, false};
 }
 
 [[nodiscard]] std::uint32_t encode_index(const FourState& state) {
-    return encode_placement(state) * GhostSubstates + (state.visible ? 1u : 0u);
+    if (state.extraSubstate >= ExtraSubstates)
+        throw std::runtime_error("four-model extra substate is out of range");
+    return (encode_placement(state) * ExtraSubstates + state.extraSubstate) *
+             GhostSubstates + (state.visible ? 1u : 0u);
 }
 
 [[nodiscard]] FourState decode_index(std::uint32_t index) {
     if (index >= StateCount)
         throw std::runtime_error("four-model state index is out of range");
-    FourState state = decode_placement(index / GhostSubstates);
-    state.visible = index % GhostSubstates != 0;
+    const bool visible = index % GhostSubstates != 0;
+    index /= GhostSubstates;
+    FourState state = decode_placement(index / ExtraSubstates);
+    state.extraSubstate = static_cast<std::uint8_t>(index % ExtraSubstates);
+    state.visible = visible;
     return state;
+}
+
+[[nodiscard]] bool valid_world(const FourState& state) {
+    if constexpr (ExtraIsCopycat) {
+        const std::uint8_t clone = horizontal_reflection(state.bishop);
+        if (clone == state.whiteKing || clone == state.blackKing ||
+            clone == state.ghost)
+            return false;
+    }
+    return GhostPublicExtra::tablebase_substate_geometrically_valid(
+      PieceType::Bishop, state.whiteKing, state.blackKing, state.bishop,
+      state.ghost, state.extraSubstate);
 }
 
 [[nodiscard]] Position make_position(std::uint32_t index,
@@ -202,8 +258,11 @@ struct MaterialSpec {
       PieceType::King, Color::White, state.whiteKing);
     const int blackKing = position.add_piece(
       PieceType::King, Color::Black, state.blackKing);
+    const PieceType representedExtra =
+      ExtraIsChecker && (state.extraSubstate & 2u)
+        ? PieceType::CheckerKing : PieceType::Bishop;
     const int bishop = position.add_piece(
-      PieceType::Bishop, Color::White, state.bishop);
+      representedExtra, Color::White, state.bishop);
     const int ghost = position.add_piece(
       PieceType::Ghost, material.ghostColor, state.ghost);
     if (whiteKing == Position::NoPiece || blackKing == Position::NoPiece ||
@@ -211,7 +270,16 @@ struct MaterialSpec {
         throw std::runtime_error("four-model codec produced invalid geometry");
     for (const int id : {whiteKing, blackKing, bishop, ghost})
         position.piece(id).moved = true;
+    if constexpr (ExtraIsCopycat) {
+        const int clone = position.piece(bishop).link;
+        if (clone == Position::NoPiece)
+            throw std::runtime_error("four-model Copycat clone is missing");
+        position.piece(clone).moved = true;
+    }
     position.piece(ghost).visible = state.visible;
+    if (!position.apply_tablebase_substate(
+          bishop, PieceType::Bishop, state.extraSubstate))
+        throw std::runtime_error("four-model codec rejected extra substate");
     position.set_side_to_move(state.side);
     return position;
 }
@@ -229,6 +297,9 @@ struct MaterialSpec {
         const PieceState& piece = position.piece(id);
         if (!piece.alive || !piece.onBoard)
             continue;
+        if constexpr (ExtraIsCopycat)
+            if (piece.type == PieceType::CopycatClone)
+                continue;
         ++live;
         if (piece.type == PieceType::King && piece.color == Color::White &&
             !foundWhiteKing) {
@@ -240,9 +311,16 @@ struct MaterialSpec {
             state.blackKing = static_cast<std::uint8_t>(piece.square);
             foundBlackKing = true;
         }
-        else if (piece.type == PieceType::Bishop && piece.color == Color::White &&
+        else if ((piece.type == PieceType::Bishop ||
+                  (ExtraIsChecker && piece.type == PieceType::CheckerKing)) &&
+                 piece.color == Color::White &&
                  !foundBishop) {
             state.bishop = static_cast<std::uint8_t>(piece.square);
+            const auto substate = position.tablebase_substate(
+              id, PieceType::Bishop);
+            if (!substate || *substate >= ExtraSubstates)
+                return std::nullopt;
+            state.extraSubstate = static_cast<std::uint8_t>(*substate);
             foundBishop = true;
         }
         else if (piece.type == PieceType::Ghost &&
@@ -308,12 +386,18 @@ struct ClassifiedChild {
         const PieceState& piece = position.piece(id);
         if (!piece.alive || !piece.onBoard)
             continue;
+        if constexpr (ExtraIsCopycat)
+            if (piece.type == PieceType::CopycatClone)
+                continue;
         ++live;
         if (piece.type == PieceType::King && piece.color == Color::White)
             whiteKing = piece.square;
         else if (piece.type == PieceType::King && piece.color == Color::Black)
             blackKing = piece.square;
-        else if (piece.type == PieceType::Bishop && piece.color == Color::White)
+        else if ((piece.type == PieceType::Bishop ||
+                  (ExtraIsChecker &&
+                   piece.type == PieceType::CheckerKing)) &&
+                 piece.color == Color::White)
             bishop = piece.square;
         else if (piece.type == PieceType::Ghost &&
                  piece.color == material.ghostColor) {
@@ -649,6 +733,9 @@ struct LowerObservationBucket {
         if (ghost == actualParent.whiteKing || ghost == actualParent.blackKing ||
             ghost == actualParent.bishop)
             continue;
+        if constexpr (ExtraIsCopycat)
+            if (ghost == horizontal_reflection(actualParent.bishop))
+                continue;
         if (actualParent.visible && ghost != actualParent.ghost)
             continue;
         FourState candidate = actualParent;
@@ -717,7 +804,7 @@ void codec_self_test(const MaterialSpec& material) {
         if (encode_placement(state) != placement)
             throw std::runtime_error("four-model codec is not bijective");
         state.visible = true;
-        if (encode_index(state) != placement * 2 + 1)
+        if (encode_index(state) != placement * ExtraSubstates * 2 + 1)
             throw std::runtime_error("Ghost substate codec is not bijective");
     }
     FourState sample{Color::Black, 17, 62, 28, 43, true};
@@ -726,8 +813,9 @@ void codec_self_test(const MaterialSpec& material) {
     reflected.blackKing = horizontal_reflection(reflected.blackKing);
     reflected.bishop = horizontal_reflection(reflected.bishop);
     reflected.ghost = horizontal_reflection(reflected.ghost);
-    if (encode_index(sample) != encode_index(reflected))
-        throw std::runtime_error("horizontal codec orbit mismatch");
+    if constexpr (!ExtraIsCopycat)
+        if (encode_index(sample) != encode_index(reflected))
+            throw std::runtime_error("horizontal codec orbit mismatch");
 
     // Vertical reflection is the remaining exact rectangle quotient after the
     // file reflection already embedded in the dense codec.
@@ -735,6 +823,8 @@ void codec_self_test(const MaterialSpec& material) {
         const std::uint32_t index = static_cast<std::uint32_t>(
           std::uint64_t(StateCount) * sampleIndex / 100'000);
         FourState state = decode_index(index);
+        if (!valid_world(state))
+            continue;
         FourState vertical = state;
         vertical.whiteKing = vertical_reflection(vertical.whiteKing);
         vertical.blackKing = vertical_reflection(vertical.blackKing);
@@ -840,14 +930,32 @@ struct PublicExtraGeometry {
     std::uint8_t blackKing = 0;
     std::uint8_t bishop = 0;
     std::uint8_t visible = 0;
+    std::uint8_t extraSubstate = 0;
 
     friend bool operator==(const PublicExtraGeometry& lhs,
                            const PublicExtraGeometry& rhs) {
         return lhs.side == rhs.side && lhs.whiteKing == rhs.whiteKing &&
                lhs.blackKing == rhs.blackKing && lhs.bishop == rhs.bishop &&
-               lhs.visible == rhs.visible;
+               lhs.visible == rhs.visible &&
+               lhs.extraSubstate == rhs.extraSubstate;
     }
 };
+
+[[nodiscard]] bool valid_geometry_world(
+  const PublicExtraGeometry& geometry, std::uint8_t ghost) {
+    if (ghost == geometry.whiteKing || ghost == geometry.blackKing ||
+        ghost == geometry.bishop)
+        return false;
+    if constexpr (ExtraIsCopycat) {
+        const std::uint8_t clone = horizontal_reflection(geometry.bishop);
+        if (clone == geometry.whiteKing || clone == geometry.blackKing ||
+            clone == ghost)
+            return false;
+    }
+    return GhostPublicExtra::tablebase_substate_geometrically_valid(
+      PieceType::Bishop, geometry.whiteKing, geometry.blackKing,
+      geometry.bishop, ghost, geometry.extraSubstate);
+}
 
 [[nodiscard]] std::uint8_t rectangle_transform_square(
   std::uint8_t square, std::uint8_t transform) {
@@ -871,9 +979,9 @@ struct PublicExtraGeometry {
 [[nodiscard]] bool geometry_less(const PublicExtraGeometry& lhs,
                                  const PublicExtraGeometry& rhs) {
     return std::tie(lhs.side, lhs.whiteKing, lhs.blackKing, lhs.bishop,
-                    lhs.visible) <
+                    lhs.visible, lhs.extraSubstate) <
            std::tie(rhs.side, rhs.whiteKing, rhs.blackKing, rhs.bishop,
-                    rhs.visible);
+                    rhs.visible, rhs.extraSubstate);
 }
 
 struct CanonicalExtraGeometry {
@@ -884,7 +992,8 @@ struct CanonicalExtraGeometry {
 [[nodiscard]] CanonicalExtraGeometry canonical_geometry(
   const PublicExtraGeometry& source) {
     CanonicalExtraGeometry result{source, 0};
-    for (std::uint8_t transform = 1; transform < 4; ++transform) {
+    for (std::uint8_t transform = 1;
+         transform < GeometryTransformCount; ++transform) {
         const PublicExtraGeometry candidate = transform_geometry(
           source, transform);
         if (geometry_less(candidate, result.geometry))
@@ -898,14 +1007,16 @@ struct CanonicalExtraGeometry {
     return geometry.side | (std::uint32_t(geometry.whiteKing) << 1) |
            (std::uint32_t(geometry.blackKing) << 8) |
            (std::uint32_t(geometry.bishop) << 15) |
-           (std::uint32_t(geometry.visible) << 22);
+           (std::uint32_t(geometry.visible) << 22) |
+           (std::uint32_t(geometry.extraSubstate) << 23);
 }
 
 class ExtraGeometryDomain {
   public:
     ExtraGeometryDomain() {
         constexpr std::uint32_t Expected =
-          2 * Squares * (Squares - 1) * (Squares - 2) * 2 / 4;
+          2 * Squares * (Squares - 1) * (Squares - 2) * 2 *
+          ExtraSubstates / GeometryTransformCount;
         geometries_.reserve(Expected);
         byCode_.reserve(Expected * 2);
         for (std::uint8_t side = 0; side < 2; ++side)
@@ -917,9 +1028,13 @@ class ExtraGeometryDomain {
                     for (std::uint8_t bishop = 0; bishop < Squares; ++bishop) {
                         if (bishop == whiteKing || bishop == blackKing)
                             continue;
-                        for (std::uint8_t visible = 0; visible < 2; ++visible) {
+                        for (std::uint8_t visible = 0; visible < 2; ++visible)
+                          for (std::uint8_t extraSubstate = 0;
+                               extraSubstate < ExtraSubstates;
+                               ++extraSubstate) {
                             const PublicExtraGeometry raw{
-                              side, whiteKing, blackKing, bishop, visible};
+                              side, whiteKing, blackKing, bishop, visible,
+                              extraSubstate};
                             const CanonicalExtraGeometry canonical =
                               canonical_geometry(raw);
                             if (!(canonical.geometry == raw))
@@ -960,17 +1075,28 @@ class ExtraGeometryDomain {
 [[nodiscard]] Position make_geometry_position(
   const PublicExtraGeometry& geometry, std::uint8_t ghost,
   const MaterialSpec& material) {
-    if (ghost == geometry.whiteKing || ghost == geometry.blackKing ||
-        ghost == geometry.bishop)
-        throw std::runtime_error("extra symbolic geometry overlaps its Ghost");
+    if (!valid_geometry_world(geometry, ghost)) {
+        std::ostringstream message;
+        message << "extra symbolic geometry overlaps its Ghost: wk="
+                << unsigned(geometry.whiteKing) << " bk="
+                << unsigned(geometry.blackKing) << " extra="
+                << unsigned(geometry.bishop) << " ghost=" << unsigned(ghost);
+        if constexpr (ExtraIsCopycat)
+            message << " clone="
+                    << unsigned(horizontal_reflection(geometry.bishop));
+        throw std::runtime_error(message.str());
+    }
     Position position;
     position.clear();
     const int whiteKing = position.add_piece(
       PieceType::King, Color::White, geometry.whiteKing);
     const int blackKing = position.add_piece(
       PieceType::King, Color::Black, geometry.blackKing);
+    const PieceType representedExtra =
+      ExtraIsChecker && (geometry.extraSubstate & 2u)
+        ? PieceType::CheckerKing : PieceType::Bishop;
     const int bishop = position.add_piece(
-      PieceType::Bishop, Color::White, geometry.bishop);
+      representedExtra, Color::White, geometry.bishop);
     const int ghostId = position.add_piece(
       PieceType::Ghost, material.ghostColor, ghost);
     if (whiteKing == Position::NoPiece || blackKing == Position::NoPiece ||
@@ -978,7 +1104,16 @@ class ExtraGeometryDomain {
         throw std::runtime_error("cannot construct extra symbolic world");
     for (const int id : {whiteKing, blackKing, bishop, ghostId})
         position.piece(id).moved = true;
+    if constexpr (ExtraIsCopycat) {
+        const int clone = position.piece(bishop).link;
+        if (clone == Position::NoPiece)
+            throw std::runtime_error("symbolic Copycat clone is missing");
+        position.piece(clone).moved = true;
+    }
     position.piece(ghostId).visible = geometry.visible != 0;
+    if (!position.apply_tablebase_substate(
+          bishop, PieceType::Bishop, geometry.extraSubstate))
+        throw std::runtime_error("cannot apply symbolic extra substate");
     position.set_side_to_move(static_cast<Color>(geometry.side));
     return position;
 }
@@ -1525,17 +1660,41 @@ struct ExternalCompileSummary {
 void verify_external_transition_certificate(
   const std::string& prefix, const MaterialSpec& material);
 
-[[nodiscard]] std::pair<std::uint16_t, std::uint16_t> external_move_key(
-  const Move& move, std::uint8_t transform) {
-    if (move.kind != MoveKind::Normal || move.from >= Squares ||
-        move.to >= Squares || move.auxiliary != 0 ||
-        move.promotion != PieceType::Count)
+[[nodiscard]] std::uint64_t external_move_key(
+  const Position& position, const Move& move, std::uint8_t transform,
+  std::uint8_t copycatSquare) {
+    if (move.from >= Squares || move.to >= Squares)
         throw std::runtime_error(
-          "Bishop/Ghost D2 certificate encountered a non-ordinary move");
-    return {rectangle_transform_square(
-              static_cast<std::uint8_t>(move.from), transform),
-            rectangle_transform_square(
-              static_cast<std::uint8_t>(move.to), transform)};
+          "Bishop/Ghost rectangle certificate encountered an invalid move");
+    const int actor = position.piece_on(move.from);
+    if (actor == Position::NoPiece)
+        throw std::runtime_error(
+          "rectangle certificate move has no source actor");
+    const PieceType actorType = position.piece(actor).type;
+    const bool copycatMove = ExtraIsCopycat &&
+      (move.from == copycatSquare ||
+       move.from == horizontal_reflection(copycatSquare));
+    const bool checkerMove =
+      actorType == PieceType::Checker || actorType == PieceType::CheckerKing;
+    std::uint8_t transformedAuxiliary = move.auxiliary;
+    if (move.kind == MoveKind::Normal &&
+        (copycatMove || (checkerMove && transformedAuxiliary != 0)) &&
+        transformedAuxiliary < Squares)
+        transformedAuxiliary = rectangle_transform_square(
+          transformedAuxiliary, transform);
+    else if (move.kind == MoveKind::Normal && transformedAuxiliary != 0)
+        throw std::runtime_error(
+          "ordinary extra move has a semantic auxiliary");
+    else if (move.kind != MoveKind::Normal &&
+             move.kind != MoveKind::Shoot)
+        throw std::runtime_error(
+          "rectangle certificate encountered an unsupported move kind");
+    const std::uint64_t from = rectangle_transform_square(move.from, transform);
+    const std::uint64_t to = rectangle_transform_square(move.to, transform);
+    return from | (to << 7) |
+           (std::uint64_t(transformedAuxiliary) << 14) |
+           (std::uint64_t(move.kind) << 22) |
+           (std::uint64_t(move.promotion) << 26);
 }
 
 class ExternalStringBijection {
@@ -1696,8 +1855,7 @@ void compile_external_transitions(
         meta.actualStratum.fill(NoIndex);
         std::map<std::string, ExternalMask> decisionBlocks;
         for (std::uint8_t ghost = 0; ghost < Squares; ++ghost) {
-            if (ghost == geometry.whiteKing || ghost == geometry.blackKing ||
-                ghost == geometry.bishop)
+            if (!valid_geometry_world(geometry, ghost))
                 continue;
             Position position = make_geometry_position(geometry, ghost, material);
             ++summary.worlds;
@@ -1781,7 +1939,8 @@ void compile_external_transitions(
             // Exhaustive certificate over all three non-identity D2 images.
             // Full strings are bound bijectively within this public geometry,
             // so equality classes—not hashes—must transform consistently.
-            for (std::uint8_t transform = 1; transform < 4; ++transform) {
+            for (std::uint8_t transform = 1;
+                 transform < GeometryTransformCount; ++transform) {
                 const PublicExtraGeometry transformedGeometry =
                   transform_geometry(geometry, transform);
                 const std::uint8_t transformedGhost =
@@ -1793,25 +1952,22 @@ void compile_external_transitions(
                 if (pairedMoves.size() != moves.size())
                     throw std::runtime_error(
                       "D2 symmetry changed the legal-action count");
-                std::unordered_map<std::uint32_t, std::size_t> pairedByMove;
+                std::unordered_map<std::uint64_t, std::size_t> pairedByMove;
                 pairedByMove.reserve(pairedMoves.size() * 2);
                 for (std::size_t pairedIndex = 0;
                      pairedIndex < pairedMoves.size(); ++pairedIndex) {
-                    const auto key = external_move_key(
-                      pairedMoves[pairedIndex], 0);
-                    const std::uint32_t packed =
-                      (std::uint32_t(key.first) << 16) | key.second;
-                    if (!pairedByMove.emplace(packed, pairedIndex).second)
+                    const std::uint64_t key = external_move_key(
+                      pairedPosition, pairedMoves[pairedIndex], 0,
+                      transformedGeometry.bishop);
+                    if (!pairedByMove.emplace(key, pairedIndex).second)
                         throw std::runtime_error(
                           "D2 target duplicates a rendered legal action");
                 }
                 for (std::size_t moveIndex = 0; moveIndex < moves.size();
                      ++moveIndex) {
-                    const auto wanted = external_move_key(
-                      moves[moveIndex], transform);
-                    const std::uint32_t packed =
-                      (std::uint32_t(wanted.first) << 16) | wanted.second;
-                    const auto paired = pairedByMove.find(packed);
+                    const std::uint64_t wanted = external_move_key(
+                      position, moves[moveIndex], transform, geometry.bishop);
+                    const auto paired = pairedByMove.find(wanted);
                     if (paired == pairedByMove.end())
                         throw std::runtime_error(
                           "D2 symmetry lost a transformed legal action");
@@ -1980,8 +2136,7 @@ void verify_external_transition_certificate(
         regenerated.actualStratum.fill(NoIndex);
         std::map<std::string, ExternalMask> decisionBlocks;
         for (std::uint8_t ghost = 0; ghost < Squares; ++ghost) {
-            if (ghost == geometry.whiteKing || ghost == geometry.blackKing ||
-                ghost == geometry.bishop)
+            if (!valid_geometry_world(geometry, ghost))
                 continue;
             ++verifiedWorlds;
             Position position = make_geometry_position(geometry, ghost, material);
@@ -2854,6 +3009,8 @@ class ExternalGhostExtraFixedPoint {
             const std::uint32_t index = static_cast<std::uint32_t>(
               (std::uint64_t(random) * StateCount) >> 32);
             const FourState state = decode_index(index);
+            if (!valid_world(state))
+                continue;
             const bool hiddenAdjacent = !state.visible &&
               std::abs(int(state.ghost % Position::BoardFiles) -
                        int(state.blackKing % Position::BoardFiles)) <= 1 &&
@@ -2866,7 +3023,7 @@ class ExternalGhostExtraFixedPoint {
             const PublicExtraGeometry source{
               static_cast<std::uint8_t>(state.side), state.whiteKing,
               state.blackKing, state.bishop,
-              static_cast<std::uint8_t>(state.visible)};
+              static_cast<std::uint8_t>(state.visible), state.extraSubstate};
             const CanonicalExtraGeometry canonical = canonical_geometry(source);
             const std::uint8_t actual = rectangle_transform_square(
               state.ghost, canonical.transform);
@@ -2948,11 +3105,20 @@ class ExternalGhostExtraFixedPoint {
             if (ghost == raw.whiteKing || ghost == raw.blackKing ||
                 ghost == raw.bishop)
                 continue;
+            if constexpr (ExtraIsCopycat)
+                if (ghost == horizontal_reflection(raw.bishop))
+                    continue;
             Position position = make_geometry_position(raw, ghost, material_);
             if (position.game_over())
                 continue;
-            const std::string decision = decision_observation_key(
-              position, observer);
+            // Legal-dot observations belong only to the side to move.  This
+            // fixture deliberately uses the Black king to capture the extra
+            // piece.  In the opposed material orientation Black owns the
+            // Ghost, so the White observer sees no pre-move decision dots.
+            const std::string decision =
+              position.side_to_move() == observer.observer
+              ? decision_observation_key(position, observer)
+              : std::string();
             for (const Move& move : position.legal_moves()) {
                 if (move.from != raw.blackKing || move.to != raw.bishop)
                     continue;
@@ -3407,14 +3573,21 @@ class ExternalGhostExtraFixedPoint {
         std::uint64_t residual = 0;
         for (std::uint32_t placement = 0; placement < PlacementCount;
              ++placement) {
+          for (std::uint8_t extraSubstate = 0;
+               extraSubstate < ExtraSubstates; ++extraSubstate)
             for (std::uint32_t substate = 0; substate < 2; ++substate) {
                 FourState state = decode_placement(placement);
+                state.extraSubstate = extraSubstate;
                 state.visible = substate != 0;
-                const std::uint32_t concreteIndex = placement * 2 + substate;
+                if (!valid_world(state))
+                    continue;
+                const std::uint32_t concreteIndex =
+                  (placement * ExtraSubstates + extraSubstate) * 2 + substate;
                 const PublicExtraGeometry raw{
                   static_cast<std::uint8_t>(state.side), state.whiteKing,
                   state.blackKing, state.bishop,
-                  static_cast<std::uint8_t>(state.visible)};
+                  static_cast<std::uint8_t>(state.visible),
+                  state.extraSubstate};
                 const auto [geometry, transform] = domain_.locate(raw);
                 if (geometry >= database_.geometry_count())
                     continue;
@@ -3467,6 +3640,11 @@ class ExternalGhostExtraFixedPoint {
         std::uint64_t admittedCount = 0;
         for (std::uint32_t index = 0; index < StateCount; ++index) {
             const FourState state = decode_index(index);
+            if (!valid_world(state)) {
+                ++unreachable[static_cast<std::size_t>(state.side)]
+                              [concrete_.result(index)];
+                continue;
+            }
             const bool hiddenAdjacent = !state.visible &&
               std::abs(int(state.ghost % Position::BoardFiles) -
                        int(state.blackKing % Position::BoardFiles)) <= 1 &&
@@ -3487,7 +3665,7 @@ class ExternalGhostExtraFixedPoint {
             if (!state.visible) {
                 const PublicExtraGeometry raw{
                   static_cast<std::uint8_t>(state.side), state.whiteKing,
-                  state.blackKing, state.bishop, 0};
+                  state.blackKing, state.bishop, 0, state.extraSubstate};
                 const auto [geometry, transform] = domain_.locate(raw);
                 const unsigned actual = rectangle_transform_square(
                   state.ghost, transform);
@@ -3529,7 +3707,7 @@ class ExternalGhostExtraFixedPoint {
             const PublicExtraGeometry raw{
               static_cast<std::uint8_t>(state.side), state.whiteKing,
               state.blackKing, state.bishop,
-              static_cast<std::uint8_t>(state.visible)};
+              static_cast<std::uint8_t>(state.visible), state.extraSubstate};
             const auto [geometry, transform] = domain_.locate(raw);
             const unsigned actual = rectangle_transform_square(
               state.ghost, transform);
@@ -3744,6 +3922,8 @@ void run_preflight(const MaterialSpec& material, const PackedFourTable& concrete
         if (!exhaustiveOracle && sample < 4)
             index = sample == 0 ? 0 : sample == 1 ? StateCount / 2
                   : sample == 2 ? StateCount - 2 : StateCount - 1;
+        if (!valid_world(decode_index(index)))
+            continue;
         Position position = make_position(index, material);
         if (const auto roundTrip = same_class_index(position, material);
             !roundTrip || *roundTrip != index)

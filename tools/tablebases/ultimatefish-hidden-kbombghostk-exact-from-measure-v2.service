@@ -7,7 +7,7 @@ Wants=network-online.target
 Type=oneshot
 WorkingDirectory=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3
 ExecStartPre=/usr/bin/mkdir -p /mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/tmp
-ExecStart=/usr/bin/python3 /mnt/ultimatefish/resume-runners/bomb-ghost-0e1f5e22/run_ultimate_ghost_bomb_aws.py --manifest bundle-manifest.json --transition-resume-manifest transition-resume-manifest.json --full --resume-completed-measurement
+ExecStart=/usr/bin/python3 /mnt/ultimatefish/resume-runners/bomb-ghost-d9bee1d0/run_ultimate_ghost_bomb_aws.py --manifest bundle-manifest.json --transition-resume-manifest transition-resume-manifest.json --full --resume-completed-measurement
 Environment=PYTHONUNBUFFERED=1
 Environment=PYTHONPATH=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/tools/tablebases
 Environment=TMPDIR=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/tmp
@@ -26,7 +26,7 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
 ReadOnlyPaths=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v2
-ReadOnlyPaths=/mnt/ultimatefish/resume-runners/bomb-ghost-0e1f5e22
+ReadOnlyPaths=/mnt/ultimatefish/resume-runners/bomb-ghost-d9bee1d0
 ReadWritePaths=/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3
 StandardOutput=append:/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/exact-from-measure-v2.log
 StandardError=append:/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/exact-from-measure-v2.log

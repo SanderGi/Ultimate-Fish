@@ -38,6 +38,11 @@ export function showKnowledgeStatus(
   view: InformationView, viewer: InformationColor,
   pieceColor: InformationColor,
 ): boolean;
+export function analysisPerspective(
+  viewer: InformationColor, contextPlayer: InformationColor,
+  playerDisclosure: HistoryDisclosure,
+  engineDisclosure: HistoryDisclosure,
+): HistoryDisclosure & { observer: InformationColor };
 export function buildReplayBelief(
   initialUpn: string, moves: string[],
   initialPositionKind: "arbitrary" | "draft",

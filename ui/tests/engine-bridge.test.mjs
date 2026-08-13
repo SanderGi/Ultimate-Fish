@@ -223,6 +223,19 @@ test("history analysis forgets leaked Ghost cells and replays public observation
   assert.equal(concealed.jesterKnowledge.b1, false);
   assert.equal(revealed.jesterKnowledge.b1, true);
 
+  const selectedViewerRegression =
+    "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,c1,0,0,0,0,0,1,-1,1,-1,0;jester,w,e1,0,0,0,0,0,1,-1,1,-1,0;king,b,d10,0,0,0,0,0,1,-1,1,-1,0";
+  const ivoryViewer = await post("/analyze-history", {
+    initialUpn: selectedViewerRegression, moves: [], observer: "white",
+    enemyKingKnown: false, depth: 1,
+  });
+  const onyxViewer = await post("/analyze-history", {
+    initialUpn: selectedViewerRegression, moves: [], observer: "black",
+    enemyKingKnown: false, depth: 1,
+  });
+  assert.equal(ivoryViewer.beliefs, 1);
+  assert.equal(onyxViewer.beliefs, 2);
+
   const chronologicalRoyals =
     "b;king,w,a1;jester,w,b1;jester,w,c1;king,b,h10";
   const firstGroup = await post("/history-state", {

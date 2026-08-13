@@ -39,6 +39,7 @@ LOWER_SOURCE_SHA256 = (
     "3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31")
 LOWER_MODEL_SHA256 = (
     "4a2d9d7b503b29204cf9af08985345771b9046c07bd2116e592fab40ee12e430")
+LEGACY_SOURCE_COMMIT = "c26849f8"
 FROZEN_FINGERPRINTS = {
     "kbishopghostk.uftb":
         "416f3792dfa0b5f5317a0ee4f8ae91b2a4dd874807d7223c5918dc0b291a2dcf",
@@ -150,7 +151,8 @@ def legacy_layout_fingerprint(domain: str,
     digest.update(contract)
     for legacy, current in paths:
         relative = legacy.encode()
-        payload = (ROOT / current).read_bytes()
+        payload = subprocess.check_output(
+            ["git", "show", f"{LEGACY_SOURCE_COMMIT}:{current}"], cwd=ROOT)
         digest.update(len(relative).to_bytes(4, "little"))
         digest.update(relative)
         digest.update(len(payload).to_bytes(8, "little"))

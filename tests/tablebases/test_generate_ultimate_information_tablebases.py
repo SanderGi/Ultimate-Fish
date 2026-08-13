@@ -76,6 +76,8 @@ class InformationGenerationDriverTests(unittest.TestCase):
             giant_ghost_opposing_transitions=root / "giant-ghost-opposing",
             ghost_pair_binary=root / "ghost-pair",
             ghost_pair_transitions=root / "ghost-pair-transitions",
+            opposed_ghost_pair_binary=root / "opposed-ghost-pair",
+            opposed_ghost_pair_graph=root / "opposed-ghost-pair.chk",
             jester_ghost_binary=root / "jester-ghost",
             jester_ghost_transitions=root / "jester-ghost-transitions",
             overlays=root / "overlays",
@@ -917,7 +919,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError,
                                         "unsupported information class"):
                 generate.solver_command(
-                    self._args(root), records["kjesterkghost.uftb"],
+                    self._args(root), records["kpawnghostk.uftb"],
                     root / "bad.ufiw", "1" * 64, "2" * 64)
 
 

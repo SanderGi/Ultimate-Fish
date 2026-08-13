@@ -61,6 +61,28 @@ export function showKnowledgeStatus(view, viewer, pieceColor) {
 }
 
 /**
+ * Select the disclosure used for analysis from the viewer, independently of
+ * which color is currently to move.
+ *
+ * @param {Color} viewer
+ * @param {Color} contextPlayer
+ * @param {{enemyKingKnown: boolean, enemyKingCandidates?: string[]}} playerDisclosure
+ * @param {{enemyKingKnown: boolean, enemyKingCandidates?: string[]}} engineDisclosure
+ */
+export function analysisPerspective(
+  viewer, contextPlayer, playerDisclosure, engineDisclosure,
+) {
+  const disclosure = viewer === contextPlayer
+    ? playerDisclosure
+    : engineDisclosure;
+  return {
+    observer: viewer,
+    enemyKingKnown: disclosure.enemyKingKnown,
+    enemyKingCandidates: disclosure.enemyKingCandidates,
+  };
+}
+
+/**
  * Build a replayable belief without tying the stored disclosure records to the
  * currently selected viewer. `contextPlayer` identifies which observer owns
  * `playerDisclosure`; changing `viewer` only changes presentation.

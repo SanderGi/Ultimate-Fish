@@ -41,6 +41,14 @@
 
 namespace Stockfish::Ultimate {
 
+[[nodiscard]] constexpr bool dragon_kernel_piece_type(PieceType type) {
+#ifdef ULTIMATE_GHOST_EXTRA_IS_CHECKER
+    return type == PieceType::Checker || type == PieceType::CheckerKing;
+#else
+    return type == PieceType::Dragon;
+#endif
+}
+
 [[nodiscard]] bool dragon_kernel_lower_child(const Position& position) {
     unsigned live = 0;
     unsigned kings = 0;
@@ -49,9 +57,16 @@ namespace Stockfish::Ultimate {
         const PieceState& piece = position.piece(id);
         if (!piece.alive || !piece.onBoard)
             continue;
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+        // CopycatClone is a derived half of the one logical public piece.  It
+        // participates in move generation and occupancy, but not in the
+        // lower-class material cardinality used to select K+Copycat-v-K.
+        if (piece.type == PieceType::CopycatClone)
+            continue;
+#endif
         ++live;
         kings += piece.type == PieceType::King;
-        dragons += piece.type == PieceType::Dragon;
+        dragons += dragon_kernel_piece_type(piece.type);
     }
     return live == 3 && kings == 2 && dragons == 1;
 }
@@ -100,7 +115,23 @@ namespace {
 constexpr std::uint32_t Squares = Position::BoardSquares;
 constexpr std::uint32_t StateCount = GhostPublicExtra::StateCount;
 constexpr std::uint32_t PlacementCount = GhostPublicExtra::PlacementCount;
+#ifdef ULTIMATE_GHOST_ORDINARY_LOWER_SUBSTATES
+constexpr std::uint32_t LowerExtraSubstates =
+  ULTIMATE_GHOST_ORDINARY_LOWER_SUBSTATES;
+#else
+constexpr std::uint32_t LowerExtraSubstates = ExtraSubstates;
+#endif
 constexpr std::uint32_t Endian = 0x01020304;
+#ifdef ULTIMATE_GHOST_ORDINARY_EXTRA_PRIMARY
+constexpr bool SourceExtraPrimary = true;
+#else
+constexpr bool SourceExtraPrimary = false;
+#endif
+constexpr PieceType ExtraPiece = PieceType::Dragon;
+constexpr PieceType SourcePrimary =
+  SourceExtraPrimary ? ExtraPiece : PieceType::Ghost;
+constexpr PieceType SourceSecondary =
+  SourceExtraPrimary ? PieceType::Ghost : ExtraPiece;
 constexpr char SidecarSemantics[] =
   "fresh-maximal-public-view-v2:dragon-ghost-generic";
 
@@ -116,8 +147,8 @@ struct SidecarHeader {
     std::uint32_t version = 1;
     std::uint32_t headerBytes = sizeof(SidecarHeader);
     std::uint32_t endian = Endian;
-    std::uint32_t primary = static_cast<std::uint32_t>(PieceType::Ghost);
-    std::uint32_t secondary = static_cast<std::uint32_t>(PieceType::Dragon);
+    std::uint32_t primary = static_cast<std::uint32_t>(SourcePrimary);
+    std::uint32_t secondary = static_cast<std::uint32_t>(SourceSecondary);
     std::uint32_t ghostColor = static_cast<std::uint32_t>(Color::White);
     std::uint32_t orientation = 0;
     std::uint32_t squares = Squares;
@@ -184,12 +215,12 @@ void write_overlay_header(std::ostream& output, Orientation orientation,
         output.write(reinterpret_cast<const char*>(&value), 4);
     };
     write32(2);
-    write32(static_cast<std::uint32_t>(PieceType::Ghost));
-    write32(static_cast<std::uint32_t>(PieceType::Dragon));
+    write32(static_cast<std::uint32_t>(SourcePrimary));
+    write32(static_cast<std::uint32_t>(SourceSecondary));
     write32(static_cast<std::uint32_t>(
       orientation == Orientation::Same ? Color::White : Color::Black));
     write32(StateCount);
-    write32(2);
+    write32(2 * ExtraSubstates);
     output.write(sourceSha.data(), 64);
     output.write(modelSha.data(), 64);
     if (!output)
@@ -215,10 +246,11 @@ void overlay_header_self_test() {
         if (bytes.size() != 160 ||
             std::memcmp(bytes.data(), "UFIW2\0\0\0", 8) ||
             word(8) != 2 ||
-            word(12) != static_cast<std::uint32_t>(PieceType::Ghost) ||
-            word(16) != static_cast<std::uint32_t>(PieceType::Dragon) ||
+            word(12) != static_cast<std::uint32_t>(SourcePrimary) ||
+            word(16) != static_cast<std::uint32_t>(SourceSecondary) ||
             word(20) != static_cast<std::uint32_t>(dragonColor) ||
-            word(24) != StateCount || word(28) != 2 ||
+            word(24) != StateCount ||
+            word(28) != 2 * ExtraSubstates ||
             bytes.substr(32, 64) != std::string(64, 'a') ||
             bytes.substr(96, 64) != std::string(64, 'b'))
             throw std::runtime_error("Dragon UFIW2 header contract residual");
@@ -259,8 +291,13 @@ void validate_unique_node_tuples(const NodeDisk* nodes,
 [[nodiscard]] GhostPublicExtra::MaterialSpec adapter_material(
   Orientation orientation) {
     return {PieceType::Dragon,
-      orientation == Orientation::Same ? Color::White : Color::Black,
-      Color::White, GhostPublicExtra::SourceOrder::GhostPrimary,
+      SourceExtraPrimary ? Color::White
+        : (orientation == Orientation::Same ? Color::White : Color::Black),
+      SourceExtraPrimary
+        ? (orientation == Orientation::Same ? Color::White : Color::Black)
+        : Color::White, SourceExtraPrimary
+        ? GhostPublicExtra::SourceOrder::ExtraPrimary
+        : GhostPublicExtra::SourceOrder::GhostPrimary,
       GhostPublicExtra::HiddenAdjacentPolicy::ImpossibleWithoutForcedRelocation,
       orientation == Orientation::Same ? "kghostdragonk" : "kghostkdragon"};
 }
@@ -282,8 +319,9 @@ void validate_unique_node_tuples(const NodeDisk* nodes,
         result.whiteKing = state.blackKing;
         result.blackKing = state.whiteKing;
     }
-    result.first = state.ghost;
-    result.second = state.bishop;
+    result.first = SourceExtraPrimary ? state.bishop : state.ghost;
+    result.second = SourceExtraPrimary ? state.ghost : state.bishop;
+    result.extraSubstate = state.extraSubstate;
     result.ghostVisible = state.visible;
     return result;
 }
@@ -301,8 +339,9 @@ void validate_unique_node_tuples(const NodeDisk* nodes,
         result.whiteKing = state.blackKing;
         result.blackKing = state.whiteKing;
     }
-    result.bishop = state.second;
-    result.ghost = state.first;
+    result.bishop = SourceExtraPrimary ? state.first : state.second;
+    result.ghost = SourceExtraPrimary ? state.second : state.first;
+    result.extraSubstate = state.extraSubstate;
     result.visible = state.ghostVisible;
     return result;
 }
@@ -324,10 +363,11 @@ class OriginalTable {
         };
         if (bytes_.size() < 48 ||
             std::memcmp(bytes_.data(), "UFTB1\0\0\0", 8) ||
-            word(8) < 5 || word(12) != static_cast<std::uint32_t>(PieceType::Ghost) ||
-            word(16) != StateCount || word(24) != 2 ||
-            word(28) != PlacementCount / 2 || word(32) != StateCount ||
-            word(40) != static_cast<std::uint32_t>(PieceType::Dragon) ||
+            word(8) < 5 || word(12) != static_cast<std::uint32_t>(SourcePrimary) ||
+            word(16) != StateCount ||
+            word(24) != 2 * ExtraSubstates ||
+            word(28) != (StateCount + 3) / 4 || word(32) != StateCount ||
+            word(40) != static_cast<std::uint32_t>(SourceSecondary) ||
             word(44) != static_cast<std::uint32_t>(orientation ==
               Orientation::Opposing))
             throw std::runtime_error(
@@ -362,6 +402,11 @@ enum class DragonWdl : std::uint8_t { Win = 1, Loss = 2, Draw = 3 };
 class LowerDragonTable {
   public:
     explicit LowerDragonTable(const std::string& path) {
+#ifdef ULTIMATE_GHOST_ORDINARY_LOWER_DRAW_ONLY
+        if (path != "implicit-draw")
+            throw std::runtime_error("invalid implicit insufficient-material lower binding");
+        return;
+#else
         std::ifstream input(path, std::ios::binary);
         bytes_ = {std::istreambuf_iterator<char>(input),
                   std::istreambuf_iterator<char>()};
@@ -372,14 +417,33 @@ class LowerDragonTable {
             std::memcpy(&value, bytes_.data() + offset, 4);
             return value;
         };
-        if (bytes_.size() < 40 ||
+        constexpr std::size_t HeaderBytes =
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+          48;
+#else
+          40;
+#endif
+        if (bytes_.size() < HeaderBytes ||
             std::memcmp(bytes_.data(), "UFTB1\0\0\0", 8) ||
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+            word(8) != 5 ||
+#else
             word(8) != 4 ||
+#endif
             word(12) != static_cast<std::uint32_t>(PieceType::Dragon) ||
-            word(16) != 985'920 || word(24) != 1 ||
-            word(28) != 246'480 || word(32) != 985'920 || word(36) != 0 ||
-            bytes_.size() != 40 + 246'480 + 985'920)
+            word(16) != 985'920 * LowerExtraSubstates ||
+            word(24) != LowerExtraSubstates ||
+            word(28) != (985'920 * LowerExtraSubstates + 3) / 4 ||
+            word(32) != 985'920 * LowerExtraSubstates || word(36) != 0 ||
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+            word(40) != static_cast<std::uint32_t>(PieceType::CopycatClone) ||
+            word(44) != static_cast<std::uint32_t>(Color::White) ||
+#endif
+            bytes_.size() != HeaderBytes +
+                               (985'920 * LowerExtraSubstates + 3) / 4 +
+                               985'920 * LowerExtraSubstates)
             throw std::runtime_error("incompatible authenticated kdragonk");
+#endif
     }
 
     [[nodiscard]] DragonWdl probe(const Position& position) const {
@@ -390,12 +454,16 @@ class LowerDragonTable {
             const PieceState& piece = position.piece(id);
             if (!piece.alive || !piece.onBoard)
                 continue;
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+            if (piece.type == PieceType::CopycatClone)
+                continue;
+#endif
             if (piece.type == PieceType::King && piece.color == Color::White)
                 whiteKing = piece.square;
             else if (piece.type == PieceType::King &&
                      piece.color == Color::Black)
                 blackKing = piece.square;
-            else if (piece.type == PieceType::Dragon &&
+            else if (dragon_kernel_piece_type(piece.type) &&
                      piece.color == Color::White)
                 dragon = piece.square;
             else
@@ -405,6 +473,9 @@ class LowerDragonTable {
             whiteKing == blackKing || whiteKing == dragon ||
             blackKing == dragon)
             throw std::runtime_error("kdragonk probe placement residual");
+#ifdef ULTIMATE_GHOST_ORDINARY_LOWER_DRAW_ONLY
+        return DragonWdl::Draw;
+#else
         const std::uint32_t blackRank = blackKing -
           (blackKing > whiteKing ? 1u : 0u);
         const int low = std::min(whiteKing, blackKing);
@@ -415,11 +486,30 @@ class LowerDragonTable {
           ((static_cast<std::uint32_t>(position.side_to_move()) * Squares +
              whiteKing) * (Squares - 1) + blackRank) * (Squares - 2) +
           dragonRank;
+        const auto extraSubstate = position.tablebase_substate(
+          [&] {
+              for (int id = 0; id < position.piece_count(); ++id)
+                  if (position.piece(id).alive && position.piece(id).onBoard &&
+                      dragon_kernel_piece_type(position.piece(id).type))
+                      return id;
+              return Position::NoPiece;
+          }(), PieceType::Dragon);
+        if (!extraSubstate || *extraSubstate >= LowerExtraSubstates)
+            throw std::runtime_error("lower extra substate residual");
+        const std::uint32_t stateIndex = index * LowerExtraSubstates +
+                                         *extraSubstate;
         const std::uint8_t value =
-          (bytes_[40 + index / 4] >> (2 * (index % 4))) & 3;
+          (bytes_[
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+                   48
+#else
+                   40
+#endif
+                 + stateIndex / 4] >> (2 * (stateIndex % 4))) & 3;
         if (value < 1 || value > 3)
             throw std::runtime_error("kdragonk WDL value is invalid");
         return static_cast<DragonWdl>(value);
+#endif
     }
 
   private:
@@ -507,8 +597,17 @@ void lower_dragon_probe_self_test(const MaterialSpec& material,
                 }
         if (found) break;
     }
-    if (!found)
-        throw std::runtime_error("no non-draw K+Dragon witness was found");
+    // The same exact kernel is also instantiated for ordinary public extras.
+    // Several of their K+piece-v-K lower classes are rigorously all-draw, so
+    // absence of a winning witness is a valid lower-table property rather
+    // than a solver failure.  Every lower edge is still exhaustively probed
+    // and checked by rewrite_lower_dragon_edges below.
+    if (!found) {
+        std::cout << "ghost_dragon_lower_witness orientation "
+                  << (material.ghostColor == Color::White ? "same" : "opposing")
+                  << " force none lower_class_draw_only\n";
+        return;
+    }
     std::cout << "ghost_dragon_lower_witness orientation "
               << (material.ghostColor == Color::White ? "same" : "opposing")
               << " force "
@@ -519,7 +618,7 @@ void lower_dragon_probe_self_test(const MaterialSpec& material,
 DragonPatchCertificate rewrite_lower_dragon_edges(
   const std::string& prefix, const MaterialSpec& material,
   const LowerDragonTable& lower, bool placeholders,
-  bool acceptPlaceholders) {
+  bool acceptPlaceholders, bool acceptAnyExact = false) {
     std::ifstream headerFile(prefix + ".header", std::ios::binary);
     ExternalTransitionHeader header;
     headerFile.read(reinterpret_cast<char*>(&header), sizeof(header));
@@ -553,8 +652,7 @@ DragonPatchCertificate rewrite_lower_dragon_edges(
             throw std::runtime_error("Dragon transition block read residual");
         const PublicExtraGeometry& geometry = domain[geometryId];
         for (std::uint8_t ghost = 0; ghost < Squares; ++ghost) {
-            if (ghost == geometry.whiteKing || ghost == geometry.blackKing ||
-                ghost == geometry.bishop)
+            if (!valid_geometry_world(geometry, ghost))
                 continue;
             Position position = make_geometry_position(geometry, ghost,
                                                         material);
@@ -573,9 +671,9 @@ DragonPatchCertificate rewrite_lower_dragon_edges(
                     continue;
                 ExternalCompiledEdge& edge = edges[offsets[ghost] + ordinal];
                 if (edge.domain != ExternalChildDomain::Exact ||
-                    (!acceptPlaceholders && edge.exact !=
+                    (!acceptAnyExact && !acceptPlaceholders && edge.exact !=
                        lower_dragon_force_flags(child, material, lower)) ||
-                    (acceptPlaceholders && edge.exact != 0 &&
+                    (!acceptAnyExact && acceptPlaceholders && edge.exact != 0 &&
                      edge.exact != lower_dragon_force_flags(
                        child, material, lower)))
                     throw std::runtime_error(
@@ -651,7 +749,7 @@ NormalizedSource normalize_source(const OriginalTable& source,
     write32(static_cast<std::uint32_t>(PieceType::Dragon));
     write32(StateCount);
     write32(0);
-    write32(2);
+    write32(2 * ExtraSubstates);
     write32(PlacementCount / 2);
     write32(StateCount);
     write32(0);
@@ -687,6 +785,11 @@ FreshSummary report_fresh_roots(
     for (std::uint32_t index = 0; index < StateCount; ++index) {
         const GhostPublicExtra::ConcreteState state =
           GhostPublicExtra::decode_index(index, material);
+        if (!GhostPublicExtra::valid_concrete_world(state, material)) {
+            ++unreachable[static_cast<std::size_t>(state.side)]
+                          [original.result(index)];
+            continue;
+        }
         const Position position = GhostPublicExtra::make_position(state,
                                                                    material);
         const auto verdict = GhostPublicExtra::classify_fresh_root_admission(
@@ -708,7 +811,7 @@ FreshSummary report_fresh_roots(
             const PublicExtraGeometry raw{
               static_cast<std::uint8_t>(normalized.side),
               normalized.whiteKing, normalized.blackKing,
-              normalized.bishop, 0};
+              normalized.bishop, 0, normalized.extraSubstate};
             const auto [geometry, transform] = solver.domain_.locate(raw);
             const unsigned actual = rectangle_transform_square(
               normalized.ghost, transform);
@@ -743,7 +846,8 @@ FreshSummary report_fresh_roots(
         const PublicExtraGeometry raw{
           static_cast<std::uint8_t>(normalized.side), normalized.whiteKing,
           normalized.blackKing, normalized.bishop,
-          static_cast<std::uint8_t>(normalized.visible)};
+          static_cast<std::uint8_t>(normalized.visible),
+          normalized.extraSubstate};
         const auto [geometry, transform] = solver.domain_.locate(raw);
         const unsigned actual = rectangle_transform_square(
           normalized.ghost, transform);
@@ -985,6 +1089,7 @@ void prove_sidecar_singletons(const ArbitrarySidecarProbe& probe,
             normalized.whiteKing = physical.whiteKing;
             normalized.blackKing = physical.blackKing;
             normalized.bishop = physical.bishop;
+            normalized.extraSubstate = physical.extraSubstate;
             normalized.ghost = static_cast<std::uint8_t>(actual);
             normalized.visible = physical.visible != 0;
             const auto original = normalized_to_original(normalized,
@@ -1036,9 +1141,13 @@ namespace {
     if (!valid_sha(options.lowerDragonSha256) ||
         !valid_sha(options.lowerDragonSourceSha256) ||
         !valid_sha(options.lowerDragonModelSha256) ||
-        options.lowerDragonSourceSha256 != options.lowerDragonSha256 ||
+        options.lowerDragonSourceSha256 != options.lowerDragonSha256
+#ifndef ULTIMATE_GHOST_ORDINARY_LOWER_DRAW_ONLY
+        ||
         GhostPublicExtraExact::sha256_file(options.lowerDragonTable) !=
-          options.lowerDragonSha256)
+          options.lowerDragonSha256
+#endif
+        )
         throw std::runtime_error(
           "Dragon transitions require authenticated compatible kdragonk");
     LowerDragonTable lower(options.lowerDragonTable);
@@ -1135,6 +1244,32 @@ void verify_transitions(const TransitionOptions& options) {
     const LowerDragonTable lower = authenticate_lower_dragon(options);
     authenticate_dragon_marker(options);
     certify_dragon_transitions(options, lower);
+}
+
+void rebind_transitions(const TransitionOptions& options) {
+    const LowerDragonTable lower = authenticate_lower_dragon(options);
+    authenticate_dragon_marker(options);
+    const MaterialSpec material = normalized_material(options.orientation);
+    // A frozen store from an older ordinary-piece instantiation can carry
+    // different exact terminal flags while its geometry, moves, and public
+    // observations remain valid.  Validate every lower edge's domain while
+    // replacing those flags with the verifier's structural placeholder in a
+    // single pass, then restore the authenticated lower-table values after
+    // the exhaustive structural certificate.  This avoids a redundant full
+    // rewrite of multi-gigabyte block stores.
+    rewrite_lower_dragon_edges(
+      options.prefix, material, lower, true, false, true);
+    try {
+        verify_external_transition_certificate(options.prefix, material);
+    }
+    catch (...) {
+        rewrite_lower_dragon_edges(options.prefix, material, lower,
+                                   false, true);
+        throw;
+    }
+    rewrite_lower_dragon_edges(options.prefix, material, lower, false, true);
+    write_dragon_marker(options);
+    authenticate_dragon_marker(options);
 }
 
 ResourceEstimate resource_estimate() { return {}; }
@@ -1326,7 +1461,8 @@ class ArbitrarySidecarProbe::Impl {
         PublicExtraGeometry raw{
           static_cast<std::uint8_t>(normalized.side), normalized.whiteKing,
           normalized.blackKing, normalized.bishop,
-          static_cast<std::uint8_t>(normalized.visible)};
+          static_cast<std::uint8_t>(normalized.visible),
+          normalized.extraSubstate};
         const CanonicalExtraGeometry canonical = canonical_geometry(raw);
         GhostPublicExtra::GhostMask mapped;
         for (unsigned square = 0; square < Squares; ++square)
@@ -1473,9 +1609,9 @@ class ArbitrarySidecarProbe::Impl {
               std::array<char, 8>{{'U','F','G','D','1','\0','\0','\0'}} ||
             header_.version != 1 || header_.headerBytes != sizeof(header_) ||
             header_.endian != Endian ||
-            header_.primary != static_cast<std::uint32_t>(PieceType::Ghost) ||
+            header_.primary != static_cast<std::uint32_t>(SourcePrimary) ||
             header_.secondary !=
-              static_cast<std::uint32_t>(PieceType::Dragon) ||
+              static_cast<std::uint32_t>(SourceSecondary) ||
             header_.ghostColor != static_cast<std::uint32_t>(Color::White) ||
             header_.orientation !=
               static_cast<std::uint32_t>(orientation_) ||
@@ -1486,7 +1622,11 @@ class ArbitrarySidecarProbe::Impl {
             header_.rootBytes != sizeof(ExternalRobdd::Id) ||
             header_.reserved || header_.nodes < 2 ||
             header_.nodes > std::numeric_limits<std::uint32_t>::max() ||
-            header_.geometries != 492'960 ||
+            header_.geometries != 492'960ULL * ExtraSubstates
+#ifdef ULTIMATE_GHOST_EXTRA_HORIZONTAL_ONLY
+              * 2
+#endif
+              ||
             header_.strata > header_.geometries * Squares ||
             header_.ownerRoots != header_.geometries * Squares ||
             header_.nodeOffset != nodeOffset ||
@@ -1549,9 +1689,12 @@ class ArbitrarySidecarProbe::Impl {
                   bindings.lowerGhostSidecarSha256)
                 throw std::runtime_error(
                   "Dragon strict-restore dependency mismatch");
-            if (GhostPublicExtraExact::sha256_file(
+            if (
+#ifndef ULTIMATE_GHOST_ORDINARY_LOWER_DRAW_ONLY
+                GhostPublicExtraExact::sha256_file(
                   restore->lowerDragonTable) !=
                   bindings.lowerDragonFullSha256 ||
+#endif
                 bindings.lowerDragonFullSha256 !=
                   bindings.lowerDragonSourceSha256 ||
                 restore->lowerDragonModelSha256 !=

@@ -164,6 +164,59 @@ DRAGON_GHOST_SOLVER_SOURCES = (
     TABLEBASE_SOURCES / "ghost_dragon_information_solver.cpp",
     TABLEBASE_SOURCES / "ghost_dragon_information_tablebase.cpp",
 )
+ORDINARY_GHOST_SOLVER_SOURCES = (
+    *DRAGON_GHOST_SOLVER_SOURCES[:-1],
+    TABLEBASE_SOURCES / "ghost_ordinary_information_solver.cpp",
+    TABLEBASE_SOURCES / "ghost_ordinary_information_tablebase.cpp",
+)
+CROSSED_JESTER_GHOST_SOLVER_SOURCES = (
+    ROOT / "src" / "ultimate" / "position.h",
+    ROOT / "src" / "ultimate" / "position.cpp",
+    ROOT / "src" / "ultimate" / "nnue.h",
+    ROOT / "src" / "ultimate" / "nnue.cpp",
+    TABLEBASE_SOURCES / "information.h",
+    TABLEBASE_SOURCES / "information.cpp",
+    TABLEBASE_SOURCES / "information_solver.h",
+    TABLEBASE_SOURCES / "information_solver.cpp",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_model.h",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_model.cpp",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_solver.h",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_solver.cpp",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_fixed_point.h",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_fixed_point.cpp",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_lower_oracle.h",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_lower_oracle.cpp",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_sidecar.h",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_sidecar.cpp",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_tablebase.cpp",
+)
+OPPOSED_GHOST_PAIR_SOLVER_SOURCES = (
+    ROOT / "src" / "ultimate" / "position.h",
+    ROOT / "src" / "ultimate" / "position.cpp",
+    ROOT / "src" / "ultimate" / "nnue.h",
+    ROOT / "src" / "ultimate" / "nnue.cpp",
+    TABLEBASE_SOURCES / "information.h",
+    TABLEBASE_SOURCES / "information.cpp",
+    TABLEBASE_SOURCES / "information_solver.h",
+    TABLEBASE_SOURCES / "information_solver.cpp",
+    # The two generic algorithms below are compiled through the opposed
+    # specialization units and therefore remain part of this hash domain.
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_solver.h",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_solver.cpp",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_fixed_point.h",
+    TABLEBASE_SOURCES / "crossed_jester_ghost_information_fixed_point.cpp",
+    TABLEBASE_SOURCES / "opposed_ghost_pair_information_model.h",
+    TABLEBASE_SOURCES / "opposed_ghost_pair_information_model.cpp",
+    TABLEBASE_SOURCES / "opposed_ghost_pair_information_solver.h",
+    TABLEBASE_SOURCES / "opposed_ghost_pair_information_solver.cpp",
+    TABLEBASE_SOURCES / "opposed_ghost_pair_information_fixed_point.h",
+    TABLEBASE_SOURCES / "opposed_ghost_pair_information_fixed_point.cpp",
+    TABLEBASE_SOURCES / "opposed_ghost_pair_information_lower_oracle.h",
+    TABLEBASE_SOURCES / "opposed_ghost_pair_information_lower_oracle.cpp",
+    TABLEBASE_SOURCES / "opposed_ghost_pair_information_sidecar.h",
+    TABLEBASE_SOURCES / "opposed_ghost_pair_information_sidecar.cpp",
+    TABLEBASE_SOURCES / "opposed_ghost_pair_information_tablebase.cpp",
+)
 BOMB_GHOST_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "position.h",
     ROOT / "src" / "ultimate" / "position.cpp",
@@ -378,6 +431,7 @@ PRIMARY_JESTER_FILENAMES = (
     "kjestersniperk.uftb", "kjesterksniper.uftb",
     "kjesterprincek.uftb", "kjesterkprince.uftb",
     "kjestercheckerk.uftb", "kjesterkchecker.uftb",
+    "kcopycatjesterk.uftb", "kcopycatkjester.uftb",
 )
 PRIMARY_JESTER_GIANT_FILENAMES = (
     "kjestergiantk.uftb", "kjesterkgiant.uftb",
@@ -430,7 +484,23 @@ SOLVER_DOMAIN_FILENAMES = {
     "giant-ghost-same": ("kghostgiantk.uftb",),
     "giant-ghost-opposing": ("kghostkgiant.uftb",),
     "ghost-pair": ("kghostghostk.uftb",),
+    "opposed-ghost-pair": ("kghostkghost.uftb",),
     "jester-ghost": ("kjesterghostk.uftb",),
+    "crossed-jester-ghost": ("kjesterkghost.uftb",),
+    "ordinary-ghost": (
+        "kknightghostk.uftb", "kknightkghost.uftb",
+        "kninjaghostk.uftb", "kninjakghost.uftb",
+        "kqueenghostk.uftb", "kqueenkghost.uftb",
+        "krookghostk.uftb", "krookkghost.uftb",
+        "kturtleghostk.uftb", "kturtlekghost.uftb",
+        "kpawnghostk.uftb", "kpawnkghost.uftb",
+        "kberserkerghostk.uftb", "kberserkerkghost.uftb",
+        "kghostsniperk.uftb", "kghostksniper.uftb",
+        "kghostprincek.uftb", "kghostkprince.uftb",
+        "kghostcheckerk.uftb", "kghostkchecker.uftb",
+        "kghostpenguink.uftb", "kghostkpenguin.uftb",
+        "kcopycatghostk.uftb", "kcopycatkghost.uftb",
+    ),
 }
 SOLVER_DOMAIN_SOURCES = {
     "primary-jester": PRIMARY_JESTER_SOLVER_SOURCES,
@@ -453,7 +523,10 @@ SOLVER_DOMAIN_SOURCES = {
     "giant-ghost-same": GIANT_GHOST_SOLVER_SOURCES,
     "giant-ghost-opposing": GIANT_GHOST_SOLVER_SOURCES,
     "ghost-pair": GHOST_PAIR_SOLVER_SOURCES,
+    "opposed-ghost-pair": OPPOSED_GHOST_PAIR_SOLVER_SOURCES,
     "jester-ghost": JESTER_GHOST_SOLVER_SOURCES,
+    "crossed-jester-ghost": CROSSED_JESTER_GHOST_SOLVER_SOURCES,
+    "ordinary-ghost": ORDINARY_GHOST_SOLVER_SOURCES,
 }
 SOLVER_SIDECAR_DEPENDENCIES = {
     "reciprocal-bishop-ghost": ("kghostk.ufgm",),
@@ -470,7 +543,10 @@ SOLVER_SIDECAR_DEPENDENCIES = {
     "giant-ghost-same": ("kghostk.ufgm",),
     "giant-ghost-opposing": ("kghostk.ufgm",),
     "ghost-pair": ("kghostk.ufgm",),
+    "opposed-ghost-pair": ("kghostk.ufgm",),
     "jester-ghost": ("kghostk.ufgm",),
+    "crossed-jester-ghost": ("kjesterk.ufiw", "kghostk.ufgm"),
+    "ordinary-ghost": ("kghostk.ufgm",),
 }
 _ROUTED_FILENAMES = tuple(
     filename for filenames in SOLVER_DOMAIN_FILENAMES.values()
@@ -651,8 +727,11 @@ def solver_model_fingerprint(filename: str, *, root: Path = ROOT) -> str:
     invalidating completed one-primary-Jester proofs.
     """
     domain = solver_domain(filename)
+    fingerprint_domain = (f"solver-model:{domain}:{filename}"
+                          if domain == "ordinary-ghost"
+                          else f"solver-model:{domain}")
     return _source_fingerprint(
-        SOLVER_DOMAIN_SOURCES[domain], domain=f"solver-model:{domain}",
+        SOLVER_DOMAIN_SOURCES[domain], domain=fingerprint_domain,
         root=root)
 
 
@@ -664,6 +743,16 @@ def solver_concrete_dependencies(filename: str) -> tuple[str, ...]:
     the first lower-material probe.
     """
     domain = solver_domain(filename)
+    if domain == "ordinary-ghost":
+        for piece in ("knight", "ninja", "queen", "rook", "turtle",
+                      "pawn", "berserker", "sniper", "prince", "checker",
+                      "penguin", "copycat"):
+            if piece in filename:
+                return (f"k{piece}k.uftb",)
+        raise SummaryValidationError(
+            f"{filename}: ordinary Ghost material is not classified")
+    if domain == "crossed-jester-ghost":
+        return ("kjesterk.uftb",)
     if domain in {"dragon-ghost-same", "dragon-ghost-opposing"}:
         return ("kdragonk.uftb",)
     if domain in {"bomb-ghost-same", "bomb-ghost-opposing"}:
@@ -676,6 +765,8 @@ def solver_concrete_dependencies(filename: str) -> tuple[str, ...]:
         return ("kjesterk.uftb",)
     if domain not in {"primary-jester", "primary-jester-giant"}:
         return ()
+    if filename in {"kcopycatjesterk.uftb", "kcopycatkjester.uftb"}:
+        return ("kjesterk.uftb", "kcopycatk.uftb")
     if filename == "kjesterk.uftb":
         return ()
     records = {str(record["filename"]): record
@@ -703,7 +794,9 @@ def concrete_tablebase_model_fingerprint(filename: str,
     if filename not in {"kdragonk.uftb", "kbombk.uftb",
                         "kparasitek.uftb", "kgiantk.uftb", "kpawnk.uftb",
                         "kberserkerk.uftb", "kpenguink.uftb",
-                        "ksniperk.uftb", "kprincek.uftb"}:
+                        "ksniperk.uftb", "kprincek.uftb",
+                        "kknightk.uftb", "kninjak.uftb", "kqueenk.uftb",
+                        "krookk.uftb", "kturtlek.uftb", "kcopycatk.uftb"}:
         raise SummaryValidationError(
             f"unsupported concrete dependency model {filename}")
     sources = (

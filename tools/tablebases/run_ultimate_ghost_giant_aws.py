@@ -34,7 +34,7 @@ def main() -> None:
     parser.add_argument("--manifest", type=Path,
                         default=Path("bundle-manifest.json"))
     parser.add_argument("--full", action="store_true",
-                        help="continue after measurement to the exact solve")
+                        help=argparse.SUPPRESS)
     args = parser.parse_args()
     root = args.manifest.resolve().parent
     manifest = json.loads(args.manifest.read_text())
@@ -50,9 +50,7 @@ def main() -> None:
                       int(manifest["parallelism"]))
     if not shared.merged_transition_is_complete(root, commands["merge"]):
         shared.run(commands["merge"], root, work / "logs" / "merge.log")
-    shared.run(commands["measure"], root, work / "logs" / "measure.log")
-    if args.full:
-        shared.run(commands["solve"], root, work / "logs" / "solve.log")
+    shared.run(commands["solve"], root, work / "logs" / "solve.log")
     shared.artifact_manifest(root, manifest)
     artifact_path = work / "artifact-manifest.json"
     artifact = json.loads(artifact_path.read_text())

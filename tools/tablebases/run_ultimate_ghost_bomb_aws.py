@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 
 import run_ultimate_reciprocal_bishop_ghost_aws as shared
 
@@ -103,6 +104,31 @@ def resumed_measure_command(command: list[str], prefix: Path) -> list[str]:
     return result
 
 
+def prepare_writable_transition_copy(root: Path, source: Path,
+                                     command: list[str]) -> Path:
+    """Copy an authenticated placeholder graph for the solve-time edge patch."""
+    try:
+        target = root / command[command.index("--transition-prefix") + 1]
+    except (ValueError, IndexError) as error:
+        raise RuntimeError("Bomb/Ghost solve lacks transition prefix") from error
+    target.parent.mkdir(parents=True, exist_ok=True)
+    for suffix in shared.TRANSITION_SUFFIXES:
+        source_path = Path(f"{source}{suffix}")
+        target_path = Path(f"{target}{suffix}")
+        temporary = target_path.with_suffix(target_path.suffix + ".copying")
+        if (target_path.is_file() and
+                target_path.stat().st_size == source_path.stat().st_size and
+                shared.sha256(target_path) == shared.sha256(source_path)):
+            continue
+        shutil.copy2(source_path, temporary)
+        if (temporary.stat().st_size != source_path.stat().st_size or
+                shared.sha256(temporary) != shared.sha256(source_path)):
+            raise RuntimeError(
+                f"Bomb/Ghost writable transition copy residual: {temporary}")
+        temporary.replace(target_path)
+    return target
+
+
 def validate_completed_setup(root: Path,
                              manifest: dict[str, object]) -> None:
     """Authenticate the built binary and finished sizing pass before resuming."""
@@ -191,8 +217,9 @@ def main() -> None:
     # neither regenerated nor mutated by the corrected measurement pass.
     validate_transition_resume(resume, manifest)
     if args.full:
-        shared.run(resumed_measure_command(commands["solve"], prefix), root,
-                   work / "logs" / "solve.log")
+        if args.resume_completed_measurement:
+            prepare_writable_transition_copy(root, prefix, commands["solve"])
+        shared.run(commands["solve"], root, work / "logs" / "solve.log")
         validate_transition_resume(resume, manifest)
     shared.artifact_manifest(root, manifest)
     artifact_path = work / "artifact-manifest.json"

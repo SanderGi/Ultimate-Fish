@@ -21,10 +21,23 @@ namespace Stockfish::Ultimate::GhostPublicExtra {
 // Ghost visibility is the sole substate in this model.  These constants are
 // part of the adapter contract and deliberately do not depend on a tablebase
 // file being open.
+#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
+inline constexpr std::uint32_t PlacementCount =
+  2 * Position::BoardSquares * (Position::BoardSquares - 1) *
+  (Position::BoardSquares - 2) * (Position::BoardSquares - 3);
+#else
 inline constexpr std::uint32_t PlacementCount =
   2 * (Position::BoardSquares / 2) * (Position::BoardSquares - 1) *
   (Position::BoardSquares - 2) * (Position::BoardSquares - 3);
-inline constexpr std::uint32_t StateCount = PlacementCount * 2;
+#endif
+#ifdef ULTIMATE_GHOST_EXTRA_SUBSTATES
+inline constexpr std::uint32_t ExtraSubstateCount =
+  ULTIMATE_GHOST_EXTRA_SUBSTATES;
+#else
+inline constexpr std::uint32_t ExtraSubstateCount = 1;
+#endif
+inline constexpr std::uint32_t StateCount =
+  PlacementCount * 2 * ExtraSubstateCount;
 inline constexpr std::uint32_t LowerGhostStateCount =
   2 * Position::BoardSquares * (Position::BoardSquares - 1) *
   (Position::BoardSquares - 2) * 2;
@@ -76,6 +89,7 @@ struct ConcreteState {
     std::uint8_t blackKing = 0;
     std::uint8_t first = 0;
     std::uint8_t second = 0;
+    std::uint8_t extraSubstate = 0;
     bool ghostVisible = false;
 };
 
@@ -93,6 +107,7 @@ struct RoleState {
     std::uint8_t observerKing = 0;
     std::uint8_t extra = 0;
     std::uint8_t ghost = 0;
+    std::uint8_t extraSubstate = 0;
     bool ghostVisible = false;
     bool extraOwnedByOwner = true;
 };
@@ -121,6 +136,15 @@ struct RoleState {
                                      const MaterialSpec& material);
 [[nodiscard]] Position make_position(std::uint32_t index,
                                      const MaterialSpec& material);
+
+// Compound Copycat source codecs deliberately retain dense sentinel records
+// whose derived mirror clone overlaps another model.  They remain part of the
+// source index space but are never legal concrete worlds or fresh roots.
+[[nodiscard]] bool valid_concrete_world(const ConcreteState& state,
+                                        const MaterialSpec& material);
+[[nodiscard]] bool tablebase_substate_geometrically_valid(
+  PieceType type, std::uint8_t whiteKing, std::uint8_t blackKing,
+  std::uint8_t extra, std::uint8_t other, std::uint32_t substate);
 
 enum class RectangleTransform : std::uint8_t {
     Identity = 0,

@@ -131,6 +131,52 @@ class FrontierResumeTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "extent mismatch"):
                     RESUME.authenticate_manifest(document)
 
+    def test_transport_manifest_authenticates_only_checkpoint_planes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            document = self.fixture(Path(temporary))
+            document["discarded_reverse_graph"] = {
+                name: {
+                    key: value for key, value in document["planes"][name].items()
+                    if key != "sha256"
+                }
+                for name in ("offsets", "predecessors")
+            }
+            for name in ("offsets", "predecessors"):
+                path = (Path(document["source_work_directory"]) /
+                        document["planes"][name]["relative_path"])
+                path.unlink()
+                del document["planes"][name]
+            with mock.patch.object(
+                    RESUME.concrete, "generator_model_sha256",
+                    return_value=document["generator_model_sha256"]):
+                result = RESUME.authenticate_manifest(document)
+            self.assertEqual(
+                {"nodes", "degrees"},
+                set(result["files"]).intersection({
+                    "nodes", "degrees", "offsets", "predecessors"}))
+            self.assertIn("retrograde-not-started", result["frontier_status"])
+
+    def test_transport_manifest_rejects_complete_reverse_graph(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            document = self.fixture(Path(temporary))
+            document["discarded_reverse_graph"] = {
+                name: {
+                    key: value for key, value in document["planes"][name].items()
+                    if key != "sha256"
+                }
+                for name in ("offsets", "predecessors")
+            }
+            document["discarded_reverse_graph"]["predecessors"][
+                "allocated_bytes"] = document[
+                    "discarded_reverse_graph"]["predecessors"]["bytes"]
+            for name in ("offsets", "predecessors"):
+                del document["planes"][name]
+            with mock.patch.object(
+                    RESUME.concrete, "generator_model_sha256",
+                    return_value=document["generator_model_sha256"]):
+                with self.assertRaisesRegex(RuntimeError, "not proven incomplete"):
+                    RESUME.authenticate_manifest(document)
+
     def test_native_checkpoint_is_exclusive_and_sources_stay_unchanged(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

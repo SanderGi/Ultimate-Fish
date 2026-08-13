@@ -17,6 +17,158 @@
 #include <sstream>
 
 namespace Stockfish::Ultimate {
+
+bool Position::apply_tablebase_substate(int id, PieceType logicalType,
+                                        std::uint32_t substate) {
+    if (id < 0 || id >= piece_count() || !pieces_[id].alive ||
+        !pieces_[id].onBoard)
+        return false;
+    switch (logicalType) {
+    case PieceType::Berserker:
+        if (substate >= 10) return false;
+        pieces_[id].power = static_cast<std::uint8_t>(substate);
+        return true;
+    case PieceType::Ghost:
+        if (substate >= 2) return false;
+        pieces_[id].visible = substate != 0;
+        return true;
+    case PieceType::Sniper:
+        if (substate >= 4) return false;
+        pieces_[id].cooldown = static_cast<std::uint8_t>(substate);
+        return true;
+    case PieceType::Prince:
+        if (substate >= 2 || (substate && continuation_ != Continuation::None))
+            return false;
+        if (substate) {
+            continuation_ = Continuation::PrinceSecondMove;
+            forcedPiece_ = id;
+        }
+        return true;
+    case PieceType::Checker:
+        if (substate >= 4 || (substate & 1u &&
+                              continuation_ != Continuation::None))
+            return false;
+        if (substate & 1u) {
+            continuation_ = Continuation::CheckerJump;
+            forcedPiece_ = id;
+        }
+        return true;
+    case PieceType::Pawn:
+        if (substate >= 2) return false;
+        pieces_[id].moved = substate != 0;
+        return true;
+    case PieceType::Penguin: {
+        if (substate >= 8 || pieces_[id].type != PieceType::Penguin)
+            return false;
+        pieces_[id].action = 0;
+        std::uint32_t found = 0;
+        const int penguinFile = pieces_[id].square % BoardFiles;
+        const int penguinRank = pieces_[id].square / BoardFiles;
+        constexpr int directions[8][2] = {
+          {1, 0}, {-1, 0}, {0, 1}, {0, -1},
+          {1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
+        const auto directionBit = [](int file, int rank) -> std::uint8_t {
+            if (file == 0 && rank == 1) return 1;
+            if (file == 0 && rank == -1) return 2;
+            if (file == -1 && rank == 0) return 4;
+            if (file == 1 && rank == 0) return 8;
+            if (file == -1 && rank == 1) return 16;
+            if (file == 1 && rank == 1) return 32;
+            if (file == -1 && rank == -1) return 64;
+            if (file == 1 && rank == -1) return 128;
+            return 0;
+        };
+        for (const auto& direction : directions) {
+            const int file = penguinFile + direction[0];
+            const int rank = penguinRank + direction[1];
+            if (file < 0 || file >= BoardFiles || rank < 0 || rank >= BoardRanks)
+                continue;
+            const int target = piece_on(rank * BoardFiles + file);
+            if (target == NoPiece || pieces_[target].type == PieceType::Penguin)
+                continue;
+            const std::uint32_t flag = pieces_[target].type == PieceType::King
+              ? (pieces_[target].color == Color::White ? 1u : 2u) : 4u;
+            if (!(substate & flag))
+                continue;
+            found |= flag;
+            pieces_[id].action |= directionBit(direction[0], direction[1]);
+            ++pieces_[target].freezeCount;
+        }
+        return found == substate;
+    }
+    default:
+        return substate == 0;
+    }
+}
+
+std::optional<std::uint32_t> Position::tablebase_substate(
+  int id, PieceType logicalType) const {
+    if (id < 0 || id >= piece_count() || !pieces_[id].alive ||
+        !pieces_[id].onBoard)
+        return std::nullopt;
+    switch (logicalType) {
+    case PieceType::Berserker:
+        return std::min<std::uint32_t>(pieces_[id].power, 9);
+    case PieceType::Ghost: return pieces_[id].visible ? 1u : 0u;
+    case PieceType::Sniper:
+        return pieces_[id].cooldown < 4
+             ? std::optional<std::uint32_t>(pieces_[id].cooldown)
+             : std::nullopt;
+    case PieceType::Prince:
+        return continuation_ == Continuation::PrinceSecondMove &&
+               forcedPiece_ == id ? 1u : 0u;
+    case PieceType::Checker:
+        if (pieces_[id].type != PieceType::Checker &&
+            pieces_[id].type != PieceType::CheckerKing)
+            return std::nullopt;
+        return (pieces_[id].type == PieceType::CheckerKing ? 2u : 0u) +
+          (continuation_ == Continuation::CheckerJump && forcedPiece_ == id
+             ? 1u : 0u);
+    case PieceType::Pawn: return pieces_[id].moved ? 1u : 0u;
+    case PieceType::Penguin: {
+        if (pieces_[id].type != PieceType::Penguin)
+            return std::nullopt;
+        std::uint32_t result = 0;
+        std::uint8_t expectedAction = 0;
+        const int penguinFile = pieces_[id].square % BoardFiles;
+        const int penguinRank = pieces_[id].square / BoardFiles;
+        constexpr int directions[8][2] = {
+          {1, 0}, {-1, 0}, {0, 1}, {0, -1},
+          {1, 1}, {-1, 1}, {1, -1}, {-1, -1}};
+        const auto directionBit = [](int file, int rank) -> std::uint8_t {
+            if (file == 0 && rank == 1) return 1;
+            if (file == 0 && rank == -1) return 2;
+            if (file == -1 && rank == 0) return 4;
+            if (file == 1 && rank == 0) return 8;
+            if (file == -1 && rank == 1) return 16;
+            if (file == 1 && rank == 1) return 32;
+            if (file == -1 && rank == -1) return 64;
+            if (file == 1 && rank == -1) return 128;
+            return 0;
+        };
+        for (const auto& direction : directions) {
+            const std::uint8_t bit = directionBit(direction[0], direction[1]);
+            if (!(pieces_[id].action & bit))
+                continue;
+            const int file = penguinFile + direction[0];
+            const int rank = penguinRank + direction[1];
+            if (file < 0 || file >= BoardFiles || rank < 0 || rank >= BoardRanks)
+                return std::nullopt;
+            const int target = piece_on(rank * BoardFiles + file);
+            if (target == NoPiece || pieces_[target].type == PieceType::Penguin ||
+                !pieces_[target].freezeCount)
+                return std::nullopt;
+            const std::uint32_t flag = pieces_[target].type == PieceType::King
+              ? (pieces_[target].color == Color::White ? 1u : 2u) : 4u;
+            result |= flag;
+            expectedAction |= bit;
+        }
+        return expectedAction == pieces_[id].action
+             ? std::optional<std::uint32_t>(result) : std::nullopt;
+    }
+    default: return 0u;
+    }
+}
 namespace {
 
 constexpr int Orthogonal[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};

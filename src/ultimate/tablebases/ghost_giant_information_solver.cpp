@@ -1627,14 +1627,25 @@ std::uint32_t lower_capture_witness_geometry(Orientation orientation) {
             ++residual;
             continue;
         }
-        const std::uint8_t exact = original.result(index);
-        const bool ownerExpected =
-          (state.side == material.ghostColor && exact == 1) ||
-          (state.side == material.observer() && exact == 2);
-        const bool observerExpected =
-          (state.side == material.observer() && exact == 1) ||
-          (state.side == material.ghostColor && exact == 2);
-        residual += owner != ownerExpected || observer != observerExpected;
+        // A live singleton belief is not a perfect-information subgame:
+        // after an unseen Ghost move the observer's successor belief can
+        // contain several worlds.  Therefore its information-game value need
+        // not equal the concrete source WDL.  Terminal worlds remain exact,
+        // while Bellman equality and the serialized-sidecar reproduction
+        // certificate prove every live singleton without this false oracle.
+        if (external_mask_test(meta.terminal, actual)) {
+            const std::uint8_t exact = original.result(index);
+            const bool ownerExpected =
+              (state.side == material.ghostColor && exact == 1) ||
+              (state.side == material.observer() && exact == 2);
+            const bool observerExpected =
+              (state.side == material.observer() && exact == 1) ||
+              (state.side == material.ghostColor && exact == 2);
+            residual += owner != ownerExpected ||
+                        observer != observerExpected;
+        }
+        else
+            residual += owner && observer;
         ++checked;
     }
     constexpr std::uint64_t ExpectedValidStates =
@@ -1813,7 +1824,8 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     transitions.lowerGiantSha256 = options.lowerGiantFullSha256;
     transitions.lowerGiantSourceSha256 = options.lowerGiantSourceSha256;
     transitions.lowerGiantModelSha256 = options.lowerGiantModelSha256;
-    transitions.modelSha256 = options.modelSha256;
+    transitions.modelSha256 = options.transitionModelSha256.empty()
+      ? options.modelSha256 : options.transitionModelSha256;
     transitions.observationSha256 = options.observationSha256;
     (void)authenticate_lower_giant(transitions);
     const GiantCompileCertificate transitionCertificate =
@@ -1878,6 +1890,7 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     prove_sidecar_singletons(probe, solver, options.orientation, sidecar);
     return sidecar;
 }
+
 
 void exact_self_test(const std::string& scratchPrefix) {
     (void)scratchPrefix;

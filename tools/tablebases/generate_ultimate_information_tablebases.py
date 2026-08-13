@@ -273,6 +273,13 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 semantics_offset = 1184
                 semantics = b"fresh-maximal-public-view-v2:giant-anchor-v2-ghost"
                 expected_version = 1
+            elif magic == b"UFOPPGH1":
+                expected_header, payload_offset = 640, 88
+                first_section_offset = 48
+                source_offset, model_offset, payload_sha_offset = 96, 160, 544
+                semantics_offset = 608
+                semantics = b"dual-perfect-recall-forces-v1"
+                expected_version = 1
             else:
                 return False
             if magic not in {b"UFGX2\0\0\0", b"UFGD1\0\0\0",
@@ -288,6 +295,10 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 return False
             payload_bytes = struct.unpack_from("<Q", header,
                                                payload_offset)[0]
+            if magic == b"UFOPPGH1":
+                if payload_bytes < expected_header:
+                    return False
+                payload_bytes -= expected_header
             digest = hashlib.sha256()
             remaining = payload_bytes
             while remaining:
@@ -371,6 +382,12 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 header[608:672].decode() ==
                     information.concrete_tablebase_model_fingerprint(
                         "kgiantk.uftb"))
+        elif magic == b"UFOPPGH1":
+            dependencies_current = (
+                header[224:288].decode() ==
+                    information.observation_model_fingerprint() and
+                header[480:544].decode() ==
+                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
         else:
             dependencies_current = (
                 header[284:348].decode() ==
@@ -544,16 +561,20 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
         "--information-model-sha256", model_sha256,
     ]
     if domain in {"primary-jester", "primary-jester-giant"}:
+        copycat_jester = filename in {
+            "kcopycatjesterk.uftb", "kcopycatkjester.uftb"}
         command = [
-            str(args.binary), "--piece", "jester",
+            str(args.binary), "--piece",
+            "copycat" if copycat_jester else "jester",
             "--solve-jester-information", str(table),
             "--information-overlay", str(overlay),
             "--information-scratch", str(args.scratch),
             *common,
         ]
         secondary = str(record["secondary"])
-        if secondary:
-            command[3:3] = ["--piece2", secondary]
+        if secondary or copycat_jester:
+            command[3:3] = ["--piece2",
+                            "jester" if copycat_jester else secondary]
             if bool(record["opposing"]):
                 command[5:5] = ["--opposing"]
             lower_table = ROOT / "tablebases" / "kjesterk.uftb"
@@ -897,6 +918,44 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             "--lower-model-sha256", lower_model,
             "--lower-observation-sha256", lower_observation,
         ]
+    if domain == "opposed-ghost-pair":
+        lower = ROOT / "tablebases" / "kghostk.ufgm"
+        payload = lower.read_bytes()
+        if (len(payload) < 320 or payload[:8] != b"UFGM1\0\0\0" or
+                struct.unpack_from("<I", payload, 12)[0] != 320):
+            raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
+        lower_sha = hashlib.sha256(payload).hexdigest()
+        expected_lower_sha = (
+            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+        if lower_sha != expected_lower_sha:
+            raise RuntimeError(
+                f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
+        checkpoint = args.opposed_ghost_pair_graph
+        if not checkpoint.is_file():
+            raise RuntimeError(
+                f"{checkpoint}: closed opposed Ghost/Ghost graph required")
+        return [
+            str(args.opposed_ghost_pair_binary),
+            "--checkpoint", str(checkpoint),
+            "--checkpoint-sha256",
+            hashlib.sha256(checkpoint.read_bytes()).hexdigest(),
+            "--scratch-directory",
+            str(args.scratch / "kghostkghost-perfect-recall"),
+            "--output-sidecar",
+            str(args.overlays / "kghostkghost.ufog"),
+            "--output-overlay", str(overlay),
+            "--source-table", str(table),
+            "--source-sha256", source_sha256,
+            "--model-sha256", model_sha256,
+            "--observation-sha256",
+            information.observation_model_fingerprint(),
+            "--lower-ghost-sidecar", str(lower),
+            "--lower-ghost-sidecar-sha256", lower_sha,
+            "--lower-ghost-source-sha256", payload[96:160].decode(),
+            "--lower-ghost-model-sha256", payload[160:224].decode(),
+            "--lower-ghost-observation-sha256", payload[224:288].decode(),
+            "--solve",
+        ]
     if domain == "jester-ghost":
         lower_ghost = ROOT / "tablebases" / "kghostk.ufgm"
         lower_jester = ROOT / "tablebases" / "kjesterk.uftb"
@@ -924,6 +983,13 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             "--observation-sha256",
             information.observation_model_fingerprint(),
         ]
+
+    # Do not let a newly catalogued material domain fall through into the
+    # shared Jester dependency setup.  Unsupported classes must fail before
+    # touching an unrelated lower table; their dedicated AWS runners remain
+    # the only valid route until explicitly wired here.
+    if domain not in {"double-jester", "joint-jester"}:
+        raise RuntimeError(f"{filename}: unsupported information class {domain}")
 
     lower_overlay = args.overlays / "kjesterk.ufiw"
     lower_table = ROOT / "tablebases" / "kjesterk.uftb"
@@ -992,6 +1058,8 @@ def solve_one(args: argparse.Namespace) -> None:
     assert isinstance(files, dict)
     entry = files.get(args.filename)
     arbitrary = (args.overlays / "kghostghostk.ufgg" if domain == "ghost-pair"
+                 else args.overlays / "kghostkghost.ufog"
+                 if domain == "opposed-ghost-pair"
                  else args.overlays / "kbishopkghost.ufgx"
                  if domain == "reciprocal-bishop-ghost"
                  else args.overlays / f"{Path(args.filename).stem}.ufgd"
@@ -1032,7 +1100,7 @@ def solve_one(args: argparse.Namespace) -> None:
             entry.get("tablebase_sha256") == source_sha256 and
             entry.get("solver_model_sha256") == model_sha256 and
             overlay_is_current(overlay, record, source_sha256, model_sha256) and
-            (domain not in {"ghost-pair", "jester-ghost",
+            (domain not in {"ghost-pair", "opposed-ghost-pair", "jester-ghost",
                             "reciprocal-bishop-ghost", "dragon-ghost-same",
                             "dragon-ghost-opposing", "bomb-ghost-same",
                             "bomb-ghost-opposing", "fisherman-ghost-same",
@@ -1061,7 +1129,7 @@ def solve_one(args: argparse.Namespace) -> None:
                 f"{lower} is required; solve kjesterk.uftb first")
 
     summaries = run_solver(command, label=args.filename)
-    if domain in {"ghost-pair", "jester-ghost",
+    if domain in {"ghost-pair", "opposed-ghost-pair", "jester-ghost",
                   "reciprocal-bishop-ghost", "dragon-ghost-same",
                   "dragon-ghost-opposing", "bomb-ghost-same",
                   "bomb-ghost-opposing", "fisherman-ghost-same",
@@ -1174,6 +1242,12 @@ def main() -> None:
     parser.add_argument("--ghost-pair-transitions", type=Path,
                         default=Path(
                           "/tmp/kghostghostk-exact-transitions"))
+    parser.add_argument("--opposed-ghost-pair-binary", type=Path,
+                        default=ROOT / "src" /
+                        "ultimate_opposed_ghost_pair_information_tablebase")
+    parser.add_argument("--opposed-ghost-pair-graph", type=Path,
+                        default=Path(
+                          "/tmp/kghostkghost-perfect-recall/graph.chk"))
     parser.add_argument("--jester-ghost-binary", type=Path,
                         default=ROOT / "src" /
                         "ultimate_jester_ghost_information_tablebase")

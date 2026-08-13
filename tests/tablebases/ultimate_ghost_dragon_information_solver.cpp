@@ -61,6 +61,14 @@ void shard_test(const std::string& base, Exact::Orientation orientation) {
       orientation, merged, 0, 2), {first, second}, 2);
     Exact::verify_transitions(transition_options(
       orientation, merged, 0, 2));
+    const std::vector<char> reboundBlocks = bytes(merged + ".blocks");
+    const std::vector<char> reboundMarker = bytes(merged + ".verified");
+    Exact::rebind_transitions(transition_options(
+      orientation, merged, 0, 2));
+    if (bytes(merged + ".blocks") != reboundBlocks ||
+        bytes(merged + ".verified") != reboundMarker)
+        throw std::runtime_error(
+          "Dragon transition rebind was not byte-idempotent");
     for (const char* suffix : {".header", ".meta", ".strata", ".index",
                                ".blocks", ".verified"})
         if (bytes(direct + suffix) != bytes(merged + suffix))

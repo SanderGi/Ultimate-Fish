@@ -428,9 +428,10 @@ collision, royal reveal, and Sniper/Fisherman exceptions. Play mode additionally
 conceals enemy Ghost rendering, inspector data, capture-ring styling, invisible
 Ghost move coordinates, and enemy Jester identity. Analysis always draws every
 Ghost, using the top-right player-side selector—not the side to move—to make a
-Ghost translucent when that player would not see it. Search separately uses
-the side to move as the observer of its private legal dots. The fixed King and
-every Jester in the first simultaneously revealed Ranked pick group remain
+Ghost translucent when that player would not see it. Analysis reconstructs the
+selected player's belief independently of the side to move; a private legal-dot
+observation enters that belief only when the selected player is the mover. The
+fixed King and every Jester in the first simultaneously revealed Ranked pick group remain
 indistinguishable royal silhouettes. Jesters first appearing in later groups
 are public Jesters. Draft, analysis, and play retain that exact first-group
 candidate set instead of reducing it to a known/unknown boolean.

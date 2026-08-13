@@ -50,8 +50,107 @@ void expect(bool condition, const std::string& message) {
                               const Model::ConcreteState& rhs) {
     return lhs.side == rhs.side && lhs.whiteKing == rhs.whiteKing &&
            lhs.blackKing == rhs.blackKing && lhs.first == rhs.first &&
-           lhs.second == rhs.second &&
+           lhs.second == rhs.second && lhs.extraSubstate == rhs.extraSubstate &&
            lhs.ghostVisible == rhs.ghostVisible;
+}
+
+void stateful_substate_smoke_test() {
+    auto fixture = [](PieceType represented, PieceType logical,
+                      std::uint32_t substate) {
+        Position position;
+        position.clear();
+        const int whiteKing = position.add_piece(
+          PieceType::King, Color::White, square("a1"));
+        const int blackKing = position.add_piece(
+          PieceType::King, Color::Black, square("h10"));
+        const int extra = position.add_piece(
+          represented, Color::White, square("d4"));
+        expect(whiteKing != Position::NoPiece &&
+                 blackKing != Position::NoPiece && extra != Position::NoPiece,
+               "stateful fixture construction failed");
+        expect(position.apply_tablebase_substate(extra, logical, substate),
+               "stateful fixture substate application failed");
+        const auto restored = position.tablebase_substate(extra, logical);
+        expect(restored && *restored == substate,
+               "stateful fixture substate did not round trip");
+        return position;
+    };
+
+    (void)fixture(PieceType::Pawn, PieceType::Pawn, 1);
+    (void)fixture(PieceType::Berserker, PieceType::Berserker, 9);
+    (void)fixture(PieceType::Sniper, PieceType::Sniper, 3);
+    const Position prince = fixture(PieceType::Prince, PieceType::Prince, 1);
+    expect(prince.continuation() == Continuation::PrinceSecondMove,
+           "Prince continuation was not reconstructed");
+    const Position checker = fixture(
+      PieceType::CheckerKing, PieceType::Checker, 3);
+    expect(checker.continuation() == Continuation::CheckerJump,
+           "Checker continuation was not reconstructed");
+    Position penguin;
+    penguin.clear();
+    const int penguinWhite = penguin.add_piece(
+      PieceType::King, Color::White, square("c3"));
+    const int penguinBlack = penguin.add_piece(
+      PieceType::King, Color::Black, square("h10"));
+    const int penguinId = penguin.add_piece(
+      PieceType::Penguin, Color::White, square("d4"));
+    const int penguinGhost = penguin.add_piece(
+      PieceType::Ghost, Color::White, square("e5"));
+    expect(penguinWhite != Position::NoPiece &&
+             penguinBlack != Position::NoPiece &&
+             penguinId != Position::NoPiece &&
+             penguinGhost != Position::NoPiece &&
+             penguin.apply_tablebase_substate(
+               penguinId, PieceType::Penguin, 5),
+           "Penguin causal freeze fixture was rejected");
+    expect(penguin.piece(penguinWhite).freezeCount == 1 &&
+             penguin.piece(penguinGhost).freezeCount == 1 &&
+             penguin.piece(penguinBlack).freezeCount == 0 &&
+             penguin.tablebase_substate(
+               penguinId, PieceType::Penguin) == 5u,
+           "Penguin causal freeze layers did not round trip");
+    expect(Model::tablebase_substate_geometrically_valid(
+             PieceType::Penguin, square("c3"), square("h10"),
+             square("d4"), square("e5"), 5) &&
+             !Model::tablebase_substate_geometrically_valid(
+               PieceType::Penguin, square("c3"), square("h10"),
+               square("d4"), square("e5"), 2) &&
+             !Model::tablebase_substate_geometrically_valid(
+               PieceType::Penguin, square("c3"), square("h10"),
+               square("d4"), square("e5"), 8),
+           "Penguin dense-state geometry admitted an impossible freeze aura");
+
+#if ULTIMATE_GHOST_EXTRA_SUBSTATES == 4
+    Model::MaterialSpec material{
+      PieceType::Checker, Color::White, Color::White,
+      Model::SourceOrder::ExtraPrimary,
+      Model::HiddenAdjacentPolicy::ImpossibleWithoutForcedRelocation,
+      "kcheckerghostk"};
+    Model::ConcreteState state{
+      Color::White, square("a1"), square("h10"), square("d4"),
+      square("f6"), 3, false};
+    const std::uint32_t index = Model::encode_index(state, material);
+    const Model::ConcreteState decoded = Model::decode_index(index, material);
+    expect(same_state(state, decoded),
+           "stateful public-extra dense codec lost Checker substate");
+    expect(same_state(
+             state, Model::denormalize_roles(
+                      Model::normalize_roles(state, material), material)),
+           "stateful role normalization lost Checker substate");
+    const Position world = Model::make_position(decoded, material);
+    int checkerId = Position::NoPiece;
+    for (int id = 0; id < world.piece_count(); ++id)
+        if (world.piece(id).type == PieceType::CheckerKing)
+            checkerId = id;
+    expect(checkerId != Position::NoPiece &&
+             world.tablebase_substate(checkerId, PieceType::Checker) == 3u,
+           "stateful world reconstruction lost CheckerKing/jump state");
+    const Model::ConcreteState reflected = Model::transform_state(
+      state, Model::RectangleTransform::Both);
+    expect(reflected.extraSubstate == state.extraSubstate,
+           "rectangle symmetry changed a public extra substate");
+#endif
+    std::cout << "ghost_public_extra_stateful_substates residual 0\n";
 }
 
 [[nodiscard]] Move require_move(const Position& position,
@@ -540,10 +639,17 @@ void forced_relocation_admission_contract_test() {
 }  // namespace
 }  // namespace Stockfish::Ultimate
 
-int main() {
+int main(int argc, char** argv) {
     using namespace Stockfish::Ultimate;
     try {
+        if (argc == 2 && std::string(argv[1]) == "--stateful-smoke") {
+            stateful_substate_smoke_test();
+            return EXIT_SUCCESS;
+        }
+        if (argc != 1)
+            throw std::invalid_argument("unknown test argument");
         exhaustive_codec_test();
+        stateful_substate_smoke_test();
         action_codec_test();
         complete_symmetry_test();
         inherited_lower_mask_test(

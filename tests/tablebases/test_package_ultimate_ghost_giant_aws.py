@@ -40,9 +40,9 @@ class GhostGiantPackageTest(unittest.TestCase):
     def test_exact_models_dependencies_and_ranges(self) -> None:
         expected = {
             "kghostgiantk.uftb":
-                "31ca4c394fb1ff94a338b66c2ea6856eac05278241ed6f5aefdd26bd66dd2f48",
+                "1ba07ab7e6db45810baed56f159a09446665cdbfeaf44c28aa3b24efaaeb54a0",
             "kghostkgiant.uftb":
-                "8be6f990ed4f788523e6b8f116b6d7db4428a6847f7db810de9213980237e979",
+                "92c27f314648eea3e3e0536011b4fa4604a2558855485f9ac099be76b330587f",
         }
         self.assertEqual(package.LOWER_GIANT_SHA256,
                          package.sha256_bytes(
@@ -67,8 +67,11 @@ class GhostGiantPackageTest(unittest.TestCase):
                                  manifest["lower_giant_model_sha256"])
                 runner.validate_manifest(manifest)
                 self.assertEqual(64, len(manifest["commands"]["shards"]))
-                self.assertEqual("1",
-                                 manifest["commands"]["measure"][2])
+                self.assertNotIn("measure", manifest["commands"])
+                self.assertNotIn("work/logs/measure.log",
+                                 manifest["artifacts"])
+                self.assertEqual("--solve",
+                                 manifest["commands"]["solve"][1])
                 self.assertEqual("1",
                                  manifest["commands"]["solve"][-1])
                 self.assertIn("work/results/" + Path(filename).stem + ".ufgi",

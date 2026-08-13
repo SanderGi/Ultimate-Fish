@@ -127,8 +127,8 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         supported = info.supported_solver_inventory()
         unsupported = info.unsupported_solver_inventory()
         names = [filename for filename, _ in supported] + list(unsupported)
-        self.assertEqual(len(supported), 56)
-        self.assertEqual(len(unsupported), 28)
+        self.assertEqual(len(supported), 84)
+        self.assertEqual(len(unsupported), 0)
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(set(names), set(info.AFFECTED_FILENAMES))
         counts = {}
@@ -136,7 +136,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             self.assertEqual(info.solver_domain(filename), domain)
             counts[domain] = counts.get(domain, 0) + 1
         self.assertEqual(counts, {
-            "primary-jester": 35,
+            "primary-jester": 37,
             "primary-jester-giant": 2,
             "ghost": 1,
             "double-jester": 1,
@@ -156,20 +156,16 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             "giant-ghost-same": 1,
             "giant-ghost-opposing": 1,
             "ghost-pair": 1,
+            "opposed-ghost-pair": 1,
             "jester-ghost": 1,
+            "crossed-jester-ghost": 1,
+            "ordinary-ghost": 24,
         })
 
-    def test_unsupported_and_unknown_solver_domains_fail_closed(self):
-        filename = info.unsupported_solver_inventory()[0]
-        with self.assertRaisesRegex(
-                info.SummaryValidationError, "unsupported information class"):
-            info.solver_model_fingerprint(filename)
+    def test_unknown_solver_domains_fail_closed(self):
         with self.assertRaisesRegex(
                 info.SummaryValidationError, "unknown information class"):
             info.solver_model_fingerprint("not-a-table.uftb")
-        with self.assertRaisesRegex(
-                info.SummaryValidationError, "unsupported information class"):
-            info.validate_summary(self.document, root=self.root)
 
     def test_primary_jester_transitive_probe_dependencies_are_complete(self):
         forcing = {
@@ -201,6 +197,9 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
                 expected += ("kjesterkqueen.uftb" if
                              bool(records[filename]["opposing"])
                              else "kjesterqueenk.uftb",)
+            if filename in {"kcopycatjesterk.uftb",
+                            "kcopycatkjester.uftb"}:
+                expected += ("kcopycatk.uftb",)
             self.assertEqual(dependencies, expected)
             for dependency in dependencies:
                 if dependency not in {"kjesterqueenk.uftb",
@@ -245,6 +244,9 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         self.assertEqual(
             info.solver_concrete_dependencies("kghostkdragon.uftb"),
             ("kdragonk.uftb",))
+        for filename in ("kpawnghostk.uftb", "kpawnkghost.uftb"):
+            self.assertEqual(info.solver_concrete_dependencies(filename),
+                             ("kpawnk.uftb",))
         for filename in ("kbombghostk.uftb", "kbombkghost.uftb"):
             self.assertEqual(info.solver_sidecar_dependencies(filename),
                              ("kghostk.ufgm",))
@@ -486,22 +488,22 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
 
         self.assertEqual(
             info.solver_model_fingerprint("kbishopghostk.uftb"),
-            "39497531f4d72e0606bd67074a172b9605a3ad398c062fe200c1aa2ce1d58f1d")
+            "9adbbbfac54265a5ce1babdec879211ff76834d082cfef99d67cb643f886c51d")
         self.assertEqual(
             info.solver_model_fingerprint("kghostghostk.uftb"),
-            "5de78ae8d11ce9bf52b165f8b876aef3e6eea68d17dffe71c449c40f66919146")
+            "0cef89f4b79a0c435ec0812d0fe601d85a522fe31fac8908f13c3009aa6d9f83")
         self.assertEqual(
             info.solver_model_fingerprint("kghostmagek.uftb"),
-            "e1202c90cc27e31afd746b62ee98e101446f33b85cad7809e141739737fad241")
+            "7b289aad254d1055c226f606ca18134a83172a51b0e491d560161626125000b0")
         self.assertEqual(
             info.solver_model_fingerprint("kghostkmage.uftb"),
-            "6bbc007e50889378fe5a1256f1ae65bad04db9ee7e82dc33b6339389d5a2e69f")
+            "bd0a890adccb8509d1012ab3a215de93a6d7b3963c16bb3554c2e67d23089933")
         self.assertEqual(
             info.solver_model_fingerprint("kghostparasitek.uftb"),
-            "7f6ea7edbae3990114fc30217579e330c1dcb128a0dccdf47bbc387a99340209")
+            "d2f839fd6ece356bc58849230032ad2a15a6968ba8c1b17da483a544a072012a")
         self.assertEqual(
             info.solver_model_fingerprint("kghostkparasite.uftb"),
-            "acfc5eaa8e0a333f6a543abc9e258cc5f2b7435782d8e74e3ceba809a7ae8853")
+            "f9fe92c998740f15370de58278f632b979c779496799d7f7f94e7418da225e2c")
         self.assertNotEqual(
             info.double_jester_capture_model_fingerprint(),
             info.solver_model_fingerprint("kjesterjesterk.uftb"))

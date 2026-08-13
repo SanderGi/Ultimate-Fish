@@ -1,0 +1,13 @@
+/* Exact opposed Ghost/Ghost specialization of the shared fixed point. */
+
+#include "opposed_ghost_pair_information_fixed_point.h"
+
+#define ULTIMATE_CROSSED_JESTER_GHOST_INFORMATION_FIXED_POINT_H_INCLUDED
+#define CrossedJesterGhostInformation OpposedGhostPairInformation
+#define CrossedJesterGhostSolver OpposedGhostPairSolver
+#define CrossedJesterGhostFixedPoint OpposedGhostPairFixedPoint
+#include "crossed_jester_ghost_information_fixed_point.cpp"
+#undef CrossedJesterGhostFixedPoint
+#undef CrossedJesterGhostSolver
+#undef CrossedJesterGhostInformation
+#undef ULTIMATE_CROSSED_JESTER_GHOST_INFORMATION_FIXED_POINT_H_INCLUDED

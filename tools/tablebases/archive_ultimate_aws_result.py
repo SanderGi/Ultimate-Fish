@@ -57,6 +57,12 @@ def authenticated_inventory(root: Path, artifact_manifest: Path,
     root = root.resolve(strict=True)
     manifest = json.loads(artifact_manifest.read_text(encoding="utf-8"))
     records = manifest.get("artifacts")
+    inventory_key = "artifacts"
+    if records is None and isinstance(manifest.get("files"), dict):
+        inventory_key = "files"
+        records = [dict(metadata, path=path)
+                   for path, metadata in manifest["files"].items()
+                   if isinstance(metadata, dict)]
     if not isinstance(records, list) or not records:
         raise RuntimeError("artifact manifest has no result inventory")
     authenticated: list[dict[str, object]] = []
@@ -84,7 +90,7 @@ def authenticated_inventory(root: Path, artifact_manifest: Path,
         authenticated.append({"path": name, "bytes": extent, "sha256": digest})
     authenticated.sort(key=lambda record: str(record["path"]))
     bindings = {key: value for key, value in manifest.items()
-                if key != "artifacts"}
+                if key != inventory_key}
     return {"schema": SCHEMA, "kind": kind, "bindings": bindings,
             "artifacts": authenticated}
 
@@ -238,8 +244,9 @@ def upload_and_restore(archive: Path, certificate: dict[str, object],
         raise RuntimeError("S3 HEAD version/extent/full-SHA residual")
     verification_dir.mkdir(parents=True, exist_ok=False)
     download = verification_dir / archive.name
-    subprocess.run(["aws", "s3", "cp", uri, str(download),
-                    "--only-show-errors"], check=True)
+    subprocess.run(["aws", "s3api", "get-object", "--bucket", bucket,
+                    "--key", full_key, "--version-id", head["VersionId"],
+                    str(download)], check=True)
     if download.stat().st_size != extent or sha256_path(download) != digest:
         raise RuntimeError("fresh S3 download extent/full-SHA residual")
     restored = verify_archive(download, verification_dir / "restored")
@@ -271,8 +278,9 @@ def upload_certificate(certificate_path: Path, archive_digest: str,
         raise RuntimeError("S3 certificate HEAD/version/full-SHA residual")
     verification_dir.mkdir(parents=True, exist_ok=False)
     download = verification_dir / certificate_path.name
-    subprocess.run(["aws", "s3", "cp", uri, str(download),
-                    "--only-show-errors"], check=True)
+    subprocess.run(["aws", "s3api", "get-object", "--bucket", bucket,
+                    "--key", full_key, "--version-id", head["VersionId"],
+                    str(download)], check=True)
     if download.stat().st_size != extent or sha256_path(download) != digest:
         raise RuntimeError("fresh S3 certificate download residual")
     return {"bucket": bucket, "key": full_key, "uri": uri,

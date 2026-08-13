@@ -434,8 +434,7 @@ void compile_reciprocal_external_transitions(
         meta.actualStratum.fill(NoIndex);
         std::map<std::string, ExternalMask> decisionBlocks;
         for (std::uint8_t ghost = 0; ghost < Squares; ++ghost) {
-            if (ghost == geometry.whiteKing || ghost == geometry.blackKing ||
-                ghost == geometry.bishop)
+            if (!valid_geometry_world(geometry, ghost))
                 continue;
             Position position = make_geometry_position(geometry, ghost,
                                                        material);
@@ -519,7 +518,8 @@ void compile_reciprocal_external_transitions(
                 ++summary.edges;
             }
 
-            for (std::uint8_t transform = 1; transform < 4; ++transform) {
+            for (std::uint8_t transform = 1;
+                 transform < GeometryTransformCount; ++transform) {
                 const PublicExtraGeometry transformedGeometry =
                   transform_geometry(geometry, transform);
                 const std::uint8_t transformedGhost =
@@ -531,25 +531,22 @@ void compile_reciprocal_external_transitions(
                 if (pairedMoves.size() != moves.size())
                     throw std::runtime_error(
                       "D2 symmetry changed reciprocal legal-action count");
-                std::unordered_map<std::uint32_t, std::size_t> pairedByMove;
+                std::unordered_map<std::uint64_t, std::size_t> pairedByMove;
                 pairedByMove.reserve(pairedMoves.size() * 2);
                 for (std::size_t pairedIndex = 0;
                      pairedIndex < pairedMoves.size(); ++pairedIndex) {
-                    const auto key = external_move_key(
-                      pairedMoves[pairedIndex], 0);
-                    const std::uint32_t packed =
-                      (std::uint32_t(key.first) << 16) | key.second;
-                    if (!pairedByMove.emplace(packed, pairedIndex).second)
+                    const std::uint64_t key = external_move_key(
+                      pairedPosition, pairedMoves[pairedIndex], 0,
+                      transformedGeometry.bishop);
+                    if (!pairedByMove.emplace(key, pairedIndex).second)
                         throw std::runtime_error(
                           "D2 target duplicates reciprocal legal action");
                 }
                 for (std::size_t moveIndex = 0; moveIndex < moves.size();
                      ++moveIndex) {
-                    const auto wanted = external_move_key(
-                      moves[moveIndex], transform);
-                    const std::uint32_t packed =
-                      (std::uint32_t(wanted.first) << 16) | wanted.second;
-                    const auto paired = pairedByMove.find(packed);
+                    const std::uint64_t wanted = external_move_key(
+                      position, moves[moveIndex], transform, geometry.bishop);
+                    const auto paired = pairedByMove.find(wanted);
                     if (paired == pairedByMove.end())
                         throw std::runtime_error(
                           "D2 symmetry lost reciprocal legal action");

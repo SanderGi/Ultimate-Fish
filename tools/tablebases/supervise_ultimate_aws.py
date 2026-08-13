@@ -516,20 +516,63 @@ for path in payload['mounts']:
                 'total_bytes':stat.f_blocks*stat.f_frsize})
 jobs=[]
 for job in payload['jobs']:
- jobs.append({'i':job['id'],'u':props(job['unit']),
+ unit=props(job['unit'])
+ jobs.append({'i':job['id'],'u':unit,
               'k':aggregate(job['checkpoint_paths']),
               'c':aggregate(job['completion_paths']),
               'n':len(job.get('binding_refs',[])),
               'x':sources_exact(job.get('binding_refs',[])),
               'd':diagnostics(job.get('diagnostic_sources',[]))})
-document={'memory':memory,'mounts':mounts,'jobs':jobs}
+known_units={job['unit'] for job in payload['jobs']}
+try:
+ rc,out,err=command(['systemctl','list-units','ultimatefish-*.service',
+                     '--type=service','--state=active,activating,reloading',
+                     '--no-legend','--no-pager','--plain'])
+except OSError:
+ rc,out=127,''
+active_units=sorted({line.split()[0] for line in out.splitlines()
+                     if line.split() and line.split()[0].endswith('.service')}) \
+             if rc == 0 else []
+unknown_units=[unit for unit in active_units if unit not in known_units]
+unknown_text='\n'.join(unknown_units).encode()
+unknown=[len(unknown_units),hashlib.sha256(unknown_text).hexdigest(),
+         unknown_units[:8],rc]
+document={'memory':memory,'mounts':mounts,'jobs':jobs,'u':unknown}
 encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
 document['b']=len(encoded.encode())
 encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
 if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
- encoded=json.dumps({'probe_error':'bounded remote output budget exceeded',
-                     'probe_encoded_bytes':len(encoded.encode()),
-                     'jobs':[]},sort_keys=True,separators=(',',':'))
+ # Live checkpoint and diagnostic details are useful for progress, but unit
+ # state and authenticated source bindings are sufficient to classify a live
+ # job.  If a busy host exceeds the response budget, discard only those
+ # regenerable fields from active records.  Inactive records retain complete
+ # artifact evidence so completion can never be certified from a compacted
+ # observation.  The next probe will see a newly inactive job in full.
+ for record in jobs:
+  if record.get('u',{}).get('ActiveState') in {'active','activating','reloading'}:
+   record['k']=[]; record['c']=[]; record['d']=[]
+ document['q']=1
+ document.pop('b',None)
+ encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+ document['b']=len(encoded.encode())
+ encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+ if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
+  # A host with substantial stopped-job history can still exceed the cap.
+  # Completion aggregates are the only filesystem evidence used to promote
+  # an inactive unit; retain all of them and remove checkpoint/diagnostic
+  # history.  This remains fail-closed because an absent or malformed
+  # completion aggregate cannot certify a job.
+  for record in jobs:
+   record['k']=[]; record['d']=[]
+  document['q']=2
+  document.pop('b',None)
+  encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+  document['b']=len(encoded.encode())
+  encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+  if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
+   encoded=json.dumps({'probe_error':'bounded remote output budget exceeded',
+                       'probe_encoded_bytes':len(encoded.encode()),
+                       'jobs':[]},sort_keys=True,separators=(',',':'))
 print('ULTIMATE_SUPERVISION_JSON='+encoded)
 '''
     program = program.replace(
@@ -605,6 +648,17 @@ def normalize_remote(remote: dict[str, Any]) -> dict[str, Any]:
     """Expand the compact bounded wire format used by the remote probe."""
     if "b" in remote:
         remote["probe_encoded_bytes"] = remote.pop("b")
+    if "q" in remote:
+        level = remote.pop("q")
+        remote["probe_compacted"] = level in {1, 2}
+        remote["probe_compaction_level"] = level
+    unknown = remote.pop("u", None)
+    if (isinstance(unknown, list) and len(unknown) == 4 and
+            isinstance(unknown[0], int) and isinstance(unknown[2], list)):
+        remote["unconfigured_active_units"] = {
+            "count": unknown[0], "sha256": unknown[1],
+            "sample": unknown[2], "probe_status": unknown[3],
+        }
 
     def aggregate(records: object) -> list[dict[str, Any]]:
         if not isinstance(records, list):
@@ -835,6 +889,9 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
                     f"{first}+{second}:{','.join(map(str, sorted(shared)))}")
     measured_busy = sum(float(item["average_busy_vcpus"])
                         for item in utilization.values())
+    unconfigured = remote.get("unconfigured_active_units", {})
+    unconfigured_count = int(unconfigured.get("count", 0) or 0)
+    unconfigured_probe_ok = unconfigured.get("probe_status", 0) == 0
     mismatches = {
         name: {
             "expected": ",".join(map(str, sorted(cpus))),
@@ -847,8 +904,10 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
         "vcpus": capacity,
         "allocated_vcpus": len(allocated),
         "idle_vcpus": capacity - len(allocated),
-        "allocation_known": not unknown,
+        "allocation_known": not unknown and not unconfigured_count and
+        unconfigured_probe_ok,
         "unknown_jobs": unknown,
+        "unconfigured_active_units": unconfigured,
         "overlaps": overlaps,
         "active_jobs": {name: len(cpus) for name, cpus in active_sets.items()},
         "active_cpu_sets": {
@@ -862,7 +921,8 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
         # An entirely idle, successfully probed host is a complete sample too.
         # Treating it as unknown prevented the scheduler from backfilling the
         # most obviously idle machines.
-        "measurement_complete": not unknown and
+        "measurement_complete": not unknown and not unconfigured_count and
+        unconfigured_probe_ok and
         set(utilization) == set(active_sets),
         "allocation_mismatches": mismatches,
     }

@@ -4,8 +4,10 @@
 The ordinary concrete generator already has an exact checkpoint loader.  This
 tool authenticates a resource-gated AWS run, proves that its frontier completed
 before retrograde propagation began, and composes a native checkpoint in a new
-work tree from the preserved node and predecessor-degree planes.  The original
-four planes are opened read-only and are never truncated, renamed, or deleted.
+work tree from the preserved node and predecessor-degree planes.  Local
+manifests may also bind the discarded partial reverse planes; transportable
+manifests retain only their phase evidence because those planes are rebuilt.
+Every retained input is opened read-only and is never truncated or renamed.
 
 Default execution is a read-only preflight.  ``--full`` is EC2-only and runs
 the already-authenticated generator binary with explicit RSS/disk gates before
@@ -126,9 +128,12 @@ def authenticate_manifest(document: dict[str, Any]) -> dict[str, Any]:
             source / expected["relative_path"], expected, name)
 
     planes = document.get("planes")
-    if not isinstance(planes, dict) or set(planes) != {
-            "nodes", "degrees", "offsets", "predecessors"}:
-        raise RuntimeError("resume manifest must bind exactly four planes")
+    if not isinstance(planes, dict) or set(planes) not in ({
+            "nodes", "degrees"}, {
+            "nodes", "degrees", "offsets", "predecessors"}):
+        raise RuntimeError(
+            "resume manifest must bind the two checkpoint planes, with "
+            "optional retained reverse planes")
     for name in sorted(planes):
         expected = _required_record(planes, name)
         path = source / expected["relative_path"]
@@ -167,7 +172,25 @@ def authenticate_manifest(document: dict[str, Any]) -> dict[str, Any]:
     if any(marker in log_text for marker in
            ("propagate queue", "verifyok states", "complete states")):
         raise RuntimeError("retrograde may have modified the frontier; refusing resume")
-    predecessor = planes["predecessors"]
+    if "predecessors" in planes:
+        predecessor = planes["predecessors"]
+    else:
+        reverse = document.get("discarded_reverse_graph")
+        if not isinstance(reverse, dict) or set(reverse) != {
+                "offsets", "predecessors"}:
+            raise RuntimeError(
+                "transportable resume manifest lacks discarded reverse evidence")
+        for name in ("offsets", "predecessors"):
+            record = reverse[name]
+            if not isinstance(record, dict):
+                raise RuntimeError("malformed discarded reverse evidence")
+            relative = Path(str(record.get("relative_path", "")))
+            if (relative.is_absolute() or ".." in relative.parts or
+                    not relative.name or
+                    int(record.get("bytes", 0)) <= 0 or
+                    int(record.get("allocated_bytes", -1)) < 0):
+                raise RuntimeError("malformed discarded reverse evidence")
+        predecessor = reverse["predecessors"]
     if int(predecessor["allocated_bytes"]) >= int(predecessor["bytes"]):
         raise RuntimeError("reverse graph was not proven incomplete")
 
@@ -264,10 +287,12 @@ def validate_full_gates(args: argparse.Namespace, work: Path,
     # Native checkpoint + new disk-backed planes + packed output/restore.
     checkpoint = 32 + int(document["planes"]["nodes"]["bytes"]) + \
         int(document["planes"]["degrees"]["bytes"])
+    reverse = (document["planes"] if "predecessors" in document["planes"]
+               else document["discarded_reverse_graph"])
     active_peak = (checkpoint + int(document["planes"]["nodes"]["bytes"]) +
                    int(document["planes"]["degrees"]["bytes"]) +
-                   int(document["planes"]["offsets"]["bytes"]) +
-                   int(document["planes"]["predecessors"]["bytes"]) +
+                   int(reverse["offsets"]["bytes"]) +
+                   int(reverse["predecessors"]["bytes"]) +
                    int(document["record"]["packed_bytes"]))
     durable = active_peak + 4 * int(document["record"]["packed_bytes"])
     if available_disk - durable < args.minimum_free_bytes:

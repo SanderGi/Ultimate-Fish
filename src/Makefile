@@ -71,6 +71,7 @@ ULTIMATE_TABLEBASE_INCLUDE = -Iultimate -Iultimate/tablebases
 	ultimate-bishop-ghost-information-preserver-test \
 	ultimate-reciprocal-bishop-ghost-information-tablebase \
 	ultimate-ghost-public-extra-model-test \
+	ultimate-ghost-copycat-model-test \
 	ultimate-reciprocal-bishop-ghost-information-test \
 	ultimate-reciprocal-bishop-ghost-information-self-test \
 	ultimate-ghost-dragon-information-tablebase \
@@ -97,6 +98,8 @@ ULTIMATE_TABLEBASE_INCLUDE = -Iultimate -Iultimate/tablebases
 	ultimate-crossed-jester-ghost-information-model-test \
 	ultimate-crossed-jester-ghost-information-solver-test \
 	ultimate-crossed-jester-ghost-information-tablebase \
+	ultimate-opposed-ghost-pair-information-model-test \
+	ultimate-opposed-ghost-pair-information-tablebase \
 	ultimate-external-robdd-test \
 	ultimate-joint-jester-information-tablebase \
 	ultimate-joint-jester-information-preserver \
@@ -191,6 +194,15 @@ ultimate-ghost-public-extra-model-test:
 		ultimate/position.cpp ultimate/nnue.cpp \
 		-o ultimate_ghost_public_extra_model_test
 	./ultimate_ghost_public_extra_model_test
+
+ultimate-ghost-copycat-model-test:
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-DULTIMATE_GHOST_EXTRA_IS_COPYCAT -Iultimate -Iultimate/tablebases \
+		../tests/tablebases/ultimate_ghost_copycat_model.cpp \
+		ultimate/tablebases/ghost_public_extra_model.cpp ultimate/tablebases/information.cpp \
+		ultimate/position.cpp ultimate/nnue.cpp \
+		-o ultimate_ghost_copycat_model_test
+	./ultimate_ghost_copycat_model_test
 
 ultimate-reciprocal-bishop-ghost-information-test: \
 	ultimate-ghost-public-extra-model-test
@@ -544,6 +556,31 @@ ultimate-crossed-jester-ghost-information-tablebase:
 		ultimate/tablebases/crossed_jester_ghost_information_model.cpp ultimate/position.cpp \
 		ultimate/tablebases/information.cpp ultimate/tablebases/information_solver.cpp ultimate/nnue.cpp \
 		-o ultimate_crossed_jester_ghost_information_tablebase
+
+ULTIMATE_OPPOSED_GHOST_PAIR_SRCS = \
+	ultimate/tablebases/opposed_ghost_pair_information_tablebase.cpp \
+	ultimate/tablebases/opposed_ghost_pair_information_fixed_point.cpp \
+	ultimate/tablebases/opposed_ghost_pair_information_lower_oracle.cpp \
+	ultimate/tablebases/opposed_ghost_pair_information_sidecar.cpp \
+	ultimate/tablebases/opposed_ghost_pair_information_solver.cpp \
+	ultimate/tablebases/opposed_ghost_pair_information_model.cpp \
+	ultimate/tablebases/information.cpp ultimate/tablebases/information_solver.cpp \
+	ultimate/position.cpp ultimate/nnue.cpp
+
+ultimate-opposed-ghost-pair-information-model-test:
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=pedantic -Wno-error=range-loop-construct -Iultimate -Iultimate/tablebases \
+		../tests/tablebases/ultimate_opposed_ghost_pair_information_model.cpp \
+		$(filter-out ultimate/tablebases/opposed_ghost_pair_information_tablebase.cpp, \
+			$(ULTIMATE_OPPOSED_GHOST_PAIR_SRCS)) \
+		-o ultimate_opposed_ghost_pair_information_model_test
+	./ultimate_opposed_ghost_pair_information_model_test
+
+ultimate-opposed-ghost-pair-information-tablebase:
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror \
+		-Wno-error=pedantic -Wno-error=range-loop-construct -Iultimate -Iultimate/tablebases \
+		$(ULTIMATE_OPPOSED_GHOST_PAIR_SRCS) \
+		-o ultimate_opposed_ghost_pair_information_tablebase
 
 VPATH = syzygy:nnue:nnue/features
 

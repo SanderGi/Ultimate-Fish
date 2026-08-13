@@ -1,0 +1,282 @@
+#!/usr/bin/env python3
+"""Run one exact public-piece/Ghost information class on EC2."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+
+
+BASE_GEOMETRIES = 492_960
+SHARDS = 64
+PIECES = {"knight": "Knight", "ninja": "Ninja", "queen": "Queen",
+          "rook": "Rook", "turtle": "Turtle", "pawn": "Pawn",
+          "berserker": "Berserker", "sniper": "Sniper",
+          "prince": "Prince", "checker": "Checker", "penguin": "Penguin",
+          "copycat": "Copycat"}
+EXTRA_SUBSTATES = {"pawn": 2, "berserker": 10, "sniper": 4,
+                   "prince": 2, "checker": 4, "penguin": 8}
+LOWER_SUBSTATES = {"penguin": 4}
+EXTRA_PRIMARY = {"knight", "ninja", "queen", "rook", "turtle", "pawn",
+                 "berserker", "copycat"}
+IMPLICIT_DRAWS = {"knight", "turtle", "checker"}
+HORIZONTAL_ONLY = {"pawn", "sniper", "checker"}
+
+
+def sha256_path(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for block in iter(lambda: stream.read(4 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def require_sha(path: Path, expected: str, label: str) -> None:
+    if not path.is_file() or sha256_path(path) != expected:
+        raise RuntimeError(f"{label} SHA-256 mismatch: {path}")
+
+
+def run(command: list[str], root: Path, log: Path) -> None:
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("xb") as output:
+        completed = subprocess.run(command, cwd=root, stdout=output,
+                                   stderr=subprocess.STDOUT, check=False)
+    if completed.returncode:
+        raise RuntimeError(f"command failed ({completed.returncode}): {log}")
+
+
+def write_manifest(work: Path, args: argparse.Namespace) -> None:
+    result_files = sorted((work / "work/results").glob("*"))
+    log_files = sorted((work / "work/logs").glob("*.log"))
+    if (not any(path.suffix == ".ufiw" for path in result_files) or
+            not any(path.suffix != ".ufiw" for path in result_files) or
+            not any(path.name == "solve.log" for path in log_files)):
+        raise RuntimeError("ordinary Ghost result/proof inventory is incomplete")
+    artifacts = [*result_files, *log_files]
+    manifest = {
+        "schema": "ultimate-ordinary-ghost-artifacts-v1",
+        "filename": args.filename, "piece": args.piece,
+        "orientation": args.orientation, "source_sha256": args.source_sha256,
+        "model_sha256": args.model_sha256,
+        "lower_sha256": args.lower_sha256,
+        "lower_model_sha256": args.lower_model_sha256,
+        "files": {str(path.relative_to(work)): {
+            "bytes": path.stat().st_size, "sha256": sha256_path(path)}
+            for path in artifacts},
+    }
+    (work / "work/artifact-manifest.json").write_text(
+        json.dumps(manifest, sort_keys=True, indent=2) + "\n")
+
+
+def ranges(geometries: int) -> list[tuple[int, int]]:
+    base, extra = divmod(geometries, SHARDS)
+    cursor = 0
+    result = []
+    for index in range(SHARDS):
+        count = base + (index < extra)
+        result.append((cursor, count))
+        cursor += count
+    if cursor != geometries:
+        raise RuntimeError("ordinary Ghost shard coverage residual")
+    return result
+
+
+def geometry_count(piece: str) -> int:
+    """Return the complete public geometry domain for an ordinary piece."""
+    if piece not in PIECES:
+        raise ValueError(f"unknown ordinary Ghost piece: {piece}")
+    return (BASE_GEOMETRIES * EXTRA_SUBSTATES.get(piece, 1) *
+            (2 if piece in HORIZONTAL_ONLY else 1))
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--source-root", type=Path, required=True)
+    parser.add_argument("--work", type=Path, required=True)
+    parser.add_argument("--filename", required=True)
+    parser.add_argument("--piece", choices=tuple(PIECES), required=True)
+    parser.add_argument("--orientation", choices=("same", "opposing"),
+                        required=True)
+    parser.add_argument("--source-table", type=Path, required=True)
+    parser.add_argument("--source-sha256", required=True)
+    parser.add_argument("--lower-table", type=Path)
+    parser.add_argument("--lower-sha256", required=True)
+    parser.add_argument("--lower-model-sha256", required=True)
+    parser.add_argument("--lower-ghost-sidecar", type=Path, required=True)
+    parser.add_argument("--lower-ghost-sha256", required=True)
+    parser.add_argument("--model-sha256", required=True)
+    parser.add_argument("--observation-sha256", required=True)
+    parser.add_argument("--lower-ghost-source-sha256", required=True)
+    parser.add_argument("--lower-ghost-model-sha256", required=True)
+    parser.add_argument("--lower-ghost-observation-sha256", required=True)
+    parser.add_argument("--parallelism", type=int, default=20)
+    parser.add_argument("--finalize-existing", action="store_true",
+                        help="authenticate existing outputs and write the manifest")
+    args = parser.parse_args()
+
+    if args.finalize_existing:
+        work = args.work.resolve(strict=True)
+        if not (work / "work/results").is_dir():
+            raise RuntimeError("ordinary Ghost result directory is missing")
+        write_manifest(work, args)
+        return
+
+    root = args.source_root.resolve()
+    sys.path.insert(0, str(root / "tools/tablebases"))
+    import ultimate_information_tablebases as information  # pylint: disable=import-outside-toplevel
+    import run_ultimate_reciprocal_bishop_ghost_aws as shared  # pylint: disable=import-outside-toplevel
+
+    expected_names = {}
+    for piece in PIECES:
+        for orientation in ("same", "opposing"):
+            if piece in EXTRA_PRIMARY:
+                name = (f"k{piece}ghostk.uftb" if orientation == "same"
+                        else f"k{piece}kghost.uftb")
+            else:
+                name = (f"kghost{piece}k.uftb" if orientation == "same"
+                        else f"kghostk{piece}.uftb")
+            expected_names[(piece, orientation)] = name
+    if args.filename != expected_names[(args.piece, args.orientation)]:
+        raise RuntimeError("ordinary Ghost filename/material residual")
+    if information.solver_model_fingerprint(
+            args.filename, root=root) != args.model_sha256:
+        raise RuntimeError("ordinary Ghost solver model mismatch")
+    lower_name = f"k{args.piece}k.uftb"
+    implicit_lower = args.piece in IMPLICIT_DRAWS
+    theorem_model_sha = hashlib.sha256(
+        f"ultimate-insufficient-lower-model-v1:{args.piece}".encode()
+    ).hexdigest()
+    if args.piece == "checker":
+        if args.lower_model_sha256 != theorem_model_sha:
+            raise RuntimeError("ordinary Ghost lower model mismatch")
+    elif (len(args.lower_model_sha256) != 64 or
+          any(character not in "0123456789abcdef"
+              for character in args.lower_model_sha256)):
+        raise RuntimeError("ordinary Ghost lower model SHA-256 is invalid")
+    require_sha(args.source_table, args.source_sha256, "source table")
+    theorem_sha = hashlib.sha256(
+        f"ultimate-insufficient-lower-v1:{args.piece}".encode()).hexdigest()
+    if implicit_lower:
+        if args.lower_table is not None or args.lower_sha256 != theorem_sha:
+            raise RuntimeError("implicit draw lower theorem binding mismatch")
+    else:
+        if args.lower_table is None:
+            raise RuntimeError("decisive ordinary piece requires a lower table")
+        require_sha(args.lower_table, args.lower_sha256, "lower table")
+    require_sha(args.lower_ghost_sidecar, args.lower_ghost_sha256,
+                "lower Ghost sidecar")
+    if args.work.exists():
+        raise RuntimeError("ordinary Ghost work directory already exists")
+    work = args.work.resolve()
+    (work / "tablebases").mkdir(parents=True)
+    copies = [(args.source_table, args.filename),
+              (args.lower_ghost_sidecar, "kghostk.ufgm")]
+    if args.lower_table is not None:
+        copies.append((args.lower_table, lower_name))
+    for source, name in copies:
+        shutil.copyfile(source, work / "tablebases" / name)
+    copied = [
+            (work / "tablebases" / args.filename, args.source_sha256, "copied source"),
+            (work / "tablebases/kghostk.ufgm", args.lower_ghost_sha256,
+             "copied lower Ghost")]
+    if not implicit_lower:
+        copied.append((work / "tablebases" / lower_name,
+                       args.lower_sha256, "copied lower"))
+    for path, expected, label in copied:
+        require_sha(path, expected, label)
+    for directory in ("work/logs", "work/transitions", "work/results",
+                      "work/solve", "work/self-test"):
+        (work / directory).mkdir(parents=True, exist_ok=True)
+
+    executable = work / "ultimate_ghost_ordinary_information_tablebase"
+    sources = [
+        "src/ultimate/tablebases/ghost_ordinary_information_tablebase.cpp",
+        "src/ultimate/tablebases/ghost_ordinary_information_solver.cpp",
+        "src/ultimate/tablebases/ghost_public_extra_model.cpp",
+        "src/ultimate/tablebases/external_robdd.cpp",
+        "src/ultimate/tablebases/ghost_information_probe.cpp",
+        "src/ultimate/tablebases/information.cpp", "src/ultimate/position.cpp",
+        "src/ultimate/nnue.cpp",
+    ]
+    build = ["clang++", "-std=c++17", "-O3", "-DNDEBUG", "-Wall",
+             "-Wextra", "-Wpedantic", "-Werror",
+             "-Wno-error=range-loop-construct", "-include", "sstream",
+             "-Isrc/ultimate", "-Isrc/ultimate/tablebases",
+             f"-DULTIMATE_GHOST_ORDINARY_PIECE={PIECES[args.piece]}",
+             *sources, "-o", str(executable)]
+    definitions = []
+    if args.piece in EXTRA_PRIMARY:
+        definitions.append("-DULTIMATE_GHOST_ORDINARY_EXTRA_PRIMARY")
+    if args.piece in EXTRA_SUBSTATES:
+        definitions.append(
+            f"-DULTIMATE_GHOST_EXTRA_SUBSTATES={EXTRA_SUBSTATES[args.piece]}")
+    if args.piece in LOWER_SUBSTATES:
+        definitions.append(
+            "-DULTIMATE_GHOST_ORDINARY_LOWER_SUBSTATES="
+            f"{LOWER_SUBSTATES[args.piece]}")
+    if args.piece == "checker":
+        definitions.append("-DULTIMATE_GHOST_EXTRA_IS_CHECKER")
+    if args.piece == "copycat":
+        definitions.append("-DULTIMATE_GHOST_EXTRA_IS_COPYCAT")
+    if args.piece in HORIZONTAL_ONLY:
+        definitions.append("-DULTIMATE_GHOST_EXTRA_HORIZONTAL_ONLY")
+    if implicit_lower:
+        definitions.append("-DULTIMATE_GHOST_ORDINARY_LOWER_DRAW_ONLY")
+    build[-len(sources)-2:-len(sources)-2] = definitions
+    run(build, root, work / "work/logs/build.log")
+    binding = [
+        "--orientation", args.orientation,
+        "--lower-dragon-table", ("implicit-draw" if implicit_lower
+                                  else f"tablebases/{lower_name}"),
+        "--lower-dragon-sha256", args.lower_sha256,
+        "--lower-dragon-source-sha256", args.lower_sha256,
+        "--lower-dragon-model-sha256", args.lower_model_sha256,
+        "--source-sha256", args.source_sha256,
+        "--model-sha256", args.model_sha256,
+        "--observation-sha256", args.observation_sha256,
+    ]
+    run([str(executable), "--self-test", "--orientation", args.orientation,
+         "--scratch", f"work/self-test/{Path(args.filename).stem}",
+         "--input", f"tablebases/{args.filename}",
+         "--source-sha256", args.source_sha256], work,
+        work / "work/logs/self-test.log")
+    commands = []
+    geometries = geometry_count(args.piece)
+    for index, (begin, count) in enumerate(ranges(geometries)):
+        commands.append([str(executable), "--compile-transitions",
+          "--transition-prefix", f"work/transitions/shard-{index:02d}",
+          "--geometry-begin", str(begin), "--geometry-count", str(count),
+          *binding])
+    shared.run_ranges(commands, work, args.parallelism)
+    stem = Path(args.filename).stem
+    merged = f"work/transitions/{stem}"
+    merge = [str(executable), "--merge-transitions", "--orientation",
+             args.orientation, "--transition-prefix", merged]
+    for index in range(SHARDS):
+        merge += ["--shard", f"work/transitions/shard-{index:02d}"]
+    merge += ["--expected-geometries", str(geometries), *binding[2:]]
+    run(merge, work, work / "work/logs/merge.log")
+    solve = [str(executable), "--orientation", args.orientation,
+      "--transition-prefix", merged, "--input", f"tablebases/{args.filename}",
+      "--lower-ghost-sidecar", "tablebases/kghostk.ufgm",
+      "--scratch", f"work/solve/{stem}",
+      "--output", f"work/results/{stem}.ufiw",
+      "--output-arbitrary", f"work/results/{stem}.ufgd", *binding[2:],
+      "--lower-sidecar-sha256", args.lower_ghost_sha256,
+      "--lower-source-sha256", args.lower_ghost_source_sha256,
+      "--lower-model-sha256", args.lower_ghost_model_sha256,
+      "--lower-observation-sha256", args.lower_ghost_observation_sha256,
+      "--max-nodes", "500000000", "--unique-slots", str(1 << 30),
+      "--compact-every", "1"]
+    run([str(executable), "--solve", *solve[1:]], work,
+        work / "work/logs/solve.log")
+    write_manifest(work, args)
+
+
+if __name__ == "__main__":
+    main()

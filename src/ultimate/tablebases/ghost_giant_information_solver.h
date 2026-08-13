@@ -37,6 +37,9 @@ struct SolveOptions {
     std::string outputArbitrary;
     std::string sourceSha256;
     std::string modelSha256;
+    // The transition graph may be reused when a solver-only proof change
+    // leaves compilation semantics byte-for-byte unchanged.
+    std::string transitionModelSha256;
     std::string observationSha256;
     std::string lowerGhostSourceSha256;
     std::string lowerGhostModelSha256;
