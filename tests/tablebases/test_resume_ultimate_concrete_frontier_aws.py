@@ -492,6 +492,25 @@ class FrontierResumeTests(unittest.TestCase):
         self.assertIn(
             "ReadOnlyPaths=" + manifest["source_work_directory"], service)
 
+    def test_class005_resume_reuses_complete_berserker_ghost_frontier(self) -> None:
+        manifest = json.loads((
+            ROOT / "tools/tablebases/ultimate_concrete_wave0_005_resume.json").read_text())
+        self.assertEqual(
+            RESUME.concrete.normalized_record(
+                RESUME.concrete.wave_inventory(0)[5]), manifest["record"])
+        self.assertEqual(20, manifest["substates"])
+        reverse_done, reverse_total = map(
+            int, manifest["last_reverse_marker"].split()[2].split("/"))
+        self.assertLess(reverse_done, reverse_total)
+        service = (ROOT / "tools/tablebases/ultimatefish-resume-berserker-ghost-"
+                   "same-local-v1.service").read_text()
+        self.assertIn("--resident-limit 60129542144", service)
+        self.assertIn("--scratch-limit 161061273600", service)
+        self.assertIn("--reverse-edge-bytes-limit 118111600640", service)
+        self.assertIn("AllowedCPUs=31", service)
+        self.assertIn(
+            "ReadOnlyPaths=" + manifest["source_work_directory"], service)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -553,7 +553,7 @@ class SupervisionTests(unittest.TestCase):
         # authoritative.  The Checker frontier resume and high-memory crossed
         # Jester/Ghost migration and the opposed Checker solve-only resume
         # contribute their live bindings.
-        self.assertEqual(109, len(table))
+        self.assertEqual(111, len(table))
 
     def test_cpu_allocation_reports_idle_capacity_and_overlap(self) -> None:
         definition = config()["instances"][0]

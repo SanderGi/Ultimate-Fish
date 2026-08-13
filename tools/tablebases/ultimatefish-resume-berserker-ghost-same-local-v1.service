@@ -1,0 +1,43 @@
+[Unit]
+Description=Ultimate Fish same Berserker Ghost authenticated frontier resume v1
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/mnt/ultimatefish/current-resume-tools-af082c92/tools/tablebases/resume_ultimate_concrete_frontier_aws.py
+ConditionPathExists=/mnt/ultimatefish/current-resume-tools-af082c92/tools/tablebases/ultimate_concrete_wave0_005_resume.json
+
+[Service]
+Type=oneshot
+WorkingDirectory=/mnt/ultimatefish/current-resume-tools-af082c92
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 tools/tablebases/resume_ultimate_concrete_frontier_aws.py \
+  --manifest tools/tablebases/ultimate_concrete_wave0_005_resume.json \
+  --work-directory /mnt/ultimatefish/resume-berserker-ghost-same-local-v1 \
+  --full --aws-execution-ack EC2 --resident-limit 60129542144 \
+  --scratch-limit 161061273600 --reverse-edge-bytes-limit 118111600640 \
+  --minimum-free-bytes 53687091200 \
+  --minimum-host-memory-available-bytes 103079215104 --monitor-interval 5 \
+  --s3-prefix s3://ultimatefish-info-20260808-a4e679c6-831688117652/results/current-concrete-84592a0b
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=4
+AllowedCPUs=31
+CPUQuota=100%
+MemoryHigh=60G
+MemoryMax=68G
+OOMPolicy=stop
+TasksMax=32
+LimitNOFILE=65536
+Restart=no
+TimeoutStartSec=infinity
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+ReadOnlyPaths=/mnt/ultimatefish/current-wave0-005-berserker-ghost-same-40g-v3
+ReadOnlyPaths=/mnt/ultimatefish/current-resume-tools-af082c92
+ReadWritePaths=/mnt/ultimatefish/resume-berserker-ghost-same-local-v1
+StandardOutput=append:/mnt/ultimatefish/resume-berserker-ghost-same-local-v1.service.log
+StandardError=append:/mnt/ultimatefish/resume-berserker-ghost-same-local-v1.service.log

@@ -12624,18 +12624,37 @@
       ],
       "ledger_certifies": false,
       "instance_id": "i-0b4523116b2f7765c",
-      "unit": "ultimatefish-current-wave0-005-berserker-ghost-same-40g-v3.service",
+      "unit": "ultimatefish-resume-berserker-ghost-same-local-v1.service",
       "expected_allowed_cpus": "31",
       "dependencies": [],
       "checkpoint_paths": [
-        "/mnt/ultimatefish/current-wave0-005-berserker-ghost-same-40g-v3/scratch/*",
-        "/mnt/ultimatefish/current-wave0-005-berserker-ghost-same-40g-v3/logs/*"
+        "/mnt/ultimatefish/current-resume-tools-af082c92/tools/tablebases/ultimate_concrete_wave0_005_resume.json",
+        "/mnt/ultimatefish/current-wave0-005-berserker-ghost-same-40g-v3/scratch/kberserkerghostk.nodes",
+        "/mnt/ultimatefish/current-wave0-005-berserker-ghost-same-40g-v3/scratch/kberserkerghostk.degrees",
+        "/mnt/ultimatefish/resume-berserker-ghost-same-local-v1/scratch/*",
+        "/mnt/ultimatefish/resume-berserker-ghost-same-local-v1/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/current-wave0-005-berserker-ghost-same-40g-v3/outputs/kberserkerghostk.uftb",
-        "/mnt/ultimatefish/current-wave0-005-berserker-ghost-same-40g-v3/certificates/wave-certificate.json"
+        "/mnt/ultimatefish/resume-berserker-ghost-same-local-v1/outputs/kberserkerghostk.uftb",
+        "/mnt/ultimatefish/resume-berserker-ghost-same-local-v1/certificates/wave-certificate.json"
       ],
-      "source_bindings": [],
+      "diagnostic_sources": [
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/resume-berserker-ghost-same-local-v1/logs/generate/kberserkerghostk.log",
+          "max_bytes": 1024
+        }
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/current-resume-tools-af082c92/tools/tablebases/ultimate_concrete_wave0_005_resume.json",
+          "sha256": "aead8a160d9ae6480769c5e7e7a4cc7648a15ceef0f1fd3bd5b4c61057ca2eb9"
+        },
+        {
+          "path": "/mnt/ultimatefish/current-resume-tools-af082c92/tools/tablebases/resume_ultimate_concrete_frontier_aws.py",
+          "sha256": "3d5efaf3a503c84c12b786dc0281b913cb21492aafca29e9dbd416ef0809c453"
+        }
+      ],
       "s3_certificates": []
     },
     {
