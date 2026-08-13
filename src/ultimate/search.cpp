@@ -1120,6 +1120,78 @@ int Search::evaluate(const Position& position, int ply) const {
     return score;
 }
 
+int Search::LazyRoyalContext::count() const {
+    return __builtin_popcountll(candidatesLow) +
+           __builtin_popcountll(candidatesHigh);
+}
+
+int Search::LazyRoyalContext::first_except(int excluded) const {
+    for (int id = 0; id < Position::MaxPieces; ++id)
+        if (id != excluded && contains(id))
+            return id;
+    return Position::NoPiece;
+}
+
+void Search::LazyRoyalContext::erase(int id) {
+    if (id < 64)
+        candidatesLow &= ~(std::uint64_t{1} << id);
+    else
+        candidatesHigh &= ~(std::uint64_t{1} << (id - 64));
+}
+
+int Search::evaluate_lazy_royals(
+  const Position& position, int ply,
+  const LazyRoyalContext* lazyRoyals) const {
+    if (!lazyRoyals || lazyRoyals->count() <= 1)
+        return evaluate(position, ply);
+    int canonicalKing = Position::NoPiece;
+    for (int id = 0; id < position.piece_count(); ++id)
+        if (position.piece(id).alive && position.piece(id).onBoard &&
+            position.piece(id).color == lazyRoyals->owner &&
+            position.piece(id).type == PieceType::King) {
+            canonicalKing = id;
+            break;
+        }
+    const bool observerMoves = position.side_to_move() == lazyRoyals->observer;
+    int robust = observerMoves ? Infinity : -Infinity;
+    for (int id = 0; id < Position::MaxPieces; ++id) {
+        if (!lazyRoyals->contains(id))
+            continue;
+        Position world = position;
+        if (id != canonicalKing && !world.swap_royal_roles(canonicalKing, id))
+            continue;
+        const int score = evaluate(world, ply);
+        robust = observerMoves ? std::min(robust, score)
+                               : std::max(robust, score);
+    }
+    return robust == Infinity || robust == -Infinity
+         ? evaluate(position, ply) : robust;
+}
+
+bool Search::apply_lazy_royal_move(
+  const Position& parent, Position& child, const Move& move,
+  LazyRoyalContext& lazyRoyals) const {
+    const int target = parent.piece_on(move.to);
+    if (lazyRoyals.count() > 1 && lazyRoyals.contains(target)) {
+        int canonicalKing = Position::NoPiece;
+        for (int id = 0; id < child.piece_count(); ++id)
+            if (child.piece(id).alive && child.piece(id).onBoard &&
+                child.piece(id).color == lazyRoyals.owner &&
+                child.piece(id).type == PieceType::King) {
+                canonicalKing = id;
+                break;
+            }
+        if (canonicalKing == target) {
+            const int survivor = lazyRoyals.first_except(target);
+            if (survivor == Position::NoPiece ||
+                !child.swap_royal_roles(canonicalKing, survivor))
+                return false;
+        }
+        lazyRoyals.erase(target);
+    }
+    return child.apply_move_unchecked(move);
+}
+
 bool Search::stopped() {
     if (stop_)
         return true;
@@ -1189,10 +1261,11 @@ int Search::move_score(const Position& position, const Move& move,
     return score;
 }
 
-int Search::quiescence(Position& position, int alpha, int beta, int ply) {
+int Search::quiescence(Position& position, int alpha, int beta, int ply,
+                       const LazyRoyalContext* lazyRoyals) {
     ++nodes_;
     if (stopped())
-        return evaluate(position, ply);
+        return evaluate_lazy_royals(position, ply, lazyRoyals);
     const Color side = position.side_to_move();
     if (const auto winner = position.forced_timeout_winner())
         return *winner == side ? Mate - ply : -Mate + ply;
@@ -1206,8 +1279,8 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
     // quiescence cycle. Never let such a line consume the native thread's
     // stack; the ordinary stand-pat cap below cannot apply while in check.
     if (ply >= MaxPly - 1)
-        return evaluate(position, ply);
-    if (ply > 0)
+        return evaluate_lazy_royals(position, ply, lazyRoyals);
+    if (ply > 0 && !lazyRoyals)
         if (const auto tablebase = TablebaseProbe::probe(position)) {
             if (tablebase->wdl == TablebaseWdl::Draw)
                 return 0;
@@ -1223,7 +1296,7 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
                          position.real_king_threatened(side);
     const bool forced = position.has_forced_action() || inCheck;
     if (!forced) {
-        const int standPat = evaluate(position, ply);
+        const int standPat = evaluate_lazy_royals(position, ply, lazyRoyals);
         if (standPat >= beta)
             return beta;
         alpha = std::max(alpha, standPat);
@@ -1263,7 +1336,11 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
         // restoring the parent through the reference Undo path copied the
         // complete board/piece/bitboard state twice per searched edge.
         Position child = position;
-        if (!child.apply_move_unchecked(move))
+        LazyRoyalContext childRoyals =
+          lazyRoyals ? *lazyRoyals : LazyRoyalContext{};
+        if (lazyRoyals
+              ? !apply_lazy_royal_move(position, child, move, childRoyals)
+              : !child.apply_move_unchecked(move))
             continue;
         if (!child.legal_after_unchecked_move(side))
             continue;
@@ -1271,8 +1348,11 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
             UltimateNnue::update(position, child, accumulators_[ply], accumulators_[ply + 1]);
         foundLegal = true;
         const bool sameSide = child.side_to_move() == before;
-        const int score = sameSide ? quiescence(child, alpha, beta, ply + 1)
-                                   : -quiescence(child, -beta, -alpha, ply + 1);
+        const LazyRoyalContext* nextRoyals =
+          lazyRoyals && childRoyals.count() > 1 ? &childRoyals : nullptr;
+        const int score = sameSide
+          ? quiescence(child, alpha, beta, ply + 1, nextRoyals)
+          : -quiescence(child, -beta, -alpha, ply + 1, nextRoyals);
         if (stopped())
             return alpha;
         if (score >= beta)
@@ -1285,10 +1365,11 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply) {
 }
 
 int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
-                    std::vector<Move>& pv, const Move* excludedMove) {
+                    std::vector<Move>& pv, const Move* excludedMove,
+                    const LazyRoyalContext* lazyRoyals) {
     pv.clear();
     if (stopped())
-        return evaluate(position, ply);
+        return evaluate_lazy_royals(position, ply, lazyRoyals);
     const Color side = position.side_to_move();
     if (const auto winner = position.forced_timeout_winner())
         return *winner == side ? Mate - ply : -Mate + ply;
@@ -1299,8 +1380,8 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
     if (!position.is_checkmate_possible())
         return 0;
     if (ply >= MaxPly - 1)
-        return evaluate(position, ply);
-    if (ply > 0)
+        return evaluate_lazy_royals(position, ply, lazyRoyals);
+    if (ply > 0 && !lazyRoyals)
         if (const auto tablebase = TablebaseProbe::probe(position)) {
             if (tablebase->wdl == TablebaseWdl::Draw)
                 return 0;
@@ -1309,12 +1390,15 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
                  ? Mate - ply - distance : -Mate + ply + distance;
         }
     if (depth <= 0)
-        return quiescence(position, alpha, beta, ply);
+        return quiescence(position, alpha, beta, ply, lazyRoyals);
 
     ++nodes_;
     const int originalAlpha = alpha;
     const bool pvNode = beta - alpha > 1;
-    const std::uint64_t key = position.key();
+    std::uint64_t key = position.key();
+    if (lazyRoyals)
+        key ^= mix_key(lazyRoyals->candidatesLow) ^
+               mix_key(lazyRoyals->candidatesHigh ^ 0xd8a4f3b2761c905eULL);
     Entry* entry = find_entry(key);
     const bool restrictedRoot = ply == 0 && !rootMoves_.empty();
     const bool adjustedRoot = restrictedRoot || (ply == 0 && !rootDrawMoves_.empty());
@@ -1368,7 +1452,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
         std::vector<Move> exclusionPv;
         const int alternative = negamax(position, (depth - 1) / 2,
                                         singularBeta - 1, singularBeta, ply,
-                                        exclusionPv, &ttMove);
+                                        exclusionPv, &ttMove, lazyRoyals);
         singularTtMove = !stopped() && alternative < singularBeta;
     }
 #else
@@ -1384,7 +1468,8 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
       position.supports_ordinary_exchange() &&
       (position.pieces(side, PieceType::Jester) ||
        !position.real_king_threatened(side));
-    const int staticEval = quietPruningNode ? evaluate(position, ply) : 0;
+    const int staticEval = quietPruningNode
+                         ? evaluate_lazy_royals(position, ply, lazyRoyals) : 0;
     for (const Move& move : moves) {
         if (excludedMove && move == *excludedMove)
             continue;
@@ -1406,7 +1491,11 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
             // Apply once, validate the resulting child, and search that same
             // child. This replaces the former legal-frontier pass plus a
             // duplicate application of every action actually searched.
-            if (!child.apply_move_unchecked(move))
+            LazyRoyalContext childRoyals =
+              lazyRoyals ? *lazyRoyals : LazyRoyalContext{};
+            if (lazyRoyals
+                  ? !apply_lazy_royal_move(position, child, move, childRoyals)
+                  : !child.apply_move_unchecked(move))
                 continue;
             if (!child.legal_after_unchecked_move(side))
                 continue;
@@ -1428,6 +1517,8 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
                 UltimateNnue::update(position, child, accumulators_[ply],
                                      accumulators_[ply + 1]);
             const bool sameSide = child.side_to_move() == before;
+            const LazyRoyalContext* nextRoyals =
+              lazyRoyals && childRoyals.count() > 1 ? &childRoyals : nullptr;
             int nextDepth = depth - (sameSide ? 0 : 1);
             // Same-side Checker/Prince actions already retain the current
             // nominal turn depth. Extend a singular TT action only when it
@@ -1451,20 +1542,28 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
                 reduction = std::min(reduction, std::max(0, nextDepth - 1));
             }
             if (moveNumber == 0) {
-                score = sameSide ? negamax(child, nextDepth, alpha, beta, ply + 1, childPv)
-                                 : -negamax(child, nextDepth, -beta, -alpha, ply + 1, childPv);
+                score = sameSide
+                  ? negamax(child, nextDepth, alpha, beta, ply + 1, childPv,
+                            nullptr, nextRoyals)
+                  : -negamax(child, nextDepth, -beta, -alpha, ply + 1,
+                             childPv, nullptr, nextRoyals);
             }
             else if (sameSide) {
-                score = negamax(child, nextDepth, alpha, alpha + 1, ply + 1, childPv);
+                score = negamax(child, nextDepth, alpha, alpha + 1, ply + 1,
+                                childPv, nullptr, nextRoyals);
                 if (score > alpha && score < beta)
-                    score = negamax(child, nextDepth, alpha, beta, ply + 1, childPv);
+                    score = negamax(child, nextDepth, alpha, beta, ply + 1,
+                                    childPv, nullptr, nextRoyals);
             }
             else {
-                score = -negamax(child, nextDepth - reduction, -alpha - 1, -alpha, ply + 1, childPv);
+                score = -negamax(child, nextDepth - reduction, -alpha - 1,
+                                 -alpha, ply + 1, childPv, nullptr, nextRoyals);
                 if (reduction && score > alpha)
-                    score = -negamax(child, nextDepth, -alpha - 1, -alpha, ply + 1, childPv);
+                    score = -negamax(child, nextDepth, -alpha - 1, -alpha,
+                                     ply + 1, childPv, nullptr, nextRoyals);
                 if (score > alpha && score < beta)
-                    score = -negamax(child, nextDepth, -beta, -alpha, ply + 1, childPv);
+                    score = -negamax(child, nextDepth, -beta, -alpha, ply + 1,
+                                     childPv, nullptr, nextRoyals);
             }
         }
         ++moveNumber;
@@ -1491,7 +1590,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
     }
 
     if (bestScore == -Infinity)
-        return stop_ ? evaluate(position, ply)
+        return stop_ ? evaluate_lazy_royals(position, ply, lazyRoyals)
                      : position.real_king_threatened(side) ? -Mate + ply : 0;
 
     if (!stop_ && !adjustedNode &&
@@ -1609,6 +1708,1253 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
     return result;
 }
 
+std::optional<BeliefSearchResult> Search::think_factored_royals(
+  const PublicBeliefState& beliefs, const SearchLimits& limits,
+  bool legalDotObservations) {
+    if (!limits.factoredBeliefs || beliefs.size() < 2 ||
+        !beliefs.side_to_move())
+        return std::nullopt;
+
+    const Color observer = beliefs.disclosure().observer;
+    const Color royalOwner = ~observer;
+    const Position& reference = beliefs.concrete_worlds().begin()->second;
+    bool pureRoyalMaterial = true;
+    for (int id = 0; id < reference.piece_count(); ++id) {
+        const PieceState& piece = reference.piece(id);
+        pureRoyalMaterial = pureRoyalMaterial &&
+          (!piece.alive || !piece.onBoard || piece.type == PieceType::King ||
+           piece.type == PieceType::Jester);
+    }
+    std::vector<int> candidates;
+    candidates.reserve(beliefs.size());
+    for (const auto& [upn, world] : beliefs.concrete_worlds()) {
+        (void)upn;
+        int king = Position::NoPiece;
+        for (int id = 0; id < world.piece_count(); ++id) {
+            const PieceState& piece = world.piece(id);
+            if (piece.alive && piece.onBoard && piece.color == royalOwner &&
+                piece.type == PieceType::King)
+                king = id;
+            // Ghost location can later re-expand. It is handled by the
+            // correlated factored solver, never by the monotone royal mask.
+            if (piece.alive && piece.onBoard && piece.type == PieceType::Ghost)
+                return std::nullopt;
+        }
+        if (king == Position::NoPiece ||
+            !royal_assignment_equivalent(reference, world, royalOwner))
+            return std::nullopt;
+        candidates.push_back(king);
+    }
+    std::sort(candidates.begin(), candidates.end());
+    if (std::adjacent_find(candidates.begin(), candidates.end()) != candidates.end())
+        return std::nullopt;
+
+    int referenceKing = Position::NoPiece;
+    for (int id = 0; id < reference.piece_count(); ++id)
+        if (reference.piece(id).alive && reference.piece(id).onBoard &&
+            reference.piece(id).color == royalOwner &&
+            reference.piece(id).type == PieceType::King) {
+            referenceKing = id;
+            break;
+        }
+    Position canonical = reference;
+    if (referenceKing != candidates.front() &&
+        !canonical.swap_royal_roles(referenceKing, candidates.front()))
+        return std::nullopt;
+
+    struct RoyalState {
+        Position position;
+        std::vector<int> candidates;
+    };
+    struct RoyalWorld {
+        int candidate = Position::NoPiece;
+        Position position;
+        std::map<std::string, Move> moves;
+    };
+    struct RoyalBucket {
+        InformationViewKey view;
+        std::map<int, Position> worlds;
+        std::set<std::string> actions;
+    };
+    using RoyalPv = std::vector<std::string>;
+
+    const auto materialize = [](const RoyalState& state, int candidate) {
+        Position world = state.position;
+        const int canonicalKing = state.candidates.empty()
+                                 ? Position::NoPiece : state.candidates.front();
+        if (candidate != canonicalKing)
+            world.swap_royal_roles(canonicalKing, candidate);
+        return world;
+    };
+    const auto prepare = [&](const RoyalState& state) {
+        std::vector<RoyalWorld> worlds;
+        std::map<std::string, Move> canonicalMoves;
+        if (pureRoyalMaterial) {
+            std::set<std::string> ambiguous;
+            std::vector<Move> pseudo = state.position.pseudo_legal_moves();
+            state.position.annotate_captures(pseudo);
+            for (const Move& move : pseudo) {
+                const std::string notation = state.position.move_to_string(move);
+                if (ambiguous.count(notation))
+                    continue;
+                const auto [iterator, inserted] =
+                  canonicalMoves.emplace(notation, move);
+                if (!inserted) {
+                    canonicalMoves.erase(iterator);
+                    ambiguous.insert(notation);
+                }
+            }
+            RoyalWorld prepared;
+            prepared.candidate = state.candidates.front();
+            prepared.position = state.position;
+            prepared.moves = std::move(canonicalMoves);
+            worlds.push_back(std::move(prepared));
+            return worlds;
+        }
+        worlds.reserve(state.candidates.size());
+        for (const int candidate : state.candidates) {
+            RoyalWorld prepared;
+            prepared.candidate = candidate;
+            prepared.position = materialize(state, candidate);
+            std::set<std::string> ambiguous;
+            for (const Move& move : prepared.position.legal_moves()) {
+                const std::string notation = prepared.position.move_to_string(move);
+                if (ambiguous.count(notation))
+                    continue;
+                const auto [iterator, inserted] =
+                  prepared.moves.emplace(notation, move);
+                if (!inserted) {
+                    prepared.moves.erase(iterator);
+                    ambiguous.insert(notation);
+                }
+            }
+            worlds.push_back(std::move(prepared));
+        }
+        return worlds;
+    };
+    const auto make_child = [&](const RoyalBucket& bucket) {
+        RoyalState child;
+        for (const auto& [candidate, world] : bucket.worlds)
+            if (world.has_real_king(royalOwner))
+                child.candidates.push_back(candidate);
+        if (child.candidates.empty()) {
+            child.position = bucket.worlds.begin()->second;
+            return child;
+        }
+        child.position = bucket.worlds.at(child.candidates.front());
+        return child;
+    };
+    const auto decision_signature = [](const RoyalWorld& world) {
+        std::vector<std::uint16_t> markers;
+        markers.reserve(world.moves.size());
+        for (const auto& [notation, move] : world.moves) {
+            (void)notation;
+            markers.push_back(move.kind == MoveKind::Pass
+              ? 0
+              : static_cast<std::uint16_t>(
+                  ((static_cast<unsigned>(move.from) + 1U) << 7U) |
+                  (static_cast<unsigned>(move.to) + 1U)));
+        }
+        std::sort(markers.begin(), markers.end());
+        markers.erase(std::unique(markers.begin(), markers.end()), markers.end());
+        return markers;
+    };
+    const auto fast_children = [&](const RoyalState& state,
+                                   const std::vector<RoyalWorld>& worlds,
+                                   const std::string& action) {
+        std::vector<RoyalState> children;
+        const Move& canonicalMove = worlds.front().moves.at(action);
+        const int target = state.position.piece_on(canonicalMove.to);
+        const bool capturesCandidate =
+          std::find(state.candidates.begin(), state.candidates.end(), target) !=
+          state.candidates.end();
+        RoyalState child;
+        const Color mover = state.position.side_to_move();
+        if (capturesCandidate && state.position.side_to_move() == observer &&
+            state.candidates.size() > 1) {
+            child.candidates = state.candidates;
+            child.candidates.erase(std::remove(child.candidates.begin(),
+                                               child.candidates.end(), target),
+                                   child.candidates.end());
+            child.position = materialize(state, child.candidates.front());
+            if (!child.position.apply_move_unchecked(canonicalMove))
+                return children;
+            if (!child.position.legal_after_unchecked_move(mover))
+                return children;
+            // The assignment where the captured silhouette was the King is
+            // an immediate win. The live Jester observation is the unique
+            // worst case while another candidate remains.
+        } else {
+            child = state;
+            if (!child.position.apply_move_unchecked(canonicalMove))
+                return children;
+            if (!child.position.legal_after_unchecked_move(mover))
+                return children;
+            if (capturesCandidate) {
+                child.candidates.erase(
+                  std::remove(child.candidates.begin(), child.candidates.end(), target),
+                  child.candidates.end());
+            }
+        }
+        if (pureRoyalMaterial || !legalDotObservations ||
+            child.candidates.size() < 2 ||
+            child.position.side_to_move() != observer) {
+            children.push_back(std::move(child));
+            return children;
+        }
+        const std::vector<RoyalWorld> childWorlds = prepare(child);
+        std::map<std::vector<std::uint16_t>, std::vector<int>> partitions;
+        for (const RoyalWorld& world : childWorlds)
+            partitions[decision_signature(world)].push_back(world.candidate);
+        for (auto& [signature, subset] : partitions) {
+            (void)signature;
+            RoyalState partitioned;
+            partitioned.candidates = std::move(subset);
+            partitioned.position = materialize(child, partitioned.candidates.front());
+            children.push_back(std::move(partitioned));
+        }
+        return children;
+    };
+
+    const auto beliefStart = std::chrono::steady_clock::now();
+    limits_ = limits;
+    softTime_ = std::chrono::milliseconds{0};
+    if (!limits_.moveTime.count() && limits_.remainingTime.count()) {
+        const auto usable = std::max(
+          std::chrono::milliseconds{1}, limits_.remainingTime - limits_.moveOverhead);
+        const int moves = limits_.movesToGo > 0 ? limits_.movesToGo : 30;
+        softTime_ = std::min(usable, usable / moves + limits_.increment * 3 / 4);
+        limits_.moveTime = std::min(
+          usable, std::max(softTime_ * 4, softTime_ + std::chrono::milliseconds{50}));
+    }
+    start_ = beliefStart;
+    nodes_ = 0;
+    stop_ = false;
+    useNnue_ = UltimateNnue::enabled();
+    rootMoves_.clear();
+    rootDrawMoves_.clear();
+    ++generation_;
+    for (auto& bySquare : history_)
+        for (int& value : bySquare)
+            value /= 2;
+
+    RoyalState root{std::move(canonical), std::move(candidates)};
+    BeliefSearchResult result;
+    result.beliefs = result.deepBeliefs = beliefs.size();
+    result.peakBeliefs = root.candidates.size();
+    std::set<std::string> rootRestriction;
+    for (const Move& move : limits.rootMoves)
+        rootRestriction.insert(root.position.move_to_string(move));
+    const std::set<std::string> rootDraws(
+      limits.rootDrawMoveStrings.begin(), limits.rootDrawMoveStrings.end());
+    std::uint64_t beliefNodes = 0;
+    std::uint64_t beliefTtHits = 0;
+    std::uint64_t singletonHandoffs = 0;
+    std::uint64_t observationBuckets = 0;
+    RoyalPv previousIterationPv;
+
+    if (pureRoyalMaterial) {
+        LazyRoyalContext lazy;
+        lazy.observer = observer;
+        lazy.owner = royalOwner;
+        for (const int candidate : root.candidates) {
+            if (candidate < 64)
+                lazy.candidatesLow |= std::uint64_t{1} << candidate;
+            else
+                lazy.candidatesHigh |= std::uint64_t{1} << (candidate - 64);
+        }
+        // Candidate materializations do not share one NNUE accumulator. The
+        // handcrafted evaluator is exact for this tiny symbolic material and
+        // avoids refreshing a network once per retained royal identity.
+        useNnue_ = false;
+        rootMoves_ = limits.rootMoves;
+        for (const std::string& notation : limits.rootDrawMoveStrings)
+            if (const auto move = root.position.move_from_string(notation))
+                rootDrawMoves_.push_back(*move);
+        result.commonMoves = root.position.legal_moves().size();
+        result.candidates = result.commonMoves;
+        const int perspective = root.position.side_to_move() == observer ? 1 : -1;
+        const int maxDepth = std::clamp(limits.depth, 1, MaxPly - 2);
+        int previousScore = 0;
+        for (int depth = 1; depth <= maxDepth; ++depth) {
+            std::vector<Move> pv;
+            const bool aspirate = depth >= 3 && depth < 8;
+            int alpha = aspirate ? std::max(-Infinity, previousScore - 60) : -Infinity;
+            int beta = aspirate ? std::min(Infinity, previousScore + 60) : Infinity;
+            int score = negamax(root.position, depth, alpha, beta, 0, pv,
+                                nullptr, &lazy);
+            if (!stop_ && (score <= alpha || score >= beta)) {
+                pv.clear();
+                score = negamax(root.position, depth, -Infinity, Infinity, 0,
+                                pv, nullptr, &lazy);
+            }
+            if (stop_)
+                break;
+            previousScore = score;
+            result.score = result.worstScore = result.meanScore = perspective * score;
+            result.completedDepth = depth;
+            result.historyPreservingPlies = depth;
+            result.principalVariation.clear();
+            for (const Move& move : pv)
+                result.principalVariation.push_back(
+                  root.position.move_to_string(move));
+            result.bestMove = result.principalVariation.empty()
+              ? std::nullopt
+              : std::optional<std::string>(result.principalVariation.front());
+            result.nodes = nodes_;
+            result.beliefNodes = nodes_;
+            result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+              std::chrono::steady_clock::now() - beliefStart);
+            if (limits.onBeliefIteration)
+                limits.onBeliefIteration(result);
+        }
+        result.nodes = nodes_;
+        result.beliefNodes = nodes_;
+        result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - beliefStart);
+        return result;
+    }
+
+    const auto observer_evaluate = [&](const RoyalState& state, int ply) {
+        const auto evaluate_world = [&](Position position) {
+            int score = 0;
+            const Color mover = position.side_to_move();
+            if (const auto winner = position.forced_timeout_winner())
+                score = *winner == mover ? Mate - ply : -Mate + ply;
+            else {
+                const bool ownKing = position.has_real_king(mover);
+                const bool enemyKing = position.has_real_king(~mover);
+                if (!ownKing || !enemyKing)
+                    score = ownKing == enemyKing ? 0
+                          : ownKing ? Mate - ply : -Mate + ply;
+                else if (!position.is_checkmate_possible())
+                    score = 0;
+                else if (!position.has_legal_move())
+                    score = position.real_king_threatened(mover)
+                          ? -Mate + ply : 0;
+                else
+                    score = position.handcrafted_evaluate();
+            }
+            return mover == observer ? score : -score;
+        };
+        if (state.candidates.empty())
+            return evaluate_world(state.position);
+        int robust = Infinity;
+        for (const int candidate : state.candidates)
+            robust = std::min(robust, evaluate_world(materialize(state, candidate)));
+        return robust;
+    };
+
+    std::function<int(const RoyalState&, int, int, int, int, RoyalPv&)> solve;
+    solve = [&](const RoyalState& state, int depth, int alpha, int beta,
+                int ply, RoyalPv& pv) -> int {
+        pv.clear();
+        ++beliefNodes;
+        result.peakBeliefs = std::max(result.peakBeliefs, state.candidates.size());
+        if (stopped())
+            return observer_evaluate(state, ply);
+        if (state.candidates.empty() || !state.position.has_real_king(observer))
+            return observer_evaluate(state, ply);
+        if (state.candidates.size() == 1 && ply < MaxPly - 1) {
+            ++singletonHandoffs;
+            Position position = state.position;
+            if (useNnue_)
+                UltimateNnue::refresh(position, accumulators_[ply]);
+            std::vector<Move> concretePv;
+            const int score = position.side_to_move() == observer
+              ? negamax(position, depth, alpha, beta, ply, concretePv)
+              : -negamax(position, depth, -beta, -alpha, ply, concretePv);
+            for (const Move& move : concretePv)
+                pv.push_back(position.move_to_string(move));
+            return score;
+        }
+        nodes_ += 1;
+        if (depth <= 0 || ply >= MaxPly - 1)
+            return observer_evaluate(state, ply);
+
+        const int originalAlpha = alpha;
+        const int originalBeta = beta;
+        std::uint64_t maskKey = 0x87c6e3b19a245df0ULL;
+        for (const int candidate : state.candidates)
+            maskKey ^= mix_key(static_cast<std::uint64_t>(candidate + 1));
+        const std::uint64_t mode = legalDotObservations
+                                 ? 0x3d97a4f16b82ce50ULL
+                                 : 0xa56b09e217cf438dULL;
+        const std::uint64_t key = state.position.key() ^ maskKey ^ mode;
+        // Native search accepts the Position's 64-bit incremental key as its
+        // complete TT identity. Keep the belief table equally cheap; the
+        // candidate mask and observation mode are part of both table lanes.
+        const std::uint64_t verification =
+          mix_key(state.position.key() ^ mix_key(maskKey) ^ mix_key(mode));
+        BeliefEntry* ttEntry = find_belief_entry(key, verification);
+        if (ttEntry && ply != 0 && ttEntry->depth >= depth) {
+            const int ttScore = score_from_tt(ttEntry->score, ply);
+            if (ttEntry->bound == Bound::Exact ||
+                (ttEntry->bound == Bound::Lower && ttScore >= beta) ||
+                (ttEntry->bound == Bound::Upper && ttScore <= alpha)) {
+                ++beliefTtHits;
+                return ttScore;
+            }
+        }
+        const std::uint64_t ttActionHash = ttEntry ? ttEntry->actionHash : 0;
+        const std::uint64_t pvActionHash =
+          static_cast<std::size_t>(ply) < previousIterationPv.size()
+            ? string_key(previousIterationPv[static_cast<std::size_t>(ply)]) : 0;
+        const auto store = [&](int score, std::string_view action) {
+            if (stop_ || ply == 0)
+                return;
+            BeliefEntry& replacement = replacement_belief_entry(key, verification);
+            replacement.key = key;
+            replacement.verification = verification;
+            replacement.actionHash = action.empty() ? 0 : string_key(action);
+            replacement.score = static_cast<std::int16_t>(
+              std::clamp(score_to_tt(score, ply), -Infinity, Infinity));
+            replacement.depth = static_cast<std::int8_t>(std::min(depth, 127));
+            replacement.bound = score <= originalAlpha ? Bound::Upper
+                              : score >= originalBeta  ? Bound::Lower
+                                                       : Bound::Exact;
+            replacement.generation = generation_;
+        };
+
+        std::vector<RoyalWorld> worlds = prepare(state);
+        const Color side = state.position.side_to_move();
+        const bool maximizing = side == observer;
+        if (!maximizing) {
+            if (pureRoyalMaterial) {
+                std::vector<std::string> actions;
+                for (const auto& [notation, move] : worlds.front().moves) {
+                    (void)move;
+                    if (ply != 0 || rootRestriction.empty() ||
+                        rootRestriction.count(notation))
+                        actions.push_back(notation);
+                }
+                std::stable_sort(actions.begin(), actions.end(),
+                  [&](const std::string& lhs, const std::string& rhs) {
+                      const auto rank = [&](const std::string& action) {
+                          const auto hash = string_key(action);
+                          if (hash == ttActionHash)
+                              return 2'000'000;
+                          if (hash == pvActionHash)
+                              return 1'500'000;
+                          return move_score(worlds.front().position,
+                                            worlds.front().moves.at(action),
+                                            nullptr, ply);
+                      };
+                      return rank(lhs) > rank(rhs);
+                  });
+                int best = Infinity;
+                std::string bestAction;
+                RoyalPv bestPv;
+                int actionNumber = 0;
+                for (const std::string& action : actions) {
+                    const std::vector<RoyalState> children =
+                      fast_children(state, worlds, action);
+                    observationBuckets += children.size();
+                    int actionWorst = Infinity;
+                    RoyalPv actionPv;
+                    for (const RoyalState& child : children) {
+                        const bool changedSide = child.position.side_to_move() != side;
+                        RoyalPv childPv;
+                        const int childDepth = depth - (changedSide ? 1 : 0);
+                        int score = actionNumber == 0 || beta >= Infinity
+                          ? solve(child, childDepth, alpha, beta, ply + 1, childPv)
+                          : solve(child, childDepth, beta - 1, beta,
+                                  ply + 1, childPv);
+                        if (actionNumber > 0 && score > alpha && score < beta &&
+                            !stopped()) {
+                            childPv.clear();
+                            score = solve(child, childDepth, alpha, beta,
+                                          ply + 1, childPv);
+                        }
+                        if (score < actionWorst) {
+                            actionWorst = score;
+                            actionPv = std::move(childPv);
+                        }
+                        beta = std::min(beta, actionWorst);
+                        if (alpha >= beta || stopped())
+                            break;
+                    }
+                    if (ply == 0 && rootDraws.count(action))
+                        actionWorst = std::min(actionWorst, 0);
+                    if (actionWorst < best) {
+                        best = actionWorst;
+                        bestAction = action;
+                        bestPv.assign(1, action);
+                        bestPv.insert(bestPv.end(), actionPv.begin(), actionPv.end());
+                    }
+                    beta = std::min(beta, best);
+                    ++actionNumber;
+                    if (alpha >= beta || stopped())
+                        break;
+                }
+                if (best == Infinity)
+                    return observer_evaluate(state, ply);
+                store(best, bestAction);
+                pv = std::move(bestPv);
+                return best;
+            }
+            std::map<InformationObservationKey, RoyalBucket> observations;
+            for (const RoyalWorld& world : worlds)
+                for (const auto& [notation, move] : world.moves) {
+                    if (ply == 0 && !rootRestriction.empty() &&
+                        !rootRestriction.count(notation))
+                        continue;
+                    Position after = world.position;
+                    if (!after.apply_move_unchecked(move))
+                        continue;
+                    std::optional<std::vector<Move>> afterMoves;
+                    if (legalDotObservations && after.side_to_move() == observer)
+                        afterMoves = after.legal_moves();
+                    InformationObservationKey observation =
+                      compact_transition_observation_key(
+                        world.position, move, after, beliefs.disclosure(),
+                        legalDotObservations,
+                        afterMoves ? &*afterMoves : nullptr);
+                    RoyalBucket& bucket = observations[observation];
+                    bucket.view = observation.view;
+                    bucket.actions.insert(notation);
+                    bucket.worlds.emplace(world.candidate, std::move(after));
+                }
+            observationBuckets += observations.size();
+            if (observations.empty())
+                return observer_evaluate(state, ply);
+            std::vector<decltype(observations)::iterator> order;
+            for (auto it = observations.begin(); it != observations.end(); ++it)
+                order.push_back(it);
+            std::stable_sort(order.begin(), order.end(), [&](auto lhs, auto rhs) {
+                const auto priority = [&](const RoyalBucket& bucket) {
+                    int value = 0;
+                    for (const std::string& action : bucket.actions) {
+                        const auto hash = string_key(action);
+                        value = std::max(value, hash == ttActionHash ? 2
+                                              : hash == pvActionHash ? 1 : 0);
+                    }
+                    return value;
+                };
+                return priority(lhs->second) > priority(rhs->second);
+            });
+            int best = Infinity;
+            std::string bestAction;
+            RoyalPv bestPv;
+            int number = 0;
+            for (auto iterator : order) {
+                RoyalState child = make_child(iterator->second);
+                const bool changedSide = child.position.side_to_move() != side;
+                RoyalPv childPv;
+                int score = number++ == 0
+                  ? solve(child, depth - (changedSide ? 1 : 0), alpha, beta,
+                          ply + 1, childPv)
+                  : solve(child, depth - (changedSide ? 1 : 0), beta - 1, beta,
+                          ply + 1, childPv);
+                if (number > 1 && score > alpha && score < beta && !stopped()) {
+                    childPv.clear();
+                    score = solve(child, depth - (changedSide ? 1 : 0), alpha,
+                                  beta, ply + 1, childPv);
+                }
+                if (score < best) {
+                    best = score;
+                    bestAction = iterator->second.actions.empty()
+                      ? std::string() : *iterator->second.actions.begin();
+                    bestPv.clear();
+                    if (!bestAction.empty())
+                        bestPv.push_back(bestAction);
+                    bestPv.insert(bestPv.end(), childPv.begin(), childPv.end());
+                }
+                beta = std::min(beta, best);
+                if (alpha >= beta || stopped())
+                    break;
+            }
+            store(best, bestAction);
+            pv = std::move(bestPv);
+            return best;
+        }
+
+        std::set<std::string> actions;
+        bool first = true;
+        for (const RoyalWorld& world : worlds) {
+            std::set<std::string> legal;
+            for (const auto& [notation, move] : world.moves) {
+                (void)move;
+                legal.insert(notation);
+            }
+            if (first) {
+                actions = std::move(legal);
+                first = false;
+            } else {
+                std::set<std::string> intersection;
+                std::set_intersection(actions.begin(), actions.end(),
+                                      legal.begin(), legal.end(),
+                                      std::inserter(intersection, intersection.begin()));
+                actions = std::move(intersection);
+            }
+        }
+        if (ply == 0 && !rootRestriction.empty()) {
+            std::set<std::string> restricted;
+            std::set_intersection(actions.begin(), actions.end(),
+                                  rootRestriction.begin(), rootRestriction.end(),
+                                  std::inserter(restricted, restricted.begin()));
+            actions = std::move(restricted);
+        }
+        if (ply == 0) {
+            result.commonMoves = actions.size();
+            result.candidates = actions.size();
+        }
+        if (actions.empty())
+            return observer_evaluate(state, ply);
+
+        std::vector<std::string> ordered(actions.begin(), actions.end());
+        std::map<std::string, int> priority;
+        std::map<std::string, bool> quiet;
+        for (const std::string& action : ordered) {
+            const auto hash = string_key(action);
+            int score = hash == ttActionHash ? 2'000'000
+                      : hash == pvActionHash ? 1'500'000 : -Infinity;
+            bool isQuiet = true;
+            for (const RoyalWorld& world : worlds) {
+                const Move& move = world.moves.at(action);
+                score = std::max(score, move_score(world.position, move, nullptr, ply));
+                isQuiet = isQuiet && move.kind == MoveKind::Normal &&
+                          !world.position.is_capture(move);
+            }
+            priority[action] = score;
+            quiet[action] = isQuiet;
+        }
+        std::stable_sort(ordered.begin(), ordered.end(), [&](const auto& lhs,
+                                                             const auto& rhs) {
+            return priority[lhs] > priority[rhs];
+        });
+
+        int best = -Infinity;
+        std::string bestAction;
+        RoyalPv bestPv;
+        int actionNumber = 0;
+        for (const std::string& action : ordered) {
+            if (ply == 0 && rootDraws.count(action)) {
+                if (0 > best) {
+                    best = 0;
+                    bestAction = action;
+                    bestPv = {action};
+                }
+                alpha = std::max(alpha, best);
+                ++actionNumber;
+                continue;
+            }
+            if (pureRoyalMaterial) {
+                const std::vector<RoyalState> children =
+                  fast_children(state, worlds, action);
+                observationBuckets += children.size();
+                const bool isQuiet = quiet[action];
+                int reduction = 0;
+                if (depth >= 3 && actionNumber >= 4 && isQuiet) {
+                    reduction = 1;
+#ifndef ULTIMATE_CONSERVATIVE_LMR
+                    if (depth >= 6 && actionNumber >= 8)
+                        ++reduction;
+                    if (depth >= 9 && actionNumber >= 16)
+                        ++reduction;
+#endif
+                    reduction = std::min(reduction, depth - 2);
+                }
+                const auto evaluateFastAction = [&](int searchDepth,
+                                                    int windowBeta,
+                                                    RoyalPv& actionPv) {
+                    int worst = Infinity;
+                    int natureBeta = windowBeta;
+                    for (const RoyalState& child : children) {
+                        const bool changedSide = child.position.side_to_move() != side;
+                        RoyalPv childPv;
+                        const int score = solve(
+                          child, searchDepth - (changedSide ? 1 : 0), alpha,
+                          natureBeta, ply + 1, childPv);
+                        if (score < worst) {
+                            worst = score;
+                            actionPv = std::move(childPv);
+                        }
+                        natureBeta = std::min(natureBeta, worst);
+                        if (worst <= alpha || stopped())
+                            break;
+                    }
+                    return worst;
+                };
+                const int searchBeta = actionNumber == 0 || beta >= Infinity
+                                     ? beta : std::min(beta, alpha + 1);
+                RoyalPv actionPv;
+                int actionWorst = evaluateFastAction(
+                  depth - reduction, searchBeta, actionPv);
+                if (reduction && actionWorst > alpha && !stopped()) {
+                    actionPv.clear();
+                    actionWorst = evaluateFastAction(depth, searchBeta, actionPv);
+                }
+                if (searchBeta < beta && actionWorst > alpha &&
+                    actionWorst < beta && !stopped()) {
+                    actionPv.clear();
+                    actionWorst = evaluateFastAction(depth, beta, actionPv);
+                }
+                if (actionWorst > best) {
+                    best = actionWorst;
+                    bestAction = action;
+                    bestPv.assign(1, action);
+                    bestPv.insert(bestPv.end(), actionPv.begin(), actionPv.end());
+                }
+                alpha = std::max(alpha, best);
+                ++actionNumber;
+                if (alpha >= beta || stopped())
+                    break;
+                continue;
+            }
+            std::map<InformationObservationKey, RoyalBucket> observations;
+            for (const RoyalWorld& world : worlds) {
+                const Move& move = world.moves.at(action);
+                Position after = world.position;
+                if (!after.apply_move_unchecked(move))
+                    continue;
+                std::optional<std::vector<Move>> afterMoves;
+                if (legalDotObservations && after.side_to_move() == observer)
+                    afterMoves = after.legal_moves();
+                InformationObservationKey observation =
+                  compact_transition_observation_key(
+                    world.position, move, after, beliefs.disclosure(),
+                    legalDotObservations, afterMoves ? &*afterMoves : nullptr);
+                RoyalBucket& bucket = observations[observation];
+                bucket.view = observation.view;
+                bucket.actions.insert(action);
+                bucket.worlds.emplace(world.candidate, std::move(after));
+            }
+            observationBuckets += observations.size();
+            if (observations.empty())
+                continue;
+            const auto evaluate_action = [&](int searchDepth, int windowBeta,
+                                             RoyalPv& actionPv) {
+                int worst = Infinity;
+                int natureBeta = windowBeta;
+                for (const auto& [observation, bucket] : observations) {
+                    (void)observation;
+                    RoyalState child = make_child(bucket);
+                    const bool changedSide = child.position.side_to_move() != side;
+                    RoyalPv childPv;
+                    const int score = solve(
+                      child, searchDepth - (changedSide ? 1 : 0), alpha,
+                      natureBeta, ply + 1, childPv);
+                    if (score < worst) {
+                        worst = score;
+                        actionPv = std::move(childPv);
+                    }
+                    natureBeta = std::min(natureBeta, worst);
+                    if (worst <= alpha || stopped())
+                        break;
+                }
+                return worst;
+            };
+            const int searchBeta = actionNumber == 0 || beta >= Infinity
+                                 ? beta : std::min(beta, alpha + 1);
+            int reduction = 0;
+            if (depth >= 3 && actionNumber >= 4 && quiet[action]) {
+                reduction = 1;
+#ifndef ULTIMATE_CONSERVATIVE_LMR
+                if (depth >= 6 && actionNumber >= 8)
+                    ++reduction;
+                if (depth >= 9 && actionNumber >= 16)
+                    ++reduction;
+#endif
+                reduction = std::min(reduction, depth - 2);
+            }
+            RoyalPv actionPv;
+            int actionScore = evaluate_action(depth - reduction, searchBeta, actionPv);
+            if (reduction && actionScore > alpha && !stopped()) {
+                actionPv.clear();
+                actionScore = evaluate_action(depth, searchBeta, actionPv);
+            }
+            if (searchBeta < beta && actionScore > alpha &&
+                actionScore < beta && !stopped()) {
+                actionPv.clear();
+                actionScore = evaluate_action(depth, beta, actionPv);
+            }
+            if (actionScore > best) {
+                best = actionScore;
+                bestAction = action;
+                bestPv.assign(1, action);
+                bestPv.insert(bestPv.end(), actionPv.begin(), actionPv.end());
+            }
+            alpha = std::max(alpha, best);
+            ++actionNumber;
+            if (alpha >= beta || stopped())
+                break;
+        }
+        if (best == -Infinity)
+            return observer_evaluate(state, ply);
+        store(best, bestAction);
+        pv = std::move(bestPv);
+        return best;
+    };
+
+    const int maxDepth = std::clamp(limits.depth, 1, MaxPly - 2);
+    int previousScore = 0;
+    for (int depth = 1; depth <= maxDepth; ++depth) {
+        RoyalPv pv;
+        const bool aspirate = depth >= 3 && depth < 8;
+        int alpha = aspirate ? std::max(-Infinity, previousScore - 120) : -Infinity;
+        int beta = aspirate ? std::min(Infinity, previousScore + 120) : Infinity;
+        int score = solve(root, depth, alpha, beta, 0, pv);
+        if (!stop_ && (score <= alpha || score >= beta)) {
+            pv.clear();
+            score = solve(root, depth, -Infinity, Infinity, 0, pv);
+        }
+        if (stop_)
+            break;
+        previousScore = score;
+        previousIterationPv = pv;
+        result.score = result.worstScore = result.meanScore = score;
+        result.completedDepth = depth;
+        result.historyPreservingPlies = depth;
+        result.principalVariation = std::move(pv);
+        result.bestMove = result.principalVariation.empty()
+          ? std::nullopt
+          : std::optional<std::string>(result.principalVariation.front());
+        result.nodes = nodes_;
+        result.beliefNodes = beliefNodes;
+        result.beliefTtHits = beliefTtHits;
+        result.singletonHandoffs = singletonHandoffs;
+        result.observationBuckets = observationBuckets;
+        result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - beliefStart);
+        if (limits.onBeliefIteration)
+            limits.onBeliefIteration(result);
+    }
+    result.nodes = nodes_;
+    result.beliefNodes = beliefNodes;
+    result.beliefTtHits = beliefTtHits;
+    result.singletonHandoffs = singletonHandoffs;
+    result.observationBuckets = observationBuckets;
+    result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - beliefStart);
+    return result;
+}
+
+std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
+  const PublicBeliefState& beliefs, const SearchLimits& limits,
+  bool legalDotObservations) {
+    if (!limits.factoredBeliefs || beliefs.size() < 2 ||
+        !beliefs.side_to_move())
+        return std::nullopt;
+    const Color observer = beliefs.disclosure().observer;
+    const Position& first = beliefs.concrete_worlds().begin()->second;
+    std::vector<int> ghostIds;
+    for (int id = 0; id < first.piece_count(); ++id) {
+        const PieceState& piece = first.piece(id);
+        if (!piece.alive || !piece.onBoard)
+            continue;
+        if (piece.type == PieceType::Ghost && piece.color != observer)
+            ghostIds.push_back(id);
+        else if (piece.type != PieceType::King &&
+                 piece.type != PieceType::Jester)
+            return std::nullopt;
+    }
+    if (ghostIds.empty())
+        return std::nullopt;
+
+    struct JointGhostState {
+        Position geometry;
+        std::vector<std::vector<std::uint8_t>> assignments;
+    };
+    JointGhostState root;
+    root.geometry = first;
+    for (const auto& [upn, world] : beliefs.concrete_worlds()) {
+        (void)upn;
+        if (world.piece_count() != first.piece_count())
+            return std::nullopt;
+        std::vector<std::uint8_t> assignment;
+        for (const int id : ghostIds) {
+            const PieceState& ghost = world.piece(id);
+            if (!ghost.alive || !ghost.onBoard || ghost.visible ||
+                ghost.type != PieceType::Ghost || ghost.color == observer)
+                return std::nullopt;
+            assignment.push_back(ghost.square);
+        }
+        int enemyKing = Position::NoPiece;
+        for (int id = 0; id < world.piece_count(); ++id)
+            if (world.piece(id).alive && world.piece(id).onBoard &&
+                world.piece(id).color != observer &&
+                world.piece(id).type == PieceType::King) {
+                enemyKing = id;
+                break;
+            }
+        assignment.push_back(enemyKing == Position::NoPiece
+                           ? std::uint8_t{255}
+                           : static_cast<std::uint8_t>(enemyKing));
+        root.assignments.push_back(std::move(assignment));
+    }
+    std::sort(root.assignments.begin(), root.assignments.end());
+    root.assignments.erase(
+      std::unique(root.assignments.begin(), root.assignments.end()),
+      root.assignments.end());
+    if (root.assignments.size() != beliefs.size())
+        return std::nullopt;
+    std::set<std::uint8_t> royalAssignments;
+    for (const auto& assignment : root.assignments)
+        royalAssignments.insert(assignment.back());
+    // The mature enumerated solver is faster for a lone Ghost with no royal
+    // correlation at deeper depths. The compact joint domain targets the
+    // combinatorial cases it improves: multiple Ghosts or Ghost/royal state.
+    if (ghostIds.size() == 1 && royalAssignments.size() == 1)
+        return std::nullopt;
+
+    // This exact compact domain is deliberately restricted to the royal plus
+    // hidden-Ghost stepper material for now. Correlations are retained as
+    // joint tuples, so two indistinguishable Ghosts never occupy one square
+    // and distinguishable state never gets multiplied into impossible worlds.
+    const auto materialize = [&](const JointGhostState& state,
+                                 const std::vector<std::uint8_t>& assignment) {
+        Position world = state.geometry;
+        for (std::size_t index = 0; index < ghostIds.size(); ++index)
+            world.pieces_[ghostIds[index]].square = assignment[index];
+        world.rebuild_bitboards();
+        const int assignedKing = assignment.back() == 255
+                               ? Position::NoPiece : assignment.back();
+        if (assignedKing != Position::NoPiece) {
+            int canonicalKing = Position::NoPiece;
+            for (int id = 0; id < world.piece_count(); ++id)
+                if (world.piece(id).alive && world.piece(id).onBoard &&
+                    world.piece(id).color != observer &&
+                    world.piece(id).type == PieceType::King) {
+                    canonicalKing = id;
+                    break;
+                }
+            if (canonicalKing != assignedKing)
+                world.swap_royal_roles(canonicalKing, assignedKing);
+        }
+        return world;
+    };
+    const auto compact = [&](std::vector<Position> worlds) {
+        JointGhostState child;
+        if (worlds.empty())
+            return child;
+        child.geometry = worlds.front();
+        for (Position& world : worlds) {
+            std::vector<std::uint8_t> assignment;
+            for (const int id : ghostIds)
+                assignment.push_back(world.piece(id).square);
+            int enemyKing = Position::NoPiece;
+            for (int id = 0; id < world.piece_count(); ++id)
+                if (world.piece(id).alive && world.piece(id).onBoard &&
+                    world.piece(id).color != observer &&
+                    world.piece(id).type == PieceType::King) {
+                    enemyKing = id;
+                    break;
+                }
+            assignment.push_back(enemyKing == Position::NoPiece
+                               ? std::uint8_t{255}
+                               : static_cast<std::uint8_t>(enemyKing));
+            child.assignments.push_back(std::move(assignment));
+        }
+        std::sort(child.assignments.begin(), child.assignments.end());
+        child.assignments.erase(
+          std::unique(child.assignments.begin(), child.assignments.end()),
+          child.assignments.end());
+        return child;
+    };
+
+    const auto start = std::chrono::steady_clock::now();
+    limits_ = limits;
+    start_ = start;
+    nodes_ = 0;
+    stop_ = false;
+    useNnue_ = false;
+    rootMoves_.clear();
+    rootDrawMoves_.clear();
+    ++generation_;
+    for (auto& bySquare : history_)
+        for (int& value : bySquare)
+            value /= 2;
+    std::set<std::string> rootRestriction;
+    for (const Move& move : limits.rootMoves)
+        rootRestriction.insert(first.move_to_string(move));
+    const std::set<std::string> rootDraws(
+      limits.rootDrawMoveStrings.begin(), limits.rootDrawMoveStrings.end());
+    using GhostPv = std::vector<std::string>;
+    BeliefSearchResult result;
+    result.beliefs = result.deepBeliefs = beliefs.size();
+    result.peakBeliefs = root.assignments.size();
+    std::uint64_t beliefNodes = 0;
+    std::uint64_t ttHits = 0;
+    std::uint64_t buckets = 0;
+
+    const auto robust_eval = [&](const JointGhostState& state, int ply) {
+        int robust = Infinity;
+        for (const auto& assignment : state.assignments) {
+            Position world = materialize(state, assignment);
+            const Color mover = world.side_to_move();
+            int score = 0;
+            if (!world.has_real_king(mover) || !world.has_real_king(~mover))
+                score = world.has_real_king(mover) ? Mate - ply
+                      : world.has_real_king(~mover) ? -Mate + ply : 0;
+            else if (!world.is_checkmate_possible())
+                score = 0;
+            else
+                score = world.handcrafted_evaluate();
+            if (mover != observer)
+                score = -score;
+            robust = std::min(robust, score);
+        }
+        return robust == Infinity ? 0 : robust;
+    };
+
+    std::function<int(const JointGhostState&, int, int, int, int, GhostPv&)> solve;
+    solve = [&](const JointGhostState& state, int depth, int alpha, int beta,
+                int ply, GhostPv& pv) -> int {
+        pv.clear();
+        ++beliefNodes;
+        nodes_ += state.assignments.size();
+        result.peakBeliefs = std::max(result.peakBeliefs, state.assignments.size());
+        if (stopped() || depth <= 0 || ply >= MaxPly - 1)
+            return robust_eval(state, ply);
+        const Color side = state.geometry.side_to_move();
+        const bool maximizing = side == observer;
+
+        std::uint64_t domainKey = state.geometry.key();
+        std::uint64_t verification = mix_key(domainKey);
+        for (const auto& assignment : state.assignments) {
+            std::uint64_t tuple = 0;
+            for (const std::uint8_t square : assignment)
+                tuple = mix_key(tuple ^ (static_cast<std::uint64_t>(square) + 1));
+            domainKey ^= mix_key(tuple);
+            verification += mix_key(tuple ^ 0xa4d927f06b31ce85ULL);
+        }
+        BeliefEntry* entry = find_belief_entry(domainKey, verification);
+        if (entry && ply && entry->depth >= depth) {
+            const int score = score_from_tt(entry->score, ply);
+            if (entry->bound == Bound::Exact ||
+                (entry->bound == Bound::Lower && score >= beta) ||
+                (entry->bound == Bound::Upper && score <= alpha)) {
+                ++ttHits;
+                return score;
+            }
+        }
+        const int originalAlpha = alpha;
+        const int originalBeta = beta;
+
+        struct Prepared {
+            Position world;
+            std::map<std::string, Move> moves;
+        };
+        std::vector<Prepared> prepared;
+        prepared.reserve(state.assignments.size());
+        std::set<std::string> common;
+        bool firstWorld = true;
+        for (const auto& assignment : state.assignments) {
+            Prepared item;
+            item.world = materialize(state, assignment);
+            std::set<std::string> ambiguous;
+            for (const Move& move : item.world.legal_moves()) {
+                const std::string notation = item.world.move_to_string(move);
+                if (ambiguous.count(notation))
+                    continue;
+                const auto [it, inserted] = item.moves.emplace(notation, move);
+                if (!inserted) {
+                    item.moves.erase(it);
+                    ambiguous.insert(notation);
+                }
+            }
+            if (maximizing) {
+                std::set<std::string> legal;
+                for (const auto& [notation, move] : item.moves) {
+                    (void)move;
+                    legal.insert(notation);
+                }
+                if (firstWorld)
+                    common = std::move(legal);
+                else {
+                    std::set<std::string> intersection;
+                    std::set_intersection(common.begin(), common.end(),
+                                          legal.begin(), legal.end(),
+                                          std::inserter(intersection,
+                                                        intersection.begin()));
+                    common = std::move(intersection);
+                }
+            }
+            firstWorld = false;
+            prepared.push_back(std::move(item));
+        }
+
+        if (!maximizing) {
+            std::map<InformationObservationKey, std::vector<Position>> observations;
+            std::map<InformationObservationKey, std::set<std::string>> actions;
+            for (const Prepared& item : prepared)
+                for (const auto& [notation, move] : item.moves) {
+                    Position after = item.world;
+                    if (!after.apply_move_unchecked(move))
+                        continue;
+                    std::optional<std::vector<Move>> afterMoves;
+                    if (legalDotObservations && after.side_to_move() == observer)
+                        afterMoves = after.legal_moves();
+                    const auto observation = compact_transition_observation_key(
+                      item.world, move, after, beliefs.disclosure(),
+                      legalDotObservations, afterMoves ? &*afterMoves : nullptr);
+                    observations[observation].push_back(std::move(after));
+                    actions[observation].insert(notation);
+                }
+            buckets += observations.size();
+            int best = Infinity;
+            std::string bestAction;
+            GhostPv bestPv;
+            for (auto& [observation, worlds] : observations) {
+                JointGhostState child = compact(std::move(worlds));
+                GhostPv childPv;
+                const bool changedSide = child.geometry.side_to_move() != side;
+                const int score = solve(child, depth - (changedSide ? 1 : 0),
+                                        alpha, beta, ply + 1, childPv);
+                if (score < best) {
+                    best = score;
+                    bestAction = actions[observation].empty()
+                      ? std::string() : *actions[observation].begin();
+                    bestPv.clear();
+                    if (!bestAction.empty())
+                        bestPv.push_back(bestAction);
+                    bestPv.insert(bestPv.end(), childPv.begin(), childPv.end());
+                }
+                beta = std::min(beta, best);
+                if (alpha >= beta || stopped())
+                    break;
+            }
+            if (best == Infinity)
+                return robust_eval(state, ply);
+            if (!stop_ && ply) {
+                BeliefEntry& replacement = replacement_belief_entry(
+                  domainKey, verification);
+                replacement.key = domainKey;
+                replacement.verification = verification;
+                replacement.actionHash = bestAction.empty() ? 0 : string_key(bestAction);
+                replacement.score = static_cast<std::int16_t>(score_to_tt(best, ply));
+                replacement.depth = static_cast<std::int8_t>(std::min(depth, 127));
+                replacement.bound = best <= originalAlpha ? Bound::Upper
+                                  : best >= originalBeta ? Bound::Lower : Bound::Exact;
+                replacement.generation = generation_;
+            }
+            pv = std::move(bestPv);
+            return best;
+        }
+
+        if (ply == 0 && !rootRestriction.empty()) {
+            std::set<std::string> restricted;
+            std::set_intersection(common.begin(), common.end(),
+                                  rootRestriction.begin(), rootRestriction.end(),
+                                  std::inserter(restricted, restricted.begin()));
+            common = std::move(restricted);
+        }
+        if (ply == 0) {
+            result.commonMoves = common.size();
+            result.candidates = common.size();
+        }
+        int best = -Infinity;
+        std::string bestAction;
+        GhostPv bestPv;
+        for (const std::string& action : common) {
+            if (ply == 0 && rootDraws.count(action)) {
+                best = std::max(best, 0);
+                if (bestAction.empty()) {
+                    bestAction = action;
+                    bestPv = {action};
+                }
+                continue;
+            }
+            std::map<InformationObservationKey, std::vector<Position>> observations;
+            for (const Prepared& item : prepared) {
+                const Move& move = item.moves.at(action);
+                Position after = item.world;
+                if (!after.apply_move_unchecked(move))
+                    continue;
+                std::optional<std::vector<Move>> afterMoves;
+                if (legalDotObservations && after.side_to_move() == observer)
+                    afterMoves = after.legal_moves();
+                const auto observation = compact_transition_observation_key(
+                  item.world, move, after, beliefs.disclosure(),
+                  legalDotObservations, afterMoves ? &*afterMoves : nullptr);
+                observations[observation].push_back(std::move(after));
+            }
+            buckets += observations.size();
+            int worst = Infinity;
+            GhostPv actionPv;
+            for (auto& [observation, worlds] : observations) {
+                (void)observation;
+                JointGhostState child = compact(std::move(worlds));
+                GhostPv childPv;
+                const bool changedSide = child.geometry.side_to_move() != side;
+                const int score = solve(child, depth - (changedSide ? 1 : 0),
+                                        alpha, std::min(beta, worst),
+                                        ply + 1, childPv);
+                if (score < worst) {
+                    worst = score;
+                    actionPv = std::move(childPv);
+                }
+                if (worst <= alpha || stopped())
+                    break;
+            }
+            if (worst > best) {
+                best = worst;
+                bestAction = action;
+                bestPv.assign(1, action);
+                bestPv.insert(bestPv.end(), actionPv.begin(), actionPv.end());
+            }
+            alpha = std::max(alpha, best);
+            if (alpha >= beta || stopped())
+                break;
+        }
+        if (best == -Infinity)
+            return robust_eval(state, ply);
+        if (!stop_ && ply) {
+            BeliefEntry& replacement = replacement_belief_entry(domainKey, verification);
+            replacement.key = domainKey;
+            replacement.verification = verification;
+            replacement.actionHash = bestAction.empty() ? 0 : string_key(bestAction);
+            replacement.score = static_cast<std::int16_t>(score_to_tt(best, ply));
+            replacement.depth = static_cast<std::int8_t>(std::min(depth, 127));
+            replacement.bound = best <= originalAlpha ? Bound::Upper
+                              : best >= originalBeta ? Bound::Lower : Bound::Exact;
+            replacement.generation = generation_;
+        }
+        pv = std::move(bestPv);
+        return best;
+    };
+
+    const int maxDepth = std::clamp(limits.depth, 1, MaxPly - 2);
+    int previousScore = 0;
+    for (int depth = 1; depth <= maxDepth; ++depth) {
+        GhostPv pv;
+        const bool aspirate = depth >= 3 && depth < 8;
+        int alpha = aspirate ? std::max(-Infinity, previousScore - 120) : -Infinity;
+        int beta = aspirate ? std::min(Infinity, previousScore + 120) : Infinity;
+        int score = solve(root, depth, alpha, beta, 0, pv);
+        if (!stop_ && (score <= alpha || score >= beta)) {
+            pv.clear();
+            score = solve(root, depth, -Infinity, Infinity, 0, pv);
+        }
+        if (stop_)
+            break;
+        previousScore = score;
+        result.score = result.worstScore = result.meanScore = score;
+        result.completedDepth = depth;
+        result.historyPreservingPlies = depth;
+        result.principalVariation = std::move(pv);
+        result.bestMove = result.principalVariation.empty()
+          ? std::nullopt
+          : std::optional<std::string>(result.principalVariation.front());
+        result.nodes = nodes_;
+        result.beliefNodes = beliefNodes;
+        result.beliefTtHits = ttHits;
+        result.observationBuckets = buckets;
+        result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - start);
+        if (limits.onBeliefIteration)
+            limits.onBeliefIteration(result);
+    }
+    result.nodes = nodes_;
+    result.beliefNodes = beliefNodes;
+    result.beliefTtHits = ttHits;
+    result.observationBuckets = buckets;
+    result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::steady_clock::now() - start);
+    return result;
+}
+
 BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
                                          const SearchLimits& limits,
                                          bool legalDotObservations) {
@@ -1670,6 +3016,13 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
         return result;
     }
 
+    if (const auto factored = think_factored_royals(
+          beliefs, limits, legalDotObservations))
+        return *factored;
+    if (const auto factored = think_factored_ghost_steppers(
+          beliefs, limits, legalDotObservations))
+        return *factored;
+
     limits_ = limits;
     start_ = beliefStart;
     nodes_ = 0;
@@ -1708,7 +3061,7 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
                           : ownKing ? Mate - ply : -Mate + ply;
                 else if (!position.is_checkmate_possible())
                     score = 0;
-                else if (state.cached_legal_moves(upn, position).empty())
+                else if (!position.has_legal_move())
                     score = position.real_king_threatened(mover)
                           ? -Mate + ply : 0;
                 else

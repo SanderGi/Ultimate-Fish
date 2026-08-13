@@ -1349,6 +1349,21 @@ std::vector<Move> Position::legal_moves() const {
     return filter_legal_moves(pseudo_legal_moves());
 }
 
+bool Position::has_legal_move() const {
+    if (forcedTimeoutWinner_ >= 0 ||
+        !has_real_king(Color::White) || !has_real_king(Color::Black) ||
+        !is_checkmate_possible())
+        return false;
+    const Color mover = sideToMove_;
+    for (const Move& move : pseudo_legal_moves()) {
+        Position child = *this;
+        if (child.apply_move_unchecked(move) &&
+            child.legal_after_unchecked_move(mover))
+            return true;
+    }
+    return false;
+}
+
 std::vector<Move> Position::filter_legal_moves(std::vector<Move> moves) const {
     annotate_captures(moves);
     const Color mover = sideToMove_;

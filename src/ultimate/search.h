@@ -40,6 +40,9 @@ struct SearchLimits {
     // deepening pass. Callers that do not opt in retain the single final result.
     std::function<void(const SearchResult&)> onIteration;
     std::function<void(const BeliefSearchResult&)> onBeliefIteration;
+    // Test/benchmark escape hatch which retains the exact enumerated-world
+    // solver as an oracle for the factored information-set search.
+    bool factoredBeliefs = true;
 };
 
 struct SearchResult {
@@ -308,12 +311,40 @@ class Search {
         std::array<BeliefEntry, ClusterSize> entries{};
     };
 
+    struct LazyRoyalContext {
+        Color observer = Color::White;
+        Color owner = Color::Black;
+        std::uint64_t candidatesLow = 0;
+        std::uint64_t candidatesHigh = 0;
+
+        [[nodiscard]] bool contains(int id) const {
+            return id < 64 ? (candidatesLow & (std::uint64_t{1} << id)) != 0
+                           : (candidatesHigh & (std::uint64_t{1} << (id - 64))) != 0;
+        }
+        [[nodiscard]] int count() const;
+        [[nodiscard]] int first_except(int excluded = Position::NoPiece) const;
+        void erase(int id);
+    };
+
     int negamax(Position& position, int depth, int alpha, int beta, int ply,
-                std::vector<Move>& pv, const Move* excludedMove = nullptr);
-    int quiescence(Position& position, int alpha, int beta, int ply);
+                std::vector<Move>& pv, const Move* excludedMove = nullptr,
+                const LazyRoyalContext* lazyRoyals = nullptr);
+    int quiescence(Position& position, int alpha, int beta, int ply,
+                   const LazyRoyalContext* lazyRoyals = nullptr);
     int move_score(const Position& position, const Move& move,
                    const Move* ttMove, int ply) const;
     int evaluate(const Position& position, int ply) const;
+    int evaluate_lazy_royals(const Position& position, int ply,
+                             const LazyRoyalContext* lazyRoyals) const;
+    bool apply_lazy_royal_move(const Position& parent, Position& child,
+                               const Move& move,
+                               LazyRoyalContext& lazyRoyals) const;
+    std::optional<BeliefSearchResult> think_factored_royals(
+      const PublicBeliefState& beliefs, const SearchLimits& limits,
+      bool legalDotObservations);
+    std::optional<BeliefSearchResult> think_factored_ghost_steppers(
+      const PublicBeliefState& beliefs, const SearchLimits& limits,
+      bool legalDotObservations);
     bool stopped();
     Entry* find_entry(std::uint64_t key);
     Entry& replacement_entry(std::uint64_t key);

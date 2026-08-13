@@ -2754,6 +2754,44 @@ void test_public_history_reconstruction() {
              revealedRoyal.beliefs().enemy_king_known(),
            "post-first-pick history preserves the now-public enemy King "
            "identity: " + error);
+    SearchLimits royalOracleLimits;
+    royalOracleLimits.depth = 6;
+    royalOracleLimits.factoredBeliefs = false;
+    Search royalOracleSearch(2);
+    const BeliefSearchResult royalOracle = royalOracleSearch.think_beliefs(
+      concealedRoyal.beliefs(), royalOracleLimits);
+    royalOracleLimits.factoredBeliefs = true;
+    Search royalFactoredSearch(2);
+    const BeliefSearchResult royalFactored = royalFactoredSearch.think_beliefs(
+      concealedRoyal.beliefs(), royalOracleLimits);
+    expect(royalFactored.score == royalOracle.score &&
+             royalFactored.nodes < royalOracle.nodes,
+           "lazy royal candidate search matches its enumerated oracle while "
+           "visiting fewer nodes");
+
+    PublicHistoryState combinedHiddenState;
+    expect(combinedHiddenState.start(parse(
+             "b;king,w,a1;jester,w,b1;"
+             "ghost,w,c3,0,0,0,0,0,0,-1,1,-1,0;king,b,h10"),
+             {Color::Black, false}, &error) &&
+             combinedHiddenState.beliefs().size() == 148,
+           "combined royal/Ghost fixture retains its exact correlated domain: " +
+             error);
+    SearchLimits combinedOracleLimits;
+    combinedOracleLimits.depth = 2;
+    combinedOracleLimits.factoredBeliefs = false;
+    Search combinedOracleSearch(2);
+    const BeliefSearchResult combinedOracle =
+      combinedOracleSearch.think_beliefs(
+        combinedHiddenState.beliefs(), combinedOracleLimits);
+    combinedOracleLimits.factoredBeliefs = true;
+    Search combinedFactoredSearch(2);
+    const BeliefSearchResult combinedFactored =
+      combinedFactoredSearch.think_beliefs(
+        combinedHiddenState.beliefs(), combinedOracleLimits);
+    expect(combinedFactored.score == combinedOracle.score &&
+             combinedFactored.bestMove == combinedOracle.bestMove,
+           "joint Ghost/royal tuples preserve oracle score and root policy");
 
     const Position chronologicalRoyals = parse(
       "b;king,w,a1;jester,w,b1;jester,w,c1;king,b,h10");

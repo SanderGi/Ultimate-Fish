@@ -180,6 +180,7 @@ class Position {
     [[nodiscard]] int en_passant_victim() const { return enPassantVictim_; }
 
     [[nodiscard]] std::vector<Move> legal_moves() const;
+    [[nodiscard]] bool has_legal_move() const;
     [[nodiscard]] std::vector<Move> legal_forcing_moves() const;
     [[nodiscard]] bool is_legal(const Move& move) const;
     [[nodiscard]] bool is_capture(const Move& move) const;

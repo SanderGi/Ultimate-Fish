@@ -224,6 +224,8 @@ SearchLimits parse_limits(std::istringstream& input, const Position* position = 
             limits.movesToGo = std::max(0, parsed);
         else if (token == "overhead")
             limits.moveOverhead = std::chrono::milliseconds(std::max(0, parsed));
+        else if (token == "factored")
+            limits.factoredBeliefs = parsed != 0;
     }
     if (position) {
         const bool white = position->side_to_move() == Color::White;

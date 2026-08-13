@@ -578,6 +578,44 @@ current implementation performs lazy adversarial choice at observation
 boundaries while retaining exact correlated worlds. A dedicated symbolic Ghost
 domain can replace that storage later only if it preserves those correlations.
 
+### Factorized candidate/domain pass
+
+The follow-up pass removes complete `Position` worlds from retained search state for the
+material classes where the hidden state has a safe compact representation:
+
+- Pure King/Jester ambiguity is searched by native negamax with a stable
+  piece-ID candidate mask. Capturing a candidate lazily rebases the concrete
+  King onto a surviving silhouette and searches the continuing worst case; a
+  singleton mask is therefore ordinary concrete search without another layer.
+- Multiple hidden Ghosts use sorted joint square tuples rather than independent
+  square unions. The tuples preserve occupancy, identity/state, legal-path, and
+  royal correlations as they collapse and re-expand.
+- Combined King/Jester plus Ghost states append the live enemy-King ID to each
+  Ghost tuple. Public-transition and legal-dot observations partition those
+  tuples before either player chooses a contingent continuation.
+- A lone Ghost without royal correlation stays on the mature enumerated path;
+  paired measurements show its deeper TT/search is already faster. A visible
+  singleton Ghost also stays symbolic because a later quiet move can re-hide it.
+
+The deterministic benchmark now runs every fixture in both `factored` mode and
+`enumerated-oracle` mode. On the same Apple Silicon release build, the larger
+fixtures measured:
+
+| Fixture | Depth | Root assignments | Oracle | Factored | Speedup | Nodes before / after |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| King/Jester endgame | 16 | 2 | 16,771 ms | 69 ms | 243.1x | 2,439,048 / 209,083 |
+| 12-piece King/Jester midgame | 4 | 2 | 3,485 ms | 1,845 ms | 1.9x | 76,240 / 39,197 |
+| two hidden Ghosts | 3 | 2,775 | 2,751 ms | 1,200 ms | 2.3x | 169,907 / 136,802 |
+| King/Jester + Ghost | 4 | 148 | 863 ms | 556 ms | 1.6x | 77,028 / 126,948 |
+
+The pure royal depth-16 path is now within measurement noise of the 65 ms
+known-identity control. Scores match the enumerated oracle at the exact
+low-depth regression horizons; at depth 16 the oracle reports `-383` and the
+native factored path `-384`, a one-centipawn difference caused by selective
+search and different TT history rather than information loss. The multi-Ghost
+and combined fixtures retain identical mate scores and root moves at their
+listed benchmark depths.
+
 A separate visible-Ghost singleton fixture starts with one world, performs zero
 concrete handoffs, and reaches eight worlds after a quiet move. Its score remains
 `-583`; the old concrete handoff returned the same static score but selected a

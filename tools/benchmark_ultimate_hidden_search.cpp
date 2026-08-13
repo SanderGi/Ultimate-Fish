@@ -56,7 +56,7 @@ std::vector<Fixture> fixtures() {
         "king,w,c1,0,0,0,0,0,1,-1,1,-1,0;"
         "jester,w,e1,0,0,0,0,0,1,-1,1,-1,0;"
         "king,b,d10,0,0,0,0,0,1,-1,1,-1,0"), onyx),
-      6});
+      16});
 
     const std::string mixed =
       "b;hm=41;fm=19;ep=-;cont=0;forced=-1;epv=-1;"
@@ -77,14 +77,14 @@ std::vector<Fixture> fixtures() {
       history_beliefs(parse(mixed), onyx,
         {Position::square_from_name("h1"),
          Position::square_from_name("a1")}),
-      3});
+      4});
 
     result.push_back({
       "ghost-75-world-endgame",
       history_beliefs(parse(
         "b;king,w,a1;"
         "ghost,w,c3,0,0,0,0,0,0,-1,1,-1,0;king,b,h10"), onyx),
-      3});
+      4});
     result.push_back({
       "ghost-73-world-conditioned-midgame",
       history_beliefs(parse(
@@ -97,7 +97,14 @@ std::vector<Fixture> fixtures() {
         "b;king,w,a1;"
         "ghost,w,c2,0,0,0,0,0,0,-1,1,-1,0;"
         "ghost,w,d2,0,0,0,0,0,0,-1,1,-1,0;king,b,h10"), onyx),
-      2});
+      3});
+
+    result.push_back({
+      "royal-plus-ghost-148-world-endgame",
+      history_beliefs(parse(
+        "b;king,w,a1;jester,w,b1;"
+        "ghost,w,c3,0,0,0,0,0,0,-1,1,-1,0;king,b,h10"), onyx),
+      4});
 
     Position reexpansion = parse(
       "w;king,w,a1;"
@@ -111,12 +118,14 @@ std::vector<Fixture> fixtures() {
 }
 
 void print_result(const Fixture& fixture, const BeliefSearchResult& result,
-                  std::int64_t wallMilliseconds, bool comma) {
+                  std::int64_t wallMilliseconds, bool factored, bool comma) {
     if (comma)
         std::cout << ',';
     std::cout << '{'
               << "\"name\":\"" << fixture.name << "\","
               << "\"depth\":" << fixture.depth << ','
+              << "\"mode\":\"" << (factored ? "factored" : "enumerated-oracle")
+              << "\","
               << "\"root_beliefs\":" << fixture.beliefs.size() << ','
               << "\"score\":" << result.score << ','
               << "\"nodes\":" << result.nodes << ','
@@ -136,21 +145,24 @@ void print_result(const Fixture& fixture, const BeliefSearchResult& result,
 int main() {
     try {
         const std::vector<Fixture> suite = fixtures();
-        std::cout << "{\"schema\":\"ultimate-hidden-search-benchmark-v1\","
+        std::cout << "{\"schema\":\"ultimate-hidden-search-benchmark-v2\","
                      "\"deterministic\":true,\"seed\":0,\"fixtures\":[";
         bool comma = false;
         for (const Fixture& fixture : suite) {
-            Search search(16);
-            SearchLimits limits;
-            limits.depth = fixture.depth;
-            const auto start = std::chrono::steady_clock::now();
-            const BeliefSearchResult result = search.think_beliefs(
-              fixture.beliefs, limits, true);
-            const auto elapsed = std::chrono::duration_cast<
-              std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - start).count();
-            print_result(fixture, result, elapsed, comma);
-            comma = true;
+            for (const bool factored : {false, true}) {
+                Search search(16);
+                SearchLimits limits;
+                limits.depth = fixture.depth;
+                limits.factoredBeliefs = factored;
+                const auto start = std::chrono::steady_clock::now();
+                const BeliefSearchResult result = search.think_beliefs(
+                  fixture.beliefs, limits, true);
+                const auto elapsed = std::chrono::duration_cast<
+                  std::chrono::milliseconds>(
+                    std::chrono::steady_clock::now() - start).count();
+                print_result(fixture, result, elapsed, factored, comma);
+                comma = true;
+            }
         }
         std::cout << "]}\n";
         return 0;
