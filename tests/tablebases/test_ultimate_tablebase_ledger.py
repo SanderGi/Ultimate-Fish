@@ -143,6 +143,20 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "malformed W/L/D"):
             ledger.reachability("not a result", "0 / 0 / 1")
 
+    def test_published_reachability_matches_parenthesized_wdl_buckets(self):
+        checked = 0
+        for row in ledger.entries(ledger.README.read_text()):
+            if (row.status not in {"certified", "preserving"} or
+                    row.reachability == "—"):
+                continue
+            self.assertEqual(
+                ledger.reachability(row.first, row.second),
+                row.reachability,
+                row.key,
+            )
+            checked += 1
+        self.assertEqual(382, checked)
+
     def test_exact_certified_import_is_validated_and_persistent(self):
         rows = ledger.entries(ledger.README.read_text())
         encoded = json.dumps({
