@@ -1016,6 +1016,10 @@
           "sha256": "d9bee1d01c9ef354a64f1f507f17ed318811585492803917181bcf559aadb85a"
         },
         {
+          "path": "/mnt/ultimatefish/resume-runners/bomb-ghost-d9bee1d0/run_ultimate_reciprocal_bishop_ghost_aws.py",
+          "sha256": "0453176f367d5e6d9cc69b1fdd83da7cb69e461ce9254775cb7b3f6359ec34c6"
+        },
+        {
           "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/ultimate_ghost_bomb_information_tablebase",
           "sha256": "179ac1cbb957924acb7267cc529187724d4b05e94b4c7908a6956544aa2a1d51"
         },
