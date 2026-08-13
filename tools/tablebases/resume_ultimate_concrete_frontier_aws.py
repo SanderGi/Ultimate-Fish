@@ -38,6 +38,7 @@ RESULT_SCHEMA = "ultimate-concrete-frontier-resume-result-v1"
 DEFAULT_MANIFEST = ROOT / "tools/tablebases/ultimate_concrete_wave0_018_resume.json"
 CHECKPOINT_MAGIC = b"UFTBCP4\0"
 BLOCK = 4 << 20
+HOST_MEMORY_RESERVE_BYTES = 8 << 30
 
 
 def canonical_json(value: object) -> str:
@@ -278,8 +279,9 @@ def validate_full_gates(args: argparse.Namespace, work: Path,
     if args.resident_limit < 16 << 30:
         raise RuntimeError("frontier resume resident gate must be at least 16 GiB")
     available_memory = host_memory_available_bytes()
+    required_memory = args.resident_limit + HOST_MEMORY_RESERVE_BYTES
     if available_memory < args.minimum_host_memory_available_bytes or \
-            available_memory < args.resident_limit * 2:
+            available_memory < required_memory:
         raise RuntimeError("host memory headroom gate failed")
     available_disk = shutil.disk_usage(work.parent).free
     if available_disk < args.minimum_free_bytes:

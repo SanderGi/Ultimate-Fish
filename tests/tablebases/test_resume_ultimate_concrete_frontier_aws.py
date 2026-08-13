@@ -210,6 +210,42 @@ class FrontierResumeTests(unittest.TestCase):
         self.assertFalse(args.full)
         self.assertIsNone(args.work_directory)
 
+    def test_full_gate_reserves_host_memory_beyond_resident_limit(self) -> None:
+        args = RESUME.parse_args([
+            "--resident-limit", str(40 << 30),
+            "--scratch-limit", str(1 << 40),
+            "--reverse-edge-bytes-limit", str(1 << 40),
+            "--minimum-free-bytes", str(1 << 30),
+            "--minimum-host-memory-available-bytes", str(48 << 30),
+            "--aws-execution-ack", "EC2",
+            "--monitor-interval", "5", "--s3-prefix", "s3://example",
+        ])
+        document = {
+            "planes": {
+                "nodes": {"bytes": 1}, "degrees": {"bytes": 1},
+            },
+            "discarded_reverse_graph": {
+                "offsets": {"bytes": 1}, "predecessors": {"bytes": 1},
+            },
+            "record": {"packed_bytes": 1},
+        }
+        with tempfile.TemporaryDirectory() as temporary, mock.patch.object(
+                RESUME.sys, "platform", "linux"), mock.patch.object(
+                RESUME, "host_memory_available_bytes",
+                return_value=(48 << 30) - 1):
+            with self.assertRaisesRegex(RuntimeError, "memory headroom"):
+                RESUME.validate_full_gates(args, Path(temporary) / "work",
+                                           document)
+        with tempfile.TemporaryDirectory() as temporary, mock.patch.object(
+                RESUME.sys, "platform", "linux"), mock.patch.object(
+                RESUME, "host_memory_available_bytes", return_value=48 << 30), \
+                mock.patch.object(RESUME.shutil, "disk_usage") as disk_usage:
+            disk_usage.return_value.free = 2 << 40
+            result = RESUME.validate_full_gates(
+                args, Path(temporary) / "work", document)
+            self.assertEqual(48 << 30,
+                             result["host_memory_available_bytes"])
+
     def test_explicit_selection_binds_inventory_class(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             document = self.fixture(Path(temporary))
