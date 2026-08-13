@@ -12168,6 +12168,13 @@
         "/mnt/ultimatefish/current-wave0-002-checker-retry-48g-v3/outputs/kberserkercheckerk.uftb",
         "/mnt/ultimatefish/current-wave0-002-checker-retry-48g-v3/certificates/wave-certificate.json"
       ],
+      "diagnostic_sources": [
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/current-wave0-002-checker-retry-48g-v3/logs/generate/kberserkercheckerk.log",
+          "max_bytes": 4096
+        }
+      ],
       "source_bindings": [],
       "s3_certificates": []
     },
@@ -12205,6 +12212,13 @@
       "completion_paths": [
         "/mnt/ultimatefish/current-wave0-007/outputs/kberserkerkberserker.uftb",
         "/mnt/ultimatefish/current-wave0-007/certificates/wave-certificate.json"
+      ],
+      "diagnostic_sources": [
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/current-wave0-007/logs/generate/kberserkerkberserker.log",
+          "max_bytes": 512
+        }
       ],
       "source_bindings": [],
       "s3_certificates": []
