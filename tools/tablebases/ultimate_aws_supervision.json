@@ -18,12 +18,14 @@
       "transport": "ssm",
       "mounts": [
         "/",
-        "/mnt/ultimatefish"
+        "/mnt/ultimatefish",
+        "/mnt/ultimatefish-penguin"
       ],
       "minimum_memory_available_bytes": 17179869184,
       "minimum_disk_free_bytes": {
         "/": 2147483648,
-        "/mnt/ultimatefish": 53687091200
+        "/mnt/ultimatefish": 53687091200,
+        "/mnt/ultimatefish-penguin": 53687091200
       }
     },
     {
