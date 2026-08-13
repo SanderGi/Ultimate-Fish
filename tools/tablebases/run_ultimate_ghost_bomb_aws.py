@@ -129,6 +129,20 @@ def prepare_writable_transition_copy(root: Path, source: Path,
     return target
 
 
+def prepare_solve_scratch(root: Path, command: list[str]) -> Path:
+    """Create the authenticated solve prefix parent for fresh retry names."""
+    try:
+        relative = Path(command[command.index("--scratch") + 1])
+    except (ValueError, IndexError) as error:
+        raise RuntimeError("Bomb/Ghost solve lacks a scratch prefix") from error
+    if (relative.is_absolute() or len(relative.parts) < 3 or
+            relative.parts[0] != "work" or ".." in relative.parts):
+        raise RuntimeError("Bomb/Ghost solve scratch escapes its root")
+    scratch = root / relative
+    scratch.parent.mkdir(parents=True, exist_ok=True)
+    return scratch
+
+
 def validate_completed_setup(root: Path,
                              manifest: dict[str, object]) -> None:
     """Authenticate the built binary and finished sizing pass before resuming."""
@@ -219,6 +233,7 @@ def main() -> None:
     if args.full:
         if args.resume_completed_measurement:
             prepare_writable_transition_copy(root, prefix, commands["solve"])
+        prepare_solve_scratch(root, commands["solve"])
         shared.run(commands["solve"], root, work / "logs" / "solve.log")
         validate_transition_resume(resume, manifest)
     shared.artifact_manifest(root, manifest)

@@ -989,7 +989,7 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-024a2073283e4336e",
-      "unit": "ultimatefish-hidden-kbombkghost-exact-1b-v3.service",
+      "unit": "ultimatefish-hidden-kbombkghost-exact-scratchfix-v5.service",
       "expected_allowed_cpus": "18",
       "resource_requirements": {
         "cpu_threads": 1,
@@ -1013,7 +1013,7 @@
         },
         {
           "path": "/mnt/ultimatefish/resume-runners/bomb-ghost-d9bee1d0/run_ultimate_ghost_bomb_aws.py",
-          "sha256": "d9bee1d01c9ef354a64f1f507f17ed318811585492803917181bcf559aadb85a"
+          "sha256": "97f41eba893223b09bbf899af985700c7aa11d79f54d67fe62640caaa9ccbf08"
         },
         {
           "path": "/mnt/ultimatefish/resume-runners/bomb-ghost-d9bee1d0/run_ultimate_reciprocal_bishop_ghost_aws.py",
@@ -2096,25 +2096,25 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-08c0f44a1776cb34a",
-      "unit": "ultimatefish-generic-kghostprincek-35a15391-v1.service",
+      "unit": "ultimatefish-ordinary-kghostprincek-headerfix-e3a88e50.service",
       "expected_allowed_cpus": "1",
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/ordinary-kghostprincek-7cfcba20/work/logs/*",
-        "/mnt/ultimatefish/ordinary-kghostprincek-7cfcba20/work/solve/*"
+        "/mnt/ultimatefish/ordinary-kghostprincek-7cfcba20/work/solve/kghostprincek-headerfix-e3a88e50*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/ordinary-kghostprincek-7cfcba20/work/results/kghostprincek-generic-35a15391.ufiw",
-        "/mnt/ultimatefish/ordinary-kghostprincek-7cfcba20/work/results/kghostprincek-generic-35a15391.ufgd"
+        "/mnt/ultimatefish/ordinary-kghostprincek-7cfcba20/work/results/kghostprincek-headerfix-e3a88e50.ufiw",
+        "/mnt/ultimatefish/ordinary-kghostprincek-7cfcba20/work/results/kghostprincek-headerfix-e3a88e50.ufgd"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/generic-ordinary-rebind-030f8da6/source.tar.gz",
-          "sha256": "030f8da60a5c8620f3b65180edc823595bd4449ac047dd1e870b73f262a6232c"
+          "path": "/mnt/ultimatefish/ordinary-headerfix-e3a88e50-prince/repo/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp",
+          "sha256": "99c6a38889d348bd88004b85a0f99756711cc74cb5d207ebda12e4990da17375"
         },
         {
-          "path": "/mnt/ultimatefish/generic-ordinary-rebind-030f8da6/ultimate_ghost_ordinary_prince",
-          "sha256": "bcb7de91f3e0cd655355b881b07907750d279834f90b488b19c73091ca1972e3"
+          "path": "/mnt/ultimatefish/ordinary-headerfix-e3a88e50-prince/ultimate_ghost_ordinary_prince",
+          "sha256": "9e372e5334356c160b849fce67c28b2ba083924af4d90cf7eebb8e8e38d3af78"
         }
       ],
       "s3_certificates": []

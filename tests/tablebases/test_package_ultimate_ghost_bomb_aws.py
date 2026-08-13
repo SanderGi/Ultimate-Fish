@@ -128,6 +128,17 @@ class BombGhostResumeUnitTests(unittest.TestCase):
             self.assertNotEqual(Path(f"{target}.blocks").read_bytes(),
                                 Path(f"{source}.blocks").read_bytes())
 
+    def test_retry_solve_creates_a_new_scratch_parent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            command = ["solver", "--scratch", "work/solve-1b/kbombkghost"]
+            scratch = runner.prepare_solve_scratch(root, command)
+            self.assertEqual(scratch, root / "work/solve-1b/kbombkghost")
+            self.assertTrue(scratch.parent.is_dir())
+            with self.assertRaises(RuntimeError):
+                runner.prepare_solve_scratch(
+                    root, ["solver", "--scratch", "../outside"])
+
     def test_completed_measurement_requires_authenticated_zero_residual_proof(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
