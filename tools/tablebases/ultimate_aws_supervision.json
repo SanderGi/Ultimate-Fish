@@ -12677,18 +12677,35 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-current-wave0-010-dragon-opposed-24g-v4.service",
+      "unit": "ultimatefish-resume-dragon-opposed-local-v1.service",
       "expected_allowed_cpus": "29",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 51539607552,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 150323855360
+        }
+      },
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/current-wave0-010-dragon-opposed-24g-v4/scratch/*",
-        "/mnt/ultimatefish/current-wave0-010-dragon-opposed-24g-v4/logs/*"
+        "/mnt/ultimatefish/resume-dragon-opposed-local-v1/scratch/*",
+        "/mnt/ultimatefish/resume-dragon-opposed-local-v1/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/current-wave0-010-dragon-opposed-24g-v4/outputs/kberserkerkdragon.uftb",
-        "/mnt/ultimatefish/current-wave0-010-dragon-opposed-24g-v4/certificates/wave-certificate.json"
+        "/mnt/ultimatefish/resume-dragon-opposed-local-v1/outputs/kberserkerkdragon.uftb",
+        "/mnt/ultimatefish/resume-dragon-opposed-local-v1/certificates/wave-certificate.json"
       ],
-      "source_bindings": [],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/current-wave0-010-dragon-opposed-24g-v4/resume-local-manifest.json",
+          "sha256": "9fba3fe604be046500489f48bf3790075b429c55130bad432a106ed3ff4a6bbc"
+        },
+        {
+          "path": "/mnt/ultimatefish/resume-source-4fcfb03a/repo/tools/tablebases/resume_ultimate_concrete_frontier_aws.py",
+          "sha256": "43423cc7b9925046224e93cfc188d3fc6d5128d956f771ae99c4b8d30fb7fc1a"
+        }
+      ],
       "s3_certificates": []
     },
     {
