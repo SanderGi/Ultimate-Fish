@@ -598,6 +598,22 @@ class Sha256 {
       });
 }
 
+[[nodiscard]] bool packed_four_header_matches(
+  const std::vector<std::uint8_t>& bytes, const MaterialSpec& material) {
+    return bytes.size() >= 48 &&
+      !std::memcmp(bytes.data(), "UFTB1\0\0\0", 8) &&
+      read_u32(bytes, 8) >= 5 &&
+      read_u32(bytes, 12) == static_cast<std::uint32_t>(PieceType::Bishop) &&
+      read_u32(bytes, 16) == StateCount &&
+      read_u32(bytes, 24) == ExtraSubstates * GhostSubstates &&
+      // Header word 28 is the planner's reflection-budget count, while the
+      // dense codec intentionally retains both side-to-move halves.
+      read_u32(bytes, 28) == PlacementCount / 2 &&
+      read_u32(bytes, 32) == StateCount &&
+      read_u32(bytes, 40) == static_cast<std::uint32_t>(PieceType::Ghost) &&
+      read_u32(bytes, 44) == static_cast<std::uint32_t>(material.ghostColor);
+}
+
 class PackedFourTable {
   public:
     PackedFourTable(const std::string& path, const MaterialSpec& material) {
@@ -606,17 +622,7 @@ class PackedFourTable {
             throw std::runtime_error("cannot open four-model table: " + path);
         bytes_ = std::vector<std::uint8_t>(
           std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
-        if (bytes_.size() < 48 || std::memcmp(bytes_.data(), "UFTB1\0\0\0", 8) ||
-            read_u32(bytes_, 8) < 5 ||
-            read_u32(bytes_, 12) != static_cast<std::uint32_t>(PieceType::Bishop) ||
-            read_u32(bytes_, 16) != StateCount ||
-            read_u32(bytes_, 24) != GhostSubstates ||
-            // Header word 28 is the planner's reflection-budget count, while
-            // the dense codec intentionally retains both side-to-move halves.
-            read_u32(bytes_, 28) != PlacementCount / 2 ||
-            read_u32(bytes_, 32) != StateCount ||
-            read_u32(bytes_, 40) != static_cast<std::uint32_t>(PieceType::Ghost) ||
-            read_u32(bytes_, 44) != static_cast<std::uint32_t>(material.ghostColor))
+        if (!packed_four_header_matches(bytes_, material))
             throw std::runtime_error(
               "four-model table header does not match requested Bishop/Ghost material");
         planeOffset_ = 48;
@@ -640,6 +646,35 @@ class PackedFourTable {
     std::size_t planeOffset_ = 0;
     std::array<std::uint8_t, 32> sha_{};
 };
+
+void packed_four_header_self_test() {
+    std::vector<std::uint8_t> bytes(48, 0);
+    std::memcpy(bytes.data(), "UFTB1\0\0\0", 8);
+    const auto write32 = [&](std::size_t offset, std::uint32_t value) {
+        std::memcpy(bytes.data() + offset, &value, sizeof(value));
+    };
+    write32(8, 5);
+    write32(12, static_cast<std::uint32_t>(PieceType::Bishop));
+    write32(16, StateCount);
+    write32(24, ExtraSubstates * GhostSubstates);
+    write32(28, PlacementCount / 2);
+    write32(32, StateCount);
+    write32(40, static_cast<std::uint32_t>(PieceType::Ghost));
+    MaterialSpec material;
+    write32(44, static_cast<std::uint32_t>(material.ghostColor));
+    if (!packed_four_header_matches(bytes, material))
+        throw std::runtime_error("four-model header substate self-test failed");
+    if constexpr (ExtraSubstates > 1) {
+        write32(24, GhostSubstates);
+        if (packed_four_header_matches(bytes, material))
+            throw std::runtime_error(
+              "four-model header accepted a Ghost-only substate count");
+    }
+    std::cout << "ghost_extra_header_contract extra_substates "
+              << ExtraSubstates << " ghost_substates " << GhostSubstates
+              << " combined " << ExtraSubstates * GhostSubstates
+              << " residual 0\n" << std::flush;
+}
 
 [[nodiscard]] FourState decode_lower_ghost(std::uint32_t index) {
     if (index >= LowerGhostStateCount)

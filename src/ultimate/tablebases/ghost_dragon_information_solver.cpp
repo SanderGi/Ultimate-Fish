@@ -1388,6 +1388,7 @@ SolveCertificate solve_exact(const SolveOptions& options) {
 void exact_self_test(const std::string& scratchPrefix) {
     (void)scratchPrefix;
     overlay_header_self_test();
+    packed_four_header_self_test();
     for (const Orientation orientation : {Orientation::Same,
                                            Orientation::Opposing}) {
         const GhostPublicExtra::MaterialSpec material =
@@ -1422,6 +1423,11 @@ std::string verify_source_normalization(
       orientation, scratchPrefix + ".normalized.uftb");
     if (normalized.remapResidual)
         throw std::runtime_error("Dragon source normalization residual");
+    const PackedFourTable concrete(
+      normalized.path, normalized_material(orientation));
+    if (hex_digest(concrete.sha()) != normalized.sha)
+        throw std::runtime_error(
+          "normalized Dragon source self-test SHA mismatch");
     return normalized.sha;
 }
 
