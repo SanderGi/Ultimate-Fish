@@ -1194,10 +1194,20 @@
         "kghostparasitek.uftb"
       ],
       "ledger_certifies": true,
+      "ledger_results": {
+        "kghostparasitek.uftb": {
+          "result_kind": "information v2",
+          "first": "30,404,852 (7,553,068) / 0 / 0",
+          "second": "0 (3,219,216) / 33,252,652 (1,482,156) / 2,416 (1,480)",
+          "reachability": "30,404,852 / 7,553,068; 33,255,068 / 4,702,852",
+          "storage": "S3 information archive sha256:7daa75da539a33966a94412ebe34d2420b0f90780fd015792b6f52e437f4afa0 VersionId liMlJv60AGuZYD6_ZA9iW0q_s5OWMruS; certificate sha256:ec6be0f1f2a32982bd1d238967c6daf63e0a4543577fbc7a483e6e38c92f0e89 VersionId 5aHT73sBlEAF6J_5g2LQJcguqCIdFMXJ"
+        }
+      },
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-exact-kghostkparasite-fb60d9bd.service",
       "expected_allowed_cpus": "7",
       "dependencies": [],
+      "s3_only_certified": true,
       "checkpoint_paths": [
         "/mnt/ultimatefish/hidden-kghostparasitek-7af5dec2/work/logs/solve.log",
         "/mnt/ultimatefish/hidden-kghostparasitek-7af5dec2/work/solve/*"
@@ -1206,16 +1216,7 @@
         "/mnt/ultimatefish/hidden-kghostparasitek-7af5dec2/work/results/kghostparasitek.ufiw",
         "/mnt/ultimatefish/hidden-kghostparasitek-7af5dec2/work/results/kghostparasitek.ufgp"
       ],
-      "source_bindings": [
-        {
-          "path": "/mnt/ultimatefish/resume-runners/existing-ghost-fb60d9bd/run.py",
-          "sha256": "fb60d9bd755098df7be60958d8ddf111e88097a15737a7a62f08da664b284393"
-        },
-        {
-          "path": "/mnt/ultimatefish/hidden-kghostparasitek-7af5dec2/bundle-manifest.json",
-          "sha256": "30a874ec3c1c633a64e55b5427c1975b65166f24d009c986e04d5ef4a97b98f7"
-        }
-      ],
+      "source_bindings": [],
       "diagnostic_sources": [
         {
           "kind": "file",
@@ -1228,7 +1229,22 @@
           "max_bytes": 2048
         }
       ],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "hidden/parasite-ghost/same/v1/results/sha256/7daa75da539a33966a94412ebe34d2420b0f90780fd015792b6f52e437f4afa0/parasite-ghost-same-exact-7daa75da539a33966a94412ebe34d2420b0f90780fd015792b6f52e437f4afa0.tar.zst",
+          "version_id": "liMlJv60AGuZYD6_ZA9iW0q_s5OWMruS",
+          "sha256": "7daa75da539a33966a94412ebe34d2420b0f90780fd015792b6f52e437f4afa0",
+          "size": 73705935
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "hidden/parasite-ghost/same/v1/results/sha256/7daa75da539a33966a94412ebe34d2420b0f90780fd015792b6f52e437f4afa0/certificates/ec6be0f1f2a32982bd1d238967c6daf63e0a4543577fbc7a483e6e38c92f0e89.json",
+          "version_id": "5aHT73sBlEAF6J_5g2LQJcguqCIdFMXJ",
+          "sha256": "ec6be0f1f2a32982bd1d238967c6daf63e0a4543577fbc7a483e6e38c92f0e89",
+          "size": 1357
+        }
+      ]
     },
     {
       "id": "parasite-ghost-opposing-measure",
@@ -12099,10 +12115,20 @@
         "kberserkerkmage.uftb"
       ],
       "ledger_certifies": true,
+      "ledger_results": {
+        "kberserkerkmage.uftb": {
+          "result_kind": "concrete",
+          "first": "56,532,476 (133,257,124) / 0 / 0",
+          "second": "0 (16,096,080) / 159,518,996 / 14,174,524",
+          "reachability": "56,532,476 / 133,257,124; 173,693,520 / 16,096,080",
+          "storage": "S3 table sha256:3fe501362b15c1840240982a155a415f046e3fa47749678640c8b2fff23993e3 VersionId PAJ_E9hsY2pTX0Oxm62uhqkwvvc_kuVz; certificate sha256:df14670b3fac29576c6be6c1e042bdef408e79236bc2df96c0b15919ccdcea83 VersionId 62ow2uCxg_jcO18N4c4J508XbNiTSHiB; reachability sha256:d15d6af124f40a0767b81e80737f4bec406ca37a55de0a9095022dee42006695 VersionId YOI52sROGFTFBcyensbER281lAVqh7n_"
+        }
+      },
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-current-wave0-014-mage-opposed-retry-48g-v5.service",
       "expected_allowed_cpus": "26",
       "dependencies": [],
+      "s3_only_certified": true,
       "checkpoint_paths": [
         "/mnt/ultimatefish-penguin/current-wave0-014-mage-opposed-retry-48g-v5/scratch/*",
         "/mnt/ultimatefish-penguin/current-wave0-014-mage-opposed-retry-48g-v5/logs/*"
@@ -12112,7 +12138,22 @@
         "/mnt/ultimatefish-penguin/current-wave0-014-mage-opposed-retry-48g-v5/certificates/wave-certificate.json"
       ],
       "source_bindings": [],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/df14670b3fac29576c6be6c1e042bdef408e79236bc2df96c0b15919ccdcea83/wave-certificate.json",
+          "version_id": "62ow2uCxg_jcO18N4c4J508XbNiTSHiB",
+          "sha256": "df14670b3fac29576c6be6c1e042bdef408e79236bc2df96c0b15919ccdcea83",
+          "size": 2557
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/reachability/sha256/d15d6af124f40a0767b81e80737f4bec406ca37a55de0a9095022dee42006695/kberserkerkmage.reachability-v2.txt",
+          "version_id": "YOI52sROGFTFBcyensbER281lAVqh7n_",
+          "sha256": "d15d6af124f40a0767b81e80737f4bec406ca37a55de0a9095022dee42006695",
+          "size": 931
+        }
+      ]
     },
     {
       "id": "current-concrete-opposed-berserker-parasite",
@@ -12121,18 +12162,27 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-current-wave0-016-parasite-retry-32g-v3.service",
-      "expected_allowed_cpus": "28",
+      "unit": "ultimatefish-resume-parasite-opposed-local-v1.service",
+      "expected_allowed_cpus": "23",
       "dependencies": [],
       "checkpoint_paths": [
-        "/mnt/ultimatefish-penguin/current-wave0-016-parasite-fresh-v2/scratch/*",
-        "/mnt/ultimatefish-penguin/current-wave0-016-parasite-fresh-v2/logs/*"
+        "/mnt/ultimatefish-penguin/resume-parasite-opposed-local-v1/scratch/*",
+        "/mnt/ultimatefish-penguin/resume-parasite-opposed-local-v1/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-penguin/current-wave0-016-parasite-fresh-v2/outputs/kberserkerkparasite.uftb",
-        "/mnt/ultimatefish-penguin/current-wave0-016-parasite-fresh-v2/certificates/wave-certificate.json"
+        "/mnt/ultimatefish-penguin/resume-parasite-opposed-local-v1/outputs/kberserkerkparasite.uftb",
+        "/mnt/ultimatefish-penguin/resume-parasite-opposed-local-v1/certificates/wave-certificate.json"
       ],
-      "source_bindings": [],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/resume-source-4fcfb03a/repo/tools/tablebases/resume_ultimate_concrete_frontier_aws.py",
+          "sha256": "43423cc7b9925046224e93cfc188d3fc6d5128d956f771ae99c4b8d30fb7fc1a"
+        },
+        {
+          "path": "/mnt/ultimatefish-penguin/current-wave0-016-parasite-fresh-v2/resume-local-manifest.json",
+          "sha256": "9d97948fbbd70f2e2c88559d32727c174fc0af40a1b5e59cd579b8751f6592c7"
+        }
+      ],
       "s3_certificates": []
     },
     {
@@ -12162,10 +12212,20 @@
         "kberserkerturtlek.uftb"
       ],
       "ledger_certifies": true,
+      "ledger_results": {
+        "kberserkerturtlek.uftb": {
+          "result_kind": "concrete",
+          "first": "54,012,262 (135,777,338) / 0 / 0",
+          "second": "0 (16,096,080) / 160,059,100 / 13,634,420",
+          "reachability": "54,012,262 / 135,777,338; 173,693,520 / 16,096,080",
+          "storage": "S3 table sha256:050b5173679ca8fc53cd5d08c18f082b30695596a0f31bfabfc99b6dfcb597e2 VersionId hJUSFXZwMPX5rfAQ2qNmOdU4dtti2Wfw; certificate sha256:21b3a0d027946adc22a13775c59ac3611561f6555c505d11a048dc83efb5d3e2 VersionId aeT7zj_MFj4XWc2hwD7veyrbFu9VA_Lm; reachability sha256:4c9754c4d2c9eb431c82ef21546ef55d329bf742f68987d06e35a957a3897d1f VersionId VLQkPTpeGx8NiEMs0mTPSLaXffMUznM_"
+        }
+      },
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-current-wave0-027-turtle-retry-48g-v3.service",
       "expected_allowed_cpus": "30",
       "dependencies": [],
+      "s3_only_certified": true,
       "checkpoint_paths": [
         "/mnt/ultimatefish-penguin/current-wave0-027-turtle-retry-48g-v3/scratch/*",
         "/mnt/ultimatefish-penguin/current-wave0-027-turtle-retry-48g-v3/logs/*"
@@ -12175,7 +12235,22 @@
         "/mnt/ultimatefish-penguin/current-wave0-027-turtle-retry-48g-v3/certificates/wave-certificate.json"
       ],
       "source_bindings": [],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/21b3a0d027946adc22a13775c59ac3611561f6555c505d11a048dc83efb5d3e2/wave-certificate.json",
+          "version_id": "aeT7zj_MFj4XWc2hwD7veyrbFu9VA_Lm",
+          "sha256": "21b3a0d027946adc22a13775c59ac3611561f6555c505d11a048dc83efb5d3e2",
+          "size": 2688
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/reachability/sha256/4c9754c4d2c9eb431c82ef21546ef55d329bf742f68987d06e35a957a3897d1f/kberserkerturtlek.reachability-v2.txt",
+          "version_id": "VLQkPTpeGx8NiEMs0mTPSLaXffMUznM_",
+          "sha256": "4c9754c4d2c9eb431c82ef21546ef55d329bf742f68987d06e35a957a3897d1f",
+          "size": 937
+        }
+      ]
     },
     {
       "id": "current-concrete-same-bishop-berserker",
