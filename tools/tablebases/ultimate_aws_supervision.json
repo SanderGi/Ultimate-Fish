@@ -1145,7 +1145,7 @@
         },
         {
           "kind": "journal",
-          "unit": "ultimatefish-hidden-kbombkghost-exact-1b-v3.service",
+          "unit": "ultimatefish-hidden-kbombkghost-exact-scratchfix-v5.service",
           "max_bytes": 2048
         }
       ],
@@ -1520,7 +1520,7 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-generic-kghostpenguink-5a036018-v1.service",
+      "unit": "ultimatefish-ordinary-kghostpenguink-headerfix-e3a88e50.service",
       "expected_allowed_cpus": "14",
       "dependencies": [],
       "checkpoint_paths": [
@@ -1528,23 +1528,23 @@
         "/mnt/ultimatefish-penguin/ordinary-kghostpenguink-a48c7377/work/solve/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-penguin/ordinary-kghostpenguink-a48c7377/work/results/kghostpenguink-generic-5a036018.ufiw",
-        "/mnt/ultimatefish-penguin/ordinary-kghostpenguink-a48c7377/work/results/kghostpenguink-generic-5a036018.ufgd"
+        "/mnt/ultimatefish-penguin/ordinary-kghostpenguink-a48c7377/work/results/kghostpenguink-headerfix-e3a88e50.ufiw",
+        "/mnt/ultimatefish-penguin/ordinary-kghostpenguink-a48c7377/work/results/kghostpenguink-headerfix-e3a88e50.ufgd"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/generic-ordinary-rebind-030f8da6/source.tar.gz",
-          "sha256": "030f8da60a5c8620f3b65180edc823595bd4449ac047dd1e870b73f262a6232c"
+          "path": "/mnt/ultimatefish/generic-ordinary-headerfix-e3a88e50-penguin/repo/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp",
+          "sha256": "e6854a27b6fd154f90e50c878e8c4247127ac5d8694ea5fba09ef56865f09105"
         },
         {
-          "path": "/mnt/ultimatefish/generic-ordinary-rebind-030f8da6/ultimate_ghost_ordinary_penguin",
-          "sha256": "4b200eac7727ed5bfb067285a495d1b4b8363889e7cd060a5d5b92c5b8c87c06"
+          "path": "/mnt/ultimatefish/generic-ordinary-headerfix-e3a88e50-penguin/ultimate_ghost_ordinary_penguin",
+          "sha256": "8807fa57f75278eaca571a14db3b8ebfe465a373199e582249eeaf666183d6e5"
         }
       ],
       "diagnostic_sources": [
         {
-          "kind": "file",
-          "path": "/mnt/ultimatefish-penguin/ordinary-kghostpenguink-a48c7377/work/logs/solve-5a036018.log",
+          "kind": "journal",
+          "unit": "ultimatefish-ordinary-kghostpenguink-headerfix-e3a88e50.service",
           "max_bytes": 4096
         }
       ],
@@ -2020,15 +2020,15 @@
       "ledger_files": [
         "kcopycatghostk.uftb"
       ],
-      "ledger_certifies": false,
+      "ledger_certifies": true,
       "instance_id": "i-024a2073283e4336e",
-      "unit": "ultimatefish-rebind-kcopycatghostk-030f8da6-v2.service",
+      "unit": "ultimatefish-direct-kcopycatghostk-9a4740c0-v6.service",
       "expected_allowed_cpus": "15",
       "resource_requirements": {
         "cpu_threads": 1,
-        "memory_peak_bytes": 8589934592,
+        "memory_peak_bytes": 17179869184,
         "disk_peak_bytes": {
-          "/mnt/ultimatefish": 17179869184
+          "/mnt/ultimatefish": 42949672960
         }
       },
       "dependencies": [],
@@ -2037,8 +2037,8 @@
         "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/transitions/kcopycatghostk.verified"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/results/kcopycatghostk-restart-1b-9a4740c0.ufiw",
-        "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/results/kcopycatghostk-restart-1b-9a4740c0.ufgd"
+        "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/results/kcopycatghostk-restart-850m-9a4740c0.ufiw",
+        "/mnt/ultimatefish/ordinary-kcopycatghostk-9a4740c0/work/results/kcopycatghostk-restart-850m-9a4740c0.ufgd"
       ],
       "source_bindings": [
         {
@@ -2053,7 +2053,7 @@
       "diagnostic_sources": [
         {
           "kind": "journal",
-          "unit": "ultimatefish-rebind-kcopycatghostk-030f8da6-v2.service",
+          "unit": "ultimatefish-direct-kcopycatghostk-9a4740c0-v6.service",
           "max_bytes": 4096
         }
       ],
