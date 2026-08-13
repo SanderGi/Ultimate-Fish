@@ -511,6 +511,25 @@ class FrontierResumeTests(unittest.TestCase):
         self.assertIn(
             "ReadOnlyPaths=" + manifest["source_work_directory"], service)
 
+    def test_class023_transport_resume_targets_high_memory_i03(self) -> None:
+        manifest = json.loads((
+            ROOT / "tools/tablebases/ultimate_concrete_wave0_023_resume_i03.json").read_text())
+        self.assertEqual(
+            RESUME.concrete.normalized_record(
+                RESUME.concrete.wave_inventory(0)[23]), manifest["record"])
+        self.assertEqual(10, manifest["substates"])
+        self.assertEqual(
+            "/mnt/ultimatefish/transport-parasite-same-a3dcf230/source",
+            manifest["source_work_directory"])
+        service = (ROOT / "tools/tablebases/ultimatefish-resume-parasite-same-"
+                   "i03-v1.service").read_text()
+        self.assertIn("--resident-limit 51539607552", service)
+        self.assertIn("--scratch-limit 85899345920", service)
+        self.assertIn("--reverse-edge-bytes-limit 68719476736", service)
+        self.assertIn("AllowedCPUs=30", service)
+        self.assertIn(
+            "ReadOnlyPaths=" + manifest["source_work_directory"], service)
+
 
 if __name__ == "__main__":
     unittest.main()

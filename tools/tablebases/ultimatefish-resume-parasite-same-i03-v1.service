@@ -1,0 +1,44 @@
+[Unit]
+Description=Ultimate Fish same Berserker Parasite transported frontier resume i03 v1
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/mnt/ultimatefish/transport-parasite-same-a3dcf230/runner/tools/tablebases/resume_ultimate_concrete_frontier_aws.py
+ConditionPathExists=/mnt/ultimatefish/transport-parasite-same-a3dcf230/source/resume-transport-manifest.json
+ConditionPathIsDirectory=/mnt/ultimatefish/transport-parasite-same-a3dcf230/work
+
+[Service]
+Type=oneshot
+WorkingDirectory=/mnt/ultimatefish/transport-parasite-same-a3dcf230/runner
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 tools/tablebases/resume_ultimate_concrete_frontier_aws.py \
+  --manifest /mnt/ultimatefish/transport-parasite-same-a3dcf230/source/resume-transport-manifest.json \
+  --work-directory /mnt/ultimatefish/transport-parasite-same-a3dcf230/work \
+  --full --aws-execution-ack EC2 --resident-limit 51539607552 \
+  --scratch-limit 85899345920 --reverse-edge-bytes-limit 68719476736 \
+  --minimum-free-bytes 107374182400 \
+  --minimum-host-memory-available-bytes 137438953472 --monitor-interval 5 \
+  --s3-prefix s3://ultimatefish-info-20260808-a4e679c6-831688117652/results/current-concrete-7088db91
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=5
+AllowedCPUs=30
+CPUQuota=100%
+MemoryHigh=52G
+MemoryMax=60G
+OOMPolicy=stop
+TasksMax=32
+LimitNOFILE=65536
+Restart=no
+TimeoutStartSec=infinity
+TimeoutStopSec=30
+KillSignal=SIGTERM
+NoNewPrivileges=yes
+PrivateDevices=yes
+PrivateTmp=yes
+ProtectHome=read-only
+ProtectSystem=strict
+ReadWritePaths=/mnt/ultimatefish/transport-parasite-same-a3dcf230
+ReadOnlyPaths=/mnt/ultimatefish/transport-parasite-same-a3dcf230/source
+ReadOnlyPaths=/mnt/ultimatefish/transport-parasite-same-a3dcf230/runner
+StandardOutput=append:/mnt/ultimatefish/transport-parasite-same-a3dcf230/service.log
+StandardError=append:/mnt/ultimatefish/transport-parasite-same-a3dcf230/service.log

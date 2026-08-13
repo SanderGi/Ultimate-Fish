@@ -12754,19 +12754,45 @@
         "kberserkerparasitek.uftb"
       ],
       "ledger_certifies": true,
-      "instance_id": "i-08c0f44a1776cb34a",
-      "unit": "ultimatefish-current-wave0-023-parasite-same-backfill-40g-v4.service",
-      "expected_allowed_cpus": "31",
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "unit": "ultimatefish-resume-parasite-same-i03-v1.service",
+      "expected_allowed_cpus": "30",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 64424509440,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 85899345920
+        }
+      },
       "dependencies": [],
       "checkpoint_paths": [
-        "/mnt/ultimatefish/current-wave0-023-parasite-same-backfill-40g-v4/scratch/*",
-        "/mnt/ultimatefish/current-wave0-023-parasite-same-backfill-40g-v4/logs/*"
+        "/mnt/ultimatefish/transport-parasite-same-a3dcf230/source/resume-transport-manifest.json",
+        "/mnt/ultimatefish/transport-parasite-same-a3dcf230/source/scratch/kberserkerparasitek.nodes",
+        "/mnt/ultimatefish/transport-parasite-same-a3dcf230/source/scratch/kberserkerparasitek.degrees",
+        "/mnt/ultimatefish/transport-parasite-same-a3dcf230/work/scratch/*",
+        "/mnt/ultimatefish/transport-parasite-same-a3dcf230/work/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/current-wave0-023-parasite-same-backfill-40g-v4/outputs/kberserkerparasitek.uftb",
-        "/mnt/ultimatefish/current-wave0-023-parasite-same-backfill-40g-v4/certificates/wave-certificate.json"
+        "/mnt/ultimatefish/transport-parasite-same-a3dcf230/work/outputs/kberserkerparasitek.uftb",
+        "/mnt/ultimatefish/transport-parasite-same-a3dcf230/work/certificates/wave-certificate.json"
       ],
-      "source_bindings": [],
+      "diagnostic_sources": [
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/transport-parasite-same-a3dcf230/work/logs/generate/kberserkerparasitek.log",
+          "max_bytes": 1024
+        }
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/transport-parasite-same-a3dcf230/source/resume-transport-manifest.json",
+          "sha256": "f25ea1428d3eae65da9e3817832224e046cb3a4a24f603b959e4ef33fc5b22bc"
+        },
+        {
+          "path": "/mnt/ultimatefish/transport-parasite-same-a3dcf230/runner/tools/tablebases/resume_ultimate_concrete_frontier_aws.py",
+          "sha256": "43423cc7b9925046224e93cfc188d3fc6d5128d956f771ae99c4b8d30fb7fc1a"
+        }
+      ],
       "s3_certificates": []
     },
     {
