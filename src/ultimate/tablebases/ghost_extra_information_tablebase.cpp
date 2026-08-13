@@ -1037,6 +1037,31 @@ struct CanonicalExtraGeometry {
     return result;
 }
 
+void write_compact_geometry_identity(
+  std::ostream& out, const CanonicalExtraGeometry& canonical) {
+    out << int(canonical.geometry.side) << ','
+        << int(canonical.geometry.whiteKing) << ','
+        << int(canonical.geometry.blackKing) << ','
+        << int(canonical.geometry.bishop) << ','
+        << int(canonical.geometry.visible) << ','
+        << int(canonical.geometry.extraSubstate);
+}
+
+void compact_geometry_identity_self_test() {
+    if constexpr (ExtraSubstates > 1) {
+        PublicExtraGeometry first{0, 0, 79, 1, 0, 0};
+        PublicExtraGeometry second = first;
+        second.extraSubstate = 1;
+        std::ostringstream firstKey;
+        std::ostringstream secondKey;
+        write_compact_geometry_identity(firstKey, canonical_geometry(first));
+        write_compact_geometry_identity(secondKey, canonical_geometry(second));
+        if (firstKey.str() == secondKey.str())
+            throw std::runtime_error(
+              "compact geometry drops the public extra substate");
+    }
+}
+
 [[nodiscard]] std::uint32_t geometry_code(
   const PublicExtraGeometry& geometry) {
     return geometry.side | (std::uint32_t(geometry.whiteKing) << 1) |
@@ -3075,11 +3100,8 @@ class ExternalGhostExtraFixedPoint {
                   position, observer);
 
             std::ostringstream compact;
-            compact << int(canonical.geometry.side) << ','
-                    << int(canonical.geometry.whiteKing) << ','
-                    << int(canonical.geometry.blackKing) << ','
-                    << int(canonical.geometry.bishop) << ','
-                    << int(canonical.geometry.visible) << '|';
+            write_compact_geometry_identity(compact, canonical);
+            compact << '|';
             if (canonical.geometry.visible)
                 compact << "visible=" << int(actual);
             else if (isTerminal) {
@@ -4277,6 +4299,7 @@ int main(int argc, char** argv) {
             else throw std::runtime_error("unknown argument: " + argument);
         }
         codec_self_test(material);
+        compact_geometry_identity_self_test();
         tiny_public_geometry_self_test();
         lower_color_normalization_self_test();
         if (selfTestOnly)
