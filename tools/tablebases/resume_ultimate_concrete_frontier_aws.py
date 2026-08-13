@@ -254,6 +254,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     parser.add_argument("--work-directory", type=Path)
     parser.add_argument("--full", action="store_true")
+    parser.add_argument("--local-only", action="store_true",
+                        help="run and verify locally without packaging or S3 upload")
     parser.add_argument("--aws-execution-ack")
     parser.add_argument("--resident-limit", type=int, default=0)
     parser.add_argument("--scratch-limit", type=int, default=0)
@@ -269,8 +271,11 @@ def validate_full_gates(args: argparse.Namespace, work: Path,
                         document: dict[str, Any]) -> dict[str, int]:
     if sys.platform == "darwin" or args.aws_execution_ack != "EC2":
         raise RuntimeError("full frontier resume is EC2-only")
-    if not args.s3_prefix or args.monitor_interval <= 0:
-        raise RuntimeError("full resume requires S3 and a positive monitor interval")
+    if ((not args.local_only and not args.s3_prefix) or
+            args.monitor_interval <= 0):
+        raise RuntimeError(
+            "full resume requires S3 unless --local-only is selected, and a "
+            "positive monitor interval")
     gates = (args.resident_limit, args.scratch_limit,
              args.reverse_edge_bytes_limit, args.minimum_free_bytes,
              args.minimum_host_memory_available_bytes)
@@ -398,6 +403,14 @@ def main(argv: list[str] | None = None) -> int:
     }
     result_path = work / "results" / f"{checkpoint_stem}.json"
     preservation.write_json(result_path, result)
+    if args.local_only:
+        print(canonical_json({
+            "status": "resumed-and-verified-local-only",
+            "output": verification,
+            "result": str(result_path),
+            "original_scratch_retained": True,
+        }))
+        return 0
     files = {
         f"tablebases/{output_name}": output,
         f"proof/{result_path.name}": result_path,

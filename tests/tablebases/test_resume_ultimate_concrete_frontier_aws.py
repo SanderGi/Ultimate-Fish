@@ -208,7 +208,31 @@ class FrontierResumeTests(unittest.TestCase):
     def test_default_is_read_only_and_full_requires_work_directory(self) -> None:
         args = RESUME.parse_args([])
         self.assertFalse(args.full)
+        self.assertFalse(args.local_only)
         self.assertIsNone(args.work_directory)
+
+    def test_local_only_full_gate_does_not_require_s3(self) -> None:
+        args = RESUME.parse_args([
+            "--full", "--local-only", "--aws-execution-ack", "EC2",
+            "--resident-limit", str(16 << 30),
+            "--scratch-limit", str(1 << 40),
+            "--reverse-edge-bytes-limit", str(1 << 40),
+            "--minimum-free-bytes", str(1 << 30),
+            "--minimum-host-memory-available-bytes", str(24 << 30),
+        ])
+        document = {
+            "planes": {"nodes": {"bytes": 1}, "degrees": {"bytes": 1}},
+            "discarded_reverse_graph": {
+                "offsets": {"bytes": 1}, "predecessors": {"bytes": 1}},
+            "record": {"packed_bytes": 1},
+        }
+        with tempfile.TemporaryDirectory() as temporary, mock.patch.object(
+                RESUME.sys, "platform", "linux"), mock.patch.object(
+                RESUME, "host_memory_available_bytes", return_value=24 << 30), \
+                mock.patch.object(RESUME.shutil, "disk_usage") as disk_usage:
+            disk_usage.return_value.free = 2 << 40
+            RESUME.validate_full_gates(
+                args, Path(temporary) / "work", document)
 
     def test_full_gate_reserves_host_memory_beyond_resident_limit(self) -> None:
         args = RESUME.parse_args([
