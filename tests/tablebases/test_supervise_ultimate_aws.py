@@ -550,9 +550,9 @@ class SupervisionTests(unittest.TestCase):
         table, _ = SUPERVISOR.compact_source_bindings(worst_jobs)
         # Completed Copycat batch records and the S3-only Fisherman archive are
         # retired from live probes; their version-pinned ledger results remain
-        # authoritative.  The Checker frontier resume contributes its manifest
-        # and runner bindings.
-        self.assertEqual(106, len(table))
+        # authoritative.  The Checker frontier resume and high-memory crossed
+        # Jester/Ghost migration contribute their live bindings.
+        self.assertEqual(108, len(table))
 
     def test_cpu_allocation_reports_idle_capacity_and_overlap(self) -> None:
         definition = config()["instances"][0]

@@ -311,40 +311,48 @@
         "kjesterkghost.uftb"
       ],
       "ledger_certifies": false,
-      "instance_id": "i-024a2073283e4336e",
-      "unit": "ultimatefish-crossed-jester-ghost-b3c5d97e.service",
-      "expected_allowed_cpus": "0",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-crossed-jester-ghost-b3c5d97e-i0b-v1.service",
+      "expected_allowed_cpus": "29",
       "resource_requirements": {
         "cpu_threads": 1,
-        "memory_peak_bytes": 53687091200,
+        "memory_peak_bytes": 206158430208,
         "disk_peak_bytes": {
-          "/mnt/ultimatefish": 161061273600
+          "/mnt/ultimatefish-overflow": 322122547200
         }
       },
       "dependencies": [],
       "checkpoint_paths": [
-        "/mnt/ultimatefish/crossed-jester-ghost-b3c5d97e/work/graph.chk",
-        "/mnt/ultimatefish/crossed-jester-ghost-b3c5d97e/logs/resume.log"
+        "/mnt/ultimatefish-overflow/crossed-jester-ghost-b3c5d97e-i0b/work/graph.chk",
+        "/mnt/ultimatefish-overflow/crossed-jester-ghost-b3c5d97e-i0b/logs/resume.log"
       ],
       "completion_paths": [],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/crossed-jester-ghost-b3c5d97e/source/source.tar",
+          "path": "/mnt/ultimatefish-overflow/crossed-jester-ghost-b3c5d97e-i0b/source/source.tar",
           "sha256": "1f8caaf2af07456fe583c12b3e5ab6b9f7f3310c41d8bda05fc98d5ddeec2a3d"
         },
         {
-          "path": "/mnt/ultimatefish/crossed-jester-ghost-b3c5d97e/source/ultimatefish-crossed-e39ccd0a/src/ultimate_crossed_jester_ghost_information_tablebase",
+          "path": "/mnt/ultimatefish-overflow/crossed-jester-ghost-b3c5d97e-i0b/source/ultimate_crossed_jester_ghost_information_tablebase",
           "sha256": "b177ffc32a0af12ad13a994472d814eb287bfa47b5b3bc195b770cf0e2624485"
         }
       ],
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish/crossed-jester-ghost-b3c5d97e/logs/resume.log",
+          "path": "/mnt/ultimatefish-overflow/crossed-jester-ghost-b3c5d97e-i0b/logs/resume.log",
           "max_bytes": 4096
         }
       ],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "checkpoints/hidden/crossed-jester-ghost/graph/sha256/bebb0e4c79dfbe8dfcaa5a02886cad7dd0610f69e963b28bd0ad24e87229981f/graph.chk",
+          "version_id": "UWxFp0TeFHNDkEp2YX8JM7ntarAgI_8C",
+          "sha256": "bebb0e4c79dfbe8dfcaa5a02886cad7dd0610f69e963b28bd0ad24e87229981f",
+          "size": 24784194782
+        }
+      ]
     },
     {
       "id": "jester-ghost-transition-rebind",
@@ -12198,18 +12206,35 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-current-wave0-022-ninja-retry-48g-v3.service",
-      "expected_allowed_cpus": "29",
+      "unit": "ultimatefish-resume-ninja-same-local-v4.service",
+      "expected_allowed_cpus": "22",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 64424509440,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish-penguin": 257698037760
+        }
+      },
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish-penguin/current-wave0-022-ninja-retry-48g-v3/scratch/*",
-        "/mnt/ultimatefish-penguin/current-wave0-022-ninja-retry-48g-v3/logs/*"
+        "/mnt/ultimatefish-penguin/resume-ninja-same-local-v4/scratch/*",
+        "/mnt/ultimatefish-penguin/resume-ninja-same-local-v4/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-penguin/current-wave0-022-ninja-retry-48g-v3/outputs/kberserkerninjak.uftb",
-        "/mnt/ultimatefish-penguin/current-wave0-022-ninja-retry-48g-v3/certificates/wave-certificate.json"
+        "/mnt/ultimatefish-penguin/resume-ninja-same-local-v4/outputs/kberserkerninjak.uftb",
+        "/mnt/ultimatefish-penguin/resume-ninja-same-local-v4/certificates/wave-certificate.json"
       ],
-      "source_bindings": [],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish-penguin/current-wave0-022-ninja-retry-48g-v3/resume-local-manifest.json",
+          "sha256": "55af8dd7550f4ca4c869ea059900699b35b7fa3f9461482062bc2558863d22c5"
+        },
+        {
+          "path": "/mnt/ultimatefish/resume-source-4fcfb03a/repo/tools/tablebases/resume_ultimate_concrete_frontier_aws.py",
+          "sha256": "43423cc7b9925046224e93cfc188d3fc6d5128d956f771ae99c4b8d30fb7fc1a"
+        }
+      ],
       "s3_certificates": []
     },
     {
@@ -12761,7 +12786,8 @@
       "ledger_files": [
         "kberserkerninjak.uftb"
       ],
-      "ledger_certifies": true,
+      "ledger_certifies": false,
+      "superseded_by": "current-concrete-same-berserker-ninja",
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-current-wave0-022-ninja-same-resume-48g-v4.service",
       "expected_allowed_cpus": "20-23",
