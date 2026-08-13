@@ -1463,7 +1463,7 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-generic-kghostkpenguin-7e1dd84f-v1.service",
+      "unit": "ultimatefish-ordinary-kghostkpenguin-headerfix-e3a88e50.service",
       "expected_allowed_cpus": "19",
       "dependencies": [],
       "checkpoint_paths": [
@@ -1471,23 +1471,23 @@
         "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/solve/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/results/kghostkpenguin-generic-7e1dd84f.ufiw",
-        "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/results/kghostkpenguin-generic-7e1dd84f.ufgd"
+        "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/results/kghostkpenguin-headerfix-e3a88e50.ufiw",
+        "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/results/kghostkpenguin-headerfix-e3a88e50.ufgd"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/generic-ordinary-rebind-030f8da6/source.tar.gz",
-          "sha256": "030f8da60a5c8620f3b65180edc823595bd4449ac047dd1e870b73f262a6232c"
+          "path": "/mnt/ultimatefish/generic-ordinary-headerfix-e3a88e50-penguin/repo/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp",
+          "sha256": "e6854a27b6fd154f90e50c878e8c4247127ac5d8694ea5fba09ef56865f09105"
         },
         {
-          "path": "/mnt/ultimatefish/generic-ordinary-rebind-030f8da6/ultimate_ghost_ordinary_penguin",
-          "sha256": "4b200eac7727ed5bfb067285a495d1b4b8363889e7cd060a5d5b92c5b8c87c06"
+          "path": "/mnt/ultimatefish/generic-ordinary-headerfix-e3a88e50-penguin/ultimate_ghost_ordinary_penguin",
+          "sha256": "8807fa57f75278eaca571a14db3b8ebfe465a373199e582249eeaf666183d6e5"
         }
       ],
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/logs/solve-7e1dd84f.log",
+          "path": "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/logs/solve-headerfix-e3a88e50.log",
           "max_bytes": 4096
         }
       ],
@@ -1650,7 +1650,7 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-0b4523116b2f7765c",
-      "unit": "ultimatefish-ordinary-kghostcheckerk-8133d214-v1.service",
+      "unit": "ultimatefish-ordinary-kghostcheckerk-headerfix-e3a88e50.service",
       "expected_allowed_cpus": "14",
       "dependencies": [],
       "checkpoint_paths": [
@@ -1658,17 +1658,17 @@
         "/mnt/ultimatefish-jg/ordinary-kghostcheckerk-8133d214/work/solve/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-jg/ordinary-kghostcheckerk-8133d214/work/results/kghostcheckerk.ufiw",
-        "/mnt/ultimatefish-jg/ordinary-kghostcheckerk-8133d214/work/results/kghostcheckerk.ufgd"
+        "/mnt/ultimatefish-jg/ordinary-kghostcheckerk-8133d214/work/results/kghostcheckerk-headerfix-e3a88e50.ufiw",
+        "/mnt/ultimatefish-jg/ordinary-kghostcheckerk-8133d214/work/results/kghostcheckerk-headerfix-e3a88e50.ufgd"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish-jg/ordinary-current-v10/repo/tools/tablebases/run_ultimate_ghost_ordinary_aws.py",
-          "sha256": "0931614e45a799694e6dc888dd8f964413498d39ec9b40e1b4687749665cee80"
+          "path": "/mnt/ultimatefish-jg/ordinary-headerfix-e3a88e50-checker/repo/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp",
+          "sha256": "1a3eac05d68445beb28c26e41e1fcba395627afd5382a3e7617231903222a5f3"
         },
         {
-          "path": "/mnt/ultimatefish-jg/ordinary-kghostcheckerk-8133d214/ultimate_ghost_ordinary_information_tablebase",
-          "sha256": "26f059c5277466c54b8c09f33604c554db32cc067f571cf65d1a2439ffc636b9"
+          "path": "/mnt/ultimatefish-jg/ordinary-headerfix-e3a88e50-checker/ultimate_ghost_ordinary_checker",
+          "sha256": "1ca94194c29e90d3fe241c7a00293938ca81a502d1a80a868ef0fa73fb9ab661"
         }
       ],
       "s3_certificates": []
@@ -2046,25 +2046,25 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-08c0f44a1776cb34a",
-      "unit": "ultimatefish-ordinary-kghostkprince-b793187c-v1.service",
-      "expected_allowed_cpus": "16-30",
+      "unit": "ultimatefish-ordinary-kghostkprince-headerfix-e3a88e50.service",
+      "expected_allowed_cpus": "16",
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/ordinary-kghostkprince-b793187c/work/logs/*",
         "/mnt/ultimatefish/ordinary-kghostkprince-b793187c/work/solve/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/ordinary-kghostkprince-b793187c/work/results/kghostkprince.ufiw",
-        "/mnt/ultimatefish/ordinary-kghostkprince-b793187c/work/results/kghostkprince.ufgd"
+        "/mnt/ultimatefish/ordinary-kghostkprince-b793187c/work/results/kghostkprince-headerfix-e3a88e50.ufiw",
+        "/mnt/ultimatefish/ordinary-kghostkprince-b793187c/work/results/kghostkprince-headerfix-e3a88e50.ufgd"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/ordinary-current-v2/repo/tools/tablebases/run_ultimate_ghost_ordinary_aws.py",
-          "sha256": "ff7fb8c7159b37478304cf33ade94a4d722a730cf72c1a1ee8212d6c83dc188e"
+          "path": "/mnt/ultimatefish/ordinary-headerfix-e3a88e50-prince/repo/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp",
+          "sha256": "99c6a38889d348bd88004b85a0f99756711cc74cb5d207ebda12e4990da17375"
         },
         {
-          "path": "/mnt/ultimatefish/ordinary-kghostkprince-b793187c/ultimate_ghost_ordinary_information_tablebase",
-          "sha256": "8ed153ba398f9fe7ee52ad815328fec567a7ce07bc2519e0f8464a843c276c98"
+          "path": "/mnt/ultimatefish/ordinary-headerfix-e3a88e50-prince/ultimate_ghost_ordinary_prince",
+          "sha256": "9e372e5334356c160b849fce67c28b2ba083924af4d90cf7eebb8e8e38d3af78"
         }
       ],
       "s3_certificates": []
