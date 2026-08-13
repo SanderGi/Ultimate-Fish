@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 import json
-from dataclasses import replace
 from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -19,16 +17,10 @@ import supervise_ultimate_aws as supervisor  # noqa: E402
 
 class ConcreteWave0BatchV4R2Test(unittest.TestCase):
     def historical_document(self):
-        historical = json.loads(r2.MANIFEST.read_text())
-        filenames = {str(unit["filename"]) for unit in historical["units"]}
-        entries = r2.plan.base.ledger_by_filename()
-        entries = {
-            name: replace(entry, status="planned") if name in filenames else entry
-            for name, entry in entries.items()
-        }
-        with mock.patch.object(
-                r2.plan.base, "ledger_by_filename", return_value=entries):
-            return r2.build_document()
+        # v4r2 is also a frozen pre-simplification namespace.  The current
+        # planner correctly excludes separator-asymmetric Copycat classes and
+        # therefore must not be used to recreate this historical manifest.
+        return json.loads(r2.MANIFEST.read_text())
 
     def test_namespace_is_add_only_and_source_pinned(self) -> None:
         document = self.historical_document()
@@ -40,12 +32,11 @@ class ConcreteWave0BatchV4R2Test(unittest.TestCase):
             self.assertIn("/source-v4r2/", str(unit["source_root"]))
             self.assertIn("/dependencies-v4r2/", str(unit["dependency_root"]))
             self.assertIn("batch-v4r2-", str(unit["work_directory"]))
-            self.assertEqual(
-            r2._sha256_path(ROOT / r2.STAGING_HELPER_RELATIVE),
-                unit["source_hashes"][r2.STAGING_HELPER_RELATIVE])
-            self.assertEqual(
-                r2._sha256_path(ROOT / r2.SHARED_PLAN_RELATIVE),
-                unit["source_hashes"][r2.SHARED_PLAN_RELATIVE])
+            # These hashes pin the historical source payload; comparing them
+            # to today's helper files would erase that provenance boundary.
+            self.assertTrue(unit["source_hashes"])
+            for digest in unit["source_hashes"].values():
+                self.assertRegex(digest, r"^[0-9a-f]{64}$")
         self.assertEqual(
             r2.DEPENDENCY_ARCHIVE["version_id"],
             document["dependency_archive"]["version_id"])
