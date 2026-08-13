@@ -29,6 +29,7 @@ assert README_SPEC and README_SPEC.loader
 readme = importlib.util.module_from_spec(README_SPEC)
 sys.modules[README_SPEC.name] = readme
 README_SPEC.loader.exec_module(readme)
+import update_ultimate_tablebase_ledger as ledger  # noqa: E402
 
 
 class InformationTablebaseSchemaTests(unittest.TestCase):
@@ -178,11 +179,10 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         }
         records = {str(record["filename"]): record for record in
                    info.affected_inventory(root=ROOT, require_files=False)}
-        dependency_inventory = {
-            str(record["filename"])
-            for record in json.loads((
-                TOOLS / "ultimate_concrete_base_dependency_artifacts.json"
-            ).read_text())["files"]
+        certified_dependencies = {
+            entry.filename for entry in ledger.entries(
+                (ROOT / "tablebases" / "README.md").read_text())
+            if entry.filename and entry.status == "certified"
         }
         for filename in (*info.PRIMARY_JESTER_FILENAMES,
                          *info.PRIMARY_JESTER_GIANT_FILENAMES):
@@ -204,7 +204,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             for dependency in dependencies:
                 if dependency not in {"kjesterqueenk.uftb",
                                       "kjesterkqueen.uftb"}:
-                    self.assertIn(dependency, dependency_inventory)
+                    self.assertIn(dependency, certified_dependencies)
 
         # The owner-Bomb AWS run originally built millions of information
         # nodes before discovering this unstaged lower table.
@@ -488,22 +488,22 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
 
         self.assertEqual(
             info.solver_model_fingerprint("kbishopghostk.uftb"),
-            "9adbbbfac54265a5ce1babdec879211ff76834d082cfef99d67cb643f886c51d")
+            "be2e7f9f45ce2b6e6f1225f31ceb4919042e173bc8d0d6dcb49fde4b3e583162")
         self.assertEqual(
             info.solver_model_fingerprint("kghostghostk.uftb"),
-            "0cef89f4b79a0c435ec0812d0fe601d85a522fe31fac8908f13c3009aa6d9f83")
+            "e2dbe333ad3ef17575af20b398b391ea48af0b51395c84cf050e27df0b3e4c2e")
         self.assertEqual(
             info.solver_model_fingerprint("kghostmagek.uftb"),
-            "7b289aad254d1055c226f606ca18134a83172a51b0e491d560161626125000b0")
+            "da53845742384179dc4d4f448c4bf2581b70051eb2e9ce6aca8a96c4e4032bae")
         self.assertEqual(
             info.solver_model_fingerprint("kghostkmage.uftb"),
-            "bd0a890adccb8509d1012ab3a215de93a6d7b3963c16bb3554c2e67d23089933")
+            "b6b2fc6463fc413cfd2d179001b26099dd10e2604b252b06488a615385856850")
         self.assertEqual(
             info.solver_model_fingerprint("kghostparasitek.uftb"),
-            "d2f839fd6ece356bc58849230032ad2a15a6968ba8c1b17da483a544a072012a")
+            "1a7aa2bd7c3a84d29d54ebb979a0b4bdd9caf41aa2144a2795dcedee7ee92337")
         self.assertEqual(
             info.solver_model_fingerprint("kghostkparasite.uftb"),
-            "f9fe92c998740f15370de58278f632b979c779496799d7f7f94e7418da225e2c")
+            "5639c868fb11033219fc15c55c7938c7413128dd0c68e951aa2843fee5bb3cb4")
         self.assertNotEqual(
             info.double_jester_capture_model_fingerprint(),
             info.solver_model_fingerprint("kjesterjesterk.uftb"))
