@@ -957,6 +957,7 @@
         "kbombghostk.uftb"
       ],
       "ledger_certifies": true,
+      "s3_only_certified": true,
       "instance_id": "i-0986ed3d272721f02",
       "unit": "ultimatefish-hidden-kbombghostk-exact-from-measure-v2.service",
       "expected_allowed_cpus": "0",
@@ -975,16 +976,7 @@
       "completion_paths": [
         "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/work/artifact-manifest.json"
       ],
-      "source_bindings": [
-        {
-          "path": "/mnt/ultimatefish/resume-runners/bomb-ghost-d9bee1d0/run_ultimate_ghost_bomb_aws.py",
-          "sha256": "d9bee1d01c9ef354a64f1f507f17ed318811585492803917181bcf559aadb85a"
-        },
-        {
-          "path": "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/ultimate_ghost_bomb_information_tablebase",
-          "sha256": "179ac1cbb957924acb7267cc529187724d4b05e94b4c7908a6956544aa2a1d51"
-        }
-      ],
+      "source_bindings": [],
       "diagnostic_sources": [
         {
           "kind": "journal",
@@ -992,7 +984,22 @@
           "max_bytes": 2048
         }
       ],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "hidden/bomb-ghost/same/v1/existing-ufiw/sha256/f082d61d30ba71823c0f6096c9ee7e6cb1ef8f6229fe7a2561f2875c93b266ba/kbombghostk.information.tar.zst",
+          "version_id": "0nRz33zLlwedark6VK3UJx3NvjATNst6",
+          "sha256": "f082d61d30ba71823c0f6096c9ee7e6cb1ef8f6229fe7a2561f2875c93b266ba",
+          "size": 53125539
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "hidden/bomb-ghost/same/v1/existing-ufiw/certificates/sha256/b741267b1b5e60a523118fb538d5c6b8ed57c804915d4ac7a3338ff2fb165065/certificate.json",
+          "version_id": "ha9qxnFTmCUzo1_Mup1_aKi1arWye0fT",
+          "sha256": "b741267b1b5e60a523118fb538d5c6b8ed57c804915d4ac7a3338ff2fb165065",
+          "size": 2958
+        }
+      ]
     },
     {
       "id": "bomb-ghost-opposing-measure",
@@ -12215,6 +12222,13 @@
       "s3_certificates": [
         {
           "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/3fe501362b15c1840240982a155a415f046e3fa47749678640c8b2fff23993e3/kberserkerkmage-3fe501362b15c1840240982a155a415f046e3fa47749678640c8b2fff23993e3.tar.zst",
+          "version_id": "PAJ_E9hsY2pTX0Oxm62uhqkwvvc_kuVz",
+          "sha256": "3fe501362b15c1840240982a155a415f046e3fa47749678640c8b2fff23993e3",
+          "size": 12082095
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
           "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/df14670b3fac29576c6be6c1e042bdef408e79236bc2df96c0b15919ccdcea83/wave-certificate.json",
           "version_id": "62ow2uCxg_jcO18N4c4J508XbNiTSHiB",
           "sha256": "df14670b3fac29576c6be6c1e042bdef408e79236bc2df96c0b15919ccdcea83",
@@ -12912,7 +12926,8 @@
       "ledger_files": [
         "kberserkerkmage.uftb"
       ],
-      "ledger_certifies": true,
+      "ledger_certifies": false,
+      "superseded_by": "current-concrete-opposed-berserker-mage",
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-current-wave0-014-mage-opposed-resume-48g-v6.service",
       "expected_allowed_cpus": "24-27",
