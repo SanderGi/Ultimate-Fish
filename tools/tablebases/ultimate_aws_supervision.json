@@ -12639,18 +12639,35 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-0b4523116b2f7765c",
-      "unit": "ultimatefish-current-wave0-009-checker-opposed-48g-v4.service",
+      "unit": "ultimatefish-resume-checker-opposed-local-v1.service",
       "expected_allowed_cpus": "30",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 77309411328,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish": 257698037760
+        }
+      },
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/current-wave0-009-checker-opposed-48g-v4/scratch/*",
-        "/mnt/ultimatefish/current-wave0-009-checker-opposed-48g-v4/logs/*"
+        "/mnt/ultimatefish/resume-checker-opposed-local-v1/scratch/*",
+        "/mnt/ultimatefish/resume-checker-opposed-local-v1/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/current-wave0-009-checker-opposed-48g-v4/outputs/kberserkerkchecker.uftb",
-        "/mnt/ultimatefish/current-wave0-009-checker-opposed-48g-v4/certificates/wave-certificate.json"
+        "/mnt/ultimatefish/resume-checker-opposed-local-v1/outputs/kberserkerkchecker.uftb",
+        "/mnt/ultimatefish/resume-checker-opposed-local-v1/certificates/wave-certificate.json"
       ],
-      "source_bindings": [],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/current-wave0-009-checker-opposed-48g-v4/resume-local-manifest.json",
+          "sha256": "1d3850efa3d267c459cb93bc36a2bc9bdcc89e406d80e02cdf5d9d95d4e7c45b"
+        },
+        {
+          "path": "/mnt/ultimatefish/resume-source-4fcfb03a/repo/tools/tablebases/resume_ultimate_concrete_frontier_aws.py",
+          "sha256": "43423cc7b9925046224e93cfc188d3fc6d5128d956f771ae99c4b8d30fb7fc1a"
+        }
+      ],
       "s3_certificates": []
     },
     {
