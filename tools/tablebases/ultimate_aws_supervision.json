@@ -86,7 +86,8 @@
         "/",
         "/mnt/ultimatefish",
         "/mnt/ultimatefish-overflow",
-        "/mnt/ultimatefish-resume"
+        "/mnt/ultimatefish-resume",
+        "/mnt/ultimatefish-jg"
       ],
       "retained_volume_ids": [
         "vol-06296911f0b4cb2a6"
@@ -96,7 +97,8 @@
         "/": 2147483648,
         "/mnt/ultimatefish": 322122547200,
         "/mnt/ultimatefish-overflow": 285615325184,
-        "/mnt/ultimatefish-resume": 214748364800
+        "/mnt/ultimatefish-resume": 214748364800,
+        "/mnt/ultimatefish-jg": 53687091200
       }
     }
   ],
@@ -1705,10 +1707,11 @@
     },
     {
       "id": "checker-ghost-opposing-exact",
+      "superseded_by": "checker-ghost-opposing-exact-resume",
       "ledger_files": [
         "kghostkchecker.uftb"
       ],
-      "ledger_certifies": true,
+      "ledger_certifies": false,
       "instance_id": "i-0b4523116b2f7765c",
       "unit": "ultimatefish-ordinary-kghostkchecker-d630f52b-v2.service",
       "expected_allowed_cpus": "15",
@@ -1729,6 +1732,60 @@
         {
           "path": "/mnt/ultimatefish-jg/ordinary-kghostkchecker-d630f52b-v2/ultimate_ghost_ordinary_information_tablebase",
           "sha256": "b15a45b242b16c4f890c85a84711d2db75822369da97445d2bc56d49c335e3e9"
+        }
+      ],
+      "s3_certificates": []
+    },
+    {
+      "id": "checker-ghost-opposing-exact-resume",
+      "ledger_files": [
+        "kghostkchecker.uftb"
+      ],
+      "ledger_certifies": true,
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-ordinary-kghostkchecker-resume-3b8035d1-v1.service",
+      "expected_allowed_cpus": "15",
+      "resource_requirements": {
+        "cpu_threads": 1,
+        "memory_peak_bytes": 68719476736,
+        "disk_peak_bytes": {
+          "/mnt/ultimatefish-jg": 42949672960
+        }
+      },
+      "dependencies": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish-jg/ordinary-kghostkchecker-d630f52b-v2/work/transitions/kghostkchecker.*",
+        "/mnt/ultimatefish-jg/ordinary-kghostkchecker-resume-3b8035d1/work/solve/*",
+        "/mnt/ultimatefish-jg/ordinary-kghostkchecker-resume-3b8035d1/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish-jg/ordinary-kghostkchecker-resume-3b8035d1/work/results/kghostkchecker.ufiw",
+        "/mnt/ultimatefish-jg/ordinary-kghostkchecker-resume-3b8035d1/work/results/kghostkchecker.ufgd"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish-overflow/checker-ghost-resume-6210e2be/source.tar",
+          "sha256": "6210e2beff979f07972e51b197d16368a5130f14cd1bc4cce4a128526f2c45b8"
+        },
+        {
+          "path": "/mnt/ultimatefish-overflow/checker-ghost-resume-6210e2be/ultimate_ghost_checker",
+          "sha256": "960921fa329c242b9ec3214ccfb48489ad29d59c0ded6dad7ffce8907948c842"
+        },
+        {
+          "path": "/mnt/ultimatefish-jg/ordinary-kghostkchecker-d630f52b-v2/work/logs/solve.log",
+          "sha256": "7b8ca3c7692438f7a16677c80b7f2cb738582e0cdc781b7355d5f7778b2a1546"
+        }
+      ],
+      "diagnostic_sources": [
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish-jg/ordinary-kghostkchecker-resume-3b8035d1/logs/solve.log",
+          "max_bytes": 4096
+        },
+        {
+          "kind": "journal",
+          "unit": "ultimatefish-ordinary-kghostkchecker-resume-3b8035d1-v1.service",
+          "max_bytes": 2048
         }
       ],
       "s3_certificates": []
