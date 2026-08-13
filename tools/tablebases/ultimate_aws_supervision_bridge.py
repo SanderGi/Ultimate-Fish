@@ -27,6 +27,7 @@ DEFAULT_HEALTH = ROOT / ".git/ultimate-aws-supervision-health.json"
 DEFAULT_EVENTS = ROOT / ".git/ultimate-aws-supervision-events"
 DEFAULT_CURSOR = ROOT / ".git/ultimate-aws-luna-cursor.json"
 DEFAULT_SUPERVISOR = ROOT / "tools/tablebases/supervise_ultimate_aws.py"
+SUPERVISOR_TIMEOUT_SECONDS = 900
 
 
 def canonical_json(value: object) -> str:
@@ -67,7 +68,7 @@ def run_supervisor(python: Path, supervisor: Path,
     completed = subprocess.run(
         [str(python), str(supervisor), *arguments], cwd=ROOT,
         env=environment, text=True, capture_output=True, check=False,
-        timeout=240)
+        timeout=SUPERVISOR_TIMEOUT_SECONDS)
     return completed.returncode, completed.stdout.strip(), completed.stderr.strip()
 
 

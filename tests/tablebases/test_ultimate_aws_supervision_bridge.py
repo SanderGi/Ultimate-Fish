@@ -40,6 +40,21 @@ class BridgeTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temporary.cleanup()
 
+    @mock.patch.object(BRIDGE.subprocess, "run")
+    def test_supervisor_timeout_allows_full_s3_audit(
+            self, run: mock.Mock) -> None:
+        run.return_value = mock.Mock(returncode=0, stdout="NO_CHANGE\n",
+                                     stderr="")
+
+        result = BRIDGE.run_supervisor(
+            Path("/python"), Path("/supervisor"), ["--once", "--json"])
+
+        self.assertEqual((0, "NO_CHANGE", ""), result)
+        self.assertEqual(
+            BRIDGE.SUPERVISOR_TIMEOUT_SECONDS,
+            run.call_args.kwargs["timeout"])
+        self.assertEqual(900, BRIDGE.SUPERVISOR_TIMEOUT_SECONDS)
+
     @mock.patch.object(BRIDGE, "run_supervisor")
     def test_quiet_collection_and_consumption_are_no_change(
             self, run: mock.Mock) -> None:
