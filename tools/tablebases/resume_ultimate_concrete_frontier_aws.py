@@ -94,6 +94,21 @@ def _required_record(document: dict[str, Any], name: str) -> dict[str, Any]:
     return record
 
 
+def reverse_marker_proves_incomplete(
+        document: dict[str, Any], log_text: str) -> bool:
+    marker = document.get("last_reverse_marker")
+    if not isinstance(marker, str) or marker not in log_text:
+        return False
+    fields = marker.split()
+    if len(fields) < 3 or fields[:2] != ["reverse", "states"]:
+        return False
+    progress = fields[2].split("/")
+    if len(progress) != 2 or not all(value.isdigit() for value in progress):
+        return False
+    completed, total = map(int, progress)
+    return total == int(document["states"]) and 0 <= completed < total
+
+
 def authenticate_manifest(document: dict[str, Any]) -> dict[str, Any]:
     source = Path(document["source_work_directory"]).resolve()
     if not source.is_dir():
@@ -192,7 +207,8 @@ def authenticate_manifest(document: dict[str, Any]) -> dict[str, Any]:
                     int(record.get("allocated_bytes", -1)) < 0):
                 raise RuntimeError("malformed discarded reverse evidence")
         predecessor = reverse["predecessors"]
-    if int(predecessor["allocated_bytes"]) >= int(predecessor["bytes"]):
+    if (int(predecessor["allocated_bytes"]) >= int(predecessor["bytes"]) and
+            not reverse_marker_proves_incomplete(document, log_text)):
         raise RuntimeError("reverse graph was not proven incomplete")
 
     return {

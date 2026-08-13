@@ -177,6 +177,35 @@ class FrontierResumeTests(unittest.TestCase):
                 with self.assertRaisesRegex(RuntimeError, "not proven incomplete"):
                     RESUME.authenticate_manifest(document)
 
+    def test_transport_manifest_accepts_authenticated_incomplete_marker(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            document = self.fixture(Path(temporary))
+            log = (Path(document["source_work_directory"]) /
+                   document["generator_log"]["relative_path"])
+            log.write_bytes(log.read_bytes() + b"reverse states 1/2 elapsed 3s\n")
+            document["generator_log"].update({
+                "bytes": log.stat().st_size,
+                "sha256": RESUME.sha256_path(log),
+            })
+            document["last_reverse_marker"] = "reverse states 1/2 elapsed 3s"
+            document["discarded_reverse_graph"] = {
+                name: {
+                    key: value for key, value in document["planes"][name].items()
+                    if key != "sha256"
+                }
+                for name in ("offsets", "predecessors")
+            }
+            document["discarded_reverse_graph"]["predecessors"][
+                "allocated_bytes"] = document[
+                    "discarded_reverse_graph"]["predecessors"]["bytes"]
+            for name in ("offsets", "predecessors"):
+                del document["planes"][name]
+            with mock.patch.object(
+                    RESUME.concrete, "generator_model_sha256",
+                    return_value=document["generator_model_sha256"]):
+                result = RESUME.authenticate_manifest(document)
+            self.assertIn("reverse-incomplete", result["frontier_status"])
+
     def test_native_checkpoint_is_exclusive_and_sources_stay_unchanged(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
