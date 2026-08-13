@@ -1334,6 +1334,7 @@
         "kghostdragonk.uftb"
       ],
       "ledger_certifies": true,
+      "s3_only_certified": true,
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-exact-kghostdragonk-fb60d9bd.service",
       "expected_allowed_cpus": "6",
@@ -1346,20 +1347,7 @@
         "/mnt/ultimatefish/kghostdragonk-379d3d98-sstream/work/results/kghostdragonk.ufiw",
         "/mnt/ultimatefish/kghostdragonk-379d3d98-sstream/work/results/kghostdragonk.ufgd"
       ],
-      "source_bindings": [
-        {
-          "path": "/mnt/ultimatefish/resume-runners/existing-ghost-fb60d9bd/run.py",
-          "sha256": "fb60d9bd755098df7be60958d8ddf111e88097a15737a7a62f08da664b284393"
-        },
-        {
-          "path": "/mnt/ultimatefish/kghostdragonk-379d3d98-sstream/bundle-manifest.json",
-          "sha256": "d745d23ca950fe5ae78df3cf84f440c357e333e537ed34ad66bb0b8752d6ddea"
-        },
-        {
-          "path": "/mnt/ultimatefish/kghostdragonk-379d3d98-sstream/ultimate_ghost_dragon_information_tablebase",
-          "sha256": "4c9ca7e4e834b88bce0167997329cf844bbe9cdafc8a22e8a343978bb40bda44"
-        }
-      ],
+      "source_bindings": [],
       "diagnostic_sources": [
         {
           "kind": "file",
@@ -1367,7 +1355,22 @@
           "max_bytes": 4096
         }
       ],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "hidden/dragon-ghost/same/v1/existing-ufiw/sha256/4506634d00af31e384962bbfd2bd6bb50bc1e1fdeb2e1dff5f85ff0897c0ba98/kghostdragonk.information.tar.zst",
+          "version_id": "FjbH81sgPmsyhq2W3DuuEMLNAllLywJi",
+          "sha256": "4506634d00af31e384962bbfd2bd6bb50bc1e1fdeb2e1dff5f85ff0897c0ba98",
+          "size": 59746788
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "hidden/dragon-ghost/same/v1/existing-ufiw/certificates/sha256/b67d5cce458c8238b2a2ae93e65797a0db56ff59e4862952a774469038e68636/certificate.json",
+          "version_id": "S.gN9bMgbrplnRjqo4aFfnOrYUdPHK9d",
+          "sha256": "b67d5cce458c8238b2a2ae93e65797a0db56ff59e4862952a774469038e68636",
+          "size": 2966
+        }
+      ]
     },
     {
       "id": "mage-ghost-opposing-exact",

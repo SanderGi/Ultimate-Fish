@@ -59,6 +59,25 @@ class ExistingInformationArbitraryTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "lacks one exact fixed point"):
             finalizer.exact_proof_summaries(proof)
 
+    def test_accepts_zero_residual_symbolic_fixed_point_proof(self):
+        proof = "\n".join([
+            "information_symbolic_certificate iterations 21 bdd_nodes 10 "
+            "bellman_residual 0 monotonicity_residual 0 "
+            "singleton_residual 0 compaction_root_residual 0 belief_cap "
+            "none powerset_exact 1",
+            "information_summary side 0 win 1 loss 0 draw 0 "
+            "unreachable_win 0 unreachable_loss 0 unreachable_draw 0 "
+            "sets 1 concrete 1 bellman_residual 0 rank_residual 0 "
+            "belief_cap none exhaustive 1",
+            "information_summary side 1 win 0 loss 1 draw 0 "
+            "unreachable_win 0 unreachable_loss 0 unreachable_draw 0 "
+            "sets 1 concrete 1 bellman_residual 0 rank_residual 0 "
+            "belief_cap none exhaustive 1",
+        ])
+        summaries = finalizer.exact_proof_summaries(proof)
+        self.assertEqual(1, summaries[0]["win"])
+        self.assertEqual(1, summaries[1]["loss"])
+
     def test_remote_output_does_not_stream_unbounded_proof(self):
         args = SimpleNamespace(
             filename="kknightghostk.uftb",

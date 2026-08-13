@@ -49,6 +49,12 @@ RECIPROCAL_CERTIFICATE_RE = re.compile(
     r"dual_force_residual (?P<dual>\d+) "
     r"structural_residual (?P<structural>\d+) "
     r"singleton_residual (?P<singleton>\d+) .*$")
+SYMBOLIC_FIXED_RE = re.compile(
+    r"^information_symbolic_certificate .* "
+    r"bellman_residual (?P<bellman>\d+) "
+    r"monotonicity_residual (?P<monotonicity>\d+) "
+    r"singleton_residual (?P<singleton>\d+) .*"
+    r"belief_cap none powerset_exact 1$")
 
 
 def validate_arbitrary(path: Path, source: str, model: str,
@@ -191,6 +197,11 @@ def exact_proof_summaries(proof: str) -> dict[int, dict[str, int]]:
             fixed = True
             if int(match["bellman"]) or int(match["rank"]):
                 raise ValueError("information fixed-point proof residual")
+        if match := SYMBOLIC_FIXED_RE.match(line):
+            fixed = True
+            if any(int(match[name]) for name in
+                   ("bellman", "monotonicity", "singleton")):
+                raise ValueError("information symbolic proof residual")
         if match := RECIPROCAL_FIXED_RE.match(line):
             reciprocal_fixed = tuple(
                 int(match[name]) for name in ("owner", "observer", "visible"))
