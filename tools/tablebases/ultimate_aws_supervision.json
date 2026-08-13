@@ -973,16 +973,6 @@
       ],
       "diagnostic_sources": [
         {
-          "kind": "file",
-          "path": "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/service.log",
-          "max_bytes": 1024
-        },
-        {
-          "kind": "file",
-          "path": "/mnt/ultimatefish/hidden-kbombghostk-7af5dec2/resume-v3/work/logs/solve.log",
-          "max_bytes": 3072
-        },
-        {
           "kind": "journal",
           "unit": "ultimatefish-hidden-kbombghostk-exact-from-measure-v2.service",
           "max_bytes": 2048
