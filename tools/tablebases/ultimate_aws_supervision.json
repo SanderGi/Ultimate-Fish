@@ -1008,11 +1008,11 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-024a2073283e4336e",
-      "unit": "ultimatefish-hidden-kbombkghost-exact-scratchfix-v5.service",
+      "unit": "ultimatefish-hidden-kbombkghost-exact-750m-v7.service",
       "expected_allowed_cpus": "18",
       "resource_requirements": {
         "cpu_threads": 1,
-        "memory_peak_bytes": 34359738368,
+        "memory_peak_bytes": 25769803776,
         "disk_peak_bytes": {
           "/mnt/ultimatefish": 68719476736
         }
@@ -1020,15 +1020,15 @@
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/work/logs/*.log",
-        "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/work/solve/*"
+        "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/work/solve-750m/*"
       ],
       "completion_paths": [
         "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/work/artifact-manifest.json"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/run-opposed-1b-e682c989.py",
-          "sha256": "e682c989cdca9d311b43e4d6f03a2ba5c118dd81d38283c774db4b5a6bc3b4d8"
+          "path": "/mnt/ultimatefish/hidden-kbombkghost-7af5dec2/resume-v3/run-opposed-750m.py",
+          "sha256": "eeb74718cd0ad0ca324918f7787104736a2a2a8dc1d23480841048cdd9aad1ad"
         },
         {
           "path": "/mnt/ultimatefish/resume-runners/bomb-ghost-d9bee1d0/run_ultimate_ghost_bomb_aws.py",
@@ -1164,7 +1164,7 @@
         },
         {
           "kind": "journal",
-          "unit": "ultimatefish-hidden-kbombkghost-exact-scratchfix-v5.service",
+          "unit": "ultimatefish-hidden-kbombkghost-exact-750m-v7.service",
           "max_bytes": 2048
         }
       ],
