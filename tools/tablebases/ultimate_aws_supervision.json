@@ -1868,6 +1868,13 @@
         "/mnt/ultimatefish/ordinary-krookghostk-6a9ba7ab/work/results/krookghostk-generic-9dd3c83f.ufiw",
         "/mnt/ultimatefish/ordinary-krookghostk-6a9ba7ab/work/results/krookghostk-generic-9dd3c83f.ufgd"
       ],
+      "diagnostic_sources": [
+        {
+          "kind": "file",
+          "path": "/mnt/ultimatefish/ordinary-krookghostk-6a9ba7ab/work/logs/rebind-ultimatefish-rebind-krookghostk-9dd3c83f-v1.service.log",
+          "max_bytes": 512
+        }
+      ],
       "source_bindings": [
         {
           "path": "/mnt/ultimatefish/generic-ordinary-rebind-030f8da6/source.tar.gz",
