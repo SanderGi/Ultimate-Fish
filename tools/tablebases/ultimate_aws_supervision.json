@@ -12645,25 +12645,37 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-024a2073283e4336e",
-      "unit": "ultimatefish-current-wave0-007-berserker-pair.service",
+      "unit": "ultimatefish-resume-berserker-pair-opposed-local-v1.service",
       "expected_allowed_cpus": "1",
       "dependencies": [],
       "checkpoint_paths": [
-        "/mnt/ultimatefish/current-wave0-007/scratch/*",
-        "/mnt/ultimatefish/current-wave0-007/logs/*"
+        "/mnt/ultimatefish/current-wave0-007/resume-local-manifest.json",
+        "/mnt/ultimatefish/current-wave0-007/scratch/kberserkerkberserker.nodes",
+        "/mnt/ultimatefish/current-wave0-007/scratch/kberserkerkberserker.degrees",
+        "/mnt/ultimatefish/resume-berserker-pair-opposed-local-v1/scratch/*",
+        "/mnt/ultimatefish/resume-berserker-pair-opposed-local-v1/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/current-wave0-007/outputs/kberserkerkberserker.uftb",
-        "/mnt/ultimatefish/current-wave0-007/certificates/wave-certificate.json"
+        "/mnt/ultimatefish/resume-berserker-pair-opposed-local-v1/outputs/kberserkerkberserker.uftb",
+        "/mnt/ultimatefish/resume-berserker-pair-opposed-local-v1/certificates/wave-certificate.json"
       ],
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish/current-wave0-007/logs/generate/kberserkerkberserker.log",
+          "path": "/mnt/ultimatefish/resume-berserker-pair-opposed-local-v1/logs/generate/kberserkerkberserker.log",
           "max_bytes": 512
         }
       ],
-      "source_bindings": [],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish/current-wave0-007/resume-local-manifest.json",
+          "sha256": "a8cc5222a0a001a2d63017cf9b515de461795ff6d8a5456d67feaafeb91fcef5"
+        },
+        {
+          "path": "/mnt/ultimatefish/current-concrete-source-418b2201/tools/tablebases/resume_ultimate_concrete_frontier_aws.py",
+          "sha256": "3d5efaf3a503c84c12b786dc0281b913cb21492aafca29e9dbd416ef0809c453"
+        }
+      ],
       "s3_certificates": []
     },
     {
