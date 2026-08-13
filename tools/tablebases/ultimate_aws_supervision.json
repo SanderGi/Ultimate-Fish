@@ -12059,16 +12059,16 @@
       "ledger_files": ["kberserkerturtlek.uftb"],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-current-wave0-027-turtle-retry-48g-v2.service",
+      "unit": "ultimatefish-current-wave0-027-turtle-retry-48g-v3.service",
       "expected_allowed_cpus": "30",
       "dependencies": [],
       "checkpoint_paths": [
-        "/mnt/ultimatefish-penguin/current-wave0-027-turtle-retry-48g-v2/scratch/*",
-        "/mnt/ultimatefish-penguin/current-wave0-027-turtle-retry-48g-v2/logs/*"
+        "/mnt/ultimatefish-penguin/current-wave0-027-turtle-retry-48g-v3/scratch/*",
+        "/mnt/ultimatefish-penguin/current-wave0-027-turtle-retry-48g-v3/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-penguin/current-wave0-027-turtle-retry-48g-v2/outputs/kberserkerturtlek.uftb",
-        "/mnt/ultimatefish-penguin/current-wave0-027-turtle-retry-48g-v2/certificates/wave-certificate.json"
+        "/mnt/ultimatefish-penguin/current-wave0-027-turtle-retry-48g-v3/outputs/kberserkerturtlek.uftb",
+        "/mnt/ultimatefish-penguin/current-wave0-027-turtle-retry-48g-v3/certificates/wave-certificate.json"
       ],
       "source_bindings": [],
       "s3_certificates": []
@@ -12116,16 +12116,35 @@
       "ledger_files": ["kberserkerprincek.uftb"],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-queue-current-wave0-025-prince-same-fresh-v1.service",
-      "expected_allowed_cpus": "25",
+      "unit": "ultimatefish-current-wave0-025-prince-same-40g-v2.service",
+      "expected_allowed_cpus": "31",
       "dependencies": [],
       "checkpoint_paths": [
-        "/mnt/ultimatefish-penguin/current-wave0-025-prince-same-fresh-v1/scratch/*",
-        "/mnt/ultimatefish-penguin/current-wave0-025-prince-same-fresh-v1/logs/*"
+        "/mnt/ultimatefish/current-wave0-025-prince-same-40g-v2/scratch/*",
+        "/mnt/ultimatefish/current-wave0-025-prince-same-40g-v2/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-penguin/current-wave0-025-prince-same-fresh-v1/outputs/kberserkerprincek.uftb",
-        "/mnt/ultimatefish-penguin/current-wave0-025-prince-same-fresh-v1/certificates/wave-certificate.json"
+        "/mnt/ultimatefish/current-wave0-025-prince-same-40g-v2/outputs/kberserkerprincek.uftb",
+        "/mnt/ultimatefish/current-wave0-025-prince-same-40g-v2/certificates/wave-certificate.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "current-concrete-same-berserker-mage",
+      "ledger_files": ["kberserkermagek.uftb"],
+      "ledger_certifies": true,
+      "instance_id": "i-0986ed3d272721f02",
+      "unit": "ultimatefish-current-wave0-021-mage-same-40g-v5.service",
+      "expected_allowed_cpus": "15",
+      "dependencies": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/current-wave0-021-mage-same-40g-v5/scratch/*",
+        "/mnt/ultimatefish/current-wave0-021-mage-same-40g-v5/logs/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/current-wave0-021-mage-same-40g-v5/outputs/kberserkermagek.uftb",
+        "/mnt/ultimatefish/current-wave0-021-mage-same-40g-v5/certificates/wave-certificate.json"
       ],
       "source_bindings": [],
       "s3_certificates": []
@@ -12173,23 +12192,45 @@
         }
       ],
       "source_bindings": [],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/84592a0b9b609e8f36b8b6fd828c0f5547d2591d20b0fe235067277b87777ece/wave-0/sha256/2fc4257245ca71d92890041f7a9839d4a9ce6fd86993a035d63688f333823d06/kberserkercheckerk-2fc4257245ca71d92890041f7a9839d4a9ce6fd86993a035d63688f333823d06.tar.zst",
+          "version_id": "YwZ858F1ByDKjxXp0UyskTOyOlAZugo7",
+          "sha256": "2fc4257245ca71d92890041f7a9839d4a9ce6fd86993a035d63688f333823d06",
+          "size": 13347375
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/00dcce4ef1706d9f9287a4de0b33e46f10c3b9795d21dc5b650bdc42e693611b/wave-certificate.json",
+          "version_id": "ZL1EwaTjvN.1JKgoil_v4JEar6i1R4XL",
+          "sha256": "00dcce4ef1706d9f9287a4de0b33e46f10c3b9795d21dc5b650bdc42e693611b",
+          "size": 2701
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/reachability/sha256/f4f9d763935ea4b74bd6fb2bc4a364d8264a7bd26ccfd082c965a6067e801cf0/kberserkercheckerk.reachability-v2.txt",
+          "version_id": "X2hbq1HPV2SQnAm_CSs05LB6G7AEQ2oV",
+          "sha256": "f4f9d763935ea4b74bd6fb2bc4a364d8264a7bd26ccfd082c965a6067e801cf0",
+          "size": 988
+        }
+      ]
     },
     {
       "id": "current-concrete-same-berserker-ghost-parent",
       "ledger_files": ["kberserkerghostk.uftb"],
       "ledger_certifies": false,
-      "instance_id": "i-0986ed3d272721f02",
-      "unit": "ultimatefish-current-wave0-005-berserker-ghost-same-fresh-v2.service",
-      "expected_allowed_cpus": "15",
+      "instance_id": "i-0b4523116b2f7765c",
+      "unit": "ultimatefish-current-wave0-005-berserker-ghost-same-40g-v3.service",
+      "expected_allowed_cpus": "31",
       "dependencies": [],
       "checkpoint_paths": [
-        "/mnt/ultimatefish/current-wave0-005-fresh-v2/scratch/*",
-        "/mnt/ultimatefish/current-wave0-005-fresh-v2/logs/*"
+        "/mnt/ultimatefish/current-wave0-005-berserker-ghost-same-40g-v3/scratch/*",
+        "/mnt/ultimatefish/current-wave0-005-berserker-ghost-same-40g-v3/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/current-wave0-005-fresh-v2/outputs/kberserkerghostk.uftb",
-        "/mnt/ultimatefish/current-wave0-005-fresh-v2/certificates/wave-certificate.json"
+        "/mnt/ultimatefish/current-wave0-005-berserker-ghost-same-40g-v3/outputs/kberserkerghostk.uftb",
+        "/mnt/ultimatefish/current-wave0-005-berserker-ghost-same-40g-v3/certificates/wave-certificate.json"
       ],
       "source_bindings": [],
       "s3_certificates": []
@@ -12274,16 +12315,16 @@
       "ledger_files": ["kberserkerparasitek.uftb"],
       "ledger_certifies": true,
       "instance_id": "i-08c0f44a1776cb34a",
-      "unit": "ultimatefish-current-wave0-023-parasite-same-backfill-32g-v3.service",
+      "unit": "ultimatefish-current-wave0-023-parasite-same-backfill-40g-v4.service",
       "expected_allowed_cpus": "31",
       "dependencies": [],
       "checkpoint_paths": [
-        "/mnt/ultimatefish/current-wave0-023-parasite-same-backfill-v1/scratch/*",
-        "/mnt/ultimatefish/current-wave0-023-parasite-same-backfill-v1/logs/*"
+        "/mnt/ultimatefish/current-wave0-023-parasite-same-backfill-40g-v4/scratch/*",
+        "/mnt/ultimatefish/current-wave0-023-parasite-same-backfill-40g-v4/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/current-wave0-023-parasite-same-backfill-v1/outputs/kberserkerparasitek.uftb",
-        "/mnt/ultimatefish/current-wave0-023-parasite-same-backfill-v1/certificates/wave-certificate.json"
+        "/mnt/ultimatefish/current-wave0-023-parasite-same-backfill-40g-v4/outputs/kberserkerparasitek.uftb",
+        "/mnt/ultimatefish/current-wave0-023-parasite-same-backfill-40g-v4/certificates/wave-certificate.json"
       ],
       "source_bindings": [],
       "s3_certificates": []

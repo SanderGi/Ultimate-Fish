@@ -154,7 +154,7 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
             source_root="/mnt/source", dependencies="/mnt/dependencies",
             dependency_manifest="/mnt/dependencies/manifest.json",
             work_directory="/mnt/work", wave=0, index=12,
-            scratch_limit=100, resident_limit=90,
+            scratch_limit=100, resident_limit=90, memory_max=95,
             reverse_edge_bytes_limit=80, minimum_free_bytes=70,
             monitor_interval=10, s3_prefix="s3://bucket/results",
             unit="ultimatefish-wave0-12", cpu=3,
@@ -164,6 +164,7 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
         self.assertIn("--range-begin 12 --range-end 13", commands[4])
         self.assertIn("kexample.uftb", commands[5])
         self.assertIn("--property=AllowedCPUs=3", commands[6])
+        self.assertIn("--property=MemoryMax=95", commands[6])
         self.assertIn("--scratch-limit 100", commands[6])
         self.assertLess(commands.index(commands[4]), commands.index(commands[6]))
 

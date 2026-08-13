@@ -35,7 +35,7 @@ def aws(*arguments: str) -> str:
         ["aws", *arguments], check=True, text=True, capture_output=True).stdout
 
 
-def selected(args: argparse.Namespace) -> dict[str, object]:
+def selected(args: argparse.Namespace) -> tuple[dict[str, object], str]:
     rows = concrete.wave_inventory(args.wave)
     if not 0 <= args.index < len(rows):
         raise ValueError("class index is outside the selected wave")
@@ -43,10 +43,15 @@ def selected(args: argparse.Namespace) -> dict[str, object]:
     ledger_rows = {
         row.filename: row for row in ledger.entries(args.readme.read_text())}
     row = ledger_rows[ledger_filename(str(record["filename"]))]
-    if row.status != "planned":
+    allowed = {"planned"}
+    if args.allow_computing_retry:
+        allowed.add("computing")
+    if row.status not in allowed:
         raise ValueError(
-            f"{row.filename}: launch requires PLANNED, got {row.status.upper()}")
-    return record
+            f"{row.filename}: launch requires "
+            f"{'PLANNED or COMPUTING' if args.allow_computing_retry else 'PLANNED'}, "
+            f"got {row.status.upper()}")
+    return record, row.status
 
 
 def validate(args: argparse.Namespace) -> None:
@@ -57,9 +62,11 @@ def validate(args: argparse.Namespace) -> None:
         if not value.startswith("/") or "\n" in value:
             raise ValueError(f"unsafe {label}")
     if (not SAFE_UNIT.fullmatch(args.unit) or args.cpu < 0 or
-            min(args.scratch_limit, args.resident_limit,
+            min(args.scratch_limit, args.resident_limit, args.memory_max,
                 args.reverse_edge_bytes_limit, args.minimum_free_bytes) <= 0):
         raise ValueError("invalid unit, CPU, or resource gate")
+    if args.memory_max < args.resident_limit:
+        raise ValueError("memory max must be at least the measured resident limit")
 
 
 def remote_commands(args: argparse.Namespace,
@@ -86,7 +93,9 @@ def remote_commands(args: argparse.Namespace,
     ]
     unit = [
         "systemd-run", "--unit", args.unit,
-        f"--property=AllowedCPUs={args.cpu}", "--property=Nice=5", "--collect",
+        f"--property=AllowedCPUs={args.cpu}",
+        f"--property=MemoryMax={args.memory_max}",
+        "--property=CPUQuota=100%", "--property=Nice=5", "--collect",
         *full,
     ]
     expected = str(record["filename"])
@@ -150,11 +159,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--work-directory", required=True)
     parser.add_argument("--scratch-limit", type=int, required=True)
     parser.add_argument("--resident-limit", type=int, required=True)
+    parser.add_argument("--memory-max", type=int, required=True)
     parser.add_argument("--reverse-edge-bytes-limit", type=int, required=True)
     parser.add_argument("--minimum-free-bytes", type=int, required=True)
     parser.add_argument("--monitor-interval", type=float, default=10)
     parser.add_argument("--s3-prefix", required=True)
     parser.add_argument("--expected-model-sha256", required=True)
+    parser.add_argument(
+        "--allow-computing-retry", action="store_true",
+        help="allow a fresh non-duplicate retry for a row already marked COMPUTING",
+    )
     parser.add_argument("--region", default="us-west-2")
     parser.add_argument("--timeout", type=int, default=300)
     parser.add_argument("--readme", type=Path, default=README)
@@ -164,11 +178,14 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     validate(args)
-    record = selected(args)
+    record, prior_status = selected(args)
     command_id = send_and_wait(args, remote_commands(args, record))
-    ledger.update(
-        args.readme, [f'{ledger_filename(str(record["filename"]))}=computing'], [])
-    subprocess.run(["python3", str(PLOT)], cwd=ROOT, check=True)
+    if prior_status == "planned":
+        ledger.update(
+            args.readme,
+            [f'{ledger_filename(str(record["filename"]))}=computing'], [],
+        )
+        subprocess.run(["python3", str(PLOT)], cwd=ROOT, check=True)
     print(json.dumps({
         "filename": record["filename"], "instance": args.instance,
         "unit": args.unit, "command_id": command_id, "status": "computing",
