@@ -208,8 +208,91 @@ class FrontierResumeTests(unittest.TestCase):
     def test_default_is_read_only_and_full_requires_work_directory(self) -> None:
         args = RESUME.parse_args([])
         self.assertFalse(args.full)
+        self.assertFalse(args.preserve_completed)
         self.assertFalse(args.local_only)
         self.assertIsNone(args.work_directory)
+
+    def test_completed_local_resume_is_preserved_without_frontier_reread(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            document = self.fixture(root)
+            source = Path(document["source_work_directory"])
+            work = root / "completed"
+            record = document["record"]
+            stem = Path(record["filename"]).stem
+            manifest = root / "resume.json"
+            manifest.write_text(json.dumps(document))
+            manifest_sha = RESUME.sha256_path(manifest)
+            binary = work / "binary/ultimate_tablebase"
+            binary.parent.mkdir(parents=True)
+            binary.write_bytes(b"binary")
+            output = work / "outputs" / record["filename"]
+            output.parent.mkdir()
+            output.write_bytes(b"verified table")
+            log = work / "logs/generate" / f"{stem}.log"
+            log.parent.mkdir(parents=True)
+            log.write_text("complete proof")
+            dependency = source / "dependencies/manifest.json"
+            dependency.parent.mkdir(exist_ok=True)
+            dependency.write_bytes(b"dependency")
+            verification = {"bytes": len(b"verified table"),
+                            "sha256": RESUME.sha256_path(output),
+                            "verification_residual": 0}
+            result = {
+                "schema": RESUME.RESULT_SCHEMA,
+                "record": record,
+                "generator_model_sha256": document["generator_model_sha256"],
+                "inventory_sha256": document["inventory_sha256"],
+                "resume_manifest_sha256": manifest_sha,
+                "bellman_verification_residual": 0,
+                "output": verification,
+            }
+            result_path = work / "results" / f"{stem}.json"
+            result_path.parent.mkdir()
+            result_path.write_text(json.dumps(result))
+            (work / "resume-plan.json").write_text(json.dumps({
+                "manifest_sha256": manifest_sha, "record": record,
+                "status": "authenticated-native-checkpoint-composed",
+            }))
+            archive = work / "archives" / f"{stem}-archive.tar.zst"
+
+            def make_archive(*_args, **_kwargs):
+                archive.parent.mkdir(parents=True)
+                archive.write_bytes(b"archive")
+                return archive, "c" * 64
+
+            args = RESUME.parse_args([
+                "--preserve-completed", "--manifest", str(manifest),
+                "--work-directory", str(work), "--aws-execution-ack", "EC2",
+                "--s3-prefix", "s3://example/results",
+            ])
+            with mock.patch.object(RESUME.sys, "platform", "linux"), \
+                    mock.patch.object(
+                        RESUME.concrete, "generator_model_sha256",
+                        return_value=document["generator_model_sha256"]), \
+                    mock.patch.object(
+                        RESUME.concrete, "parse_uftb",
+                        return_value=verification), \
+                    mock.patch.object(
+                        RESUME.preservation, "content_address_archive",
+                        side_effect=make_archive), \
+                    mock.patch.object(
+                        RESUME.preservation, "restore_zstd_archive",
+                        return_value={
+                            f"tablebases/{record['filename']}": output,
+                            f"proof/{log.name}": log,
+                        }), \
+                    mock.patch.object(
+                        RESUME.preservation, "upload_head_download_verify",
+                        return_value={"version_id": "version"}), \
+                    mock.patch.object(
+                        RESUME, "authenticate_manifest") as authenticate:
+                preserved = RESUME.preserve_completed(args, document)
+            authenticate.assert_not_called()
+            self.assertFalse(preserved["generator_rerun"])
+            self.assertFalse(preserved["preserved_frontier_reread"])
+            self.assertTrue(
+                (work / "certificates/wave-certificate.json").is_file())
 
     def test_local_only_full_gate_does_not_require_s3(self) -> None:
         args = RESUME.parse_args([

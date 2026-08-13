@@ -253,7 +253,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
     parser.add_argument("--work-directory", type=Path)
-    parser.add_argument("--full", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--full", action="store_true")
+    mode.add_argument(
+        "--preserve-completed", action="store_true",
+        help=("package, upload, download, and restore a completed --local-only "
+              "resume without rerunning or rereading the preserved frontier"))
     parser.add_argument("--local-only", action="store_true",
                         help="run and verify locally without packaging or S3 upload")
     parser.add_argument("--aws-execution-ack")
@@ -265,6 +270,124 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--monitor-interval", type=float, default=5.0)
     parser.add_argument("--s3-prefix")
     return parser.parse_args(argv)
+
+
+def preserve_completed(args: argparse.Namespace,
+                       document: dict[str, Any]) -> dict[str, Any]:
+    """Preserve one verified local-only resume without touching its scratch."""
+    if sys.platform == "darwin" or args.aws_execution_ack != "EC2":
+        raise RuntimeError("completed frontier preservation is EC2-only")
+    if args.work_directory is None or not args.s3_prefix:
+        raise RuntimeError(
+            "--preserve-completed requires --work-directory and --s3-prefix")
+    if args.local_only:
+        raise RuntimeError("--preserve-completed cannot be combined with --local-only")
+    work = args.work_directory.resolve()
+    if not work.is_dir():
+        raise RuntimeError("completed resume work directory is missing")
+
+    manifest_path = args.manifest.resolve()
+    manifest_sha = sha256_path(manifest_path)
+    source = Path(document["source_work_directory"]).resolve()
+    record = document["record"]
+    output_name = str(record["filename"])
+    checkpoint_stem = Path(output_name).stem
+    output = work / "outputs" / output_name
+    log = work / "logs/generate" / f"{checkpoint_stem}.log"
+    result_path = work / "results" / f"{checkpoint_stem}.json"
+    plan_path = work / "resume-plan.json"
+    binary = work / "binary/ultimate_tablebase"
+    dependency_manifest = source / "dependencies/manifest.json"
+    required = (output, log, result_path, plan_path, binary,
+                dependency_manifest)
+    if any(not path.is_file() for path in required):
+        raise RuntimeError("completed resume lacks a required preservation input")
+
+    result = json.loads(result_path.read_text(encoding="utf-8"))
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    if (result.get("schema") != RESULT_SCHEMA or
+            result.get("record") != record or
+            result.get("generator_model_sha256") !=
+                document["generator_model_sha256"] or
+            result.get("inventory_sha256") != document["inventory_sha256"] or
+            result.get("resume_manifest_sha256") != manifest_sha or
+            result.get("bellman_verification_residual") != 0 or
+            plan.get("manifest_sha256") != manifest_sha or
+            plan.get("record") != record or
+            plan.get("status") != "authenticated-native-checkpoint-composed"):
+        raise RuntimeError("completed resume provenance residual")
+    if (sha256_path(binary) != document["binary_sha256"] or
+            sha256_path(dependency_manifest) !=
+                document["dependency_manifest_sha256"] or
+            concrete.generator_model_sha256(source / "bundle") !=
+                document["generator_model_sha256"]):
+        raise RuntimeError("completed resume source/binary binding residual")
+    verification = concrete.parse_uftb(output, record, log)
+    if result.get("output") != verification:
+        raise RuntimeError("completed resume result/output residual")
+
+    files = {
+        f"tablebases/{output_name}": output,
+        f"proof/{result_path.name}": result_path,
+        f"proof/{log.name}": log,
+        "proof/resume-plan.json": plan_path,
+        "proof/resume-manifest.json": manifest_path,
+        "proof/dependency-manifest.json": dependency_manifest,
+        "binary/ultimate_tablebase": binary,
+    }
+    for relative in concrete.MODEL_SOURCES:
+        files[f"sources/{relative}"] = source / "bundle" / relative
+    archive, archive_sha = preservation.content_address_archive(
+        work / "archives", checkpoint_stem, files, RESULT_SCHEMA)
+    restored = preservation.restore_zstd_archive(
+        archive, work / "restore-local" / checkpoint_stem, RESULT_SCHEMA)
+    if concrete.parse_uftb(
+            restored[f"tablebases/{output_name}"], record,
+            restored[f"proof/{log.name}"])["sha256"] != verification["sha256"]:
+        raise RuntimeError("local resume archive restore residual")
+    selection = document.get(
+        "selection", {"wave": 0, "begin": 18, "end": 19, "classes": 1})
+    key = (f"concrete/v2/model/{document['generator_model_sha256']}/"
+           f"wave-{selection['wave']}/sha256/{archive_sha}/{archive.name}")
+    remote = preservation.upload_head_download_verify(
+        source=archive, digest=archive_sha, extent=archive.stat().st_size,
+        prefix=args.s3_prefix, key=key,
+        download=work / "s3-verify" / archive.name,
+        archive_schema=RESULT_SCHEMA)
+    certificate = {
+        "schema": concrete.CERTIFICATE_SCHEMA,
+        "status": "head-download-full-sha-archive-restore-verified",
+        "generator_model_sha256": document["generator_model_sha256"],
+        "inventory_sha256": document["inventory_sha256"],
+        "selection": selection,
+        "completed": [{
+            "filename": output_name, "status": "resumed-frontier-preserved",
+            "output": verification,
+            "archive": {"bytes": archive.stat().st_size,
+                        "sha256": archive_sha, "key": key},
+            "s3": remote,
+        }],
+        "original_scratch_retained": True,
+        "local_outputs_retained": True, "local_scratch_retained": True,
+        "safe_to_delete_gate": False,
+    }
+    certificate_path = work / "certificates/wave-certificate.json"
+    preservation.write_json(certificate_path, certificate)
+    certificate_sha = sha256_path(certificate_path)
+    certificate_remote = preservation.upload_head_download_verify(
+        source=certificate_path, digest=certificate_sha,
+        extent=certificate_path.stat().st_size, prefix=args.s3_prefix,
+        key=(f"concrete/v2/certificates/sha256/{certificate_sha}/"
+             "wave-certificate.json"),
+        download=work / "s3-verify/wave-certificate.json",
+        archive_schema=None)
+    return {
+        "status": "completed-local-resume-s3-restored",
+        "certificate_sha256": certificate_sha,
+        "certificate_s3": certificate_remote,
+        "generator_rerun": False, "preserved_frontier_reread": False,
+        "local_scratch_retained": True,
+    }
 
 
 def validate_full_gates(args: argparse.Namespace, work: Path,
@@ -316,6 +439,9 @@ def validate_full_gates(args: argparse.Namespace, work: Path,
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     document = load_manifest(args.manifest.resolve())
+    if args.preserve_completed:
+        print(canonical_json(preserve_completed(args, document)))
+        return 0
     authenticated = authenticate_manifest(document)
     preflight: dict[str, Any] = {
         "schema": SCHEMA, "status": "authenticated-read-only-preflight",
