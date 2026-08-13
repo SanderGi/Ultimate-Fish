@@ -60,6 +60,8 @@ class OrdinaryGhostManifestTests(unittest.TestCase):
 class OrdinaryGhostGeometryTests(unittest.TestCase):
     def test_base_piece_geometry_count(self) -> None:
         self.assertEqual(runner.geometry_count("knight"), 492_960)
+        self.assertEqual(runner.geometry_count("dragon"), 492_960)
+        self.assertEqual(runner.PIECES["dragon"], "Dragon")
 
     def test_substate_and_horizontal_factors_are_both_applied(self) -> None:
         self.assertEqual(runner.geometry_count("pawn"), 1_971_840)

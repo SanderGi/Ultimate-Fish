@@ -18,7 +18,7 @@ PIECES = {"knight": "Knight", "ninja": "Ninja", "queen": "Queen",
           "rook": "Rook", "turtle": "Turtle", "pawn": "Pawn",
           "berserker": "Berserker", "sniper": "Sniper",
           "prince": "Prince", "checker": "Checker", "penguin": "Penguin",
-          "copycat": "Copycat"}
+          "copycat": "Copycat", "dragon": "Dragon"}
 EXTRA_SUBSTATES = {"pawn": 2, "berserker": 10, "sniper": 4,
                    "prince": 2, "checker": 4, "penguin": 8}
 LOWER_SUBSTATES = {"penguin": 4}
