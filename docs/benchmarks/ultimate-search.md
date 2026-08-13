@@ -587,15 +587,17 @@ material classes where the hidden state has a safe compact representation:
   piece-ID candidate mask. Capturing a candidate lazily rebases the concrete
   King onto a surviving silhouette and searches the continuing worst case; a
   singleton mask is therefore ordinary concrete search without another layer.
-- Multiple hidden Ghosts use sorted joint square tuples rather than independent
-  square unions. The tuples preserve occupancy, identity/state, legal-path, and
-  royal correlations as they collapse and re-expand.
-- Combined King/Jester plus Ghost states append the live enemy-King ID to each
-  Ghost tuple. Public-transition and legal-dot observations partition those
-  tuples before either player chooses a contingent continuation.
-- A lone Ghost without royal correlation stays on the mature enumerated path;
-  paired measurements show its deeper TT/search is already faster. A visible
-  singleton Ghost also stays symbolic because a later quiet move can re-hide it.
+- Ghost uncertainty uses a generalized correlated tuple containing every
+  `PieceState` fact, plus one shared public geometry. This preserves occupancy,
+  identity, visibility, death, attachment, cooldown, promotion, royal, and
+  arbitrary-material correlations as domains collapse and re-expand.
+- Combined King/Jester plus Ghost states use the same representation rather
+  than a special appended royal byte. Public-transition and legal-dot
+  observations partition complete correlated assignments before either player
+  chooses a contingent continuation.
+- A lone hidden Ghost now uses the correlated path too. A visible singleton
+  remains on the history-preserving solver because a later quiet move can
+  re-hide it and expand the domain again.
 
 The deterministic benchmark now runs every fixture in both `factored` mode and
 `enumerated-oracle` mode. On the same Apple Silicon release build, the larger
@@ -621,6 +623,64 @@ concrete handoffs, and reaches eight worlds after a quiet move. Its score remain
 `-583`; the old concrete handoff returned the same static score but selected a
 continuation using the leaked exact destination. This fixture is the regression
 guard for collapse/de-collapse behavior.
+
+### General correlated tuples and symbolic Ghost transitions
+
+The next pass extends correlated tuples to arbitrary material and gives that
+path the mature search machinery used by the concrete and enumerated solvers:
+iterative-deepening PV reuse, exact domain TT entries, TT/PV/killer/history move
+ordering, PVS observation and action windows, guarded LMR/LMP/futility pruning,
+cached legal frontiers, and concrete singleton handoff when hidden knowledge is
+provably monotone. The general King/Jester path also caches its candidate legal
+frontiers across iterations.
+
+Quiet, non-revealing moves by an invisible enemy Ghost are now transitioned
+symbolically. The engine updates the Ghost and attached-Angel facts, cooldowns,
+and shared turn geometry without constructing every child `Position`. Search
+still creates temporary positions for assignment-specific legal generation and
+evaluation, and transitions concretely for captures, reveals, special actions,
+and legal-dot observation frontiers; it no longer retains full positions or
+recreates one for every safe symbolic child edge. Minion material deliberately
+disables the symbolic edge because the automatic Minion advance can collide
+with the hidden Ghost square; that case uses the exact concrete transition
+inside the same correlated solver.
+
+The benchmark JSON schema is now `ultimate-hidden-search-benchmark-v2` and
+reports the selected path, materializations, symbolic transitions, and legal
+cache hits. The following are median engine times from three release runs on
+the same Apple Silicon host. Each row ran the factored path against the fully
+enumerated oracle with deterministic seed 0; node counts and information
+counters were identical across repeats.
+
+| Fixture | Depth | Root assignments | Enumerated | Best factored path | Speedup | Symbolic transitions |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| King/Jester endgame | 16 | 2 | 8,121 ms | 69 ms | 117.7x | 0 |
+| 12-piece King/Jester midgame | 4 | 2 | 2,840 ms | 1,227 ms | 2.3x | 0 |
+| one hidden Ghost | 4 | 75 | 112 ms | 43 ms | 2.6x | 12,650 |
+| two hidden Ghosts | 3 | 2,775 | 2,723 ms | 795 ms | 3.4x | 203,840 |
+| two Ghosts plus ordinary material | 2 | 1,653 | 15,775 ms | 4,587 ms | 3.4x | 363,791 |
+| King/Jester + Ghost + ordinary material | 3 | 114 | 2,318 ms | 541 ms | 4.3x | 17,674 |
+| Ghost + Minion safety fallback | 2 | 59 | 101 ms | 40 ms | 2.5x | 0 |
+| Ghost + Bomb interaction | 2 | 59 | 223 ms | 103 ms | 2.2x | 6,281 |
+
+The 2,775-world endgame still reaches 6,257 correlated assignments after
+re-hiding. It executes 203,840 symbolic Ghost edges and 218,035 legal-frontier
+cache hits while returning the same mate score and root move as enumeration.
+The mixed two-Ghost case executes 363,791 symbolic edges while retaining the
+same score, root move, node count, 3,575-world peak, and 11,352 observation
+buckets. The Minion fixture executes zero symbolic edges by construction and
+still matches enumeration, exercising the conservative interaction fallback.
+Killer/history learning also benefits the fallback: on the royal depth-16
+fixture it reduces enumeration from the prior 2,439,048 nodes and roughly
+17.2 seconds to 1,157,651 nodes and 8.1 seconds. The native mask remains another
+117.7x faster after comparing against that strengthened fallback.
+
+Exact low-depth regression horizons match the enumerated oracle for generalized
+mixed material, Bomb, Minion, multi-Ghost, and combined royal/Ghost cases. At
+selectively searched deeper horizons, different ordering can produce a
+different centipawn result or principal variation just as it does between
+concrete searches with different TT history; mate results and the exact
+low-depth oracle checks remain the semantic guard.
 
 The color-balanced trap benchmark remains a deterministic tactical regression,
 not an Elo claim. It now reports whether exact search avoids the losing

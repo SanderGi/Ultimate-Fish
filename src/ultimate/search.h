@@ -80,7 +80,11 @@ struct BeliefSearchResult {
     std::uint64_t beliefTtHits = 0;
     std::uint64_t singletonHandoffs = 0;
     std::uint64_t observationBuckets = 0;
+    std::uint64_t materializations = 0;
+    std::uint64_t symbolicTransitions = 0;
+    std::uint64_t legalCacheHits = 0;
     std::size_t peakBeliefs = 0;
+    std::string searchPath = "enumerated";
     // False when the configured observer is to move but the supplied state
     // still spans multiple privately visible legal-dot observations.
     bool validInformationCell = true;

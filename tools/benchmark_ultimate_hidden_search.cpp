@@ -86,6 +86,13 @@ std::vector<Fixture> fixtures() {
         "ghost,w,c3,0,0,0,0,0,0,-1,1,-1,0;king,b,h10"), onyx),
       4});
     result.push_back({
+      "ghost-single-mixed-tactical",
+      history_beliefs(parse(
+        "w;king,w,a1;rook,w,b2;queen,w,d4;king,b,e10;rook,b,h8;"
+        "pawn,b,e5;ghost,b,a9,0,0,0,0,0,0,-1,1,-1,0"),
+        {Color::White, false}),
+      4});
+    result.push_back({
       "ghost-73-world-conditioned-midgame",
       history_beliefs(parse(
         "b;king,w,d8;king,b,d10;"
@@ -98,6 +105,28 @@ std::vector<Fixture> fixtures() {
         "ghost,w,c2,0,0,0,0,0,0,-1,1,-1,0;"
         "ghost,w,d2,0,0,0,0,0,0,-1,1,-1,0;king,b,h10"), onyx),
       3});
+    result.push_back({
+      "ghost-pair-mixed-material",
+      history_beliefs(parse(
+        "b;king,w,a1;rook,w,c1;bishop,w,e3;"
+        "ghost,w,c2,0,0,0,0,0,0,-1,1,-1,0;"
+        "ghost,w,d2,0,0,0,0,0,0,-1,1,-1,0;"
+        "king,b,h10;rook,b,h8"), onyx),
+      2});
+    result.push_back({
+      "ghost-single-minion-fallback",
+      history_beliefs(parse(
+        "b;king,w,a1;minion,w,d4;"
+        "ghost,w,c2,0,0,0,0,0,0,-1,1,-1,0;"
+        "king,b,h10;rook,b,h8"), onyx),
+      2});
+    result.push_back({
+      "ghost-single-bomb-interaction",
+      history_beliefs(parse(
+        "b;king,w,a1;bomb,w,d4;"
+        "ghost,w,c2,0,0,0,0,0,0,-1,1,-1,0;"
+        "king,b,h10;rook,b,h8"), onyx),
+      2});
 
     result.push_back({
       "royal-plus-ghost-148-world-endgame",
@@ -105,6 +134,13 @@ std::vector<Fixture> fixtures() {
         "b;king,w,a1;jester,w,b1;"
         "ghost,w,c3,0,0,0,0,0,0,-1,1,-1,0;king,b,h10"), onyx),
       4});
+    result.push_back({
+      "royal-plus-ghost-mixed-material",
+      history_beliefs(parse(
+        "b;king,w,a1;jester,w,b1;rook,w,d2;bishop,w,e3;"
+        "ghost,w,c3,0,0,0,0,0,0,-1,1,-1,0;"
+        "king,b,h10;rook,b,h8;knight,b,f8"), onyx),
+      3});
 
     Position reexpansion = parse(
       "w;king,w,a1;"
@@ -127,6 +163,7 @@ void print_result(const Fixture& fixture, const BeliefSearchResult& result,
               << "\"mode\":\"" << (factored ? "factored" : "enumerated-oracle")
               << "\","
               << "\"root_beliefs\":" << fixture.beliefs.size() << ','
+              << "\"search_path\":\"" << result.searchPath << "\","
               << "\"score\":" << result.score << ','
               << "\"nodes\":" << result.nodes << ','
               << "\"engine_ms\":" << result.elapsed.count() << ','
@@ -135,6 +172,9 @@ void print_result(const Fixture& fixture, const BeliefSearchResult& result,
               << "\"belief_tt_hits\":" << result.beliefTtHits << ','
               << "\"singleton_handoffs\":" << result.singletonHandoffs << ','
               << "\"observation_buckets\":" << result.observationBuckets << ','
+              << "\"materializations\":" << result.materializations << ','
+              << "\"symbolic_transitions\":" << result.symbolicTransitions << ','
+              << "\"legal_cache_hits\":" << result.legalCacheHits << ','
               << "\"peak_beliefs\":" << result.peakBeliefs << ','
               << "\"bestmove\":\""
               << (result.bestMove ? *result.bestMove : "(none)") << "\"}";
@@ -142,13 +182,20 @@ void print_result(const Fixture& fixture, const BeliefSearchResult& result,
 
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
     try {
         const std::vector<Fixture> suite = fixtures();
+        std::string filter;
+        if (argc == 3 && std::string_view(argv[1]) == "--filter")
+            filter = argv[2];
+        else if (argc != 1)
+            throw std::runtime_error("usage: benchmark [--filter substring]");
         std::cout << "{\"schema\":\"ultimate-hidden-search-benchmark-v2\","
                      "\"deterministic\":true,\"seed\":0,\"fixtures\":[";
         bool comma = false;
         for (const Fixture& fixture : suite) {
+            if (!filter.empty() && fixture.name.find(filter) == std::string::npos)
+                continue;
             for (const bool factored : {false, true}) {
                 Search search(16);
                 SearchLimits limits;

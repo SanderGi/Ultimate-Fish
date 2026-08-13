@@ -362,6 +362,7 @@ test("bridge retains uncapped beliefs and analyzes one exact decision cell", asy
   assert.ok(conservative.decisionPartitions > 1);
   assert.equal(conservative.decisionMode, "merged-conservative");
   assert.equal(conservative.beliefMode, "history-preserving");
+  assert.equal(conservative.searchPath, "correlated-tuples");
   assert.ok(conservative.bestmove);
 
   const concrete = await post("/state", { upn: worlds[0] });

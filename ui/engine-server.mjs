@@ -199,6 +199,9 @@ function beliefError(lines) {
 
 function parseBeliefAnalysis(lines, observer, enemyKingKnown) {
   const info = [...lines].reverse().find((line) => line.startsWith("info depth ")) ?? "";
+  const searchPath = [...lines].reverse()
+    .find((line) => line.startsWith("info string searchpath "))
+    ?.slice("info string searchpath ".length) ?? null;
   const match = info.match(
     /^info depth (\d+) score (cp|mate) (-?\d+) nodes (\d+) time (\d+) beliefs (\d+) deepbeliefs (\d+) common (\d+) candidates (\d+) beliefmode (\S+) historyplies (\d+) decisionmode (\S+) decisionpartitions (\d+) beliefworst (-?\d+) beliefmean (-?\d+) pv(?: (.*))?$/,
   );
@@ -217,6 +220,7 @@ function parseBeliefAnalysis(lines, observer, enemyKingKnown) {
     deepBeliefs: Number(match[7]),
     commonMoves: Number(match[8]),
     candidates: Number(match[9]),
+    searchPath,
     beliefMode: match[10],
     historyPreservingPlies: Number(match[11]),
     decisionMode: match[12],

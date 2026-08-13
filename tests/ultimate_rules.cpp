@@ -2793,6 +2793,30 @@ void test_public_history_reconstruction() {
              combinedFactored.bestMove == combinedOracle.bestMove,
            "joint Ghost/royal tuples preserve oracle score and root policy");
 
+    PublicHistoryState mixedGhostMaterial;
+    expect(mixedGhostMaterial.start(parse(
+             "b;king,w,a1;rook,w,c1;bishop,w,e3;"
+             "ghost,w,c2,0,0,0,0,0,0,-1,1,-1,0;"
+             "ghost,w,d2,0,0,0,0,0,0,-1,1,-1,0;"
+             "king,b,h10;rook,b,h8"),
+             {Color::Black, false}, &error) &&
+             mixedGhostMaterial.beliefs().size() > 1,
+           "arbitrary-material correlated Ghost fixture reconstructs: " + error);
+    SearchLimits mixedOracleLimits;
+    mixedOracleLimits.depth = 1;
+    mixedOracleLimits.factoredBeliefs = false;
+    Search mixedOracleSearch(2);
+    const BeliefSearchResult mixedOracle = mixedOracleSearch.think_beliefs(
+      mixedGhostMaterial.beliefs(), mixedOracleLimits);
+    mixedOracleLimits.factoredBeliefs = true;
+    Search mixedFactoredSearch(2);
+    const BeliefSearchResult mixedFactored = mixedFactoredSearch.think_beliefs(
+      mixedGhostMaterial.beliefs(), mixedOracleLimits);
+    expect(mixedFactored.searchPath == "correlated-tuples" &&
+             mixedFactored.score == mixedOracle.score &&
+             mixedFactored.bestMove == mixedOracle.bestMove,
+           "general correlated tuples match arbitrary-material oracle policy");
+
     const Position chronologicalRoyals = parse(
       "b;king,w,a1;jester,w,b1;jester,w,c1;king,b,h10");
     PublicHistoryState firstGroupRoyal;

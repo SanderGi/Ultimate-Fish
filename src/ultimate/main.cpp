@@ -110,6 +110,10 @@ void print_belief_search_info(const PublicBeliefState& beliefs,
     for (const std::string& move : result.principalVariation)
         std::cout << ' ' << move;
     std::cout << '\n';
+    // Keep the original fixed belief-analysis line backward compatible with
+    // local bridge clients. Extensible diagnostics use separate info-string
+    // records so older parsers can continue matching the metadata contract.
+    std::cout << "info string searchpath " << result.searchPath << '\n';
     std::cout << "bestmove " << (result.bestMove ? *result.bestMove : "(none)") << '\n';
 }
 

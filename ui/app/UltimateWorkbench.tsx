@@ -124,6 +124,7 @@ type EngineAnalysis = {
   decisionPartitions?: number;
   beliefMode?: "history-preserving";
   historyPreservingPlies?: number;
+  searchPath?: string | null;
   enemyKingKnown?: boolean;
   enemyKingCandidates?: string[];
   observer?: Color;

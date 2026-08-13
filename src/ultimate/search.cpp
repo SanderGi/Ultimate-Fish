@@ -7,12 +7,14 @@
 #include "tablebases/tablebase_probe.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <functional>
 #include <limits>
 #include <numeric>
 #include <set>
 #include <stdexcept>
+#include <unordered_map>
 
 namespace Stockfish::Ultimate {
 namespace {
@@ -1778,13 +1780,28 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
     };
     using RoyalPv = std::vector<std::string>;
 
-    const auto materialize = [](const RoyalState& state, int candidate) {
+    std::uint64_t materializations = 0;
+    std::uint64_t legalCacheHits = 0;
+    std::unordered_map<std::uint64_t, std::vector<Move>> legalFrontierCache;
+    legalFrontierCache.reserve(262'144);
+
+    const auto materialize = [&](const RoyalState& state, int candidate) {
+        ++materializations;
         Position world = state.position;
         const int canonicalKing = state.candidates.empty()
                                  ? Position::NoPiece : state.candidates.front();
         if (candidate != canonicalKing)
             world.swap_royal_roles(canonicalKing, candidate);
         return world;
+    };
+    const auto cached_legal = [&](const Position& position) -> const std::vector<Move>& {
+        const std::uint64_t key = position.key();
+        auto found = legalFrontierCache.find(key);
+        if (found != legalFrontierCache.end()) {
+            ++legalCacheHits;
+            return found->second;
+        }
+        return legalFrontierCache.emplace(key, position.legal_moves()).first->second;
     };
     const auto prepare = [&](const RoyalState& state) {
         std::vector<RoyalWorld> worlds;
@@ -1817,7 +1834,7 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
             prepared.candidate = candidate;
             prepared.position = materialize(state, candidate);
             std::set<std::string> ambiguous;
-            for (const Move& move : prepared.position.legal_moves()) {
+            for (const Move& move : cached_legal(prepared.position)) {
                 const std::string notation = prepared.position.move_to_string(move);
                 if (ambiguous.count(notation))
                     continue;
@@ -1940,6 +1957,7 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
 
     RoyalState root{std::move(canonical), std::move(candidates)};
     BeliefSearchResult result;
+    result.searchPath = "factored-royal";
     result.beliefs = result.deepBeliefs = beliefs.size();
     result.peakBeliefs = root.candidates.size();
     std::set<std::string> rootRestriction;
@@ -1954,6 +1972,7 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
     RoyalPv previousIterationPv;
 
     if (pureRoyalMaterial) {
+        result.searchPath = "lazy-royal-native";
         LazyRoyalContext lazy;
         lazy.observer = observer;
         lazy.owner = royalOwner;
@@ -2003,6 +2022,8 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
               : std::optional<std::string>(result.principalVariation.front());
             result.nodes = nodes_;
             result.beliefNodes = nodes_;
+            result.materializations = materializations;
+            result.legalCacheHits = legalCacheHits;
             result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
               std::chrono::steady_clock::now() - beliefStart);
             if (limits.onBeliefIteration)
@@ -2010,6 +2031,8 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
         }
         result.nodes = nodes_;
         result.beliefNodes = nodes_;
+        result.materializations = materializations;
+        result.legalCacheHits = legalCacheHits;
         result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - beliefStart);
         return result;
@@ -2204,7 +2227,7 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
                         continue;
                     std::optional<std::vector<Move>> afterMoves;
                     if (legalDotObservations && after.side_to_move() == observer)
-                        afterMoves = after.legal_moves();
+                        afterMoves = cached_legal(after);
                     InformationObservationKey observation =
                       compact_transition_observation_key(
                         world.position, move, after, beliefs.disclosure(),
@@ -2323,11 +2346,44 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
                                                              const auto& rhs) {
             return priority[lhs] > priority[rhs];
         });
+        const auto recordQuietCutoff = [&](const std::string& action) {
+            if (worlds.empty())
+                return;
+            const Move& representative = worlds.front().moves.at(action);
+            if (ply < static_cast<int>(killers_.size()) &&
+                !(representative == killers_[ply][0])) {
+                killers_[ply][1] = killers_[ply][0];
+                killers_[ply][0] = representative;
+            }
+            std::set<PieceType> attackers;
+            for (const RoyalWorld& world : worlds) {
+                const Move& move = world.moves.at(action);
+                const int attacker = world.position.piece_on(move.from);
+                if (attacker != Position::NoPiece)
+                    attackers.insert(world.position.piece(attacker).type);
+            }
+            for (const PieceType type : attackers) {
+                int& value = history_[static_cast<std::size_t>(type)]
+                                     [representative.to];
+                value = std::min(50'000, value + depth * depth);
+            }
+        };
 
         int best = -Infinity;
         std::string bestAction;
         RoyalPv bestPv;
         int actionNumber = 0;
+        const bool pvNode = beta - alpha > 1;
+        bool quietPruningNode = ply > 0 && !pvNode && depth <= 3 &&
+          std::abs(alpha) < MateThreshold;
+        for (const RoyalWorld& world : worlds)
+            quietPruningNode = quietPruningNode &&
+              !world.position.has_forced_action() &&
+              world.position.supports_ordinary_exchange() &&
+              (world.position.pieces(side, PieceType::Jester) ||
+               !world.position.real_king_threatened(side));
+        const int staticEval = quietPruningNode
+                             ? observer_evaluate(state, ply) : 0;
         for (const std::string& action : ordered) {
             if (ply == 0 && rootDraws.count(action)) {
                 if (0 > best) {
@@ -2339,13 +2395,32 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
                 ++actionNumber;
                 continue;
             }
+#ifndef ULTIMATE_DISABLE_LATE_MOVE_PRUNING
+            if (quietPruningNode && quiet[action] && depth <= 2 &&
+                actionNumber >= 6 + 5 * depth) {
+                ++actionNumber;
+                continue;
+            }
+#endif
+#ifndef ULTIMATE_DISABLE_FORWARD_FUTILITY
+            if (quietPruningNode && quiet[action] &&
+                actionNumber >= 4 + 3 * depth &&
+                staticEval + 140 * depth <= alpha) {
+                ++actionNumber;
+                continue;
+            }
+#endif
             if (pureRoyalMaterial) {
                 const std::vector<RoyalState> children =
                   fast_children(state, worlds, action);
                 observationBuckets += children.size();
                 const bool isQuiet = quiet[action];
+                const bool handsTurn = std::all_of(
+                  children.begin(), children.end(), [&](const RoyalState& child) {
+                      return child.position.side_to_move() != side;
+                  });
                 int reduction = 0;
-                if (depth >= 3 && actionNumber >= 4 && isQuiet) {
+                if (depth >= 3 && actionNumber >= 4 && isQuiet && handsTurn) {
                     reduction = 1;
 #ifndef ULTIMATE_CONSERVATIVE_LMR
                     if (depth >= 6 && actionNumber >= 8)
@@ -2398,8 +2473,11 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
                 }
                 alpha = std::max(alpha, best);
                 ++actionNumber;
-                if (alpha >= beta || stopped())
+                if (alpha >= beta || stopped()) {
+                    if (alpha >= beta && isQuiet)
+                        recordQuietCutoff(action);
                     break;
+                }
                 continue;
             }
             std::map<InformationObservationKey, RoyalBucket> observations;
@@ -2410,7 +2488,7 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
                     continue;
                 std::optional<std::vector<Move>> afterMoves;
                 if (legalDotObservations && after.side_to_move() == observer)
-                    afterMoves = after.legal_moves();
+                    afterMoves = cached_legal(after);
                 InformationObservationKey observation =
                   compact_transition_observation_key(
                     world.position, move, after, beliefs.disclosure(),
@@ -2447,8 +2525,14 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
             };
             const int searchBeta = actionNumber == 0 || beta >= Infinity
                                  ? beta : std::min(beta, alpha + 1);
+            const bool handsTurn = std::all_of(
+              observations.begin(), observations.end(), [&](const auto& entry) {
+                  const RoyalBucket& bucket = entry.second;
+                  return !bucket.worlds.empty() &&
+                         bucket.worlds.begin()->second.side_to_move() != side;
+              });
             int reduction = 0;
-            if (depth >= 3 && actionNumber >= 4 && quiet[action]) {
+            if (depth >= 3 && actionNumber >= 4 && quiet[action] && handsTurn) {
                 reduction = 1;
 #ifndef ULTIMATE_CONSERVATIVE_LMR
                 if (depth >= 6 && actionNumber >= 8)
@@ -2477,8 +2561,11 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
             }
             alpha = std::max(alpha, best);
             ++actionNumber;
-            if (alpha >= beta || stopped())
+            if (alpha >= beta || stopped()) {
+                if (alpha >= beta && quiet[action])
+                    recordQuietCutoff(action);
                 break;
+            }
         }
         if (best == -Infinity)
             return observer_evaluate(state, ply);
@@ -2515,6 +2602,8 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
         result.beliefTtHits = beliefTtHits;
         result.singletonHandoffs = singletonHandoffs;
         result.observationBuckets = observationBuckets;
+        result.materializations = materializations;
+        result.legalCacheHits = legalCacheHits;
         result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - beliefStart);
         if (limits.onBeliefIteration)
@@ -2525,6 +2614,8 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
     result.beliefTtHits = beliefTtHits;
     result.singletonHandoffs = singletonHandoffs;
     result.observationBuckets = observationBuckets;
+    result.materializations = materializations;
+    result.legalCacheHits = legalCacheHits;
     result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - beliefStart);
     return result;
@@ -2539,22 +2630,31 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
     const Color observer = beliefs.disclosure().observer;
     const Position& first = beliefs.concrete_worlds().begin()->second;
     std::vector<int> ghostIds;
+    bool symbolicGhostTurnsSafe = true;
     for (int id = 0; id < first.piece_count(); ++id) {
         const PieceState& piece = first.piece(id);
-        if (!piece.alive || !piece.onBoard)
-            continue;
         if (piece.type == PieceType::Ghost && piece.color != observer)
             ghostIds.push_back(id);
-        else if (piece.type != PieceType::King &&
-                 piece.type != PieceType::Jester)
-            return std::nullopt;
+        // ChangeTurn automatically advances Minions. Their collision result
+        // can depend on a hidden Ghost square, so that material retains the
+        // concrete transition fallback. Every other quiet invisible Ghost
+        // step changes only its own correlated facts plus public turn clocks.
+        if (piece.alive && piece.type == PieceType::Minion)
+            symbolicGhostTurnsSafe = false;
     }
     if (ghostIds.empty())
         return std::nullopt;
 
+    using CorrelatedAssignment = std::vector<PieceState>;
     struct JointGhostState {
         Position geometry;
-        std::vector<std::vector<std::uint8_t>> assignments;
+        std::vector<CorrelatedAssignment> assignments;
+    };
+    struct TupleBucket {
+        Position geometry;
+        bool initialized = false;
+        std::vector<CorrelatedAssignment> assignments;
+        std::set<std::string> actions;
     };
     JointGhostState root;
     root.geometry = first;
@@ -2562,25 +2662,15 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
         (void)upn;
         if (world.piece_count() != first.piece_count())
             return std::nullopt;
-        std::vector<std::uint8_t> assignment;
+        std::vector<PieceState> assignment;
+        assignment.reserve(world.piece_count());
+        for (int id = 0; id < world.piece_count(); ++id)
+            assignment.push_back(world.piece(id));
         for (const int id : ghostIds) {
             const PieceState& ghost = world.piece(id);
-            if (!ghost.alive || !ghost.onBoard || ghost.visible ||
-                ghost.type != PieceType::Ghost || ghost.color == observer)
+            if (ghost.type != PieceType::Ghost || ghost.color == observer)
                 return std::nullopt;
-            assignment.push_back(ghost.square);
         }
-        int enemyKing = Position::NoPiece;
-        for (int id = 0; id < world.piece_count(); ++id)
-            if (world.piece(id).alive && world.piece(id).onBoard &&
-                world.piece(id).color != observer &&
-                world.piece(id).type == PieceType::King) {
-                enemyKing = id;
-                break;
-            }
-        assignment.push_back(enemyKing == Position::NoPiece
-                           ? std::uint8_t{255}
-                           : static_cast<std::uint8_t>(enemyKing));
         root.assignments.push_back(std::move(assignment));
     }
     std::sort(root.assignments.begin(), root.assignments.end());
@@ -2589,70 +2679,95 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
       root.assignments.end());
     if (root.assignments.size() != beliefs.size())
         return std::nullopt;
-    std::set<std::uint8_t> royalAssignments;
-    for (const auto& assignment : root.assignments)
-        royalAssignments.insert(assignment.back());
-    // The mature enumerated solver is faster for a lone Ghost with no royal
-    // correlation at deeper depths. The compact joint domain targets the
-    // combinatorial cases it improves: multiple Ghosts or Ghost/royal state.
-    if (ghostIds.size() == 1 && royalAssignments.size() == 1)
-        return std::nullopt;
+    std::uint64_t materializations = 0;
+    std::uint64_t symbolicTransitions = 0;
+    std::uint64_t legalCacheHits = 0;
 
-    // This exact compact domain is deliberately restricted to the royal plus
-    // hidden-Ghost stepper material for now. Correlations are retained as
-    // joint tuples, so two indistinguishable Ghosts never occupy one square
-    // and distinguishable state never gets multiplied into impossible worlds.
-    const auto materialize = [&](const JointGhostState& state,
-                                 const std::vector<std::uint8_t>& assignment) {
-        Position world = state.geometry;
-        for (std::size_t index = 0; index < ghostIds.size(); ++index)
-            world.pieces_[ghostIds[index]].square = assignment[index];
-        world.rebuild_bitboards();
-        const int assignedKing = assignment.back() == 255
-                               ? Position::NoPiece : assignment.back();
-        if (assignedKing != Position::NoPiece) {
-            int canonicalKing = Position::NoPiece;
-            for (int id = 0; id < world.piece_count(); ++id)
-                if (world.piece(id).alive && world.piece(id).onBoard &&
-                    world.piece(id).color != observer &&
-                    world.piece(id).type == PieceType::King) {
-                    canonicalKing = id;
-                    break;
-                }
-            if (canonicalKing != assignedKing)
-                world.swap_royal_roles(canonicalKing, assignedKing);
+    const auto assignment_hash = [](const CorrelatedAssignment& assignment) {
+        std::uint64_t tuple = 0;
+        for (const PieceState& piece : assignment) {
+            std::uint64_t fact = static_cast<std::uint64_t>(piece.type);
+            fact = fact * 3 + static_cast<std::uint64_t>(piece.color);
+            fact = fact * 97 + piece.square;
+            fact = fact * 2 + piece.onBoard;
+            fact = fact * 257 + piece.action;
+            fact = fact * 257 + piece.cooldown;
+            fact = fact * 257 + piece.freezeCount;
+            fact = fact * 257 + piece.power;
+            fact = fact * 193 + static_cast<std::uint8_t>(piece.link + 1);
+            fact = fact * 193 + static_cast<std::uint8_t>(piece.host + 1);
+            fact = mix_key(fact ^ piece.attachmentOrder);
+            fact = fact * 2 + piece.alive;
+            fact = fact * 2 + piece.moved;
+            fact = fact * 2 + piece.visible;
+            tuple = mix_key(tuple ^ fact);
         }
+        return tuple;
+    };
+
+    // Each tuple stores every varying piece fact, not merely an independent
+    // square per Ghost. This makes the domain exact for arbitrary material:
+    // blind captures, visibility, attachments, cooldowns, promotions, royal
+    // identity, and piece death remain correlated within one assignment.
+    const auto materialize = [&](const JointGhostState& state,
+                                 const CorrelatedAssignment& assignment) {
+        ++materializations;
+        Position world = state.geometry;
+        for (int id = 0; id < world.piece_count(); ++id)
+            world.pieces_[id] = assignment[static_cast<std::size_t>(id)];
+        world.rebuild_bitboards();
         return world;
     };
-    const auto compact = [&](std::vector<Position> worlds) {
-        JointGhostState child;
-        if (worlds.empty())
-            return child;
-        child.geometry = worlds.front();
-        for (Position& world : worlds) {
-            std::vector<std::uint8_t> assignment;
-            for (const int id : ghostIds)
-                assignment.push_back(world.piece(id).square);
-            int enemyKing = Position::NoPiece;
-            for (int id = 0; id < world.piece_count(); ++id)
-                if (world.piece(id).alive && world.piece(id).onBoard &&
-                    world.piece(id).color != observer &&
-                    world.piece(id).type == PieceType::King) {
-                    enemyKing = id;
-                    break;
-                }
-            assignment.push_back(enemyKing == Position::NoPiece
-                               ? std::uint8_t{255}
-                               : static_cast<std::uint8_t>(enemyKing));
-            child.assignments.push_back(std::move(assignment));
+    const auto assignment_from = [](const Position& world) {
+        CorrelatedAssignment assignment;
+        assignment.reserve(world.piece_count());
+        for (int id = 0; id < world.piece_count(); ++id)
+            assignment.push_back(world.piece(id));
+        return assignment;
+    };
+    const auto add_position = [&](TupleBucket& bucket, Position world,
+                                  std::string_view action) {
+        if (!bucket.initialized) {
+            bucket.geometry = world;
+            bucket.initialized = true;
         }
+#ifndef NDEBUG
+        else {
+            Position globals = world;
+            for (int id = 0; id < globals.piece_count(); ++id)
+                globals.pieces_[id] = bucket.geometry.pieces_[id];
+            globals.rebuild_bitboards();
+            assert(globals.upn() == bucket.geometry.upn());
+        }
+#endif
+        bucket.assignments.push_back(assignment_from(world));
+        if (!action.empty())
+            bucket.actions.emplace(action);
+    };
+    const auto add_assignment = [&](TupleBucket& bucket,
+                                    const Position& geometry,
+                                    CorrelatedAssignment assignment,
+                                    std::string_view action) {
+        if (!bucket.initialized) {
+            bucket.geometry = geometry;
+            bucket.initialized = true;
+        }
+        bucket.assignments.push_back(std::move(assignment));
+        if (!action.empty())
+            bucket.actions.emplace(action);
+    };
+    const auto child_from = [](TupleBucket bucket) {
+        JointGhostState child;
+        if (!bucket.initialized)
+            return child;
+        child.geometry = std::move(bucket.geometry);
+        child.assignments = std::move(bucket.assignments);
         std::sort(child.assignments.begin(), child.assignments.end());
         child.assignments.erase(
           std::unique(child.assignments.begin(), child.assignments.end()),
           child.assignments.end());
         return child;
     };
-
     const auto start = std::chrono::steady_clock::now();
     limits_ = limits;
     start_ = start;
@@ -2672,11 +2787,22 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
       limits.rootDrawMoveStrings.begin(), limits.rootDrawMoveStrings.end());
     using GhostPv = std::vector<std::string>;
     BeliefSearchResult result;
+    result.searchPath = "correlated-tuples";
     result.beliefs = result.deepBeliefs = beliefs.size();
     result.peakBeliefs = root.assignments.size();
     std::uint64_t beliefNodes = 0;
     std::uint64_t ttHits = 0;
     std::uint64_t buckets = 0;
+    std::uint64_t singletonHandoffs = 0;
+    std::unordered_map<std::uint64_t, std::vector<Move>> legalFrontierCache;
+    legalFrontierCache.reserve(std::min<std::size_t>(
+      262'144, beliefs.size() * 64));
+    std::unordered_map<std::uint64_t, std::vector<std::uint16_t>>
+      decisionMarkerCache;
+    decisionMarkerCache.reserve(std::min<std::size_t>(
+      262'144, beliefs.size() * 32));
+    GhostPv previousIterationPv;
+    int iterationDepth = 0;
 
     const auto robust_eval = [&](const JointGhostState& state, int ply) {
         int robust = Infinity;
@@ -2684,13 +2810,22 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
             Position world = materialize(state, assignment);
             const Color mover = world.side_to_move();
             int score = 0;
-            if (!world.has_real_king(mover) || !world.has_real_king(~mover))
-                score = world.has_real_king(mover) ? Mate - ply
-                      : world.has_real_king(~mover) ? -Mate + ply : 0;
-            else if (!world.is_checkmate_possible())
-                score = 0;
-            else
-                score = world.handcrafted_evaluate();
+            if (const auto winner = world.forced_timeout_winner())
+                score = *winner == mover ? Mate - ply : -Mate + ply;
+            else {
+                const bool ownKing = world.has_real_king(mover);
+                const bool enemyKing = world.has_real_king(~mover);
+                if (!ownKing || !enemyKing)
+                    score = ownKing == enemyKing ? 0
+                          : ownKing ? Mate - ply : -Mate + ply;
+                else if (!world.is_checkmate_possible())
+                    score = 0;
+                else if (!world.has_legal_move())
+                    score = world.real_king_threatened(mover)
+                          ? -Mate + ply : 0;
+                else
+                    score = world.handcrafted_evaluate();
+            }
             if (mover != observer)
                 score = -score;
             robust = std::min(robust, score);
@@ -2710,12 +2845,24 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
         const Color side = state.geometry.side_to_move();
         const bool maximizing = side == observer;
 
+        if (state.assignments.size() == 1) {
+            Position concrete = materialize(state, state.assignments.front());
+            if (belief_stays_concrete(concrete, observer)) {
+                ++singletonHandoffs;
+                std::vector<Move> concretePv;
+                const int score = side == observer
+                  ? negamax(concrete, depth, alpha, beta, ply, concretePv)
+                  : -negamax(concrete, depth, -beta, -alpha, ply, concretePv);
+                for (const Move& move : concretePv)
+                    pv.push_back(concrete.move_to_string(move));
+                return score;
+            }
+        }
+
         std::uint64_t domainKey = state.geometry.key();
         std::uint64_t verification = mix_key(domainKey);
         for (const auto& assignment : state.assignments) {
-            std::uint64_t tuple = 0;
-            for (const std::uint8_t square : assignment)
-                tuple = mix_key(tuple ^ (static_cast<std::uint64_t>(square) + 1));
+            const std::uint64_t tuple = assignment_hash(assignment);
             domainKey ^= mix_key(tuple);
             verification += mix_key(tuple ^ 0xa4d927f06b31ce85ULL);
         }
@@ -2731,10 +2878,15 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
         }
         const int originalAlpha = alpha;
         const int originalBeta = beta;
+        const std::uint64_t ttActionHash = entry ? entry->actionHash : 0;
+        const std::uint64_t pvActionHash = iterationDepth >= 2 &&
+          static_cast<std::size_t>(ply) < previousIterationPv.size()
+          ? string_key(previousIterationPv[static_cast<std::size_t>(ply)]) : 0;
 
         struct Prepared {
             Position world;
             std::map<std::string, Move> moves;
+            const std::vector<PieceState>* assignment = nullptr;
         };
         std::vector<Prepared> prepared;
         prepared.reserve(state.assignments.size());
@@ -2742,9 +2894,17 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
         bool firstWorld = true;
         for (const auto& assignment : state.assignments) {
             Prepared item;
+            item.assignment = &assignment;
             item.world = materialize(state, assignment);
             std::set<std::string> ambiguous;
-            for (const Move& move : item.world.legal_moves()) {
+            const std::uint64_t worldKey = item.world.key();
+            auto cached = legalFrontierCache.find(worldKey);
+            if (cached == legalFrontierCache.end())
+                cached = legalFrontierCache.emplace(
+                  worldKey, item.world.legal_moves()).first;
+            else
+                ++legalCacheHits;
+            for (const Move& move : cached->second) {
                 const std::string notation = item.world.move_to_string(move);
                 if (ambiguous.count(notation))
                     continue;
@@ -2776,10 +2936,98 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
         }
 
         if (!maximizing) {
-            std::map<InformationObservationKey, std::vector<Position>> observations;
-            std::map<InformationObservationKey, std::set<std::string>> actions;
+            std::map<InformationObservationKey, TupleBucket> observations;
+            std::optional<Position> symbolicGeometry;
+            std::optional<InformationObservationKey> symbolicBaseObservation;
             for (const Prepared& item : prepared)
                 for (const auto& [notation, move] : item.moves) {
+                    if (ply == 0 && !rootRestriction.empty() &&
+                        !rootRestriction.count(notation))
+                        continue;
+                    const int actor = item.world.piece_on(move.from);
+                    bool symbolicQuietGhost = symbolicGhostTurnsSafe &&
+                      !state.geometry.has_forced_action() &&
+                      actor != Position::NoPiece &&
+                      item.world.piece(actor).type == PieceType::Ghost &&
+                      item.world.piece(actor).color == side &&
+                      !item.world.piece(actor).visible &&
+                      item.world.piece_on(move.to) == Position::NoPiece &&
+                      move.kind == MoveKind::Normal;
+                    if (symbolicQuietGhost) {
+                        const int toFile = move.to % Position::BoardFiles;
+                        const int toRank = move.to / Position::BoardFiles;
+                        for (const PieceState& piece : *item.assignment) {
+                            if (!piece.alive || !piece.onBoard ||
+                                piece.color == side ||
+                                (piece.type != PieceType::King &&
+                                 piece.type != PieceType::Jester))
+                                continue;
+                            const int file = piece.square % Position::BoardFiles;
+                            const int rank = piece.square / Position::BoardFiles;
+                            if (std::max(std::abs(file - toFile),
+                                         std::abs(rank - toRank)) <= 1) {
+                                symbolicQuietGhost = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (symbolicQuietGhost) {
+                        std::vector<PieceState> next = *item.assignment;
+                        next[static_cast<std::size_t>(actor)].square = move.to;
+                        next[static_cast<std::size_t>(actor)].moved = true;
+                        next[static_cast<std::size_t>(actor)].visible = false;
+                        for (PieceState& piece : next) {
+                            if (piece.alive && piece.type == PieceType::Angel &&
+                                !piece.onBoard && piece.host == actor)
+                                piece.square = move.to;
+                            if (piece.alive && piece.cooldown)
+                                --piece.cooldown;
+                        }
+                        if (!symbolicGeometry) {
+                            symbolicGeometry = item.world;
+                            if (!symbolicGeometry->apply_move_unchecked(move))
+                                throw std::runtime_error(
+                                  "legal symbolic Ghost edge failed prototype application");
+                            symbolicBaseObservation =
+                              compact_transition_observation_key(
+                                item.world, move, *symbolicGeometry,
+                                beliefs.disclosure(), false, nullptr);
+                        }
+                        InformationObservationKey observation =
+                          *symbolicBaseObservation;
+                        if (legalDotObservations &&
+                            symbolicGeometry->side_to_move() == observer) {
+                            const std::uint64_t markerKey = assignment_hash(next) ^
+                              mix_key(symbolicGeometry->key());
+                            auto markers = decisionMarkerCache.find(markerKey);
+                            if (markers == decisionMarkerCache.end()) {
+                                Position after = *symbolicGeometry;
+                                ++materializations;
+                                for (int id = 0; id < after.piece_count(); ++id)
+                                    after.pieces_[id] =
+                                      next[static_cast<std::size_t>(id)];
+                                after.rebuild_bitboards();
+                                const std::uint64_t afterKey = after.key();
+                                auto cached = legalFrontierCache.find(afterKey);
+                                if (cached == legalFrontierCache.end())
+                                    cached = legalFrontierCache.emplace(
+                                      afterKey, after.legal_moves()).first;
+                                else
+                                    ++legalCacheHits;
+                                markers = decisionMarkerCache.emplace(
+                                  markerKey, compact_decision_markers(
+                                    after, beliefs.disclosure(),
+                                    &cached->second)).first;
+                            } else
+                                ++legalCacheHits;
+                            observation.decisionMarkers = markers->second;
+                        }
+                        add_assignment(observations[observation],
+                                       *symbolicGeometry, std::move(next),
+                                       notation);
+                        ++symbolicTransitions;
+                        continue;
+                    }
                     Position after = item.world;
                     if (!after.apply_move_unchecked(move))
                         continue;
@@ -2789,23 +3037,56 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
                     const auto observation = compact_transition_observation_key(
                       item.world, move, after, beliefs.disclosure(),
                       legalDotObservations, afterMoves ? &*afterMoves : nullptr);
-                    observations[observation].push_back(std::move(after));
-                    actions[observation].insert(notation);
-                }
+                    add_position(observations[observation], std::move(after),
+                                 notation);
+            }
             buckets += observations.size();
+            std::vector<decltype(observations)::iterator> ordered;
+            ordered.reserve(observations.size());
+            for (auto it = observations.begin(); it != observations.end(); ++it)
+                ordered.push_back(it);
+            std::stable_sort(ordered.begin(), ordered.end(), [&](auto lhs, auto rhs) {
+                const auto priority = [&](const InformationObservationKey& observation) {
+                    int value = 0;
+                    for (const std::string& action : observations[observation].actions) {
+                        const std::uint64_t hash = string_key(action);
+                        value = std::max(value, hash == ttActionHash ? 2
+                                              : hash == pvActionHash ? 1 : 0);
+                    }
+                    return value;
+                };
+                return priority(lhs->first) > priority(rhs->first);
+            });
             int best = Infinity;
             std::string bestAction;
             GhostPv bestPv;
-            for (auto& [observation, worlds] : observations) {
-                JointGhostState child = compact(std::move(worlds));
+            int observationNumber = 0;
+            for (const auto iterator : ordered) {
+                const std::string representativeAction =
+                  iterator->second.actions.empty()
+                  ? std::string() : *iterator->second.actions.begin();
+                JointGhostState child = child_from(std::move(iterator->second));
+                if (child.assignments.empty())
+                    throw std::runtime_error(
+                      "correlated tuple bucket has incompatible public globals");
                 GhostPv childPv;
                 const bool changedSide = child.geometry.side_to_move() != side;
-                const int score = solve(child, depth - (changedSide ? 1 : 0),
-                                        alpha, beta, ply + 1, childPv);
+                const int childDepth = depth - (changedSide ? 1 : 0);
+                int score = observationNumber++ == 0 || beta >= Infinity
+                  ? solve(child, childDepth, alpha, beta, ply + 1, childPv)
+                  : solve(child, childDepth, beta - 1, beta, ply + 1, childPv);
+                if (observationNumber > 1 && score > alpha && score < beta &&
+                    !stopped()) {
+                    childPv.clear();
+                    score = solve(child, childDepth, alpha, beta,
+                                  ply + 1, childPv);
+                }
+                if (ply == 0 && !representativeAction.empty() &&
+                    rootDraws.count(representativeAction))
+                    score = std::min(score, 0);
                 if (score < best) {
                     best = score;
-                    bestAction = actions[observation].empty()
-                      ? std::string() : *actions[observation].begin();
+                    bestAction = representativeAction;
                     bestPv.clear();
                     if (!bestAction.empty())
                         bestPv.push_back(bestAction);
@@ -2844,19 +3125,94 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
             result.commonMoves = common.size();
             result.candidates = common.size();
         }
+        std::vector<std::string> orderedActions(common.begin(), common.end());
+        std::map<std::string, int> actionPriority;
+        std::map<std::string, bool> actionQuiet;
+        for (const std::string& action : orderedActions) {
+            const std::uint64_t hash = string_key(action);
+            int priority = hash == ttActionHash ? 2'000'000
+                         : hash == pvActionHash ? 1'500'000 : -Infinity;
+            bool quiet = true;
+            for (const Prepared& item : prepared) {
+                const auto found = item.moves.find(action);
+                if (found == item.moves.end()) {
+                    quiet = false;
+                    continue;
+                }
+                priority = std::max(priority, move_score(
+                  item.world, found->second, nullptr, ply));
+                quiet = quiet && found->second.kind == MoveKind::Normal &&
+                        !item.world.is_capture(found->second);
+            }
+            actionPriority.emplace(action, priority);
+            actionQuiet.emplace(action, quiet);
+        }
+        std::stable_sort(orderedActions.begin(), orderedActions.end(),
+          [&](const std::string& lhs, const std::string& rhs) {
+              return actionPriority.at(lhs) > actionPriority.at(rhs);
+          });
+        const auto recordQuietCutoff = [&](const std::string& action) {
+            if (prepared.empty())
+                return;
+            const Move& representative = prepared.front().moves.at(action);
+            if (ply < static_cast<int>(killers_.size()) &&
+                !(representative == killers_[ply][0])) {
+                killers_[ply][1] = killers_[ply][0];
+                killers_[ply][0] = representative;
+            }
+            std::set<PieceType> attackers;
+            for (const Prepared& item : prepared) {
+                const Move& move = item.moves.at(action);
+                const int attacker = item.world.piece_on(move.from);
+                if (attacker != Position::NoPiece)
+                    attackers.insert(item.world.piece(attacker).type);
+            }
+            for (const PieceType type : attackers) {
+                int& value = history_[static_cast<std::size_t>(type)]
+                                     [representative.to];
+                value = std::min(50'000, value + depth * depth);
+            }
+        };
         int best = -Infinity;
         std::string bestAction;
         GhostPv bestPv;
-        for (const std::string& action : common) {
+        int actionNumber = 0;
+        const bool pvNode = beta - alpha > 1;
+        bool quietPruningNode = ply > 0 && !pvNode && depth <= 3 &&
+          std::abs(alpha) < MateThreshold;
+        for (const Prepared& item : prepared)
+            quietPruningNode = quietPruningNode &&
+              !item.world.has_forced_action() &&
+              item.world.supports_ordinary_exchange() &&
+              (item.world.pieces(side, PieceType::Jester) ||
+               !item.world.real_king_threatened(side));
+        const int staticEval = quietPruningNode ? robust_eval(state, ply) : 0;
+        for (const std::string& action : orderedActions) {
+            const bool quiet = actionQuiet.at(action);
             if (ply == 0 && rootDraws.count(action)) {
                 best = std::max(best, 0);
                 if (bestAction.empty()) {
                     bestAction = action;
                     bestPv = {action};
                 }
+                ++actionNumber;
                 continue;
             }
-            std::map<InformationObservationKey, std::vector<Position>> observations;
+#ifndef ULTIMATE_DISABLE_LATE_MOVE_PRUNING
+            if (quietPruningNode && quiet && depth <= 2 &&
+                actionNumber >= 6 + 5 * depth) {
+                ++actionNumber;
+                continue;
+            }
+#endif
+#ifndef ULTIMATE_DISABLE_FORWARD_FUTILITY
+            if (quietPruningNode && quiet && actionNumber >= 4 + 3 * depth &&
+                staticEval + 140 * depth <= alpha) {
+                ++actionNumber;
+                continue;
+            }
+#endif
+            std::map<InformationObservationKey, TupleBucket> observations;
             for (const Prepared& item : prepared) {
                 const Move& move = item.moves.at(action);
                 Position after = item.world;
@@ -2868,25 +3224,62 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
                 const auto observation = compact_transition_observation_key(
                   item.world, move, after, beliefs.disclosure(),
                   legalDotObservations, afterMoves ? &*afterMoves : nullptr);
-                observations[observation].push_back(std::move(after));
+                add_position(observations[observation], std::move(after), action);
             }
             buckets += observations.size();
-            int worst = Infinity;
-            GhostPv actionPv;
-            for (auto& [observation, worlds] : observations) {
-                (void)observation;
-                JointGhostState child = compact(std::move(worlds));
-                GhostPv childPv;
-                const bool changedSide = child.geometry.side_to_move() != side;
-                const int score = solve(child, depth - (changedSide ? 1 : 0),
-                                        alpha, std::min(beta, worst),
-                                        ply + 1, childPv);
-                if (score < worst) {
-                    worst = score;
-                    actionPv = std::move(childPv);
+            const auto evaluateAction = [&](int searchDepth, int windowBeta,
+                                            GhostPv& actionPv) {
+                int worst = Infinity;
+                int natureBeta = windowBeta;
+                for (const auto& [observation, bucket] : observations) {
+                    (void)observation;
+                    JointGhostState child = child_from(bucket);
+                    if (child.assignments.empty())
+                        throw std::runtime_error(
+                          "correlated tuple bucket has incompatible public globals");
+                    GhostPv childPv;
+                    const bool changedSide = child.geometry.side_to_move() != side;
+                    const int score = solve(
+                      child, searchDepth - (changedSide ? 1 : 0), alpha,
+                      natureBeta, ply + 1, childPv);
+                    if (score < worst) {
+                        worst = score;
+                        actionPv = std::move(childPv);
+                    }
+                    natureBeta = std::min(natureBeta, worst);
+                    if (worst <= alpha || stopped())
+                        break;
                 }
-                if (worst <= alpha || stopped())
-                    break;
+                return worst;
+            };
+            bool handsTurn = true;
+            for (const auto& [observation, bucket] : observations) {
+                (void)observation;
+                handsTurn = handsTurn && bucket.initialized &&
+                            bucket.geometry.side_to_move() != side;
+            }
+            int reduction = 0;
+            const int searchBeta = actionNumber == 0 || beta >= Infinity
+                                 ? beta : std::min(beta, alpha + 1);
+            if (depth >= 3 && actionNumber >= 4 && quiet && handsTurn) {
+                reduction = 1;
+#ifndef ULTIMATE_CONSERVATIVE_LMR
+                if (depth >= 6 && actionNumber >= 8)
+                    ++reduction;
+                if (depth >= 9 && actionNumber >= 16)
+                    ++reduction;
+#endif
+                reduction = std::min(reduction, depth - 2);
+            }
+            GhostPv actionPv;
+            int worst = evaluateAction(depth - reduction, searchBeta, actionPv);
+            if (reduction && worst > alpha && !stopped()) {
+                actionPv.clear();
+                worst = evaluateAction(depth, searchBeta, actionPv);
+            }
+            if (searchBeta < beta && worst > alpha && worst < beta && !stopped()) {
+                actionPv.clear();
+                worst = evaluateAction(depth, beta, actionPv);
             }
             if (worst > best) {
                 best = worst;
@@ -2895,8 +3288,12 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
                 bestPv.insert(bestPv.end(), actionPv.begin(), actionPv.end());
             }
             alpha = std::max(alpha, best);
-            if (alpha >= beta || stopped())
+            ++actionNumber;
+            if (alpha >= beta || stopped()) {
+                if (alpha >= beta && quiet)
+                    recordQuietCutoff(action);
                 break;
+            }
         }
         if (best == -Infinity)
             return robust_eval(state, ply);
@@ -2918,6 +3315,7 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
     const int maxDepth = std::clamp(limits.depth, 1, MaxPly - 2);
     int previousScore = 0;
     for (int depth = 1; depth <= maxDepth; ++depth) {
+        iterationDepth = depth;
         GhostPv pv;
         const bool aspirate = depth >= 3 && depth < 8;
         int alpha = aspirate ? std::max(-Infinity, previousScore - 120) : -Infinity;
@@ -2930,6 +3328,7 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
         if (stop_)
             break;
         previousScore = score;
+        previousIterationPv = pv;
         result.score = result.worstScore = result.meanScore = score;
         result.completedDepth = depth;
         result.historyPreservingPlies = depth;
@@ -2940,7 +3339,11 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
         result.nodes = nodes_;
         result.beliefNodes = beliefNodes;
         result.beliefTtHits = ttHits;
+        result.singletonHandoffs = singletonHandoffs;
         result.observationBuckets = buckets;
+        result.materializations = materializations;
+        result.symbolicTransitions = symbolicTransitions;
+        result.legalCacheHits = legalCacheHits;
         result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
           std::chrono::steady_clock::now() - start);
         if (limits.onBeliefIteration)
@@ -2949,7 +3352,11 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
     result.nodes = nodes_;
     result.beliefNodes = beliefNodes;
     result.beliefTtHits = ttHits;
+    result.singletonHandoffs = singletonHandoffs;
     result.observationBuckets = buckets;
+    result.materializations = materializations;
+    result.symbolicTransitions = symbolicTransitions;
+    result.legalCacheHits = legalCacheHits;
     result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::steady_clock::now() - start);
     return result;
@@ -2983,6 +3390,7 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
             const int perspective =
               position.side_to_move() == beliefs.disclosure().observer ? 1 : -1;
             BeliefSearchResult iteration;
+            iteration.searchPath = "concrete-singleton";
             iteration.beliefs = iteration.deepBeliefs = 1;
             iteration.bestMove = exact.bestMove
               ? std::optional<std::string>(
@@ -3385,6 +3793,28 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
           [&](const std::string& lhs, const std::string& rhs) {
               return actionPriorities.at(lhs) > actionPriorities.at(rhs);
           });
+        const auto recordQuietCutoff = [&](const std::string& action) {
+            if (prepared.empty())
+                return;
+            const Move& representative = prepared.front().moves.at(action);
+            if (ply < static_cast<int>(killers_.size()) &&
+                !(representative == killers_[ply][0])) {
+                killers_[ply][1] = killers_[ply][0];
+                killers_[ply][0] = representative;
+            }
+            std::set<PieceType> attackers;
+            for (const PreparedBeliefWorld& entry : prepared) {
+                const Move& move = entry.moves.at(action);
+                const int attacker = entry.position->piece_on(move.from);
+                if (attacker != Position::NoPiece)
+                    attackers.insert(entry.position->piece(attacker).type);
+            }
+            for (const PieceType type : attackers) {
+                int& value = history_[static_cast<std::size_t>(type)]
+                                     [representative.to];
+                value = std::min(50'000, value + depth * depth);
+            }
+        };
         int actionNumber = 0;
         const bool pvNode = beta - alpha > 1;
         bool quietPruningNode = ply > 0 && !pvNode && depth <= 3 &&
@@ -3528,8 +3958,11 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
             }
             alpha = std::max(alpha, best);
             ++actionNumber;
-            if (alpha >= beta || stopped())
+            if (alpha >= beta || stopped()) {
+                if (alpha >= beta && quiet)
+                    recordQuietCutoff(action);
                 break;
+            }
         }
         if (best == -Infinity)
             return observer_evaluate(state, ply);
