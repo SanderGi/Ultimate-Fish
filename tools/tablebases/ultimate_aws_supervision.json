@@ -12477,8 +12477,8 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-resume-prince-same-local-v1.service",
-      "expected_allowed_cpus": "31",
+      "unit": "ultimatefish-resume-prince-same-local-v2.service",
+      "expected_allowed_cpus": "27",
       "resource_requirements": {
         "cpu_threads": 1,
         "memory_peak_bytes": 73014444032,
@@ -12489,12 +12489,14 @@
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/current-wave0-025-prince-same-40g-v2/scratch/*",
+        "/mnt/ultimatefish/resume-prince-same-local-v2/scratch/*",
+        "/mnt/ultimatefish/resume-prince-same-local-v2/logs/*",
         "/mnt/ultimatefish/resume-prince-same-local-v1/scratch/*",
         "/mnt/ultimatefish/resume-prince-same-local-v1/logs/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/resume-prince-same-local-v1/outputs/kberserkerprincek.uftb",
-        "/mnt/ultimatefish/resume-prince-same-local-v1/certificates/wave-certificate.json"
+        "/mnt/ultimatefish/resume-prince-same-local-v2/outputs/kberserkerprincek.uftb",
+        "/mnt/ultimatefish/resume-prince-same-local-v2/certificates/wave-certificate.json"
       ],
       "source_bindings": [
         {
