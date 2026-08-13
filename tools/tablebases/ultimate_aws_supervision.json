@@ -12368,6 +12368,7 @@
         "kbishopberserkerk.uftb"
       ],
       "ledger_certifies": true,
+      "s3_only_certified": true,
       "instance_id": "i-03c81f90d2c59a2e7",
       "unit": "ultimatefish-resume-bishop-berserker-same-local-v1.service",
       "expected_allowed_cpus": "27",
@@ -12388,17 +12389,30 @@
         "/mnt/ultimatefish-penguin/resume-bishop-berserker-same-local-v1/outputs/kbishopberserkerk.uftb",
         "/mnt/ultimatefish-penguin/resume-bishop-berserker-same-local-v1/certificates/wave-certificate.json"
       ],
-      "source_bindings": [
+      "source_bindings": [],
+      "s3_certificates": [
         {
-          "path": "/mnt/ultimatefish/resume-source-4fcfb03a/repo/tools/tablebases/resume_ultimate_concrete_frontier_aws.py",
-          "sha256": "43423cc7b9925046224e93cfc188d3fc6d5128d956f771ae99c4b8d30fb7fc1a"
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/37a11cbd5b420adcfac78138b7e605446a6899f0c5276476c6de85158c24a695/kbishopberserkerk-37a11cbd5b420adcfac78138b7e605446a6899f0c5276476c6de85158c24a695.tar.zst",
+          "version_id": "UJfZoGL.vqyp9isG_PBLEIsn5xKMmqiK",
+          "sha256": "37a11cbd5b420adcfac78138b7e605446a6899f0c5276476c6de85158c24a695",
+          "size": 8164964
         },
         {
-          "path": "/mnt/ultimatefish-penguin/current-wave0-028-bishop-berserker-retry-48g-v5/resume-local-manifest.json",
-          "sha256": "221555c2248b316b5c97c388526c75072d87c376b8f99bff325681e916aba836"
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/696182701ea6da505f4f20b6b9ce589e899b0d4420230d9a9ffee0debf7e9275/wave-certificate.json",
+          "version_id": "tIb3g9BishAIhCG3GX9pZoa.ino2WbO9",
+          "sha256": "696182701ea6da505f4f20b6b9ce589e899b0d4420230d9a9ffee0debf7e9275",
+          "size": 2561
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/concrete/penguin-causal-1083b6f8/reachability/sha256/126829b92984ccf944ac627c9f7fa0f821da33615364f95600fcc8c524be8244/kbishopberserkerk.reachability-v2.txt",
+          "version_id": "MwusSSQi9fP8_0DdSCb7fC25CgjI8Mf_",
+          "sha256": "126829b92984ccf944ac627c9f7fa0f821da33615364f95600fcc8c524be8244",
+          "size": 937
         }
-      ],
-      "s3_certificates": []
+      ]
     },
     {
       "id": "current-concrete-opposed-berserker-ninja",
@@ -12697,6 +12711,7 @@
         "kberserkerkbomb.uftb"
       ],
       "ledger_certifies": true,
+      "s3_only_certified": true,
       "instance_id": "i-0986ed3d272721f02",
       "unit": "ultimatefish-resume-bomb-opposed-local-v1.service",
       "expected_allowed_cpus": "12",
@@ -12717,16 +12732,7 @@
         "/mnt/ultimatefish/resume-bomb-opposed-local-v1/outputs/kberserkerkbomb.uftb",
         "/mnt/ultimatefish/resume-bomb-opposed-local-v1/certificates/wave-certificate.json"
       ],
-      "source_bindings": [
-        {
-          "path": "/mnt/ultimatefish/current-wave0-008-fresh-v2/resume-manifest.json",
-          "sha256": "91451a0e574dbf4670424493bedb6c66cd1a33dc49e1d9a7903f150e53354523"
-        },
-        {
-          "path": "/mnt/ultimatefish/resume-source-4fcfb03a/repo/tools/tablebases/resume_ultimate_concrete_frontier_aws.py",
-          "sha256": "43423cc7b9925046224e93cfc188d3fc6d5128d956f771ae99c4b8d30fb7fc1a"
-        }
-      ],
+      "source_bindings": [],
       "s3_certificates": [
         {
           "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",

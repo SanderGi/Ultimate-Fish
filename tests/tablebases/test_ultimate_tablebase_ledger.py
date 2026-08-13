@@ -155,7 +155,7 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
                 row.key,
             )
             checked += 1
-        self.assertEqual(389, checked)
+        self.assertEqual(390, checked)
 
     def test_exact_certified_import_is_validated_and_persistent(self):
         rows = ledger.entries(ledger.README.read_text())
