@@ -1505,7 +1505,7 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-ordinary-kghostkpenguin-headerfix-e3a88e50.service",
+      "unit": "ultimatefish-ordinary-kghostkpenguin-substate-4838d837.service",
       "expected_allowed_cpus": "19",
       "dependencies": [],
       "checkpoint_paths": [
@@ -1513,23 +1513,23 @@
         "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/solve/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/results/kghostkpenguin-headerfix-e3a88e50.ufiw",
-        "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/results/kghostkpenguin-headerfix-e3a88e50.ufgd"
+        "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/results/kghostkpenguin-substate-4838d837.ufiw",
+        "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/results/kghostkpenguin-substate-4838d837.ufgd"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/generic-ordinary-headerfix-e3a88e50-penguin/repo/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp",
-          "sha256": "e6854a27b6fd154f90e50c878e8c4247127ac5d8694ea5fba09ef56865f09105"
+          "path": "/mnt/ultimatefish/penguin-substate-4838d837/repo/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp",
+          "sha256": "f5d46ad746d56c9b9d0e966a7a55d23469f90c6b52e2059e54d12aac6d85c16f"
         },
         {
-          "path": "/mnt/ultimatefish/generic-ordinary-headerfix-e3a88e50-penguin/ultimate_ghost_ordinary_penguin",
-          "sha256": "8807fa57f75278eaca571a14db3b8ebfe465a373199e582249eeaf666183d6e5"
+          "path": "/mnt/ultimatefish/penguin-substate-4838d837/ultimate_ghost_ordinary_penguin",
+          "sha256": "1ece713a4237c4598a455a2b4c4003eaaa027e4e344a6fcfb0a8b9250ba2989b"
         }
       ],
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/logs/solve-headerfix-e3a88e50.log",
+          "path": "/mnt/ultimatefish-penguin/ordinary-kghostkpenguin-49afb80a/work/logs/solve-substate-4838d837.log",
           "max_bytes": 4096
         }
       ],
@@ -1542,7 +1542,7 @@
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-ordinary-kghostpenguink-headerfix-e3a88e50.service",
+      "unit": "ultimatefish-ordinary-kghostpenguink-substate-4838d837.service",
       "expected_allowed_cpus": "14",
       "dependencies": [],
       "checkpoint_paths": [
@@ -1550,23 +1550,23 @@
         "/mnt/ultimatefish-penguin/ordinary-kghostpenguink-a48c7377/work/solve/*"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-penguin/ordinary-kghostpenguink-a48c7377/work/results/kghostpenguink-headerfix-e3a88e50.ufiw",
-        "/mnt/ultimatefish-penguin/ordinary-kghostpenguink-a48c7377/work/results/kghostpenguink-headerfix-e3a88e50.ufgd"
+        "/mnt/ultimatefish-penguin/ordinary-kghostpenguink-a48c7377/work/results/kghostpenguink-substate-4838d837.ufiw",
+        "/mnt/ultimatefish-penguin/ordinary-kghostpenguink-a48c7377/work/results/kghostpenguink-substate-4838d837.ufgd"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/generic-ordinary-headerfix-e3a88e50-penguin/repo/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp",
-          "sha256": "e6854a27b6fd154f90e50c878e8c4247127ac5d8694ea5fba09ef56865f09105"
+          "path": "/mnt/ultimatefish/penguin-substate-4838d837/repo/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp",
+          "sha256": "f5d46ad746d56c9b9d0e966a7a55d23469f90c6b52e2059e54d12aac6d85c16f"
         },
         {
-          "path": "/mnt/ultimatefish/generic-ordinary-headerfix-e3a88e50-penguin/ultimate_ghost_ordinary_penguin",
-          "sha256": "8807fa57f75278eaca571a14db3b8ebfe465a373199e582249eeaf666183d6e5"
+          "path": "/mnt/ultimatefish/penguin-substate-4838d837/ultimate_ghost_ordinary_penguin",
+          "sha256": "1ece713a4237c4598a455a2b4c4003eaaa027e4e344a6fcfb0a8b9250ba2989b"
         }
       ],
       "diagnostic_sources": [
         {
           "kind": "journal",
-          "unit": "ultimatefish-ordinary-kghostpenguink-headerfix-e3a88e50.service",
+          "unit": "ultimatefish-ordinary-kghostpenguink-substate-4838d837.service",
           "max_bytes": 4096
         }
       ],
