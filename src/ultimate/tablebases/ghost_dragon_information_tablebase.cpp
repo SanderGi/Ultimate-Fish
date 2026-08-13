@@ -64,6 +64,10 @@ int main(int argc, char** argv) {
             else if (option == "--expected-geometries")
                 expectedGeometries = std::stoul(value());
             else if (option == "--input") solve.sourceTable = value();
+            else if (option == "--normalized-input")
+                solve.normalizedSourceTable = value();
+            else if (option == "--normalized-sha256")
+                solve.normalizedSourceSha256 = value();
             else if (option == "--lower-ghost-sidecar")
                 solve.lowerGhostSidecar = value();
             else if (option == "--lower-dragon-table")

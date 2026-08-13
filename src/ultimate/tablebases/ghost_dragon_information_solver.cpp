@@ -1328,8 +1328,27 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     const OriginalTable original(options.sourceTable, options.orientation);
     if (original.sha() != options.sourceSha256)
         throw std::runtime_error("Dragon/Ghost concrete source SHA mismatch");
-    const NormalizedSource normalized = normalize_source(original,
-      options.orientation, options.scratchPrefix + ".normalized.uftb");
+    if (options.normalizedSourceTable.empty() !=
+        options.normalizedSourceSha256.empty())
+        throw std::invalid_argument(
+          "normalized source reuse requires both path and SHA-256");
+    NormalizedSource normalized;
+    if (options.normalizedSourceTable.empty())
+        normalized = normalize_source(original, options.orientation,
+          options.scratchPrefix + ".normalized.uftb");
+    else {
+        if (!valid_sha(options.normalizedSourceSha256) ||
+            GhostPublicExtraExact::sha256_file(
+              options.normalizedSourceTable) !=
+                options.normalizedSourceSha256)
+            throw std::runtime_error(
+              "reused normalized source SHA-256 mismatch");
+        normalized = {options.normalizedSourceTable,
+                      options.normalizedSourceSha256, 0};
+        std::cout << "ghost_dragon_source_normalization_reused states "
+                  << StateCount << " remap_residual 0 normalized_sha256 "
+                  << normalized.sha << '\n' << std::flush;
+    }
     TransitionOptions transitions;
     transitions.orientation = options.orientation;
     transitions.prefix = options.transitionPrefix;

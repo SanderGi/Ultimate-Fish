@@ -29,6 +29,8 @@ struct SolveOptions {
     Orientation orientation = Orientation::Same;
     std::string transitionPrefix;
     std::string sourceTable;
+    std::string normalizedSourceTable;
+    std::string normalizedSourceSha256;
     std::string lowerGhostSidecar;
     std::string scratchPrefix;
     std::string outputOverlay;
