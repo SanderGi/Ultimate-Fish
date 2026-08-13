@@ -1792,17 +1792,18 @@
       "s3_certificates": []
     },
     {
-      "id": "ninja-ghost-opposing-decision-v3",
+      "id": "ninja-ghost-opposing-decision-v4",
       "ledger_files": [
         "kninjakghost.uftb"
       ],
       "ledger_certifies": true,
       "instance_id": "i-0986ed3d272721f02",
-      "unit": "ultimatefish-ordinary-kninjakghost-decision-v3.service",
+      "unit": "ultimatefish-ordinary-kninjakghost-decision-v4.service",
       "expected_allowed_cpus": "27",
       "dependencies": [],
       "checkpoint_paths": [
         "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/logs/solve.log",
+        "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/logs/rebind-decision-v4.log",
         "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/solve/*",
         "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/transitions/kninjakghost.*"
       ],
@@ -1818,7 +1819,7 @@
         },
         {
           "kind": "journal",
-          "unit": "ultimatefish-ordinary-kninjakghost-decision-v3.service",
+          "unit": "ultimatefish-ordinary-kninjakghost-decision-v4.service",
           "max_bytes": 4096
         }
       ],
@@ -1830,28 +1831,12 @@
         {
           "path": "/mnt/ultimatefish/ordinary-ghost-source-7c23e4cf-decision-v1/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp",
           "sha256": "cea9a27216a3a29c852e2c37fc05a4dbc6191cfba73aa82331cc04d073776997"
+        },
+        {
+          "path": "/mnt/ultimatefish/generic-ordinary-rebind-030f8da6/ultimate_ghost_ordinary_ninja",
+          "sha256": "634030116c8954bbd30f5682e91b1032411084996ec8555e09fd75d9e903ad23"
         }
       ],
-      "s3_certificates": []
-    },
-    {
-      "id": "ninja-ghost-opposing-preserve-v3",
-      "ledger_files": [],
-      "ledger_certifies": false,
-      "instance_id": "i-0986ed3d272721f02",
-      "unit": "ultimatefish-preserve-kninjakghost-decision-v3.service",
-      "expected_allowed_cpus": "28,29,30,31",
-      "dependencies": [
-        "ninja-ghost-opposing-decision-v3"
-      ],
-      "checkpoint_paths": [
-        "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/preserve-v3/put.json",
-        "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/preserve-v3/restore.tar.zst"
-      ],
-      "completion_paths": [
-        "/mnt/ultimatefish/ordinary-kninjakghost-0e928fd9/work/preserve-v3/version-pinned-receipt.txt"
-      ],
-      "source_bindings": [],
       "s3_certificates": []
     },
     {
