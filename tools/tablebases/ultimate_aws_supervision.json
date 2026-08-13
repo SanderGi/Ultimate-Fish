@@ -1747,7 +1747,7 @@
       "expected_allowed_cpus": "15",
       "resource_requirements": {
         "cpu_threads": 1,
-        "memory_peak_bytes": 68719476736,
+        "memory_peak_bytes": 21474836480,
         "disk_peak_bytes": {
           "/mnt/ultimatefish-jg": 42949672960
         }
