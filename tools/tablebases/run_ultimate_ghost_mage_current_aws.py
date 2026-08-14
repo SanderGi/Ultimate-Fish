@@ -38,6 +38,7 @@ KINDS = {
         "opposing": "kghostkparasite.uftb",
         "sidecar": ".ufgp", "normalized": "parasite_ghost",
         "geometries": 492_960, "lower_public": True,
+        "transition_lower_ghost": True,
     },
     "bomb": {
         "same": "kbombghostk.uftb", "opposing": "kbombkghost.uftb",
@@ -213,6 +214,16 @@ def main() -> None:
             f"--lower-{args.kind}-model-sha256",
             args.lower_public_model_sha256,
         ]
+    transition_binding = list(binding)
+    if config.get("transition_lower_ghost", False):
+        transition_binding += [
+            "--lower-ghost-sidecar", "tablebases/kghostk.ufgm",
+            "--lower-sidecar-sha256", args.lower_ghost_sha256,
+            "--lower-source-sha256", args.lower_ghost_source_sha256,
+            "--lower-model-sha256", args.lower_ghost_model_sha256,
+            "--lower-observation-sha256",
+            args.lower_ghost_observation_sha256,
+        ]
     run([str(executable), "--self-test", "--orientation", args.orientation,
          "--scratch", f"work/self-test/{Path(args.filename).stem}",
          "--input", f"tablebases/{args.filename}",
@@ -223,7 +234,7 @@ def main() -> None:
         commands.append([str(executable), "--compile-transitions",
           "--transition-prefix", f"work/transitions/shard-{index:02d}",
           "--geometry-begin", str(begin), "--geometry-count", str(count),
-          *binding])
+          *transition_binding])
     shared.run_ranges(commands, work, args.parallelism)
     stem = Path(args.filename).stem
     merged = f"work/transitions/{stem}"
@@ -232,7 +243,7 @@ def main() -> None:
     for index in range(SHARDS):
         merge += ["--shard", f"work/transitions/shard-{index:02d}"]
     merge += ["--expected-geometries", str(config["geometries"]),
-              *binding[2:]]
+              *transition_binding[2:]]
     run(merge, work, work / "work/logs/merge.log")
     solve = [str(executable), "--solve", "--orientation", args.orientation,
       "--transition-prefix", merged, "--input", f"tablebases/{args.filename}",

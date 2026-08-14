@@ -32,6 +32,12 @@ class CurrentMageRunnerTests(unittest.TestCase):
         self.assertEqual(ranges[0], (0, 5_611))
         self.assertEqual(ranges[-1], (353_490, 5_610))
 
+    def test_only_parasite_shards_bind_lower_ghost(self) -> None:
+        self.assertTrue(runner.KINDS["parasite"]["transition_lower_ghost"])
+        for kind in ("mage", "fisherman", "giant", "bomb"):
+            self.assertFalse(runner.KINDS[kind].get(
+                "transition_lower_ghost", False))
+
     def test_manifest_requires_both_sidecars_and_normalization(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary)
