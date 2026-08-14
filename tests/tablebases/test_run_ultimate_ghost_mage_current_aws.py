@@ -40,6 +40,7 @@ class CurrentMageRunnerTests(unittest.TestCase):
                 "mage_ghost_normalized_source_sha256 " + normalized + "\n")
             (logs / "solve.log").write_text("fixed point proof\n")
             args = SimpleNamespace(
+                kind="mage",
                 filename="kghostmagek.uftb", orientation="same",
                 source_sha256="1" * 64, model_sha256="2" * 64,
                 observation_sha256="3" * 64,
@@ -51,6 +52,31 @@ class CurrentMageRunnerTests(unittest.TestCase):
             self.assertEqual({Path(path).suffix for path in manifest["files"]
                               if path.startswith("work/results/")},
                              {".ufiw", ".ufmg"})
+
+    def test_fisherman_uses_collision_specific_sidecar(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            work = Path(temporary)
+            results = work / "work/results"
+            logs = work / "work/logs"
+            results.mkdir(parents=True)
+            logs.mkdir(parents=True)
+            (results / "kghostfishermank.ufiw").write_bytes(b"overlay")
+            (results / "kghostfishermank.ufgf").write_bytes(b"beliefs")
+            normalized = "b" * 64
+            (logs / "self-test.log").write_text(
+                "fisherman_ghost_normalized_source_sha256 details "
+                + normalized + "\n")
+            (logs / "solve.log").write_text("fixed point proof\n")
+            args = SimpleNamespace(
+                kind="fisherman", filename="kghostfishermank.uftb",
+                orientation="same", source_sha256="1" * 64,
+                model_sha256="2" * 64, observation_sha256="3" * 64,
+                lower_ghost_sha256="4" * 64)
+            runner.write_manifest(work, args)
+            manifest = json.loads(
+                (work / "work/artifact-manifest.json").read_text())
+            self.assertEqual(manifest["kind"], "fisherman")
+            self.assertEqual(manifest["normalized_source_sha256"], normalized)
 
 
 if __name__ == "__main__":

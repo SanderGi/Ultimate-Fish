@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run one fresh exact Mage/Ghost information class on EC2."""
+"""Run one fresh exact specialized Ghost information class on EC2."""
 
 from __future__ import annotations
 
@@ -15,8 +15,17 @@ import sys
 
 GEOMETRIES = 492_960
 SHARDS = 64
-NORMALIZED = re.compile(
-    r"mage_ghost_normalized_source_sha256(?:\s+\S+)*\s+([0-9a-f]{64})")
+KINDS = {
+    "mage": {
+        "same": "kghostmagek.uftb", "opposing": "kghostkmage.uftb",
+        "sidecar": ".ufmg", "normalized": "mage_ghost",
+    },
+    "fisherman": {
+        "same": "kghostfishermank.uftb",
+        "opposing": "kghostkfisherman.uftb",
+        "sidecar": ".ufgf", "normalized": "fisherman_ghost",
+    },
+}
 
 
 def sha256_path(path: Path) -> str:
@@ -55,18 +64,23 @@ def ranges() -> list[tuple[int, int]]:
 
 
 def write_manifest(work: Path, args: argparse.Namespace) -> None:
+    config = KINDS[args.kind]
     results = sorted((work / "work/results").glob("*"))
     logs = sorted((work / "work/logs").glob("*.log"))
-    if ({path.suffix for path in results} != {".ufiw", ".ufmg"} or
+    if ({path.suffix for path in results} != {".ufiw", config["sidecar"]} or
             not any(path.name == "solve.log" for path in logs)):
-        raise RuntimeError("Mage/Ghost result/proof inventory is incomplete")
+        raise RuntimeError(f"{args.kind}/Ghost result/proof inventory incomplete")
     self_test = (work / "work/logs/self-test.log").read_text()
-    matches = NORMALIZED.findall(self_test)
+    normalized = re.compile(
+        rf"{config['normalized']}_normalized_source_sha256"
+        rf"(?:\s+\S+)*\s+([0-9a-f]{{64}})")
+    matches = normalized.findall(self_test)
     if not matches:
-        raise RuntimeError("Mage/Ghost normalized-source certificate missing")
+        raise RuntimeError(f"{args.kind}/Ghost normalization missing")
     artifacts = [*results, *logs]
     manifest = {
-        "schema": "ultimate-mage-ghost-current-artifacts-v1",
+        "schema": f"ultimate-{args.kind}-ghost-current-artifacts-v1",
+        "kind": args.kind,
         "filename": args.filename,
         "orientation": args.orientation,
         "source_sha256": args.source_sha256,
@@ -84,11 +98,10 @@ def write_manifest(work: Path, args: argparse.Namespace) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--kind", choices=tuple(KINDS), default="mage")
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--work", type=Path, required=True)
-    parser.add_argument("--filename", choices=("kghostmagek.uftb",
-                                                 "kghostkmage.uftb"),
-                        required=True)
+    parser.add_argument("--filename", required=True)
     parser.add_argument("--orientation", choices=("same", "opposing"),
                         required=True)
     parser.add_argument("--source-table", type=Path, required=True)
@@ -102,10 +115,10 @@ def main() -> None:
     parser.add_argument("--lower-ghost-observation-sha256", required=True)
     parser.add_argument("--parallelism", type=int, default=29)
     args = parser.parse_args()
-    expected = ("kghostmagek.uftb" if args.orientation == "same"
-                else "kghostkmage.uftb")
+    config = KINDS[args.kind]
+    expected = config[args.orientation]
     if args.filename != expected or not 1 <= args.parallelism <= SHARDS:
-        raise RuntimeError("Mage/Ghost material or parallelism residual")
+        raise RuntimeError(f"{args.kind}/Ghost material or parallelism residual")
 
     root = args.source_root.resolve()
     sys.path.insert(0, str(root / "tools/tablebases"))
@@ -113,7 +126,7 @@ def main() -> None:
     import run_ultimate_reciprocal_bishop_ghost_aws as shared  # pylint: disable=import-outside-toplevel
     if information.solver_model_fingerprint(
             args.filename, root=root) != args.model_sha256:
-        raise RuntimeError("Mage/Ghost solver model mismatch")
+        raise RuntimeError(f"{args.kind}/Ghost solver model mismatch")
     require_sha(args.source_table, args.source_sha256, "source table")
     require_sha(args.lower_ghost_sidecar, args.lower_ghost_sha256,
                 "lower Ghost sidecar")
@@ -132,10 +145,10 @@ def main() -> None:
                       "work/solve", "work/self-test"):
         (work / directory).mkdir(parents=True, exist_ok=True)
 
-    executable = work / "ultimate_ghost_mage_information_tablebase"
+    executable = work / f"ultimate_ghost_{args.kind}_information_tablebase"
     sources = [
-        "src/ultimate/tablebases/ghost_mage_information_tablebase.cpp",
-        "src/ultimate/tablebases/ghost_mage_information_solver.cpp",
+        f"src/ultimate/tablebases/ghost_{args.kind}_information_tablebase.cpp",
+        f"src/ultimate/tablebases/ghost_{args.kind}_information_solver.cpp",
         "src/ultimate/tablebases/ghost_public_extra_model.cpp",
         "src/ultimate/tablebases/external_robdd.cpp",
         "src/ultimate/tablebases/ghost_information_probe.cpp",
@@ -176,7 +189,8 @@ def main() -> None:
       "--lower-ghost-sidecar", "tablebases/kghostk.ufgm",
       "--scratch", f"work/solve/{stem}",
       "--output", f"work/results/{stem}.ufiw",
-      "--output-arbitrary", f"work/results/{stem}.ufmg", *binding[2:],
+      "--output-arbitrary", f"work/results/{stem}{config['sidecar']}",
+      *binding[2:],
       "--lower-sidecar-sha256", args.lower_ghost_sha256,
       "--lower-source-sha256", args.lower_ghost_source_sha256,
       "--lower-model-sha256", args.lower_ghost_model_sha256,
