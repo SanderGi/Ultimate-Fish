@@ -1768,10 +1768,23 @@ std::uint32_t possession_witness_geometry() {
     Position hidden = make_geometry_position(
       PublicExtraGeometry{raw.side, raw.whiteKing, raw.blackKing,
                           raw.bishop, 0}, ghost, material);
-    for (const Move& move : hidden.legal_moves())
-        if (move.from == raw.bishop && move.to == ghost)
+    bool blindPossession = false;
+    for (const Move& move : hidden.legal_moves()) {
+        if (move.from != raw.bishop || move.to != ghost)
+            continue;
+        Position child = hidden;
+        Undo undo;
+        if (!child.make_move(move, undo))
             throw std::runtime_error(
-              "Parasite was allowed to select an invisible Ghost square");
+              "Parasite hidden-Ghost collision witness move failed");
+        if (!possessed_ghost_lower_child(child, material))
+            throw std::runtime_error(
+              "Parasite hidden-Ghost collision did not create possession");
+        blindPossession = true;
+    }
+    if (!blindPossession)
+        throw std::runtime_error(
+          "Parasite could not select an invisible Ghost square");
 
     const auto proveRoyalPossession = [&](Color side, std::uint8_t kingSquare,
                                           std::uint8_t parasiteSquare) {
