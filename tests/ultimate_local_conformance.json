@@ -3,6 +3,90 @@
   "app_version": "5.731",
   "fixtures": [
     {
+      "id": "ghost-reveal-and-public-direction",
+      "covers": [
+        "ghost.enters-king-range-reveals",
+        "ghost.revealed-move-direction-public",
+        "ghost.revealed-quiet-move-becomes-hidden",
+        "ghost.enters-jester-range-reveals"
+      ],
+      "player1": [
+        ["king", "e3"],
+        ["jester", "g3"],
+        ["queen", "a1"],
+        ["rook", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "f1"],
+        ["copycat", "h2"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["ghost", "e3"],
+        ["queen", "b1"],
+        ["rook", "c1"],
+        ["ninja", "d1"],
+        ["prince", "f1"],
+        ["sniper", "g1"]
+      ],
+      "steps": [
+        {"move": "b1-b2"},
+        {"move": "d8-d7"},
+        {"move": "b2-b1"},
+        {"move": "d7-d6"},
+        {"move": "b1-b2"},
+        {"move": "d6-d5"},
+        {"move": "b2-b1"},
+        {"move": "d5-e4"},
+        {"piece": {"type": "ghost", "square": "e4"}, "proves": ["ghost.enters-king-range-reveals"]},
+        {"move": "e3-d2"},
+        {"move": "e4-f5"},
+        {"native_moves": ["e4-f5"], "proves": ["ghost.revealed-move-direction-public"]},
+        {"piece_absent": {"type": "ghost", "square": "f5"}, "proves": ["ghost.revealed-quiet-move-becomes-hidden"]},
+        {"move": "b1-b2"},
+        {"move": "f5-g4"},
+        {"piece": {"type": "ghost", "square": "g4"}, "proves": ["ghost.enters-jester-range-reveals"]}
+      ]
+    },
+    {
+      "id": "parasite-possessed-ghost-remains-public",
+      "covers": [
+        "parasite.possessed-ghost-public-to-original-owner",
+        "parasite.possessed-ghost-remains-public-after-moving"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["parasite", "h3"],
+        ["queen", "b1"],
+        ["rook", "c1"],
+        ["ninja", "d1"],
+        ["prince", "e1"],
+        ["sniper", "f1"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["ghost", "a3"],
+        ["queen", "b1"],
+        ["rook", "c1"],
+        ["ninja", "d1"],
+        ["prince", "e1"],
+        ["sniper", "f1"]
+      ],
+      "steps": [
+        {"move": "h3-h4"},
+        {"move": "h8-h7"},
+        {"move": "h4-h5"},
+        {"move": "g10-g9"},
+        {"move": "h5-h6"},
+        {"move": "g9-g10"},
+        {"move": "h6-h7"},
+        {"piece": {"type": "ghost", "square": "h7"}, "proves": ["parasite.possessed-ghost-public-to-original-owner"]},
+        {"move": "g10-g9"},
+        {"move": "h7-g7"},
+        {"public_outline": {"type": "ghost", "square": "g7"}, "proves": ["parasite.possessed-ghost-remains-public-after-moving"]}
+      ]
+    },
+    {
       "id": "king-capture-declares-knockout",
       "covers": [
         "terminal.real-king-capture",
@@ -160,6 +244,7 @@
         {"move": "c1-d1"},
         {"move": "b10-c9", "proves": ["copycat.move-from-clone-half"]},
         {"piece": {"type": "copycat", "square": "c9"}},
+        {"move": "h2-h3"},
         {"piece": {"type": "copycat", "square": "f9"}, "proves": ["controller.copycat-selection-bound-to-native-dot"]}
       ]
     },
@@ -1057,7 +1142,7 @@
       ],
       "player1": [
         ["king", "a1"],
-        ["rook", "b1"],
+        ["rook", "h1"],
         ["ninja", "c1"],
         ["prince", "d1"],
         ["sniper", "e1"],
@@ -1075,13 +1160,13 @@
         ["angel", "g3"]
       ],
       "steps": [
-        {"move": "b1-b2"},
+        {"move": "h1-h2"},
         {"move": "d8-d7"},
-        {"move": "b2-b1"},
+        {"move": "h2-h1"},
         {"move": "d7-d6"},
-        {"move": "b1-b2"},
+        {"move": "h1-h2"},
         {"move": "d6-d5"},
-        {"move": "b2-b1"},
+        {"move": "h2-h1"},
         {"move": "d5-d4"},
         {"move": "d3-d4", "proves": ["penguin.hidden-enemy-cell-is-apparently-empty"]},
         {"native_deaths": ["ghost", "penguin"], "proves": ["penguin.blind-hidden-ghost-mutual-knockout", "ghost.blind-capture-death"]}
@@ -1353,6 +1438,202 @@
         {"move": "h3-h8"},
         {"native_deaths": ["bomb", "bomb", "bomb", "bomb", "bomb", "mage", "queen"], "proves": ["bomb.chain-clears-clustered-material"]},
         {"terminal_move": {"move": "a8-a3", "label": "draw"}, "proves": ["terminal.knight-versus-bare-king-insufficient-draw", "terminal.native-draw-label"]}
+      ]
+    },
+    {
+      "id": "parasite-possesses-jester-with-fixed-provenance",
+      "covers": [
+        "parasite.jester-possession-transfers-control",
+        "parasite.jester-possession-does-not-knockout",
+        "royal-identity.possessed-jester-provenance-persists"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["rook", "f1"],
+        ["parasite", "d3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["rook", "f1"],
+        ["jester", "e3"],
+        ["copycat", "h3"]
+      ],
+      "steps": [
+        {"move": "d3-d4"},
+        {"move": "d8-d7"},
+        {"move": "d4-d5"},
+        {"move": "d7-d6"},
+        {"move": "d5-d6", "proves": ["parasite.jester-possession-does-not-knockout"]},
+        {"move": "h10-h9"},
+        {"move": "d6-d5", "proves": ["parasite.jester-possession-transfers-control", "royal-identity.possessed-jester-provenance-persists"]},
+        {"piece": {"type": "jester", "square": "d5"}}
+      ]
+    },
+    {
+      "id": "parasite-defender-class-boundary",
+      "covers": [
+        "parasite.defender-possesses-melee-attacker",
+        "parasite.possessed-attacker-changes-control",
+        "parasite.ranged-attacker-kills-without-possession"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["rook", "b1"],
+        ["knight", "c3"],
+        ["sniper", "f3"],
+        ["queen", "c1"],
+        ["ninja", "d1"],
+        ["prince", "e1"],
+        ["bishop", "h3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["bomb", "e1"],
+        ["parasite", "e3"],
+        ["parasite", "c3"]
+      ],
+      "steps": [
+        {"move": "b1-b2"},
+        {"move": "d8-d7"},
+        {"move": "b2-b1"},
+        {"move": "d7-d6"},
+        {"move": "b1-b2"},
+        {"move": "d6-d5"},
+        {"move": "c3-d5"},
+        {"native_deaths": ["parasite"], "proves": ["parasite.defender-possesses-melee-attacker"]},
+        {"move": "d5-b4", "proves": ["parasite.possessed-attacker-changes-control"]},
+        {"move": "b2-b1"},
+        {"move": "f8-f7"},
+        {"move": "b1-b2"},
+        {"move": "f7-f6"},
+        {"move": "f3xf6"},
+        {"native_deaths": ["parasite"], "proves": ["parasite.ranged-attacker-kills-without-possession"]},
+        {"piece": {"type": "sniper", "square": "f3"}}
+      ]
+    },
+    {
+      "id": "goop-retaliation-class-boundary",
+      "covers": [
+        "goop.ranged-attacker-survives",
+        "goop.melee-attacker-dies",
+        "goop.dies-on-either-attack"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["sludge", "d3"],
+        ["rook", "f1"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["bomb", "h3"],
+        ["copycat", "h2"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["sniper", "e3"],
+        ["sludge", "c3"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["rook", "f1"],
+        ["pawn", "h3"]
+      ],
+      "steps": [
+        {"move": "d3-e3"},
+        {"move": "d8xd3"},
+        {"piece_absent": {"type": "goop", "square": "d3"}},
+        {"piece": {"type": "sniper", "square": "d8"}, "proves": ["goop.ranged-attacker-survives"]},
+        {"move": "b1-b2"},
+        {"move": "f8-e8"},
+        {"move": "f1-f8"},
+        {"piece_absent": {"type": "goop", "square": "f8"}, "proves": ["goop.dies-on-either-attack"]},
+        {"piece_absent": {"type": "rook", "square": "f8"}, "proves": ["goop.melee-attacker-dies"]}
+      ]
+    },
+    {
+      "id": "ordinary-kernels-and-prince-continuation",
+      "covers": [
+        "bishop.diagonal-slider-kernel",
+        "turtle.orthogonal-step-kernel",
+        "dragon.knight-leap-kernel",
+        "prince.quiet-first-step-retains-turn",
+        "prince.forced-second-step-ends-turn"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["bishop", "b3"],
+        ["turtle", "d3"],
+        ["dragon", "f3"],
+        ["prince", "h3"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["rook", "d1"],
+        ["turtle", "f1"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["rook", "f1"],
+        ["bomb", "h3"]
+      ],
+      "steps": [
+        {"move": "b3-c4", "proves": ["bishop.diagonal-slider-kernel"]},
+        {"move": "c10-c9"},
+        {"move": "d3-d4", "proves": ["turtle.orthogonal-step-kernel"]},
+        {"move": "c9-c10"},
+        {"move": "f3-e5", "proves": ["dragon.knight-leap-kernel"]},
+        {"move": "c10-c9"},
+        {"move": "h3-g4", "proves": ["prince.quiet-first-step-retains-turn"]},
+        {"move": "g4-f5", "proves": ["prince.forced-second-step-ends-turn"]},
+        {"move": "c9-c10"}
+      ]
+    },
+    {
+      "id": "checker-blind-collides-with-hidden-ghost",
+      "covers": [
+        "checker.hidden-ghost-is-not-a-jump-target",
+        "checker.adjacent-hidden-ghost-mutual-knockout"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["checker", "b3"],
+        ["queen", "b1"],
+        ["queen", "c1"],
+        ["queen", "d1"],
+        ["ninja", "e1"],
+        ["prince", "f1"],
+        ["bishop", "h3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["ghost", "e3"],
+        ["queen", "b1"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["rook", "f1"]
+      ],
+      "steps": [
+        {"move": "b3-c4"},
+        {"move": "d8-d7"},
+        {"move": "c4-b5"},
+        {"move": "d7-c6"},
+        {"move": "b5-c6", "proves": ["checker.hidden-ghost-is-not-a-jump-target"]},
+        {"native_deaths": ["checker", "ghost"], "proves": ["checker.adjacent-hidden-ghost-mutual-knockout"]}
       ]
     }
   ],

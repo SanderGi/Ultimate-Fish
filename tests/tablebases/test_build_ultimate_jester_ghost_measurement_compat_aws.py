@@ -33,7 +33,7 @@ class MeasurementBinaryCompatibilityTest(unittest.TestCase):
         self.assertIsNotNone(builder.COMMIT.fullmatch("a" * 40))
         self.assertIsNone(builder.COMMIT.fullmatch("a" * 64))
 
-    def test_committed_loader_patch_is_exactly_allowlisted(self):
+    def test_legacy_loader_patch_stays_frozen_after_rule_fix(self):
         expected = [
             ("src/ultimate/jester_ghost_information_solver.cpp",
              "src/ultimate/tablebases/jester_ghost_information_solver.cpp",
@@ -53,10 +53,18 @@ class MeasurementBinaryCompatibilityTest(unittest.TestCase):
                 cwd=ROOT)
             new = (ROOT / new_relative).read_bytes()
             self.assertEqual(old_sha, builder.hashlib.sha256(old).hexdigest())
-            self.assertEqual(new_sha, builder.hashlib.sha256(new).hexdigest())
+            current_sha = builder.hashlib.sha256(new).hexdigest()
+            if new_relative.endswith(
+                    "jester_ghost_information_tablebase.cpp"):
+                self.assertNotEqual(new_sha, current_sha)
+            else:
+                self.assertEqual(new_sha, current_sha)
             patches.append((old_relative, old, new))
-        self.assertEqual(builder.PATCH_SHA256,
-                         builder.loader_patch_sha(patches))
+        self.assertNotEqual(builder.PATCH_SHA256,
+                            builder.loader_patch_sha(patches))
+        self.assertEqual(
+            builder.OBSERVATION_SHA256,
+            "af09ebab834599de83d546f8729b8329dbe5ba8ff1cc7f24be3ac63086273adf")
 
     def test_runner_authenticates_semantic_transition_compatibility(self):
         with tempfile.TemporaryDirectory() as directory:

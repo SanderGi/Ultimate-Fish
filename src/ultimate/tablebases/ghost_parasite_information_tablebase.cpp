@@ -65,6 +65,9 @@ int main(int argc, char** argv) {
             else if (option == "--input") solve.sourceTable = value();
             else if (option == "--lower-ghost-sidecar")
                 transition.lowerGhostSidecar = solve.lowerGhostSidecar = value();
+            else if (option == "--lower-tracked-ghost-table")
+                transition.lowerTrackedGhostTable =
+                  solve.lowerTrackedGhostTable = value();
             else if (option == "--lower-parasite-table")
                 transition.lowerParasiteTable = solve.lowerParasiteTable = value();
             else if (option == "--scratch") solve.scratchPrefix = value();
@@ -89,6 +92,15 @@ int main(int argc, char** argv) {
             else if (option == "--lower-sidecar-sha256")
                 transition.lowerGhostSidecarSha256 =
                   solve.lowerGhostSidecarSha256 = value();
+            else if (option == "--lower-tracked-ghost-sha256")
+                transition.lowerTrackedGhostSha256 =
+                  solve.lowerTrackedGhostFullSha256 = value();
+            else if (option == "--lower-tracked-ghost-source-sha256")
+                transition.lowerTrackedGhostSourceSha256 =
+                  solve.lowerTrackedGhostSourceSha256 = value();
+            else if (option == "--lower-tracked-ghost-model-sha256")
+                transition.lowerTrackedGhostModelSha256 =
+                  solve.lowerTrackedGhostModelSha256 = value();
             else if (option == "--lower-parasite-sha256")
                 transition.lowerParasiteSha256 =
                   solve.lowerParasiteFullSha256 = value();

@@ -64,7 +64,7 @@ namespace Stockfish::Ultimate {
 // compiler only has a symbolic lower-Ghost edge for ownership that did not
 // change.  During compilation, map this one special child to the same exact
 // placeholder used by K+Parasite-v-K; the isolated authenticated patcher below
-// then replaces it with a role-swapped visible-singleton UFGM result.
+// then replaces it with an authenticated permanently-tracked Ghost result.
 [[nodiscard]] bool parasite_kernel_possessed_ghost_child(
   const Position& position) {
     unsigned live = 0;
@@ -200,6 +200,7 @@ constexpr std::uint32_t Squares = Position::BoardSquares;
 constexpr std::uint32_t StateCount = GhostPublicExtra::StateCount;
 constexpr std::uint32_t PlacementCount = GhostPublicExtra::PlacementCount;
 constexpr std::uint32_t Endian = 0x01020304;
+constexpr std::uint64_t TrackedGhostV1Tag = 0x3154534f48474655ULL;
 constexpr char SidecarSemantics[] =
   "fresh-maximal-public-view-v2:parasite-ghost-generic";
 
@@ -243,6 +244,9 @@ struct SidecarHeader {
     std::array<char, 64> modelSha{};
     std::array<char, 64> observationSha{};
     std::array<char, 64> lowerGhostSha{};
+    std::array<char, 64> lowerTrackedGhostFullSha{};
+    std::array<char, 64> lowerTrackedGhostSourceSha{};
+    std::array<char, 64> lowerTrackedGhostModelSha{};
     std::array<char, 64> lowerParasiteFullSha{};
     std::array<char, 64> lowerParasiteSourceSha{};
     std::array<char, 64> lowerParasiteModelSha{};
@@ -254,7 +258,7 @@ struct SidecarHeader {
 #pragma pack(pop)
 
 static_assert(sizeof(NodeDisk) == 9);
-static_assert(sizeof(SidecarHeader) == 1248);
+static_assert(sizeof(SidecarHeader) == 1440);
 
 template<typename Value>
 void write_value(std::ostream& output, const Value& value) {
@@ -655,6 +659,93 @@ class LowerParasiteTable {
     std::vector<std::uint8_t> bytes_;
 };
 
+enum class TrackedGhostWdl : std::uint8_t { Win = 1, Loss = 2, Draw = 3 };
+
+class LowerTrackedGhostTable {
+  public:
+    explicit LowerTrackedGhostTable(const std::string& path) {
+        std::ifstream input(path, std::ios::binary);
+        bytes_ = {std::istreambuf_iterator<char>(input),
+                  std::istreambuf_iterator<char>()};
+        const auto word = [&](std::size_t offset) {
+            std::uint32_t value = 0;
+            if (offset + sizeof(value) > bytes_.size())
+                throw std::runtime_error("truncated tracked-Ghost header");
+            std::memcpy(&value, bytes_.data() + offset, sizeof(value));
+            return value;
+        };
+        const auto qword = [&](std::size_t offset) {
+            std::uint64_t value = 0;
+            if (offset + sizeof(value) > bytes_.size())
+                throw std::runtime_error("truncated tracked-Ghost header");
+            std::memcpy(&value, bytes_.data() + offset, sizeof(value));
+            return value;
+        };
+        constexpr std::uint32_t States = 985'920;
+        constexpr std::uint32_t WdlBytes = (States + 3) / 4;
+        const std::uint32_t exceptions = word(36);
+        const std::uint64_t expected = 64ULL + WdlBytes + States +
+                                       std::uint64_t(exceptions) * 6;
+        if (bytes_.size() < 64 ||
+            std::memcmp(bytes_.data(), "UFTB1\0\0\0", 8) ||
+            word(8) != 8 ||
+            word(12) != static_cast<std::uint32_t>(PieceType::Ghost) ||
+            word(16) != States || word(24) != 1 || word(28) != WdlBytes ||
+            word(32) != States ||
+            word(40) != static_cast<std::uint32_t>(PieceType::Count) ||
+            word(44) != static_cast<std::uint32_t>(Color::White) ||
+            qword(56) != TrackedGhostV1Tag || bytes_.size() != expected)
+            throw std::runtime_error(
+              "incompatible authenticated K+tracked-Ghost-v-K table");
+    }
+
+    [[nodiscard]] TrackedGhostWdl probe(
+      const Position& position, Color ghostOwner) const {
+        int ownerKing = Position::NoSquare;
+        int observerKing = Position::NoSquare;
+        int ghost = Position::NoSquare;
+        for (int id = 0; id < position.piece_count(); ++id) {
+            const PieceState& piece = position.piece(id);
+            if (!piece.alive || !piece.onBoard)
+                continue;
+            if (piece.type == PieceType::King)
+                (piece.color == ghostOwner ? ownerKing : observerKing) =
+                  piece.square;
+            else if (piece.type == PieceType::Ghost &&
+                     piece.color == ghostOwner && piece.visible &&
+                     piece.parasiteTracked)
+                ghost = piece.square;
+            else
+                throw std::runtime_error(
+                  "tracked-Ghost probe material residual");
+        }
+        if (ownerKing < 0 || observerKing < 0 || ghost < 0 ||
+            ownerKing == observerKing || ownerKing == ghost ||
+            observerKing == ghost)
+            throw std::runtime_error("tracked-Ghost probe placement residual");
+        const std::uint32_t observerRank = observerKing -
+          (observerKing > ownerKing ? 1u : 0u);
+        const int low = std::min(ownerKing, observerKing);
+        const int high = std::max(ownerKing, observerKing);
+        const std::uint32_t ghostRank = ghost - (ghost > low ? 1u : 0u) -
+          (ghost > high ? 1u : 0u);
+        const std::uint32_t side = position.side_to_move() == ghostOwner
+                                 ? static_cast<std::uint32_t>(Color::White)
+                                 : static_cast<std::uint32_t>(Color::Black);
+        const std::uint32_t index =
+          ((side * Squares + ownerKing) * (Squares - 1) + observerRank) *
+            (Squares - 2) + ghostRank;
+        const std::uint8_t value =
+          (bytes_[64 + index / 4] >> (2 * (index % 4))) & 3;
+        if (value < 1 || value > 3)
+            throw std::runtime_error("tracked-Ghost WDL value is invalid");
+        return static_cast<TrackedGhostWdl>(value);
+    }
+
+  private:
+    std::vector<std::uint8_t> bytes_;
+};
+
 [[nodiscard]] std::uint8_t lower_parasite_force_flags(
   const Position& child, const MaterialSpec& material,
   const LowerParasiteTable& lower) {
@@ -739,14 +830,13 @@ static_assert(sizeof(ParasiteRelationCertificate) == 80);
 
 [[nodiscard]] std::uint8_t possessed_ghost_force_flags(
   const Position& child, const MaterialSpec& material,
-  const GhostInformationProbe& lower) {
+  const LowerTrackedGhostTable& lower) {
     if (!possessed_ghost_lower_child(child, material))
         throw std::runtime_error(
           "possessed-Ghost force requested for wrong class");
     int ownerKing = Position::NoSquare;
     int observerKing = Position::NoSquare;
     int ghost = Position::NoSquare;
-    bool visible = false;
     Color newOwner = material.observer();
     for (int id = 0; id < child.piece_count(); ++id) {
         const PieceState& piece = child.piece(id);
@@ -754,7 +844,6 @@ static_assert(sizeof(ParasiteRelationCertificate) == 80);
             continue;
         if (piece.type == PieceType::Ghost) {
             ghost = piece.square;
-            visible = piece.visible;
             newOwner = piece.color;
         }
     }
@@ -766,23 +855,17 @@ static_assert(sizeof(ParasiteRelationCertificate) == 80);
     }
     if (ownerKing < 0 || observerKing < 0 || ghost < 0)
         throw std::runtime_error("possessed-Ghost role extraction residual");
-    const std::uint8_t normalizedSide = static_cast<std::uint8_t>(
-      child.side_to_move() == newOwner ? Color::White : Color::Black);
-    GhostInformationMask singleton;
-    if (ghost < 64)
-        singleton.low = std::uint64_t{1} << ghost;
-    else
-        singleton.high = static_cast<std::uint16_t>(1u << (ghost - 64));
-    const GhostInformationProbeResult result = lower.probe(
-      normalizedSide, static_cast<std::uint8_t>(ownerKing),
-      static_cast<std::uint8_t>(observerKing), static_cast<std::uint8_t>(ghost),
-      visible, singleton);
-    if (result.ownerForce && result.observerForce)
-        throw std::runtime_error("possessed-Ghost lower dual-force residual");
-    // New owner == old observer.  Convert the canonical KGhost roles back to
-    // the two roles used by this four-model information game.
-    return static_cast<std::uint8_t>((result.observerForce ? 1 : 0) |
-                                     (result.ownerForce ? 2 : 0));
+    const TrackedGhostWdl result = lower.probe(child, newOwner);
+    std::optional<Color> winner;
+    if (result == TrackedGhostWdl::Win)
+        winner = child.side_to_move();
+    else if (result == TrackedGhostWdl::Loss)
+        winner = ~child.side_to_move();
+    // Possession transfers the Ghost to the former observer. Convert that
+    // public lower-table winner back to the original two information roles.
+    return static_cast<std::uint8_t>(
+      winner && *winner == material.ghostColor ? 1 :
+      winner && *winner == material.observer() ? 2 : 0);
 }
 
 void lower_parasite_probe_self_test(const MaterialSpec& material,
@@ -850,7 +933,8 @@ void lower_parasite_probe_self_test(const MaterialSpec& material,
 
 ParasitePatchCertificate rewrite_lower_parasite_edges(
   const std::string& prefix, const MaterialSpec& material,
-  const LowerParasiteTable& lower, const GhostInformationProbe& lowerGhost,
+  const LowerParasiteTable& lower,
+  const LowerTrackedGhostTable& lowerTrackedGhost,
   bool placeholders,
   bool acceptPlaceholders) {
     std::ifstream headerFile(prefix + ".header", std::ios::binary);
@@ -910,7 +994,8 @@ ParasitePatchCertificate rewrite_lower_parasite_edges(
                 ExternalCompiledEdge& edge = edges[offsets[ghost] + ordinal];
                 const std::uint8_t expected = parasiteChild
                   ? lower_parasite_force_flags(child, material, lower)
-                  : possessed_ghost_force_flags(child, material, lowerGhost);
+                  : possessed_ghost_force_flags(
+                      child, material, lowerTrackedGhost);
                 if (edge.domain != ExternalChildDomain::Exact ||
                     (!acceptPlaceholders && edge.exact != expected) ||
                     (acceptPlaceholders && edge.exact != 0 &&
@@ -1363,6 +1448,15 @@ SolveCertificate write_sidecar(const SolveOptions& options,
               "observation SHA");
     copy_hash(header.lowerGhostSha, options.lowerGhostSidecarSha256,
               "lower Ghost SHA");
+    copy_hash(header.lowerTrackedGhostFullSha,
+              options.lowerTrackedGhostFullSha256,
+              "lower tracked Ghost full SHA");
+    copy_hash(header.lowerTrackedGhostSourceSha,
+              options.lowerTrackedGhostSourceSha256,
+              "lower tracked Ghost source SHA");
+    copy_hash(header.lowerTrackedGhostModelSha,
+              options.lowerTrackedGhostModelSha256,
+              "lower tracked Ghost model SHA");
     copy_hash(header.lowerParasiteFullSha, options.lowerParasiteFullSha256,
               "lower Parasite full SHA");
     copy_hash(header.lowerParasiteSourceSha, options.lowerParasiteSourceSha256,
@@ -1529,6 +1623,20 @@ namespace {
       options.lowerGhostModelSha256, options.lowerGhostObservationSha256);
 }
 
+[[nodiscard]] LowerTrackedGhostTable authenticate_lower_tracked_ghost(
+  const TransitionOptions& options) {
+    if (!valid_sha(options.lowerTrackedGhostSha256) ||
+        !valid_sha(options.lowerTrackedGhostSourceSha256) ||
+        !valid_sha(options.lowerTrackedGhostModelSha256) ||
+        options.lowerTrackedGhostSourceSha256 !=
+          options.lowerTrackedGhostSha256 ||
+        GhostPublicExtraExact::sha256_file(options.lowerTrackedGhostTable) !=
+          options.lowerTrackedGhostSha256)
+        throw std::runtime_error(
+          "Parasite transitions require authenticated tracked-Ghost WDL");
+    return LowerTrackedGhostTable(options.lowerTrackedGhostTable);
+}
+
 void parasite_lower_domain_self_test(ExternalTransitionDatabase& database) {
     std::uint64_t checked = 0;
     std::uint64_t symbolicLowerGhost = 0;
@@ -1567,6 +1675,9 @@ void write_parasite_marker(
     for (const std::string* hash : {&options.lowerParasiteSha256,
                                     &options.lowerParasiteSourceSha256,
                                     &options.lowerParasiteModelSha256,
+                                    &options.lowerTrackedGhostSha256,
+                                    &options.lowerTrackedGhostSourceSha256,
+                                    &options.lowerTrackedGhostModelSha256,
                                     &options.lowerGhostSidecarSha256,
                                     &options.lowerGhostSourceSha256,
                                     &options.lowerGhostModelSha256,
@@ -1578,7 +1689,7 @@ void write_parasite_marker(
     struct stat status{};
     if (::stat((options.prefix + ".verified").c_str(), &status) ||
         status.st_size != static_cast<off_t>(
-          sizeof(header) + 448 + sizeof(certificate)))
+          sizeof(header) + 640 + sizeof(certificate)))
         throw std::runtime_error("Parasite transition marker extent residual");
 }
 
@@ -1586,7 +1697,7 @@ ParasiteRelationCertificate authenticate_parasite_marker(
   const TransitionOptions& options) {
     std::ifstream marker(options.prefix + ".verified", std::ios::binary);
     ExternalTransitionHeader header;
-    std::array<char, 448> hashes{};
+    std::array<char, 640> hashes{};
     ParasiteRelationCertificate certificate;
     marker.read(reinterpret_cast<char*>(&header), sizeof(header));
     marker.read(hashes.data(), hashes.size());
@@ -1598,12 +1709,18 @@ ParasiteRelationCertificate authenticate_parasite_marker(
         std::string(hashes.data() + 128, 64) !=
           options.lowerParasiteModelSha256 ||
         std::string(hashes.data() + 192, 64) !=
-          options.lowerGhostSidecarSha256 ||
+          options.lowerTrackedGhostSha256 ||
         std::string(hashes.data() + 256, 64) !=
-          options.lowerGhostSourceSha256 ||
+          options.lowerTrackedGhostSourceSha256 ||
         std::string(hashes.data() + 320, 64) !=
-          options.lowerGhostModelSha256 ||
+          options.lowerTrackedGhostModelSha256 ||
         std::string(hashes.data() + 384, 64) !=
+          options.lowerGhostSidecarSha256 ||
+        std::string(hashes.data() + 448, 64) !=
+          options.lowerGhostSourceSha256 ||
+        std::string(hashes.data() + 512, 64) !=
+          options.lowerGhostModelSha256 ||
+        std::string(hashes.data() + 576, 64) !=
           options.lowerGhostObservationSha256 ||
         certificate.magic !=
           std::array<char, 8>{{'U','F','G','P','R','1','\0','\0'}} ||
@@ -1619,20 +1736,21 @@ ParasiteRelationCertificate authenticate_parasite_marker(
 }
 
 void certify_parasite_transitions(const TransitionOptions& options,
-  const LowerParasiteTable& lower, const GhostInformationProbe& lowerGhost) {
+  const LowerParasiteTable& lower,
+  const LowerTrackedGhostTable& lowerTrackedGhost) {
     const MaterialSpec material = normalized_material(options.orientation);
-    rewrite_lower_parasite_edges(options.prefix, material, lower, lowerGhost,
-                                 true, false);
+    rewrite_lower_parasite_edges(options.prefix, material, lower,
+                                 lowerTrackedGhost, true, false);
     try {
         verify_external_transition_certificate(options.prefix, material);
     }
     catch (...) {
         rewrite_lower_parasite_edges(options.prefix, material, lower,
-                                     lowerGhost, false, true);
+                                     lowerTrackedGhost, false, true);
         throw;
     }
-    rewrite_lower_parasite_edges(options.prefix, material, lower, lowerGhost,
-                                 false, true);
+    rewrite_lower_parasite_edges(options.prefix, material, lower,
+                                 lowerTrackedGhost, false, true);
     const ParasiteRelationCertificate relation =
       certify_native_relation_partition(options.prefix, material);
     write_parasite_marker(options, relation);
@@ -1649,7 +1767,9 @@ void compile_transitions(const TransitionOptions& options) {
     if (options.prefix.empty() || !options.geometryCount)
         throw std::invalid_argument("Parasite/Ghost transition range is empty");
     const LowerParasiteTable lower = authenticate_lower_parasite(options);
-    const auto lowerGhost = authenticate_lower_ghost(options);
+    (void)authenticate_lower_ghost(options);
+    const LowerTrackedGhostTable lowerTrackedGhost =
+      authenticate_lower_tracked_ghost(options);
     if (options.orientation == Orientation::Same)
         compile_external_transitions(options.prefix,
           normalized_material(options.orientation), options.geometryBegin,
@@ -1658,16 +1778,18 @@ void compile_transitions(const TransitionOptions& options) {
         GhostPublicExtraExact::compile_reciprocal_external_transitions(
           options.prefix, options.geometryBegin, options.geometryCount);
     rewrite_lower_parasite_edges(options.prefix,
-      normalized_material(options.orientation), lower, *lowerGhost,
+      normalized_material(options.orientation), lower, lowerTrackedGhost,
       false, true);
-    certify_parasite_transitions(options, lower, *lowerGhost);
+    certify_parasite_transitions(options, lower, lowerTrackedGhost);
 }
 
 void merge_transitions(const TransitionOptions& output,
                        const std::vector<std::string>& shards,
                        std::uint32_t expectedGeometries) {
     const LowerParasiteTable lower = authenticate_lower_parasite(output);
-    const auto lowerGhost = authenticate_lower_ghost(output);
+    (void)authenticate_lower_ghost(output);
+    const LowerTrackedGhostTable lowerTrackedGhost =
+      authenticate_lower_tracked_ghost(output);
     for (const std::string& shard : shards) {
         TransitionOptions input = output;
         input.prefix = shard;
@@ -1675,14 +1797,16 @@ void merge_transitions(const TransitionOptions& output,
     }
     merge_external_transition_shards(output.prefix, shards,
       normalized_material(output.orientation), expectedGeometries);
-    certify_parasite_transitions(output, lower, *lowerGhost);
+    certify_parasite_transitions(output, lower, lowerTrackedGhost);
 }
 
 void verify_transitions(const TransitionOptions& options) {
     const LowerParasiteTable lower = authenticate_lower_parasite(options);
     authenticate_parasite_marker(options);
-    const auto lowerGhost = authenticate_lower_ghost(options);
-    certify_parasite_transitions(options, lower, *lowerGhost);
+    (void)authenticate_lower_ghost(options);
+    const LowerTrackedGhostTable lowerTrackedGhost =
+      authenticate_lower_tracked_ghost(options);
+    certify_parasite_transitions(options, lower, lowerTrackedGhost);
 }
 
 ResourceEstimate resource_estimate() { return {}; }
@@ -1891,7 +2015,10 @@ SolveCertificate solve_exact(const SolveOptions& options) {
             throw std::invalid_argument(std::string(label) + " is invalid");
     if (!valid_sha(options.lowerParasiteFullSha256) ||
         !valid_sha(options.lowerParasiteSourceSha256) ||
-        !valid_sha(options.lowerParasiteModelSha256))
+        !valid_sha(options.lowerParasiteModelSha256) ||
+        !valid_sha(options.lowerTrackedGhostFullSha256) ||
+        !valid_sha(options.lowerTrackedGhostSourceSha256) ||
+        !valid_sha(options.lowerTrackedGhostModelSha256))
         throw std::invalid_argument("lower Parasite binding is invalid");
     if (GhostPublicExtraExact::sha256_file(options.lowerGhostSidecar) !=
         options.lowerGhostSidecarSha256)
@@ -1908,6 +2035,13 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     transitions.lowerParasiteSha256 = options.lowerParasiteFullSha256;
     transitions.lowerParasiteSourceSha256 = options.lowerParasiteSourceSha256;
     transitions.lowerParasiteModelSha256 = options.lowerParasiteModelSha256;
+    transitions.lowerTrackedGhostTable = options.lowerTrackedGhostTable;
+    transitions.lowerTrackedGhostSha256 =
+      options.lowerTrackedGhostFullSha256;
+    transitions.lowerTrackedGhostSourceSha256 =
+      options.lowerTrackedGhostSourceSha256;
+    transitions.lowerTrackedGhostModelSha256 =
+      options.lowerTrackedGhostModelSha256;
     transitions.lowerGhostSidecar = options.lowerGhostSidecar;
     transitions.lowerGhostSidecarSha256 = options.lowerGhostSidecarSha256;
     transitions.lowerGhostSourceSha256 = options.lowerGhostSourceSha256;
@@ -2022,6 +2156,12 @@ class ArbitrarySidecarProbe::Impl {
         probe.modelSha256 = bindings.modelSha256;
         probe.observationSha256 = bindings.observationSha256;
         probe.lowerGhostSidecarSha256 = bindings.lowerGhostSidecarSha256;
+        probe.lowerTrackedGhostFullSha256 =
+          bindings.lowerTrackedGhostFullSha256;
+        probe.lowerTrackedGhostSourceSha256 =
+          bindings.lowerTrackedGhostSourceSha256;
+        probe.lowerTrackedGhostModelSha256 =
+          bindings.lowerTrackedGhostModelSha256;
         probe.lowerParasiteFullSha256 = bindings.lowerParasiteFullSha256;
         probe.lowerParasiteSourceSha256 = bindings.lowerParasiteSourceSha256;
         probe.lowerParasiteModelSha256 = bindings.lowerParasiteModelSha256;
@@ -2223,6 +2363,12 @@ class ArbitrarySidecarProbe::Impl {
               bindings.observationSha256 ||
             std::string(header_.lowerGhostSha.data(), 64) !=
               bindings.lowerGhostSidecarSha256 ||
+            std::string(header_.lowerTrackedGhostFullSha.data(), 64) !=
+              bindings.lowerTrackedGhostFullSha256 ||
+            std::string(header_.lowerTrackedGhostSourceSha.data(), 64) !=
+              bindings.lowerTrackedGhostSourceSha256 ||
+            std::string(header_.lowerTrackedGhostModelSha.data(), 64) !=
+              bindings.lowerTrackedGhostModelSha256 ||
             std::string(header_.lowerParasiteFullSha.data(), 64) !=
               bindings.lowerParasiteFullSha256 ||
             std::string(header_.lowerParasiteSourceSha.data(), 64) !=
@@ -2240,6 +2386,9 @@ class ArbitrarySidecarProbe::Impl {
             !valid_sha(header_hash(header_.modelSha)) ||
             !valid_sha(header_hash(header_.observationSha)) ||
             !valid_sha(header_hash(header_.lowerGhostSha)) ||
+            !valid_sha(header_hash(header_.lowerTrackedGhostFullSha)) ||
+            !valid_sha(header_hash(header_.lowerTrackedGhostSourceSha)) ||
+            !valid_sha(header_hash(header_.lowerTrackedGhostModelSha)) ||
             !valid_sha(header_hash(header_.lowerParasiteFullSha)) ||
             !valid_sha(header_hash(header_.lowerParasiteSourceSha)) ||
             !valid_sha(header_hash(header_.lowerParasiteModelSha)) ||
@@ -2276,6 +2425,16 @@ class ArbitrarySidecarProbe::Impl {
                 throw std::runtime_error(
                   "Parasite lower-concrete restore mismatch");
             (void)LowerParasiteTable(restore->lowerParasiteTable);
+            if (GhostPublicExtraExact::sha256_file(
+                  restore->lowerTrackedGhostTable) !=
+                  bindings.lowerTrackedGhostFullSha256 ||
+                bindings.lowerTrackedGhostFullSha256 !=
+                  bindings.lowerTrackedGhostSourceSha256 ||
+                restore->lowerTrackedGhostModelSha256 !=
+                  bindings.lowerTrackedGhostModelSha256)
+                throw std::runtime_error(
+                  "Parasite tracked-Ghost restore mismatch");
+            (void)LowerTrackedGhostTable(restore->lowerTrackedGhostTable);
             const OriginalTable original(restore->sourceTable, orientation_);
             const NormalizedSource normalized = normalize_source(original,
               orientation_, restore->scratchPrefix +

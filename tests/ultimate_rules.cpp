@@ -1091,6 +1091,49 @@ void test_parasite_goop_and_angel_interactions() {
            parasiteAttack.piece(rook).color == Color::White,
            "attacking parasite possesses instead of killing its target");
 
+    Position jesterPossession;
+    jesterPossession.add_piece(PieceType::King, Color::White,
+                               Position::square_from_name("a1"));
+    const int jesterParasite = jesterPossession.add_piece(
+        PieceType::Parasite, Color::White, Position::square_from_name("c3"));
+    jesterPossession.add_piece(PieceType::King, Color::Black,
+                               Position::square_from_name("h10"));
+    const int possessedJester = jesterPossession.add_piece(
+        PieceType::Jester, Color::Black, Position::square_from_name("d4"));
+    const std::string beforeJesterPossession = jesterPossession.upn();
+    Undo possessJester;
+    expect(jesterPossession.make_move(
+               require_move(jesterPossession, "c3-d4"), possessJester),
+           "Parasite possession of an opposing Jester applies");
+    expect(!jesterPossession.piece(jesterParasite).alive &&
+               jesterPossession.piece(possessedJester).alive &&
+               jesterPossession.piece(possessedJester).type == PieceType::Jester &&
+               jesterPossession.piece(possessedJester).color == Color::White,
+           "Jester possession changes control without replacing its fixed "
+           "piece identity");
+    jesterPossession.undo_move(possessJester);
+    expect(jesterPossession.upn() == beforeJesterPossession,
+           "undo restores the exact pre-possession Jester identity and team");
+
+    Position rangedParasiteDefense;
+    rangedParasiteDefense.add_piece(PieceType::King, Color::White,
+                                     Position::square_from_name("a1"));
+    const int rangedParasiteSniper = rangedParasiteDefense.add_piece(
+        PieceType::Sniper, Color::White, Position::square_from_name("f3"));
+    const int rangedDefendingParasite = rangedParasiteDefense.add_piece(
+        PieceType::Parasite, Color::Black, Position::square_from_name("f6"));
+    rangedParasiteDefense.add_piece(PieceType::King, Color::Black,
+                                     Position::square_from_name("h10"));
+    Undo shootParasite;
+    expect(rangedParasiteDefense.make_move(
+               require_move(rangedParasiteDefense, "f3xf6"), shootParasite),
+           "ranged attack on a defending Parasite applies");
+    expect(rangedParasiteDefense.piece(rangedParasiteSniper).alive &&
+               rangedParasiteDefense.piece(rangedParasiteSniper).color ==
+                   Color::White &&
+               !rangedParasiteDefense.piece(rangedDefendingParasite).alive,
+           "ranged attacker kills a Parasite without being possessed");
+
     Position specialTarget;
     specialTarget.add_piece(PieceType::King, Color::White,
                             Position::square_from_name("a1"));
@@ -1223,6 +1266,23 @@ void test_parasite_goop_and_angel_interactions() {
     expect(retaliation.make_move(require_move(retaliation, "c3-d5"), hit), "melee attack on goop applies");
     expect(!retaliation.piece(knight).alive && !retaliation.piece(goop).alive,
            "goop and its melee attacker both die");
+
+    Position rangedGoop;
+    rangedGoop.add_piece(PieceType::King, Color::White,
+                          Position::square_from_name("a1"));
+    const int goopSniper = rangedGoop.add_piece(
+        PieceType::Sniper, Color::White, Position::square_from_name("f3"));
+    const int rangedGoopTarget = rangedGoop.add_piece(
+        PieceType::Goop, Color::Black, Position::square_from_name("f6"));
+    rangedGoop.add_piece(PieceType::King, Color::Black,
+                          Position::square_from_name("h10"));
+    Undo shootGoop;
+    expect(rangedGoop.make_move(require_move(rangedGoop, "f3xf6"), shootGoop),
+           "ranged attack on Goop applies");
+    expect(rangedGoop.piece(goopSniper).alive &&
+               !rangedGoop.piece(rangedGoopTarget).alive,
+           "ranged attacker survives Goop retaliation");
+
 
     Position rescuedAttacker;
     rescuedAttacker.add_piece(PieceType::King, Color::White,
@@ -1949,7 +2009,69 @@ void test_ghost_visibility_transitions() {
     expect(approach.make_move(require_move(approach, "e6-e5"), kingMove),
            "enemy king approaches hidden ghost");
     expect(approach.piece(approachedGhost).visible,
-           "enemy king or jester adjacency reveals a ghost");
+           "a King stepping beside a hidden Ghost reveals it in network play");
+
+    Position jesterApproach;
+    jesterApproach.add_piece(PieceType::King, Color::White,
+                             Position::square_from_name("a1"));
+    jesterApproach.add_piece(PieceType::King, Color::Black,
+                             Position::square_from_name("h10"));
+    jesterApproach.add_piece(PieceType::Jester, Color::Black,
+                             Position::square_from_name("e6"));
+    const int jesterApproachedGhost = jesterApproach.add_piece(
+      PieceType::Ghost, Color::White, Position::square_from_name("d4"));
+    jesterApproach.piece(jesterApproachedGhost).visible = false;
+    jesterApproach.set_side_to_move(Color::Black);
+    Undo jesterMove;
+    expect(jesterApproach.make_move(
+             require_move(jesterApproach, "e6-e5"), jesterMove) &&
+             jesterApproach.piece(jesterApproachedGhost).visible,
+           "a Jester stepping beside a hidden Ghost reveals it in network play");
+
+    for (const PieceType royal : {PieceType::King, PieceType::Jester}) {
+        Position ghostApproach;
+        std::string rebuildError;
+        expect(ghostApproach.set_upn(
+          royal == PieceType::King
+            ? "w;king,w,a1;king,b,e6;ghost,w,d4,0,0,0,0,0,0,-1,1,-1,0"
+            : "w;king,w,a1;king,b,h10;jester,b,e6;ghost,w,d4,0,0,0,0,0,0,-1,1,-1,0",
+          &rebuildError), "royal-range Ghost fixture parses: " + rebuildError);
+        int ghostId = Position::NoPiece;
+        for (int id = 0; id < ghostApproach.piece_count(); ++id)
+            if (ghostApproach.piece(id).type == PieceType::Ghost)
+                ghostId = id;
+        Undo ghostMove;
+        expect(ghostApproach.make_move(
+                 require_move(ghostApproach, "d4-d5"), ghostMove) &&
+                 ghostApproach.piece(ghostId).visible,
+               std::string("a Ghost reveals when it steps into ") +
+                 (royal == PieceType::King ? "King" : "Jester") + " range");
+    }
+
+    Position ghostAttacksParasite;
+    ghostAttacksParasite.add_piece(
+      PieceType::King, Color::White, Position::square_from_name("a1"));
+    const int retaliatingGhost = ghostAttacksParasite.add_piece(
+      PieceType::Ghost, Color::White, Position::square_from_name("c3"));
+    ghostAttacksParasite.add_piece(
+      PieceType::Parasite, Color::Black, Position::square_from_name("d4"));
+    ghostAttacksParasite.add_piece(
+      PieceType::King, Color::Black, Position::square_from_name("h10"));
+    ghostAttacksParasite.piece(retaliatingGhost).visible = false;
+    Undo parasiteRetaliation;
+    expect(ghostAttacksParasite.make_move(
+             require_move(ghostAttacksParasite, "c3-d4"),
+             parasiteRetaliation) &&
+             ghostAttacksParasite.piece(retaliatingGhost).color == Color::Black &&
+             ghostAttacksParasite.piece(retaliatingGhost).parasiteTracked &&
+             ghostAttacksParasite.piece(retaliatingGhost).visible,
+           "a defending Parasite also leaves its permanent marker on the "
+           "Ghost attacker it possesses");
+    ghostAttacksParasite.undo_move(parasiteRetaliation);
+    expect(ghostAttacksParasite.piece(retaliatingGhost).color == Color::White &&
+             !ghostAttacksParasite.piece(retaliatingGhost).parasiteTracked &&
+             !ghostAttacksParasite.piece(retaliatingGhost).visible,
+           "undo restores Ghost visibility before Parasite retaliation");
 
     Position blindPawn;
     blindPawn.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
@@ -2111,9 +2233,43 @@ void test_ghost_visibility_transitions() {
                  candidate.piece(targetGhost).alive == fixture.ghostSurvives,
                std::string(Position::type_name(fixture.type)) +
                  " resolves its own death/capture callback on a hidden Ghost");
-        if (fixture.type == PieceType::Parasite)
+        if (fixture.type == PieceType::Parasite) {
             expect(candidate.piece(targetGhost).color == Color::White,
                    "Parasite possesses a hidden enemy Ghost instead of killing it");
+            expect(candidate.piece(targetGhost).parasiteTracked &&
+                     candidate.piece(targetGhost).visible,
+                   "a Parasite-possessed Ghost carries a permanent public tracker");
+            expect(!candidate.tablebase_substate(
+                     targetGhost, PieceType::Ghost).has_value(),
+                   "the two-state Ghost tablebase codec rejects a tracked Ghost");
+            Position roundTrip;
+            std::string roundTripError;
+            const int trackedSquare = Position::square_from_name("d4");
+            expect(roundTrip.set_upn(candidate.upn(), &roundTripError) &&
+                     roundTrip.piece_on(trackedSquare) != Position::NoPiece &&
+                     roundTrip.piece(roundTrip.piece_on(trackedSquare)).parasiteTracked &&
+                     roundTrip.piece(roundTrip.piece_on(trackedSquare)).visible,
+                   "Parasite-tracked Ghost state survives UPN round trip: " +
+                     roundTripError);
+            Undo reply;
+            expect(candidate.make_move(
+                     require_move(candidate, "h10-h9"), reply),
+                   "opponent can reply before the possessed Ghost moves");
+            Undo trackedMove;
+            expect(candidate.make_move(
+                     require_move(candidate, "d4-e4"), trackedMove) &&
+                     candidate.piece(targetGhost).parasiteTracked &&
+                     candidate.piece(targetGhost).visible,
+                   "Parasite-tracked Ghost stays visible after a quiet move");
+            candidate.undo_move(trackedMove);
+            candidate.undo_move(reply);
+            candidate.undo_move(blindCapture);
+            expect(candidate.piece(actor).alive &&
+                     candidate.piece(targetGhost).alive &&
+                     !candidate.piece(targetGhost).parasiteTracked &&
+                     !candidate.piece(targetGhost).visible,
+                   "undo restores an untracked hidden Ghost before possession");
+        }
     }
 
     Position royalBlindCapture;
@@ -3032,14 +3188,14 @@ void test_public_history_reconstruction() {
            "a currently visible enemy Ghost begins as one concrete world: " +
              error);
     SearchLimits reexpansionLimits;
-    reexpansionLimits.depth = 2;
+    reexpansionLimits.depth = 4;
     Search reexpansionSearch(1);
     const BeliefSearchResult reexpansion = reexpansionSearch.think_beliefs(
       knownGhost, reexpansionLimits);
     expect(reexpansion.singletonHandoffs == 0 &&
              reexpansion.peakBeliefs > 1,
            "singleton Ghost knowledge remains in exact belief search and "
-           "re-expands after a quiet hidden move");
+           "re-expands only after a later move begun while hidden");
 
     const Position ambiguousRoyal = parse(
       "b;king,w,a1;jester,w,b1;king,b,h10");
@@ -3057,6 +3213,45 @@ void test_public_history_reconstruction() {
              revealedRoyal.beliefs().enemy_king_known(),
            "post-first-pick history preserves the now-public enemy King "
            "identity: " + error);
+
+    // Parasite possession changes team, not object identity.  The former
+    // owner therefore keeps knowing that its old royal was the Jester, while
+    // the possessing side learns the same fact from the public continuation:
+    // the alternative world where the target was the real King terminated.
+    const Position parasiteJester = parse(
+      "w;king,w,a1;parasite,w,c3;king,b,h10;jester,b,d4");
+    PublicHistoryState parasiteJesterForIvory;
+    PublicHistoryState parasiteJesterForOnyx;
+    expect(parasiteJesterForIvory.start(
+             parasiteJester, {Color::White, false}, &error) &&
+             parasiteJesterForIvory.beliefs().size() == 2 &&
+             !parasiteJesterForIvory.beliefs().piece_type_known(
+               3, PieceType::Jester),
+           "the possessing side initially sees two enemy royal assignments: " +
+             error);
+    expect(parasiteJesterForOnyx.start(
+             parasiteJester, {Color::Black, false}, &error) &&
+             parasiteJesterForOnyx.beliefs().size() == 1 &&
+             parasiteJesterForOnyx.beliefs().piece_type_known(
+               3, PieceType::Jester),
+           "a royal's original owner knows its Jester identity before "
+           "possession: " + error);
+    expect(parasiteJesterForIvory.apply_actual("c3-d4", &error) &&
+             parasiteJesterForIvory.beliefs().size() == 1 &&
+             parasiteJesterForIvory.beliefs().piece_type_known(
+               3, PieceType::Jester) &&
+             parasiteJesterForIvory.actual_position().piece(3).color ==
+               Color::White,
+           "continuing after Parasite possession proves the transferred "
+           "royal was the Jester: " + error);
+    expect(parasiteJesterForOnyx.apply_actual("c3-d4", &error) &&
+             parasiteJesterForOnyx.beliefs().size() == 1 &&
+             parasiteJesterForOnyx.beliefs().piece_type_known(
+               3, PieceType::Jester) &&
+             parasiteJesterForOnyx.actual_position().piece(3).color ==
+               Color::White,
+           "Parasite possession preserves the former owner's exact Jester "
+           "provenance after control changes: " + error);
     SearchLimits royalOracleLimits;
     royalOracleLimits.depth = 6;
     royalOracleLimits.factoredBeliefs = false;
@@ -4197,6 +4392,12 @@ void test_public_information_projection() {
     visibleF6.piece(1).visible = true;
     expect(view_key(visibleC3, onyx) != view_key(visibleF6, onyx),
            "a visible enemy Ghost square is public");
+    Position trackedC3 = visibleC3;
+    trackedC3.piece(1).parasiteTracked = true;
+    expect(view_key(trackedC3, onyx) != view_key(visibleC3, onyx) &&
+             !(compact_view_key(trackedC3, onyx) ==
+               compact_view_key(visibleC3, onyx)),
+           "a floating Parasite tracker is persistent public Ghost state");
 
     const Move firstQuiet = require_move(hiddenC3, "c3-d4");
     const Move secondQuiet = require_move(hiddenF6, "f6-e5");
@@ -4229,10 +4430,9 @@ void test_public_information_projection() {
              visibleF6, secondVisibleQuiet, afterVisibleSecond, onyx),
            "a visible Ghost transition preserves its public source");
 
-    // A Ghost which was visible before a quiet move has a public source, but
-    // its new square disappears again.  Two destinations from that same
-    // source are consequently one observation when the resulting public state
-    // is otherwise identical.
+    // The visible model animates its direction before fading. Thus the first
+    // quiet move from a revealed square exposes both endpoints, even though
+    // the resulting ordinary board view conceals the Ghost again.
     const Move visibleToD4 = require_move(visibleC3, "c3-d4");
     const Move visibleToC4 = require_move(visibleC3, "c3-c4");
     Position afterVisibleD4 = visibleC3;
@@ -4242,15 +4442,38 @@ void test_public_information_projection() {
            afterVisibleC4.make_move(visibleToC4, visibleC4Undo),
            "same-source visible-Ghost quiet fixtures apply");
     expect(transition_observation_key(
-             visibleC3, visibleToD4, afterVisibleD4, onyx) ==
+             visibleC3, visibleToD4, afterVisibleD4, onyx) !=
            transition_observation_key(
              visibleC3, visibleToC4, afterVisibleC4, onyx),
-           "a quiet Ghost destination is concealed after it hides again");
-    expect(compact_transition_observation_key(
+           "a revealed Ghost's quiet destination remains known from its animation");
+    expect(!(compact_transition_observation_key(
              visibleC3, visibleToD4, afterVisibleD4, onyx, false) ==
              compact_transition_observation_key(
-               visibleC3, visibleToC4, afterVisibleC4, onyx, false),
-           "compact observations preserve visible-to-hidden Ghost re-expansion");
+               visibleC3, visibleToC4, afterVisibleC4, onyx, false)),
+           "compact observations retain a revealed Ghost's movement direction");
+    const std::string visibleDirection = transition_observation_key(
+      visibleC3, visibleToD4, afterVisibleD4, onyx);
+    expect(visibleDirection.find("|from=c3|to=d4|") != std::string::npos,
+           "the revealed-Ghost transition spells both public endpoints");
+
+    Position afterPublicReply = afterVisibleD4;
+    Undo publicReply;
+    expect(afterPublicReply.make_move(
+             require_move(afterPublicReply, "h10-h9"), publicReply),
+           "opponent reply reaches the next hidden-Ghost turn");
+    PublicBeliefState knownHidden(onyx);
+    std::string knownError;
+    expect(knownHidden.add(afterPublicReply, &knownError) &&
+             knownHidden.size() == 1 && knownHidden.piece_location_known(1),
+           "a Ghost that just faded still has one publicly known square: " +
+             knownError);
+    const BeliefSuccessorPartitions hiddenAgain =
+      knownHidden.adversarial_successor_partitions(false);
+    expect(std::any_of(hiddenAgain.buckets.begin(), hiddenAgain.buckets.end(),
+             [](const BeliefSuccessorBucket& bucket) {
+                 return bucket.actions.size() > 1 && bucket.worlds.size() > 1;
+             }),
+           "only the following move begun while hidden re-expands Ghost locations");
 
     const Position hiddenCaptureLeft = parses(
       "w;king,w,a1;ghost,w,d4,0,0,0,0,1,0,-1,1,-1,0;"
@@ -4359,7 +4582,16 @@ void test_public_information_projection() {
 
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
+    bool externalTablebases = true;
+    for (int index = 1; index < argc; ++index) {
+        if (std::string_view(argv[index]) == "--skip-external-tablebases")
+            externalTablebases = false;
+        else {
+            std::cerr << "unknown test option: " << argv[index] << '\n';
+            return EXIT_FAILURE;
+        }
+    }
     test_roster_and_position_round_trip();
     test_chess_style_move_notation();
     test_bomb_and_undo();
@@ -4374,7 +4606,8 @@ int main() {
     test_native_fisherman_rays();
     test_ghost_visibility_transitions();
     test_search_and_perft_regressions();
-    test_exact_tablebase_probing();
+    if (externalTablebases)
+        test_exact_tablebase_probing();
     test_native_information_set_search();
     test_public_belief_state_core();
     test_public_history_reconstruction();

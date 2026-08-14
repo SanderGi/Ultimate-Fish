@@ -31,8 +31,9 @@ use the `fresh-maximal-public-view-v2` convention:
 
 This convention is intentionally a statement about a fresh queried position.
 The same hidden-Ghost UPN can occur after histories that imply a smaller belief
-set—for example, a previously visible Ghost's quiet move restricts its possible
-destination to legal neighbors of the known source. Such history-specific
+set—for example, a previously visible Ghost's quiet move exposes and therefore
+fixes its exact destination even when it fades there. Only its following move
+begun while hidden expands to legal neighbors. Such history-specific
 positions are solved exactly when reached inside the information game, but are
 not separate roots in the README population.
 
@@ -48,9 +49,9 @@ updated only by shipping-game observations:
 - the non-mover does not see those markers and must not refine its information
   set from the mover's private inspection;
 
-- visible moves and actions expose their public actor and source plus any
-  target that remains public; when a previously visible Ghost makes a quiet
-  move and hides again, its source stays known but its destination does not;
+- visible moves and actions expose their public actor, source, and animated
+  destination; when a previously visible Ghost makes a quiet move and hides
+  again, both endpoints remain known;
 - a quiet invisible-Ghost move conceals the coordinates that the opponent does
   not see;
 - a reveal exposes the newly visible destination;

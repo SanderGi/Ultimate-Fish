@@ -45,7 +45,7 @@ Exact::TransitionOptions transition_options(Exact::Orientation orientation,
       "89df7874ea2bb5aab359acc001db24746a84e47b4c9783965e883467c724666b";
     options.modelSha256 = std::string(64, 'a');
     options.observationSha256 =
-      "af09ebab834599de83d546f8729b8329dbe5ba8ff1cc7f24be3ac63086273adf";
+      "890c399d6856fbf1773766f1840d0c38e46669c18b609e20c38d2750a09dbc23";
     options.geometryBegin = begin;
     options.geometryCount = count;
     return options;
@@ -188,14 +188,14 @@ void measurement_test(const std::string& base,
     options.sourceSha256 = sourceSha;
     options.modelSha256 = std::string(64, 'a');
     options.observationSha256 =
-      "af09ebab834599de83d546f8729b8329dbe5ba8ff1cc7f24be3ac63086273adf";
+      "890c399d6856fbf1773766f1840d0c38e46669c18b609e20c38d2750a09dbc23";
     options.lowerGhostSourceSha256 =
-      "3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31";
+      "11b7b57aa9819b1fb9ac3f7bd273ab73cfa3627fb09a855856ae1426af2c0ba5";
     options.lowerGhostModelSha256 =
-      "4a2d9d7b503b29204cf9af08985345771b9046c07bd2116e592fab40ee12e430";
+      "ec6ed34ab80733ee06354675b9bf0ea9e190c927583ba586fe94f4026afdf9c5";
     options.lowerGhostObservationSha256 = options.observationSha256;
     options.lowerGhostSidecarSha256 =
-      "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b";
+      "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb";
     options.lowerGiantFullSha256 =
       "eb52f2c08cf88e1e3682d0c72dfde191d9009e79779ad7eee23ca82fdcade591";
     options.lowerGiantSourceSha256 = options.lowerGiantFullSha256;

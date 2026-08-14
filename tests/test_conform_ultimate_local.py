@@ -16,6 +16,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).parents[1]
+NATIVE_AUDIT = ROOT / "tests" / "ultimate_native_interaction_audit.json"
 sys.path.insert(0, str(ROOT))
 SPEC = importlib.util.spec_from_file_location(
     "conform_ultimate_local", ROOT / "tools/conform_ultimate_local.py",
@@ -82,7 +83,13 @@ class LocalConformanceTests(unittest.TestCase):
         document = copy.deepcopy(
             conform.load_manifest(conform.DEFAULT_MANIFEST)
         )
-        document["fixtures"][0]["steps"][0].pop("proves")
+        proof_step = next(
+            step
+            for fixture in document["fixtures"]
+            for step in fixture["steps"]
+            if step.get("proves")
+        )
+        proof_step.pop("proves")
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "manifest.json"
             path.write_text(json.dumps(document))
@@ -162,6 +169,65 @@ class LocalConformanceTests(unittest.TestCase):
             for right in deployable
         }
         self.assertEqual(expected, covered & expected)
+
+    def test_native_interaction_audit_covers_every_piece_and_simulator(self) -> None:
+        document = conform.load_manifest(conform.DEFAULT_MANIFEST)
+        audit = json.loads(NATIVE_AUDIT.read_text())
+        source = (ROOT / "tests" / "ultimate_rules.cpp").read_text()
+        contracts = {
+            contract
+            for fixture in document["fixtures"]
+            for contract in fixture["covers"]
+        }
+        audited_pieces = {
+            piece
+            for family in audit["families"]
+            for piece in family["pieces"]
+        }
+        audited_classes = {
+            class_name
+            for family in audit["families"]
+            for class_name in family["native_classes"]
+        }
+        piece_occurrences = Counter(
+            piece for family in audit["families"] for piece in family["pieces"]
+        )
+        class_occurrences = Counter(
+            class_name
+            for family in audit["families"]
+            for class_name in family["native_classes"]
+        )
+        self.assertEqual(1, audit["schema"])
+        self.assertEqual(document["app_version"], audit["app_version"])
+        self.assertEqual(set(conform.PIECE_COST), audited_pieces)
+        self.assertEqual(set(audit["native_classes"]), audited_classes)
+        self.assertTrue(all(count == 1 for count in piece_occurrences.values()))
+        self.assertTrue(all(count == 1 for count in class_occurrences.values()))
+        self.assertEqual(
+            len(audit["families"]),
+            len({family["id"] for family in audit["families"]}),
+        )
+        self.assertEqual(28, len(audit["native_classes"]))
+        self.assertEqual(118, audit["native_override_count"])
+        self.assertRegex(audit["native_override_sha256"], r"^[0-9a-f]{64}$")
+        self.assertEqual(
+            51,
+            sum(len(family["native_anchors"]) for family in audit["families"]),
+        )
+        for family in audit["families"]:
+            with self.subTest(family=family["id"]):
+                self.assertTrue(family["native_anchors"])
+                self.assertTrue(family["reference_tests"])
+                self.assertTrue(family["local_contracts"])
+                self.assertTrue(family["finding"])
+                self.assertTrue(set(family["local_contracts"]) <= contracts)
+                for test_name in family["reference_tests"]:
+                    self.assertIn(f"void {test_name}()", source)
+                for anchor in family["native_anchors"]:
+                    self.assertRegex(
+                        anchor,
+                        r"^Simulated[A-Za-z0-9_]+\.[A-Za-z0-9_]+@0x[0-9a-f]+$",
+                    )
 
     def test_features_include_hidden_target_and_ownership_delta(self) -> None:
         before = (

@@ -20,13 +20,13 @@ constexpr char SourceSha[] =
 constexpr char LowerJesterModelSha[] =
   "0ed6d361e313623234c21f9a1c800947014ce47320b4a71fca4fb20a255587c2";
 constexpr char LowerGhostSidecarSha[] =
-  "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b";
+  "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb";
 constexpr char LowerGhostSourceSha[] =
-  "3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31";
+  "11b7b57aa9819b1fb9ac3f7bd273ab73cfa3627fb09a855856ae1426af2c0ba5";
 constexpr char LowerGhostModelSha[] =
-  "4a2d9d7b503b29204cf9af08985345771b9046c07bd2116e592fab40ee12e430";
+  "ec6ed34ab80733ee06354675b9bf0ea9e190c927583ba586fe94f4026afdf9c5";
 constexpr char ObservationSha[] =
-  "af09ebab834599de83d546f8729b8329dbe5ba8ff1cc7f24be3ac63086273adf";
+  "890c399d6856fbf1773766f1840d0c38e46669c18b609e20c38d2750a09dbc23";
 
 struct Arguments {
     enum class Command { None, SelfTest, Compile, Merge, VerifyTransitions,

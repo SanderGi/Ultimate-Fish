@@ -1,0 +1,20 @@
+{
+  "schema": "ultimate-concrete-k2-dependencies-v2",
+  "files": [
+    {
+      "filename": "kberserkerk.uftb",
+      "bytes": 12324040,
+      "sha256": "f41245a06eb280136c458e6337ef4a588a0d5142b606413b92f84c248487e2b1"
+    },
+    {
+      "filename": "kpenguink.uftb",
+      "bytes": 4929640,
+      "sha256": "5abd70c847e799b85ed08c49f01c4e5deb3d253505583b8bc145290a84417edd"
+    },
+    {
+      "filename": "ksniperk.uftb",
+      "bytes": 4929640,
+      "sha256": "473022c95908a45eec7ac8aab7752482d30033cb24f66b65bdf329a7c49c49c5"
+    }
+  ]
+}

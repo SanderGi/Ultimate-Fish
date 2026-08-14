@@ -1776,6 +1776,13 @@ class VisionTests(unittest.TestCase):
         )
         game.adb.screenshot.assert_not_called()
 
+    def test_native_checkmate_not_possible_label_is_a_draw(self):
+        event = MODULE.parse_unity_line(
+            "Board:OpenGameOverMenu CHECKMATE NOT POSSIBLE"
+        )
+        self.assertEqual(event.kind, "terminal_label")
+        self.assertEqual(event.source, "draw")
+
     def test_ranked_lock_checkmark_detector_uses_full_screen_coordinates(self):
         from PIL import Image, ImageDraw
 
@@ -3819,6 +3826,38 @@ class BeliefConstructionTests(unittest.TestCase):
         )
         self.assertEqual(beliefs.positions, [quiet])
         self.assertIn("queen,w,d2", beliefs.positions[0])
+
+    def test_move_begun_by_visible_ghost_uses_public_direction(self):
+        before = (
+            "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+            "king,w,a1;king,b,h10;"
+            "ghost,b,c3,0,0,0,0,1,1,-1,1,-1,0"
+        )
+        expected = before.replace("ghost,b,c3", "ghost,b,d4").replace(
+            ",1,1,-1,1,-1,0", ",1,0,-1,1,-1,0"
+        ).replace("b;", "w;", 1)
+
+        class FakeEngine:
+            @staticmethod
+            def legal_moves(_position):
+                return ["c3-c4", "c3-d4"]
+
+            @staticmethod
+            def apply(position, move):
+                source, target, _separator = MODULE.parse_engine_move(move)
+                return position.replace(
+                    f"ghost,b,{source}", f"ghost,b,{target}"
+                ).replace(
+                    ",1,1,-1,1,-1,0", ",1,0,-1,1,-1,0"
+                ).replace("b;", "w;", 1)
+
+        beliefs = MODULE.BeliefSet(FakeEngine(), (before,))
+        self.assertTrue(beliefs.enemy_ghost_visible_at("c3"))
+        beliefs.observe_move(
+            MODULE.AppEvent("move", "ghost", "c3", "d4"), False
+        )
+        self.assertEqual(beliefs.positions, [expected])
+        self.assertNotIn(";ghost,b,c4,", beliefs.positions[0])
 
     def test_visible_ghost_uses_public_destination_not_private_origin(self):
         first = (

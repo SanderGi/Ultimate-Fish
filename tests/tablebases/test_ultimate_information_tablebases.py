@@ -488,22 +488,22 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
 
         self.assertEqual(
             info.solver_model_fingerprint("kbishopghostk.uftb"),
-            "be2e7f9f45ce2b6e6f1225f31ceb4919042e173bc8d0d6dcb49fde4b3e583162")
+            "845ae7b2699123ea44d665b96152a9f3b24cac9da6239958277bb069b0767a39")
         self.assertEqual(
             info.solver_model_fingerprint("kghostghostk.uftb"),
-            "e2dbe333ad3ef17575af20b398b391ea48af0b51395c84cf050e27df0b3e4c2e")
+            "779e91a7df7dc806a472963b1073470d484e7a1b638d71dfc9c8dbe5c839e110")
         self.assertEqual(
             info.solver_model_fingerprint("kghostmagek.uftb"),
-            "da53845742384179dc4d4f448c4bf2581b70051eb2e9ce6aca8a96c4e4032bae")
+            "f817bbf7b144ee03a0fc524082aa782bfaa490abb500e742d1805388cf504c20")
         self.assertEqual(
             info.solver_model_fingerprint("kghostkmage.uftb"),
-            "b6b2fc6463fc413cfd2d179001b26099dd10e2604b252b06488a615385856850")
+            "a11dc1dc5143e8ca52929a6b037822094d454a92f09310e91ee44a0627ef2a9b")
         self.assertEqual(
             info.solver_model_fingerprint("kghostparasitek.uftb"),
-            "1a7aa2bd7c3a84d29d54ebb979a0b4bdd9caf41aa2144a2795dcedee7ee92337")
+            "8966865f1d22fd5a303fac4e05261aaf476d980ecadd5b03a3a7bd46f94ceddf")
         self.assertEqual(
             info.solver_model_fingerprint("kghostkparasite.uftb"),
-            "5639c868fb11033219fc15c55c7938c7413128dd0c68e951aa2843fee5bb3cb4")
+            "2006189a0a2d89718bf5698dc7a1b391502eae20724468b6074f9d40907871d9")
         self.assertNotEqual(
             info.double_jester_capture_model_fingerprint(),
             info.solver_model_fingerprint("kjesterjesterk.uftb"))

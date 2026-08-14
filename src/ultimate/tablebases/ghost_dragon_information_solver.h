@@ -46,6 +46,15 @@ struct SolveOptions {
     std::string lowerDragonFullSha256;
     std::string lowerDragonSourceSha256;
     std::string lowerDragonModelSha256;
+    std::string promotedSidecar;
+    std::string promotedSidecarSha256;
+    std::string promotedSourceSha256;
+    std::string promotedModelSha256;
+    std::string promotedObservationSha256;
+    std::string promotedLowerGhostSidecarSha256;
+    std::string promotedLowerDragonFullSha256;
+    std::string promotedLowerDragonSourceSha256;
+    std::string promotedLowerDragonModelSha256;
     std::uint32_t maxNodes = 500'000'000;
     std::uint64_t uniqueSlots = std::uint64_t{1} << 30;
     std::uint32_t compactEvery = 1;

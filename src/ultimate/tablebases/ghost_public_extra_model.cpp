@@ -150,6 +150,10 @@ struct LiveMaterial {
         }
         else if (piece.type == PieceType::Ghost &&
                  result.ghost == Position::NoSquare) {
+            if (piece.parasiteTracked) {
+                result.unexpected = true;
+                continue;
+            }
             result.ghost = piece.square;
             result.ghostColor = piece.color;
             result.visible = piece.visible;

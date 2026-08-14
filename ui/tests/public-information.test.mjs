@@ -29,6 +29,14 @@ test("editor moves apply royal proximity to Ghost visibility", () => {
   );
   assert.equal(ghostMovedAway[1].visible, false);
 
+  const trackedMovedAway = applyEditorGhostVisibility(
+    ghostMovedAway.map((piece) => piece.uid === "ghost"
+      ? { ...piece, parasiteTracked: true }
+      : piece),
+    "ghost",
+  );
+  assert.equal(trackedMovedAway[1].visible, true);
+
   const royalMoved = applyEditorGhostVisibility(
     pieces.map((piece) => piece.uid === "jester"
       ? { ...piece, square: 9 }

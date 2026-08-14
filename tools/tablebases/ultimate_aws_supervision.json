@@ -12754,8 +12754,9 @@
         "kberserkerparasitek.uftb"
       ],
       "ledger_certifies": true,
+      "s3_only_certified": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-resume-parasite-same-i03-v1.service",
+      "unit": "ultimatefish-resume-parasite-same-i03-v3.service",
       "expected_allowed_cpus": "30",
       "resource_requirements": {
         "cpu_threads": 1,
@@ -12793,7 +12794,29 @@
           "sha256": "43423cc7b9925046224e93cfc188d3fc6d5128d956f771ae99c4b8d30fb7fc1a"
         }
       ],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/ebc724e189304ee1879b62402d5325ae562c01988502761bef1f03eb9c87ad21/kberserkerparasitek-ebc724e189304ee1879b62402d5325ae562c01988502761bef1f03eb9c87ad21.tar.zst",
+          "version_id": "ud0Fxo9WLrUaW7etaDMuH3ZQ66NFxq6H",
+          "sha256": "ebc724e189304ee1879b62402d5325ae562c01988502761bef1f03eb9c87ad21",
+          "size": 2967348
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/current-concrete-7088db91/concrete/v2/certificates/sha256/c9298115c73d080535ba9ed814e8ef2099d4c499b0de529c8612a7dc56bf8f41/wave-certificate.json",
+          "version_id": "BCMEZFO9oOcwhJVbPXYiMBZhZiS98mv6",
+          "sha256": "c9298115c73d080535ba9ed814e8ef2099d4c499b0de529c8612a7dc56bf8f41",
+          "size": 2552
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/current-concrete-7088db91/reachability/sha256/a2fbe121c54213dc666a6d1d27ab2c4927ee1d415d61ed4c3a567ff01236c4e1/kberserkerparasitek.reachability-v2.txt",
+          "version_id": "kNIKg6t90nlhLE3nSYkaL3pW1msoOYKe",
+          "sha256": "a2fbe121c54213dc666a6d1d27ab2c4927ee1d415d61ed4c3a567ff01236c4e1",
+          "size": 940
+        }
+      ]
     },
     {
       "id": "current-concrete-opposed-berserker-bomb-frontier",

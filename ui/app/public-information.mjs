@@ -65,7 +65,7 @@ export function showKnowledgeStatus(view, viewer, pieceColor) {
  * an editor drag/placement. A moved Ghost recomputes its own concealment; a
  * moved royal reveals adjacent enemy Ghosts without hiding any others.
  *
- * @template {{uid: string, id: string, color: Color, square: number, visible: boolean}} T
+ * @template {{uid: string, id: string, color: Color, square: number, visible: boolean, parasiteTracked?: boolean}} T
  * @param {T[]} pieces
  * @param {string} movedUid
  * @returns {T[]}
@@ -81,7 +81,7 @@ export function applyEditorGhostVisibility(pieces, movedUid) {
   const isRoyal = (piece) => piece.id === "king" || piece.id === "jester";
 
   if (moved.id === "ghost") {
-    const visible = pieces.some((piece) =>
+    const visible = Boolean(moved.parasiteTracked) || pieces.some((piece) =>
       piece.color !== moved.color && isRoyal(piece) &&
       adjacent(piece.square, moved.square));
     if (visible === moved.visible) return pieces;

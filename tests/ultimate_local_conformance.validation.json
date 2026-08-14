@@ -2,9 +2,9 @@
   "schema": 1,
   "passed": true,
   "app_version": "5.731",
-  "validated_at": "2026-08-13",
+  "validated_at": "2026-08-14",
   "device_class": "Pixel 8a",
-  "fixture_count": 36,
-  "contract_count": 94,
-  "native_fixture_sha256": "c02a63e169743f63eaab60dfd57bb27e85034de43ecb1e4c931967b58999936e"
+  "fixture_count": 43,
+  "contract_count": 116,
+  "native_fixture_sha256": "1c04012380495e87c49fac232003bcd60296c8f418450383d1ff29c1f5ec6313"
 }

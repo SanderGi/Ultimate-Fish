@@ -21,14 +21,19 @@ struct TransitionOptions {
     std::string lowerParasiteSha256;
     std::string lowerParasiteSourceSha256;
     std::string lowerParasiteModelSha256;
-    // Opposing Parasite/Ghost captures possess the surviving Ghost.  The
-    // resulting visible singleton belongs to the former observer, so it is
-    // an exact K+Ghost-v-K child with the two information roles exchanged.
+    // Ordinary K+Ghost information is still needed by the inherited symbolic
+    // solve. A Parasite possession is different: its surviving Ghost is
+    // permanently tracked and must use the separate public tracked-Ghost WDL
+    // oracle below, never an ordinary visible-singleton UFGM probe.
     std::string lowerGhostSidecar;
     std::string lowerGhostSidecarSha256;
     std::string lowerGhostSourceSha256;
     std::string lowerGhostModelSha256;
     std::string lowerGhostObservationSha256;
+    std::string lowerTrackedGhostTable;
+    std::string lowerTrackedGhostSha256;
+    std::string lowerTrackedGhostSourceSha256;
+    std::string lowerTrackedGhostModelSha256;
     std::uint32_t geometryBegin = 0;
     std::uint32_t geometryCount = 0;
 };
@@ -48,6 +53,10 @@ struct SolveOptions {
     std::string lowerGhostModelSha256;
     std::string lowerGhostObservationSha256;
     std::string lowerGhostSidecarSha256;
+    std::string lowerTrackedGhostTable;
+    std::string lowerTrackedGhostFullSha256;
+    std::string lowerTrackedGhostSourceSha256;
+    std::string lowerTrackedGhostModelSha256;
     std::string lowerParasiteTable;
     std::string lowerParasiteFullSha256;
     std::string lowerParasiteSourceSha256;
@@ -64,6 +73,9 @@ struct ProbeBindings {
     std::string modelSha256;
     std::string observationSha256;
     std::string lowerGhostSidecarSha256;
+    std::string lowerTrackedGhostFullSha256;
+    std::string lowerTrackedGhostSourceSha256;
+    std::string lowerTrackedGhostModelSha256;
     std::string lowerParasiteFullSha256;
     std::string lowerParasiteSourceSha256;
     std::string lowerParasiteModelSha256;

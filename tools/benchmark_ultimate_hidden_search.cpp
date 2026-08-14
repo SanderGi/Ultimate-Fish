@@ -161,7 +161,9 @@ std::vector<Fixture> fixtures() {
     std::string error;
     if (!singleton.add(std::move(reexpansion), &error))
         throw std::runtime_error("could not build singleton fixture: " + error);
-    result.push_back({"ghost-visible-singleton-reexpands", singleton, 2});
+    // The first move begun visible exposes its exact destination. Allow the
+    // reply and the following move begun hidden before requiring expansion.
+    result.push_back({"ghost-visible-singleton-reexpands", singleton, 4});
     return result;
 }
 

@@ -1,0 +1,209 @@
+{
+  "schema": 1,
+  "app_version": "5.731",
+  "native_override_count": 118,
+  "native_override_sha256": "0b5b0d7278018604849d79f31c89366ae2ec0e2ded27c1f1d88cc8e174539b6e",
+  "native_classes": [
+    "SimulatedAngel",
+    "SimulatedBerserker",
+    "SimulatedBishop",
+    "SimulatedBomb",
+    "SimulatedChecker",
+    "SimulatedCopyCat",
+    "SimulatedCopyCatClone",
+    "SimulatedDevil",
+    "SimulatedDragon",
+    "SimulatedFisherman",
+    "SimulatedFreeze",
+    "SimulatedGhost",
+    "SimulatedGiant",
+    "SimulatedGoop",
+    "SimulatedHalo",
+    "SimulatedKing",
+    "SimulatedKnight",
+    "SimulatedMage",
+    "SimulatedNinja",
+    "SimulatedParasite",
+    "SimulatedPawn",
+    "SimulatedPrince",
+    "SimulatedQueen",
+    "SimulatedRook",
+    "SimulatedSludge",
+    "SimulatedSniper",
+    "SimulatedTurtle",
+    "SimulatedUndead"
+  ],
+  "families": [
+    {
+      "id": "ordinary-movement-and-capture",
+      "pieces": ["knight", "queen", "rook", "bishop", "ninja", "turtle", "dragon"],
+      "native_classes": ["SimulatedKnight", "SimulatedQueen", "SimulatedRook", "SimulatedBishop", "SimulatedNinja", "SimulatedTurtle", "SimulatedDragon"],
+      "native_anchors": ["SimulatedKnight.GetPieceSimulations@0x2e3d8bc", "SimulatedDragon.GetPieceSimulations@0x2e33bc0", "SimulatedNinja.GetPieceSimulations@0x2e3ed20"],
+      "reference_tests": ["test_ninja_and_mage", "test_sniper_berserker_and_dragon", "test_ghost_visibility_transitions"],
+      "local_contracts": ["bishop.diagonal-slider-kernel", "turtle.orthogonal-step-kernel", "dragon.knight-leap-kernel", "rook.long-quiet", "knight.blind-hidden-ghost-capture"],
+      "finding": "Constructor direction tables and the generic SimulatedPiece move/death path cover the ordinary ray, leap, step, capture, and hidden-Ghost endpoint classes."
+    },
+    {
+      "id": "king-jester-and-castling",
+      "pieces": ["king", "jester"],
+      "native_classes": ["SimulatedKing"],
+      "native_anchors": ["SimulatedKing.GetPieceSimulations@0x2e3ce84", "SimulatedKing.MakeMove@0x2e3d2f8", "SimulatedKing.SimulateDeath@0x2e3d588"],
+      "reference_tests": ["test_native_castling", "test_public_information_projection", "test_public_history_reconstruction"],
+      "local_contracts": ["castling.no-through-check-test", "jester.suspends-real-king-check-filter", "legal-dots.real-king-target-is-legal-capture", "legal-dots.jester-target-filtered-by-protected-real-king"],
+      "finding": "Jester inherits the live King implementation and both use SimulatedKing; fixed identity, terminal outcome, and private legal-dot filtering remain assignment-dependent."
+    },
+    {
+      "id": "angel-halo-rescue-graph",
+      "pieces": ["angel", "halo"],
+      "native_classes": ["SimulatedAngel", "SimulatedHalo"],
+      "native_anchors": ["SimulatedAngel.SimulateDeath@0x2e299a0", "SimulatedAngel.MakeMove@0x2e2a60c", "SimulatedHalo.SimulateDeath@0x2e3c554"],
+      "reference_tests": ["test_parasite_goop_and_angel_interactions", "test_giant_rechecks_angel_rescue_footprint"],
+      "local_contracts": ["angel.attach-to-angel", "angel.reparent-dependent", "angel.multiple-rescue-order", "angel.struck-copycat-intercepts-linked-death"],
+      "finding": "Attachment order, nested reparenting, linked Halo death, forced relocation, promotion, freeze removal, and repeated Giant-footprint rescue are distinct native branches."
+    },
+    {
+      "id": "berserker-growth",
+      "pieces": ["berserker"],
+      "native_classes": ["SimulatedBerserker"],
+      "native_anchors": ["SimulatedBerserker.GetPieceSimulations@0x2e2c16c", "SimulatedBerserker.MakeMove@0x2e2c41c"],
+      "reference_tests": ["test_sniper_berserker_and_dragon"],
+      "local_contracts": ["berserker.power-grows-after-each-capture", "berserker.radius-is-not-eight-file-clamped", "berserker.nine-rank-leap"],
+      "finding": "Every attack grows the uncapped byte power and material value; movement is a Chebyshev box rather than traced rays."
+    },
+    {
+      "id": "bomb-explosion-chain",
+      "pieces": ["bomb"],
+      "native_classes": ["SimulatedBomb"],
+      "native_anchors": ["SimulatedBomb.MakeMove@0x2e2e408", "SimulatedBomb.SimulateDeath@0x2e2e4c8", "SimulatedBomb.Explode@0x2e2e588"],
+      "reference_tests": ["test_bomb_and_undo", "test_bomb_check_legality"],
+      "local_contracts": ["bomb.chain-clears-clustered-material", "parasite.bomb-does-not-explode"],
+      "finding": "Direct and captured Bombs use radius-one chained death callbacks; Parasite possession bypasses SimulateDeath and a ranged Sniper can remain outside the blast."
+    },
+    {
+      "id": "checker-jump-continuation",
+      "pieces": ["checker", "checkerKing"],
+      "native_classes": ["SimulatedChecker"],
+      "native_anchors": ["SimulatedChecker.GetPieceSimulations@0x2e2ef58", "SimulatedChecker.SimulateMove@0x2e31038", "SimulatedChecker.MakeMove@0x2e31320"],
+      "reference_tests": ["test_checker_chain_and_prince_turns"],
+      "local_contracts": ["checker.forced-multi-jump", "checker.far-rank-promotion", "checker.hidden-ghost-is-not-a-jump-target", "checker.adjacent-hidden-ghost-mutual-knockout"],
+      "finding": "Visible captures queue forced jumps; a hidden Ghost is not a public jump target and instead creates the native adjacent blind-collision action."
+    },
+    {
+      "id": "copycat-linked-pair",
+      "pieces": ["copycat", "copycatClone"],
+      "native_classes": ["SimulatedCopyCat", "SimulatedCopyCatClone"],
+      "native_anchors": ["SimulatedCopyCat.MakeMove@0x2e328c0", "SimulatedCopyCat.SimulateDeath@0x2e32964", "SimulatedCopyCatClone.SimulateDeath@0x2e33550"],
+      "reference_tests": ["test_native_giant_and_copycat_footprints", "test_parasite_goop_and_angel_interactions"],
+      "local_contracts": ["copycat.paired-mirror-move", "copycat.linked-death-is-atomic", "angel.struck-copycat-intercepts-linked-death", "copycat.move-from-clone-half"],
+      "finding": "The mirrored models move as one character, resolve both queued targets, die atomically, and transfer ownership atomically under Parasite possession."
+    },
+    {
+      "id": "devil-minion-automatic",
+      "pieces": ["devil", "minion"],
+      "native_classes": ["SimulatedDevil", "SimulatedUndead"],
+      "native_anchors": ["SimulatedDevil.MakeMove@0x2e338f8", "SimulatedUndead.MakeMove@0x2e46288", "SimulatedUndead.SimulateDeath@0x2e46668"],
+      "reference_tests": ["test_cooldowns_minions_and_freeze_stacking"],
+      "local_contracts": ["devil.spawn", "devil.blind-hidden-ghost-target", "minion.turn-start-auto-move", "minion.unstunned-allied-train"],
+      "finding": "Devil spawn and cooldown are separate from turn-start Minion movement; Minions form unstunned trains, collide with other occupancy, and disappear unrescued at the far edge."
+    },
+    {
+      "id": "fisherman-forced-relocation",
+      "pieces": ["fisherman"],
+      "native_classes": ["SimulatedFisherman"],
+      "native_anchors": ["SimulatedFisherman.GetPieceSimulations@0x2e3488c", "SimulatedFisherman.MakeMove@0x2e3560c"],
+      "reference_tests": ["test_native_fisherman_rays", "test_cooldowns_minions_and_freeze_stacking"],
+      "local_contracts": ["fisherman.forced-hidden-ghost-collision", "fisherman.collision-dispatches-independent-deaths"],
+      "finding": "The first visible ray target is pulled, invisible enemy Ghosts remain apparent endpoints, Giant pulls use footprint relocation, and collision deaths are independent."
+    },
+    {
+      "id": "penguin-freeze-sets",
+      "pieces": ["penguin"],
+      "native_classes": ["SimulatedFreeze"],
+      "native_anchors": ["SimulatedFreeze.GetPieceSimulations@0x2e3800c", "SimulatedFreeze.MakeMove@0x2e38214", "SimulatedFreeze.SimulateDeath@0x2e38714"],
+      "reference_tests": ["test_cooldowns_minions_and_freeze_stacking"],
+      "local_contracts": ["penguin.deployment-has-no-aura", "penguin.freeze-layers-stack", "penguin.moving-removes-own-layer", "penguin.blind-hidden-ghost-mutual-knockout"],
+      "finding": "Freeze directions serialize HashSet membership created only after moving; layers stack per character, Penguins are immune, and forced relocation clears old membership."
+    },
+    {
+      "id": "ghost-visibility-and-collision",
+      "pieces": ["ghost"],
+      "native_classes": ["SimulatedGhost"],
+      "native_anchors": ["SimulatedGhost.MakeInvisible@0x2e39e54", "SimulatedGhost.MakeVisible@0x2e39ee8", "SimulatedGhost.MakeMove@0x2e3a050"],
+      "reference_tests": ["test_ghost_visibility_transitions", "test_public_information_projection"],
+      "local_contracts": ["ghost.enters-king-range-reveals", "ghost.enters-jester-range-reveals", "ghost.revealed-move-direction-public", "ghost.hidden-enemy-cell-is-legal-endpoint"],
+      "finding": "A move begun visible publishes its direction before fading; hidden moves re-expand location, either direction of royal adjacency reveals in network play, and collision semantics depend on the mover override."
+    },
+    {
+      "id": "giant-footprint",
+      "pieces": ["giant"],
+      "native_classes": ["SimulatedGiant"],
+      "native_anchors": ["SimulatedGiant.GetPieceSimulations@0x2e3a770", "SimulatedGiant.SimulateMove@0x2e3b15c", "SimulatedGiant.SimulateDeath@0x2e3b354"],
+      "reference_tests": ["test_native_giant_and_copycat_footprints", "test_giant_rechecks_angel_rescue_footprint"],
+      "local_contracts": ["giant.footprint-crushes-hidden-enemy-ghost", "giant.allied-hidden-ghost-blocks-footprint-translation", "angel.giant-forced-relocation"],
+      "finding": "Ordinary two-cell translations reject allied footprint occupancy, while Mage/Fisherman/Angel forced relocation strikes every destination occupant and can re-hit Angel rescues."
+    },
+    {
+      "id": "goop-retaliation",
+      "pieces": ["goop"],
+      "native_classes": ["SimulatedGoop"],
+      "native_anchors": ["SimulatedGoop.Explode@0x2e3bdec", "SimulatedGoop.SimulateDeath@0x2e3bf84"],
+      "reference_tests": ["test_parasite_goop_and_angel_interactions", "test_sludge_and_victory"],
+      "local_contracts": ["goop.ranged-attacker-survives", "goop.melee-attacker-dies", "goop.dies-on-either-attack"],
+      "finding": "The native branch excludes ranged class 1, support class 2, and Bomb type 8 from retaliation; other melee attackers die on the Goop square unless rescued."
+    },
+    {
+      "id": "mage-swap",
+      "pieces": ["mage"],
+      "native_classes": ["SimulatedMage"],
+      "native_anchors": ["SimulatedMage.GetPieceSimulations@0x2e3e154", "SimulatedMage.MakeMove@0x2e3e390"],
+      "reference_tests": ["test_ninja_and_mage", "test_cooldowns_minions_and_freeze_stacking"],
+      "local_contracts": ["mage.allied-swap", "controller.long-special-drag-targeting"],
+      "finding": "Mage swaps only allies, preserves target moved state, clears Penguin membership, invokes forced promotion, preserves Ghost visibility, and delegates Giant translation."
+    },
+    {
+      "id": "parasite-possession",
+      "pieces": ["parasite"],
+      "native_classes": ["SimulatedParasite"],
+      "native_anchors": ["SimulatedParasite.MakeMove@0x2e3f75c", "SimulatedParasite.SimulateDeath@0x2e3f894", "SimulatedParasite.UndoDeath@0x2e400f4"],
+      "reference_tests": ["test_parasite_goop_and_angel_interactions", "test_ghost_visibility_transitions", "test_public_history_reconstruction"],
+      "local_contracts": ["parasite.attack-possession", "parasite.defender-possesses-melee-attacker", "parasite.ranged-attacker-kills-without-possession", "parasite.jester-possession-transfers-control", "royal-identity.possessed-jester-provenance-persists"],
+      "finding": "An attacking Parasite takes over every target without its death callback. On defense, class 1 ranged, class 2 support, Bomb type 8, and friendly attackers use ordinary death; opposing melee attackers are possessed. Team changes never replace the target object, so royal provenance remains fixed."
+    },
+    {
+      "id": "pawn-en-passant-promotion",
+      "pieces": ["pawn"],
+      "native_classes": ["SimulatedPawn"],
+      "native_anchors": ["SimulatedPawn.GetPieceSimulations@0x2e407ec", "SimulatedPawn.ShouldUpgrade@0x2e413d4", "SimulatedPawn.MakeMove@0x2e41a18"],
+      "reference_tests": ["test_pawn_en_passant_lifetime", "test_ghost_visibility_transitions"],
+      "local_contracts": ["pawn.unmoved-double-step", "pawn.en-passant-hidden-ghost-destination", "pawn.en-passant-bypassing-pawn-survives-blind-collision"],
+      "finding": "The moved flag, not rank, gates the double step; en passant is one-turn state; forward hidden-Ghost collisions are mutual while an en-passant destination Ghost leaves the bypassing Pawn alive."
+    },
+    {
+      "id": "prince-two-stage-action",
+      "pieces": ["prince"],
+      "native_classes": ["SimulatedPrince"],
+      "native_anchors": ["SimulatedPrince.GetPieceSimulations@0x2e42d7c", "SimulatedPrince.MakeMove@0x2e43498", "SimulatedPrince.MakeHumanMove@0x2e43568"],
+      "reference_tests": ["test_checker_chain_and_prince_turns"],
+      "local_contracts": ["prince.quiet-first-step-retains-turn", "prince.forced-second-step-ends-turn"],
+      "finding": "A quiet first King-step queues exactly one forced second step; a first-step capture ends the action, including a blind hidden-Ghost capture."
+    },
+    {
+      "id": "sludge-trail",
+      "pieces": ["sludge"],
+      "native_classes": ["SimulatedSludge"],
+      "native_anchors": ["SimulatedSludge.GetPieceSimulations@0x2e43cc8", "SimulatedSludge.MakeMove@0x2e4429c"],
+      "reference_tests": ["test_sludge_and_victory"],
+      "local_contracts": ["sludge.two-square-goop-trail", "sludge.hidden-ghost-ray-pass-through", "sludge.blind-hidden-ghost-collision"],
+      "finding": "Sludge moves one or two orthogonal cells, leaves origin/intermediate Goop, passes through hidden Ghost occupancy, and mutually knocks out on a hidden endpoint."
+    },
+    {
+      "id": "sniper-shot-cooldown",
+      "pieces": ["sniper"],
+      "native_classes": ["SimulatedSniper"],
+      "native_anchors": ["SimulatedSniper.GetPieceSimulations@0x2e44844", "SimulatedSniper.MakeMove@0x2e44ce0"],
+      "reference_tests": ["test_sniper_berserker_and_dragon", "test_ghost_visibility_transitions"],
+      "local_contracts": ["sniper.quiet-lateral", "sniper.enemy-lateral-block", "sniper.ranged-giant-capture", "goop.ranged-attacker-survives"],
+      "finding": "The Sniper steps laterally only to empty apparent cells, shoots the first visible forward model without moving, ignores hidden Ghosts on the ray, and enters cooldown after a shot."
+    }
+  ]
+}

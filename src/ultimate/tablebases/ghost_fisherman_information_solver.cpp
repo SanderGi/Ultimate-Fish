@@ -469,17 +469,23 @@ TransitionAuditCertificate audit_fisherman_transitions(
                       ghostId != Position::NoPiece && ghostId != victim &&
                       position.piece(ghostId).square == move.auxiliary &&
                       !position.piece(ghostId).visible;
+                    const bool victimSurvived =
+                      movedVictim == victim && child.piece(victim).alive;
+                    const bool victimDied =
+                      movedVictim == Position::NoPiece &&
+                      !child.piece(victim).alive;
                     const bool pullResidual =
                       actor == Position::NoPiece || victim == Position::NoPiece ||
                       position.piece(actor).type != PieceType::Fisherman ||
                       !position.piece(victim).visible || distance < 2 ||
-                      movedActor != actor || movedVictim != victim ||
+                      movedActor != actor ||
                       (!landedOnHiddenGhost &&
-                       edge.domain != ExternalChildDomain::SameClass) ||
+                       (!victimSurvived ||
+                        edge.domain != ExternalChildDomain::SameClass)) ||
                       (landedOnHiddenGhost &&
-                       (child.piece(ghostId).alive ||
+                       (!victimDied || child.piece(ghostId).alive ||
                         edge.domain != ExternalChildDomain::Exact ||
-                        !live_material_is(child, 2, 1, 0)));
+                        !live_material_is(child, 1, 1, 0)));
                     certificate.residual += pullResidual;
                     if (pullResidual)
                         throw std::runtime_error(
@@ -1204,30 +1210,36 @@ std::uint32_t royal_pull_witness_geometry(Orientation orientation) {
         raw.whiteKing = 0;   // a1
         raw.blackKing = 51;  // d7
         raw.bishop = 27;     // Fisherman d4
-        ghost = 36;          // e5
+        ghost = 35;          // hidden Ghost d5, the pull landing
         target = 51;
         landing = 35;        // d5
     }
     else {
-        // Color-normalized image of Black Fisherman d7 pulling its own King
-        // d4-d6 beside the hidden White Ghost e6.
-        raw.whiteKing = 27;  // original Black King d4
-        raw.blackKing = 0;   // original White King a1
+        // The normalized White Fisherman d7 pulls the enemy Black King d4
+        // onto that King's hidden Black Ghost at d6. Pulling its own King
+        // into the Ghost is correctly rejected as an illegal self-knockout.
+        raw.whiteKing = 0;
+        raw.blackKing = 27;
         raw.bishop = 51;     // normalized White Fisherman d7
-        ghost = 44;          // normalized Black Ghost e6
+        ghost = 43;          // normalized Black Ghost d6, the pull landing
         target = 27;
         landing = 43;        // d6
     }
     Position position = make_geometry_position(raw, ghost, material);
+    const int victim = position.piece_on(target);
+    const int ghostId = position.piece_on(ghost);
     for (const Move& move : position.legal_moves()) {
         if (move.kind != MoveKind::Pull || move.from != raw.bishop ||
             move.to != target || move.auxiliary != landing)
             continue;
         Position child = position;
         Undo undo;
-        if (!child.make_move(move, undo) || child.has_forced_action())
+        if (!child.make_move(move, undo) || child.has_forced_action() ||
+            victim == Position::NoPiece || ghostId == Position::NoPiece ||
+            child.piece(victim).alive || child.piece(ghostId).alive ||
+            !child.game_over() || child.winner() != Color::White)
             throw std::runtime_error(
-              "Fisherman royal pull witness is not one atomic action");
+              "Fisherman royal pull/Ghost collision is not one atomic action");
         return domain.locate(raw).first;
     }
     throw std::runtime_error("cannot construct Fisherman royal pull witness");

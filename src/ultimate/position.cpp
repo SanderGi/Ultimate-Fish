@@ -31,6 +31,7 @@ bool Position::apply_tablebase_substate(int id, PieceType logicalType,
     case PieceType::Ghost:
         if (substate >= 2) return false;
         pieces_[id].visible = substate != 0;
+        pieces_[id].parasiteTracked = false;
         return true;
     case PieceType::Sniper:
         if (substate >= 4) return false;
@@ -109,7 +110,10 @@ std::optional<std::uint32_t> Position::tablebase_substate(
     switch (logicalType) {
     case PieceType::Berserker:
         return std::min<std::uint32_t>(pieces_[id].power, 9);
-    case PieceType::Ghost: return pieces_[id].visible ? 1u : 0u;
+    case PieceType::Ghost:
+        return pieces_[id].parasiteTracked
+             ? std::nullopt
+             : std::optional<std::uint32_t>(pieces_[id].visible ? 1u : 0u);
     case PieceType::Sniper:
         return pieces_[id].cooldown < 4
              ? std::optional<std::uint32_t>(pieces_[id].cooldown)
@@ -1598,7 +1602,7 @@ bool Position::real_king_threatened(Color color) const {
             continue;
         if (attacker.frozen(actor) || attacker.pieces_[actor].cooldown)
             continue;
-        // Ghost attacks never produce check/checkmate in the app.  A royal may
+        // Ghost attacks never produce check/checkmate in the app. A royal may
         // enter a hidden Ghost's adjacency, reveal it, and remain alive until
         // the Ghost actually captures it on a later action.
         if (attacker.pieces_[actor].type == PieceType::Ghost)
@@ -1996,6 +2000,10 @@ void Position::capture_piece(int victim, int attacker, const Move& move) {
             if (possessed == NoPiece || !pieces_[possessed].alive)
                 continue;
             pieces_[possessed].color = color;
+            if (pieces_[possessed].type == PieceType::Ghost) {
+                pieces_[possessed].parasiteTracked = true;
+                pieces_[possessed].visible = true;
+            }
             if (wasPlaced[index])
                 place_on_board(possessed);
         }
@@ -2220,7 +2228,8 @@ void Position::reveal_ghosts_near(int square, Color royalColor) {
             targetRank >= BoardRanks)
             continue;
         const int target = board_[make_square(targetFile, targetRank)];
-        if (target != NoPiece && pieces_[target].alive && pieces_[target].color != royalColor &&
+        if (target != NoPiece && pieces_[target].alive &&
+            pieces_[target].color != royalColor &&
             pieces_[target].type == PieceType::Ghost)
             pieces_[target].visible = true;
     }
@@ -2671,7 +2680,8 @@ bool Position::apply_move_unchecked(const Move& move) {
             }
             place_on_board(id);
             if (actor.type == PieceType::Ghost)
-                actor.visible = capture || ghost_near_enemy_royal(actor.square, actor.color);
+                actor.visible = actor.parasiteTracked || capture ||
+                                ghost_near_enemy_royal(actor.square, actor.color);
             else if (actor.type == PieceType::King || actor.type == PieceType::Jester)
                 reveal_ghosts_near(actor.square, actor.color);
             else if (actor.type == PieceType::Penguin)
@@ -2868,6 +2878,7 @@ std::uint64_t Position::key() const {
         mix(piece.action | (std::uint64_t(piece.cooldown) << 8) |
             (std::uint64_t(piece.freezeCount) << 16) | (std::uint64_t(piece.power) << 24));
         mix(std::uint64_t(piece.moved) | (std::uint64_t(piece.visible) << 1) |
+            (std::uint64_t(piece.parasiteTracked) << 2) |
             (std::uint64_t(piece.link + 1) << 8) |
             (std::uint64_t(piece.host + 1) << 16) |
             (std::uint64_t(piece.attachmentOrder) << 24));
@@ -2978,6 +2989,12 @@ std::string Position::upn() const {
             << int(item.freezeCount) << ',' << int(item.power) << ',' << int(item.moved) << ','
             << int(item.visible) << ',' << remap(item.link) << ',' << int(item.onBoard) << ','
             << remap(item.host) << ',' << item.attachmentOrder;
+        // Preserve the established canonical UPN for ordinary pieces. The
+        // optional trailing marker appears only for the new tracked state, so
+        // old tools remain byte-for-byte compatible while new parsers retain
+        // the exception losslessly.
+        if (item.parasiteTracked)
+            out << ",1";
     }
     return out.str();
 }
@@ -3064,8 +3081,8 @@ bool Position::set_upn(std::string_view text, std::string* error) {
                 *error = "invalid piece entry";
             return false;
         }
-        int numbers[10] = {0, 0, 0, 0, 0, 1, -1, 1, -1, 0};
-        for (std::size_t i = 3; i < values.size() && i < 13; ++i)
+        int numbers[11] = {0, 0, 0, 0, 0, 1, -1, 1, -1, 0, 0};
+        for (std::size_t i = 3; i < values.size() && i < 14; ++i)
             if (!parse_int(values[i], numbers[i - 3]))
                 return fail("invalid numeric piece state");
         if (numbers[0] < 0 || numbers[0] > 255 || numbers[1] < 0 || numbers[1] > 255 ||
@@ -3075,7 +3092,8 @@ bool Position::set_upn(std::string_view text, std::string* error) {
             numbers[6] < NoPiece || numbers[6] >= MaxPieces ||
             (numbers[7] != 0 && numbers[7] != 1) ||
             numbers[8] < NoPiece || numbers[8] >= MaxPieces ||
-            numbers[9] < 0 || numbers[9] > 65535)
+            numbers[9] < 0 || numbers[9] > 65535 ||
+            (numbers[10] != 0 && numbers[10] != 1))
             return fail("piece state field is out of range");
         if (numbers[7] == 0 && *type != PieceType::Angel)
             return fail("only an attached angel may be off board");
@@ -3105,6 +3123,10 @@ bool Position::set_upn(std::string_view text, std::string* error) {
         piece.onBoard = numbers[7] != 0;
         piece.host = static_cast<std::int8_t>(numbers[8]);
         piece.attachmentOrder = static_cast<std::uint16_t>(std::max(0, numbers[9]));
+        piece.parasiteTracked = numbers[10] != 0;
+        if (piece.parasiteTracked &&
+            (piece.type != PieceType::Ghost || !piece.visible))
+            return fail("only a visible Ghost may be Parasite-tracked");
     }
 
     // Older/custom UPN strings may name only the deployable CopyCat. Native

@@ -787,7 +787,11 @@ void reciprocal_fresh_admission_self_test() {
             solver.bdd_->clear_computed_caches();
             const ExternalSolverBlock block = build_external_solver_block(
               geometry, solver.database_, solver.lower_, solver.domain_,
-              solver.material_);
+              solver.material_
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+              , solver.promoted_, solver.promotedDomain_
+#endif
+              );
             solver.bellman_geometry(geometry, block);
             const ExternalGeometryMeta& meta =
               solver.database_.meta(geometry);

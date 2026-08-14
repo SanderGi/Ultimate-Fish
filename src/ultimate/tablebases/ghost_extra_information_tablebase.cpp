@@ -326,6 +326,8 @@ struct MaterialSpec {
         }
         else if (piece.type == PieceType::Ghost &&
                  piece.color == material.ghostColor && !foundGhost) {
+            if (piece.parasiteTracked)
+                return std::nullopt;
             state.ghost = static_cast<std::uint8_t>(piece.square);
             state.visible = piece.visible;
             foundGhost = true;
@@ -342,6 +344,9 @@ struct MaterialSpec {
 enum class ChildDomain : std::uint8_t {
   SameClass,
   LowerGhost,
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+  PromotedQueenGhost,
+#endif
   InsufficientBishop,
   ExactTerminal,
   Invalid,
@@ -396,6 +401,9 @@ struct ClassifiedChild {
         else if (piece.type == PieceType::King && piece.color == Color::Black)
             blackKing = piece.square;
         else if ((piece.type == PieceType::Bishop ||
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                  piece.type == PieceType::Queen ||
+#endif
                   (ExtraIsChecker &&
                    piece.type == PieceType::CheckerKing)) &&
                  piece.color == Color::White)
@@ -408,6 +416,18 @@ struct ClassifiedChild {
         else
             return {ChildDomain::Invalid, NoIndex};
     }
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    if (live == 4 && whiteKing != Position::NoSquare &&
+        blackKing != Position::NoSquare && bishop != Position::NoSquare &&
+        ghost != Position::NoSquare) {
+        for (int id = 0; id < position.piece_count(); ++id) {
+            const PieceState& piece = position.piece(id);
+            if (piece.alive && piece.onBoard && piece.square == bishop &&
+                piece.type == PieceType::Queen)
+                return {ChildDomain::PromotedQueenGhost, NoIndex};
+        }
+    }
+#endif
     if (live == 3 && whiteKing != Position::NoSquare &&
         blackKing != Position::NoSquare && ghost != Position::NoSquare &&
         bishop == Position::NoSquare) {
@@ -944,6 +964,9 @@ struct PreflightCounts {
     std::uint64_t edges = 0;
     std::uint64_t sameClass = 0;
     std::uint64_t lowerGhost = 0;
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    std::uint64_t promotedQueenGhost = 0;
+#endif
     std::uint64_t lowerGhostOwnerForce = 0;
     std::uint64_t lowerGhostObserverForce = 0;
     std::uint64_t lowerGhostDraw = 0;
@@ -1133,6 +1156,129 @@ class ExtraGeometryDomain {
     std::unordered_map<std::uint32_t, std::uint32_t> byCode_;
 };
 
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+// A Pawn promotion leaves this material class without reducing material: its
+// exact child is Queen+Ghost, whose public geometry uses the full D2 quotient
+// (four rectangle symmetries), unlike the Pawn parent's horizontal-only
+// quotient.  Keep the child codec explicit so a promotion can never be
+// mistaken for a same-class Pawn state or an exact terminal result.
+class PromotedQueenGeometryDomain {
+  public:
+    PromotedQueenGeometryDomain() {
+        constexpr std::uint32_t Expected =
+          2 * Squares * (Squares - 1) * (Squares - 2) * 2 / 4;
+        geometries_.reserve(Expected);
+        byCode_.reserve(Expected * 2);
+        for (std::uint8_t side = 0; side < 2; ++side)
+            for (std::uint8_t whiteKing = 0; whiteKing < Squares; ++whiteKing)
+                for (std::uint8_t blackKing = 0; blackKing < Squares;
+                     ++blackKing) {
+                    if (blackKing == whiteKing)
+                        continue;
+                    for (std::uint8_t queen = 0; queen < Squares; ++queen) {
+                        if (queen == whiteKing || queen == blackKing)
+                            continue;
+                        for (std::uint8_t visible = 0; visible < 2; ++visible) {
+                            const PublicExtraGeometry raw{
+                              side, whiteKing, blackKing, queen, visible, 0};
+                            const CanonicalExtraGeometry canonical =
+                              canonicalize(raw);
+                            if (!(canonical.geometry == raw))
+                                continue;
+                            const std::uint32_t id = static_cast<std::uint32_t>(
+                              geometries_.size());
+                            geometries_.push_back(raw);
+                            if (!byCode_.emplace(geometry_code(raw), id).second)
+                                throw std::runtime_error(
+                                  "duplicate promoted Queen public geometry");
+                        }
+                    }
+                }
+        if (geometries_.size() != Expected)
+            throw std::runtime_error(
+              "promoted Queen public-geometry quotient has the wrong size");
+    }
+
+    [[nodiscard]] std::pair<std::uint32_t, std::uint8_t> locate(
+      const PublicExtraGeometry& raw) const {
+        const CanonicalExtraGeometry canonical = canonicalize(raw);
+        const auto found = byCode_.find(geometry_code(canonical.geometry));
+        if (found == byCode_.end() ||
+            !(geometries_.at(found->second) == canonical.geometry))
+            throw std::runtime_error(
+              "canonical promoted Queen public geometry is not interned");
+        return {found->second, canonical.transform};
+    }
+    [[nodiscard]] const PublicExtraGeometry& operator[](
+      std::uint32_t id) const { return geometries_.at(id); }
+    [[nodiscard]] std::size_t size() const { return geometries_.size(); }
+
+  private:
+    [[nodiscard]] static CanonicalExtraGeometry canonicalize(
+      const PublicExtraGeometry& source) {
+        CanonicalExtraGeometry result{source, 0};
+        for (std::uint8_t transform = 1; transform < 4; ++transform) {
+            const PublicExtraGeometry candidate = transform_geometry(
+              source, transform);
+            if (geometry_less(candidate, result.geometry))
+                result = {candidate, transform};
+        }
+        return result;
+    }
+
+    std::vector<PublicExtraGeometry> geometries_;
+    std::unordered_map<std::uint32_t, std::uint32_t> byCode_;
+};
+
+struct PromotedQueenChild {
+    PublicExtraGeometry geometry;
+    std::uint8_t ghost = 0;
+};
+
+[[nodiscard]] PromotedQueenChild promoted_queen_child(
+  const Position& position, const MaterialSpec& material) {
+    PromotedQueenChild result;
+    result.geometry.side = static_cast<std::uint8_t>(position.side_to_move());
+    bool foundWhiteKing = false;
+    bool foundBlackKing = false;
+    bool foundQueen = false;
+    bool foundGhost = false;
+    int live = 0;
+    for (int id = 0; id < position.piece_count(); ++id) {
+        const PieceState& piece = position.piece(id);
+        if (!piece.alive || !piece.onBoard)
+            continue;
+        ++live;
+        if (piece.type == PieceType::King && piece.color == Color::White) {
+            result.geometry.whiteKing = static_cast<std::uint8_t>(piece.square);
+            foundWhiteKing = true;
+        }
+        else if (piece.type == PieceType::King && piece.color == Color::Black) {
+            result.geometry.blackKing = static_cast<std::uint8_t>(piece.square);
+            foundBlackKing = true;
+        }
+        else if (piece.type == PieceType::Queen && piece.color == Color::White) {
+            result.geometry.bishop = static_cast<std::uint8_t>(piece.square);
+            foundQueen = true;
+        }
+        else if (piece.type == PieceType::Ghost &&
+                 piece.color == material.ghostColor) {
+            result.ghost = static_cast<std::uint8_t>(piece.square);
+            result.geometry.visible = static_cast<std::uint8_t>(piece.visible);
+            foundGhost = true;
+        }
+        else
+            throw std::runtime_error(
+              "promoted Queen/Ghost child contains unexpected material");
+    }
+    if (live != 4 || !foundWhiteKing || !foundBlackKing || !foundQueen ||
+        !foundGhost)
+        throw std::runtime_error(
+          "promoted Queen/Ghost child material is incomplete");
+    return result;
+}
+#endif
+
 [[nodiscard]] Position make_geometry_position(
   const PublicExtraGeometry& geometry, std::uint8_t ghost,
   const MaterialSpec& material) {
@@ -1226,9 +1372,12 @@ struct ExternalGeometryMeta {
 static_assert(sizeof(ExternalGeometryMeta) == 392);
 
 enum class ExternalChildDomain : std::uint8_t {
-  SameClass,
-  LowerGhost,
-  Exact,
+  SameClass = 0,
+  LowerGhost = 1,
+  Exact = 2,
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+  PromotedQueenGhost = 3,
+#endif
 };
 
 struct ExternalCompiledEdge {
@@ -1711,6 +1860,9 @@ struct ExternalCompileSummary {
     std::uint64_t edges = 0;
     std::uint64_t sameClass = 0;
     std::uint64_t lowerGhost = 0;
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    std::uint64_t promotedQueenGhost = 0;
+#endif
     std::uint64_t exact = 0;
     std::uint64_t observationClasses = 0;
     std::uint64_t actionClasses = 0;
@@ -1842,6 +1994,19 @@ struct CanonicalLowerSignature {
         edge.child = classified.index;
         edge.childActual = decode_lower_ghost(classified.index).ghost;
     }
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    else if (classified.domain == ChildDomain::PromotedQueenGhost) {
+        static const PromotedQueenGeometryDomain promotedDomain;
+        const PromotedQueenChild promoted = promoted_queen_child(
+          child, material);
+        const auto [childGeometry, transform] = promotedDomain.locate(
+          promoted.geometry);
+        edge.domain = ExternalChildDomain::PromotedQueenGhost;
+        edge.child = childGeometry;
+        edge.childActual = rectangle_transform_square(
+          promoted.ghost, transform);
+    }
+#endif
     else if (classified.domain == ChildDomain::InsufficientBishop) {
         edge.domain = ExternalChildDomain::Exact;
         edge.exact = 0;
@@ -1871,6 +2036,13 @@ void verify_external_child_symmetry(
                canonical_lower_signature(transformed.child)))
         throw std::runtime_error(
           "D2 symmetry changed a canonical lower-Ghost child");
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    else if (source.domain == ExternalChildDomain::PromotedQueenGhost &&
+             (source.child != transformed.child ||
+              source.childActual != transformed.childActual))
+        throw std::runtime_error(
+          "D2 symmetry changed a canonical promoted Queen/Ghost child");
+#endif
 }
 
 void compile_external_transitions(
@@ -1992,6 +2164,12 @@ void compile_external_transitions(
                 else if (edge.domain == ExternalChildDomain::LowerGhost) {
                     ++summary.lowerGhost;
                 }
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                else if (edge.domain ==
+                           ExternalChildDomain::PromotedQueenGhost) {
+                    ++summary.promotedQueenGhost;
+                }
+#endif
                 else ++summary.exact;
                 perSource[ghost].push_back(edge);
                 ++summary.edges;
@@ -2115,6 +2293,9 @@ void compile_external_transitions(
               << " strata " << summary.strata << " edges " << summary.edges
               << " same_class " << summary.sameClass
               << " lower_ghost " << summary.lowerGhost
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+              << " promoted_queen_ghost " << summary.promotedQueenGhost
+#endif
               << " exact " << summary.exact
               << " action_classes " << summary.actionClasses
               << " observation_classes " << summary.observationClasses
@@ -2525,6 +2706,12 @@ struct ExternalSolverBlock {
     std::vector<ExternalSolverAction> actions;
 };
 
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+class PromotedQueenSymbolicSidecar;
+[[nodiscard]] const ExternalGeometryMeta& promoted_queen_geometry(
+  const PromotedQueenSymbolicSidecar& sidecar, std::uint32_t geometry);
+#endif
+
 void validate_lower_inherited_mask_coverage(
   std::size_t fixtureSources, std::uint64_t lowerGhostEdges) {
     if (fixtureSources >= 2 || !lowerGhostEdges)
@@ -2615,7 +2802,11 @@ class ExternalTransitionDatabase {
 [[nodiscard]] bool external_child_force(
   const ExternalSolverRelation& relation, unsigned actual, bool owner,
   const ExternalTransitionDatabase& database,
-  const LowerGhostSymbolicSidecar& lower) {
+  const LowerGhostSymbolicSidecar& lower
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+  , const PromotedQueenSymbolicSidecar& promoted
+#endif
+  ) {
     if (!relation.childTerminal)
         throw std::runtime_error(
           "terminal child force requested for a live relation");
@@ -2629,6 +2820,13 @@ class ExternalTransitionDatabase {
         const auto& child = lower.geometry(relation.childGeometry);
         force = owner ? &child.terminalOwner : &child.terminalObserver;
     }
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    else if (relation.domain == ExternalChildDomain::PromotedQueenGhost) {
+        const ExternalGeometryMeta& child = promoted_queen_geometry(
+          promoted, relation.childGeometry);
+        force = owner ? &child.terminalOwner : &child.terminalObserver;
+    }
+#endif
     else
         throw std::runtime_error(
           "terminal force requested for an exact relation");
@@ -2638,7 +2836,12 @@ class ExternalTransitionDatabase {
 [[nodiscard]] ExternalSolverBlock build_external_solver_block(
   std::uint32_t geometryId, ExternalTransitionDatabase& database,
   const LowerGhostSymbolicSidecar& lower, const ExtraGeometryDomain& domain,
-  const MaterialSpec& material) {
+  const MaterialSpec& material
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+  , const PromotedQueenSymbolicSidecar& promoted,
+  const PromotedQueenGeometryDomain& promotedDomain
+#endif
+  ) {
     const auto [offsets, compiled] = database.raw_block(geometryId);
     std::uint32_t relationCount = 0;
     std::uint32_t actionCount = 0;
@@ -2702,6 +2905,21 @@ class ExternalTransitionDatabase {
                 childVisible = child.visible != 0;
                 childStratum = child.actualStratum[edge.childActual];
             }
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+            else if (edge.domain ==
+                       ExternalChildDomain::PromotedQueenGhost) {
+                if (edge.childGeometry >= promotedDomain.size())
+                    throw std::runtime_error(
+                      "promoted Queen/Ghost child geometry is out of range");
+                const ExternalGeometryMeta& child = promoted_queen_geometry(
+                  promoted, edge.childGeometry);
+                childTerminal = external_mask_test(
+                  child.terminal, edge.childActual);
+                childVisible =
+                  promotedDomain[edge.childGeometry].visible != 0;
+                childStratum = child.actualStratum[edge.childActual];
+            }
+#endif
 
             if (!relation.initialized) {
                 relation.initialized = true;
@@ -2727,7 +2945,11 @@ class ExternalTransitionDatabase {
             else {
                 external_mask_set(images[edge.relation][edge.childActual], source);
                 if (childTerminal && !external_child_force(
-                      relation, edge.childActual, false, database, lower))
+                      relation, edge.childActual, false, database, lower
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                      , promoted
+#endif
+                      ))
                     external_mask_set(relation.badObserverSources, source);
             }
             result.edges[source].push_back(edge);
@@ -2776,6 +2998,18 @@ struct ExternalGhostExtraSolveOptions {
     std::string sourceSha256;
     std::string modelSha256;
     std::string observationSha256;
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    std::string promotedSidecar;
+    std::string promotedSidecarSha256;
+    std::string promotedSourceSha256;
+    std::string promotedModelSha256;
+    std::string promotedObservationSha256;
+    std::string promotedLowerGhostSidecarSha256;
+    std::string promotedLowerDragonFullSha256;
+    std::string promotedLowerDragonSourceSha256;
+    std::string promotedLowerDragonModelSha256;
+    bool promotedOpposing = false;
+#endif
     ExternalRobdd::Limits bddLimits;
     std::uint32_t compactEvery = 4;
     // Nonzero is a resource-measurement mode, never a proof/result mode.  It
@@ -2784,6 +3018,289 @@ struct ExternalGhostExtraSolveOptions {
     // RSS measurement can gate the much longer fixed point.
     std::uint32_t measureIterations = 0;
 };
+
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+#pragma pack(push, 1)
+struct PromotedNodeDisk {
+    std::uint8_t variable = Squares;
+    std::uint32_t low = 0;
+    std::uint32_t high = 0;
+};
+
+struct PromotedSidecarHeader {
+    std::array<char, 8> magic{};
+    std::uint32_t version = 0;
+    std::uint32_t headerBytes = 0;
+    std::uint32_t endian = 0;
+    std::uint32_t primary = 0;
+    std::uint32_t secondary = 0;
+    std::uint32_t ghostColor = 0;
+    std::uint32_t orientation = 0;
+    std::uint32_t squares = 0;
+    std::uint32_t stateCount = 0;
+    std::uint32_t nodeBytes = 0;
+    std::uint32_t geometryBytes = 0;
+    std::uint32_t maskBytes = 0;
+    std::uint32_t rootBytes = 0;
+    std::uint32_t reserved = 0;
+    std::uint64_t nodes = 0;
+    std::uint64_t geometries = 0;
+    std::uint64_t strata = 0;
+    std::uint64_t ownerRoots = 0;
+    std::uint64_t nodeOffset = 0;
+    std::uint64_t geometryOffset = 0;
+    std::uint64_t stratumOffset = 0;
+    std::uint64_t ownerOffset = 0;
+    std::uint64_t observerOffset = 0;
+    std::uint64_t visibleOwnerOffset = 0;
+    std::uint64_t visibleObserverOffset = 0;
+    std::uint64_t payloadBytes = 0;
+    std::array<char, 64> sourceSha{};
+    std::array<char, 64> normalizedSourceSha{};
+    std::array<char, 64> modelSha{};
+    std::array<char, 64> observationSha{};
+    std::array<char, 64> lowerGhostSha{};
+    std::array<char, 64> lowerDragonFullSha{};
+    std::array<char, 64> lowerDragonSourceSha{};
+    std::array<char, 64> lowerDragonModelSha{};
+    std::array<std::array<char, 64>, 6> transitionSha{};
+    std::array<char, 64> transitionPayloadSha{};
+    std::array<char, 64> payloadSha{};
+    std::array<char, 64> semantics{};
+};
+#pragma pack(pop)
+
+static_assert(sizeof(PromotedNodeDisk) == 9);
+static_assert(sizeof(PromotedSidecarHeader) == 1248);
+
+class PromotedQueenSymbolicSidecar {
+  public:
+    PromotedQueenSymbolicSidecar(
+      const ExternalGhostExtraSolveOptions& options) {
+        descriptor_ = ::open(options.promotedSidecar.c_str(), O_RDONLY);
+        if (descriptor_ < 0)
+            external_system_error("cannot open promoted sidecar",
+                                  options.promotedSidecar);
+        struct stat status{};
+        if (::fstat(descriptor_, &status) || status.st_size <= 0)
+            external_system_error("cannot stat promoted sidecar",
+                                  options.promotedSidecar);
+        bytes_ = static_cast<std::uint64_t>(status.st_size);
+        data_ = static_cast<const std::uint8_t*>(::mmap(nullptr,
+          static_cast<std::size_t>(bytes_), PROT_READ, MAP_PRIVATE,
+          descriptor_, 0));
+        if (data_ == MAP_FAILED) {
+            data_ = nullptr;
+            external_system_error("cannot mmap promoted sidecar",
+                                  options.promotedSidecar);
+        }
+        if (bytes_ < sizeof(header_))
+            throw std::runtime_error("truncated promoted Queen/Ghost sidecar");
+        std::memcpy(&header_, data_, sizeof(header_));
+        validate(options);
+    }
+
+    ~PromotedQueenSymbolicSidecar() {
+        if (data_)
+            ::munmap(const_cast<std::uint8_t*>(data_),
+                     static_cast<std::size_t>(bytes_));
+        if (descriptor_ >= 0)
+            ::close(descriptor_);
+    }
+    PromotedQueenSymbolicSidecar(const PromotedQueenSymbolicSidecar&) = delete;
+    PromotedQueenSymbolicSidecar& operator=(
+      const PromotedQueenSymbolicSidecar&) = delete;
+
+    [[nodiscard]] const PromotedNodeDisk* nodes() const {
+        return at<PromotedNodeDisk>(header_.nodeOffset, header_.nodes);
+    }
+    [[nodiscard]] std::uint32_t node_count() const {
+        return static_cast<std::uint32_t>(header_.nodes);
+    }
+    [[nodiscard]] const ExternalGeometryMeta& geometry(
+      std::uint32_t id) const {
+        return at<ExternalGeometryMeta>(header_.geometryOffset,
+                                       header_.geometries)[id];
+    }
+    [[nodiscard]] const ExternalMask& stratum(std::uint32_t id) const {
+        return at<ExternalMask>(header_.stratumOffset, header_.strata)[id];
+    }
+    [[nodiscard]] ExternalRobdd::Id owner_root(
+      std::uint32_t geometry, std::uint8_t actual) const {
+        return at<ExternalRobdd::Id>(header_.ownerOffset,
+          header_.ownerRoots)[std::uint64_t(geometry) * Squares + actual];
+    }
+    [[nodiscard]] ExternalRobdd::Id observer_root(
+      std::uint32_t stratum) const {
+        return at<ExternalRobdd::Id>(header_.observerOffset,
+                                     header_.strata)[stratum];
+    }
+    [[nodiscard]] bool visible_owner(
+      std::uint32_t geometry, std::uint8_t actual) const {
+        return at<std::uint8_t>(header_.visibleOwnerOffset,
+          header_.ownerRoots)[std::uint64_t(geometry) * Squares + actual] != 0;
+    }
+    [[nodiscard]] bool visible_observer(
+      std::uint32_t geometry, std::uint8_t actual) const {
+        return at<std::uint8_t>(header_.visibleObserverOffset,
+          header_.ownerRoots)[std::uint64_t(geometry) * Squares + actual] != 0;
+    }
+
+  private:
+    template<typename Value>
+    [[nodiscard]] const Value* at(std::uint64_t offset,
+                                  std::uint64_t count) const {
+        if (offset > bytes_ || count > (bytes_ - offset) / sizeof(Value))
+            throw std::runtime_error(
+              "promoted Queen/Ghost sidecar section overflow");
+        return reinterpret_cast<const Value*>(data_ + offset);
+    }
+
+    [[nodiscard]] static std::string hash(
+      const std::array<char, 64>& value) {
+        return std::string(value.data(), value.size());
+    }
+
+    void validate(const ExternalGhostExtraSolveOptions& options) {
+        constexpr std::uint32_t EndianValue = 0x01020304;
+        constexpr std::uint64_t QueenGeometries = 492'960;
+        constexpr std::uint32_t QueenStates = 75'915'840;
+        const std::uint64_t nodeOffset = sizeof(header_);
+        const std::uint64_t geometryOffset = nodeOffset +
+          header_.nodes * sizeof(PromotedNodeDisk);
+        const std::uint64_t stratumOffset = geometryOffset +
+          header_.geometries * sizeof(ExternalGeometryMeta);
+        const std::uint64_t ownerOffset = stratumOffset +
+          header_.strata * sizeof(ExternalMask);
+        const std::uint64_t observerOffset = ownerOffset +
+          header_.ownerRoots * sizeof(ExternalRobdd::Id);
+        const std::uint64_t visibleOwnerOffset = observerOffset +
+          header_.strata * sizeof(ExternalRobdd::Id);
+        const std::uint64_t visibleObserverOffset = visibleOwnerOffset +
+          header_.ownerRoots;
+        const std::uint64_t extent = visibleObserverOffset +
+          header_.ownerRoots;
+        if (header_.magic != std::array<char, 8>{{'U','F','G','D','1','\0','\0','\0'}} ||
+            header_.version != 1 || header_.headerBytes != sizeof(header_) ||
+            header_.endian != EndianValue ||
+            header_.primary != static_cast<std::uint32_t>(PieceType::Queen) ||
+            header_.secondary != static_cast<std::uint32_t>(PieceType::Ghost) ||
+            header_.ghostColor != static_cast<std::uint32_t>(Color::White) ||
+            header_.orientation !=
+              static_cast<std::uint32_t>(options.promotedOpposing) ||
+            header_.squares != Squares || header_.stateCount != QueenStates ||
+            header_.nodeBytes != sizeof(PromotedNodeDisk) ||
+            header_.geometryBytes != sizeof(ExternalGeometryMeta) ||
+            header_.maskBytes != sizeof(ExternalMask) ||
+            header_.rootBytes != sizeof(ExternalRobdd::Id) ||
+            header_.reserved || header_.nodes < 2 ||
+            header_.nodes > std::numeric_limits<std::uint32_t>::max() ||
+            header_.geometries != QueenGeometries ||
+            header_.strata > QueenGeometries * Squares ||
+            header_.ownerRoots != QueenGeometries * Squares ||
+            header_.nodeOffset != nodeOffset ||
+            header_.geometryOffset != geometryOffset ||
+            header_.stratumOffset != stratumOffset ||
+            header_.ownerOffset != ownerOffset ||
+            header_.observerOffset != observerOffset ||
+            header_.visibleOwnerOffset != visibleOwnerOffset ||
+            header_.visibleObserverOffset != visibleObserverOffset ||
+            extent != bytes_ ||
+            header_.payloadBytes != bytes_ - sizeof(header_) ||
+            hash(header_.sourceSha) != options.promotedSourceSha256 ||
+            hash(header_.modelSha) != options.promotedModelSha256 ||
+            hash(header_.observationSha) !=
+              options.promotedObservationSha256 ||
+            hash(header_.lowerGhostSha) !=
+              options.promotedLowerGhostSidecarSha256 ||
+            hash(header_.lowerDragonFullSha) !=
+              options.promotedLowerDragonFullSha256 ||
+            hash(header_.lowerDragonSourceSha) !=
+              options.promotedLowerDragonSourceSha256 ||
+            hash(header_.lowerDragonModelSha) !=
+              options.promotedLowerDragonModelSha256 ||
+            mapped_sha256(0) != options.promotedSidecarSha256 ||
+            mapped_sha256(sizeof(header_)) != hash(header_.payloadSha))
+            throw std::runtime_error(
+              "promoted Queen/Ghost sidecar header/binding residual");
+        for (std::uint32_t id = 0; id < header_.nodes; ++id) {
+            const PromotedNodeDisk& node = nodes()[id];
+            if (id <= 1) {
+                if (node.variable != Squares || node.low != id ||
+                    node.high != id)
+                    throw std::runtime_error(
+                      "promoted sidecar terminal tuple residual");
+            }
+            else if (node.variable >= Squares || node.low >= id ||
+                     node.high >= id || node.low == node.high)
+                throw std::runtime_error(
+                  "promoted sidecar ROBDD structural residual");
+        }
+        for (std::uint64_t id = 0; id < header_.ownerRoots; ++id)
+            if (at<ExternalRobdd::Id>(header_.ownerOffset,
+                  header_.ownerRoots)[id] >= header_.nodes ||
+                at<std::uint8_t>(header_.visibleOwnerOffset,
+                  header_.ownerRoots)[id] > 1 ||
+                at<std::uint8_t>(header_.visibleObserverOffset,
+                  header_.ownerRoots)[id] > 1)
+                throw std::runtime_error(
+                  "promoted Queen/Ghost owner-root residual");
+        for (std::uint64_t id = 0; id < header_.strata; ++id)
+            if (at<ExternalRobdd::Id>(header_.observerOffset,
+                  header_.strata)[id] >= header_.nodes)
+                throw std::runtime_error(
+                  "promoted Queen/Ghost observer-root residual");
+    }
+
+    [[nodiscard]] std::string mapped_sha256(std::uint64_t offset) const {
+        if (offset > bytes_)
+            throw std::runtime_error(
+              "promoted Queen/Ghost SHA offset is out of range");
+        Sha256 digest;
+        digest.update(data_ + offset, static_cast<std::size_t>(bytes_ - offset));
+        return hex_digest(digest.finish());
+    }
+
+    int descriptor_ = -1;
+    const std::uint8_t* data_ = nullptr;
+    std::uint64_t bytes_ = 0;
+    PromotedSidecarHeader header_{};
+};
+
+[[nodiscard]] const ExternalGeometryMeta& promoted_queen_geometry(
+  const PromotedQueenSymbolicSidecar& sidecar, std::uint32_t geometry) {
+    return sidecar.geometry(geometry);
+}
+
+class PromotedQueenRobddImport {
+  public:
+    PromotedQueenRobddImport(const PromotedQueenSymbolicSidecar& sidecar,
+                             ExternalRobdd& target) {
+        imported_.resize(sidecar.node_count(), ExternalRobdd::False);
+        imported_[0] = ExternalRobdd::False;
+        imported_[1] = ExternalRobdd::True;
+        for (std::uint32_t id = 2; id < sidecar.node_count(); ++id) {
+            const PromotedNodeDisk& source = sidecar.nodes()[id];
+            imported_[id] = target.make(source.variable,
+              imported_.at(source.low), imported_.at(source.high));
+        }
+        std::cout << "ghost_extra_promoted_queen_robdd_import source_nodes "
+                  << sidecar.node_count() << " target_nodes "
+                  << target.node_count() << " structural_residual 0\n"
+                  << std::flush;
+    }
+
+    [[nodiscard]] ExternalRobdd::Id root(std::uint32_t source) const {
+        return imported_.at(source);
+    }
+    [[nodiscard]] std::vector<ExternalRobdd::Id>& roots() {
+        return imported_;
+    }
+
+  private:
+    std::vector<ExternalRobdd::Id> imported_;
+};
+#endif
 
 [[nodiscard]] std::uint64_t external_file_bytes(const std::string& path) {
     struct stat status{};
@@ -2921,6 +3438,10 @@ class ExternalGhostExtraFixedPoint {
         bdd_(std::make_unique<ExternalRobdd>(
           options_.scratch + ".bdd-a", options_.bddLimits, true)),
         lowerImport_(lower_, *bdd_),
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+        promoted_(options_),
+        promotedImport_(promoted_, *bdd_),
+#endif
         ownerCurrent_(options_.scratch + ".owner-current",
           std::uint64_t(database_.geometry_count()) * Squares, true),
         ownerNext_(options_.scratch + ".owner-next",
@@ -2979,7 +3500,11 @@ class ExternalGhostExtraFixedPoint {
                  geometry < database_.geometry_count(); ++geometry) {
                 bdd_->clear_computed_caches();
                 const ExternalSolverBlock block = build_external_solver_block(
-                  geometry, database_, lower_, domain_, material_);
+                  geometry, database_, lower_, domain_, material_
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                  , promoted_, promotedDomain_
+#endif
+                  );
                 bellman_geometry(geometry, block);
                 const ExternalGeometryMeta& meta = database_.meta(geometry);
                 for (unsigned actual = 0; actual < Squares; ++actual) {
@@ -3334,7 +3859,11 @@ class ExternalGhostExtraFixedPoint {
                                   : ExternalRobdd::False;
         if (relation.childTerminal)
             return external_child_force(
-              relation, edge.childActual, true, database_, lower_)
+              relation, edge.childActual, true, database_, lower_
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+              , promoted_
+#endif
+              )
               ? ExternalRobdd::True : ExternalRobdd::False;
         ExternalRobdd::Id child = ExternalRobdd::False;
         if (edge.domain == ExternalChildDomain::SameClass) {
@@ -3346,7 +3875,7 @@ class ExternalGhostExtraFixedPoint {
                 child = ownerCurrent_[owner_index(
                   relation.childGeometry, edge.childActual)];
         }
-        else {
+        else if (edge.domain == ExternalChildDomain::LowerGhost) {
             const auto& lowerGeometry = lower_.geometry(
               relation.childGeometry);
             if (relation.childVisible)
@@ -3356,6 +3885,19 @@ class ExternalGhostExtraFixedPoint {
                 child = lowerImport_.root(
                   lowerGeometry.ownerRoot[edge.childActual]);
         }
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+        else if (edge.domain == ExternalChildDomain::PromotedQueenGhost) {
+            if (relation.childVisible)
+                child = promoted_.visible_owner(
+                  relation.childGeometry, edge.childActual)
+                      ? ExternalRobdd::True : ExternalRobdd::False;
+            else
+                child = promotedImport_.root(promoted_.owner_root(
+                  relation.childGeometry, edge.childActual));
+        }
+#endif
+        else
+            throw std::runtime_error("unknown live owner child domain");
         return compose(geometry, edge.relation, child, relation);
     }
 
@@ -3380,7 +3922,7 @@ class ExternalGhostExtraFixedPoint {
                 child = observerCurrent_[relation.childStratum];
             }
         }
-        else {
+        else if (relation.domain == ExternalChildDomain::LowerGhost) {
             const auto& lowerGeometry = lower_.geometry(
               relation.childGeometry);
             if (relation.childVisible) {
@@ -3396,6 +3938,26 @@ class ExternalGhostExtraFixedPoint {
                   lower_.stratum(relation.childStratum).observerRoot);
             }
         }
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+        else if (relation.domain ==
+                   ExternalChildDomain::PromotedQueenGhost) {
+            if (relation.childVisible) {
+                const std::uint8_t actual = relation.image.front().first;
+                child = promoted_.visible_observer(
+                  relation.childGeometry, actual)
+                      ? ExternalRobdd::True : ExternalRobdd::False;
+            }
+            else {
+                if (relation.childStratum == NoIndex)
+                    throw std::runtime_error(
+                      "promoted hidden relation lacks a child stratum");
+                child = promotedImport_.root(
+                  promoted_.observer_root(relation.childStratum));
+            }
+        }
+#endif
+        else
+            throw std::runtime_error("unknown live observer child domain");
         return compose(geometry, relationId, child, relation);
     }
 
@@ -3536,9 +4098,17 @@ class ExternalGhostExtraFixedPoint {
     void compact() {
         std::vector<ExternalRobdd::Id> roots;
         roots.reserve(lowerImport_.roots().size() + ownerCurrent_.size() +
-                      observerCurrent_.size() + domainRoots_.size());
+                      observerCurrent_.size() + domainRoots_.size()
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                      + promotedImport_.roots().size()
+#endif
+                      );
         roots.insert(roots.end(), lowerImport_.roots().begin(),
                      lowerImport_.roots().end());
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+        roots.insert(roots.end(), promotedImport_.roots().begin(),
+                     promotedImport_.roots().end());
+#endif
         for (std::uint64_t index = 0; index < ownerCurrent_.size(); ++index)
             roots.push_back(ownerCurrent_[index]);
         for (std::uint64_t index = 0; index < observerCurrent_.size(); ++index)
@@ -3553,6 +4123,10 @@ class ExternalGhostExtraFixedPoint {
         std::size_t cursor = 0;
         for (ExternalRobdd::Id& root : lowerImport_.roots())
             root = roots.at(cursor++);
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+        for (ExternalRobdd::Id& root : promotedImport_.roots())
+            root = roots.at(cursor++);
+#endif
         for (std::uint64_t index = 0; index < ownerCurrent_.size(); ++index)
             ownerCurrent_[index] = roots.at(cursor++);
         for (std::uint64_t index = 0; index < observerCurrent_.size(); ++index)
@@ -3581,7 +4155,11 @@ class ExternalGhostExtraFixedPoint {
              geometry < database_.geometry_count(); ++geometry) {
             bdd_->clear_computed_caches();
             bellman_geometry(geometry, build_external_solver_block(
-              geometry, database_, lower_, domain_, material_));
+              geometry, database_, lower_, domain_, material_
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+              , promoted_, promotedDomain_
+#endif
+              ));
         }
         std::uint64_t bellmanResidual = 0;
         std::uint64_t monotonicityResidual = 0;
@@ -3934,6 +4512,11 @@ class ExternalGhostExtraFixedPoint {
     ExternalGhostExtraSolveOptions options_;
     std::unique_ptr<ExternalRobdd> bdd_;
     LowerGhostRobddImport lowerImport_;
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    PromotedQueenSymbolicSidecar promoted_;
+    PromotedQueenRobddImport promotedImport_;
+    PromotedQueenGeometryDomain promotedDomain_;
+#endif
     ExternalArray<ExternalRobdd::Id> ownerCurrent_;
     ExternalArray<ExternalRobdd::Id> ownerNext_;
     ExternalArray<ExternalRobdd::Id> observerCurrent_;
@@ -4061,6 +4644,11 @@ void run_preflight(const MaterialSpec& material, const PackedFourTable& concrete
                         ++counts.lowerGhostDraw;
                 }
                 break;
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+            case ChildDomain::PromotedQueenGhost:
+                ++counts.promotedQueenGhost;
+                break;
+#endif
             case ChildDomain::InsufficientBishop:
                 ++counts.insufficientBishop;
                 break;
@@ -4194,11 +4782,11 @@ int main(int argc, char** argv) {
         std::string input = "tablebases/kbishopghostk.uftb";
         std::string lowerSidecar = "tablebases/kghostk.ufgm";
         std::string lowerSourceSha256 =
-          "3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31";
+          "11b7b57aa9819b1fb9ac3f7bd273ab73cfa3627fb09a855856ae1426af2c0ba5";
         std::string lowerModelSha256 =
-          "4a2d9d7b503b29204cf9af08985345771b9046c07bd2116e592fab40ee12e430";
+          "ec6ed34ab80733ee06354675b9bf0ea9e190c927583ba586fe94f4026afdf9c5";
         std::string lowerObservationSha256 =
-          "af09ebab834599de83d546f8729b8329dbe5ba8ff1cc7f24be3ac63086273adf";
+          "890c399d6856fbf1773766f1840d0c38e46669c18b609e20c38d2750a09dbc23";
         std::string compileExternalPrefix;
         std::string mergeExternalPrefix;
         std::vector<std::string> mergeShards;

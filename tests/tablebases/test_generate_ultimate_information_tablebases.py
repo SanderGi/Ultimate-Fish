@@ -258,7 +258,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
         header[288:352] = (
             generate.information.observation_model_fingerprint().encode())
         header[544:608] = (
-            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            b"472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         header[800:864] = hashlib.sha256(payload).hexdigest().encode()
         semantics = b"correlated-unordered-pair-public-view-v1"
         header[864:864 + len(semantics)] = semantics
@@ -284,7 +284,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
         header[304:368] = generate.information.observation_model_fingerprint().encode()
         lower_jester = "4" * 64
         header[560:624] = lower_jester.encode()
-        header[624:688] = b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b"
+        header[624:688] = b"472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb"
         header[688:752] = hashlib.sha256(payload).hexdigest().encode()
         semantics = b"king-jester-x-hidden-ghost-correlated-v1"
         header[752:752 + len(semantics)] = semantics
@@ -323,7 +323,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
         header[284:348] = (
             generate.information.observation_model_fingerprint().encode())
         header[348:412] = (
-            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            b"472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         header[860:924] = hashlib.sha256(payload).hexdigest().encode()
         semantics = b"fresh-maximal-public-view-v2:reciprocal-bishop-ghost"
         header[924:924 + len(semantics)] = semantics
@@ -338,7 +338,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
             with path.open("r+b") as stream:
                 stream.seek(348)
                 stream.write(
-                    b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+                    b"472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
                 stream.seek(988)
                 stream.write(b"X")
             self.assertFalse(generate.arbitrary_is_current(path, source, model))
@@ -359,7 +359,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
         header[352:416] = (
             generate.information.observation_model_fingerprint().encode())
         header[416:480] = (
-            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            b"472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         lower_dragon = (
             b"28d3cbeba82d02611a48bf2d0a6a527d11ff4cd3049f04bf2b4b929a05ed86c6")
         header[480:544] = lower_dragon
@@ -394,7 +394,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
         header[352:416] = (
             generate.information.observation_model_fingerprint().encode())
         header[416:480] = (
-            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            b"472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         lower_bomb = (
             b"18e057c83faf940db1ad7404a39623a5db208724de892d604735576d7583ce2f")
         header[480:544] = lower_bomb
@@ -428,7 +428,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
         header[352:416] = (
             generate.information.observation_model_fingerprint().encode())
         header[416:480] = (
-            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            b"472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         lower_giant = (
             b"eb52f2c08cf88e1e3682d0c72dfde191d9009e79779ad7eee23ca82fdcade591")
         header[480:544] = lower_giant
@@ -466,7 +466,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
         header[352:416] = (
             generate.information.observation_model_fingerprint().encode())
         header[416:480] = (
-            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            b"472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         header[928:992] = hashlib.sha256(payload).hexdigest().encode()
         semantics = b"fresh-maximal-public-view-v2:fisherman-ghost-generic"
         header[992:992 + len(semantics)] = semantics
@@ -501,7 +501,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
         header[352:416] = (
             generate.information.observation_model_fingerprint().encode())
         header[416:480] = (
-            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            b"472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         header[928:992] = hashlib.sha256(payload).hexdigest().encode()
         semantics = b"fresh-maximal-public-view-v2:mage-ghost-generic"
         header[992:992 + len(semantics)] = semantics
@@ -523,30 +523,36 @@ class InformationGenerationDriverTests(unittest.TestCase):
     def test_arbitrary_reuse_authenticates_parasite_ufgp_dependencies(self):
         source, model = "9" * 64, "a" * 64
         payload = b"exact-parasite-ghost-roots"
-        header = bytearray(1248)
+        header = bytearray(1440)
         header[:8] = b"UFGP1\0\0\0"
-        struct.pack_into("<14I", header, 8, 1, 1248, 0x01020304,
+        struct.pack_into("<14I", header, 8, 1, 1440, 0x01020304,
                          generate.PIECE_TYPE_IDS["ghost"],
                          generate.PIECE_TYPE_IDS["parasite"], 0, 1,
                          80, 75_915_840, 9, 392, 16, 4, 0)
-        struct.pack_into("<Q", header, 96, 1248)
+        struct.pack_into("<Q", header, 96, 1440)
         struct.pack_into("<Q", header, 152, len(payload))
         header[160:224] = source.encode()
         header[288:352] = model.encode()
         header[352:416] = (
             generate.information.observation_model_fingerprint().encode())
         header[416:480] = (
-            b"400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            b"472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
+        tracked_ghost = generate.information.concrete_dependency_sha256(
+            "kghostk-tracked.uftb").encode()
+        header[480:544] = tracked_ghost
+        header[544:608] = tracked_ghost
+        header[608:672] = (
+            generate.information.tracked_ghost_tablebase_model_fingerprint()
+            .encode())
         lower_parasite = (
             b"c53364f87ce4ff23372aa3565d279e9fadde706eb1aeca5695aecc1ea3e83047")
-        header[480:544] = lower_parasite
-        header[544:608] = lower_parasite
-        header[608:672] = (
-            generate.information.concrete_tablebase_model_fingerprint(
-                "kparasitek.uftb").encode())
-        header[1120:1184] = hashlib.sha256(payload).hexdigest().encode()
+        header[672:736] = lower_parasite
+        header[736:800] = lower_parasite
+        header[800:864] = (
+            b"c9889fd2d77617a1f0c77ed43a7f8a054c299732194ec89456f68ed865681c25")
+        header[1312:1376] = hashlib.sha256(payload).hexdigest().encode()
         semantics = b"fresh-maximal-public-view-v2:parasite-ghost-generic"
-        header[1184:1184 + len(semantics)] = semantics
+        header[1376:1376 + len(semantics)] = semantics
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "parasite.ufgp"
             path.write_bytes(header + payload)
@@ -665,7 +671,7 @@ class InformationGenerationDriverTests(unittest.TestCase):
             self.assertEqual(ghost_pair[0], str(args.ghost_pair_binary))
             self.assertEqual(
                 ghost_pair[ghost_pair.index("--lower-sidecar-sha256") + 1],
-                "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+                "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
             self.assertEqual(
                 ghost_pair[ghost_pair.index("--transition-prefix") + 1],
                 str(args.ghost_pair_transitions))

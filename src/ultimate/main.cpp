@@ -169,7 +169,8 @@ void print_piece_knowledge(const Position& representative,
                         candidate.moved == piece.moved &&
                         candidate.link == piece.link &&
                         candidate.host == piece.host &&
-                        candidate.attachmentOrder == piece.attachmentOrder)
+                        candidate.attachmentOrder == piece.attachmentOrder &&
+                        candidate.parasiteTracked == piece.parasiteTracked)
                         equivalentIds.push_back(candidateId);
                 }
             }

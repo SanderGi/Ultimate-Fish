@@ -26,7 +26,9 @@
   prior non-signalling observation image.  These arguments include quiet
   hidden moves (one public observation can map one source square to several
   possible hidden destinations), reveal transitions to a visible singleton,
-  and visible-singleton positions whose next quiet Ghost move hides again.
+  and visible-singleton positions whose next quiet Ghost move is animated to
+  one known destination before hiding. A later move begun hidden is what can
+  expand that singleton.
 
   For each observation, every child-membership bit is an OR of fixed source
   membership bits obtained from the exhaustive concrete CSR oracle.  ROBDD
@@ -227,6 +229,8 @@ struct LegacyState {
         else if (piece.type == PieceType::King && piece.color == Color::Black)
             blackKing = piece.square;
         else if (piece.type == PieceType::Ghost && piece.color == Color::White) {
+            if (piece.parasiteTracked)
+                return std::nullopt;
             ghostSquare = piece.square;
             ghostVisible = piece.visible;
         }

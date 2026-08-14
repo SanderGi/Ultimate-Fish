@@ -43,8 +43,9 @@ std::uint64_t string_key(std::string_view value) {
 
 bool belief_stays_concrete(const Position& position, Color observer) {
     // Royal identity is monotone knowledge, but Ghost location is not: a
-    // currently observed Ghost can make a quiet move, become invisible, and
-    // expand one concrete world into several observer-equivalent worlds.
+    // currently observed Ghost keeps a public destination for its first quiet
+    // move (the visible model shows its direction), but a later move begun
+    // while hidden can expand one world into several observer-equivalent ones.
     const Color enemy = ~observer;
     for (int id = 0; id < position.piece_count(); ++id) {
         const PieceState& piece = position.piece(id);
@@ -150,7 +151,8 @@ bool initial_public_beliefs(const Position& actual,
         return std::tie(piece.type, piece.color, piece.onBoard, piece.action,
                         piece.cooldown, piece.freezeCount, piece.power,
                         piece.link, piece.host, piece.attachmentOrder,
-                        piece.alive, piece.moved, piece.visible);
+                        piece.alive, piece.moved, piece.visible,
+                        piece.parasiteTracked);
     };
     std::stable_sort(hiddenGhosts.begin(), hiddenGhosts.end(),
       [&](int left, int right) {

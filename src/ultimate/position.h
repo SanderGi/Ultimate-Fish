@@ -107,26 +107,30 @@ struct PieceState {
     bool alive = false;
     bool moved = false;
     bool visible = true;
+    // A Ghost possessed by an opposing Parasite carries that visible model
+    // permanently. It may use Ghost movement, but can never become visually
+    // hidden from either player again.
+    bool parasiteTracked = false;
 
     friend bool operator==(const PieceState& lhs, const PieceState& rhs) {
         return std::tie(lhs.type, lhs.color, lhs.square, lhs.onBoard,
                         lhs.action, lhs.cooldown, lhs.freezeCount, lhs.power,
                         lhs.link, lhs.host, lhs.attachmentOrder, lhs.alive,
-                        lhs.moved, lhs.visible) ==
+                        lhs.moved, lhs.visible, lhs.parasiteTracked) ==
                std::tie(rhs.type, rhs.color, rhs.square, rhs.onBoard,
                         rhs.action, rhs.cooldown, rhs.freezeCount, rhs.power,
                         rhs.link, rhs.host, rhs.attachmentOrder, rhs.alive,
-                        rhs.moved, rhs.visible);
+                        rhs.moved, rhs.visible, rhs.parasiteTracked);
     }
     friend bool operator<(const PieceState& lhs, const PieceState& rhs) {
         return std::tie(lhs.type, lhs.color, lhs.square, lhs.onBoard,
                         lhs.action, lhs.cooldown, lhs.freezeCount, lhs.power,
                         lhs.link, lhs.host, lhs.attachmentOrder, lhs.alive,
-                        lhs.moved, lhs.visible) <
+                        lhs.moved, lhs.visible, lhs.parasiteTracked) <
                std::tie(rhs.type, rhs.color, rhs.square, rhs.onBoard,
                         rhs.action, rhs.cooldown, rhs.freezeCount, rhs.power,
                         rhs.link, rhs.host, rhs.attachmentOrder, rhs.alive,
-                        rhs.moved, rhs.visible);
+                        rhs.moved, rhs.visible, rhs.parasiteTracked);
     }
 };
 

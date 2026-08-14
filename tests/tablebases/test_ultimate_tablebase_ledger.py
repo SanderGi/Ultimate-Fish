@@ -92,14 +92,14 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
     def test_current_computation_hides_stale_result_and_hatches_plot(self):
         text = ledger.README.read_text()
         rows = ledger.apply_overrides(
-            ledger.entries(text), {"kghostghostk.uftb": "computing"}, {})
-        row = next(row for row in rows if row.filename == "kghostghostk.uftb")
+            ledger.entries(text), {"kknightghostk.uftb": "computing"}, {})
+        row = next(row for row in rows if row.filename == "kknightghostk.uftb")
         self.assertEqual("computing", row.status)
         self.assertEqual("—", row.first)
         self.assertEqual("—", row.reachability)
         summary = plot.read_summary(ledger.README)
         catalog = plot.OutcomeCatalog(summary)
-        self.assertEqual("computing", catalog.together("ghost", "ghost").kind)
+        self.assertEqual("computing", catalog.together("ghost", "knight").kind)
 
     def test_sleeping_wrappers_are_not_marked_computing(self):
         for row in ledger.entries(ledger.README.read_text()):
@@ -155,7 +155,7 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
                 row.key,
             )
             checked += 1
-        self.assertEqual(389, checked)
+        self.assertEqual(392, checked)
 
     def test_exact_certified_import_is_validated_and_persistent(self):
         rows = ledger.entries(ledger.README.read_text())
@@ -180,9 +180,9 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             ledger.check_launch(ledger.README, "krk.uftb", resume=False)
         with self.assertRaisesRegex(RuntimeError, "status computing"):
             ledger.check_launch(
-                ledger.README, "kghostghostk.uftb", resume=False)
+                ledger.README, "kknightghostk.uftb", resume=False)
         ledger.check_launch(
-            ledger.README, "kghostghostk.uftb", resume=True)
+            ledger.README, "kknightghostk.uftb", resume=True)
         planned = next(
             entry.filename for entry in ledger.entries(ledger.README.read_text())
             if entry.filename and entry.status == "planned")

@@ -42,18 +42,28 @@ Exact::TransitionOptions transition_options(Exact::Orientation orientation,
       "c53364f87ce4ff23372aa3565d279e9fadde706eb1aeca5695aecc1ea3e83047";
     options.lowerParasiteSourceSha256 = options.lowerParasiteSha256;
     options.lowerParasiteModelSha256 =
-      "91a6bec907dc43993c3b0b96001ca5b415fe278add963f4211bd6c5f5d314e88";
+      "c9889fd2d77617a1f0c77ed43a7f8a054c299732194ec89456f68ed865681c25";
+    options.lowerTrackedGhostTable =
+      std::filesystem::exists("tablebases/kghostk-tracked.uftb")
+        ? "tablebases/kghostk-tracked.uftb"
+        : "../tablebases/kghostk-tracked.uftb";
+    options.lowerTrackedGhostSha256 =
+      "32dc7889506f4dd4948dbf1bed3f31c6c3ebdd4a8600c4381c7a8c710b9ec671";
+    options.lowerTrackedGhostSourceSha256 =
+      options.lowerTrackedGhostSha256;
+    options.lowerTrackedGhostModelSha256 =
+      "5b71141f6213872133db4877b76e4eb3e67186111624e76c62eced1e722ce10f";
     options.lowerGhostSidecar =
       std::filesystem::exists("tablebases/kghostk.ufgm")
         ? "tablebases/kghostk.ufgm" : "../tablebases/kghostk.ufgm";
     options.lowerGhostSidecarSha256 =
-      "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b";
+      "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb";
     options.lowerGhostSourceSha256 =
-      "3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31";
+      "11b7b57aa9819b1fb9ac3f7bd273ab73cfa3627fb09a855856ae1426af2c0ba5";
     options.lowerGhostModelSha256 =
-      "4a2d9d7b503b29204cf9af08985345771b9046c07bd2116e592fab40ee12e430";
+      "ec6ed34ab80733ee06354675b9bf0ea9e190c927583ba586fe94f4026afdf9c5";
     options.lowerGhostObservationSha256 =
-      "af09ebab834599de83d546f8729b8329dbe5ba8ff1cc7f24be3ac63086273adf";
+      "890c399d6856fbf1773766f1840d0c38e46669c18b609e20c38d2750a09dbc23";
     options.geometryBegin = begin;
     options.geometryCount = count;
     return options;
@@ -150,13 +160,15 @@ void measurement_test(const std::string& base,
                       const std::string& sourceSha,
                       const std::string& normalizedSha,
                       const std::string& lowerGhost,
-                      const std::string& lowerParasite) {
+                      const std::string& lowerParasite,
+                      const std::string& lowerTrackedGhost) {
     std::filesystem::create_directories(base);
     const std::string transitions = base + "/transitions";
     Exact::TransitionOptions transition = transition_options(
       orientation, transitions, 0, 1);
     transition.lowerGhostSidecar = lowerGhost;
     transition.lowerParasiteTable = lowerParasite;
+    transition.lowerTrackedGhostTable = lowerTrackedGhost;
     Exact::compile_transitions(transition);
     Exact::SolveOptions options;
     options.orientation = orientation;
@@ -164,25 +176,32 @@ void measurement_test(const std::string& base,
     options.sourceTable = source;
     options.lowerGhostSidecar = lowerGhost;
     options.lowerParasiteTable = lowerParasite;
+    options.lowerTrackedGhostTable = lowerTrackedGhost;
     options.scratchPrefix = base + "/solve";
     options.outputOverlay = base + "/measurement-must-not-write.ufiw";
     options.outputArbitrary = base + "/measurement-must-not-write.ufgp";
     options.sourceSha256 = sourceSha;
     options.modelSha256 = std::string(64, 'a');
     options.observationSha256 =
-      "af09ebab834599de83d546f8729b8329dbe5ba8ff1cc7f24be3ac63086273adf";
+      "890c399d6856fbf1773766f1840d0c38e46669c18b609e20c38d2750a09dbc23";
     options.lowerGhostSourceSha256 =
-      "3be39c5ab2bfec00cb9dd500e26911bd145bcb1f4dde77fd2c84ef33d111fc31";
+      "11b7b57aa9819b1fb9ac3f7bd273ab73cfa3627fb09a855856ae1426af2c0ba5";
     options.lowerGhostModelSha256 =
-      "4a2d9d7b503b29204cf9af08985345771b9046c07bd2116e592fab40ee12e430";
+      "ec6ed34ab80733ee06354675b9bf0ea9e190c927583ba586fe94f4026afdf9c5";
     options.lowerGhostObservationSha256 = options.observationSha256;
     options.lowerGhostSidecarSha256 =
-      "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b";
+      "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb";
     options.lowerParasiteFullSha256 =
       "c53364f87ce4ff23372aa3565d279e9fadde706eb1aeca5695aecc1ea3e83047";
     options.lowerParasiteSourceSha256 = options.lowerParasiteFullSha256;
     options.lowerParasiteModelSha256 =
-      "91a6bec907dc43993c3b0b96001ca5b415fe278add963f4211bd6c5f5d314e88";
+      "c9889fd2d77617a1f0c77ed43a7f8a054c299732194ec89456f68ed865681c25";
+    options.lowerTrackedGhostFullSha256 =
+      "32dc7889506f4dd4948dbf1bed3f31c6c3ebdd4a8600c4381c7a8c710b9ec671";
+    options.lowerTrackedGhostSourceSha256 =
+      options.lowerTrackedGhostFullSha256;
+    options.lowerTrackedGhostModelSha256 =
+      "5b71141f6213872133db4877b76e4eb3e67186111624e76c62eced1e722ce10f";
     options.maxNodes = 10'000'000;
     options.uniqueSlots = std::uint64_t{1} << 24;
     options.measureIterations = 1;
@@ -202,17 +221,17 @@ int main(int argc, char** argv) {
     try {
         const std::string base = "/tmp/ultimate-parasite-ghost-test-" +
                                  std::to_string(::getpid());
-        if (argc == 6 && std::string(argv[1]) == "--measurement-smoke") {
+        if (argc == 7 && std::string(argv[1]) == "--measurement-smoke") {
             measurement_test(base + "-measure-same", Exact::Orientation::Same,
               argv[2],
-              "1bb1c977b7af34b2295dd6c693d8a79006e69ab2f4291a828b930515742222ca",
-              "eb4c64f08278f26cb6b3854ac27dd98018fc1012fec9b8ae1a5b2030d99a6968",
-              argv[4], argv[5]);
+              "d551ba980ab7fb51c63713524e2bf23a31758cad7629835c8d4bb339976b4a58",
+              "54c8d0bf2fa36254f1e1c4b9efa507c9128a5dc0030555857726fbef6551dd44",
+              argv[4], argv[5], argv[6]);
             measurement_test(base + "-measure-opposing",
               Exact::Orientation::Opposing, argv[3],
-              "18c6dc8986ac43d9f38315bbc9e0c2ab6b0bed32c6c638991be01478cc2aceff",
-              "1cfa8cc56352a17b084fc65db54229f7112096aa2cd89f359e4bb8be62ae8394",
-              argv[4], argv[5]);
+              "af888568f496353e4477d364f1652f5b2329b51820ab07a7d4b0c80bd362baf1",
+              "8abd056e7260376999ca03416d2304e66191cf4100b15418a6ebcc7a6a276229",
+              argv[4], argv[5], argv[6]);
             std::cout <<
               "parasite_ghost_measurement_smoke both orientations ok\n";
             return 0;

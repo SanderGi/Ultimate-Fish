@@ -294,7 +294,14 @@ and remaps every relationship so captures cannot corrupt a round trip.
   trigger this retaliation.
 - When a parasite attacks, it dies and changes the target to its team. When an
   opposing melee character attacks a parasite, the attacker is possessed;
-  ranged/support characters and bombs kill it normally.
+  ranged/support characters and bombs kill it normally. Possession changes the
+  team on the existing native character object rather than replacing its type
+  or identity. A possessed Jester therefore remains the same Jester: its former
+  owner retains that private provenance, while an observer whose King/Jester
+  assignment was ambiguous learns it from the non-terminal possession result.
+  The corresponding Ghost exception is visual rather than ontological: the
+  attached Parasite remains public, so both players can track that possessed
+  Ghost even when the Ghost model itself fades.
 - Angel attachment removes the angel from board occupancy, creates a halo at
   its origin, and links the host/angel/halo state. A lethal host hit consumes
   the angel and returns the host to the halo. Halo death also removes the
@@ -344,8 +351,25 @@ and remaps every relationship so captures cannot corrupt a round trip.
   freezes the adjacent non-Penguin characters until its next move or death,
   with counts stacking across Penguins. The action byte encodes that currently
   frozen direction set for serialization.
-- A Ghost is revealed by attacking or by enemy King/Jester adjacency. A quiet
-  Ghost move away from those royals makes it invisible again.
+- A Ghost is revealed by attacking or by enemy King/Jester adjacency. Either
+  side of the adjacency can initiate it: a Ghost stepping into royal range and
+  a King or Jester stepping beside a hidden Ghost both reveal it. The latter is
+  explicit in the shipping live-play path (`King.HasMovedHandler` calls
+  `King.CheckRadiusForGhost`, which Jester inherits). Local pass-and-play has a
+  playback bug that can fail to present that royal-initiated reveal, so Local
+  fixtures are not an authority for this one interaction. A quiet Ghost move
+  away from those royals makes it invisible again, but because the previously
+  visible model animates its direction, both endpoints of that first fading
+  move remain public. The live `Ghost.MoveTowards` coroutine reaches the
+  destination before `Ghost.DoneMoving` resolves the visibility transition.
+  Only a later move begun while hidden makes its new square unknown and
+  expands the location belief.
+- A Parasite that attacks an opposing Ghost possesses it normally, but the
+  floating Parasite model does not inherit Ghost invisibility. The possessed
+  Ghost is therefore permanently public to both players, including its
+  original owner, and remains public after every later Ghost move. The live
+  `Parasite.AttackHandler` dispatches through `TakeOverAndAttach`; the attached
+  Parasite GameObject persists independently of the Ghost renderer.
 - Sludge may blindly enter a square occupied by an invisible enemy Ghost. Both
   Sludge and Ghost are knocked out, the Sludge still leaves Goop on its origin,
   and the dying Sludge emits no ordinary movement callback. The public online
@@ -452,8 +476,10 @@ candidate set instead of reducing it to a known/unknown boolean.
 
 The lossless `visible` flag is relative to each Ghost's opponent, not the local
 UI. A player's own deployed Ghost is visible on that player's screen but begins
-invisible in the engine state because enemy rays must pass through it. This is
-essential when an enemy Sniper has the real King as its first visible target.
+invisible in the engine state because enemy rays must pass through it. The
+separate `parasiteTracked` bit records the permanent, public floating-Parasite
+exception. This distinction is essential when an enemy Sniper has the real
+King as its first visible target.
 
 Engine play represents public state as an information set of those concrete
 positions. At the start of a decision it must first partition that set by the
@@ -481,11 +507,14 @@ UI history analysis, and controller draft-leaf evaluation share this
 reconstruction path.
 
 A public continuing-turn event removes royal hypotheses in which the captured
-silhouette was the real King. A quiet invisible Ghost move expands over all
-legal hidden endpoints, a public attack applies its exact revealed source and
+silhouette was the real King. A quiet move begun by a visible Ghost applies its
+exact animated source and destination, leaves a singleton location belief even
+after the model fades, and only its following move begun while hidden expands
+over legal endpoints. A public attack applies its exact revealed source and
 destination, and `MakeVis` uses only the newly visible destination while
-rehydrating every adjacent legal hidden origin. Private release-log coordinates
-never participate in those transitions.
+rehydrating every adjacent legal hidden origin. A Parasite-tracked Ghost never
+enters the hidden branch. Private release-log coordinates participate only when
+the same coordinates were publicly animated; otherwise they remain excluded.
 
 The executable fixtures cover movement, queued actions, automatic turn effects,
 promotion, cooldown, freeze stacking, visibility, linked death/relocation,
@@ -514,6 +543,13 @@ spawn totals, later captures, and Berserker growth do not replace the starting
 roster value. Pixel OCR is used only when that native public record is
 unavailable.
 
-No source-level divergence is currently known in the recovered 5.731 ledger,
-but conformance remains open until the pending matrix fixtures and broader
-interaction campaigns are complete.
+The recovered 5.731 source ledger covers all 28 `SimulatedPiece` subclasses
+and all 118 piece-specific override methods. Its normalized override map has
+SHA-256
+`0b5b0d7278018604849d79f31c89366ae2ec0e2ded27c1f1d88cc8e174539b6e`;
+`tools/audit_ultimate_native_interactions.py` checks that fingerprint and 51
+semantic method anchors against the external IL2CPP dump. The checked-in
+`tests/ultimate_native_interaction_audit.json` maps every native simulator and
+all 30 engine piece names into 19 semantic families, each tied to reference
+tests and exact Local contracts. This closes the source-inventory gap without
+claiming that a finite interaction corpus exhausts every reachable position.

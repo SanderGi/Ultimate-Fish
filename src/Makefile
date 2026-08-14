@@ -59,7 +59,7 @@ ULTIMATE_INFORMATION_COMMON_SRCS = ultimate/position.cpp ultimate/tablebases/inf
 	ultimate/tablebases/information_solver.cpp ultimate/nnue.cpp
 ULTIMATE_TABLEBASE_INCLUDE = -Iultimate -Iultimate/tablebases
 
-.PHONY: ultimatefish ultimate-test ultimate-belief-benchmark ultimate-hidden-search-benchmark ultimate-information-test \
+.PHONY: ultimatefish ultimate-test ultimate-rules-test ultimate-belief-benchmark ultimate-hidden-search-benchmark ultimate-information-test \
 	ultimate-ghost-information-probe-test ultimate-tablebase \
 	ultimate-nnue-reference ultimate-information-solvers \
 	ultimate-ghost-information-tablebase ultimate-double-jester-information-tablebase \
@@ -347,7 +347,7 @@ ultimate-ghost-parasite-information-test:
 	./ultimate_ghost_parasite_information_solver_test --measurement-smoke \
 		../tablebases/kghostparasitek.uftb \
 		../tablebases/kghostkparasite.uftb ../tablebases/kghostk.ufgm \
-		../tablebases/kparasitek.uftb
+		../tablebases/kparasitek.uftb ../tablebases/kghostk-tracked.uftb
 
 ultimate-ghost-parasite-information-self-test: \
 	ultimate-ghost-parasite-information-tablebase
@@ -517,6 +517,13 @@ ultimate-test:
 		ultimate/tablebases/tablebase_probe.cpp ultimate/tablebases/information.cpp ultimate/nnue.cpp \
 		-o ultimate_rules_test
 	./ultimate_rules_test
+
+ultimate-rules-test:
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror ../tests/ultimate_rules.cpp \
+		ultimate/position.cpp ultimate/search.cpp ultimate/draft.cpp \
+		ultimate/tablebases/tablebase_probe.cpp ultimate/tablebases/information.cpp ultimate/nnue.cpp \
+		-o ultimate_rules_test
+	./ultimate_rules_test --skip-external-tablebases
 
 ultimate-belief-benchmark:
 	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O3 -DNDEBUG -Wall -Wextra -Wpedantic -Werror -Iultimate -Iultimate/tablebases \

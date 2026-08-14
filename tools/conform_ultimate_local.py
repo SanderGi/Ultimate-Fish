@@ -29,6 +29,7 @@ from tools.ultimate_phone import (  # noqa: E402
     ArmyPlacementRetry,
     BeliefSet,
     BoardGeometry,
+    consensus_outline_squares,
     EngineClient,
     PIECE_COST,
     PhoneGame,
@@ -47,7 +48,11 @@ DEFAULT_MANIFEST = ROOT / "tests" / "ultimate_local_conformance.json"
 DEFAULT_VALIDATION = (
     ROOT / "tests" / "ultimate_local_conformance.validation.json"
 )
-MAX_LOCAL_SETUP_ATTEMPTS = 6
+# Recent 5.731 Local sessions can intermittently misroute a pot drag or emit a
+# stale material total several times in succession. Every rejected setup is
+# discarded before the fixture event journal is created, so additional retries
+# improve harness robustness without weakening or replaying any rule proof.
+MAX_LOCAL_SETUP_ATTEMPTS = 12
 
 
 @dataclass(frozen=True)
@@ -152,8 +157,8 @@ def load_manifest(path: Path) -> dict:
                     f"{fixture['id']}.steps[{index}] must be an object"
                 )
             operations = set(step) & {
-                "move", "reject", "terminal_move", "piece",
-                "native_moves", "native_deaths"
+                "move", "reject", "terminal_move", "piece", "piece_absent",
+                "public_outline", "native_moves", "native_deaths"
             }
             extra_keys = set(step) - operations - {
                 "proves", "reconcile_unlogged_deaths",
@@ -192,8 +197,9 @@ def load_manifest(path: Path) -> dict:
             if len(operations) != 1:
                 raise ValueError(
                     f"{fixture['id']}.steps[{index}] must have exactly one "
-                    "move, reject, terminal_move, piece, native_moves, or "
-                    "native_deaths assertion"
+                    "move, reject, terminal_move, piece/piece_absent/"
+                    "public_outline, "
+                    "native_moves, or native_deaths assertion"
                 )
             if "terminal_move" in step:
                 assertion = step["terminal_move"]
@@ -239,15 +245,19 @@ def load_manifest(path: Path) -> dict:
                             f"{move!r} must be an ordinary relocation"
                         )
                 continue
-            if "piece" in step:
-                assertion = step["piece"]
+            if ("piece" in step or "piece_absent" in step or
+                    "public_outline" in step):
+                assertion = step.get(
+                    "piece",
+                    step.get("piece_absent", step.get("public_outline")),
+                )
                 if (not isinstance(assertion, dict) or
                         set(assertion) != {"type", "square"} or
                         assertion.get("type") not in PIECE_COST or
                         not isinstance(assertion.get("square"), str)):
                     raise ValueError(
-                        f"{fixture['id']}.steps[{index}].piece needs a known "
-                        "type and square"
+                        f"{fixture['id']}.steps[{index}] piece assertion needs "
+                        "a known type and square"
                     )
                 square_to_scene_index(assertion["square"])
                 continue
@@ -348,12 +358,30 @@ def validate_fixture_engine_trace(fixture: dict, engine_path: str) -> None:
                 validate_engine_move_oracle(
                     *last_transition, step["native_moves"])
                 continue
-            if "piece" in step:
-                assertion = step["piece"]
+            if ("piece" in step or "piece_absent" in step or
+                    "public_outline" in step):
+                assertion = step.get(
+                    "piece",
+                    step.get("piece_absent", step.get("public_outline")),
+                )
                 predicted = upn_piece_covering(position, assertion["square"])
-                if (predicted is None or
-                        public_probe_piece(predicted[0]) !=
-                        public_probe_piece(assertion["type"])):
+                matches = (predicted is not None and
+                           public_probe_piece(predicted[0]) ==
+                           public_probe_piece(assertion["type"]))
+                if "piece_absent" in step:
+                    if matches and (predicted[0] != "ghost" or predicted[2]):
+                        raise AssertionError(
+                            f"step {index}: engine predicts visible "
+                            f"{assertion['type']} at {assertion['square']}"
+                        )
+                    continue
+                if ("public_outline" in step and matches and
+                        predicted[0] == "ghost" and not predicted[2]):
+                    raise AssertionError(
+                        f"step {index}: engine predicts hidden Ghost at "
+                        f"{assertion['square']} for a public outline assertion"
+                    )
+                if not matches:
                     actual = predicted[0] if predicted else "empty"
                     raise AssertionError(
                         f"step {index}: engine has {actual}, expected "
@@ -705,6 +733,84 @@ def run_fixture(
                     flush=True,
                 )
                 continue
+            if "piece_absent" in step:
+                assertion = step["piece_absent"]
+                predicted = upn_piece_covering(
+                    game.beliefs.positions[0], assertion["square"]
+                )
+                if (predicted is not None and
+                        public_probe_piece(predicted[0]) ==
+                        public_probe_piece(assertion["type"]) and
+                        (predicted[0] != "ghost" or predicted[2])):
+                    raise AssertionError(
+                        f"engine predicts visible {assertion['type']} at "
+                        f"{assertion['square']}"
+                    )
+                try:
+                    game.locate_public_piece(
+                        assertion["type"], [assertion["square"]]
+                    )
+                except RuntimeError as exc:
+                    if "could not locate visible" not in str(exc):
+                        raise
+                else:
+                    raise AssertionError(
+                        f"native exposed {assertion['type']} at "
+                        f"{assertion['square']}"
+                    )
+                observations.append({
+                    "step": index,
+                    "piece_absent": assertion,
+                    "found": False,
+                    "proves": step_contracts,
+                })
+                print(
+                    f"{fixture['id']} hidden {assertion['type']} at "
+                    f"{assertion['square']}: confirmed",
+                    flush=True,
+                )
+                continue
+            if "public_outline" in step:
+                assertion = step["public_outline"]
+                predicted = upn_piece_covering(
+                    game.beliefs.positions[0], assertion["square"]
+                )
+                if (predicted is None or
+                        public_probe_piece(predicted[0]) !=
+                        public_probe_piece(assertion["type"]) or
+                        (predicted[0] == "ghost" and not predicted[2])):
+                    actual = predicted[0] if predicted else "empty"
+                    raise AssertionError(
+                        f"engine predicts {actual} rather than a public "
+                        f"{assertion['type']} at {assertion['square']}"
+                    )
+                display = game.device_square(assertion["square"])
+                color = "blue" if predicted[1] == "w" else "red"
+                frames = []
+                for _attempt in range(3):
+                    frames.append(game.adb.screenshot())
+                    time.sleep(0.10)
+                outlined = set(consensus_outline_squares(
+                    frames, game.geometry, color, (int(display[1:]),)
+                ))
+                if display not in outlined:
+                    raise AssertionError(
+                        f"native did not render the {color} public marker for "
+                        f"{assertion['type']} at {assertion['square']}"
+                    )
+                observations.append({
+                    "step": index,
+                    "public_outline": assertion,
+                    "display_square": display,
+                    "color": color,
+                    "proves": step_contracts,
+                })
+                print(
+                    f"{fixture['id']} public outline for "
+                    f"{assertion['type']} at {assertion['square']}: confirmed",
+                    flush=True,
+                )
+                continue
             if "piece" in step:
                 assertion = step["piece"]
                 predicted = upn_piece_covering(
@@ -807,9 +913,8 @@ def run_fixture(
                             f"engine draw {move} does not retain both Kings"
                         )
                 event_generation, event_prefix = game.events.gameplay_snapshot()
-                event = game.execute(
-                    move, game.beliefs.move_causes_bomb_detonation(move)
-                )
+                bomb_terminal = game.beliefs.move_causes_bomb_detonation(move)
+                event = game.execute(move, bomb_terminal)
                 if expected_label == "forced-timeout":
                     if event.kind != "forced_timeout":
                         raise AssertionError(
@@ -830,12 +935,23 @@ def run_fixture(
                         flush=True,
                     )
                     continue
-                deadline = time.monotonic() + 10.0
+                # Bomb chains can report GameOver before their serial death
+                # animations have opened the public result overlay. Keep the
+                # native-label journal and OCR fallback alive through the
+                # same bounded animation window used by action execution.
+                # OpenGameOverMenu is only a generic early barrier. A crowded
+                # Bomb capture can emit it before the result headline and its
+                # terminal-label callback, while Unity is still resolving
+                # serial deaths. Keep the authoritative journal alive for the
+                # same long-tail animation class as Bomb input readiness.
+                terminal_label_timeout = 90.0 if bomb_terminal else 20.0
+                deadline = time.monotonic() + terminal_label_timeout
                 observed_label = (
                     event.source if event.kind == "terminal_label" else None
                 )
                 observed_game_over = event.kind == "game_over"
                 observed_king_death = False
+                next_process_probe = time.monotonic() + 1.0
                 while time.monotonic() < deadline:
                     generation, journal = game.events.gameplay_snapshot()
                     recent = (
@@ -859,6 +975,15 @@ def run_fixture(
                     if (expected_label == "knockout" and
                             observed_game_over and observed_king_death):
                         break
+                    now = time.monotonic()
+                    if now >= next_process_probe:
+                        if not game.adb.is_package_running(
+                                "com.JesseLugassy.ChessUltimate"):
+                            raise RuntimeError(
+                                "Chess Ultimate process exited before the "
+                                f"authoritative terminal label for {move}"
+                            )
+                        next_process_probe = now + 1.0
                     time.sleep(0.04)
                 native_proof = (
                     observed_label == expected_label or
@@ -873,7 +998,7 @@ def run_fixture(
                     # overlay rather than treating a generic game-over event
                     # as proof of whichever result the fixture expected.
                     classified = game.classify_game_over(
-                        timeout=5.0,
+                        timeout=30.0 if bomb_terminal else 20.0,
                         decisive_result=(
                             expected_label
                             if expected_label in ("checkmate", "knockout")

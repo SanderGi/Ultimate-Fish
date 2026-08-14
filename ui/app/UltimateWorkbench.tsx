@@ -74,6 +74,7 @@ type PositionPiece = {
   power: number;
   moved: boolean;
   visible: boolean;
+  parasiteTracked: boolean;
   onBoard: boolean;
   link?: string;
   host?: string;
@@ -502,6 +503,7 @@ function basePiece(
     power: 0,
     moved: false,
     visible: id !== "ghost",
+    parasiteTracked: false,
     onBoard: true,
     attachmentOrder: 0,
   };
@@ -597,6 +599,7 @@ function parseUpn(upn: string): {
       onBoard: values[10] !== "0",
       hostIndex: Number(values[11] ?? -1),
       attachmentOrder: Number(values[12] ?? 0),
+      parasiteTracked: values[13] === "1",
     });
   }
   const pieces = raw.map(({ linkIndex, hostIndex, ...piece }) => ({
@@ -616,8 +619,8 @@ function positionUpn(
 ): string {
   const ids = new Map(pieces.map((piece, index) => [piece.uid, index]));
   const header = `${turn === "white" ? "w" : "b"};hm=${meta.halfmove};fm=${meta.fullmove};ep=${meta.ep};cont=${meta.continuation};forced=${ids.get(meta.forced ?? "") ?? -1};epv=${ids.get(meta.epVictim ?? "") ?? -1}`;
-  const entries = pieces.map((piece) =>
-    [
+  const entries = pieces.map((piece) => {
+    const values = [
       piece.id,
       piece.color === "white" ? "w" : "b",
       squareName(piece.square),
@@ -631,8 +634,10 @@ function positionUpn(
       piece.onBoard ? 1 : 0,
       ids.get(piece.host ?? "") ?? -1,
       piece.attachmentOrder,
-    ].join(","),
-  );
+    ];
+    if (piece.parasiteTracked) values.push(1);
+    return values.join(",");
+  });
   return [header, ...entries].join(";");
 }
 

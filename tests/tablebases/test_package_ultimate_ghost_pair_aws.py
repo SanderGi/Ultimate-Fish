@@ -150,7 +150,7 @@ class GhostPairAwsBundleTests(unittest.TestCase):
             "204f4de6d0f9ff6da111d3d0c0a08c3562493cdec2130cc946b4eae7183012ee")
         self.assertEqual(
             manifest["lower_sidecar_sha256"],
-            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         self.assertIn("--output-arbitrary", manifest["commands"]["solve"])
         self.assertIn("work/results/kghostghostk.ufgg",
                       manifest["artifacts"])

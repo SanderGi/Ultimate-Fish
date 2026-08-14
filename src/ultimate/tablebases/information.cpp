@@ -122,6 +122,7 @@ struct NumericPublicNode {
         << ",power=" << int(piece.power)
         << ",moved=" << int(piece.moved)
         << ",visible=" << int(piece.visible)
+        << ",parasiteTracked=" << int(piece.parasiteTracked)
         << ",attachment=" << attachmentOrder;
     return out.str();
 }
@@ -230,7 +231,8 @@ struct NumericPublicNode {
     key |= std::uint64_t(piece.power) << 39;
     key |= std::uint64_t(piece.moved) << 47;
     key |= std::uint64_t(piece.visible) << 48;
-    key |= std::uint64_t(attachmentOrder) << 49;
+    key |= std::uint64_t(piece.parasiteTracked) << 49;
+    key |= std::uint64_t(attachmentOrder) << 50;
     return key;
 }
 
@@ -470,9 +472,9 @@ std::uint64_t compact_transition_action_key(
           actorBefore->type == PieceType::Ghost &&
           actorBefore->color != disclosure.observer;
         const bool sourceKnown = !enemyGhost || actorBefore->visible;
-        bool destinationKnown = !enemyGhost;
+        bool destinationKnown = !enemyGhost || actorBefore->visible;
         if (enemyGhost) {
-            destinationKnown = before.is_capture(move);
+            destinationKnown = actorBefore->visible || before.is_capture(move);
             if (!destinationKnown && actor < after.piece_count()) {
                 const PieceState& actorAfter = after.piece(actor);
                 destinationKnown = actorAfter.alive && actorAfter.visible;
@@ -525,10 +527,11 @@ bool compact_transition_action_may_match(
         return false;
     if (!enemyGhost)
         return expectedTo == std::uint64_t(move.to) + 1;
-    if (before.is_capture(move))
+    if (piece.visible || before.is_capture(move))
         return expectedTo == std::uint64_t(move.to) + 1;
-    // A quiet hidden Ghost either remains hidden (unknown destination) or is
-    // revealed at this exact destination. Both are resolved after applying it.
+    // A quiet move begun while hidden either remains hidden (unknown
+    // destination) or is revealed at this exact destination. Both are
+    // resolved after applying it.
     return expectedTo == UnknownSquare ||
            expectedTo == std::uint64_t(move.to) + 1;
 }
@@ -653,11 +656,11 @@ std::string transition_observation_key(
                          && actorBefore->color != disclosure.observer;
     const bool sourceKnown = !enemyGhost || actorBefore->visible;
 
-    bool destinationKnown = !enemyGhost;
+    bool destinationKnown = !enemyGhost || (actorBefore && actorBefore->visible);
     if (enemyGhost) {
         // Capturing Ghosts reveal on attack even if a Bomb/Goop effect removes
         // the model before it can remain in the resulting position.
-        destinationKnown = before.is_capture(move);
+        destinationKnown = actorBefore->visible || before.is_capture(move);
         if (!destinationKnown && actor < after.piece_count()) {
             const PieceState& actorAfter = after.piece(actor);
             destinationKnown = actorAfter.alive && actorAfter.visible;

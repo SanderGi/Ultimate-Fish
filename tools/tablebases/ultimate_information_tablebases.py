@@ -14,7 +14,9 @@ input inventory and validates the solver's future
 * King/Jester identities are maximally ambiguous among the royal silhouettes
   on each team;
 * every causally reachable hidden Ghost location compatible with the public
-  board is retained, while a visible Ghost is a singleton;
+  board is retained, while a visible Ghost is a singleton; a move begun while
+  visible exposes its exact destination even if it fades there, and only a
+  later move begun hidden expands the location belief;
 * play uses pure, observation-based strategies and an outcome is a win or loss
   only when that result can be forced for every retained realization;
 * before choosing an action, the mover may select each owned piece and
@@ -52,6 +54,8 @@ BASE_DEPENDENCY_ARTIFACTS = (
     ROOT / "tools" / "tablebases" /
     "ultimate_concrete_base_dependency_artifacts.json"
 )
+TRACKED_GHOST_DEPENDENCY_SHA256 = (
+    "32dc7889506f4dd4948dbf1bed3f31c6c3ebdd4a8600c4381c7a8c710b9ec671")
 DEFAULT_SUMMARY = ROOT / "tablebases" / "information_summary.json"
 SCHEMA_VERSION = 2
 SEMANTICS_ID = "fresh-maximal-public-view-v2"
@@ -808,8 +812,22 @@ def concrete_tablebase_model_fingerprint(filename: str,
         sources, domain=f"concrete-tablebase-model:{filename}", root=root)
 
 
+def tracked_ghost_tablebase_model_fingerprint(*, root: Path = ROOT) -> str:
+    """Bind the public K+tracked-Ghost-v-K WDL oracle and its v8 codec."""
+    sources = (
+        ROOT / "src" / "ultimate" / "position.h",
+        ROOT / "src" / "ultimate" / "position.cpp",
+        TABLEBASE_SOURCES / "tablebase.cpp",
+    )
+    return _source_fingerprint(
+        sources, domain="concrete-tablebase-model:kghostk.uftb:tracked-v1",
+        root=root)
+
+
 def concrete_dependency_sha256(filename: str) -> str:
     """Return the S3-certified full SHA for a local-free base dependency."""
+    if filename == "kghostk-tracked.uftb":
+        return TRACKED_GHOST_DEPENDENCY_SHA256
     document = json.loads(BASE_DEPENDENCY_ARTIFACTS.read_text())
     if document.get("schema") != "ultimate-concrete-k2-dependencies-v2":
         raise SummaryValidationError("concrete dependency inventory schema drift")

@@ -186,10 +186,11 @@ struct InformationObservationKey {
   const std::string* ordinaryView = nullptr);
 
 // Return the complete public observation of one legal transition.  The key
-// includes the public action animation and the resulting view.  In particular,
+// includes the public action animation and the resulting view. In particular,
 // an already-invisible enemy Ghost's quiet move exposes neither endpoint; a
-// visible Ghost exposes its source; and a capture/reveal exposes its
-// destination.  This is the equivalence key an exact epistemic retrograde
+// move begun while visible exposes both endpoints even if the Ghost fades at
+// the destination; and a capture/reveal exposes its destination. This is the
+// equivalence key an exact epistemic retrograde
 // solver should use when partitioning successor worlds after an action.
 //
 // No belief bound, sampling, or lossy digest is used here.  The caller remains

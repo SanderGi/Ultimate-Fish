@@ -561,8 +561,6 @@ def parse_unity_line(line: str) -> AppEvent | None:
     # barrier when an Onyx player is knocked out on Ivory's opening move.
     if "GameOver MESSAGE" in line:
         return AppEvent("game_over", raw=line)
-    if "OpenGameOverMenu" in line:
-        return AppEvent("game_over", raw=line)
     normalized_terminal = re.sub(r"[^a-z0-9]+", " ", line.lower()).strip()
     if normalized_terminal.endswith("checkmate"):
         return AppEvent("terminal_label", source="checkmate", raw=line)
@@ -570,8 +568,11 @@ def parse_unity_line(line: str) -> AppEvent | None:
         return AppEvent("terminal_label", source="knockout", raw=line)
     if ("board state repeated 3 times" in normalized_terminal
             or "50 moves passed without a knock out" in normalized_terminal
+            or "checkmate not possible" in normalized_terminal
             or normalized_terminal.endswith("stalemate")):
         return AppEvent("terminal_label", source="draw", raw=line)
+    if "OpenGameOverMenu" in line:
+        return AppEvent("game_over", raw=line)
     # The native GameFound prompt has a ten-second timer.  Treat the network
     # dispatch as a first-class event so the controller accepts immediately
     # instead of discovering the prompt through comparatively slow screenshots.
@@ -3059,6 +3060,13 @@ class BeliefSet:
     def observe_move(self, event: AppEvent, conceal_ghost_coordinates: bool) -> None:
         if event.kind != "move" or not event.piece:
             raise ValueError("observe_move requires a move event")
+        visible_ghost_source = bool(
+            event.piece == "ghost" and event.source and any(
+                (actor := upn_piece_at(position, event.source)) is not None
+                and actor[0] == "ghost" and actor[1] == "b" and actor[2]
+                for position in self.positions
+            )
+        )
         next_positions = []
         for position in self.positions:
             legal = self.engine.legal_moves(position)
@@ -3071,17 +3079,15 @@ class BeliefSet:
                     actor = upn_piece_at(position, source)
                     if not actor or actor[0] != "ghost" or actor[1] != "b":
                         continue
-                    # An already-hidden Ghost conceals both endpoints.  After
-                    # a public attack, however, its next quiet move has a
-                    # publicly known source and only the destination becomes
-                    # hidden.  Release diagnostics leak both coordinates, but
-                    # use only what the opponent could see on the board.
+                    # A move begun while hidden conceals both endpoints.
+                    # Release diagnostics leak both coordinates, but use only
+                    # what the opponent could see on the board.
                     # No public attack/reveal accompanied this callback, so
                     # the Ghost must have made a quiet move to an empty cell.
                     # Retaining captures here silently removed our material in
                     # impossible worlds and manufactured phantom mate threats.
-                    if ((not actor[2] or source == event.source)
-                            and upn_piece_covering(position, target) is None):
+                    if (not actor[2] and
+                            upn_piece_covering(position, target) is None):
                         candidates.append(move)
             else:
                 assert event.source and event.target
@@ -3099,7 +3105,7 @@ class BeliefSet:
             for move in candidates:
                 next_positions.append(self.engine.apply(position, move))
         if (event.piece == "ghost" and not conceal_ghost_coordinates and
-                event.source and event.target):
+                not visible_ghost_source and event.source and event.target):
             # A bounded belief sample must never discard public alternatives
             # merely because one sampled world already happened to match.
             # Rehydrate every still-hidden enemy Ghost at the newly public
@@ -3129,6 +3135,16 @@ class BeliefSet:
             privacy = "hidden Ghost" if conceal_ghost_coordinates else "visible"
             raise RuntimeError(f"{privacy} app move matches no belief: {event}")
         self.positions = self._bounded(next_positions)
+
+    def enemy_ghost_visible_at(self, source: str | None) -> bool:
+        """Whether the opponent's moving Ghost was public before its move."""
+        if source is None:
+            return False
+        return any(
+            (actor := upn_piece_at(position, source)) is not None
+            and actor[0] == "ghost" and actor[1] == "b" and actor[2]
+            for position in self.positions
+        )
 
     def observe_visible_ghost_destination(self, target: str) -> None:
         """Apply a Ghost move using only its newly public destination.
@@ -4934,11 +4950,8 @@ class PhoneGame:
                     f"native King relocation missed {king_square}")
             self.log(f"relocated native King a1->{king_square}")
         pieces = [item for item in self.own_team if item[0] != "king"]
-        # Place wide footprints first so later single-cell models cannot block
-        # a Giant or the mirrored Copycat clone.
-        pieces.sort(key=lambda item: 4 if item[0] == "giant"
-                    else 2 if item[0] == "copycat" else 1, reverse=True)
-        wide = [item for item in pieces if item[0] in ("giant", "copycat")]
+        copycats = [item for item in pieces if item[0] == "copycat"]
+        giants = [item for item in pieces if item[0] == "giant"]
         ordinary: dict[str, list[str]] = {}
         for piece, square in pieces:
             if piece not in ("giant", "copycat"):
@@ -4948,14 +4961,17 @@ class PhoneGame:
             for piece in tuple(ordinary):
                 if ordinary[piece]:
                     interleaved.append((piece, ordinary[piece].pop(0)))
-        # Giants' oversized 3D raycasters extend over neighbouring logical
-        # cells in the standalone builder.  Place single-cell characters first
-        # and the already-validated non-overlapping Giant footprints last.
+        # Place CopyCat before ordinary models so neither its requested cell
+        # nor the automatically created mirror clone can be covered by a later
+        # model's oversized raycaster. Giants are the opposite: their own 3D
+        # raycasters extend over neighbouring cells, so place single-cell
+        # characters first and validated non-overlapping Giants last.
         # Multiple adjacent Giants are logically legal, but their oversized
         # builder raycasters make placement order observable. Approach from
         # left to right so an existing model cannot cover a later drop target.
-        wide.sort(key=lambda item: square_sort_key(item[1]))
-        pieces = interleaved + wide
+        copycats.sort(key=lambda item: square_sort_key(item[1]))
+        giants.sort(key=lambda item: square_sort_key(item[1]))
+        pieces = copycats + interleaved + giants
         confirmed_points = 0
         native_confirmed: Counter[tuple[str, str]] = Counter()
         for piece, square in pieces:
@@ -7968,7 +7984,16 @@ class PhoneGame:
         # the center of a distant logical square.  Require Unity's preceding
         # Square.OnPointerDown coordinate to match the engine source, then try
         # bounded offsets wholly inside the source cell.
-        selection_deadline = time.monotonic() + 5.0
+        # A chained Bomb transition can publish its final ChangeTurn and every
+        # death callback long before Unity has made the next character
+        # colliders interactive.  A seven-model chain has taken just over 30
+        # seconds after a long Local fixture run on the reference Pixel 8a.
+        # The next action already knows whether it targets a Bomb from the
+        # engine position, so give that rare path a generous but still bounded
+        # animation window. Ordinary selections keep the fast five-second
+        # failure bound.
+        selection_timeout = 90.0 if expect_bomb_resolution else 5.0
+        selection_deadline = time.monotonic() + selection_timeout
         center_x, center_y = self.geometry.point(display_source)
         offsets = (
             (0.0, 0.0),
@@ -8054,7 +8079,9 @@ class PhoneGame:
                 break
         if selected is None:
             raise_if_native_app_exited()
-            raise TimeoutError(f"could not select {source} within five seconds")
+            raise TimeoutError(
+                f"could not select {source} within {selection_timeout:g} seconds"
+            )
         if not release_consumed:
             try:
                 release = self.events.wait(
@@ -8945,6 +8972,10 @@ class PhoneGame:
                 event = AppEvent(
                     "move", "sniper", event.source, targets[0], event.raw)
             consumed_turn_end = False
+            visible_ghost_move = (
+                event.piece == "ghost" and enemy_attack_target is None and
+                self.beliefs.enemy_ghost_visible_at(event.source)
+            )
             if event.piece == "ghost" and enemy_attack_target is None:
                 # Ghost visibility is resolved during its animation, after the
                 # ordinary move record. Buffer through ChangeTurn so a newly
@@ -8974,11 +9005,12 @@ class PhoneGame:
                     return result
 
             reveal_destination = (
-                event.piece == "ghost" and ghost_became_visible
+                event.piece == "ghost" and not visible_ghost_move and
+                ghost_became_visible
                 and enemy_attack_target is None
             )
             conceal = (event.piece == "ghost" and enemy_attack_target is None
-                       and not reveal_destination)
+                       and not reveal_destination and not visible_ghost_move)
             bomb_resolution = (
                 self.beliefs.observation_causes_bomb_detonation(event)
                 or enemy_attack_target == "bomb"

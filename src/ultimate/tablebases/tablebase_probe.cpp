@@ -31,11 +31,15 @@ constexpr std::uint32_t CompoundCopycatStateCount =
 constexpr std::uint32_t IdenticalCompoundCopycatStateCount =
   CompoundCopycatStateCount / 2;
 constexpr std::uint64_t GiantAnchorV2Tag = 0x32474e4149474655ULL;
+constexpr std::uint64_t TrackedGhostV1Tag = 0x3154534f48474655ULL;
 
 bool compatible_codec(std::uint32_t version, PieceType primary,
                       PieceType secondary, std::uint64_t codecTag) {
-    if (version < 2 || version > 7)
+    if (version < 2 || version > 8)
         return false;
+    if (version == 8)
+        return primary == PieceType::Ghost && secondary == PieceType::Count &&
+               codecTag == TrackedGhostV1Tag;
     const bool foldedGiant = secondary != PieceType::Count &&
       (primary == PieceType::Giant || secondary == PieceType::Giant);
     // v7 is reserved for a folded four-model Giant payload whose horizontal
@@ -81,6 +85,7 @@ struct Database {
     Color secondaryColor = Color::White;
     std::uint32_t substates = 1;
     std::uint32_t count = 0;
+    bool trackedGhost = false;
     std::vector<TablebaseResult> records;
     std::shared_ptr<PackedStorage> packed;
     std::vector<std::pair<std::uint32_t, std::uint16_t>> exceptions;
@@ -356,7 +361,7 @@ std::vector<Database> load_databases() {
         std::uint32_t substates = 1;
         if (version >= 3)
             stream.read(reinterpret_cast<char*>(&substates), sizeof(substates));
-        if (!stream || magic != expected || (version < 2 || version > 7) ||
+        if (!stream || magic != expected || (version < 2 || version > 8) ||
             !substates || (version < 5 && count != StateCount * substates) ||
             piece >= static_cast<std::uint32_t>(PieceType::Count))
             continue;
@@ -373,7 +378,9 @@ std::vector<Database> load_databases() {
                 std::uint32_t secondary = 0, secondaryColor = 0;
                 stream.read(reinterpret_cast<char*>(&secondary), sizeof(secondary));
                 stream.read(reinterpret_cast<char*>(&secondaryColor), sizeof(secondaryColor));
-                if (secondary >= static_cast<std::uint32_t>(PieceType::Count) ||
+                if (secondary > static_cast<std::uint32_t>(PieceType::Count) ||
+                    (secondary == static_cast<std::uint32_t>(PieceType::Count) &&
+                     version != 8) ||
                     secondaryColor > static_cast<std::uint32_t>(Color::Black)) {
                     database.count = 0;
                     continue;
@@ -389,7 +396,9 @@ std::vector<Database> load_databases() {
                   database.secondaryColor == Color::White;
                 const bool identical = database.attacker == database.secondary &&
                                        database.secondaryColor == Color::White;
-                const std::uint64_t placementCount = copycat ? StateCount
+                const std::uint64_t placementCount =
+                  database.secondary == PieceType::Count ? StateCount
+                  : copycat ? StateCount
                   : identicalCompoundCopycats ? IdenticalCompoundCopycatStateCount
                   : compoundCopycat ? CompoundCopycatStateCount
                   : identical ? IdenticalFourStateCount : FourStateCount;
@@ -410,6 +419,7 @@ std::vector<Database> load_databases() {
             std::uint64_t codecTag = 0;
             if (version >= 7)
                 stream.read(reinterpret_cast<char*>(&codecTag), sizeof(codecTag));
+            database.trackedGhost = codecTag == TrackedGhostV1Tag;
             if (!compatible_codec(version, database.attacker,
                                   database.secondary, codecTag)) {
                 database.count = 0;
@@ -499,7 +509,7 @@ bool TablebaseProbe::uses_compatible_codec(const std::string& path) {
     stream.read(reinterpret_cast<char*>(&count), sizeof(count));
     stream.read(reinterpret_cast<char*>(&edges), sizeof(edges));
     const std::array<char, 8> expected{{'U','F','T','B','1','\0','\0','\0'}};
-    if (!stream || magic != expected || version < 2 || version > 7 ||
+    if (!stream || magic != expected || version < 2 || version > 8 ||
         piece >= static_cast<std::uint32_t>(PieceType::Count))
         return false;
     std::uint32_t substates = 1;
@@ -516,7 +526,9 @@ bool TablebaseProbe::uses_compatible_codec(const std::string& path) {
             std::uint32_t encodedSecondary = 0, secondaryColor = 0;
             stream.read(reinterpret_cast<char*>(&encodedSecondary), sizeof(encodedSecondary));
             stream.read(reinterpret_cast<char*>(&secondaryColor), sizeof(secondaryColor));
-            if (encodedSecondary >= static_cast<std::uint32_t>(PieceType::Count) ||
+            if (encodedSecondary > static_cast<std::uint32_t>(PieceType::Count) ||
+                (encodedSecondary == static_cast<std::uint32_t>(PieceType::Count) &&
+                 version != 8) ||
                 secondaryColor > static_cast<std::uint32_t>(Color::Black))
                 return false;
             secondary = static_cast<PieceType>(encodedSecondary);
@@ -833,7 +845,9 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
             if (item.cooldown || item.action) return std::nullopt;
             return std::min<std::uint32_t>(item.power, 9);
         case PieceType::Ghost:
-            if (item.cooldown || item.power || item.action) return std::nullopt;
+            if (item.cooldown || item.power || item.action ||
+                item.parasiteTracked)
+                return std::nullopt;
             return item.visible ? 1u : 0u;
         case PieceType::Sniper:
             if (item.cooldown > 3 || item.power || item.action) return std::nullopt;
@@ -1221,6 +1235,9 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
             continue;
         if (database.attacker != extra.type)
             continue;
+        if (extra.type == PieceType::Ghost &&
+            database.trackedGhost != extra.parasiteTracked)
+            continue;
         if (extra.type != PieceType::Penguin && has_unrepresented_freeze())
             continue;
         std::uint32_t substate = 0;
@@ -1231,9 +1248,10 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
             substate = std::min<std::uint32_t>(extra.power, 9);
             break;
         case PieceType::Ghost:
-            if (extra.cooldown || extra.power)
+            if (extra.cooldown || extra.power ||
+                (extra.parasiteTracked && !database.trackedGhost))
                 continue;
-            substate = extra.visible ? 1 : 0;
+            substate = database.trackedGhost ? 0 : extra.visible ? 1 : 0;
             break;
         case PieceType::Sniper:
             if (extra.cooldown > 3 || extra.power)
@@ -1282,7 +1300,8 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 continue;
             break;
         }
-        const std::uint32_t exactSubstates = represented_substates(extra.type);
+        const std::uint32_t exactSubstates = database.trackedGhost
+          ? 1 : represented_substates(extra.type);
         if (database.substates != exactSubstates) {
             if (extra.type != PieceType::Penguin || database.substates != 2)
                 continue;

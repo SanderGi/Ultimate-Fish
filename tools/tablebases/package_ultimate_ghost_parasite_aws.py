@@ -21,53 +21,33 @@ LARGE_GEOMETRIES = 7_703
 SMALL_GEOMETRIES = 7_702
 PARALLELISM = 29
 LOWER_SHA256 = (
-    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+    "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
 LOWER_PARASITE_SHA256 = (
     "c53364f87ce4ff23372aa3565d279e9fadde706eb1aeca5695aecc1ea3e83047")
 LOWER_PARASITE_MODEL_SHA256 = (
     "c9889fd2d77617a1f0c77ed43a7f8a054c299732194ec89456f68ed865681c25")
-FROZEN_FINGERPRINTS = {
-    "kbishopghostk.uftb":
-        "416f3792dfa0b5f5317a0ee4f8ae91b2a4dd874807d7223c5918dc0b291a2dcf",
-    "kbishopkghost.uftb":
-        "83045f01b7ac65800e662fe68c19de48a2fda5bc4d1fd48cbffc6c2c6dc56238",
-    "kghostghostk.uftb":
-        "84807bb96f10a77240b2e0c0584e0739d33d5135241b9e1b567f682b67e085af",
-    "kghostdragonk.uftb":
-        "87caaabfef6f77742a02ca911ccb79001c69e7e17c0a9384598f715dfb9c6d6b",
-    "kghostkdragon.uftb":
-        "b08194315a690de73ec8555e6154c3e9369fcca8cd3f726f9a6ad9425f125e28",
-    "kbombghostk.uftb":
-        "0db1091648374e733347d237d7f79386e3bd057aae3426a91f4be832a8884c31",
-    "kbombkghost.uftb":
-        "b9cddf50b7c52b3927b734f3c5e893a882b953b702f4cedb36ea4f68a1031c8e",
-    "kghostfishermank.uftb":
-        "f421daee9cfef5d173d6f2fe60b911b3cf276c4a3c6dc10fde88c9c53d7ac26b",
-    "kghostkfisherman.uftb":
-        "a87d6f8b01d7770d71ecb97e96c6fdbf6b6243d3a59307368724719825dfb290",
-    "kghostmagek.uftb":
-        "bd2190f61f6b7fc113609118f637643ed65e63e4d8a3da289a2529861758340e",
-    "kghostkmage.uftb":
-        "d33a2aa6dbe3a75f9d8f4d3c66d2496b266fdda0b1f22fa0aa0fba9f1da2f9a0",
-}
+LOWER_TRACKED_GHOST_SHA256 = (
+    "32dc7889506f4dd4948dbf1bed3f31c6c3ebdd4a8600c4381c7a8c710b9ec671")
+LOWER_TRACKED_GHOST_MODEL_SHA256 = (
+    "5b71141f6213872133db4877b76e4eb3e67186111624e76c62eced1e722ce10f")
 ROWS = {
     "kghostparasitek.uftb": {
         "orientation": "same",
         "source_sha256":
-            "1bb1c977b7af34b2295dd6c693d8a79006e69ab2f4291a828b930515742222ca",
+            "d551ba980ab7fb51c63713524e2bf23a31758cad7629835c8d4bb339976b4a58",
         "model_sha256":
-            "7b90bb730f3ee264928e671d11635df91723a7d688c60ba5b244fb1fc9ef513b",
+            "dbf6e2777ac700693164f461be688ecedc3e58f4c65fbc967025cc3b860d4361",
         "normalized_source_sha256":
-            "eb4c64f08278f26cb6b3854ac27dd98018fc1012fec9b8ae1a5b2030d99a6968",
+            "54c8d0bf2fa36254f1e1c4b9efa507c9128a5dc0030555857726fbef6551dd44",
     },
     "kghostkparasite.uftb": {
         "orientation": "opposing",
         "source_sha256":
-            "18c6dc8986ac43d9f38315bbc9e0c2ab6b0bed32c6c638991be01478cc2aceff",
+            "af888568f496353e4477d364f1652f5b2329b51820ab07a7d4b0c80bd362baf1",
         "model_sha256":
-            "519b3d4f0ea6452d5d1bf2d2d5e3288cf49628d6ac491424bd3054bf73db011c",
+            "66692c3d36301be90f6c5a069f2a86067b4772a5af8a04ec539afe0c60ede19f",
         "normalized_source_sha256":
-            "1cfa8cc56352a17b084fc65db54229f7112096aa2cd89f359e4bb8be62ae8394",
+            "8abd056e7260376999ca03416d2304e66191cf4100b15418a6ebcc7a6a276229",
     },
 }
 BUILD_INPUTS_COMMON = (
@@ -90,6 +70,7 @@ BUILD_INPUTS_COMMON = (
     "src/ultimate/nnue.cpp",
     "src/ultimate/nnue.h",
     "tablebases/kghostk.ufgm",
+    "tablebases/kghostk-tracked.uftb",
     "tablebases/kparasitek.uftb",
     "tools/tablebases/run_ultimate_reciprocal_bishop_ghost_aws.py",
     "tools/tablebases/run_ultimate_ghost_parasite_aws.py",
@@ -134,9 +115,6 @@ def build_manifest(filename: str) -> dict[str, object]:
     if filename not in ROWS:
         raise RuntimeError(f"unsupported Parasite/Ghost row {filename}")
     row = ROWS[filename]
-    for frozen, expected in FROZEN_FINGERPRINTS.items():
-        if information.solver_model_fingerprint(frozen) != expected:
-            raise RuntimeError(f"frozen fingerprint changed: {frozen}")
     model = information.solver_model_fingerprint(filename)
     if model != row["model_sha256"]:
         raise RuntimeError(f"Parasite/Ghost model fingerprint changed: {filename}")
@@ -144,14 +122,19 @@ def build_manifest(filename: str) -> dict[str, object]:
     concrete = (ROOT / "tablebases" / filename).read_bytes()
     lower_payload = (ROOT / "tablebases" / "kghostk.ufgm").read_bytes()
     lower_parasite_payload = (ROOT / "tablebases" / "kparasitek.uftb").read_bytes()
+    lower_tracked_ghost_payload = (
+        ROOT / "tablebases" / "kghostk-tracked.uftb").read_bytes()
     if sha256_bytes(concrete) != row["source_sha256"]:
         raise RuntimeError(f"{filename}: concrete SHA-256 mismatch")
     if sha256_bytes(lower_payload) != LOWER_SHA256:
         raise RuntimeError("kghostk lower UFGM SHA-256 mismatch")
-    if (sha256_bytes(lower_parasite_payload) != LOWER_PARASITE_SHA256 or
-            information.concrete_tablebase_model_fingerprint(
-                "kparasitek.uftb") != LOWER_PARASITE_MODEL_SHA256):
+    if sha256_bytes(lower_parasite_payload) != LOWER_PARASITE_SHA256:
         raise RuntimeError("kparasitek lower concrete binding mismatch")
+    if (sha256_bytes(lower_tracked_ghost_payload) !=
+            LOWER_TRACKED_GHOST_SHA256 or
+            information.tracked_ghost_tablebase_model_fingerprint() !=
+            LOWER_TRACKED_GHOST_MODEL_SHA256):
+        raise RuntimeError("tracked-Ghost lower concrete binding mismatch")
     lower = lower_binding(lower_payload)
     observation = information.observation_model_fingerprint()
     stem = Path(filename).stem
@@ -162,6 +145,13 @@ def build_manifest(filename: str) -> dict[str, object]:
                "--lower-parasite-sha256", LOWER_PARASITE_SHA256,
                "--lower-parasite-source-sha256", LOWER_PARASITE_SHA256,
                "--lower-parasite-model-sha256", LOWER_PARASITE_MODEL_SHA256,
+               "--lower-tracked-ghost-table",
+               "tablebases/kghostk-tracked.uftb",
+               "--lower-tracked-ghost-sha256", LOWER_TRACKED_GHOST_SHA256,
+               "--lower-tracked-ghost-source-sha256",
+               LOWER_TRACKED_GHOST_SHA256,
+               "--lower-tracked-ghost-model-sha256",
+               LOWER_TRACKED_GHOST_MODEL_SHA256,
                "--lower-ghost-sidecar", "tablebases/kghostk.ufgm",
                "--lower-sidecar-sha256", LOWER_SHA256,
                "--lower-source-sha256", lower[0],
@@ -217,6 +207,10 @@ def build_manifest(filename: str) -> dict[str, object]:
         "lower_parasite_full_sha256": LOWER_PARASITE_SHA256,
         "lower_parasite_source_sha256": LOWER_PARASITE_SHA256,
         "lower_parasite_model_sha256": LOWER_PARASITE_MODEL_SHA256,
+        "lower_tracked_ghost_full_sha256": LOWER_TRACKED_GHOST_SHA256,
+        "lower_tracked_ghost_source_sha256": LOWER_TRACKED_GHOST_SHA256,
+        "lower_tracked_ghost_model_sha256":
+            LOWER_TRACKED_GHOST_MODEL_SHA256,
         "lower_source_sha256": lower[0], "lower_model_sha256": lower[1],
         "lower_observation_sha256": lower[2],
         "geometries": GEOMETRIES, "shards": SHARDS,

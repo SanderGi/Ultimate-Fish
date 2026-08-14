@@ -59,7 +59,10 @@ def main() -> None:
     for key in ("schema", "filename", "orientation",
                 "normalized_source_sha256", "lower_parasite_full_sha256",
                 "lower_parasite_source_sha256",
-                "lower_parasite_model_sha256"):
+                "lower_parasite_model_sha256",
+                "lower_tracked_ghost_full_sha256",
+                "lower_tracked_ghost_source_sha256",
+                "lower_tracked_ghost_model_sha256"):
         artifact[key] = manifest[key]
     artifact_path.write_text(
         json.dumps(artifact, indent=2, sort_keys=True) + "\n")

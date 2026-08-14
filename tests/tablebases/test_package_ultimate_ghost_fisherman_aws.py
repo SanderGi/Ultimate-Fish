@@ -34,7 +34,7 @@ class FishermanGhostAwsBundleTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         require_artifacts(
-            ROOT, "tablebases/kghostk.ufgm", "tablebases/kfishermank.uftb",
+            ROOT, "tablebases/kghostk.ufgm",
             "tablebases/kghostfishermank.uftb",
             "tablebases/kghostkfisherman.uftb")
 
@@ -54,9 +54,9 @@ class FishermanGhostAwsBundleTests(unittest.TestCase):
     def test_both_manifests_bind_inputs_and_measure_first(self):
         for filename, orientation, model in (
                 ("kghostfishermank.uftb", "same",
-                 "da5355677990551625781639d18804a9381f7dd8153f6a1a96804497f47acec7"),
+                 "341b0efa4ca5d2555d0acae2aee5683d388fb209fc68267def9a800a8c2e7824"),
                 ("kghostkfisherman.uftb", "opposing",
-                 "5a1d80a69d7df0fcf763d8bb5231c92c1399b5fb0b55ce5533147b21e3e5a9c4")):
+                 "436b1277bbc88bb1f47d87d4926b32424da609abd6970cb09eed86a9ce5b9ed6")):
             manifest = package.build_manifest(filename)
             runner.validate_manifest(manifest)
             self.assertEqual(manifest["orientation"], orientation)

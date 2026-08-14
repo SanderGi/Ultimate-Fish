@@ -34,7 +34,7 @@ ARBITRARY_FORMATS = {
                          b"fresh-maximal-public-view-v2:fisherman-ghost-generic", 32),
     b"UFMG1\0\0\0": (1056, 152, 160, 288, 928, 992,
                          b"fresh-maximal-public-view-v2:mage-ghost-generic", 32),
-    b"UFGP1\0\0\0": (1248, 152, 160, 288, 1120, 1184,
+    b"UFGP1\0\0\0": (1440, 152, 160, 288, 1312, 1376,
                          b"fresh-maximal-public-view-v2:parasite-ghost-generic", 32),
     b"UFGI1\0\0\0": (1248, 152, 160, 288, 1120, 1184,
                          b"fresh-maximal-public-view-v2:giant-anchor-v2-ghost", 32),

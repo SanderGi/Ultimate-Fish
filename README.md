@@ -33,6 +33,11 @@ python3 tests/test_evolve_ultimate_army.py
 tools/benchmark_ultimate.sh
 ```
 
+`make -C src ultimate-rules-test` runs the rule, search, belief, and undo
+regressions without the exact probes that require locally generated `.uftb`
+artifacts. `ultimate-test` remains the complete gate when those artifacts are
+present.
+
 `src/ultimatefish` is a self-contained command-line engine. It accepts lossless
 Ultimate Position Notation (UPN), `position upn ...`, `go depth N`, `go nodes
 N`, `go movetime N`, `moves`, `perft N`, and the native draft commands exposed

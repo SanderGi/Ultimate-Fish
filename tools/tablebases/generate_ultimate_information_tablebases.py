@@ -260,10 +260,10 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 semantics = b"fresh-maximal-public-view-v2:mage-ghost-generic"
                 expected_version = 1
             elif magic == b"UFGP1\0\0\0":
-                expected_header, payload_offset = 1248, 152
+                expected_header, payload_offset = 1440, 152
                 first_section_offset = 96
-                source_offset, model_offset, payload_sha_offset = 160, 288, 1120
-                semantics_offset = 1184
+                source_offset, model_offset, payload_sha_offset = 160, 288, 1312
+                semantics_offset = 1376
                 semantics = b"fresh-maximal-public-view-v2:parasite-ghost-generic"
                 expected_version = 1
             elif magic == b"UFGI1\0\0\0":
@@ -314,7 +314,7 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 header[288:352].decode() ==
                     information.observation_model_fingerprint() and
                 header[544:608].decode() ==
-                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+                    "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         elif magic == b"UFJG1\0\0\0":
             dependencies_current = (
                 header[304:368].decode() ==
@@ -323,7 +323,7 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 header[560:624].decode() ==
                     lower_jester_overlay_sha256 and
                 header[624:688].decode() ==
-                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+                    "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         elif magic == b"UFGD1\0\0\0":
             lower_dragon_sha = information.concrete_dependency_sha256(
                 "kdragonk.uftb")
@@ -331,7 +331,7 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 header[352:416].decode() ==
                     information.observation_model_fingerprint() and
                 header[416:480].decode() ==
-                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b" and
+                    "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb" and
                 header[480:544].decode() == lower_dragon_sha and
                 header[544:608].decode() == lower_dragon_sha and
                 header[608:672].decode() ==
@@ -344,7 +344,7 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 header[352:416].decode() ==
                     information.observation_model_fingerprint() and
                 header[416:480].decode() ==
-                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b" and
+                    "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb" and
                 header[480:544].decode() == lower_bomb_sha and
                 header[544:608].decode() == lower_bomb_sha and
                 header[608:672].decode() ==
@@ -355,20 +355,25 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 header[352:416].decode() ==
                     information.observation_model_fingerprint() and
                 header[416:480].decode() ==
-                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+                    "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         elif magic == b"UFGP1\0\0\0":
             lower_parasite_sha = information.concrete_dependency_sha256(
                 "kparasitek.uftb")
+            tracked_ghost_sha = information.concrete_dependency_sha256(
+                "kghostk-tracked.uftb")
             dependencies_current = (
                 header[352:416].decode() ==
                     information.observation_model_fingerprint() and
                 header[416:480].decode() ==
-                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b" and
-                header[480:544].decode() == lower_parasite_sha and
-                header[544:608].decode() == lower_parasite_sha and
+                    "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb" and
+                header[480:544].decode() == tracked_ghost_sha and
+                header[544:608].decode() == tracked_ghost_sha and
                 header[608:672].decode() ==
-                    information.concrete_tablebase_model_fingerprint(
-                        "kparasitek.uftb"))
+                    information.tracked_ghost_tablebase_model_fingerprint() and
+                header[672:736].decode() == lower_parasite_sha and
+                header[736:800].decode() == lower_parasite_sha and
+                header[800:864].decode() ==
+                    "c9889fd2d77617a1f0c77ed43a7f8a054c299732194ec89456f68ed865681c25")
         elif magic == b"UFGI1\0\0\0":
             lower_giant_sha = information.concrete_dependency_sha256(
                 "kgiantk.uftb")
@@ -376,7 +381,7 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 header[352:416].decode() ==
                     information.observation_model_fingerprint() and
                 header[416:480].decode() ==
-                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b" and
+                    "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb" and
                 header[480:544].decode() == lower_giant_sha and
                 header[544:608].decode() == lower_giant_sha and
                 header[608:672].decode() ==
@@ -387,13 +392,13 @@ def arbitrary_is_current(path: Path, source_sha256: str,
                 header[224:288].decode() ==
                     information.observation_model_fingerprint() and
                 header[480:544].decode() ==
-                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+                    "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         else:
             dependencies_current = (
                 header[284:348].decode() ==
                     information.observation_model_fingerprint() and
                 header[348:412].decode() ==
-                    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+                    "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         material_current = True
         if magic == b"UFGD1\0\0\0":
             material_current = (
@@ -634,7 +639,7 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
         lower_sha = hashlib.sha256(payload).hexdigest()
         expected_lower_sha = (
-            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         if lower_sha != expected_lower_sha:
             raise RuntimeError(f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
         return [
@@ -661,7 +666,7 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
         lower_sha = hashlib.sha256(payload).hexdigest()
         expected_lower_sha = (
-            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         if lower_sha != expected_lower_sha:
             raise RuntimeError(f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
         orientation = ("same" if domain == "dragon-ghost-same"
@@ -703,7 +708,7 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
         lower_sha = hashlib.sha256(payload).hexdigest()
         expected_lower_sha = (
-            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         if lower_sha != expected_lower_sha:
             raise RuntimeError(f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
         orientation = ("same" if domain == "bomb-ghost-same"
@@ -744,7 +749,7 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
         lower_sha = hashlib.sha256(payload).hexdigest()
         expected_lower_sha = (
-            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         if lower_sha != expected_lower_sha:
             raise RuntimeError(f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
         orientation = ("same" if domain == "fisherman-ghost-same"
@@ -778,7 +783,7 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
         lower_sha = hashlib.sha256(payload).hexdigest()
         expected_lower_sha = (
-            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         if lower_sha != expected_lower_sha:
             raise RuntimeError(f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
         orientation = ("same" if domain == "mage-ghost-same"
@@ -812,7 +817,7 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
         lower_sha = hashlib.sha256(payload).hexdigest()
         expected_lower_sha = (
-            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         if lower_sha != expected_lower_sha:
             raise RuntimeError(f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
         orientation = ("same" if domain == "parasite-ghost-same"
@@ -854,7 +859,7 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
         lower_sha = hashlib.sha256(payload).hexdigest()
         expected_lower_sha = (
-            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         if lower_sha != expected_lower_sha:
             raise RuntimeError(f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
         orientation = ("same" if domain == "giant-ghost-same"
@@ -898,7 +903,7 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
         lower_model = payload[160:224].decode()
         lower_observation = payload[224:288].decode()
         expected_lower_sha = (
-            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         if lower_sha != expected_lower_sha:
             raise RuntimeError(
                 f"{lower}: stale lower UFGM SHA-256 {lower_sha}")
@@ -926,7 +931,7 @@ def solver_command(args: argparse.Namespace, record: Mapping[str, object],
             raise RuntimeError(f"{lower}: invalid authenticated lower UFGM")
         lower_sha = hashlib.sha256(payload).hexdigest()
         expected_lower_sha = (
-            "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
+            "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
         if lower_sha != expected_lower_sha:
             raise RuntimeError(
                 f"{lower}: stale lower UFGM SHA-256 {lower_sha}")

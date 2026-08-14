@@ -203,7 +203,9 @@ class BombGhostResumeUnitTests(unittest.TestCase):
 
     def test_legacy_observation_digest_survives_only_the_move(self):
         self.assertEqual(package.legacy_observation_fingerprint(),
-                         package.OBSERVATION_SHA256)
+                         "af09ebab834599de83d546f8729b8329dbe5ba8ff1cc7f24be3ac63086273adf")
+        self.assertNotEqual(package.legacy_observation_fingerprint(),
+                            package.OBSERVATION_SHA256)
         self.assertEqual(package.legacy_lower_bomb_model_fingerprint(),
                          package.LOWER_BOMB_MODEL_SHA256)
 

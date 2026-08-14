@@ -96,6 +96,7 @@ void shard_test(const std::string& base, Exact::Orientation orientation) {
     const auto royalCertificate = Exact::audit_transitions(
       transition_options(orientation, royal, royalGeometry, 1));
     if (!royalCertificate.pullRoyalEdges ||
+        !royalCertificate.pullLandingGhostEdges ||
         royalCertificate.forcedContinuationEdges ||
         royalCertificate.residual)
         throw std::runtime_error("Fisherman royal-pull certificate residual");

@@ -78,6 +78,7 @@ constexpr std::uint32_t CompoundCopycatStateCount =
 constexpr std::uint32_t IdenticalCompoundCopycatStateCount =
   CompoundCopycatStateCount / 2;
 constexpr std::uint64_t GiantAnchorV2Tag = 0x32474e4149474655ULL;
+constexpr std::uint64_t TrackedGhostV1Tag = 0x3154534f48474655ULL;
 
 std::size_t packed_header_size(std::uint32_t version) {
     return 40 + (version >= 5 ? 8 : 0) + (version >= 6 ? 8 : 0) +
@@ -802,10 +803,10 @@ class TablebaseGenerator {
     TablebaseGenerator(PieceType attackerType, PieceType secondaryType,
                        Color secondaryColor, std::string output,
                        std::string checkpoint, std::uint32_t checkpointEvery,
-                       bool diskBacked) :
+                       bool diskBacked, bool trackedGhost) :
         attackerType_(attackerType), output_(std::move(output)),
         checkpoint_(std::move(checkpoint)), checkpointEvery_(checkpointEvery),
-        diskBacked_(diskBacked),
+        diskBacked_(diskBacked), trackedGhost_(trackedGhost),
         copycatOnly_(attackerType == PieceType::Copycat &&
                      secondaryType == PieceType::Count),
         compoundCopycat_(attackerType == PieceType::Copycat &&
@@ -816,7 +817,7 @@ class TablebaseGenerator {
         secondaryColor_(secondaryColor),
         fourModels_(secondaryType_ != PieceType::Count),
         identicalExtras_(secondaryType == attackerType && secondaryColor == Color::White),
-        primarySubstates_(material_substate_count(
+        primarySubstates_(trackedGhost ? 1 : material_substate_count(
           attackerType, fourModels_, secondaryType_)),
         secondarySubstates_(fourModels_ ? material_substate_count(
           secondaryType_, true, attackerType) : 1),
@@ -1080,9 +1081,11 @@ class TablebaseGenerator {
         const std::uint32_t wdlBytes = word(28);
         const bool foldedGiant = fourModels_ &&
           (primary_is_giant() || secondary_is_giant());
-        if (version < 4 || version > 7 ||
-            foldedGiant != (version == 7) ||
+        if (version < 4 || version > 8 ||
+            trackedGhost_ != (version == 8) ||
+            (!trackedGhost_ && foldedGiant != (version == 7)) ||
             (foldedGiant && qword(56) != GiantAnchorV2Tag) ||
+            (trackedGhost_ && qword(56) != TrackedGhostV1Tag) ||
             primary != static_cast<std::uint32_t>(attackerType_) ||
             count != stateCount_ || fileSubstates != substates_ || wdlBytes != (count + 3) / 4)
             throw std::runtime_error("packed tablebase does not match requested material class");
@@ -3387,7 +3390,8 @@ class TablebaseGenerator {
             position.piece(attacker).power = state.substate;
             break;
         case PieceType::Ghost:
-            position.piece(attacker).visible = state.substate != 0;
+            position.piece(attacker).visible = trackedGhost_ || state.substate != 0;
+            position.piece(attacker).parasiteTracked = trackedGhost_;
             break;
         case PieceType::Sniper:
             position.piece(attacker).cooldown = state.substate;
@@ -3416,7 +3420,10 @@ class TablebaseGenerator {
         const bool primary = position.has_real_king(Color::White) &&
                position.has_real_king(Color::Black) &&
                position.piece(2).alive && position.piece(2).onBoard &&
-               type_matches(attackerType_, position.piece(2).type);
+               type_matches(attackerType_, position.piece(2).type) &&
+               (attackerType_ != PieceType::Ghost ||
+                (position.piece(2).parasiteTracked == trackedGhost_ &&
+                 (!trackedGhost_ || position.piece(2).visible)));
         if (!primary || !fourModels_)
             return primary;
         if (compoundCopycat_) {
@@ -3430,7 +3437,9 @@ class TablebaseGenerator {
                      horizontal_reflection(position.piece(2).square);
             if (!primaryPair || !position.piece(4).alive ||
                 !position.piece(4).onBoard ||
-                !type_matches(secondaryType_, position.piece(4).type))
+                !type_matches(secondaryType_, position.piece(4).type) ||
+                (secondaryType_ == PieceType::Ghost &&
+                 position.piece(4).parasiteTracked))
                 return false;
             if (secondaryType_ != PieceType::Copycat)
                 return position.piece(4).link == Position::NoPiece;
@@ -3444,7 +3453,9 @@ class TablebaseGenerator {
                      horizontal_reflection(position.piece(4).square);
         }
         return position.piece(3).alive && position.piece(3).onBoard &&
-               type_matches(secondaryType_, position.piece(3).type);
+               type_matches(secondaryType_, position.piece(3).type) &&
+               (secondaryType_ != PieceType::Ghost ||
+                !position.piece(3).parasiteTracked);
     }
 
     std::uint32_t child_index(const Position& position) const {
@@ -3503,7 +3514,9 @@ class TablebaseGenerator {
         case PieceType::Berserker:
             substate = std::min<std::uint8_t>(position.piece(2).power, 9);
             break;
-        case PieceType::Ghost: substate = position.piece(2).visible ? 1 : 0; break;
+        case PieceType::Ghost:
+            substate = trackedGhost_ ? 0 : position.piece(2).visible ? 1 : 0;
+            break;
         case PieceType::Sniper: substate = position.piece(2).cooldown; break;
         case PieceType::Prince:
             substate = position.continuation_ == Continuation::PrinceSecondMove ? 1 : 0;
@@ -3681,7 +3694,7 @@ class TablebaseGenerator {
         // must never be interpreted by the corrected codec.
         const bool foldedGiant = fourModels_ &&
           (primary_is_giant() || secondary_is_giant());
-        const std::uint32_t version = foldedGiant ? 7
+        const std::uint32_t version = trackedGhost_ ? 8 : foldedGiant ? 7
           : edges > std::numeric_limits<std::uint32_t>::max() ? 6
           : fourModels_ ? 5 : 4;
         const std::uint32_t piece = static_cast<std::uint32_t>(attackerType_);
@@ -3711,9 +3724,12 @@ class TablebaseGenerator {
         }
         if (version >= 6)
             stream.write(reinterpret_cast<const char*>(&edges), sizeof(edges));
-        if (version >= 7)
-            stream.write(reinterpret_cast<const char*>(&GiantAnchorV2Tag),
+        if (version >= 7) {
+            const std::uint64_t codecTag = trackedGhost_
+              ? TrackedGhostV1Tag : GiantAnchorV2Tag;
+            stream.write(reinterpret_cast<const char*>(&codecTag),
                          sizeof(GiantAnchorV2Tag));
+        }
         std::vector<std::uint8_t> wdlPlane(wdlBytes, 0);
         for (std::uint32_t index = 0; index < stateCount_; ++index)
             wdlPlane[index / 4] |= static_cast<std::uint8_t>(nodes_[index].wdl)
@@ -3868,6 +3884,7 @@ class TablebaseGenerator {
     std::string checkpoint_;
     std::uint32_t checkpointEvery_;
     bool diskBacked_;
+    bool trackedGhost_;
     bool copycatOnly_;
     bool compoundCopycat_;
     bool identicalCompoundCopycats_;
@@ -3900,6 +3917,7 @@ int main(int argc, char** argv) {
     bool selfTest = false;
     bool fourCodecSelfTest = false;
     bool diskBacked = false;
+    bool trackedGhost = false;
     std::uint32_t dryRun = 0;
     std::uint32_t dryRunBegin = 0;
     std::uint32_t inspect = std::numeric_limits<std::uint32_t>::max();
@@ -3941,6 +3959,7 @@ int main(int argc, char** argv) {
         }
         else if (argument == "--opposing") secondaryColor = Color::Black;
         else if (argument == "--disk-backed") diskBacked = true;
+        else if (argument == "--tracked-ghost") trackedGhost = true;
         else if (argument == "--checkpoint-every")
             checkpointEvery = static_cast<std::uint32_t>(std::stoul(value("--checkpoint-every")));
         else if (argument == "--dry-run")
@@ -3984,6 +4003,10 @@ int main(int argc, char** argv) {
         else throw std::runtime_error("unknown argument: " + argument);
     }
     try {
+        if (trackedGhost &&
+            (attackerType != PieceType::Ghost || secondaryType != PieceType::Count))
+            throw std::runtime_error(
+              "--tracked-ghost requires the K+tracked-Ghost-v-K class");
         if (fourCodecSelfTest) {
             self_test_four_codec();
             return 0;
@@ -4001,7 +4024,8 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("K+K+2 piece requires a larger non-closed model");
         }
         TablebaseGenerator generator(attackerType, secondaryType, secondaryColor,
-                                     output, checkpoint, checkpointEvery, diskBacked);
+                                     output, checkpoint, checkpointEvery, diskBacked,
+                                     trackedGhost);
         if (selfTest)
             generator.self_test();
         if (dryRun)

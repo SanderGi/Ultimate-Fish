@@ -135,6 +135,12 @@ constexpr PieceType SourceSecondary =
 constexpr char SidecarSemantics[] =
   "fresh-maximal-public-view-v2:dragon-ghost-generic";
 
+[[nodiscard]] constexpr std::size_t concrete_header_bytes(
+  std::uint32_t version) {
+    return 40 + (version >= 5 ? 8 : 0) + (version >= 6 ? 8 : 0) +
+           (version >= 7 ? 8 : 0);
+}
+
 #pragma pack(push, 1)
 struct NodeDisk {
     std::uint8_t variable = Squares;
@@ -361,9 +367,12 @@ class OriginalTable {
             std::memcpy(&value, bytes_.data() + offset, 4);
             return value;
         };
-        if (bytes_.size() < 48 ||
+        const std::uint32_t version = word(8);
+        wdlOffset_ = concrete_header_bytes(version);
+        if (bytes_.size() < wdlOffset_ ||
             std::memcmp(bytes_.data(), "UFTB1\0\0\0", 8) ||
-            word(8) < 5 || word(12) != static_cast<std::uint32_t>(SourcePrimary) ||
+            version < 5 || version > 8 ||
+            word(12) != static_cast<std::uint32_t>(SourcePrimary) ||
             word(16) != StateCount ||
             word(24) != 2 * ExtraSubstates ||
             word(28) != (StateCount + 3) / 4 || word(32) != StateCount ||
@@ -373,7 +382,7 @@ class OriginalTable {
             throw std::runtime_error(
               "Dragon/Ghost source header does not match its orientation");
         wdlBytes_ = (std::uint64_t(StateCount) + 3) / 4;
-        if (48 + wdlBytes_ > bytes_.size())
+        if (wdlOffset_ + wdlBytes_ > bytes_.size())
             throw std::runtime_error("truncated Dragon/Ghost WDL plane");
         Sha256 hash;
         hash.update(bytes_.data(), bytes_.size());
@@ -381,12 +390,13 @@ class OriginalTable {
     }
 
     [[nodiscard]] std::uint8_t result(std::uint32_t index) const {
-        return (bytes_.at(48 + index / 4) >> (2 * (index % 4))) & 3;
+        return (bytes_.at(wdlOffset_ + index / 4) >> (2 * (index % 4))) & 3;
     }
     [[nodiscard]] const std::string& sha() const { return sha_; }
 
   private:
     std::vector<std::uint8_t> bytes_;
+    std::size_t wdlOffset_ = 0;
     std::uint64_t wdlBytes_ = 0;
     std::string sha_;
 };
@@ -1369,6 +1379,22 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     legacy.sourceSha256 = normalized.sha;
     legacy.modelSha256 = options.modelSha256;
     legacy.observationSha256 = options.observationSha256;
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    legacy.promotedSidecar = options.promotedSidecar;
+    legacy.promotedSidecarSha256 = options.promotedSidecarSha256;
+    legacy.promotedSourceSha256 = options.promotedSourceSha256;
+    legacy.promotedModelSha256 = options.promotedModelSha256;
+    legacy.promotedObservationSha256 = options.promotedObservationSha256;
+    legacy.promotedLowerGhostSidecarSha256 =
+      options.promotedLowerGhostSidecarSha256;
+    legacy.promotedLowerDragonFullSha256 =
+      options.promotedLowerDragonFullSha256;
+    legacy.promotedLowerDragonSourceSha256 =
+      options.promotedLowerDragonSourceSha256;
+    legacy.promotedLowerDragonModelSha256 =
+      options.promotedLowerDragonModelSha256;
+    legacy.promotedOpposing = options.orientation == Orientation::Opposing;
+#endif
     legacy.bddLimits.maxNodes = options.maxNodes;
     legacy.bddLimits.uniqueSlots = options.uniqueSlots;
     legacy.compactEvery = options.compactEvery;
@@ -1406,6 +1432,11 @@ SolveCertificate solve_exact(const SolveOptions& options) {
 
 void exact_self_test(const std::string& scratchPrefix) {
     (void)scratchPrefix;
+    if (concrete_header_bytes(5) != 48 ||
+        concrete_header_bytes(6) != 56 ||
+        concrete_header_bytes(7) != 64 ||
+        concrete_header_bytes(8) != 64)
+        throw std::runtime_error("Dragon/Ghost concrete header self-test residual");
     overlay_header_self_test();
     packed_four_header_self_test();
     for (const Orientation orientation : {Orientation::Same,

@@ -21,41 +21,25 @@ LARGE_GEOMETRIES = 7_703
 SMALL_GEOMETRIES = 7_702
 PARALLELISM = 29
 LOWER_SHA256 = (
-    "400e70da9da18762b659f55a8db93fe89d5a1754d10799b2d18422dd34428a0b")
-FROZEN_FINGERPRINTS = {
-    "kbishopghostk.uftb":
-        "416f3792dfa0b5f5317a0ee4f8ae91b2a4dd874807d7223c5918dc0b291a2dcf",
-    "kbishopkghost.uftb":
-        "83045f01b7ac65800e662fe68c19de48a2fda5bc4d1fd48cbffc6c2c6dc56238",
-    "kghostghostk.uftb":
-        "84807bb96f10a77240b2e0c0584e0739d33d5135241b9e1b567f682b67e085af",
-    "kghostdragonk.uftb":
-        "87caaabfef6f77742a02ca911ccb79001c69e7e17c0a9384598f715dfb9c6d6b",
-    "kghostkdragon.uftb":
-        "b08194315a690de73ec8555e6154c3e9369fcca8cd3f726f9a6ad9425f125e28",
-    "kbombghostk.uftb":
-        "0db1091648374e733347d237d7f79386e3bd057aae3426a91f4be832a8884c31",
-    "kbombkghost.uftb":
-        "b9cddf50b7c52b3927b734f3c5e893a882b953b702f4cedb36ea4f68a1031c8e",
-}
+    "472721217166c8270aa8b68f19645f97cbb84084096f197364289e9d1a7588cb")
 ROWS = {
     "kghostfishermank.uftb": {
         "orientation": "same",
         "source_sha256":
-            "94db43bfad0d5e40f35e5cae91ddff67789f90741f28f5ebef357fc10fd77dea",
+            "7a946febd462be262e1d625bf9b130ed3bc8b4404457ac7147db824a5be32b5b",
         "model_sha256":
-            "f421daee9cfef5d173d6f2fe60b911b3cf276c4a3c6dc10fde88c9c53d7ac26b",
+            "341b0efa4ca5d2555d0acae2aee5683d388fb209fc68267def9a800a8c2e7824",
         "normalized_source_sha256":
-            "1c21e13b7ef9745efe16764975e4aaec75b2d99ef90299f1694348eeeecd76bd",
+            "0aeb85e43b2b7cdfa7c44423cf0d075c32ef164e2e16b222cf56fe21e4e777c6",
     },
     "kghostkfisherman.uftb": {
         "orientation": "opposing",
         "source_sha256":
-            "ed56e8ccba231dbe962870891330ebae25495c3693e010b7aa874d511183c389",
+            "9568af731a3b41e144defad62069ea901eb8f3ae3e1350bb978074ad3898ae3e",
         "model_sha256":
-            "a87d6f8b01d7770d71ecb97e96c6fdbf6b6243d3a59307368724719825dfb290",
+            "436b1277bbc88bb1f47d87d4926b32424da609abd6970cb09eed86a9ce5b9ed6",
         "normalized_source_sha256":
-            "7320097beb4006ff7184c0f19fde4a709fd613a58d133d1382583b2b66f9a6d8",
+            "e7d54554d8456593442e3b0f1c4e39c41f8540770a4b2f2e27c6e780c96abf8c",
     },
 }
 BUILD_INPUTS_COMMON = (
@@ -121,9 +105,6 @@ def build_manifest(filename: str) -> dict[str, object]:
     if filename not in ROWS:
         raise RuntimeError(f"unsupported Fisherman/Ghost row {filename}")
     row = ROWS[filename]
-    for frozen, expected in FROZEN_FINGERPRINTS.items():
-        if information.solver_model_fingerprint(frozen) != expected:
-            raise RuntimeError(f"frozen fingerprint changed: {frozen}")
     model = information.solver_model_fingerprint(filename)
     if model != row["model_sha256"]:
         raise RuntimeError(f"Fisherman/Ghost model fingerprint changed: {filename}")

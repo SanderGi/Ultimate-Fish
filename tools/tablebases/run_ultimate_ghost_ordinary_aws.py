@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import json
 from pathlib import Path
@@ -43,6 +44,15 @@ def require_sha(path: Path, expected: str, label: str) -> None:
 
 def run(command: list[str], root: Path, log: Path) -> None:
     log.parent.mkdir(parents=True, exist_ok=True)
+    if log.exists():
+        for attempt in range(1, 10_000):
+            archived = log.with_name(
+                f"{log.stem}.prior-{attempt:04d}{log.suffix}")
+            if not archived.exists():
+                log.replace(archived)
+                break
+        else:
+            raise RuntimeError(f"too many retained phase logs for {log}")
     with log.open("xb") as output:
         completed = subprocess.run(command, cwd=root, stdout=output,
                                    stderr=subprocess.STDOUT, check=False)
@@ -69,6 +79,17 @@ def write_manifest(work: Path, args: argparse.Namespace) -> None:
             "bytes": path.stat().st_size, "sha256": sha256_path(path)}
             for path in artifacts},
     }
+    if args.piece == "pawn":
+        manifest["promoted_queen_ghost"] = {
+            "sidecar_sha256": args.promoted_sidecar_sha256,
+            "source_sha256": args.promoted_source_sha256,
+            "model_sha256": args.promoted_model_sha256,
+            "observation_sha256": args.promoted_observation_sha256,
+            "lower_ghost_sidecar_sha256":
+                args.promoted_lower_ghost_sidecar_sha256,
+            "lower_table_sha256": args.promoted_lower_table_sha256,
+            "lower_model_sha256": args.promoted_lower_model_sha256,
+        }
     (work / "work/artifact-manifest.json").write_text(
         json.dumps(manifest, sort_keys=True, indent=2) + "\n")
 
@@ -107,7 +128,15 @@ def main() -> None:
     parser.add_argument("--lower-table", type=Path)
     parser.add_argument("--lower-sha256", required=True)
     parser.add_argument("--lower-model-sha256", required=True)
-    parser.add_argument("--lower-ghost-sidecar", type=Path, required=True)
+    parser.add_argument("--lower-ghost-sidecar", type=Path)
+    parser.add_argument("--promoted-sidecar", type=Path)
+    parser.add_argument("--promoted-sidecar-sha256", default="")
+    parser.add_argument("--promoted-source-sha256", default="")
+    parser.add_argument("--promoted-model-sha256", default="")
+    parser.add_argument("--promoted-observation-sha256", default="")
+    parser.add_argument("--promoted-lower-ghost-sidecar-sha256", default="")
+    parser.add_argument("--promoted-lower-table-sha256", default="")
+    parser.add_argument("--promoted-lower-model-sha256", default="")
     parser.add_argument("--lower-ghost-sha256", required=True)
     parser.add_argument("--model-sha256", required=True)
     parser.add_argument("--observation-sha256", required=True)
@@ -115,9 +144,26 @@ def main() -> None:
     parser.add_argument("--lower-ghost-model-sha256", required=True)
     parser.add_argument("--lower-ghost-observation-sha256", required=True)
     parser.add_argument("--parallelism", type=int, default=20)
+    parser.add_argument("--transitions-only", action="store_true",
+                        help="build and merge fresh transition shards, then stop")
+    parser.add_argument("--resume-transitions", action="store_true",
+                        help=("resume a fresh corrected-rule shard set; "
+                              "exhaustively reverify every retained shard "
+                              "with the current compiler before reuse"))
+    parser.add_argument("--solve-existing", action="store_true",
+                        help="solve an authenticated transitions-only work tree")
     parser.add_argument("--finalize-existing", action="store_true",
                         help="authenticate existing outputs and write the manifest")
     args = parser.parse_args()
+
+    if args.transitions_only and args.solve_existing:
+        raise RuntimeError("transition and solve modes are mutually exclusive")
+    if args.resume_transitions and (args.solve_existing or
+                                    not args.transitions_only):
+        raise RuntimeError(
+            "resume-transitions requires transitions-only mode")
+    if not args.transitions_only and args.lower_ghost_sidecar is None:
+        raise RuntimeError("solve mode requires --lower-ghost-sidecar")
 
     if args.finalize_existing:
         work = args.work.resolve(strict=True)
@@ -168,22 +214,57 @@ def main() -> None:
         if args.lower_table is None:
             raise RuntimeError("decisive ordinary piece requires a lower table")
         require_sha(args.lower_table, args.lower_sha256, "lower table")
-    require_sha(args.lower_ghost_sidecar, args.lower_ghost_sha256,
-                "lower Ghost sidecar")
-    if args.work.exists():
+    if args.lower_ghost_sidecar is not None:
+        require_sha(args.lower_ghost_sidecar, args.lower_ghost_sha256,
+                    "lower Ghost sidecar")
+    if args.piece == "pawn" and not args.transitions_only:
+        if args.promoted_sidecar is None:
+            raise RuntimeError(
+                "Pawn solve requires promoted Queen/Ghost sidecar")
+        require_sha(args.promoted_sidecar, args.promoted_sidecar_sha256,
+                    "promoted Queen/Ghost sidecar")
+    if args.work.exists() and not (args.solve_existing or
+                                   args.resume_transitions):
         raise RuntimeError("ordinary Ghost work directory already exists")
+    if args.resume_transitions and not args.work.is_dir():
+        raise RuntimeError("resume-transitions work directory is missing")
     work = args.work.resolve()
-    (work / "tablebases").mkdir(parents=True)
-    copies = [(args.source_table, args.filename),
-              (args.lower_ghost_sidecar, "kghostk.ufgm")]
+    if args.solve_existing:
+        if not (work / "work/transitions-ready.json").is_file():
+            raise RuntimeError("solve-existing work lacks its transition certificate")
+        certificate = json.loads(
+            (work / "work/transitions-ready.json").read_text())
+        expected = {"filename": args.filename, "piece": args.piece,
+                    "orientation": args.orientation,
+                    "source_sha256": args.source_sha256,
+                    "model_sha256": args.model_sha256}
+        if any(certificate.get(key) != value for key, value in expected.items()):
+            raise RuntimeError("solve-existing transition binding mismatch")
+        shutil.copyfile(args.lower_ghost_sidecar,
+                        work / "tablebases/kghostk.ufgm")
+        require_sha(work / "tablebases/kghostk.ufgm",
+                    args.lower_ghost_sha256, "copied lower Ghost")
+    else:
+        (work / "tablebases").mkdir(parents=True,
+                                     exist_ok=args.resume_transitions)
+    copies = [] if args.solve_existing else [(args.source_table, args.filename)]
+    if not args.transitions_only and not args.solve_existing:
+        copies.append((args.lower_ghost_sidecar, "kghostk.ufgm"))
     if args.lower_table is not None:
         copies.append((args.lower_table, lower_name))
     for source, name in copies:
         shutil.copyfile(source, work / "tablebases" / name)
-    copied = [
-            (work / "tablebases" / args.filename, args.source_sha256, "copied source"),
-            (work / "tablebases/kghostk.ufgm", args.lower_ghost_sha256,
-             "copied lower Ghost")]
+    copied = [(work / "tablebases" / args.filename,
+               args.source_sha256, "copied source")]
+    if not args.transitions_only:
+        copied.append((work / "tablebases/kghostk.ufgm",
+                       args.lower_ghost_sha256, "copied lower Ghost"))
+        if args.piece == "pawn":
+            shutil.copyfile(args.promoted_sidecar,
+                            work / "tablebases/promoted-queen-ghost.ufgd")
+            copied.append((work / "tablebases/promoted-queen-ghost.ufgd",
+                           args.promoted_sidecar_sha256,
+                           "copied promoted Queen/Ghost sidecar"))
     if not implicit_lower:
         copied.append((work / "tablebases" / lower_name,
                        args.lower_sha256, "copied lower"))
@@ -223,12 +304,16 @@ def main() -> None:
         definitions.append("-DULTIMATE_GHOST_EXTRA_IS_CHECKER")
     if args.piece == "copycat":
         definitions.append("-DULTIMATE_GHOST_EXTRA_IS_COPYCAT")
+    if args.piece == "pawn":
+        definitions.append(
+            "-DULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN")
     if args.piece in HORIZONTAL_ONLY:
         definitions.append("-DULTIMATE_GHOST_EXTRA_HORIZONTAL_ONLY")
     if implicit_lower:
         definitions.append("-DULTIMATE_GHOST_ORDINARY_LOWER_DRAW_ONLY")
     build[-len(sources)-2:-len(sources)-2] = definitions
-    run(build, root, work / "work/logs/build.log")
+    if not args.solve_existing:
+        run(build, root, work / "work/logs/build.log")
     binding = [
         "--orientation", args.orientation,
         "--lower-dragon-table", ("implicit-draw" if implicit_lower
@@ -240,19 +325,35 @@ def main() -> None:
         "--model-sha256", args.model_sha256,
         "--observation-sha256", args.observation_sha256,
     ]
-    run([str(executable), "--self-test", "--orientation", args.orientation,
-         "--scratch", f"work/self-test/{Path(args.filename).stem}",
-         "--input", f"tablebases/{args.filename}",
-         "--source-sha256", args.source_sha256], work,
-        work / "work/logs/self-test.log")
-    commands = []
     geometries = geometry_count(args.piece)
-    for index, (begin, count) in enumerate(ranges(geometries)):
-        commands.append([str(executable), "--compile-transitions",
-          "--transition-prefix", f"work/transitions/shard-{index:02d}",
-          "--geometry-begin", str(begin), "--geometry-count", str(count),
-          *binding])
-    shared.run_ranges(commands, work, args.parallelism)
+    if not args.solve_existing:
+        run([str(executable), "--self-test", "--orientation", args.orientation,
+             "--scratch", f"work/self-test/{Path(args.filename).stem}",
+             "--input", f"tablebases/{args.filename}",
+             "--source-sha256", args.source_sha256], work,
+            work / "work/logs/self-test.log")
+        commands = []
+        for index, (begin, count) in enumerate(ranges(geometries)):
+            commands.append([str(executable), "--compile-transitions",
+              "--transition-prefix", f"work/transitions/shard-{index:02d}",
+              "--geometry-begin", str(begin), "--geometry-count", str(count),
+              *binding])
+        if args.resume_transitions:
+            retained = []
+            for command in commands:
+                if shared.transition_is_complete(work, command):
+                    verify = list(command)
+                    verify[verify.index("--compile-transitions")] = \
+                        "--verify-transitions"
+                    name = Path(shared.transition_prefix(command)).name
+                    retained.append((verify,
+                        work / "work/logs" / f"{name}.reverify.log"))
+            with ThreadPoolExecutor(max_workers=args.parallelism) as executor:
+                futures = [executor.submit(run, command, work, log)
+                           for command, log in retained]
+                for future in futures:
+                    future.result()
+        shared.run_ranges(commands, work, args.parallelism)
     stem = Path(args.filename).stem
     merged = f"work/transitions/{stem}"
     merge = [str(executable), "--merge-transitions", "--orientation",
@@ -260,7 +361,18 @@ def main() -> None:
     for index in range(SHARDS):
         merge += ["--shard", f"work/transitions/shard-{index:02d}"]
     merge += ["--expected-geometries", str(geometries), *binding[2:]]
-    run(merge, work, work / "work/logs/merge.log")
+    if not args.solve_existing:
+        run(merge, work, work / "work/logs/merge.log")
+        (work / "work/transitions-ready.json").write_text(json.dumps({
+            "schema": "ultimate-ordinary-ghost-transitions-v1",
+            "filename": args.filename, "piece": args.piece,
+            "orientation": args.orientation,
+            "source_sha256": args.source_sha256,
+            "model_sha256": args.model_sha256,
+            "geometries": geometries,
+        }, sort_keys=True, indent=2) + "\n")
+    if args.transitions_only:
+        return
     solve = [str(executable), "--orientation", args.orientation,
       "--transition-prefix", merged, "--input", f"tablebases/{args.filename}",
       "--lower-ghost-sidecar", "tablebases/kghostk.ufgm",
@@ -273,6 +385,23 @@ def main() -> None:
       "--lower-observation-sha256", args.lower_ghost_observation_sha256,
       "--max-nodes", "500000000", "--unique-slots", str(1 << 30),
       "--compact-every", "1"]
+    if args.piece == "pawn":
+        solve += [
+          "--promoted-sidecar", "tablebases/promoted-queen-ghost.ufgd",
+          "--promoted-sidecar-sha256", args.promoted_sidecar_sha256,
+          "--promoted-source-sha256", args.promoted_source_sha256,
+          "--promoted-model-sha256", args.promoted_model_sha256,
+          "--promoted-observation-sha256",
+          args.promoted_observation_sha256,
+          "--promoted-lower-ghost-sidecar-sha256",
+          args.promoted_lower_ghost_sidecar_sha256,
+          "--promoted-lower-dragon-sha256",
+          args.promoted_lower_table_sha256,
+          "--promoted-lower-dragon-source-sha256",
+          args.promoted_lower_table_sha256,
+          "--promoted-lower-dragon-model-sha256",
+          args.promoted_lower_model_sha256,
+        ]
     run([str(executable), "--solve", *solve[1:]], work,
         work / "work/logs/solve.log")
     write_manifest(work, args)

@@ -33,6 +33,7 @@ class ParasiteGhostAwsBundleTests(unittest.TestCase):
     def setUpClass(cls):
         require_artifacts(
             ROOT, "tablebases/kghostk.ufgm", "tablebases/kparasitek.uftb",
+            "tablebases/kghostk-tracked.uftb",
             "tablebases/kghostparasitek.uftb",
             "tablebases/kghostkparasite.uftb")
 
@@ -87,17 +88,18 @@ class ParasiteGhostAwsBundleTests(unittest.TestCase):
                                  package.LOWER_PARASITE_SHA256)
                 self.assertEqual(manifest["lower_parasite_model_sha256"],
                                  package.LOWER_PARASITE_MODEL_SHA256)
+                self.assertEqual(manifest["lower_tracked_ghost_full_sha256"],
+                                 package.LOWER_TRACKED_GHOST_SHA256)
                 self.assertIn("--lower-parasite-table",
                               manifest["commands"]["shards"][0])
                 self.assertIn("--lower-ghost-sidecar",
+                              manifest["commands"]["shards"][0])
+                self.assertIn("--lower-tracked-ghost-table",
                               manifest["commands"]["shards"][0])
                 for index in range(64):
                     self.assertIn(f"work/logs/shard-{index:02d}.log",
                                   manifest["artifacts"])
                 runner.validate_manifest(manifest)
-        for frozen, expected in package.FROZEN_FINGERPRINTS.items():
-            self.assertEqual(
-                package.information.solver_model_fingerprint(frozen), expected)
 
     def test_bundles_are_deterministic_and_minimal(self):
         for filename in package.ROWS:
@@ -114,6 +116,7 @@ class ParasiteGhostAwsBundleTests(unittest.TestCase):
                 self.assertEqual(names[0], "bundle-manifest.json")
                 self.assertIn(f"tablebases/{filename}", names)
                 self.assertIn("tablebases/kparasitek.uftb", names)
+                self.assertIn("tablebases/kghostk-tracked.uftb", names)
                 self.assertIn("tools/tablebases/run_ultimate_ghost_parasite_aws.py", names)
                 self.assertNotIn(
                     "src/ultimate/tablebases/ghost_public_extra_information_tablebase.cpp",

@@ -99,6 +99,24 @@ int main(int argc, char** argv) {
             else if (option == "--lower-dragon-model-sha256")
                 transition.lowerDragonModelSha256 =
                   solve.lowerDragonModelSha256 = value();
+            else if (option == "--promoted-sidecar")
+                solve.promotedSidecar = value();
+            else if (option == "--promoted-sidecar-sha256")
+                solve.promotedSidecarSha256 = value();
+            else if (option == "--promoted-source-sha256")
+                solve.promotedSourceSha256 = value();
+            else if (option == "--promoted-model-sha256")
+                solve.promotedModelSha256 = value();
+            else if (option == "--promoted-observation-sha256")
+                solve.promotedObservationSha256 = value();
+            else if (option == "--promoted-lower-ghost-sidecar-sha256")
+                solve.promotedLowerGhostSidecarSha256 = value();
+            else if (option == "--promoted-lower-dragon-sha256")
+                solve.promotedLowerDragonFullSha256 = value();
+            else if (option == "--promoted-lower-dragon-source-sha256")
+                solve.promotedLowerDragonSourceSha256 = value();
+            else if (option == "--promoted-lower-dragon-model-sha256")
+                solve.promotedLowerDragonModelSha256 = value();
             else if (option == "--max-nodes")
                 solve.maxNodes = std::stoul(value());
             else if (option == "--unique-slots")
