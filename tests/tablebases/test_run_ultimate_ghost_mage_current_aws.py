@@ -26,6 +26,12 @@ class CurrentMageRunnerTests(unittest.TestCase):
         self.assertEqual(ranges[0], (0, 7_703))
         self.assertEqual(ranges[-1], (485_258, 7_702))
 
+    def test_giant_ranges_cover_smaller_geometry_domain(self) -> None:
+        ranges = runner.ranges(359_100)
+        self.assertEqual(len(ranges), 64)
+        self.assertEqual(ranges[0], (0, 5_611))
+        self.assertEqual(ranges[-1], (353_490, 5_610))
+
     def test_manifest_requires_both_sidecars_and_normalization(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary)

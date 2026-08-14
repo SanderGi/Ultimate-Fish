@@ -13,17 +13,36 @@ import subprocess
 import sys
 
 
-GEOMETRIES = 492_960
 SHARDS = 64
 KINDS = {
     "mage": {
         "same": "kghostmagek.uftb", "opposing": "kghostkmage.uftb",
         "sidecar": ".ufmg", "normalized": "mage_ghost",
+        "geometries": 492_960, "lower_public": False,
     },
     "fisherman": {
         "same": "kghostfishermank.uftb",
         "opposing": "kghostkfisherman.uftb",
         "sidecar": ".ufgf", "normalized": "fisherman_ghost",
+        "geometries": 492_960, "lower_public": False,
+    },
+    "giant": {
+        "same": "kghostgiantk.uftb", "opposing": "kghostkgiant.uftb",
+        "sidecar": ".ufgi", "normalized": "giant_ghost",
+        "geometries": 359_100, "lower_public": True,
+        "extra_sources": (
+            "src/ultimate/tablebases/ghost_giant_information_model.cpp",),
+    },
+    "parasite": {
+        "same": "kghostparasitek.uftb",
+        "opposing": "kghostkparasite.uftb",
+        "sidecar": ".ufgp", "normalized": "parasite_ghost",
+        "geometries": 492_960, "lower_public": True,
+    },
+    "bomb": {
+        "same": "kbombghostk.uftb", "opposing": "kbombkghost.uftb",
+        "sidecar": ".ufgb", "normalized": "bomb_ghost",
+        "geometries": 492_960, "lower_public": True,
     },
 }
 
@@ -50,16 +69,16 @@ def run(command: list[str], root: Path, log: Path) -> None:
         raise RuntimeError(f"command failed ({completed.returncode}): {log}")
 
 
-def ranges() -> list[tuple[int, int]]:
-    base, extra = divmod(GEOMETRIES, SHARDS)
+def ranges(geometries: int = 492_960) -> list[tuple[int, int]]:
+    base, extra = divmod(geometries, SHARDS)
     cursor = 0
     result = []
     for index in range(SHARDS):
         count = base + (index < extra)
         result.append((cursor, count))
         cursor += count
-    if cursor != GEOMETRIES:
-        raise RuntimeError("Mage/Ghost shard coverage residual")
+    if cursor != geometries:
+        raise RuntimeError("specialized Ghost shard coverage residual")
     return result
 
 
@@ -92,6 +111,10 @@ def write_manifest(work: Path, args: argparse.Namespace) -> None:
             "bytes": path.stat().st_size, "sha256": sha256_path(path)}
             for path in artifacts},
     }
+    if getattr(args, "lower_public_table", None):
+        manifest["lower_public_sha256"] = args.lower_public_sha256
+        manifest["lower_public_model_sha256"] = (
+            args.lower_public_model_sha256)
     (work / "work/artifact-manifest.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
@@ -113,12 +136,20 @@ def main() -> None:
     parser.add_argument("--lower-ghost-source-sha256", required=True)
     parser.add_argument("--lower-ghost-model-sha256", required=True)
     parser.add_argument("--lower-ghost-observation-sha256", required=True)
+    parser.add_argument("--lower-public-table", type=Path)
+    parser.add_argument("--lower-public-sha256")
+    parser.add_argument("--lower-public-model-sha256")
     parser.add_argument("--parallelism", type=int, default=29)
     args = parser.parse_args()
     config = KINDS[args.kind]
     expected = config[args.orientation]
     if args.filename != expected or not 1 <= args.parallelism <= SHARDS:
         raise RuntimeError(f"{args.kind}/Ghost material or parallelism residual")
+    lower_values = (args.lower_public_table, args.lower_public_sha256,
+                    args.lower_public_model_sha256)
+    if bool(config["lower_public"]) != all(lower_values) or (
+            any(lower_values) and not all(lower_values)):
+        raise RuntimeError(f"{args.kind}/Ghost lower-public binding residual")
 
     root = args.source_root.resolve()
     sys.path.insert(0, str(root / "tools/tablebases"))
@@ -130,6 +161,9 @@ def main() -> None:
     require_sha(args.source_table, args.source_sha256, "source table")
     require_sha(args.lower_ghost_sidecar, args.lower_ghost_sha256,
                 "lower Ghost sidecar")
+    if args.lower_public_table:
+        require_sha(args.lower_public_table, args.lower_public_sha256,
+                    f"lower {args.kind} table")
     if args.work.exists():
         raise RuntimeError("Mage/Ghost work directory already exists")
     work = args.work.resolve()
@@ -137,10 +171,16 @@ def main() -> None:
     shutil.copyfile(args.source_table, work / "tablebases" / args.filename)
     shutil.copyfile(args.lower_ghost_sidecar,
                     work / "tablebases/kghostk.ufgm")
+    if args.lower_public_table:
+        shutil.copyfile(args.lower_public_table,
+                        work / f"tablebases/k{args.kind}k.uftb")
     require_sha(work / "tablebases" / args.filename, args.source_sha256,
                 "copied source")
     require_sha(work / "tablebases/kghostk.ufgm", args.lower_ghost_sha256,
                 "copied lower Ghost")
+    if args.lower_public_table:
+        require_sha(work / f"tablebases/k{args.kind}k.uftb",
+                    args.lower_public_sha256, f"copied lower {args.kind}")
     for directory in ("work/logs", "work/transitions", "work/results",
                       "work/solve", "work/self-test"):
         (work / directory).mkdir(parents=True, exist_ok=True)
@@ -154,6 +194,7 @@ def main() -> None:
         "src/ultimate/tablebases/ghost_information_probe.cpp",
         "src/ultimate/tablebases/information.cpp", "src/ultimate/position.cpp",
         "src/ultimate/nnue.cpp",
+        *config.get("extra_sources", ()),
     ]
     run(["clang++", "-std=c++17", "-O3", "-DNDEBUG", "-Wall",
          "-Wextra", "-Wpedantic", "-Werror",
@@ -164,13 +205,21 @@ def main() -> None:
                "--source-sha256", args.source_sha256,
                "--model-sha256", args.model_sha256,
                "--observation-sha256", args.observation_sha256]
+    if args.lower_public_table:
+        binding[2:2] = [
+            f"--lower-{args.kind}-table", f"tablebases/k{args.kind}k.uftb",
+            f"--lower-{args.kind}-sha256", args.lower_public_sha256,
+            f"--lower-{args.kind}-source-sha256", args.lower_public_sha256,
+            f"--lower-{args.kind}-model-sha256",
+            args.lower_public_model_sha256,
+        ]
     run([str(executable), "--self-test", "--orientation", args.orientation,
          "--scratch", f"work/self-test/{Path(args.filename).stem}",
          "--input", f"tablebases/{args.filename}",
          "--source-sha256", args.source_sha256], work,
         work / "work/logs/self-test.log")
     commands = []
-    for index, (begin, count) in enumerate(ranges()):
+    for index, (begin, count) in enumerate(ranges(int(config["geometries"]))):
         commands.append([str(executable), "--compile-transitions",
           "--transition-prefix", f"work/transitions/shard-{index:02d}",
           "--geometry-begin", str(begin), "--geometry-count", str(count),
@@ -182,7 +231,8 @@ def main() -> None:
              args.orientation, "--transition-prefix", merged]
     for index in range(SHARDS):
         merge += ["--shard", f"work/transitions/shard-{index:02d}"]
-    merge += ["--expected-geometries", str(GEOMETRIES), *binding[2:]]
+    merge += ["--expected-geometries", str(config["geometries"]),
+              *binding[2:]]
     run(merge, work, work / "work/logs/merge.log")
     solve = [str(executable), "--solve", "--orientation", args.orientation,
       "--transition-prefix", merged, "--input", f"tablebases/{args.filename}",
