@@ -717,7 +717,6 @@ static_assert(sizeof(ParasiteRelationCertificate) == 80);
     int ghosts = 0;
     bool whiteKing = false;
     bool blackKing = false;
-    bool visible = false;
     Color ghostColor = material.ghostColor;
     for (int id = 0; id < child.piece_count(); ++id) {
         const PieceState& piece = child.piece(id);
@@ -731,12 +730,11 @@ static_assert(sizeof(ParasiteRelationCertificate) == 80);
         }
         else if (piece.type == PieceType::Ghost) {
             ++ghosts;
-            visible = piece.visible;
             ghostColor = piece.color;
         }
     }
     return live == 3 && kings == 2 && ghosts == 1 && whiteKing && blackKing &&
-           visible && ghostColor != material.ghostColor;
+           ghostColor != material.ghostColor;
 }
 
 [[nodiscard]] std::uint8_t possessed_ghost_force_flags(
@@ -748,6 +746,7 @@ static_assert(sizeof(ParasiteRelationCertificate) == 80);
     int ownerKing = Position::NoSquare;
     int observerKing = Position::NoSquare;
     int ghost = Position::NoSquare;
+    bool visible = false;
     Color newOwner = material.observer();
     for (int id = 0; id < child.piece_count(); ++id) {
         const PieceState& piece = child.piece(id);
@@ -755,6 +754,7 @@ static_assert(sizeof(ParasiteRelationCertificate) == 80);
             continue;
         if (piece.type == PieceType::Ghost) {
             ghost = piece.square;
+            visible = piece.visible;
             newOwner = piece.color;
         }
     }
@@ -776,7 +776,7 @@ static_assert(sizeof(ParasiteRelationCertificate) == 80);
     const GhostInformationProbeResult result = lower.probe(
       normalizedSide, static_cast<std::uint8_t>(ownerKing),
       static_cast<std::uint8_t>(observerKing), static_cast<std::uint8_t>(ghost),
-      true, singleton);
+      visible, singleton);
     if (result.ownerForce && result.observerForce)
         throw std::runtime_error("possessed-Ghost lower dual-force residual");
     // New owner == old observer.  Convert the canonical KGhost roles back to
