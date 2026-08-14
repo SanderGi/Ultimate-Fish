@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from dataclasses import dataclass
+import hashlib
 import json
 from pathlib import Path
 import random
@@ -43,6 +44,9 @@ from tools.ultimate_phone import (  # noqa: E402
 )
 
 DEFAULT_MANIFEST = ROOT / "tests" / "ultimate_local_conformance.json"
+DEFAULT_VALIDATION = (
+    ROOT / "tests" / "ultimate_local_conformance.validation.json"
+)
 MAX_LOCAL_SETUP_ATTEMPTS = 6
 
 
@@ -52,6 +56,19 @@ class SelfplayCandidate:
     position: str
     features: frozenset[str]
     score: int
+
+
+def native_fixture_digest(document: dict) -> str:
+    """Hash only the replayable native oracle, not exploratory profiles."""
+    payload = {
+        "schema": document.get("schema"),
+        "app_version": document.get("app_version"),
+        "fixtures": document.get("fixtures"),
+    }
+    encoded = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _team(value: object, label: str) -> list[tuple[str, str]]:
@@ -114,6 +131,17 @@ def load_manifest(path: Path) -> dict:
         if fixture["id"] in seen:
             raise ValueError(f"duplicate fixture id {fixture['id']}")
         seen.add(fixture["id"])
+        covers = fixture.get("covers")
+        if (not isinstance(covers, list) or not covers or
+                not all(isinstance(contract, str) and contract
+                        for contract in covers) or
+                len(covers) != len(set(covers))):
+            raise ValueError(
+                f"{fixture['id']}.covers must be a non-empty unique list of "
+                "native contract ids"
+            )
+        declared_contracts = set(covers)
+        proved_contracts: set[str] = set()
         _team(fixture.get("player1"), f"{fixture['id']}.player1")
         _team(fixture.get("player2"), f"{fixture['id']}.player2")
         if not isinstance(fixture.get("steps"), list) or not fixture["steps"]:
@@ -127,6 +155,33 @@ def load_manifest(path: Path) -> dict:
                 "move", "reject", "terminal_move", "piece",
                 "native_moves", "native_deaths"
             }
+            extra_keys = set(step) - operations - {
+                "proves", "reconcile_unlogged_deaths",
+            }
+            if extra_keys:
+                raise ValueError(
+                    f"{fixture['id']}.steps[{index}] has unknown keys: " +
+                    ", ".join(sorted(extra_keys))
+                )
+            proves = step.get("proves", [])
+            if (not isinstance(proves, list) or
+                    not all(isinstance(contract, str) and contract
+                            for contract in proves) or
+                    len(proves) != len(set(proves))):
+                raise ValueError(
+                    f"{fixture['id']}.steps[{index}].proves must be a unique "
+                    "list of native contract ids"
+                )
+            undeclared = set(proves) - declared_contracts
+            duplicate_proofs = set(proves) & proved_contracts
+            if undeclared or duplicate_proofs:
+                detail = undeclared or duplicate_proofs
+                reason = "undeclared" if undeclared else "proved twice"
+                raise ValueError(
+                    f"{fixture['id']}.steps[{index}] has {reason} contract(s): " +
+                    ", ".join(sorted(detail))
+                )
+            proved_contracts.update(proves)
             if "reconcile_unlogged_deaths" in step:
                 if ("move" not in step or
                         step["reconcile_unlogged_deaths"] is not True):
@@ -202,6 +257,12 @@ def load_manifest(path: Path) -> dict:
                     f"{fixture['id']}.steps[{index}] action must be a string"
                 )
             parse_engine_move(action)
+        missing_proofs = declared_contracts - proved_contracts
+        if missing_proofs:
+            raise ValueError(
+                f"{fixture['id']} declares contract(s) without an exact "
+                "native proof step: " + ", ".join(sorted(missing_proofs))
+            )
     profiles = document.get("selfplay_profiles", [])
     if not isinstance(profiles, list):
         raise ValueError("selfplay_profiles must be a JSON list")
@@ -220,6 +281,125 @@ def load_manifest(path: Path) -> dict:
 def _piece_counts(upn: str) -> Counter[tuple[str, str]]:
     return Counter((piece, color) for piece, color, _square, _state
                    in parse_upn_pieces(upn))
+
+
+def validate_engine_death_oracle(
+    before: str, predicted: str, expected_pieces: Sequence[str]
+) -> None:
+    """Require every native death assertion in the engine transition too."""
+    before_counts = Counter(
+        public_probe_piece(piece)
+        for piece, _color, _square, _state in parse_upn_pieces(before)
+    )
+    after_counts = Counter(
+        public_probe_piece(piece)
+        for piece, _color, _square, _state in parse_upn_pieces(predicted)
+    )
+    expected = Counter(public_probe_piece(piece) for piece in expected_pieces)
+    predicted_deaths = before_counts - after_counts
+    missing = expected - predicted_deaths
+    if missing:
+        raise AssertionError(
+            "native death oracle exceeds engine-predicted deaths: " +
+            ", ".join(sorted(missing.elements()))
+        )
+
+
+def validate_engine_move_oracle(
+    before: str, predicted: str, expected_moves: Sequence[str]
+) -> None:
+    """Require an asserted automatic relocation in the engine transition."""
+    for expected_move in expected_moves:
+        source, target, _separator = parse_engine_move(expected_move)
+        before_piece = upn_piece_covering(before, source)
+        after_piece = upn_piece_covering(predicted, target)
+        if (before_piece is None or after_piece is None or
+                public_probe_piece(before_piece[0]) !=
+                public_probe_piece(after_piece[0])):
+            raise AssertionError(
+                f"engine transition does not contain native automatic "
+                f"relocation {expected_move}"
+            )
+
+
+def validate_fixture_engine_trace(fixture: dict, engine_path: str) -> None:
+    """Replay one Local oracle entirely in the native engine first.
+
+    This catches a stale fixture, a mislabeled reject, or an effect assertion
+    that the engine itself does not predict before the phone is touched.
+    """
+    player1 = _team(fixture["player1"], f"{fixture['id']}.player1")
+    player2 = _team(fixture["player2"], f"{fixture['id']}.player2")
+    position = local_upn(player1, player2)
+    engine = EngineClient(engine_path)
+    last_transition: tuple[str, str] | None = None
+    try:
+        engine.set_position(position)
+        for index, step in enumerate(fixture["steps"], 1):
+            if "native_deaths" in step:
+                if last_transition is None:
+                    raise AssertionError("death oracle has no preceding move")
+                validate_engine_death_oracle(
+                    *last_transition, step["native_deaths"])
+                continue
+            if "native_moves" in step:
+                if last_transition is None:
+                    raise AssertionError("move oracle has no preceding move")
+                validate_engine_move_oracle(
+                    *last_transition, step["native_moves"])
+                continue
+            if "piece" in step:
+                assertion = step["piece"]
+                predicted = upn_piece_covering(position, assertion["square"])
+                if (predicted is None or
+                        public_probe_piece(predicted[0]) !=
+                        public_probe_piece(assertion["type"])):
+                    actual = predicted[0] if predicted else "empty"
+                    raise AssertionError(
+                        f"step {index}: engine has {actual}, expected "
+                        f"{assertion['type']} at {assertion['square']}"
+                    )
+                continue
+            if "reject" in step:
+                if step["reject"] in engine.legal_moves(position):
+                    raise AssertionError(
+                        f"step {index}: rejected action {step['reject']} is "
+                        "engine-legal"
+                    )
+                continue
+            action = step.get("move")
+            if action is None:
+                action = step["terminal_move"]["move"]
+            if action not in engine.legal_moves(position):
+                raise AssertionError(
+                    f"step {index}: expected action {action} is engine-illegal"
+                )
+            predicted = engine.apply(position, action)
+            if "terminal_move" in step:
+                label = step["terminal_move"]["label"]
+                if label in ("checkmate", "draw") and engine.legal_moves(predicted):
+                    raise AssertionError(
+                        f"step {index}: {label} action {action} leaves legal moves"
+                    )
+                if label == "draw":
+                    remaining_kings = sum(
+                        piece == "king"
+                        for piece, _color, _square, _state
+                        in parse_upn_pieces(predicted)
+                    )
+                    if remaining_kings != 2:
+                        raise AssertionError(
+                            f"step {index}: draw action {action} does not "
+                            "retain both real Kings"
+                        )
+            last_transition = (position, predicted)
+            position = predicted
+    except Exception as exc:
+        raise AssertionError(
+            f"{fixture['id']} engine trace is inconsistent: {exc}"
+        ) from exc
+    finally:
+        engine.close()
 
 
 def automatic_minion_transition(
@@ -417,20 +597,42 @@ def run_fixture(
         verbose=verbose, configure_army=True,
     )
     observations: list[dict] = []
+    proved_contracts: set[str] = set()
+    last_transition: tuple[str, str, str, int, int] | None = None
     try:
         start_local_with_retries(game, player1, player2, fixture["id"])
+        # A Local result animation can emit delayed move/death callbacks while
+        # the next pair of armies is being installed. None of that prior-game
+        # queue is evidence for the freshly loaded board.
+        game.events.drain()
         game.beliefs = BeliefSet(game.engine, [upn], 1)
         game.perspective_flipped = False
         game.rotate_taps = False
         for index, step in enumerate(fixture["steps"], 1):
+            step_contracts = list(step.get("proves", []))
+            proved_contracts.update(step_contracts)
             if "native_deaths" in step:
+                if last_transition is None:
+                    raise AssertionError(
+                        "native death assertion has no preceding engine transition"
+                    )
                 expected = Counter(step["native_deaths"])
+                before, _move, predicted, transition_generation, transition_prefix = (
+                    last_transition
+                )
+                validate_engine_death_oracle(
+                    before, predicted, list(expected.elements()))
                 deadline = time.monotonic() + 4.0
                 observed: Counter[str] = Counter()
                 while time.monotonic() < deadline:
-                    _generation, journal = game.events.gameplay_snapshot()
+                    generation, journal = game.events.gameplay_snapshot()
+                    if generation != transition_generation:
+                        raise AssertionError(
+                            "native board generation changed before death assertion"
+                        )
                     observed = Counter(
                         event.piece for event in journal
+                        [transition_prefix:]
                         if event.kind == "dead" and event.piece
                     )
                     if all(observed[piece] >= count
@@ -448,6 +650,7 @@ def run_fixture(
                     "step": index,
                     "native_deaths": deaths,
                     "observed": True,
+                    "proves": step_contracts,
                 })
                 print(
                     f"{fixture['id']} native deaths " +
@@ -456,14 +659,27 @@ def run_fixture(
                 )
                 continue
             if "native_moves" in step:
+                if last_transition is None:
+                    raise AssertionError(
+                        "native move assertion has no preceding engine transition"
+                    )
                 expected = Counter(step["native_moves"])
+                before, _move, predicted, transition_generation, transition_prefix = (
+                    last_transition
+                )
+                validate_engine_move_oracle(
+                    before, predicted, list(expected.elements()))
                 deadline = time.monotonic() + 4.0
                 observed: Counter[str] = Counter()
                 while time.monotonic() < deadline:
-                    _generation, journal = game.events.gameplay_snapshot()
+                    generation, journal = game.events.gameplay_snapshot()
+                    if generation != transition_generation:
+                        raise AssertionError(
+                            "native board generation changed before move assertion"
+                        )
                     observed = Counter(
                         f"{event.source}-{event.target}"
-                        for event in journal
+                        for event in journal[transition_prefix:]
                         if event.kind == "move" and event.source and event.target
                     )
                     if all(observed[move] >= count
@@ -481,6 +697,7 @@ def run_fixture(
                     "step": index,
                     "native_moves": moves,
                     "observed": True,
+                    "proves": step_contracts,
                 })
                 print(
                     f"{fixture['id']} native moves " +
@@ -508,6 +725,7 @@ def run_fixture(
                     "step": index,
                     "piece": assertion,
                     "found": found,
+                    "proves": step_contracts,
                 })
                 print(
                     f"{fixture['id']} piece {assertion['type']} "
@@ -531,7 +749,8 @@ def run_fixture(
                     event = game.execute(move, _retry_destination=False)
                 except TimeoutError:
                     observations.append(
-                        {"step": index, "reject": move, "accepted": False}
+                        {"step": index, "reject": move, "accepted": False,
+                         "proves": step_contracts}
                     )
                     print(f"{fixture['id']} reject {move}: confirmed", flush=True)
                     continue
@@ -571,6 +790,22 @@ def run_fixture(
                             f"engine move {move} does not preserve its "
                             "forced-timeout winner"
                         )
+                if (expected_label in ("checkmate", "draw") and
+                        game.engine.legal_moves(predicted)):
+                    raise AssertionError(
+                        f"engine move {move} does not terminate as "
+                        f"{expected_label}"
+                    )
+                if expected_label == "draw":
+                    remaining_kings = sum(
+                        piece == "king"
+                        for piece, _color, _square, _state
+                        in parse_upn_pieces(predicted)
+                    )
+                    if remaining_kings != 2:
+                        raise AssertionError(
+                            f"engine draw {move} does not retain both Kings"
+                        )
                 event_generation, event_prefix = game.events.gameplay_snapshot()
                 event = game.execute(
                     move, game.beliefs.move_causes_bomb_detonation(move)
@@ -587,6 +822,7 @@ def run_fixture(
                         "terminal_move": move,
                         "label": expected_label,
                         "native_event": "board.turn/playerTeam mismatch",
+                        "proves": step_contracts,
                     })
                     print(
                         f"{fixture['id']} terminal {move}: forced timeout "
@@ -629,6 +865,24 @@ def run_fixture(
                     (expected_label == "knockout" and observed_game_over and
                      observed_king_death)
                 )
+                if (not native_proof and expected_label in
+                        ("draw", "checkmate", "knockout") and
+                        observed_game_over):
+                    # Some Local terminal paths open the result menu without
+                    # logging its human-readable label. Read the native public
+                    # overlay rather than treating a generic game-over event
+                    # as proof of whichever result the fixture expected.
+                    classified = game.classify_game_over(
+                        timeout=5.0,
+                        decisive_result=(
+                            expected_label
+                            if expected_label in ("checkmate", "knockout")
+                            else None
+                        ),
+                    )
+                    native_proof = classified == expected_label
+                    if native_proof:
+                        observed_label = classified
                 if not native_proof:
                     raise AssertionError(
                         f"native terminal label after {move} was "
@@ -644,6 +898,7 @@ def run_fixture(
                         "terminal_label" if observed_label else "game_over"
                     ),
                     "king_death": observed_king_death,
+                    "proves": step_contracts,
                 })
                 print(
                     f"{fixture['id']} terminal {move}: "
@@ -662,6 +917,9 @@ def run_fixture(
             bomb = game.beliefs.move_causes_bomb_detonation(move)
             predicted = game.engine.apply(position, move)
             event_generation, event_prefix = game.events.gameplay_snapshot()
+            last_transition = (
+                position, move, predicted, event_generation, len(event_prefix)
+            )
             event = game.execute(move, bomb)
             if event.kind != "move":
                 raise AssertionError(
@@ -698,7 +956,12 @@ def run_fixture(
             # Onyx where the controller also normalizes logged coordinates.
             game.perspective_flipped = False
             game.rotate_taps = game.beliefs.side == "b"
-            observation = {"step": index, "move": move, "accepted": True}
+            observation = {
+                "step": index,
+                "move": move,
+                "accepted": True,
+                "proves": step_contracts,
+            }
             if reconciled is not None:
                 observation["death_reconciliation"] = reconciled
             observations.append(observation)
@@ -707,7 +970,12 @@ def run_fixture(
     finally:
         game.close()
 
-    return {"id": fixture["id"], "passed": True, "observations": observations}
+    return {
+        "id": fixture["id"],
+        "passed": True,
+        "proved_contracts": sorted(proved_contracts),
+        "observations": observations,
+    }
 
 
 def run_selfplay(
@@ -751,6 +1019,7 @@ def run_selfplay(
     terminal: str | None = None
     try:
         start_local_with_retries(game, player1, player2, label)
+        game.events.drain()
         game.beliefs = BeliefSet(game.engine, [upn], 1)
         game.perspective_flipped = False
         game.rotate_taps = False
@@ -908,6 +1177,8 @@ def main() -> None:
         parser.error("--selfplay-plies must be positive")
     if args.list or args.dry_run:
         for fixture in fixtures:
+            if args.dry_run:
+                validate_fixture_engine_trace(fixture, args.engine)
             print("fixture:" + fixture["id"])
         for profile in profiles:
             print("selfplay:" + profile["id"])
@@ -946,6 +1217,11 @@ def main() -> None:
         "app_version": document.get("app_version"),
         "passed": all(result["passed"] for result in
                       [*results, *selfplay_results]),
+        "proved_contracts": sorted({
+            contract
+            for result in results
+            for contract in result["proved_contracts"]
+        }),
         "fixtures": results,
         "selfplay": selfplay_results,
         "selfplay_coverage": sorted(campaign_covered),

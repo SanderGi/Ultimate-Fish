@@ -4,9 +4,13 @@
 from __future__ import annotations
 
 from collections import Counter
+import copy
 import importlib.util
+import json
 import random
+import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -31,6 +35,14 @@ class FakeEngine:
 
 
 class LocalConformanceTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        subprocess.run(
+            ["make", "-C", str(ROOT / "src"), "ultimatefish"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+
     def test_manifest_contains_native_terminal_assertion(self) -> None:
         document = conform.load_manifest(conform.DEFAULT_MANIFEST)
         terminal_steps = [
@@ -55,6 +67,79 @@ class LocalConformanceTests(unittest.TestCase):
             "goop", "minion", "checkerKing", "copycatClone", "halo",
         }
         self.assertEqual(set(conform.PIECE_COST) - generated, present)
+
+    def test_every_declared_contract_has_one_exact_native_proof_step(self) -> None:
+        document = conform.load_manifest(conform.DEFAULT_MANIFEST)
+        for fixture in document["fixtures"]:
+            proofs = [
+                contract
+                for step in fixture["steps"]
+                for contract in step.get("proves", [])
+            ]
+            self.assertCountEqual(fixture["covers"], proofs, fixture["id"])
+
+    def test_missing_native_proof_invalidates_manifest(self) -> None:
+        document = copy.deepcopy(
+            conform.load_manifest(conform.DEFAULT_MANIFEST)
+        )
+        document["fixtures"][0]["steps"][0].pop("proves")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "manifest.json"
+            path.write_text(json.dumps(document))
+            with self.assertRaisesRegex(ValueError, "without an exact native proof"):
+                conform.load_manifest(path)
+
+    def test_every_native_fixture_is_a_self_consistent_engine_oracle(self) -> None:
+        document = conform.load_manifest(conform.DEFAULT_MANIFEST)
+        engine = str(ROOT / "src" / "ultimatefish")
+        for fixture in document["fixtures"]:
+            with self.subTest(fixture=fixture["id"]):
+                conform.validate_fixture_engine_trace(fixture, engine)
+
+    def test_death_oracle_rejects_a_native_death_absent_from_engine(self) -> None:
+        before = (
+            "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1"
+            ";king,w,a1;king,b,a10;ghost,b,b2"
+        )
+        after = before.replace("w;hm=", "b;hm=", 1)
+        with self.assertRaisesRegex(
+            AssertionError, "exceeds engine-predicted deaths"
+        ):
+            conform.validate_engine_death_oracle(before, after, ["ghost"])
+
+    def test_native_validation_certificate_matches_fixture_semantics(self) -> None:
+        document = conform.load_manifest(conform.DEFAULT_MANIFEST)
+        certificate = json.loads(conform.DEFAULT_VALIDATION.read_text())
+        contracts = {
+            contract
+            for fixture in document["fixtures"]
+            for contract in fixture["covers"]
+        }
+        self.assertEqual(1, certificate["schema"])
+        self.assertTrue(certificate["passed"])
+        self.assertEqual(document["app_version"], certificate["app_version"])
+        self.assertEqual(len(document["fixtures"]), certificate["fixture_count"])
+        self.assertEqual(len(contracts), certificate["contract_count"])
+        self.assertEqual(
+            conform.native_fixture_digest(document),
+            certificate["native_fixture_sha256"],
+        )
+
+    def test_private_royal_legal_dot_pair_is_in_native_gate(self) -> None:
+        document = conform.load_manifest(conform.DEFAULT_MANIFEST)
+        contracts = {
+            contract
+            for fixture in document["fixtures"]
+            for contract in fixture["covers"]
+        }
+        self.assertIn(
+            "legal-dots.jester-target-filtered-by-protected-real-king",
+            contracts,
+        )
+        self.assertIn(
+            "legal-dots.real-king-target-is-legal-capture",
+            contracts,
+        )
 
     def test_manifest_profiles_cover_every_deployable_opponent_pair(self) -> None:
         document = conform.load_manifest(conform.DEFAULT_MANIFEST)

@@ -96,3 +96,12 @@ These summaries are not yet substitutes for native conformance cases:
 Every optimized bitboard implementation must be compared against a simple
 reference state machine derived from the fixtures. Perft-style hashes and move
 counts will be recorded before search-strength work begins.
+
+App-observable rule regressions are also required to name an exact native proof
+step in `tests/ultimate_local_conformance.json`. The complete deterministic
+fixture corpus is replayed in Android Local Play and sealed by
+`tests/ultimate_local_conformance.validation.json`; any semantic fixture change
+invalidates that certificate until the full native campaign passes again.
+Engine-only invariants such as undo, serialization, bitboard consistency,
+belief equivalence, search, and tablebases remain separate executable tests
+because the app UI cannot directly expose those implementation properties.

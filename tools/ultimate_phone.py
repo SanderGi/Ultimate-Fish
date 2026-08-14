@@ -2396,12 +2396,23 @@ class EngineClient:
             raise RuntimeError(result)
 
     def close(self) -> None:
-        if self.process.poll() is None:
-            self.send("quit")
-            try:
-                self.process.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                self.process.kill()
+        try:
+            if self.process.poll() is None:
+                try:
+                    self.send("quit")
+                except (BrokenPipeError, RuntimeError):
+                    pass
+                try:
+                    self.process.wait(timeout=3)
+                except subprocess.TimeoutExpired:
+                    self.process.kill()
+                    self.process.wait(timeout=3)
+        finally:
+            for stream in (
+                self.process.stdin, self.process.stdout, self.process.stderr
+            ):
+                if stream is not None:
+                    stream.close()
 
 
 def parse_upn_pieces(upn: str) -> list[tuple[str, str, str, list[str]]]:

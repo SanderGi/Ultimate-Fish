@@ -27,7 +27,7 @@
         ["bomb", "f3"]
       ],
       "steps": [
-        {"terminal_move": {"move": "b1-b10", "label": "knockout"}}
+        {"terminal_move": {"move": "b1-b10", "label": "knockout"}, "proves": ["terminal.real-king-capture", "terminal.native-knockout-label"]}
       ]
     },
     {
@@ -61,7 +61,7 @@
         {"move": "g2-h1"},
         {"move": "g1-g2"},
         {"move": "a10-a9"},
-        {"terminal_move": {"move": "d1-f1", "label": "forced-timeout"}}
+        {"terminal_move": {"move": "d1-f1", "label": "forced-timeout"}, "proves": ["castling.enemy-team-rook-forced-timeout", "castling.out-of-check-with-jester", "jester.suspends-real-king-check-filter"]}
       ]
     },
     {
@@ -91,7 +91,7 @@
         ["bomb", "f1"]
       ],
       "steps": [
-        {"move": "d1-f1"}
+        {"move": "d1-f1", "proves": ["castling.destination-check-with-jester", "jester.suspends-real-king-check-filter"]}
       ]
     },
     {
@@ -122,8 +122,8 @@
       ],
       "steps": [
         {"move": "h1-h2"},
-        {"move": "c10~g8"},
-        {"piece": {"type": "mage", "square": "g8"}}
+        {"move": "c10~g8", "proves": ["mage.allied-swap"]},
+        {"piece": {"type": "mage", "square": "g8"}, "proves": ["controller.long-special-drag-targeting"]}
       ]
     },
     {
@@ -158,9 +158,9 @@
       ],
       "steps": [
         {"move": "c1-d1"},
-        {"move": "b10-c9"},
+        {"move": "b10-c9", "proves": ["copycat.move-from-clone-half"]},
         {"piece": {"type": "copycat", "square": "c9"}},
-        {"piece": {"type": "copycat", "square": "f9"}}
+        {"piece": {"type": "copycat", "square": "f9"}, "proves": ["controller.copycat-selection-bound-to-native-dot"]}
       ]
     },
     {
@@ -192,8 +192,8 @@
         {"move": "f1!f8"},
         {"move": "f2-e3"},
         {"move": "h3-h4"},
-        {"move": "e3-e1"},
-        {"piece": {"type": "queen", "square": "e1"}}
+        {"move": "e3-e1", "proves": ["pawn.double-step-after-possession"]},
+        {"piece": {"type": "queen", "square": "e1"}, "proves": ["parasite.target-piece-moved-state"]}
       ]
     },
     {
@@ -223,10 +223,10 @@
       ],
       "steps": [
         {"move": "a1!a8"},
-        {"move": "a2-b1"},
+        {"move": "a2-b1", "proves": ["parasite.rook-specific-possession-hook"]},
         {"move": "b2-b1"},
         {"move": "h10-h9"},
-        {"move": "f1-d1"}
+        {"move": "f1-d1", "proves": ["castling.rook-moved-state-after-possession"]}
       ]
     },
     {
@@ -271,7 +271,7 @@
         {"move": "c8-c7"},
         {"move": "a6-a7"},
         {"move": "d8-d7"},
-        {"move": "a7-b7"},
+        {"move": "a7-b7", "proves": ["berserker.power-grows-after-each-capture"]},
         {"move": "e8-e7"},
         {"move": "b7-c7"},
         {"move": "f8-f7"},
@@ -285,11 +285,11 @@
         {"move": "a8-a7"},
         {"move": "g7-h7"},
         {"move": "b9-a10"},
-        {"move": "h7-a7"},
+        {"move": "h7-a7", "proves": ["berserker.radius-is-not-eight-file-clamped"]},
         {"move": "c9-c8"},
         {"move": "a7-a1"},
         {"move": "e9-e8"},
-        {"move": "a1-a10"},
+        {"move": "a1-a10", "proves": ["berserker.nine-rank-leap"]},
         {"piece": {"type": "berserker", "square": "a10"}}
       ]
     },
@@ -325,7 +325,7 @@
         {"move": "h10-h9"},
         {"move": "d5-d6"},
         {"move": "h9-h8"},
-        {"piece": {"type": "bomb", "square": "d6"}},
+        {"piece": {"type": "bomb", "square": "d6"}, "proves": ["parasite.attack-possession", "parasite.bomb-does-not-explode", "parasite.attacker-dies-in-place"]},
         {"move": "d6-d5"}
       ]
     },
@@ -364,10 +364,10 @@
         {"move": "g8-e7"},
         {"move": "b5-c6"},
         {"move": "e7-g8"},
-        {"move": "c6-e8"},
-        {"move": "e8-g10"},
+        {"move": "c6-e8", "proves": ["checker.captures-jumped-piece"]},
+        {"move": "e8-g10", "proves": ["checker.forced-multi-jump"]},
         {"move": "g8-e7"},
-        {"piece": {"type": "checkerKing", "square": "g10"}}
+        {"piece": {"type": "checkerKing", "square": "g10"}, "proves": ["checker.far-rank-promotion"]}
       ]
     },
     {
@@ -396,17 +396,17 @@
         ["ninja", "b3"]
       ],
       "steps": [
-        {"move": "d1-d2"},
+        {"move": "d1-d2", "proves": ["penguin.deployment-has-no-aura"]},
         {"move": "d9-d8"},
         {"move": "f1-f2"},
         {"move": "d8-d9"},
-        {"reject": "e2-e3"},
+        {"reject": "e2-e3", "proves": ["penguin.freeze-layers-stack"]},
         {"move": "d2-c2"},
         {"move": "h8-f6"},
         {"reject": "e2-e3"},
         {"move": "f2-g2"},
         {"move": "f6-h8"},
-        {"move": "e2-e3"}
+        {"move": "e2-e3", "proves": ["penguin.moving-removes-own-layer"]}
       ]
     },
     {
@@ -435,9 +435,9 @@
         ["bomb", "f3"]
       ],
       "steps": [
-        {"move": "d1-f1"},
+        {"move": "d1-f1", "proves": ["castling.no-through-check-test", "castling.moved-state"]},
         {"piece": {"type": "king", "square": "f1"}},
-        {"piece": {"type": "rook", "square": "e1"}}
+        {"piece": {"type": "rook", "square": "e1"}, "proves": ["castling.king-rook-submove"]}
       ]
     },
     {
@@ -468,9 +468,9 @@
       ],
       "steps": [
         {"move": "a3-a4"},
-        {"move": "d10-d1"},
-        {"reject": "c1-d1"},
-        {"move": "c1-b1"}
+        {"move": "d10-d1", "proves": ["rook.long-quiet"]},
+        {"reject": "c1-d1", "proves": ["sniper.enemy-lateral-block"]},
+        {"move": "c1-b1", "proves": ["sniper.quiet-lateral"]}
       ]
     },
     {
@@ -503,11 +503,11 @@
       ],
       "steps": [
         {"move": "c3-c5"},
-        {"move": "c8-c7"},
+        {"move": "c8-c7", "proves": ["ghost.quiet-move-stays-hidden"]},
         {"move": "a3-a4"},
         {"move": "h8-h7"},
-        {"move": "c5-c7", "reconcile_unlogged_deaths": true},
-        {"reject": "c7-c6"}
+        {"move": "c5-c7", "reconcile_unlogged_deaths": true, "proves": ["sludge.blind-hidden-ghost-collision", "sludge.two-square-goop-trail"]},
+        {"reject": "c7-c6", "proves": ["turn.advances-after-mutual-knockout"]}
       ]
     },
     {
@@ -539,11 +539,12 @@
         ["turtle", "h3"]
       ],
       "steps": [
-        {"move": "d2@d4"},
+        {"move": "d2@d4", "proves": ["devil.spawn"]},
         {"move": "d10-d9"},
+        {"reject": "d2@c4", "proves": ["devil.cooldown"]},
         {"move": "e2@d4"},
         {"move": "d9-d10"},
-        {"native_moves": ["d4-d5", "d5-d6"]}
+        {"native_moves": ["d4-d5", "d5-d6"], "proves": ["minion.turn-start-auto-move", "minion.unstunned-allied-train"]}
       ]
     },
     {
@@ -578,8 +579,8 @@
         {"move": "c8-c7"},
         {"move": "a3-a4"},
         {"move": "c7-c6"},
-        {"move": "c5-c7"},
-        {"native_deaths": ["ghost"]},
+        {"move": "c5-c7", "proves": ["sludge.hidden-ghost-ray-pass-through", "goop.spawn-on-occupied-square"]},
+        {"native_deaths": ["ghost"], "proves": ["ghost.trail-collision-death"]},
         {"reject": "c6-c5"}
       ]
     },
@@ -616,9 +617,10 @@
         {"move": "d7-d6"},
         {"move": "g1-g2"},
         {"move": "d6-d5"},
-        {"move": "d3@d5"},
+        {"move": "d3@d5", "proves": ["devil.blind-hidden-ghost-target"]},
         {"native_deaths": ["ghost"]},
-        {"reject": "d5-d4"}
+        {"reject": "d5-d4", "proves": ["devil.no-minion-after-blind-collision"]},
+        {"reject": "d3@c4", "proves": ["devil.cooldown-after-blind-collision"]}
       ]
     },
     {
@@ -649,9 +651,9 @@
         ["turtle", "h3"]
       ],
       "steps": [
-        {"move": "d2-d4"},
+        {"move": "d2-d4", "proves": ["pawn.unmoved-double-step", "pawn.allied-hidden-ghost-intermediate"]},
         {"move": "d10-d9"},
-        {"move": "d3-e3"}
+        {"move": "d3-e3", "proves": ["ghost.survives-pawn-pass-through"]}
       ]
     },
     {
@@ -691,8 +693,8 @@
         {"move": "d5-d4"},
         {"move": "g1-g2"},
         {"move": "d4-d3"},
-        {"move": "d2-d4"},
-        {"move": "d3-e3"}
+        {"move": "d2-d4", "proves": ["pawn.unmoved-double-step", "pawn.enemy-hidden-ghost-intermediate"]},
+        {"move": "d3-e3", "proves": ["ghost.survives-enemy-pawn-pass-through"]}
       ]
     },
     {
@@ -730,9 +732,9 @@
         {"move": "g1-g2"},
         {"move": "d5-d4"},
         {"move": "e2-e4"},
-        {"move": "d4-e3"},
-        {"native_deaths": ["ghost", "pawn"]},
-        {"move": "e4-e5"}
+        {"move": "d4-e3", "proves": ["pawn.en-passant-hidden-ghost-destination"]},
+        {"native_deaths": ["ghost", "pawn"], "proves": ["ghost.en-passant-mutual-knockout"]},
+        {"move": "e4-e5", "proves": ["pawn.en-passant-bypassing-pawn-survives-blind-collision"]}
       ]
     },
     {
@@ -770,10 +772,10 @@
         {"move": "d6-d5"},
         {"move": "b2-b1"},
         {"move": "d5-d4"},
-        {"move": "c3-d4"},
+        {"move": "c3-d4", "proves": ["copycat.paired-mirror-move", "copycat.hidden-enemy-ghost-capture"]},
         {"native_deaths": ["ghost"]},
         {"move": "g10-g9"},
-        {"move": "d4-c4"}
+        {"move": "d4-c4", "proves": ["copycat.both-halves-complete-after-hidden-capture"]}
       ]
     },
     {
@@ -809,9 +811,84 @@
       ],
       "steps": [
         {"move": "f1-e2"},
-        {"move": "d8&e9"},
-        {"move": "f3xf9"},
-        {"piece": {"type": "giant", "square": "c7"}}
+        {"move": "d8&e9", "proves": ["angel.onyx-giant-halo-anchor"]},
+        {"move": "f3xf9", "proves": ["sniper.ranged-giant-capture"]},
+        {"piece": {"type": "giant", "square": "c7"}, "proves": ["angel.giant-forced-relocation"]}
+      ]
+    },
+    {
+      "id": "giant-footprint-crushes-hidden-enemy-ghost",
+      "covers": [
+        "ghost.hidden-enemy-cell-remains-giant-translation-target",
+        "giant.footprint-crushes-hidden-enemy-ghost"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["giant", "c1"],
+        ["queen", "f1"],
+        ["ninja", "h1"],
+        ["sniper", "f3"],
+        ["angel", "a3"],
+        ["knight", "e3"],
+        ["turtle", "g3"],
+        ["rook", "f2"],
+        ["bishop", "h2"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["ghost", "e3"],
+        ["angel", "g3"]
+      ],
+      "steps": [
+        {"move": "c1-c3"},
+        {"move": "d8-d7"},
+        {"move": "f1-e1"},
+        {"move": "d7-d6"},
+        {"move": "e1-f1"},
+        {"move": "d6-d5"},
+        {"move": "c3-c5", "proves": ["ghost.hidden-enemy-cell-remains-giant-translation-target"]},
+        {"native_deaths": ["ghost"], "proves": ["giant.footprint-crushes-hidden-enemy-ghost"]},
+        {"piece": {"type": "giant", "square": "d5"}}
+      ]
+    },
+    {
+      "id": "giant-footprint-blocked-by-allied-hidden-ghost",
+      "covers": [
+        "giant.allied-hidden-ghost-blocks-footprint-translation"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["giant", "c1"],
+        ["ghost", "f3"],
+        ["checker", "g3"],
+        ["queen", "f1"],
+        ["ninja", "h1"],
+        ["sniper", "a3"],
+        ["knight", "e3"],
+        ["rook", "f2"],
+        ["bishop", "h2"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["ghost", "e3"],
+        ["angel", "g3"]
+      ],
+      "steps": [
+        {"move": "c1-c3"},
+        {"move": "g10-g9"},
+        {"move": "f3-e4"},
+        {"move": "g9-g10"},
+        {"move": "e4-d5"},
+        {"move": "g10-g9"},
+        {"reject": "c3-c5", "proves": ["giant.allied-hidden-ghost-blocks-footprint-translation"]}
       ]
     },
     {
@@ -845,13 +922,13 @@
         ["rook", "g3"]
       ],
       "steps": [
-        {"move": "c2&b2"},
+        {"move": "c2&b2", "proves": ["angel.attach-to-angel"]},
         {"move": "h10-h9"},
-        {"move": "b2&d3"},
+        {"move": "b2&d3", "proves": ["angel.reparent-dependent"]},
         {"move": "d8-d3"},
         {"move": "a1-a2"},
         {"move": "b8-b2"},
-        {"piece": {"type": "rook", "square": "c2"}}
+        {"piece": {"type": "rook", "square": "c2"}, "proves": ["angel.multiple-rescue-order"]}
       ]
     },
     {
@@ -888,9 +965,48 @@
         {"move": "d6-d5"},
         {"move": "b2-b1"},
         {"move": "d5-d4"},
-        {"move": "d3-d4"},
-        {"native_deaths": ["ghost"]},
+        {"move": "d3-d5", "proves": ["ghost.hidden-cell-remains-ray-transparent"]},
+        {"move": "h10-h9"},
+        {"move": "d5-d4", "proves": ["ghost.hidden-enemy-cell-is-legal-endpoint"]},
+        {"native_deaths": ["ghost"], "proves": ["rook.blind-hidden-ghost-capture"]},
         {"piece": {"type": "rook", "square": "d4"}}
+      ]
+    },
+    {
+      "id": "knight-blind-captures-hidden-ghost",
+      "covers": [
+        "ghost.hidden-enemy-cell-is-legal-leaper-endpoint",
+        "knight.blind-hidden-ghost-capture"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["knight", "c3"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["angel", "g3"],
+        ["bishop", "h3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["ghost", "e3"],
+        ["angel", "g3"]
+      ],
+      "steps": [
+        {"move": "b1-b2"},
+        {"move": "d8-d7"},
+        {"move": "b2-b1"},
+        {"move": "d7-d6"},
+        {"move": "b1-b2"},
+        {"move": "d6-d5"},
+        {"move": "c3-d5", "proves": ["ghost.hidden-enemy-cell-is-legal-leaper-endpoint"]},
+        {"native_deaths": ["ghost"], "proves": ["knight.blind-hidden-ghost-capture"]},
+        {"piece": {"type": "knight", "square": "d5"}}
       ]
     },
     {
@@ -898,6 +1014,7 @@
       "covers": [
         "fisherman.forced-hidden-ghost-collision",
         "ghost.forced-collision-death",
+        "jester.suspends-fisherman-collision-check-filter",
         "terminal.real-king-forced-collision"
       ],
       "player1": [
@@ -907,7 +1024,8 @@
         ["prince", "b3"],
         ["sniper", "c3"],
         ["ghost", "d3"],
-        ["angel", "g3"]
+        ["jester", "g3"],
+        ["pawn", "h3"]
       ],
       "player2": [
         ["king", "e1"],
@@ -926,8 +1044,8 @@
         {"move": "g9-g10"},
         {"move": "d5-d6"},
         {"move": "g10-g9"},
-        {"move": "d6-d7"},
-        {"terminal_move": {"move": "d8!d1", "label": "knockout"}}
+        {"move": "d6-d7", "proves": ["jester.suspends-fisherman-collision-check-filter"]},
+        {"terminal_move": {"move": "d8!d1", "label": "knockout"}, "proves": ["fisherman.forced-hidden-ghost-collision", "ghost.forced-collision-death", "terminal.real-king-forced-collision"]}
       ]
     },
     {
@@ -965,8 +1083,8 @@
         {"move": "d6-d5"},
         {"move": "b2-b1"},
         {"move": "d5-d4"},
-        {"move": "d3-d4"},
-        {"native_deaths": ["ghost", "penguin"]}
+        {"move": "d3-d4", "proves": ["penguin.hidden-enemy-cell-is-apparently-empty"]},
+        {"native_deaths": ["ghost", "penguin"], "proves": ["penguin.blind-hidden-ghost-mutual-knockout", "ghost.blind-capture-death"]}
       ]
     },
     {
@@ -999,9 +1117,242 @@
       "steps": [
         {"move": "b2&f3"},
         {"move": "c8-c3"},
-        {"native_deaths": ["copycat", "copycat"]},
-        {"reject": "f3-e4"},
+        {"native_deaths": ["copycat", "copycat"], "proves": ["copycat.linked-death-is-atomic"]},
+        {"reject": "f3-e4", "proves": ["copycat.partner-angel-bypassed-after-first-half-dies"]},
+        {"piece": {"type": "rook", "square": "c3"}, "proves": ["angel.orphaned-after-linked-host-death"]}
+      ]
+    },
+    {
+      "id": "copycat-struck-half-angel-saves-pair",
+      "covers": [
+        "angel.struck-copycat-intercepts-linked-death",
+        "copycat.partner-survives-first-half-angel-rescue"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["jester", "h1"],
+        ["angel", "b2"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["copycat", "c3"],
+        ["sniper", "e3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["fisherman", "e1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["rook", "f3"],
+        ["pawn", "h3"]
+      ],
+      "steps": [
+        {"move": "b2&c3"},
+        {"move": "c8-c3"},
+        {"native_deaths": ["angel"], "proves": ["angel.struck-copycat-intercepts-linked-death"]},
+        {"piece": {"type": "copycat", "square": "b2"}},
+        {"piece": {"type": "copycat", "square": "f3"}, "proves": ["copycat.partner-survives-first-half-angel-rescue"]},
         {"piece": {"type": "rook", "square": "c3"}}
+      ]
+    },
+    {
+      "id": "hidden-ghost-angel-rescues-blind-capture",
+      "covers": [
+        "angel.hidden-ghost-death-interception",
+        "ghost.blind-capture-rescues-to-halo",
+        "rook.completes-blind-capture-after-ghost-rescue"
+      ],
+      "player1": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["rook", "d3"],
+        ["ninja", "c1"],
+        ["prince", "d1"],
+        ["sniper", "e1"],
+        ["bomb", "f3"]
+      ],
+      "player2": [
+        ["king", "a1"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["ghost", "e3"],
+        ["angel", "g3"]
+      ],
+      "steps": [
+        {"move": "b1-b2"},
+        {"move": "b8&d8"},
+        {"move": "b2-b1"},
+        {"move": "d8-d7"},
+        {"move": "b1-b2"},
+        {"move": "d7-d6"},
+        {"move": "b2-b1"},
+        {"move": "d6-d5"},
+        {"move": "b1-b2"},
+        {"move": "d5-d4"},
+        {"move": "d3-d4"},
+        {"native_deaths": ["angel"], "proves": ["angel.hidden-ghost-death-interception"]},
+        {"piece": {"type": "ghost", "square": "b8"}, "proves": ["ghost.blind-capture-rescues-to-halo"]},
+        {"piece": {"type": "rook", "square": "d4"}, "proves": ["rook.completes-blind-capture-after-ghost-rescue"]}
+      ]
+    },
+    {
+      "id": "fisherman-collision-angel-saves-dragged-king",
+      "covers": [
+        "angel.intercepts-dragged-king-collision-death",
+        "fisherman.collision-dispatches-independent-deaths",
+        "ghost.dies-when-dragged-king-is-rescued"
+      ],
+      "player1": [
+        ["king", "d1"],
+        ["jester", "h1"],
+        ["ghost", "d3"],
+        ["angel", "g3"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["pawn", "e1"],
+        ["turtle", "f1"]
+      ],
+      "player2": [
+        ["king", "e1"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["fisherman", "e3"],
+        ["angel", "g3"],
+        ["pawn", "h3"]
+      ],
+      "steps": [
+        {"move": "g3&d1"},
+        {"move": "g10-g9"},
+        {"move": "d3-d4"},
+        {"move": "g9-g10"},
+        {"move": "d4-d5"},
+        {"move": "g10-g9"},
+        {"move": "d5-d6"},
+        {"move": "g9-g10"},
+        {"move": "d6-d7"},
+        {"move": "d8!d1", "proves": ["fisherman.collision-dispatches-independent-deaths"]},
+        {"native_deaths": ["angel", "ghost"], "proves": ["ghost.dies-when-dragged-king-is-rescued"]},
+        {"piece": {"type": "king", "square": "g3"}, "proves": ["angel.intercepts-dragged-king-collision-death"]}
+      ]
+    },
+    {
+      "id": "royal-legal-dot-filters-jester-capture",
+      "covers": [
+        "legal-dots.jester-target-filtered-by-protected-real-king"
+      ],
+      "player1": [
+        ["king", "e3"],
+        ["jester", "f3"],
+        ["queen", "a1"],
+        ["ninja", "b1"],
+        ["prince", "c1"],
+        ["sniper", "d1"],
+        ["rook", "a3"],
+        ["checker", "c2"],
+        ["pawn", "f2"]
+      ],
+      "player2": [
+        ["king", "d3"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["ghost", "e3"],
+        ["rook", "g3"]
+      ],
+      "steps": [
+        {"move": "e3-e4"},
+        {"move": "e8-e7"},
+        {"move": "e4-e5"},
+        {"move": "g10-g9"},
+        {"move": "f3-f4"},
+        {"move": "g9-g10"},
+        {"move": "f4-f5"},
+        {"move": "g10-g9"},
+        {"move": "f5-e6"},
+        {"reject": "e7-e6", "proves": ["legal-dots.jester-target-filtered-by-protected-real-king"]}
+      ]
+    },
+    {
+      "id": "royal-legal-dot-allows-real-king-capture",
+      "covers": [
+        "legal-dots.real-king-target-is-legal-capture"
+      ],
+      "player1": [
+        ["king", "e3"],
+        ["jester", "f3"],
+        ["queen", "a1"],
+        ["ninja", "b1"],
+        ["prince", "c1"],
+        ["sniper", "d1"],
+        ["rook", "a3"],
+        ["checker", "c2"],
+        ["pawn", "f2"]
+      ],
+      "player2": [
+        ["king", "d3"],
+        ["queen", "b1"],
+        ["ninja", "a3"],
+        ["prince", "b3"],
+        ["sniper", "c3"],
+        ["ghost", "e3"],
+        ["rook", "g3"]
+      ],
+      "steps": [
+        {"move": "e3-d4"},
+        {"move": "g10-g9"},
+        {"move": "f3-f4"},
+        {"move": "g9-g10"},
+        {"move": "d4-d5"},
+        {"move": "g10-g9"},
+        {"move": "f4-f5"},
+        {"move": "g9-g10"},
+        {"move": "f5-e5"},
+        {"move": "e8-e7"},
+        {"move": "d5-e6"},
+        {"move": "e7-e6", "proves": ["legal-dots.real-king-target-is-legal-capture"]},
+        {"native_deaths": ["king"]}
+      ]
+    },
+    {
+      "id": "bomb-chains-to-knight-versus-king-draw",
+      "covers": [
+        "bomb.chain-clears-clustered-material",
+        "terminal.knight-versus-bare-king-insufficient-draw",
+        "terminal.native-draw-label"
+      ],
+      "player1": [
+        ["king", "g1"],
+        ["knight", "f1"],
+        ["queen", "h3"],
+        ["bomb", "a3"],
+        ["bomb", "b3"],
+        ["bomb", "c3"],
+        ["bomb", "a2"],
+        ["bomb", "b2"],
+        ["checker", "c2"]
+      ],
+      "player2": [
+        ["king", "h1"],
+        ["queen", "h3"],
+        ["bomb", "a3"],
+        ["bomb", "b3"],
+        ["bomb", "c3"],
+        ["bomb", "a2"],
+        ["bomb", "b2"],
+        ["mage", "c2"]
+      ],
+      "steps": [
+        {"move": "h3-h8"},
+        {"native_deaths": ["bomb", "bomb", "bomb", "bomb", "bomb", "mage", "queen"], "proves": ["bomb.chain-clears-clustered-material"]},
+        {"terminal_move": {"move": "a8-a3", "label": "draw"}, "proves": ["terminal.knight-versus-bare-king-insufficient-draw", "terminal.native-draw-label"]}
       ]
     }
   ],
