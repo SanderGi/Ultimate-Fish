@@ -24,8 +24,12 @@ class OrdinaryGhostManifestTests(unittest.TestCase):
         return SimpleNamespace(
             filename="kknightghostk.uftb", piece="knight",
             orientation="same", source_sha256="1" * 64,
-            model_sha256="2" * 64, lower_sha256="3" * 64,
-            lower_model_sha256="4" * 64)
+            model_sha256="2" * 64, observation_sha256="3" * 64,
+            lower_sha256="4" * 64, lower_model_sha256="5" * 64,
+            lower_ghost_sha256="6" * 64,
+            lower_ghost_source_sha256="7" * 64,
+            lower_ghost_model_sha256="8" * 64,
+            lower_ghost_observation_sha256="9" * 64)
 
     def test_manifest_keeps_results_and_proof_logs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -46,6 +50,12 @@ class OrdinaryGhostManifestTests(unittest.TestCase):
                 "work/results/kknightghostk.ufgd",
                 "work/logs/build.log", "work/logs/solve.log",
             })
+            self.assertEqual(manifest["observation_sha256"], "3" * 64)
+            self.assertEqual(manifest["lower_ghost_sidecar_sha256"], "6" * 64)
+            self.assertEqual(manifest["lower_ghost_source_sha256"], "7" * 64)
+            self.assertEqual(manifest["lower_ghost_model_sha256"], "8" * 64)
+            self.assertEqual(
+                manifest["lower_ghost_observation_sha256"], "9" * 64)
 
     def test_incomplete_result_proof_fails_closed(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

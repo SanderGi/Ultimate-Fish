@@ -1272,7 +1272,7 @@ export function UltimateWorkbench() {
       payload: Record<string, unknown>,
       signal?: AbortSignal,
     ) => {
-      const response = await fetch(`http://127.0.0.1:3001${endpoint}`, {
+      const response = await fetch(`/api/engine${endpoint}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
@@ -1352,7 +1352,7 @@ export function UltimateWorkbench() {
       onIteration: (iteration: EngineAnalysis) => void,
       signal?: AbortSignal,
     ): Promise<EngineAnalysis> => {
-      const response = await fetch(`http://127.0.0.1:3001${endpoint}`, {
+      const response = await fetch(`/api/engine${endpoint}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),

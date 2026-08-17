@@ -21,6 +21,10 @@ struct TransitionOptions {
     std::string lowerDragonSha256;
     std::string lowerDragonSourceSha256;
     std::string lowerDragonModelSha256;
+    std::string promotedLowerDragonTable;
+    std::string promotedLowerDragonSha256;
+    std::string promotedLowerDragonSourceSha256;
+    std::string promotedLowerDragonModelSha256;
     std::uint32_t geometryBegin = 0;
     std::uint32_t geometryCount = 0;
 };
@@ -52,6 +56,7 @@ struct SolveOptions {
     std::string promotedModelSha256;
     std::string promotedObservationSha256;
     std::string promotedLowerGhostSidecarSha256;
+    std::string promotedLowerDragonTable;
     std::string promotedLowerDragonFullSha256;
     std::string promotedLowerDragonSourceSha256;
     std::string promotedLowerDragonModelSha256;

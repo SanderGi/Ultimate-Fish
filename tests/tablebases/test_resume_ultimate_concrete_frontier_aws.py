@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 from pathlib import Path
 import struct
 import tempfile
@@ -206,6 +207,44 @@ class FrontierResumeTests(unittest.TestCase):
                 result = RESUME.authenticate_manifest(document)
             self.assertIn("reverse-incomplete", result["frontier_status"])
 
+    def test_transport_manifest_accepts_later_reverse_plane_mtimes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            document = self.fixture(Path(temporary))
+            source = Path(document["source_work_directory"])
+            frontier_time = 1_000_000_000
+            reverse_times = {
+                "offsets": 2_000_000_000,
+                "predecessors": 3_000_000_000,
+            }
+            for name in ("nodes", "degrees"):
+                path = source / document["planes"][name]["relative_path"]
+                os.utime(path, ns=(frontier_time, frontier_time))
+            for name, timestamp in reverse_times.items():
+                path = source / document["planes"][name]["relative_path"]
+                os.utime(path, ns=(timestamp, timestamp))
+            document["discarded_reverse_graph"] = {
+                name: {
+                    key: value for key, value in document["planes"][name].items()
+                    if key != "sha256"
+                }
+                for name in ("offsets", "predecessors")
+            }
+            document["discarded_reverse_graph"]["predecessors"][
+                "allocated_bytes"] = document[
+                    "discarded_reverse_graph"]["predecessors"]["bytes"]
+            for name in ("offsets", "predecessors"):
+                del document["planes"][name]
+            document["reverse_phase_evidence"] = {
+                "schema": "ultimate-reverse-phase-mtime-v1",
+                "frontier_planes_max_mtime_ns": frontier_time,
+                "reverse_plane_mtime_ns": reverse_times,
+            }
+            with mock.patch.object(
+                    RESUME.concrete, "generator_model_sha256",
+                    return_value=document["generator_model_sha256"]):
+                result = RESUME.authenticate_manifest(document)
+            self.assertIn("complete-frontier", result["frontier_status"])
+
     def test_native_checkpoint_is_exclusive_and_sources_stay_unchanged(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -238,6 +277,7 @@ class FrontierResumeTests(unittest.TestCase):
         args = RESUME.parse_args([])
         self.assertFalse(args.full)
         self.assertFalse(args.preserve_completed)
+        self.assertFalse(args.preserve_completed_artifacts_only)
         self.assertFalse(args.local_only)
         self.assertIsNone(args.work_directory)
 
@@ -285,13 +325,17 @@ class FrontierResumeTests(unittest.TestCase):
             }))
             archive = work / "archives" / f"{stem}-archive.tar.zst"
 
-            def make_archive(*_args, **_kwargs):
+            archived_files = {}
+
+            def make_archive(_directory, _stem, files, _schema):
+                archived_files.update(files)
                 archive.parent.mkdir(parents=True)
                 archive.write_bytes(b"archive")
                 return archive, "c" * 64
 
             args = RESUME.parse_args([
-                "--preserve-completed", "--manifest", str(manifest),
+                "--preserve-completed-artifacts-only",
+                "--manifest", str(manifest),
                 "--work-directory", str(work), "--aws-execution-ack", "EC2",
                 "--s3-prefix", "s3://example/results",
             ])
@@ -316,8 +360,12 @@ class FrontierResumeTests(unittest.TestCase):
                         return_value={"version_id": "version"}), \
                     mock.patch.object(
                         RESUME, "authenticate_manifest") as authenticate:
-                preserved = RESUME.preserve_completed(args, document)
+                preserved = RESUME.preserve_completed(
+                    args, document, artifacts_only=True)
             authenticate.assert_not_called()
+            self.assertNotIn("binary/ultimate_tablebase", archived_files)
+            self.assertFalse(any(
+                path.startswith("sources/") for path in archived_files))
             self.assertFalse(preserved["generator_rerun"])
             self.assertFalse(preserved["preserved_frontier_reread"])
             self.assertTrue(

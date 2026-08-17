@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import re
 import tempfile
 
 import plan_ultimate_tablebases as plan
@@ -15,6 +16,9 @@ import update_ultimate_tablebase_ledger as ledger
 ROOT = Path(__file__).resolve().parents[2]
 README = ROOT / "tablebases/README.md"
 SUPERVISION = ROOT / "tools/tablebases/ultimate_aws_supervision.json"
+SCHEMA = "ultimate-concrete-reachability-sidecar-v1"
+PREDICATE = "native-full-causal-reachability"
+HEX64 = re.compile(r"[0-9a-f]{64}")
 
 
 def catalog() -> dict[str, dict[str, object]]:
@@ -28,6 +32,63 @@ def catalog() -> dict[str, dict[str, object]]:
 def hidden(record: dict[str, object]) -> bool:
     return bool({str(record["primary"]), str(record["secondary"])} &
                 {"jester", "ghost"})
+
+
+def validate_receipt(receipt: dict[str, object]) -> None:
+    """Fail closed unless a reachability receipt binds one exact table.
+
+    The filename in the payload and the basename of the versioned sidecar are
+    both checked.  This prevents a valid audit for one material class from
+    being attached to another row whose state count happens to match.
+    """
+    filename = receipt.get("filename")
+    records = catalog()
+    if (receipt.get("schema") != SCHEMA or
+            receipt.get("predicate") != PREDICATE or
+            not isinstance(filename, str) or filename not in records):
+        raise ValueError("reachability receipt schema/material residual")
+    expected_states = int(records[filename]["states"])
+    output_sha = receipt.get("output_sha256")
+    if (receipt.get("states") != expected_states or
+            not isinstance(output_sha, str) or
+            HEX64.fullmatch(output_sha) is None):
+        raise ValueError(f"{filename}: reachability output binding residual")
+    totals = receipt.get("totals")
+    unreachable = receipt.get("unreachable")
+    if (not isinstance(totals, list) or not isinstance(unreachable, list) or
+            len(totals) != 2 or len(unreachable) != 2):
+        raise ValueError(f"{filename}: reachability W/L/D shape residual")
+    for side in (0, 1):
+        if (not isinstance(totals[side], list) or
+                not isinstance(unreachable[side], list) or
+                len(totals[side]) != 4 or len(unreachable[side]) != 4 or
+                any(type(value) is not int or value < 0
+                    for value in totals[side] + unreachable[side]) or
+                any(omitted > whole for whole, omitted in
+                    zip(totals[side], unreachable[side])) or
+                sum(totals[side]) != expected_states // 2):
+            raise ValueError(f"{filename}: reachability W/L/D residual")
+    table = receipt.get("table_archive")
+    wave = receipt.get("wave_certificate")
+    reach = receipt.get("reachability_s3")
+    if not all(isinstance(value, dict) for value in (table, wave, reach)):
+        raise ValueError(f"{filename}: reachability S3 binding residual")
+    assert isinstance(table, dict)
+    assert isinstance(wave, dict)
+    assert isinstance(reach, dict)
+    for label, remote in (("table", table), ("wave", wave),
+                          ("reachability", reach)):
+        if (not isinstance(remote.get("key"), str) or
+                not isinstance(remote.get("version_id"), str) or
+                not remote["version_id"] or
+                not isinstance(remote.get("sha256"), str) or
+                HEX64.fullmatch(str(remote["sha256"])) is None or
+                type(remote.get("bytes")) is not int or remote["bytes"] <= 0):
+            raise ValueError(f"{filename}: {label} S3 binding residual")
+    expected_name = f"{Path(filename).stem}.reachability-v1.json"
+    if (Path(str(reach["key"])).name != expected_name or
+            f"/sha256/{reach['sha256']}/" not in "/" + str(reach["key"])):
+        raise ValueError(f"{filename}: reachability sidecar filename residual")
 
 
 def cell(total: list[int], unreachable: list[int]) -> str:
@@ -96,6 +157,7 @@ def update_supervision(receipts: list[dict[str, object]], path: Path) -> int:
             jobs_by_file.setdefault(str(filename), []).append(job)
     records = catalog()
     for receipt in receipts:
+        validate_receipt(receipt)
         filename = str(receipt["filename"])
         matches = jobs_by_file.get(filename, [])
         if len(matches) != 1:
@@ -129,6 +191,7 @@ def import_receipts(receipts: list[dict[str, object]], readme: Path) -> tuple[in
     stored: list[str] = []
     certified_count = hidden_count = 0
     for receipt in receipts:
+        validate_receipt(receipt)
         filename = str(receipt["filename"])
         material = records.get(filename)
         if material is None:

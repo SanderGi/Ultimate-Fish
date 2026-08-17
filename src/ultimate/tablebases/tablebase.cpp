@@ -1108,6 +1108,14 @@ class TablebaseGenerator {
         std::atomic<std::uint32_t> next{0};
         std::vector<Counts> local(workers);
         std::vector<Counts> localAll(workers);
+        std::vector<std::vector<Counts>> localByPrimarySubstate(
+          workers, std::vector<Counts>(primarySubstates_));
+        std::vector<std::vector<Counts>> localAllByPrimarySubstate(
+          workers, std::vector<Counts>(primarySubstates_));
+        std::vector<std::vector<Counts>> localBySecondarySubstate(
+          workers, std::vector<Counts>(secondarySubstates_));
+        std::vector<std::vector<Counts>> localAllBySecondarySubstate(
+          workers, std::vector<Counts>(secondarySubstates_));
         std::vector<Examples> localExamples(workers);
         for (Examples& examples : localExamples)
             for (auto& side : examples)
@@ -1221,19 +1229,31 @@ class TablebaseGenerator {
                         const std::uint32_t result =
                           (wdl[index / 4] >> (2 * (index % 4))) & 3;
                         const std::size_t side = static_cast<std::size_t>(encodedSide);
+                        const std::size_t primarySubstate =
+                          (index % substates_) / secondarySubstates_;
+                        const std::size_t secondarySubstate =
+                          index % secondarySubstates_;
                         ++localAll[worker][side][result];
+                        ++localAllByPrimarySubstate[worker][primarySubstate][side][result];
+                        ++localAllBySecondarySubstate[worker][secondarySubstate][side][result];
                         if (!unreachable) {
                             localExamples[worker][side][result] = std::min(
                               localExamples[worker][side][result], index);
                             continue;
                         }
                         ++local[worker][side][result];
+                        ++localByPrimarySubstate[worker][primarySubstate][side][result];
+                        ++localBySecondarySubstate[worker][secondarySubstate][side][result];
                     }
                 }
             });
         for (std::thread& task : tasks)
             task.join();
         Counts totals{}, allTotals{};
+        std::vector<Counts> byPrimarySubstate(primarySubstates_);
+        std::vector<Counts> allByPrimarySubstate(primarySubstates_);
+        std::vector<Counts> bySecondarySubstate(secondarySubstates_);
+        std::vector<Counts> allBySecondarySubstate(secondarySubstates_);
         Examples examples{};
         for (auto& side : examples)
             side.fill(std::numeric_limits<std::uint32_t>::max());
@@ -1245,6 +1265,30 @@ class TablebaseGenerator {
             for (std::size_t side = 0; side < 2; ++side)
                 for (std::size_t result = 0; result < 4; ++result)
                     allTotals[side][result] += part[side][result];
+        for (const auto& worker : localByPrimarySubstate)
+            for (std::size_t substate = 0; substate < primarySubstates_; ++substate)
+                for (std::size_t side = 0; side < 2; ++side)
+                    for (std::size_t result = 0; result < 4; ++result)
+                        byPrimarySubstate[substate][side][result] +=
+                          worker[substate][side][result];
+        for (const auto& worker : localAllByPrimarySubstate)
+            for (std::size_t substate = 0; substate < primarySubstates_; ++substate)
+                for (std::size_t side = 0; side < 2; ++side)
+                    for (std::size_t result = 0; result < 4; ++result)
+                        allByPrimarySubstate[substate][side][result] +=
+                          worker[substate][side][result];
+        for (const auto& worker : localBySecondarySubstate)
+            for (std::size_t substate = 0; substate < secondarySubstates_; ++substate)
+                for (std::size_t side = 0; side < 2; ++side)
+                    for (std::size_t result = 0; result < 4; ++result)
+                        bySecondarySubstate[substate][side][result] +=
+                          worker[substate][side][result];
+        for (const auto& worker : localAllBySecondarySubstate)
+            for (std::size_t substate = 0; substate < secondarySubstates_; ++substate)
+                for (std::size_t side = 0; side < 2; ++side)
+                    for (std::size_t result = 0; result < 4; ++result)
+                        allBySecondarySubstate[substate][side][result] +=
+                          worker[substate][side][result];
         for (const Examples& part : localExamples)
             for (std::size_t side = 0; side < 2; ++side)
                 for (std::size_t result = 0; result < 4; ++result)
@@ -1265,6 +1309,50 @@ class TablebaseGenerator {
                       << " win " << allTotals[side][1]
                       << " loss " << allTotals[side][2]
                       << " draw " << allTotals[side][3] << '\n';
+        if (primarySubstates_ > 1)
+            for (std::size_t substate = 0; substate < primarySubstates_; ++substate)
+                for (std::size_t side = 0; side < 2; ++side) {
+                    const auto& source = byPrimarySubstate[substate][side];
+                    std::cout << (full ? "reachability_primary_substate" :
+                                          "predecessor_safety_primary_substate")
+                              << " substate " << substate
+                              << " side " << side
+                              << " unknown " << source[0]
+                              << " win " << source[1]
+                              << " loss " << source[2]
+                              << " draw " << source[3] << '\n';
+                    const auto& allSource = allByPrimarySubstate[substate][side];
+                    std::cout << (full ? "reachability_primary_substate_total" :
+                                          "predecessor_safety_primary_substate_total")
+                              << " substate " << substate
+                              << " side " << side
+                              << " unknown " << allSource[0]
+                              << " win " << allSource[1]
+                              << " loss " << allSource[2]
+                              << " draw " << allSource[3] << '\n';
+                }
+        if (secondarySubstates_ > 1)
+            for (std::size_t substate = 0; substate < secondarySubstates_; ++substate)
+                for (std::size_t side = 0; side < 2; ++side) {
+                    const auto& source = bySecondarySubstate[substate][side];
+                    std::cout << (full ? "reachability_secondary_substate" :
+                                          "predecessor_safety_secondary_substate")
+                              << " substate " << substate
+                              << " side " << side
+                              << " unknown " << source[0]
+                              << " win " << source[1]
+                              << " loss " << source[2]
+                              << " draw " << source[3] << '\n';
+                    const auto& allSource = allBySecondarySubstate[substate][side];
+                    std::cout << (full ? "reachability_secondary_substate_total" :
+                                          "predecessor_safety_secondary_substate_total")
+                              << " substate " << substate
+                              << " side " << side
+                              << " unknown " << allSource[0]
+                              << " win " << allSource[1]
+                              << " loss " << allSource[2]
+                              << " draw " << allSource[3] << '\n';
+                }
         if (full)
             for (std::size_t side = 0; side < 2; ++side)
                 for (std::size_t result = 1; result < 4; ++result)

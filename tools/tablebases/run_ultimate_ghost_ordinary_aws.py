@@ -73,8 +73,14 @@ def write_manifest(work: Path, args: argparse.Namespace) -> None:
         "filename": args.filename, "piece": args.piece,
         "orientation": args.orientation, "source_sha256": args.source_sha256,
         "model_sha256": args.model_sha256,
+        "observation_sha256": args.observation_sha256,
         "lower_sha256": args.lower_sha256,
         "lower_model_sha256": args.lower_model_sha256,
+        "lower_ghost_sidecar_sha256": args.lower_ghost_sha256,
+        "lower_ghost_source_sha256": args.lower_ghost_source_sha256,
+        "lower_ghost_model_sha256": args.lower_ghost_model_sha256,
+        "lower_ghost_observation_sha256":
+            args.lower_ghost_observation_sha256,
         "files": {str(path.relative_to(work)): {
             "bytes": path.stat().st_size, "sha256": sha256_path(path)}
             for path in artifacts},
@@ -135,6 +141,7 @@ def main() -> None:
     parser.add_argument("--promoted-model-sha256", default="")
     parser.add_argument("--promoted-observation-sha256", default="")
     parser.add_argument("--promoted-lower-ghost-sidecar-sha256", default="")
+    parser.add_argument("--promoted-lower-table", type=Path)
     parser.add_argument("--promoted-lower-table-sha256", default="")
     parser.add_argument("--promoted-lower-model-sha256", default="")
     parser.add_argument("--lower-ghost-sha256", required=True)
@@ -144,6 +151,8 @@ def main() -> None:
     parser.add_argument("--lower-ghost-model-sha256", required=True)
     parser.add_argument("--lower-ghost-observation-sha256", required=True)
     parser.add_argument("--parallelism", type=int, default=20)
+    parser.add_argument("--solve-max-nodes", type=int, default=500_000_000,
+                        help="exact ROBDD node budget for solve-only retries")
     parser.add_argument("--transitions-only", action="store_true",
                         help="build and merge fresh transition shards, then stop")
     parser.add_argument("--resume-transitions", action="store_true",
@@ -164,6 +173,8 @@ def main() -> None:
             "resume-transitions requires transitions-only mode")
     if not args.transitions_only and args.lower_ghost_sidecar is None:
         raise RuntimeError("solve mode requires --lower-ghost-sidecar")
+    if args.solve_max_nodes < 500_000_000:
+        raise RuntimeError("solve ROBDD node budget may not shrink below baseline")
 
     if args.finalize_existing:
         work = args.work.resolve(strict=True)
@@ -223,6 +234,12 @@ def main() -> None:
                 "Pawn solve requires promoted Queen/Ghost sidecar")
         require_sha(args.promoted_sidecar, args.promoted_sidecar_sha256,
                     "promoted Queen/Ghost sidecar")
+    if args.piece == "pawn":
+        if args.promoted_lower_table is None:
+            raise RuntimeError("Pawn transitions require promoted K+Queen-v-K")
+        require_sha(args.promoted_lower_table,
+                    args.promoted_lower_table_sha256,
+                    "promoted lower Queen table")
     if args.work.exists() and not (args.solve_existing or
                                    args.resume_transitions):
         raise RuntimeError("ordinary Ghost work directory already exists")
@@ -252,6 +269,8 @@ def main() -> None:
         copies.append((args.lower_ghost_sidecar, "kghostk.ufgm"))
     if args.lower_table is not None:
         copies.append((args.lower_table, lower_name))
+    if args.piece == "pawn":
+        copies.append((args.promoted_lower_table, "kqueenk.uftb"))
     for source, name in copies:
         shutil.copyfile(source, work / "tablebases" / name)
     copied = [(work / "tablebases" / args.filename,
@@ -268,6 +287,10 @@ def main() -> None:
     if not implicit_lower:
         copied.append((work / "tablebases" / lower_name,
                        args.lower_sha256, "copied lower"))
+    if args.piece == "pawn":
+        copied.append((work / "tablebases/kqueenk.uftb",
+                       args.promoted_lower_table_sha256,
+                       "copied promoted lower Queen"))
     for path, expected, label in copied:
         require_sha(path, expected, label)
     for directory in ("work/logs", "work/transitions", "work/results",
@@ -325,6 +348,16 @@ def main() -> None:
         "--model-sha256", args.model_sha256,
         "--observation-sha256", args.observation_sha256,
     ]
+    if args.piece == "pawn":
+        binding += [
+            "--promoted-lower-dragon-table", "tablebases/kqueenk.uftb",
+            "--promoted-lower-dragon-sha256",
+            args.promoted_lower_table_sha256,
+            "--promoted-lower-dragon-source-sha256",
+            args.promoted_lower_table_sha256,
+            "--promoted-lower-dragon-model-sha256",
+            args.promoted_lower_model_sha256,
+        ]
     geometries = geometry_count(args.piece)
     if not args.solve_existing:
         run([str(executable), "--self-test", "--orientation", args.orientation,
@@ -383,7 +416,8 @@ def main() -> None:
       "--lower-source-sha256", args.lower_ghost_source_sha256,
       "--lower-model-sha256", args.lower_ghost_model_sha256,
       "--lower-observation-sha256", args.lower_ghost_observation_sha256,
-      "--max-nodes", "500000000", "--unique-slots", str(1 << 30),
+      "--max-nodes", str(args.solve_max_nodes),
+      "--unique-slots", str(1 << 30),
       "--compact-every", "1"]
     if args.piece == "pawn":
         solve += [

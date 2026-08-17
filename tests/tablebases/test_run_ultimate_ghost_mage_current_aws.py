@@ -38,6 +38,12 @@ class CurrentMageRunnerTests(unittest.TestCase):
             self.assertFalse(runner.KINDS[kind].get(
                 "transition_lower_ghost", False))
 
+    def test_solve_node_budget_is_explicit_and_bounded(self) -> None:
+        self.assertEqual("1000000000", runner.solve_node_budget(1_000_000_000))
+        for invalid in (0, 2_000_000_001):
+            with self.assertRaisesRegex(RuntimeError, "node budget"):
+                runner.solve_node_budget(invalid)
+
     def test_manifest_requires_both_sidecars_and_normalization(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             work = Path(temporary)

@@ -209,22 +209,23 @@ def entries(text: str) -> list[Entry]:
             status = old.status
         states = int(record["states"]) if record else None
         hidden = _requires_information(record)
-        if exact is not None and (not hidden or
-                                  filename in information.AFFECTED_FILENAMES):
+        if (old is not None and old.status in {"certified", "preserving"} and
+                old.first != "—" and old.second != "—" and
+                old.reachability != "—"):
+            # The computation ledger is canonical once a versioned audit has
+            # certified a result.  The generated-details table is an older
+            # local cache and must not silently replace corrected admitted /
+            # unreachable splits during an unrelated status or storage edit.
+            kind, first_cell, second_cell = (
+                old.result_kind, old.first, old.second)
+            audited = old.reachability
+            digest = exact.digest if exact is not None else ""
+        elif exact is not None and (not hidden or
+                                    filename in information.AFFECTED_FILENAMES):
             kind = "information v2" if hidden else "concrete"
             first_cell, second_cell = exact.first, exact.second
             audited = reachability(first_cell, second_cell)
             digest = exact.digest
-        elif (old is not None and old.status in {"certified", "preserving"} and
-              old.first != "—" and old.second != "—" and
-              old.reachability != "—"):
-            # S3-only information results may not have a concrete UFTB row in
-            # the legacy generated-details table.  Once their exact values
-            # enter the canonical ledger, retain them across status-only
-            # regeneration instead of silently reverting to placeholders.
-            kind, first_cell, second_cell = (
-                old.result_kind, old.first, old.second)
-            audited, digest = old.reachability, ""
         elif status == "draw":
             kind, first_cell, second_cell = "insufficient material", "0 / 0 / 1", "0 / 0 / 1"
             audited, digest = "closed-form draw", ""

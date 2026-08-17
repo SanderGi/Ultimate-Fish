@@ -109,6 +109,37 @@ def reverse_marker_proves_incomplete(
     return total == int(document["states"]) and 0 <= completed < total
 
 
+def reverse_phase_mtime_proves_frontier_complete(
+        document: dict[str, Any], source: Path) -> bool:
+    evidence = document.get("reverse_phase_evidence")
+    if not isinstance(evidence, dict) or evidence.get("schema") != \
+            "ultimate-reverse-phase-mtime-v1":
+        return False
+    frontier_mtime = evidence.get("frontier_planes_max_mtime_ns")
+    reverse_mtimes = evidence.get("reverse_plane_mtime_ns")
+    if not isinstance(frontier_mtime, int) or not isinstance(reverse_mtimes, dict) or \
+            set(reverse_mtimes) != {"offsets", "predecessors"} or \
+            not all(isinstance(value, int) for value in reverse_mtimes.values()):
+        return False
+    planes = document.get("planes")
+    reverse = document.get("discarded_reverse_graph")
+    if not isinstance(planes, dict):
+        return False
+    reverse_records = planes if "offsets" in planes else reverse
+    if not isinstance(reverse_records, dict):
+        return False
+    actual_frontier = max(
+        (source / planes[name]["relative_path"]).stat().st_mtime_ns
+        for name in ("nodes", "degrees"))
+    actual_reverse = {
+        name: (source / reverse_records[name]["relative_path"]).stat().st_mtime_ns
+        for name in ("offsets", "predecessors")
+    }
+    return (frontier_mtime == actual_frontier and
+            reverse_mtimes == actual_reverse and
+            min(actual_reverse.values()) > actual_frontier)
+
+
 def authenticate_manifest(document: dict[str, Any]) -> dict[str, Any]:
     source = Path(document["source_work_directory"]).resolve()
     if not source.is_dir():
@@ -207,8 +238,11 @@ def authenticate_manifest(document: dict[str, Any]) -> dict[str, Any]:
                     int(record.get("allocated_bytes", -1)) < 0):
                 raise RuntimeError("malformed discarded reverse evidence")
         predecessor = reverse["predecessors"]
+    reverse_marker = reverse_marker_proves_incomplete(document, log_text)
+    reverse_phase = reverse_phase_mtime_proves_frontier_complete(
+        document, source)
     if (int(predecessor["allocated_bytes"]) >= int(predecessor["bytes"]) and
-            not reverse_marker_proves_incomplete(document, log_text)):
+            not reverse_marker and not reverse_phase):
         raise RuntimeError("reverse graph was not proven incomplete")
 
     return {
@@ -275,6 +309,10 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--preserve-completed", action="store_true",
         help=("package, upload, download, and restore a completed --local-only "
               "resume without rerunning or rereading the preserved frontier"))
+    mode.add_argument(
+        "--preserve-completed-artifacts-only", action="store_true",
+        help=("preserve a completed --local-only resume without uploading "
+              "the generator binary or repository source files"))
     parser.add_argument("--local-only", action="store_true",
                         help="run and verify locally without packaging or S3 upload")
     parser.add_argument("--aws-execution-ack")
@@ -288,8 +326,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def preserve_completed(args: argparse.Namespace,
-                       document: dict[str, Any]) -> dict[str, Any]:
+def preserve_completed(args: argparse.Namespace, document: dict[str, Any], *,
+                       artifacts_only: bool = False) -> dict[str, Any]:
     """Preserve one verified local-only resume without touching its scratch."""
     if sys.platform == "darwin" or args.aws_execution_ack != "EC2":
         raise RuntimeError("completed frontier preservation is EC2-only")
@@ -342,17 +380,18 @@ def preserve_completed(args: argparse.Namespace,
     if result.get("output") != verification:
         raise RuntimeError("completed resume result/output residual")
 
-    files = {
+    files: dict[str, Path] = {
         f"tablebases/{output_name}": output,
         f"proof/{result_path.name}": result_path,
         f"proof/{log.name}": log,
         "proof/resume-plan.json": plan_path,
         "proof/resume-manifest.json": manifest_path,
         "proof/dependency-manifest.json": dependency_manifest,
-        "binary/ultimate_tablebase": binary,
     }
-    for relative in concrete.MODEL_SOURCES:
-        files[f"sources/{relative}"] = source / "bundle" / relative
+    if not artifacts_only:
+        files["binary/ultimate_tablebase"] = binary
+        for relative in concrete.MODEL_SOURCES:
+            files[f"sources/{relative}"] = source / "bundle" / relative
     archive, archive_sha = preservation.content_address_archive(
         work / "archives", checkpoint_stem, files, RESULT_SCHEMA)
     restored = preservation.restore_zstd_archive(
@@ -363,7 +402,8 @@ def preserve_completed(args: argparse.Namespace,
         raise RuntimeError("local resume archive restore residual")
     selection = document.get(
         "selection", {"wave": 0, "begin": 18, "end": 19, "classes": 1})
-    key = (f"concrete/v2/model/{document['generator_model_sha256']}/"
+    kind = "artifacts-only" if artifacts_only else "model"
+    key = (f"concrete/v2/{kind}/{document['generator_model_sha256']}/"
            f"wave-{selection['wave']}/sha256/{archive_sha}/{archive.name}")
     remote = preservation.upload_head_download_verify(
         source=archive, digest=archive_sha, extent=archive.stat().st_size,
@@ -372,12 +412,16 @@ def preserve_completed(args: argparse.Namespace,
         archive_schema=RESULT_SCHEMA)
     certificate = {
         "schema": concrete.CERTIFICATE_SCHEMA,
-        "status": "head-download-full-sha-archive-restore-verified",
+        "status": ("head-download-full-sha-artifact-only-archive-restore-verified"
+                   if artifacts_only else
+                   "head-download-full-sha-archive-restore-verified"),
         "generator_model_sha256": document["generator_model_sha256"],
         "inventory_sha256": document["inventory_sha256"],
         "selection": selection,
         "completed": [{
-            "filename": output_name, "status": "resumed-frontier-preserved",
+            "filename": output_name,
+            "status": ("resumed-frontier-artifacts-preserved"
+                       if artifacts_only else "resumed-frontier-preserved"),
             "output": verification,
             "archive": {"bytes": archive.stat().st_size,
                         "sha256": archive_sha, "key": key},
@@ -398,7 +442,9 @@ def preserve_completed(args: argparse.Namespace,
         download=work / "s3-verify/wave-certificate.json",
         archive_schema=None)
     return {
-        "status": "completed-local-resume-s3-restored",
+        "status": ("completed-local-resume-artifacts-only-s3-restored"
+                   if artifacts_only else
+                   "completed-local-resume-s3-restored"),
         "certificate_sha256": certificate_sha,
         "certificate_s3": certificate_remote,
         "generator_rerun": False, "preserved_frontier_reread": False,
@@ -455,8 +501,10 @@ def validate_full_gates(args: argparse.Namespace, work: Path,
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     document = load_manifest(args.manifest.resolve())
-    if args.preserve_completed:
-        print(canonical_json(preserve_completed(args, document)))
+    if args.preserve_completed or args.preserve_completed_artifacts_only:
+        print(canonical_json(preserve_completed(
+            args, document,
+            artifacts_only=args.preserve_completed_artifacts_only)))
         return 0
     authenticated = authenticate_manifest(document)
     preflight: dict[str, Any] = {

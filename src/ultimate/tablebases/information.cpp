@@ -64,6 +64,37 @@ constexpr int NoClass = -1;
          : Position::square_name(position.piece(id).square);
 }
 
+[[nodiscard]] std::uint8_t public_action(
+  const Position& position, int id, const DisclosureContext& disclosure) {
+    const PieceState& piece = position.piece(id);
+    std::uint8_t action = piece.action;
+    if (piece.type != PieceType::Penguin || !piece.onBoard)
+        return action;
+    const int sourceFile = piece.square % Position::BoardFiles;
+    const int sourceRank = piece.square / Position::BoardFiles;
+    const auto direction_bit = [](int file, int rank) -> std::uint8_t {
+        if (file == 0 && rank == 1) return 1;
+        if (file == 0 && rank == -1) return 2;
+        if (file == -1 && rank == 0) return 4;
+        if (file == 1 && rank == 0) return 8;
+        if (file == -1 && rank == 1) return 16;
+        if (file == 1 && rank == 1) return 32;
+        if (file == -1 && rank == -1) return 64;
+        if (file == 1 && rank == -1) return 128;
+        return 0;
+    };
+    for (int target = 0; target < position.piece_count(); ++target) {
+        const PieceState& frozen = position.piece(target);
+        if (!frozen.alive || !frozen.onBoard ||
+            !concealed_location(position, target, disclosure))
+            continue;
+        action &= static_cast<std::uint8_t>(~direction_bit(
+          frozen.square % Position::BoardFiles - sourceFile,
+          frozen.square / Position::BoardFiles - sourceRank));
+    }
+    return action;
+}
+
 struct PublicNode {
     int id = Position::NoPiece;
     std::string intrinsic;
@@ -116,7 +147,7 @@ struct NumericPublicNode {
     out << public_type(piece, id, disclosure) << ',' << color_name(piece.color)
         << ',' << square_token(position, id, disclosure)
         << ",board=" << int(piece.onBoard)
-        << ",action=" << int(piece.action)
+        << ",action=" << int(public_action(position, id, disclosure))
         << ",cooldown=" << int(piece.cooldown)
         << ",freeze=" << int(piece.freezeCount)
         << ",power=" << int(piece.power)
@@ -225,7 +256,7 @@ struct NumericPublicNode {
     key |= std::uint64_t(piece.color) << 6;
     key |= square << 7;
     key |= std::uint64_t(piece.onBoard) << 14;
-    key |= std::uint64_t(piece.action) << 15;
+    key |= std::uint64_t(public_action(position, id, disclosure)) << 15;
     key |= std::uint64_t(piece.cooldown) << 23;
     key |= std::uint64_t(piece.freezeCount) << 31;
     key |= std::uint64_t(piece.power) << 39;

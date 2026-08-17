@@ -135,10 +135,12 @@ def remote_script(args: argparse.Namespace, record: Mapping[str, object]) -> str
     command += ["--audit-reachability", f"$work/outputs/{encoded}"]
     audit_command = " ".join(command)
     sidecar = f'$work/{Path(args.filename).stem}.reachability-v2.txt'
+    binding = (f'reachability_binding filename {args.filename} '
+               'output_sha256 $table_sha')
     if args.reuse_reachability_sidecar:
-        audit_step = f'test -s "{sidecar}"'
+        audit_step = f'grep -Fx "{binding}" "{sidecar}"'
     else:
-        audit_step = f'{audit_command} >"{sidecar}"'
+        audit_step = f'{{ echo "{binding}"; {audit_command}; }} >"{sidecar}"'
     unit_check = ""
     if args.unit:
         unit_check = (
@@ -151,6 +153,7 @@ def remote_script(args: argparse.Namespace, record: Mapping[str, object]) -> str
 work={args.work_directory}
 test -f "$work/certificates/wave-certificate.json"
 test -f "$work/outputs/{encoded}"
+table_sha=$(sha256sum "$work/outputs/{encoded}" | cut -d' ' -f1)
 {unit_check}{audit_step}
 sidecar="$work/{Path(args.filename).stem}.reachability-v2.txt"
 side_sha=$(sha256sum "$sidecar" | cut -d' ' -f1)
@@ -159,9 +162,9 @@ cert_key={prefix}/concrete/v2/certificates/sha256/$cert_sha/wave-certificate.jso
 side_key={prefix}/reachability/sha256/$side_sha/{Path(args.filename).stem}.reachability-v2.txt
 aws s3api head-object --bucket {args.bucket} --key "$cert_key" --region {args.region} >"$work/certificate-head.json"
 if aws s3api head-object --bucket {args.bucket} --key "$side_key" --region {args.region} >"$work/reachability-put.json" 2>/dev/null; then
-  python3 -c 'import json,sys; h=json.load(open(sys.argv[1])); assert h["Metadata"]["sha256"] == sys.argv[2]' "$work/reachability-put.json" "$side_sha"
+  python3 -c 'import json,sys; h=json.load(open(sys.argv[1])); m=h["Metadata"]; assert m["sha256"] == sys.argv[2] and m["filename"] == sys.argv[3] and m["output_sha256"] == sys.argv[4]' "$work/reachability-put.json" "$side_sha" {args.filename} "$table_sha"
 else
-  aws s3api put-object --bucket {args.bucket} --key "$side_key" --body "$sidecar" --metadata sha256=$side_sha,predicate=native-full-causal-reachability --region {args.region} >"$work/reachability-put.json"
+  aws s3api put-object --bucket {args.bucket} --key "$side_key" --body "$sidecar" --metadata sha256=$side_sha,predicate=native-full-causal-reachability,filename={args.filename},output_sha256=$table_sha --region {args.region} >"$work/reachability-put.json"
 fi
 echo __ULTIMATE_CERTIFICATE__
 cat "$work/certificates/wave-certificate.json"
@@ -172,7 +175,7 @@ cat "$sidecar"
 echo __ULTIMATE_REACHABILITY_PUT__
 cat "$work/reachability-put.json"
 echo __ULTIMATE_KEYS__
-printf '%s\\n%s\\n%s\\n%s\\n' "$cert_sha" "$cert_key" "$side_sha" "$side_key"
+printf '%s\\n%s\\n%s\\n%s\\n%s\\n' "$cert_sha" "$cert_key" "$side_sha" "$side_key" "$table_sha"
 """
 
 
@@ -225,9 +228,9 @@ def import_result(args: argparse.Namespace, output: str,
     side_put = json.loads(section(
         output, "__ULTIMATE_REACHABILITY_PUT__", "__ULTIMATE_KEYS__"))
     keys = output.split("__ULTIMATE_KEYS__\n", 1)[1].strip().splitlines()
-    if len(keys) != 4:
+    if len(keys) != 5:
         raise ValueError("remote finalization key binding residual")
-    cert_sha, _cert_key, side_sha, _side_key = keys
+    cert_sha, _cert_key, side_sha, _side_key, table_sha = keys
     if (certificate.get("schema") != concrete.CERTIFICATE_SCHEMA or
             len(certificate.get("completed", [])) != 1):
         raise ValueError("concrete certificate schema/cardinality residual")
@@ -235,6 +238,8 @@ def import_result(args: argparse.Namespace, output: str,
     encoded = concrete.encoded_filename(args.filename)
     if completed.get("filename") != encoded:
         raise ValueError("concrete certificate filename residual")
+    if completed.get("output", {}).get("sha256") != table_sha:
+        raise ValueError("reachability sidecar output SHA-256 residual")
     table = completed["s3"]
     if any(table.get(key) in (None, "") for key in ("sha256", "version_id")):
         raise ValueError("concrete table S3 binding residual")

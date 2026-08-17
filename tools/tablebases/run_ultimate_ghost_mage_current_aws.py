@@ -61,6 +61,12 @@ def require_sha(path: Path, expected: str, label: str) -> None:
         raise RuntimeError(f"{label} SHA-256 mismatch: {path}")
 
 
+def solve_node_budget(value: int) -> str:
+    if not 1 <= value <= 2_000_000_000:
+        raise RuntimeError("specialized Ghost solve node budget is out of range")
+    return str(value)
+
+
 def run(command: list[str], root: Path, log: Path) -> None:
     log.parent.mkdir(parents=True, exist_ok=True)
     with log.open("xb") as output:
@@ -141,11 +147,13 @@ def main() -> None:
     parser.add_argument("--lower-public-sha256")
     parser.add_argument("--lower-public-model-sha256")
     parser.add_argument("--parallelism", type=int, default=29)
+    parser.add_argument("--solve-max-nodes", type=int, default=500_000_000)
     args = parser.parse_args()
     config = KINDS[args.kind]
     expected = config[args.orientation]
     if args.filename != expected or not 1 <= args.parallelism <= SHARDS:
         raise RuntimeError(f"{args.kind}/Ghost material or parallelism residual")
+    node_budget = solve_node_budget(args.solve_max_nodes)
     lower_values = (args.lower_public_table, args.lower_public_sha256,
                     args.lower_public_model_sha256)
     if bool(config["lower_public"]) != all(lower_values) or (
@@ -256,7 +264,7 @@ def main() -> None:
       "--lower-source-sha256", args.lower_ghost_source_sha256,
       "--lower-model-sha256", args.lower_ghost_model_sha256,
       "--lower-observation-sha256", args.lower_ghost_observation_sha256,
-      "--max-nodes", "500000000", "--unique-slots", str(1 << 30),
+      "--max-nodes", node_budget, "--unique-slots", str(1 << 30),
       "--compact-every", "1"]
     run(solve, work, work / "work/logs/solve.log")
     write_manifest(work, args)

@@ -71,6 +71,24 @@ namespace Stockfish::Ultimate {
     return live == 3 && kings == 2 && dragons == 1;
 }
 
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+[[nodiscard]] bool dragon_kernel_promoted_lower_child(
+  const Position& position) {
+    unsigned live = 0;
+    unsigned kings = 0;
+    unsigned queens = 0;
+    for (int id = 0; id < position.piece_count(); ++id) {
+        const PieceState& piece = position.piece(id);
+        if (!piece.alive || !piece.onBoard)
+            continue;
+        ++live;
+        kings += piece.type == PieceType::King;
+        queens += piece.type == PieceType::Queen;
+    }
+    return live == 3 && kings == 2 && queens == 1;
+}
+#endif
+
 // The audited Bishop compiler's only material-specific escape assumes that a
 // lone public extra is an insufficient draw.  Keep its bytes frozen, but make
 // that branch reachable for Dragon so the isolated post-compiler can replace
@@ -84,11 +102,18 @@ class DragonKernelPosition : public Position {
     DragonKernelPosition(const Position& position) : Position(position) {}
     DragonKernelPosition(Position&& position) : Position(std::move(position)) {}
     [[nodiscard]] bool game_over() const {
-        return dragon_kernel_lower_child(*this) || Position::game_over();
+        return dragon_kernel_lower_child(*this)
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+          || dragon_kernel_promoted_lower_child(*this)
+#endif
+          || Position::game_over();
     }
     [[nodiscard]] std::optional<Color> winner() const {
-        return dragon_kernel_lower_child(*this) ? std::nullopt
-                                                : Position::winner();
+        return (dragon_kernel_lower_child(*this)
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                || dragon_kernel_promoted_lower_child(*this)
+#endif
+               ) ? std::nullopt : Position::winner();
     }
 };
 
@@ -411,7 +436,10 @@ enum class DragonWdl : std::uint8_t { Win = 1, Loss = 2, Draw = 3 };
 
 class LowerDragonTable {
   public:
-    explicit LowerDragonTable(const std::string& path) {
+    explicit LowerDragonTable(const std::string& path,
+                              PieceType pieceType = PieceType::Dragon,
+                              std::uint32_t substates = LowerExtraSubstates)
+      : pieceType_(pieceType), substates_(substates) {
 #ifdef ULTIMATE_GHOST_ORDINARY_LOWER_DRAW_ONLY
         if (path != "implicit-draw")
             throw std::runtime_error("invalid implicit insufficient-material lower binding");
@@ -440,18 +468,18 @@ class LowerDragonTable {
 #else
             word(8) != 4 ||
 #endif
-            word(12) != static_cast<std::uint32_t>(PieceType::Dragon) ||
-            word(16) != 985'920 * LowerExtraSubstates ||
-            word(24) != LowerExtraSubstates ||
-            word(28) != (985'920 * LowerExtraSubstates + 3) / 4 ||
-            word(32) != 985'920 * LowerExtraSubstates || word(36) != 0 ||
+            word(12) != static_cast<std::uint32_t>(pieceType_) ||
+            word(16) != 985'920 * substates_ ||
+            word(24) != substates_ ||
+            word(28) != (985'920 * substates_ + 3) / 4 ||
+            word(32) != 985'920 * substates_ || word(36) != 0 ||
 #ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
             word(40) != static_cast<std::uint32_t>(PieceType::CopycatClone) ||
             word(44) != static_cast<std::uint32_t>(Color::White) ||
 #endif
             bytes_.size() != HeaderBytes +
-                               (985'920 * LowerExtraSubstates + 3) / 4 +
-                               985'920 * LowerExtraSubstates)
+                               (985'920 * substates_ + 3) / 4 +
+                               985'920 * substates_)
             throw std::runtime_error("incompatible authenticated kdragonk");
 #endif
     }
@@ -473,7 +501,7 @@ class LowerDragonTable {
             else if (piece.type == PieceType::King &&
                      piece.color == Color::Black)
                 blackKing = piece.square;
-            else if (dragon_kernel_piece_type(piece.type) &&
+            else if (piece.type == pieceType_ &&
                      piece.color == Color::White)
                 dragon = piece.square;
             else
@@ -500,13 +528,13 @@ class LowerDragonTable {
           [&] {
               for (int id = 0; id < position.piece_count(); ++id)
                   if (position.piece(id).alive && position.piece(id).onBoard &&
-                      dragon_kernel_piece_type(position.piece(id).type))
+                      position.piece(id).type == pieceType_)
                       return id;
               return Position::NoPiece;
-          }(), PieceType::Dragon);
-        if (!extraSubstate || *extraSubstate >= LowerExtraSubstates)
+          }(), pieceType_);
+        if (!extraSubstate || *extraSubstate >= substates_)
             throw std::runtime_error("lower extra substate residual");
-        const std::uint32_t stateIndex = index * LowerExtraSubstates +
+        const std::uint32_t stateIndex = index * substates_ +
                                          *extraSubstate;
         const std::uint8_t value =
           (bytes_[
@@ -524,12 +552,20 @@ class LowerDragonTable {
 
   private:
     std::vector<std::uint8_t> bytes_;
+    PieceType pieceType_ = PieceType::Dragon;
+    [[maybe_unused]] std::uint32_t substates_ = LowerExtraSubstates;
 };
 
 [[nodiscard]] std::uint8_t lower_dragon_force_flags(
   const Position& child, const MaterialSpec& material,
-  const LowerDragonTable& lower) {
-    if (!dragon_kernel_lower_child(child))
+  const LowerDragonTable& lower, bool promoted = false) {
+    if ((!promoted && !dragon_kernel_lower_child(child))
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+        || (promoted && !dragon_kernel_promoted_lower_child(child))
+#else
+        || promoted
+#endif
+        )
         throw std::runtime_error("lower-Dragon force requested for wrong class");
     std::optional<Color> winner;
     if (child.game_over())
@@ -627,7 +663,11 @@ void lower_dragon_probe_self_test(const MaterialSpec& material,
 
 DragonPatchCertificate rewrite_lower_dragon_edges(
   const std::string& prefix, const MaterialSpec& material,
-  const LowerDragonTable& lower, bool placeholders,
+  const LowerDragonTable& lower,
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+  const LowerDragonTable& promotedLower,
+#endif
+  bool placeholders,
   bool acceptPlaceholders, bool acceptAnyExact = false) {
     std::ifstream headerFile(prefix + ".header", std::ios::binary);
     ExternalTransitionHeader header;
@@ -677,19 +717,34 @@ DragonPatchCertificate rewrite_lower_dragon_edges(
                 Undo undo;
                 if (!child.make_move(moves[ordinal], undo))
                     throw std::runtime_error("Dragon patch move failed");
-                if (!dragon_kernel_lower_child(child))
+                const bool ordinaryLower = dragon_kernel_lower_child(child);
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                const bool promoted =
+                  dragon_kernel_promoted_lower_child(child);
+#else
+                const bool promoted = false;
+#endif
+                if (!ordinaryLower && !promoted)
                     continue;
+                const LowerDragonTable& selected = promoted
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                  ? promotedLower
+#else
+                  ? lower
+#endif
+                  : lower;
                 ExternalCompiledEdge& edge = edges[offsets[ghost] + ordinal];
                 if (edge.domain != ExternalChildDomain::Exact ||
                     (!acceptAnyExact && !acceptPlaceholders && edge.exact !=
-                       lower_dragon_force_flags(child, material, lower)) ||
+                       lower_dragon_force_flags(
+                         child, material, selected, promoted)) ||
                     (!acceptAnyExact && acceptPlaceholders && edge.exact != 0 &&
                      edge.exact != lower_dragon_force_flags(
-                       child, material, lower)))
+                       child, material, selected, promoted)))
                     throw std::runtime_error(
                       "Dragon lower-table transition residual");
                 const std::uint8_t expected = lower_dragon_force_flags(
-                  child, material, lower);
+                  child, material, selected, promoted);
                 edge.exact = placeholders ? 0 : expected;
                 ++certificate.lowerEdges;
                 certificate.ownerForces += expected == 1;
@@ -1166,6 +1221,24 @@ namespace {
     return lower;
 }
 
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+[[nodiscard]] LowerDragonTable authenticate_promoted_lower_dragon(
+  const TransitionOptions& options) {
+    if (!valid_sha(options.promotedLowerDragonSha256) ||
+        !valid_sha(options.promotedLowerDragonSourceSha256) ||
+        !valid_sha(options.promotedLowerDragonModelSha256) ||
+        options.promotedLowerDragonSourceSha256 !=
+          options.promotedLowerDragonSha256 ||
+        GhostPublicExtraExact::sha256_file(
+          options.promotedLowerDragonTable) !=
+          options.promotedLowerDragonSha256)
+        throw std::runtime_error(
+          "Pawn/Ghost transitions require authenticated compatible kqueenk");
+    return LowerDragonTable(
+      options.promotedLowerDragonTable, PieceType::Queen, 1);
+}
+#endif
+
 void write_dragon_marker(const TransitionOptions& options) {
     std::fstream marker(options.prefix + ".verified",
       std::ios::binary | std::ios::in | std::ios::out);
@@ -1176,19 +1249,37 @@ void write_dragon_marker(const TransitionOptions& options) {
     marker.seekp(sizeof(header));
     for (const std::string* hash : {&options.lowerDragonSha256,
                                     &options.lowerDragonSourceSha256,
-                                    &options.lowerDragonModelSha256})
+                                    &options.lowerDragonModelSha256
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                                    , &options.promotedLowerDragonSha256,
+                                    &options.promotedLowerDragonSourceSha256,
+                                    &options.promotedLowerDragonModelSha256
+#endif
+                                    })
         marker.write(hash->data(), 64);
     marker.close();
     struct stat status{};
     if (::stat((options.prefix + ".verified").c_str(), &status) ||
-        status.st_size != static_cast<off_t>(sizeof(header) + 192))
+        status.st_size != static_cast<off_t>(sizeof(header) +
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                                              384
+#else
+                                              192
+#endif
+                                              ))
         throw std::runtime_error("Dragon transition marker extent residual");
 }
 
 void authenticate_dragon_marker(const TransitionOptions& options) {
     std::ifstream marker(options.prefix + ".verified", std::ios::binary);
     ExternalTransitionHeader header;
-    std::array<char, 192> hashes{};
+    std::array<char,
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+      384
+#else
+      192
+#endif
+      > hashes{};
     marker.read(reinterpret_cast<char*>(&header), sizeof(header));
     marker.read(hashes.data(), hashes.size());
     if (!marker || marker.peek() != std::char_traits<char>::eof() ||
@@ -1196,24 +1287,48 @@ void authenticate_dragon_marker(const TransitionOptions& options) {
         std::string(hashes.data() + 64, 64) !=
           options.lowerDragonSourceSha256 ||
         std::string(hashes.data() + 128, 64) !=
-          options.lowerDragonModelSha256)
+          options.lowerDragonModelSha256
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+        || std::string(hashes.data() + 192, 64) !=
+          options.promotedLowerDragonSha256 ||
+        std::string(hashes.data() + 256, 64) !=
+          options.promotedLowerDragonSourceSha256 ||
+        std::string(hashes.data() + 320, 64) !=
+          options.promotedLowerDragonModelSha256
+#endif
+        )
         throw std::runtime_error(
           "Dragon transition marker dependency residual");
 }
 
 void certify_dragon_transitions(const TransitionOptions& options,
-                                const LowerDragonTable& lower) {
+                                const LowerDragonTable& lower
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                                , const LowerDragonTable& promotedLower
+#endif
+                                ) {
     const MaterialSpec material = normalized_material(options.orientation);
-    rewrite_lower_dragon_edges(options.prefix, material, lower, true, false);
+    rewrite_lower_dragon_edges(options.prefix, material, lower,
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                               promotedLower,
+#endif
+                               true, false);
     try {
         verify_external_transition_certificate(options.prefix, material);
     }
     catch (...) {
         rewrite_lower_dragon_edges(options.prefix, material, lower,
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                                   promotedLower,
+#endif
                                    false, true);
         throw;
     }
-    rewrite_lower_dragon_edges(options.prefix, material, lower, false, true);
+    rewrite_lower_dragon_edges(options.prefix, material, lower,
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                               promotedLower,
+#endif
+                               false, true);
     write_dragon_marker(options);
     authenticate_dragon_marker(options);
 }
@@ -1224,6 +1339,10 @@ void compile_transitions(const TransitionOptions& options) {
     if (options.prefix.empty() || !options.geometryCount)
         throw std::invalid_argument("Dragon/Ghost transition range is empty");
     const LowerDragonTable lower = authenticate_lower_dragon(options);
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    const LowerDragonTable promotedLower =
+      authenticate_promoted_lower_dragon(options);
+#endif
     if (options.orientation == Orientation::Same)
         compile_external_transitions(options.prefix,
           normalized_material(options.orientation), options.geometryBegin,
@@ -1232,14 +1351,26 @@ void compile_transitions(const TransitionOptions& options) {
         GhostPublicExtraExact::compile_reciprocal_external_transitions(
           options.prefix, options.geometryBegin, options.geometryCount);
     rewrite_lower_dragon_edges(options.prefix,
-      normalized_material(options.orientation), lower, false, true);
-    certify_dragon_transitions(options, lower);
+      normalized_material(options.orientation), lower,
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+      promotedLower,
+#endif
+      false, true);
+    certify_dragon_transitions(options, lower
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                               , promotedLower
+#endif
+                               );
 }
 
 void merge_transitions(const TransitionOptions& output,
                        const std::vector<std::string>& shards,
                        std::uint32_t expectedGeometries) {
     const LowerDragonTable lower = authenticate_lower_dragon(output);
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    const LowerDragonTable promotedLower =
+      authenticate_promoted_lower_dragon(output);
+#endif
     for (const std::string& shard : shards) {
         TransitionOptions input = output;
         input.prefix = shard;
@@ -1247,17 +1378,33 @@ void merge_transitions(const TransitionOptions& output,
     }
     merge_external_transition_shards(output.prefix, shards,
       normalized_material(output.orientation), expectedGeometries);
-    certify_dragon_transitions(output, lower);
+    certify_dragon_transitions(output, lower
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                               , promotedLower
+#endif
+                               );
 }
 
 void verify_transitions(const TransitionOptions& options) {
     const LowerDragonTable lower = authenticate_lower_dragon(options);
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    const LowerDragonTable promotedLower =
+      authenticate_promoted_lower_dragon(options);
+#endif
     authenticate_dragon_marker(options);
-    certify_dragon_transitions(options, lower);
+    certify_dragon_transitions(options, lower
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                               , promotedLower
+#endif
+                               );
 }
 
 void rebind_transitions(const TransitionOptions& options) {
     const LowerDragonTable lower = authenticate_lower_dragon(options);
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    const LowerDragonTable promotedLower =
+      authenticate_promoted_lower_dragon(options);
+#endif
     authenticate_dragon_marker(options);
     const MaterialSpec material = normalized_material(options.orientation);
     // A frozen store from an older ordinary-piece instantiation can carry
@@ -1267,17 +1414,27 @@ void rebind_transitions(const TransitionOptions& options) {
     // single pass, then restore the authenticated lower-table values after
     // the exhaustive structural certificate.  This avoids a redundant full
     // rewrite of multi-gigabyte block stores.
-    rewrite_lower_dragon_edges(
-      options.prefix, material, lower, true, false, true);
+    rewrite_lower_dragon_edges(options.prefix, material, lower,
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                               promotedLower,
+#endif
+                               true, false, true);
     try {
         verify_external_transition_certificate(options.prefix, material);
     }
     catch (...) {
         rewrite_lower_dragon_edges(options.prefix, material, lower,
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                                   promotedLower,
+#endif
                                    false, true);
         throw;
     }
-    rewrite_lower_dragon_edges(options.prefix, material, lower, false, true);
+    rewrite_lower_dragon_edges(options.prefix, material, lower,
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                               promotedLower,
+#endif
+                               false, true);
     write_dragon_marker(options);
     authenticate_dragon_marker(options);
 }
@@ -1366,6 +1523,16 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     transitions.lowerDragonSha256 = options.lowerDragonFullSha256;
     transitions.lowerDragonSourceSha256 = options.lowerDragonSourceSha256;
     transitions.lowerDragonModelSha256 = options.lowerDragonModelSha256;
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    transitions.promotedLowerDragonTable =
+      options.promotedLowerDragonTable;
+    transitions.promotedLowerDragonSha256 =
+      options.promotedLowerDragonFullSha256;
+    transitions.promotedLowerDragonSourceSha256 =
+      options.promotedLowerDragonSourceSha256;
+    transitions.promotedLowerDragonModelSha256 =
+      options.promotedLowerDragonModelSha256;
+#endif
     verify_transitions(transitions);
 
     const MaterialSpec material = normalized_material(options.orientation);
@@ -1441,6 +1608,10 @@ void exact_self_test(const std::string& scratchPrefix) {
     packed_four_header_self_test();
     for (const Orientation orientation : {Orientation::Same,
                                            Orientation::Opposing}) {
+        const MaterialSpec normalized = normalized_material(orientation);
+        external_child_substate_self_test(normalized);
+        ExternalGhostExtraFixedPoint::fresh_root_public_grouping_self_test(
+          normalized);
         const GhostPublicExtra::MaterialSpec material =
           adapter_material(orientation);
         for (std::uint32_t index = 0; index < StateCount; ++index) {

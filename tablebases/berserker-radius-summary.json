@@ -1,0 +1,1763 @@
+{
+  "audit_binary_sha256": "e5ca8d11a0bea9c411055be29b82879cc27e1e040ee0fd84e9569556dd03e1fa",
+  "description": "Exact reachability-admitted Berserker radius slices",
+  "files": {
+    "kberserkerberserkerk.uftb": {
+      "excluded": true,
+      "reason": "same-team identical Berserkers are exchange-folded and have no distinguished row piece"
+    },
+    "kberserkerbombk.uftb": {
+      "archive_sha256": "3addd3e350e38e9234eee0800c56cefbe7e89f403c5cd0288677fe29906a82ab",
+      "audit_sha256": "a5679a556831d1e55623510a44bd1fe6186aa1d8e3aa8a92b86369e7335a5414",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 13901148
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 37984,
+            "losses": 17263608,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 11813564
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 39004,
+            "losses": 17262588,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 9312466
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 37296,
+            "losses": 17264296,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/3addd3e350e38e9234eee0800c56cefbe7e89f403c5cd0288677fe29906a82ab/kberserkerbombk-3addd3e350e38e9234eee0800c56cefbe7e89f403c5cd0288677fe29906a82ab.tar.zst",
+      "s3_metadata_sha256": "3addd3e350e38e9234eee0800c56cefbe7e89f403c5cd0288677fe29906a82ab",
+      "s3_version_id": "wB7rq2TjG0O6HGb14C9Fq8G5zrsduq6u",
+      "source_sha256": "b05efd1d29f32bd1647ee78672a7b5acd3468729a0b262e4370754a74216c1f6",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerbombk.uftb"
+    },
+    "kberserkercheckerk.uftb": {
+      "archive_sha256": "2fc4257245ca71d92890041f7a9839d4a9ce6fd86993a035d63688f333823d06",
+      "audit_sha256": "342529e75d726f8702492dbd250486caf86a75234b60972391180aa4c92055c9",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 30312348
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 2623817,
+            "losses": 30379307,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 25883537
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 2625254,
+            "losses": 30377870,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 20558464
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 2626499,
+            "losses": 30376625,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/84592a0b9b609e8f36b8b6fd828c0f5547d2591d20b0fe235067277b87777ece/wave-0/sha256/2fc4257245ca71d92890041f7a9839d4a9ce6fd86993a035d63688f333823d06/kberserkercheckerk-2fc4257245ca71d92890041f7a9839d4a9ce6fd86993a035d63688f333823d06.tar.zst",
+      "s3_metadata_sha256": "2fc4257245ca71d92890041f7a9839d4a9ce6fd86993a035d63688f333823d06",
+      "s3_version_id": "YwZ858F1ByDKjxXp0UyskTOyOlAZugo7",
+      "source_sha256": "b0d8711c21ffafb76758d55c36298d50336501114dfcc7ce309076e9a298ab1f",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkercheckerk.uftb"
+    },
+    "kberserkerdragonk.uftb": {
+      "archive_sha256": "bbbfcb3df46108d7562ff6305b85b03cc0deffe7f5192eab16574ec6cb94a899",
+      "audit_sha256": "9e059a78b7418bbd94efe86eb1586e8df7643a877b55a4678411906d3b34ec1f",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 12877956
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 19264,
+            "losses": 17350088,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 10947676
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 27986,
+            "losses": 17341366,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 8654750
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 33676,
+            "losses": 17335676,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/bbbfcb3df46108d7562ff6305b85b03cc0deffe7f5192eab16574ec6cb94a899/kberserkerdragonk-bbbfcb3df46108d7562ff6305b85b03cc0deffe7f5192eab16574ec6cb94a899.tar.zst",
+      "s3_metadata_sha256": "bbbfcb3df46108d7562ff6305b85b03cc0deffe7f5192eab16574ec6cb94a899",
+      "s3_version_id": "ziGJ3OQj8DQorqRiy9uVx07S5uk5Bial",
+      "source_sha256": "df2ca64b8c46824d99b938ded4b9fb190f54ca590349359da758684302839c84",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerdragonk.uftb"
+    },
+    "kberserkerfishermank.uftb": {
+      "archive_sha256": "2a5d58237cd156a8ecb8047c23de8f76eaed9511548b6bb38cba997d3ac816e8",
+      "audit_sha256": "b8a2151428dd8037d7adf458e5fdd93771c78707283cda24f462be0258d81351",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 15885716
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 1417108,
+            "losses": 15952244,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 13483932
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 1417724,
+            "losses": 15951628,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 10598896
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 1418340,
+            "losses": 15951012,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/2a5d58237cd156a8ecb8047c23de8f76eaed9511548b6bb38cba997d3ac816e8/kberserkerfishermank-2a5d58237cd156a8ecb8047c23de8f76eaed9511548b6bb38cba997d3ac816e8.tar.zst",
+      "s3_metadata_sha256": "2a5d58237cd156a8ecb8047c23de8f76eaed9511548b6bb38cba997d3ac816e8",
+      "s3_version_id": "Hx0CMMVSIiPkz0udYDOEXXffUz92xPsb",
+      "source_sha256": "eedfa90a72ae816ff0896a104811e34f5725a8091189e0efa493ed9d6874d809",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerfishermank.uftb"
+    },
+    "kberserkergiantk.uftb": {
+      "archive_sha256": "8a1b1797f8f7738d849702b63a18b5da4ecfad019042d6fc88ed519a3adf584f",
+      "audit_sha256": "6a83cbc35731e057bf9ceaea6e6aae8b7ec72aa170bc44efbc970a5243b0e169",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 9347536
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 843652,
+            "losses": 11300932,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 7955374
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 844504,
+            "losses": 11300080,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 6313876
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 846152,
+            "losses": 11298432,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/8a1b1797f8f7738d849702b63a18b5da4ecfad019042d6fc88ed519a3adf584f/kberserkergiantk-8a1b1797f8f7738d849702b63a18b5da4ecfad019042d6fc88ed519a3adf584f.tar.zst",
+      "s3_metadata_sha256": "8a1b1797f8f7738d849702b63a18b5da4ecfad019042d6fc88ed519a3adf584f",
+      "s3_version_id": "EXkOI6JOaP.5gTfjFTSBYEfx9cfFBtS0",
+      "source_sha256": "ffa499e631d5a245dc289e5b728c89d1fd241b642037c740bd263869ebe21235",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkergiantk.uftb"
+    },
+    "kberserkerk.uftb": {
+      "audit_sha256": "d7827ae617bd37943c72a0bead0e2732578172b1d839b8164c0520819659216a",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 412616
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 36808,
+            "losses": 414344,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 350232
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 36824,
+            "losses": 414328,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 275296
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 36840,
+            "losses": 414312,
+            "wins": 0
+          }
+        }
+      },
+      "source": "existing-version-pinned-dependency",
+      "source_archive_sha256": "e296deebc6d0f4ef2c53e14eab86fd1c2bbc9954a6051ffca5ce7b9623b08263",
+      "source_archive_version_id": "YTpSbC_DShKsF8QwShKRSIBUVf8PH0VJ",
+      "source_sha256": "f41245a06eb280136c458e6337ef4a588a0d5142b606413b92f84c248487e2b1",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerk.uftb"
+    },
+    "kberserkerkbomb.uftb": {
+      "archive_sha256": "7ab66f110ab737afb73f8516dd9d321cfac71b002bcf9e1985bb6f809e912de0",
+      "audit_sha256": "5ee0d3ed1e4923ebcc90c047f9aafa13123b8762cc44618289780808761f42a6",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 5956800,
+            "losses": 9714414,
+            "wins": 92422
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 2947466,
+            "losses": 28034,
+            "wins": 12157436
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 3595386,
+            "losses": 2718824,
+            "wins": 7034934
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 5174950,
+            "losses": 4454446,
+            "wins": 5503540
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 525926,
+            "losses": 1354828,
+            "wins": 8587430
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 1839680,
+            "losses": 9605554,
+            "wins": 3687702
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/7ab66f110ab737afb73f8516dd9d321cfac71b002bcf9e1985bb6f809e912de0/kberserkerkbomb-7ab66f110ab737afb73f8516dd9d321cfac71b002bcf9e1985bb6f809e912de0.tar.zst",
+      "s3_metadata_sha256": "7ab66f110ab737afb73f8516dd9d321cfac71b002bcf9e1985bb6f809e912de0",
+      "s3_version_id": "nLWuIst1EalItDtUSqUvWv.SbkJPv5Pq",
+      "source_sha256": "06fa021da62a954b756b290e714cc166a0a7293781138e34acb9791522beb570",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkbomb.uftb"
+    },
+    "kberserkerkdragon.uftb": {
+      "archive_sha256": "3b1917db24e5c05810e42e1cf0000636350bddd91eaad564d39debadfad546bc",
+      "audit_sha256": "a3f7a005862693c9fa8b988cd7d123e9805cf2f583a6005392201fd13a5e1525",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 6237900,
+            "losses": 7153948,
+            "wins": 2493868
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 2937476,
+            "losses": 5424,
+            "wins": 11142920
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 989404,
+            "losses": 130710,
+            "wins": 12363818
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 3781126,
+            "losses": 6153480,
+            "wins": 4151214
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 169302,
+            "losses": 51272,
+            "wins": 10378322
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 1130874,
+            "losses": 9211882,
+            "wins": 3743064
+          }
+        }
+      },
+      "s3_key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/3b1917db24e5c05810e42e1cf0000636350bddd91eaad564d39debadfad546bc/kberserkerkdragon-3b1917db24e5c05810e42e1cf0000636350bddd91eaad564d39debadfad546bc.tar.zst",
+      "s3_metadata_sha256": "3b1917db24e5c05810e42e1cf0000636350bddd91eaad564d39debadfad546bc",
+      "s3_version_id": "A7NUg91DR6U8MyBmJ2yi2heWnDtI8w9Y",
+      "source_sha256": "463cca983d48f134bf94576fc29ce2fa3b48590a2ed22579e433baa3194ce8e9",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkdragon.uftb"
+    },
+    "kberserkerkfisherman.uftb": {
+      "archive_sha256": "4e28c28b7fdb35c8a0984038904532058de2504e1d98eeba4b7f9a41de5a582f",
+      "audit_sha256": "5eef545a1161dcd488b5112cb86f00fc4281029d51aff0e3510b3c5c6127e4ad",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 13386508,
+            "losses": 0,
+            "wins": 2499208
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 17357684,
+            "losses": 11668,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 13483932
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 1415876,
+            "losses": 15953476,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 10598896
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 1415876,
+            "losses": 15953476,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/4e28c28b7fdb35c8a0984038904532058de2504e1d98eeba4b7f9a41de5a582f/kberserkerkfisherman-4e28c28b7fdb35c8a0984038904532058de2504e1d98eeba4b7f9a41de5a582f.tar.zst",
+      "s3_metadata_sha256": "4e28c28b7fdb35c8a0984038904532058de2504e1d98eeba4b7f9a41de5a582f",
+      "s3_version_id": "ALz0nmRU6g9NnmsxX9Z.MF4WV2HOMY8F",
+      "source_sha256": "31d4fccb2fa110188d7fd20ba5b6493ba30428e20b9dce5305121c4f4fffd560",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkfisherman.uftb"
+    },
+    "kberserkerkgiant.uftb": {
+      "archive_sha256": "de9d945fc7a048c1d9ffe1284d88e9026264893b33c28327453ec2a8cd2c8262",
+      "audit_sha256": "32d519a8b5525b22563fb00890dde82af7b5ab70a75d7eebefe3edeafcef7bbb",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 83096,
+            "losses": 22216,
+            "wins": 10988080
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 2419208,
+            "losses": 7775342,
+            "wins": 40538
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 28,
+            "losses": 15508,
+            "wins": 9418482
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 2305356,
+            "losses": 7897400,
+            "wins": 32332
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 8,
+            "losses": 10018,
+            "wins": 7426130
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 2306512,
+            "losses": 7904740,
+            "wins": 23836
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/de9d945fc7a048c1d9ffe1284d88e9026264893b33c28327453ec2a8cd2c8262/kberserkerkgiant-de9d945fc7a048c1d9ffe1284d88e9026264893b33c28327453ec2a8cd2c8262.tar.zst",
+      "s3_metadata_sha256": "de9d945fc7a048c1d9ffe1284d88e9026264893b33c28327453ec2a8cd2c8262",
+      "s3_version_id": "h4HqEbPggva7N4qCMe2fb6VcP5ap6w_x",
+      "source_sha256": "bd0871671df1098f7a5a2028c08efa284fb8f8a4f7454f32cdbc67a401d9df3b",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkgiant.uftb"
+    },
+    "kberserkerkmage.uftb": {
+      "archive_sha256": "3fe501362b15c1840240982a155a415f046e3fa47749678640c8b2fff23993e3",
+      "audit_sha256": "597fc2ca1b229f46092e15a9caee4e70049f080af439f82fe3b6dc371a816571",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 15885716
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 1416048,
+            "losses": 15953304,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 13483932
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 1416392,
+            "losses": 15952960,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 10598896
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 1417140,
+            "losses": 15952212,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/3fe501362b15c1840240982a155a415f046e3fa47749678640c8b2fff23993e3/kberserkerkmage-3fe501362b15c1840240982a155a415f046e3fa47749678640c8b2fff23993e3.tar.zst",
+      "s3_metadata_sha256": "3fe501362b15c1840240982a155a415f046e3fa47749678640c8b2fff23993e3",
+      "s3_version_id": "PAJ_E9hsY2pTX0Oxm62uhqkwvvc_kuVz",
+      "source_sha256": "c4c8e22e11d6576ee90761855ac241f566a740a461efcc27dcfdb1d009e74ba2",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkmage.uftb"
+    },
+    "kberserkerkninja.uftb": {
+      "archive_sha256": "7d0bd43fc1fc2abd30514b84932388de40d6bba34bc6ab37309606bd419fe9ec",
+      "audit_sha256": "faac32e8ec568feb386c027ba38da4df74c9bb0741e84b0071bfba388fbf060f",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 7147320,
+            "losses": 6238816,
+            "wins": 2499580
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 3847982,
+            "losses": 5680,
+            "wins": 9866198
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 4933408,
+            "losses": 323720,
+            "wins": 8226804
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 6541242,
+            "losses": 2332298,
+            "wins": 4846320
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 171582,
+            "losses": 19570,
+            "wins": 10407744
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 1122752,
+            "losses": 8946358,
+            "wins": 3650750
+          }
+        }
+      },
+      "s3_key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/7d0bd43fc1fc2abd30514b84932388de40d6bba34bc6ab37309606bd419fe9ec/kberserkerkninja-7d0bd43fc1fc2abd30514b84932388de40d6bba34bc6ab37309606bd419fe9ec.tar.zst",
+      "s3_metadata_sha256": "7d0bd43fc1fc2abd30514b84932388de40d6bba34bc6ab37309606bd419fe9ec",
+      "s3_version_id": "CTTIeVnWFCVB2Ttq9nufgWmzkgiskjtj",
+      "source_sha256": "b436e4a2f00c76cda8854c2262f79c3ed0daf362436e5a205770c5d1f5cb7796",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkninja.uftb"
+    },
+    "kberserkerkparasite.uftb": {
+      "archive_sha256": "2a78ca7e06432a55f1f76eddb0d7747a2c15099d6ba6fd42640feb606ed8b6b9",
+      "audit_sha256": "36e7f47e685886419340386b9aecf29eda5795ba8721ee4aa645d35e2682cae1",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 36572,
+            "losses": 15592716,
+            "wins": 256428
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 13526,
+            "losses": 87668,
+            "wins": 15784522
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 1122418,
+            "losses": 2399066,
+            "wins": 9962448
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 1734700,
+            "losses": 8465652,
+            "wins": 5685364
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 384384,
+            "losses": 899958,
+            "wins": 9314554
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 438860,
+            "losses": 11576720,
+            "wins": 3870136
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/2a78ca7e06432a55f1f76eddb0d7747a2c15099d6ba6fd42640feb606ed8b6b9/kberserkerkparasite-2a78ca7e06432a55f1f76eddb0d7747a2c15099d6ba6fd42640feb606ed8b6b9.tar.zst",
+      "s3_metadata_sha256": "2a78ca7e06432a55f1f76eddb0d7747a2c15099d6ba6fd42640feb606ed8b6b9",
+      "s3_version_id": "lHLgYW8VDAF5enXgBE7rWGQuq0MJMo7A",
+      "source_sha256": "0c96be9f4a6c6390dac05cc3967ebff99732ce4e9d938af277af1d8f8188d6b0",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkparasite.uftb"
+    },
+    "kberserkerkprince.uftb": {
+      "archive_sha256": "e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62",
+      "audit_sha256": "075a642901dcf63e5dfd0eab34dbf98acbaf0a8ce20296b885f5f4f0b13476ef",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 1966080,
+            "losses": 11400572,
+            "wins": 2519064
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 2088626,
+            "losses": 29086,
+            "wins": 30016776
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 4340676,
+            "losses": 2031918,
+            "wins": 7111338
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 9392924,
+            "losses": 4632674,
+            "wins": 16116394
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 1234158,
+            "losses": 591812,
+            "wins": 8772926
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 5325556,
+            "losses": 10521088,
+            "wins": 11893960
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62/kberserkerkprince-e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62.tar.zst",
+      "s3_metadata_sha256": "e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62",
+      "s3_version_id": "vp9jH5pdw2s8jBiiSTeI5WqtSfvHhytf",
+      "source_sha256": "5cffc0d8c782f6d28801d9cfc9cd3e8da77ac2710720ddc0e37c7e7885a476a2",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkprince.uftb"
+    },
+    "kberserkerksniper.uftb": {
+      "archive_sha256": "0bf91cecaa27507bba56c5bc845eeefd7c29f161f8913e63170b497856f79ec0",
+      "audit_sha256": "87142246e5f70a9dd0c1c2ffd3a540fd8f78f13df981ceeb5107acaa13a98fcb",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 126251,
+            "losses": 3362,
+            "wins": 31641819
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 3899187,
+            "losses": 29880316,
+            "wins": 26759
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 41011,
+            "losses": 2359,
+            "wins": 26924494
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 3713895,
+            "losses": 30071375,
+            "wins": 20992
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 26068,
+            "losses": 1494,
+            "wins": 21170230
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 3675578,
+            "losses": 30114579,
+            "wins": 16105
+          }
+        }
+      },
+      "s3_key": "results/current-concrete/concrete/v2/model/84592a0b9b609e8f36b8b6fd828c0f5547d2591d20b0fe235067277b87777ece/wave-0/sha256/0bf91cecaa27507bba56c5bc845eeefd7c29f161f8913e63170b497856f79ec0/kberserkerksniper-0bf91cecaa27507bba56c5bc845eeefd7c29f161f8913e63170b497856f79ec0.tar.zst",
+      "s3_metadata_sha256": "0bf91cecaa27507bba56c5bc845eeefd7c29f161f8913e63170b497856f79ec0",
+      "s3_version_id": "hQVvUvV1fU22o8DBz5NpL8sp_eqdwV7X",
+      "source_sha256": "4d514728bb05af84079c2b35eeaf0fdba7c673573a414db191f4f95df876651f",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerksniper.uftb"
+    },
+    "kberserkerkturtle.uftb": {
+      "archive_sha256": "bc27862a2ff4bf0cc3c141261a3a4f4d424e34a2fa29af655175c44fd9643c24",
+      "audit_sha256": "10c5c8ad90ad16762aeed624193966308ccdeb48791067572a12c83ec57f1653",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 6985200,
+            "losses": 0,
+            "wins": 8900516
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 11225370,
+            "losses": 5356426,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 13483932
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 2047314,
+            "losses": 14534482,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 10598896
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 2047314,
+            "losses": 14534482,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/bc27862a2ff4bf0cc3c141261a3a4f4d424e34a2fa29af655175c44fd9643c24/kberserkerkturtle-bc27862a2ff4bf0cc3c141261a3a4f4d424e34a2fa29af655175c44fd9643c24.tar.zst",
+      "s3_metadata_sha256": "bc27862a2ff4bf0cc3c141261a3a4f4d424e34a2fa29af655175c44fd9643c24",
+      "s3_version_id": "ewEfzR2SHgsWtETshq9OVYLiwhdNzvHh",
+      "source_sha256": "7b38de854d35a8d8b94bb2ddae3edf69202ce5cbd8d3a58f329b3d12b5f977c1",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkturtle.uftb"
+    },
+    "kberserkermagek.uftb": {
+      "archive_sha256": "bf40c3c72305878a6b759cde688ee78eb0f86edee6a1c1b2bc0f45b7a9b5eb79",
+      "audit_sha256": "b080aaadd8848ba5daf9e375360198730fa5a8447c52bcbd29bec218cdbbc56c",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 15885716
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 1417108,
+            "losses": 15952244,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 13483932
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 1417724,
+            "losses": 15951628,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 10598896
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 1418340,
+            "losses": 15951012,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/bf40c3c72305878a6b759cde688ee78eb0f86edee6a1c1b2bc0f45b7a9b5eb79/kberserkermagek-bf40c3c72305878a6b759cde688ee78eb0f86edee6a1c1b2bc0f45b7a9b5eb79.tar.zst",
+      "s3_metadata_sha256": "bf40c3c72305878a6b759cde688ee78eb0f86edee6a1c1b2bc0f45b7a9b5eb79",
+      "s3_version_id": "IgTHom.i.XyOoETzBGXEPVkNLDovJjet",
+      "source_sha256": "4719e4276859032c840be79e0bfbccb9eb4242144c51c0ae312ed2dc8808142d",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkermagek.uftb"
+    },
+    "kberserkerninjak.uftb": {
+      "archive_sha256": "b11c08418b1ba4b9e49a04e10d867f70b8077f6552759daddc9c754a1a5ed212",
+      "audit_sha256": "62155317fa29036e281cf61bc0fe9f68a81dc37e36c6c4a3b7c498ed2e4e6b8c",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 12548400
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 55616,
+            "losses": 17313736,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 10683144
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 60740,
+            "losses": 17308612,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 8451036
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 62072,
+            "losses": 17307280,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/b11c08418b1ba4b9e49a04e10d867f70b8077f6552759daddc9c754a1a5ed212/kberserkerninjak-b11c08418b1ba4b9e49a04e10d867f70b8077f6552759daddc9c754a1a5ed212.tar.zst",
+      "s3_metadata_sha256": "b11c08418b1ba4b9e49a04e10d867f70b8077f6552759daddc9c754a1a5ed212",
+      "s3_version_id": "chMgMSI9Kx6Ovr9X_8vL_p8GhQeu0gz1",
+      "source_sha256": "4f5206f33943fe2cfe891d5d2bccf23ebb0a3a1e0734da86672cc2d1fe0166c4",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerninjak.uftb"
+    },
+    "kberserkerparasitek.uftb": {
+      "archive_sha256": "ebc724e189304ee1879b62402d5325ae562c01988502761bef1f03eb9c87ad21",
+      "audit_sha256": "6c9772fa832f0994a15afa32980ebd9ccd453f52251881460a418ac9376debf3",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 14519136
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 4224,
+            "losses": 17365128,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 12338172
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 5544,
+            "losses": 17363808,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 9715656
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 6704,
+            "losses": 17362648,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/ebc724e189304ee1879b62402d5325ae562c01988502761bef1f03eb9c87ad21/kberserkerparasitek-ebc724e189304ee1879b62402d5325ae562c01988502761bef1f03eb9c87ad21.tar.zst",
+      "s3_metadata_sha256": "ebc724e189304ee1879b62402d5325ae562c01988502761bef1f03eb9c87ad21",
+      "s3_version_id": "ud0Fxo9WLrUaW7etaDMuH3ZQ66NFxq6H",
+      "source_sha256": "ac78cca99b7de132deb16ef09f32820c0da270c3d48bbad6d53ccb15741a83cd",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerparasitek.uftb"
+    },
+    "kberserkerpenguink.uftb": {
+      "archive_sha256": "d691626491801921a95ebcb8e977cde2cbd0f56b61b4264520deaf8c76837592",
+      "audit_sha256": "e5423a10c9771bcfcd74ceb24d109087ce2ed41c258dea4ef5abf7c342b21840",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 152442,
+            "losses": 8220,
+            "wins": 18797106
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 3490622,
+            "losses": 18789824,
+            "wins": 32634
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 136874,
+            "losses": 7100,
+            "wins": 16188682
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 3235954,
+            "losses": 19049512,
+            "wins": 27614
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 119012,
+            "losses": 5668,
+            "wins": 13054796
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 2923626,
+            "losses": 19368150,
+            "wins": 21304
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/80825629ab3d80a747b6a141398d4b4d4c16220a0aa95f076ca8647da7232f48/wave-0/sha256/d691626491801921a95ebcb8e977cde2cbd0f56b61b4264520deaf8c76837592/kberserkerpenguink-d691626491801921a95ebcb8e977cde2cbd0f56b61b4264520deaf8c76837592.tar.zst",
+      "s3_metadata_sha256": "d691626491801921a95ebcb8e977cde2cbd0f56b61b4264520deaf8c76837592",
+      "s3_version_id": "jslzQSNuqakvbgizwkyyMU39rBBFV0uH",
+      "source_sha256": "5d17089a189b99acda411f805ae5ea0e2c90907d49ba7e3b5e7c10c38002d438",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerpenguink.uftb"
+    },
+    "kberserkerprincek.uftb": {
+      "archive_sha256": "1ba9d98040c20330b77cf894c80cf5f65f3f287b8fcf803bbb45287f1cddbb1f",
+      "audit_sha256": "8b5e48497ac0874dd7e0b628e65d03c34e7f4a7faebfdba9dfd2aef3ff50810a",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 1136,
+            "losses": 0,
+            "wins": 32013324
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 4224,
+            "losses": 17365128,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 1680,
+            "losses": 0,
+            "wins": 29831816
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 5544,
+            "losses": 17363808,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 2240,
+            "losses": 0,
+            "wins": 27208740
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 6704,
+            "losses": 17362648,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/1ba9d98040c20330b77cf894c80cf5f65f3f287b8fcf803bbb45287f1cddbb1f/kberserkerprincek-1ba9d98040c20330b77cf894c80cf5f65f3f287b8fcf803bbb45287f1cddbb1f.tar.zst",
+      "s3_metadata_sha256": "1ba9d98040c20330b77cf894c80cf5f65f3f287b8fcf803bbb45287f1cddbb1f",
+      "s3_version_id": "i8OWISOcxzrrNC72eLViP44_5nNtH0vp",
+      "source_sha256": "a9789c4518cc959aa3cd32229b98388697dde88d421d087a6d1922b7cb962867",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerprincek.uftb"
+    },
+    "kberserkersniperk.uftb": {
+      "archive_sha256": "7a7345b2d97cfd62d37ef6f7bb53297f20cdb93f07685b9157c051942dfe2713",
+      "audit_sha256": "85f6136cf6c499780f13421ff9e775cb5fb5cff3223bc6dd10d1acaf36ca37ef",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 30910078
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 2748499,
+            "losses": 31990205,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 26232142
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 2750602,
+            "losses": 31988102,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 20617235
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 2752583,
+            "losses": 31986121,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/current-concrete-7088db91/concrete/v2/artifacts-only/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/7a7345b2d97cfd62d37ef6f7bb53297f20cdb93f07685b9157c051942dfe2713/kberserkersniperk-7a7345b2d97cfd62d37ef6f7bb53297f20cdb93f07685b9157c051942dfe2713.tar.zst",
+      "s3_metadata_sha256": "7a7345b2d97cfd62d37ef6f7bb53297f20cdb93f07685b9157c051942dfe2713",
+      "s3_version_id": "Z45tfbDwMueoc8qvxq1Opatq4C3jGCqr",
+      "source_sha256": "7e852f5e1209f5a83dc7d27edb06c90ca2ad493e427b664bc2e71d8683d25fbc",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkersniperk.uftb"
+    },
+    "kberserkerturtlek.uftb": {
+      "archive_sha256": "050b5173679ca8fc53cd5d08c18f082b30695596a0f31bfabfc99b6dfcb597e2",
+      "audit_sha256": "7d713b7e95bba63b04a24ed46ac54597e12eb316a8682c0aadbed25dc22c69a6",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 15158912
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 1362522,
+            "losses": 16006830,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 12872074
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 1363836,
+            "losses": 16005516,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 10124152
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 1365010,
+            "losses": 16004342,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/050b5173679ca8fc53cd5d08c18f082b30695596a0f31bfabfc99b6dfcb597e2/kberserkerturtlek-050b5173679ca8fc53cd5d08c18f082b30695596a0f31bfabfc99b6dfcb597e2.tar.zst",
+      "s3_metadata_sha256": "050b5173679ca8fc53cd5d08c18f082b30695596a0f31bfabfc99b6dfcb597e2",
+      "s3_version_id": "hJUSFXZwMPX5rfAQ2qNmOdU4dtti2Wfw",
+      "source_sha256": "24034bb8a85c1e94239465a19dcb5cfcd4d7a6767dbc08768e9a129898a6b356",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerturtlek.uftb"
+    },
+    "kbishopberserkerk.uftb": {
+      "archive_sha256": "37a11cbd5b420adcfac78138b7e605446a6899f0c5276476c6de85158c24a695",
+      "audit_sha256": "d904e1186e00ff65e54cee6edd9a622a820189e9b86294d8971b7db6cac1b3fc",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 13965588
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 1255958,
+            "losses": 16113394,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 11862692
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 1261306,
+            "losses": 16108046,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 9347722
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 1265702,
+            "losses": 16103650,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/37a11cbd5b420adcfac78138b7e605446a6899f0c5276476c6de85158c24a695/kbishopberserkerk-37a11cbd5b420adcfac78138b7e605446a6899f0c5276476c6de85158c24a695.tar.zst",
+      "s3_metadata_sha256": "37a11cbd5b420adcfac78138b7e605446a6899f0c5276476c6de85158c24a695",
+      "s3_version_id": "UJfZoGL.vqyp9isG_PBLEIsn5xKMmqiK",
+      "source_sha256": "b88133310c00f0709c3d10a874db6238c22a1a504699151981df23ba4ca5587b",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kbishopberserkerk.uftb"
+    },
+    "kbishopkberserker.uftb": {
+      "archive_sha256": "ca6d1034b539770a380fd410f28e8af44aecc35c34dc29e859f977e71ff0bed7",
+      "audit_sha256": "c0963299a9b90cd427af375434e41210208bc69f4615defc7526c1fd69d7be1c",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 15274486,
+            "losses": 10686,
+            "wins": 0
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 13378808,
+            "losses": 0,
+            "wins": 2506908
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 3133224,
+            "losses": 12151948,
+            "wins": 0
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 58660,
+            "losses": 0,
+            "wins": 13425272
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 3067190,
+            "losses": 12217982,
+            "wins": 0
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 28416,
+            "losses": 0,
+            "wins": 10570480
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/ca6d1034b539770a380fd410f28e8af44aecc35c34dc29e859f977e71ff0bed7/kbishopkberserker-ca6d1034b539770a380fd410f28e8af44aecc35c34dc29e859f977e71ff0bed7.tar.zst",
+      "s3_metadata_sha256": "ca6d1034b539770a380fd410f28e8af44aecc35c34dc29e859f977e71ff0bed7",
+      "s3_version_id": "yCClnIFKpUMsV2mN4rWpj_d2D0E0upY1",
+      "source_sha256": "13f9c6b0b2cc8c78e26b49e0de6d8ccbd044e570178023c047f9daf6151f9e6b",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kbishopkberserker.uftb"
+    },
+    "kcopycatberserkerk.uftb": {
+      "archive_sha256": "0434d07979d8b0c1edd30e3e2b48b4c2fc929d52d7ed1170b01937db2eac8016",
+      "audit_sha256": "23ba726179f563bcae9dce62a225b2dc1b9a707773a48a4cfb4fdd499c1068d9",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 25893408
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 14392,
+            "losses": 33403112,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 22014136
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 18464,
+            "losses": 33399040,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 17317472
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 21696,
+            "losses": 33395808,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/0434d07979d8b0c1edd30e3e2b48b4c2fc929d52d7ed1170b01937db2eac8016/kcopycatberserkerk-0434d07979d8b0c1edd30e3e2b48b4c2fc929d52d7ed1170b01937db2eac8016.tar.zst",
+      "s3_metadata_sha256": "0434d07979d8b0c1edd30e3e2b48b4c2fc929d52d7ed1170b01937db2eac8016",
+      "s3_version_id": "YZxTQFtPQQnCRVkbjQu4lSu6yVYH46Mv",
+      "source_sha256": "857585c32b786f183d2cfdf4b34b5ea330c7a64f1de7d41ebd7ceb769699a9d9",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kcopycatberserkerk.uftb"
+    },
+    "kcopycatkberserker.uftb": {
+      "archive_sha256": "f9017fd7b869a40946cd32dac298cdbebf911e82563900b2682cdffb626c6d05",
+      "audit_sha256": "41197e09cd70c770a18560875159021b2b63cc472849f68b27086da492073651",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 19548728,
+            "losses": 355176,
+            "wins": 8390592
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 19900520,
+            "losses": 1399512,
+            "wins": 9261280
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 352704,
+            "losses": 21897848,
+            "wins": 6043944
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 752,
+            "losses": 48928,
+            "wins": 25892464
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 350424,
+            "losses": 21988912,
+            "wins": 5955160
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 96,
+            "losses": 19712,
+            "wins": 20370920
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/f9017fd7b869a40946cd32dac298cdbebf911e82563900b2682cdffb626c6d05/kcopycatkberserker-f9017fd7b869a40946cd32dac298cdbebf911e82563900b2682cdffb626c6d05.tar.zst",
+      "s3_metadata_sha256": "f9017fd7b869a40946cd32dac298cdbebf911e82563900b2682cdffb626c6d05",
+      "s3_version_id": "wQFKp6LuKIiZsCh1AzwTAcXzjrq7VMz4",
+      "source_sha256": "3a3850b5ba940f648db042c67de241e497ceb0ee68a7b162861af2fde920ab82",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kcopycatkberserker.uftb"
+    },
+    "kjesterberserkerk.uftb": {
+      "archive_sha256": "c395d3786f07e2ec55588af306a79545a09fce372cfa6d8797cff4a9a4c1f558",
+      "overlay": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kjesterberserkerk.ufiw",
+      "overlay_sha256": "e7cc1d1f364193bdd590a726fff1f2374028539af270d74b13dab8b2eabeeb09",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 14519136
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 1366460,
+            "losses": 17365128,
+            "wins": 247372
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 12338172
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 1143716,
+            "losses": 17363808,
+            "wins": 471436
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 9715656
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 881564,
+            "losses": 17362648,
+            "wins": 734748
+          }
+        }
+      },
+      "s3_key": "results/information/fresh-maximal-public-view-v2/existing-ufiw/sha256/c395d3786f07e2ec55588af306a79545a09fce372cfa6d8797cff4a9a4c1f558/kjesterberserkerk.information.tar.zst",
+      "s3_metadata_sha256": "c395d3786f07e2ec55588af306a79545a09fce372cfa6d8797cff4a9a4c1f558",
+      "s3_version_id": "UPmRhIYEtW6PVlLTVMk15j355ZKz1fhf"
+    },
+    "kjesterkberserker.uftb": {
+      "archive_sha256": "3a274b45129a509764c3fa117659d3bc08b93bd06ec9ef293ce65801aae01612",
+      "overlay": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kjesterkberserker.ufiw",
+      "overlay_sha256": "4f0dc786ed19ad26710afe982857f9726d75fc0569511d510a678dc89077a5ce",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 12339200,
+            "losses": 0,
+            "wins": 3546516
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 13020286,
+            "losses": 493966,
+            "wins": 5464708
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 6919712,
+            "losses": 6446600,
+            "wins": 2519404
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 4316930,
+            "losses": 10750,
+            "wins": 14651280
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 4814618,
+            "losses": 8576344,
+            "wins": 2494754
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 2579624,
+            "losses": 4180,
+            "wins": 16395156
+          }
+        }
+      },
+      "s3_key": "results/information-v2/fresh-causal-c339a675/primary-jester/sha256/3a274b45129a509764c3fa117659d3bc08b93bd06ec9ef293ce65801aae01612/kjesterkberserker.information.tar.zst",
+      "s3_metadata_sha256": "3a274b45129a509764c3fa117659d3bc08b93bd06ec9ef293ce65801aae01612",
+      "s3_version_id": "q4UpNUW7bJXUSl23wY4wV4ZsSyg2MQZ4"
+    },
+    "kknightberserkerk.uftb": {
+      "archive_sha256": "224fcdf06bae1dde98e85f33826d25d44c0a208bf8c2cb4222778df9373051ff",
+      "audit_sha256": "e85faa6affc16f4c80dde63dae4cb9fa5ababb7c6c96fa2b559e8d5deaff741e",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 14798084
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 1314280,
+            "losses": 16055072,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 12568916
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 1319662,
+            "losses": 16049690,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 9905924
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 1322896,
+            "losses": 16046456,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/224fcdf06bae1dde98e85f33826d25d44c0a208bf8c2cb4222778df9373051ff/kknightberserkerk-224fcdf06bae1dde98e85f33826d25d44c0a208bf8c2cb4222778df9373051ff.tar.zst",
+      "s3_metadata_sha256": "224fcdf06bae1dde98e85f33826d25d44c0a208bf8c2cb4222778df9373051ff",
+      "s3_version_id": "lE64lNu6hk2.aJcOcSiKygMe7ZMur869",
+      "source_sha256": "c389380f6b2606721a30d44d57c01d76182d4bf4bb08eaf01bf85116c01b5689",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kknightberserkerk.uftb"
+    },
+    "kknightkberserker.uftb": {
+      "archive_sha256": "f175cbafda61360a74b7569e1fec2abced06b9557e0327d58e53aaedb77c5a31",
+      "audit_sha256": "141cd11aa5626d149d68c5291f733dde2a20a3c5337bb4a9028b3d9200645652",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 16049076,
+            "losses": 120904,
+            "wins": 20
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 12988392,
+            "losses": 4,
+            "wins": 2897320
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 2359600,
+            "losses": 13810400,
+            "wins": 0
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 2236,
+            "losses": 0,
+            "wins": 13481696
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 2348060,
+            "losses": 13821940,
+            "wins": 0
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 10598896
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/f175cbafda61360a74b7569e1fec2abced06b9557e0327d58e53aaedb77c5a31/kknightkberserker-f175cbafda61360a74b7569e1fec2abced06b9557e0327d58e53aaedb77c5a31.tar.zst",
+      "s3_metadata_sha256": "f175cbafda61360a74b7569e1fec2abced06b9557e0327d58e53aaedb77c5a31",
+      "s3_version_id": "LVJqqQ2Rtoov7I4FlwhvSbOlAGZMS7SS",
+      "source_sha256": "d24d5594074f02965001f4e7d7b7fc313443d2cc422fabf64bf3074318eb62aa",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kknightkberserker.uftb"
+    },
+    "kqueenberserkerk.uftb": {
+      "archive_sha256": "188b85277444a880806efa7862ec58f1397e1d22249776edd2d6634d9afbaf09",
+      "audit_sha256": "31f3a2fae92ac6de2429f2600ffcdf57262281e4e33aaec81131c14902d0bb80",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 10877572
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 61896,
+            "losses": 17307456,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 9224154
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 70002,
+            "losses": 17299350,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 7264668
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 73652,
+            "losses": 17295700,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/188b85277444a880806efa7862ec58f1397e1d22249776edd2d6634d9afbaf09/kqueenberserkerk-188b85277444a880806efa7862ec58f1397e1d22249776edd2d6634d9afbaf09.tar.zst",
+      "s3_metadata_sha256": "188b85277444a880806efa7862ec58f1397e1d22249776edd2d6634d9afbaf09",
+      "s3_version_id": "7ILiSnEFFu5zGlJjntp9Ucb6brvuUTtr",
+      "source_sha256": "0dcdc7fcc0f534cd8bcc8a6d8cb57117590cfa60fe984b7a5efb03e85eedcd1b",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kqueenberserkerk.uftb"
+    },
+    "kqueenkberserker.uftb": {
+      "archive_sha256": "c3f098ef1fc68325ae6d067a16f97af4492ada03c78e5bd5eeda4c8cfb2a5112",
+      "audit_sha256": "e05e749f807f719cf72fd848f59d5957264650577bab7106b5a8db843def8ad2",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 2259416,
+            "losses": 2682,
+            "wins": 9681246
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 5723354,
+            "losses": 7673186,
+            "wins": 2489176
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 2741874,
+            "losses": 919962,
+            "wins": 8281508
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 4541534,
+            "losses": 2678044,
+            "wins": 6264354
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 2740060,
+            "losses": 2647628,
+            "wins": 6555656
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 1866944,
+            "losses": 675940,
+            "wins": 8056012
+          }
+        }
+      },
+      "s3_key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/c3f098ef1fc68325ae6d067a16f97af4492ada03c78e5bd5eeda4c8cfb2a5112/kqueenkberserker-c3f098ef1fc68325ae6d067a16f97af4492ada03c78e5bd5eeda4c8cfb2a5112.tar.zst",
+      "s3_metadata_sha256": "c3f098ef1fc68325ae6d067a16f97af4492ada03c78e5bd5eeda4c8cfb2a5112",
+      "s3_version_id": "sDIopTwfRhRosUrc4iJ8YHNbWRiur_Kd",
+      "source_sha256": "87fb45d7076234f070a3c1e14a4516fbb1dffb7cf28c87736da03ea95a96e2d7",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kqueenkberserker.uftb"
+    },
+    "krookberserkerk.uftb": {
+      "archive_sha256": "21ceb9c97bc044af5a1fb2424efbd6febcd355b33d8bea6684b8e18656ae28bc",
+      "audit_sha256": "d4ae49f67c1b3bb744f2aeace67537fd4ba7c225517ecd5459a05f0d567c89b9",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 12797700
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 8384,
+            "losses": 17360968,
+            "wins": 0
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 10845394
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 12254,
+            "losses": 17357098,
+            "wins": 0
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 0,
+            "losses": 0,
+            "wins": 8515842
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 15672,
+            "losses": 17353680,
+            "wins": 0
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/21ceb9c97bc044af5a1fb2424efbd6febcd355b33d8bea6684b8e18656ae28bc/krookberserkerk-21ceb9c97bc044af5a1fb2424efbd6febcd355b33d8bea6684b8e18656ae28bc.tar.zst",
+      "s3_metadata_sha256": "21ceb9c97bc044af5a1fb2424efbd6febcd355b33d8bea6684b8e18656ae28bc",
+      "s3_version_id": "G1fkWEpdf2IGs.1SrAB8dAV5dT55X.y0",
+      "source_sha256": "275588d89d53fabaece72ea4c2b3f8ea50241da0de23dd055c1f09bdb00c49c7",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/krookberserkerk.uftb"
+    },
+    "krookkberserker.uftb": {
+      "archive_sha256": "f2acd468a40525a09933dd1d3c0248a19848212512c3f86727f2be79339a9536",
+      "audit_sha256": "f0a70640ec0ff8da966ea9ef84b3af081324a7fabf17c8e68eef4c8f739c037a",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "draws": 8216320,
+            "losses": 4626,
+            "wins": 5806578
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "draws": 12103130,
+            "losses": 1291354,
+            "wins": 2491232
+          }
+        },
+        "2": {
+          "first_starts": {
+            "draws": 960884,
+            "losses": 9120748,
+            "wins": 3945892
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "draws": 108658,
+            "losses": 181862,
+            "wins": 13193412
+          }
+        },
+        "3": {
+          "first_starts": {
+            "draws": 658886,
+            "losses": 9604956,
+            "wins": 3763682
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "draws": 59198,
+            "losses": 100198,
+            "wins": 10439500
+          }
+        }
+      },
+      "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/f2acd468a40525a09933dd1d3c0248a19848212512c3f86727f2be79339a9536/krookkberserker-f2acd468a40525a09933dd1d3c0248a19848212512c3f86727f2be79339a9536.tar.zst",
+      "s3_metadata_sha256": "f2acd468a40525a09933dd1d3c0248a19848212512c3f86727f2be79339a9536",
+      "s3_version_id": "mpJO63EULZ2BYc.2gNxj6tZAohSMKHm_",
+      "source_sha256": "993cc0cd421fbc0d161bde2dd1dc8a366358052d8ad70cb51ec4aa33f62e8e4b",
+      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/krookkberserker.uftb"
+    }
+  },
+  "radius_to_power_substate": {
+    "1": 0,
+    "2": 1,
+    "3": 2
+  },
+  "schema": 1
+}

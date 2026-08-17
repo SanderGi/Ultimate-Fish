@@ -9,6 +9,7 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import struct
 import subprocess
 import sys
 
@@ -21,6 +22,7 @@ HEAVY_SHARDS = tuple(index for index in range(60)
                      if index not in ZERO_SHARDS)
 SUFFIXES = (".header", ".meta", ".strata", ".index", ".blocks",
             ".verified")
+LOWER_JESTER_STATES = 985_920
 
 
 def ranges() -> tuple[list[tuple[str, int, int]],
@@ -54,6 +56,19 @@ def sha256_path(path: Path) -> str:
 def require_sha(path: Path, expected: str, label: str) -> None:
     if not path.is_file() or sha256_path(path) != expected:
         raise RuntimeError(f"{label} SHA-256 mismatch: {path}")
+
+
+def require_lower_jester_binding(path: Path, table_sha256: str,
+                                 model_sha256: str) -> None:
+    with path.open("rb") as stream:
+        header = stream.read(160)
+    words = struct.unpack_from("<6I", header, 8) if len(header) == 160 else ()
+    if (path.stat().st_size != 160 + LOWER_JESTER_STATES or
+            header[:8] != b"UFIW2\0\0\0" or
+            words != (2, 1, 30, 0, LOWER_JESTER_STATES, 1) or
+            header[32:96].decode("ascii", errors="replace") != table_sha256 or
+            header[96:160].decode("ascii", errors="replace") != model_sha256):
+        raise RuntimeError("lower Jester UFIW2 binding mismatch")
 
 
 def run(command: list[str], root: Path, log: Path) -> None:
@@ -130,6 +145,9 @@ def main() -> None:
        "lower Jester overlay"),
       (args.lower_ghost_sidecar, args.lower_ghost_sha256, "lower Ghost")):
         require_sha(path, digest, label)
+    require_lower_jester_binding(
+        args.lower_jester_overlay, args.lower_jester_sha256,
+        args.lower_jester_model_sha256)
     if args.work.exists():
         raise RuntimeError("Jester/Ghost work directory already exists")
     work = args.work.resolve()

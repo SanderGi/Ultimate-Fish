@@ -72,6 +72,9 @@ int main(int argc, char** argv) {
                 solve.lowerGhostSidecar = value();
             else if (option == "--lower-dragon-table")
                 transition.lowerDragonTable = solve.lowerDragonTable = value();
+            else if (option == "--promoted-lower-dragon-table")
+                transition.promotedLowerDragonTable =
+                  solve.promotedLowerDragonTable = value();
             else if (option == "--scratch") solve.scratchPrefix = value();
             else if (option == "--output") solve.outputOverlay = value();
             else if (option == "--output-arbitrary")
@@ -112,11 +115,14 @@ int main(int argc, char** argv) {
             else if (option == "--promoted-lower-ghost-sidecar-sha256")
                 solve.promotedLowerGhostSidecarSha256 = value();
             else if (option == "--promoted-lower-dragon-sha256")
-                solve.promotedLowerDragonFullSha256 = value();
+                transition.promotedLowerDragonSha256 =
+                  solve.promotedLowerDragonFullSha256 = value();
             else if (option == "--promoted-lower-dragon-source-sha256")
-                solve.promotedLowerDragonSourceSha256 = value();
+                transition.promotedLowerDragonSourceSha256 =
+                  solve.promotedLowerDragonSourceSha256 = value();
             else if (option == "--promoted-lower-dragon-model-sha256")
-                solve.promotedLowerDragonModelSha256 = value();
+                transition.promotedLowerDragonModelSha256 =
+                  solve.promotedLowerDragonModelSha256 = value();
             else if (option == "--max-nodes")
                 solve.maxNodes = std::stoul(value());
             else if (option == "--unique-slots")

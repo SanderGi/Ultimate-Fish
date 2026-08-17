@@ -49,12 +49,10 @@ authoritative actions with `history move <move>`, and call
 selected as the search world. `kc=` carries the exact enemy royal squares from
 the first Ranked pick group that may still be the real King.
 
-## Local workbench
+## Workbench
 
-The UI is deliberately local-only. It has no accounts, authentication,
-database, telemetry, cloud deployment, or production service. Build the engine,
-install the UI packages, and run the bridge and development server in separate
-terminals:
+The default workflow remains local: build the engine, install the UI packages,
+and run the bridge and development server in separate terminals:
 
 ```bash
 cd ui && npm install

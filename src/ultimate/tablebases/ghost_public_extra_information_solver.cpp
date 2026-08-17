@@ -397,6 +397,7 @@ void compile_reciprocal_external_transitions(
   const std::string& prefix, std::uint32_t geometryStart,
   std::uint32_t geometryLimit) {
     const MaterialSpec material = reciprocal_material();
+    external_child_substate_self_test(material);
     const auto started = std::chrono::steady_clock::now();
     const ExtraGeometryDomain domain;
     if (geometryStart >= domain.size())

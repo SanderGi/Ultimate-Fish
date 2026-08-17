@@ -51,10 +51,26 @@ Open `http://localhost:3000`. The bridge listens only on
 ## Useful commands
 
 - `npm run engine`: start the loopback engine bridge
-- `npm run dev`: start the local-only workbench
+- `npm run dev`: start the local workbench
 - `npm run lint`: run static UI checks
 - `npm test`: verify the local UI and engine bridge
 
-The workbench intentionally has no production deployment target, authentication,
-database, analytics, or cloud service. It is designed to be cloned and run on
-the same computer as the engine.
+## Password-protected container
+
+The repository-level `Dockerfile` builds the native engine, the standalone
+Next server, the loopback engine bridge, the draft helper, and the bundled
+tablebases into one image. The public server listens on port `8080`; the engine
+bridge remains accessible only inside the container.
+
+Production fails closed unless `UI_PASSWORD` is set. HTTP Basic authentication
+uses the username `ultimatefish` by default; set `UI_USERNAME` to override it.
+For Fly.io, configure both values as app secrets rather than build arguments:
+
+```bash
+fly secrets set UI_PASSWORD='replace-me'
+# Optional:
+fly secrets set UI_USERNAME='alex'
+```
+
+Local development remains unprotected when `UI_PASSWORD` is absent. Setting it
+before `npm run dev` enables the same password prompt locally.

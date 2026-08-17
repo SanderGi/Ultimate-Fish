@@ -4386,6 +4386,21 @@ void test_public_information_projection() {
     expect(view_key(hiddenC3, ivory) != view_key(hiddenF6, ivory),
            "a Ghost owner retains its exact private square");
 
+    const Position penguinGhostF5 = parses(
+      "b;king,w,b3;king,b,f2;penguin,w,e5,8,0,0,0,1,1,-1,1,-1,0;"
+      "ghost,w,f5,0,0,1,0,1,0,-1,1,-1,0");
+    const Position penguinGhostF6 = parses(
+      "b;king,w,b3;king,b,f2;penguin,w,e5,32,0,0,0,1,1,-1,1,-1,0;"
+      "ghost,w,f6,0,0,1,0,1,0,-1,1,-1,0");
+    expect(view_key(penguinGhostF5, onyx) ==
+             view_key(penguinGhostF6, onyx) &&
+             compact_view_key(penguinGhostF5, onyx) ==
+             compact_view_key(penguinGhostF6, onyx),
+           "Penguin direction metadata conceals an invisible frozen enemy Ghost");
+    expect(view_key(penguinGhostF5, ivory) !=
+             view_key(penguinGhostF6, ivory),
+           "the Ghost owner retains Penguin-frozen Ghost coordinates");
+
     Position visibleC3 = hiddenC3;
     Position visibleF6 = hiddenF6;
     visibleC3.piece(1).visible = true;

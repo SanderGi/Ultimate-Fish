@@ -50,14 +50,37 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
                        "opposing": False},
         }
         command = audit.audit_command(job, 7)
-        self.assertIn("test -s /mnt/ultimatefish/job/certificates/"
-                      "reachability-v1.txt", command)
+        self.assertIn("reachability-v2.txt", command)
+        self.assertIn(
+            "reachability_binding filename krookbishopk.uftb "
+            "output_sha256 $table_sha", command)
+        self.assertIn("INVALID_BINDING:krookbishopk.uftb", command)
         self.assertIn("--property=AllowedCPUs=7", command)
         self.assertIn("--piece rook --piece2 bishop", command)
         self.assertIn("--audit-reachability "
                       "/mnt/ultimatefish/job/outputs/krookbishopk.uftb",
                       command)
         self.assertNotIn("--generate", command)
+
+    def test_single_class_reused_sidecar_requires_table_binding(self):
+        args = SimpleNamespace(
+            filename="krookbishopk.uftb",
+            audit_binary=None,
+            reuse_reachability_sidecar=True,
+            unit=None,
+            work_directory="/mnt/work",
+            s3_prefix="results/current",
+            bucket="bucket",
+            region="us-west-2",
+        )
+        command = finalize.remote_script(
+            args, {"primary": "rook", "secondary": "bishop",
+                   "opposing": False})
+        self.assertIn(
+            "reachability_binding filename krookbishopk.uftb "
+            "output_sha256 $table_sha", command)
+        self.assertIn("filename=krookbishopk.uftb", command)
+        self.assertIn("output_sha256=$table_sha", command)
 
     def test_opposing_audit_uses_exact_material_orientation(self):
         job = {
@@ -68,6 +91,17 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
         }
         self.assertIn("--piece2 bishop --opposing --audit-reachability",
                       audit.audit_command(job, 1))
+
+    def test_collection_rechecks_sidecar_filename_and_output_sha(self):
+        job = {
+            "filename": "krookbishopk.uftb",
+            "work_root": "/mnt/ultimatefish/job",
+        }
+        command = audit.compact_collection_command(job)
+        self.assertIn(
+            "assert q[0]=='reachability_binding filename '+z['filename']",
+            command)
+        self.assertIn("+' output_sha256 '+z['output']['sha256']", command)
 
     def test_wld_cell_parenthesizes_only_unreachable_states(self):
         self.assertEqual(
@@ -204,17 +238,32 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
         self.assertFalse(receipts.hidden(public))
 
     def test_supervision_import_separates_hidden_dependency(self):
-        base = {
-            "filename": "krookbishopk.uftb", "totals": [[0, 2, 3, 5]] * 2,
-            "unreachable": [[0, 0, 1, 0]] * 2,
-            "table_archive": {"bucket": "bucket", "key": "table", "version_id": "t",
-                              "sha256": "a" * 64, "bytes": 10},
-            "wave_certificate": {"key": "wave", "version_id": "w",
-                                 "sha256": "b" * 64, "bytes": 20},
-            "reachability_s3": {"key": "reach", "version_id": "r",
-                                "sha256": "c" * 64, "bytes": 30},
-        }
-        hidden = dict(base, filename="kjestercheckerk.uftb")
+        def receipt(filename):
+            states = int(receipts.catalog()[filename]["states"])
+            reach_sha = "c" * 64
+            return {
+                "schema": receipts.SCHEMA,
+                "predicate": receipts.PREDICATE,
+                "filename": filename,
+                "output_sha256": "d" * 64,
+                "states": states,
+                "totals": [[0, 2, 3, states // 2 - 5]] * 2,
+                "unreachable": [[0, 0, 1, 0]] * 2,
+                "table_archive": {
+                    "bucket": "bucket", "key": "table", "version_id": "t",
+                    "sha256": "a" * 64, "bytes": 10},
+                "wave_certificate": {
+                    "key": "wave", "version_id": "w",
+                    "sha256": "b" * 64, "bytes": 20},
+                "reachability_s3": {
+                    "bucket": "bucket",
+                    "key": (f"prefix/sha256/{reach_sha}/"
+                            f"{Path(filename).stem}.reachability-v1.json"),
+                    "version_id": "r", "sha256": reach_sha, "bytes": 30},
+            }
+
+        base = receipt("krookbishopk.uftb")
+        hidden = receipt("kjestercheckerk.uftb")
         configuration = {"jobs": [
             {"id": "public", "ledger_files": [base["filename"]]},
             {"id": "hidden", "ledger_files": [hidden["filename"]],
@@ -230,6 +279,29 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
         self.assertIn(base["filename"], jobs[0]["ledger_results"])
         self.assertFalse(jobs[1]["ledger_certifies"])
         self.assertNotIn("ledger_results", jobs[1])
+
+    def test_reachability_import_rejects_cross_bound_sidecar(self):
+        filename = "krookbishopk.uftb"
+        states = int(receipts.catalog()[filename]["states"])
+        record = {
+            "schema": receipts.SCHEMA,
+            "predicate": receipts.PREDICATE,
+            "filename": filename,
+            "output_sha256": "d" * 64,
+            "states": states,
+            "totals": [[0, 2, 3, states // 2 - 5]] * 2,
+            "unreachable": [[0, 0, 1, 0]] * 2,
+            "table_archive": {"key": "table", "version_id": "t",
+                              "sha256": "a" * 64, "bytes": 10},
+            "wave_certificate": {"key": "wave", "version_id": "w",
+                                 "sha256": "b" * 64, "bytes": 20},
+            "reachability_s3": {
+                "key": ("prefix/sha256/" + "c" * 64 +
+                        "/kberserkerninjak.reachability-v1.json"),
+                "version_id": "r", "sha256": "c" * 64, "bytes": 30},
+        }
+        with self.assertRaisesRegex(ValueError, "sidecar filename residual"):
+            receipts.validate_receipt(record)
 
 
 if __name__ == "__main__":

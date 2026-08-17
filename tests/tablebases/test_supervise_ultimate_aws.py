@@ -612,6 +612,36 @@ class SupervisionTests(unittest.TestCase):
         schedule = SUPERVISOR.schedule_backfill(document, report)
         self.assertEqual([], schedule["selected"])
 
+    def test_unconfigured_active_unit_utilization_is_measured_fail_closed(self) -> None:
+        definition = config()["instances"][0]
+        before = remote(first="inactive", complete=True)
+        after = remote(first="inactive", complete=True)
+        for document, cpu in ((before, "10000000000"),
+                              (after, "130000000000")):
+            document["unconfigured_active_units"] = {
+                "count": 1, "sha256": SHA_A,
+                "sample": ["ultimatefish-current-retry.service"],
+                "probe_status": 0,
+                "details": [{
+                    "unit": "ultimatefish-current-retry.service",
+                    "properties": {
+                        "ActiveState": "active",
+                        "CPUUsageNSec": cpu,
+                        "MemoryCurrent": "4096",
+                        "StateChangeTimestamp": "same activation",
+                    },
+                }],
+            }
+        allocation = SUPERVISOR.cpu_allocation(
+            definition, after, previous_remote=before, sample_seconds=60)
+        sample = allocation["unconfigured_measured_jobs"][
+            "ultimatefish-current-retry.service"]
+        self.assertEqual(2.0, sample["average_busy_vcpus"])
+        self.assertEqual(4096, sample["memory_current_bytes"])
+        self.assertEqual(6.2, allocation["measured_fleet_capacity_percent"])
+        self.assertFalse(allocation["allocation_known"])
+        self.assertFalse(allocation["measurement_complete"])
+
     def test_expected_cpu_partition_is_validated_and_monitored(self) -> None:
         document = config()
         document["jobs"][0]["expected_allowed_cpus"] = "0-15"

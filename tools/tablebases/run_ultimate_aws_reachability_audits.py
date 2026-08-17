@@ -78,18 +78,28 @@ def audit_command(job: dict[str, Any], cpu: int) -> str:
     if record["opposing"]:
         arguments.append("--opposing")
     output = f"{work}/outputs/{filename}"
-    sidecar = f"{work}/certificates/reachability-v1.txt"
+    sidecar = f"{work}/certificates/reachability-v2.txt"
     arguments.extend(("--audit-reachability", output))
     quoted = " ".join(arguments)
+    binding = (f"reachability_binding filename {filename} "
+               "output_sha256 $table_sha")
+    bound_audit = (
+        f"table_sha=$(sha256sum {output} | cut -d' ' -f1); "
+        f"{{ echo \"{binding}\"; {quoted}; }} > {sidecar}.tmp 2>&1 && "
+        f"mv {sidecar}.tmp {sidecar}")
     # Every interpolated component comes from the validated repository plan;
     # material names and generated paths contain no shell metacharacters.
     return (
-        f"if test -s {sidecar}; then echo COMPLETE:{filename}; "
+        f"table_sha=$(sha256sum {output} | cut -d' ' -f1); "
+        f"if grep -Fx \"{binding}\" {sidecar} >/dev/null 2>&1; "
+        f"then echo COMPLETE:{filename}; "
+        f"elif test -e {sidecar}; then echo INVALID_BINDING:{filename}; "
+        f"exit 1; "
         f"elif systemctl is-active --quiet {unit}.service; then "
         f"echo RUNNING:{filename}; else "
         f"systemd-run --quiet --collect --unit={unit} "
         f"--property=AllowedCPUs={cpu} --property=Nice=10 /bin/sh -c "
-        f"'{quoted} > {sidecar}.tmp 2>&1 && mv {sidecar}.tmp {sidecar}'; "
+        f"'{bound_audit}'; "
         f"echo STARTED:{filename}:cpu={cpu}; fi"
     )
 
@@ -107,7 +117,7 @@ def compact_collection_command(job: dict[str, Any]) -> str:
     filename = str(job["filename"])
     output = f"{work}/outputs/{filename}"
     wave = f"{work}/certificates/wave-certificate.json"
-    reach = f"{work}/certificates/reachability-v1.txt"
+    reach = f"{work}/certificates/reachability-v2.txt"
     program = (
         "import collections,hashlib,json,struct,sys;"
         "p,w,r=sys.argv[1:];d=open(p,'rb');h=d.read(64);"
@@ -124,7 +134,10 @@ def compact_collection_command(job: dict[str, Any]) -> str:
         "for q in range(4)])"
         "(collections.Counter(x[a//4:z//4]));"
         "a=json.load(open(w));z=a['completed'][0];"
-        "t=''.join(y for y in open(r) if y.startswith('reachability side '));"
+        "q=open(r).read().splitlines();"
+        "assert q[0]=='reachability_binding filename '+z['filename']+"
+        "' output_sha256 '+z['output']['sha256'];"
+        "t=''.join(y+'\\n' for y in q if y.startswith('reachability side '));"
         "u=z['s3'];e={'filename':z['filename'],'output':z['output'],"
         "'s3':{k:u[k] for k in ('bucket','key','version_id','sha256','bytes')}};"
         "print(json.dumps({'filename':z['filename'],'artifact':e,"
@@ -258,7 +271,9 @@ def upload_sidecars(region: str, collected: list[dict[str, Any]],
         put = aws_json([
             "aws", "s3api", "put-object", "--region", region,
             "--bucket", bucket, "--key", key, "--body", str(path),
-            "--metadata", f"sha256={digest},schema={document['schema']}",
+            "--metadata", (f"sha256={digest},schema={document['schema']},"
+                           f"filename={document['filename']},"
+                           f"output_sha256={document['output_sha256']}"),
             "--output", "json",
         ])
         version = str(put.get("VersionId", ""))

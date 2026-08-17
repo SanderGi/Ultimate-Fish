@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from dataclasses import dataclass
@@ -83,6 +84,12 @@ COLORS = {
 PIECE_LABELS = {piece.name: piece.name.title() for piece in PIECES}
 PIECE_BY_NAME = {piece.name: piece for piece in PIECES}
 PIECE_INDEX = {piece.name: index for index, piece in enumerate(PIECES)}
+BERSERKER_RADIUS_ROWS = tuple(
+    f"berserker_radius_{radius}" for radius in range(1, 4))
+PIECE_LABELS.update({
+    row: f"Berserker (radius {radius})"
+    for radius, row in enumerate(BERSERKER_RADIUS_ROWS, 1)
+})
 
 
 def parse_wdl(text: str) -> WDL:
@@ -146,6 +153,26 @@ def read_summary(path: Path) -> dict[str, ReadmeResult]:
     return results
 
 
+def read_berserker_radii(path: Path) -> dict[tuple[str, int], ReadmeResult]:
+    """Read exact, reachability-filtered Berserker power slices."""
+    document = json.loads(path.read_text(encoding="utf-8"))
+    if document.get("schema") != 1:
+        raise ValueError(f"unsupported Berserker radius summary schema: {path}")
+    results: dict[tuple[str, int], ReadmeResult] = {}
+    for filename, record in document.get("files", {}).items():
+        for radius_text, raw in record.get("radii", {}).items():
+            radius = int(radius_text)
+            if radius not in (1, 2, 3):
+                continue
+            first = raw["first_starts"]
+            second = raw["second_starts"]
+            results[(filename, radius)] = ReadmeResult(
+                WDL(first["wins"], first["losses"], first["draws"]),
+                WDL(second["wins"], second["losses"], second["draws"]),
+            )
+    return results
+
+
 def row_side_result(raw: ReadmeResult, row_is_primary: bool = True) -> tuple[WDL, WDL]:
     """Return row-side W/L/D for row-to-move, then opponent-to-move.
 
@@ -177,13 +204,22 @@ def known_draw() -> Cell:
 
 
 class OutcomeCatalog:
-    def __init__(self, summary: dict[str, ReadmeResult]) -> None:
+    def __init__(
+        self,
+        summary: dict[str, ReadmeResult],
+        berserker_radii: dict[tuple[str, int], ReadmeResult] | None = None,
+    ) -> None:
         self.summary = summary
-        records_by_filename = {
-            str(record["filename"]): record for record in inventory()
-        }
-        for record in (*stateful_candidates(), *mirror_copycat_candidates()):
-            records_by_filename.setdefault(str(record["filename"]), record)
+        self.berserker_radii = berserker_radii or {}
+        # Match the canonical ledger's record precedence.  The broad stateful
+        # catalog may contain a normalized duplicate for an already generated
+        # requested class (for example kpenguinkdragon versus the authenticated
+        # kdragonkpenguin header).  The exact inventory record must win so a
+        # certified result cannot be hidden or interpreted with reversed owners.
+        records_by_filename: dict[str, dict[str, object]] = {}
+        for record in (*stateful_candidates(), *mirror_copycat_candidates(),
+                       *inventory()):
+            records_by_filename[str(record["filename"])] = record
         records = list(records_by_filename.values())
         self.singles = {
             str(record["primary"]): record
@@ -191,7 +227,10 @@ class OutcomeCatalog:
             if record["phase"] == "kings+1"
         }
         self.same_team = {
-            (str(record["primary"]), str(record["secondary"])): record
+            tuple(sorted(
+                (str(record["primary"]), str(record["secondary"])),
+                key=PIECE_INDEX.__getitem__,
+            )): record
             for record in records
             if record["secondary"] and not record["opposing"]
         }
@@ -228,6 +267,81 @@ class OutcomeCatalog:
         if not PIECE_BY_NAME[name].decisive:
             return known_draw()
         return self._cell_for_record(self.singles.get(name))
+
+    @staticmethod
+    def _radius(row: str) -> int | None:
+        if row not in BERSERKER_RADIUS_ROWS:
+            return None
+        return int(row.rsplit("_", 1)[1])
+
+    def _radius_cell_for_record(
+        self,
+        record: dict[str, object] | None,
+        radius: int,
+        row_is_primary: bool = True,
+        allow_loss: bool = False,
+    ) -> Cell:
+        if record is None:
+            return Cell("unknown")
+        filename = str(record["filename"])
+        aggregate = self.summary.get(filename)
+        if aggregate is not None and aggregate.status == "computing":
+            return Cell("computing")
+        raw = self.berserker_radii.get((filename, radius))
+        if raw is None:
+            return Cell("unknown")
+        first, second = row_side_result(raw, row_is_primary)
+        return classify(first, second, allow_loss)
+
+    def single_row(self, row: str) -> Cell:
+        radius = self._radius(row)
+        if radius is None:
+            return self.single(row)
+        return self._radius_cell_for_record(self.singles.get("berserker"), radius)
+
+    def together_row(self, row: str, column: str) -> Cell:
+        radius = self._radius(row)
+        if radius is None:
+            return self.together(row, column)
+        if column == "berserker":
+            # Two same-team Berserkers are exchange-folded; there is no
+            # distinguished row Berserker whose radius can be sliced.
+            return Cell("unknown")
+        names = {"berserker", column}
+        if (names & DEFERRED_DYNAMIC_K2 or
+                "copycat" in names and bool(names & COPYCAT_SEPARATORS)):
+            return Cell("unknown")
+        first, second = sorted(names, key=PIECE_INDEX.__getitem__)
+        if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
+            return known_draw()
+        return self._radius_cell_for_record(
+            self.same_team.get((first, second)), radius)
+
+    def opposed_row(self, row: str, column: str) -> Cell:
+        radius = self._radius(row)
+        if radius is None:
+            return self.opposed(row, column)
+        if column == "berserker":
+            return self._radius_cell_for_record(
+                self.opposing.get(("berserker", "berserker")),
+                radius,
+                allow_loss=True,
+            )
+        names = {"berserker", column}
+        if (names & DEFERRED_DYNAMIC_K2 or
+                "copycat" in names and bool(names & COPYCAT_SEPARATORS)):
+            return Cell("unknown")
+        first, second = sorted(names, key=PIECE_INDEX.__getitem__)
+        if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], False):
+            return known_draw()
+        record = self.opposing.get((first, second))
+        return self._radius_cell_for_record(
+            record,
+            radius,
+            row_is_primary=(record is not None and
+                            str(record["primary"]) == "berserker"),
+            allow_loss=True,
+        )
 
     def together(self, row: str, column: str) -> Cell:
         if PIECE_INDEX[column] > PIECE_INDEX[row]:
@@ -445,9 +559,12 @@ def draw_grid(
     return total_width, header_height + len(rows) * cell_height
 
 
-def render(readme: Path, output: Path, scale: int) -> None:
-    catalog = OutcomeCatalog(read_summary(readme))
+def render(readme: Path, radii: Path, output: Path, scale: int) -> None:
+    catalog = OutcomeCatalog(read_summary(readme), read_berserker_radii(radii))
     names = [piece.name for piece in PIECES]
+    rows = list(names)
+    berserker_index = rows.index("berserker") + 1
+    rows[berserker_index:berserker_index] = BERSERKER_RADIUS_ROWS
 
     cell_width = 102 * scale
     cell_height = 82 * scale
@@ -462,7 +579,7 @@ def render(readme: Path, output: Path, scale: int) -> None:
     single_width = row_label_width + single_cell_width
     matrix_width = row_label_width + len(names) * cell_width
     width = outer * 2 + single_width + matrix_width * 2 + gap * 2
-    height = top + header_height + len(names) * cell_height + footer
+    height = top + header_height + len(rows) * cell_height + footer
     image = Image.new("RGBA", (width, height), COLORS["page"])
     draw = ImageDraw.Draw(image)
 
@@ -495,8 +612,8 @@ def render(readme: Path, output: Path, scale: int) -> None:
         (x, grid_y),
         "King + A  vs  King",
         ["Outcome"],
-        names,
-        [[catalog.single(name)] for name in names],
+        rows,
+        [[catalog.single_row(row)] for row in rows],
         single_cell_width,
         cell_height,
         row_label_width,
@@ -508,8 +625,8 @@ def render(readme: Path, output: Path, scale: int) -> None:
         (x, grid_y),
         "King + A + B  vs  King",
         names,
-        names,
-        [[catalog.together(row, column) for column in names] for row in names],
+        rows,
+        [[catalog.together_row(row, column) for column in names] for row in rows],
         cell_width,
         cell_height,
         row_label_width,
@@ -521,8 +638,8 @@ def render(readme: Path, output: Path, scale: int) -> None:
         (x, grid_y),
         "King + A  vs  King + B",
         names,
-        names,
-        [[catalog.opposed(row, column) for column in names] for row in names],
+        rows,
+        [[catalog.opposed_row(row, column) for column in names] for row in rows],
         cell_width,
         cell_height,
         row_label_width,
@@ -572,6 +689,12 @@ def main() -> None:
         help="README containing the generated tablebase summary",
     )
     parser.add_argument(
+        "--berserker-radii",
+        type=Path,
+        default=ROOT / "tablebases" / "berserker-radius-summary.json",
+        help="exact reachability-filtered radius 1/2/3 Berserker results",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=ROOT / "tablebases" / "ultimate-tablebase-grid.png",
@@ -584,7 +707,12 @@ def main() -> None:
         help="render at 1× or 2× resolution (default: 1)",
     )
     args = parser.parse_args()
-    render(args.readme.resolve(), args.output.resolve(), args.scale)
+    render(
+        args.readme.resolve(),
+        args.berserker_radii.resolve(),
+        args.output.resolve(),
+        args.scale,
+    )
 
 
 if __name__ == "__main__":

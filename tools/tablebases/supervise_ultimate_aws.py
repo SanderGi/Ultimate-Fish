@@ -535,8 +535,9 @@ active_units=sorted({line.split()[0] for line in out.splitlines()
              if rc == 0 else []
 unknown_units=[unit for unit in active_units if unit not in known_units]
 unknown_text='\n'.join(unknown_units).encode()
+unknown_details=[[unit,props(unit)] for unit in unknown_units[:32]]
 unknown=[len(unknown_units),hashlib.sha256(unknown_text).hexdigest(),
-         unknown_units[:8],rc]
+         unknown_units[:8],rc,unknown_details]
 document={'memory':memory,'mounts':mounts,'jobs':jobs,'u':unknown}
 encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
 document['b']=len(encoded.encode())
@@ -653,12 +654,21 @@ def normalize_remote(remote: dict[str, Any]) -> dict[str, Any]:
         remote["probe_compacted"] = level in {1, 2}
         remote["probe_compaction_level"] = level
     unknown = remote.pop("u", None)
-    if (isinstance(unknown, list) and len(unknown) == 4 and
+    if (isinstance(unknown, list) and len(unknown) in {4, 5} and
             isinstance(unknown[0], int) and isinstance(unknown[2], list)):
         remote["unconfigured_active_units"] = {
             "count": unknown[0], "sha256": unknown[1],
             "sample": unknown[2], "probe_status": unknown[3],
         }
+        if len(unknown) == 5 and isinstance(unknown[4], list):
+            details: list[dict[str, Any]] = []
+            for record in unknown[4]:
+                if (isinstance(record, list) and len(record) == 2 and
+                        isinstance(record[0], str) and
+                        isinstance(record[1], dict)):
+                    details.append({"unit": record[0],
+                                    "properties": record[1]})
+            remote["unconfigured_active_units"]["details"] = details
 
     def aggregate(records: object) -> list[dict[str, Any]]:
         if not isinstance(records, list):
@@ -887,11 +897,51 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
             if shared:
                 overlaps.append(
                     f"{first}+{second}:{','.join(map(str, sorted(shared)))}")
-    measured_busy = sum(float(item["average_busy_vcpus"])
-                        for item in utilization.values())
     unconfigured = remote.get("unconfigured_active_units", {})
     unconfigured_count = int(unconfigured.get("count", 0) or 0)
     unconfigured_probe_ok = unconfigured.get("probe_status", 0) == 0
+    previous_unconfigured = {
+        str(item.get("unit")): item.get("properties", {})
+        for item in (previous_remote or {}).get(
+            "unconfigured_active_units", {}).get("details", [])
+        if isinstance(item, dict)
+    }
+    unconfigured_utilization: dict[str, dict[str, Any]] = {}
+    for item in unconfigured.get("details", []):
+        if not isinstance(item, dict):
+            continue
+        unit_name = str(item.get("unit", ""))
+        properties = item.get("properties", {})
+        if (not unit_name or not isinstance(properties, dict) or
+                properties.get("ActiveState") not in {
+                    "active", "activating", "reloading"}):
+            continue
+        current_cpu = integer_property(properties, "CPUUsageNSec")
+        previous_properties = previous_unconfigured.get(unit_name, {})
+        previous_cpu = integer_property(previous_properties, "CPUUsageNSec")
+        same_activation = (
+            properties.get("StateChangeTimestamp") and
+            properties.get("StateChangeTimestamp") ==
+            previous_properties.get("StateChangeTimestamp"))
+        if (current_cpu is None or previous_cpu is None or
+                current_cpu < previous_cpu or not same_activation or
+                sample_seconds is None or sample_seconds <= 0):
+            continue
+        delta = current_cpu - previous_cpu
+        busy = delta / (sample_seconds * 1_000_000_000)
+        unconfigured_utilization[unit_name] = {
+            "cpu_usage_nsec": current_cpu,
+            "cpu_delta_nsec": delta,
+            "sample_seconds": round(sample_seconds, 3),
+            "average_busy_vcpus": round(busy, 3),
+            "memory_current_bytes": integer_property(
+                properties, "MemoryCurrent"),
+        }
+    measured_busy = (
+        sum(float(item["average_busy_vcpus"])
+            for item in utilization.values()) +
+        sum(float(item["average_busy_vcpus"])
+            for item in unconfigured_utilization.values()))
     mismatches = {
         name: {
             "expected": ",".join(map(str, sorted(cpus))),
@@ -915,6 +965,7 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
             for name, cpus in active_sets.items()
         },
         "measured_jobs": utilization,
+        "unconfigured_measured_jobs": unconfigured_utilization,
         "measured_busy_vcpus": round(measured_busy, 3),
         "measured_fleet_capacity_percent": round(
             100 * measured_busy / capacity, 1),

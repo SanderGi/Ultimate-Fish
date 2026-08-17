@@ -12784,16 +12784,7 @@
           "max_bytes": 1024
         }
       ],
-      "source_bindings": [
-        {
-          "path": "/mnt/ultimatefish/transport-parasite-same-a3dcf230/source/resume-transport-manifest.json",
-          "sha256": "f25ea1428d3eae65da9e3817832224e046cb3a4a24f603b959e4ef33fc5b22bc"
-        },
-        {
-          "path": "/mnt/ultimatefish/transport-parasite-same-a3dcf230/runner/tools/tablebases/resume_ultimate_concrete_frontier_aws.py",
-          "sha256": "43423cc7b9925046224e93cfc188d3fc6d5128d956f771ae99c4b8d30fb7fc1a"
-        }
-      ],
+      "source_bindings": [],
       "s3_certificates": [
         {
           "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",

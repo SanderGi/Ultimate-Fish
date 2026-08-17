@@ -92,14 +92,14 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
     def test_current_computation_hides_stale_result_and_hatches_plot(self):
         text = ledger.README.read_text()
         rows = ledger.apply_overrides(
-            ledger.entries(text), {"kknightghostk.uftb": "computing"}, {})
-        row = next(row for row in rows if row.filename == "kknightghostk.uftb")
+            ledger.entries(text), {"kknightkghost.uftb": "computing"}, {})
+        row = next(row for row in rows if row.filename == "kknightkghost.uftb")
         self.assertEqual("computing", row.status)
         self.assertEqual("—", row.first)
         self.assertEqual("—", row.reachability)
         summary = plot.read_summary(ledger.README)
         catalog = plot.OutcomeCatalog(summary)
-        self.assertEqual("computing", catalog.together("ghost", "knight").kind)
+        self.assertEqual("computing", catalog.opposed("ghost", "knight").kind)
 
     def test_sleeping_wrappers_are_not_marked_computing(self):
         for row in ledger.entries(ledger.README.read_text()):
@@ -155,7 +155,122 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
                 row.key,
             )
             checked += 1
-        self.assertEqual(392, checked)
+        self.assertEqual(410, checked)
+
+    def test_certified_concrete_wdl_conserves_each_encoded_side(self):
+        checked = 0
+        for row in ledger.entries(ledger.README.read_text()):
+            if (row.status not in {"certified", "preserving"} or
+                    row.result_kind != "concrete" or row.states is None):
+                continue
+            side_totals = []
+            for cell in (row.first, row.second):
+                admitted, unreachable = ledger.parse_wdl(cell)
+                side_totals.append(admitted + unreachable)
+            self.assertEqual(side_totals[0], side_totals[1], row.key)
+            self.assertEqual(row.states // 2, side_totals[0], row.key)
+            checked += 1
+        self.assertGreater(checked, 300)
+
+    def test_berserker_ninja_uses_admitted_not_omitted_counts(self):
+        row = next(
+            item for item in ledger.entries(ledger.README.read_text())
+            if item.filename == "kberserkerkninja.uftb")
+        self.assertEqual(
+            "37,634,442 (133,257,124) / 6,593,328 / 12,304,706",
+            row.first)
+        self.assertEqual(
+            "43,467,936 (52,591,000) / 80,669,688 / 13,060,976",
+            row.second)
+        self.assertIn("reachability sha256:", row.storage)
+        summary = plot.read_summary(ledger.README)
+        self.assertEqual("mixed", plot.OutcomeCatalog(summary).opposed(
+            "berserker", "ninja").kind)
+
+    def test_berserker_sniper_uses_admitted_not_omitted_counts(self):
+        row = next(
+            item for item in ledger.entries(ledger.README.read_text())
+            if item.filename == "kberserkerksniper.uftb")
+        self.assertEqual(
+            "112,834,132 (645,862,628) / 8,413 (479) / "
+            "222,407 (230,341)",
+            row.first)
+        self.assertEqual(
+            "126,266 (73,752,811) / 301,329,375 (318,640,610) / "
+            "36,606,979 (28,702,359)",
+            row.second)
+        self.assertIn(
+            "reachability sha256:590ebdc7051d453605f5153024986c02718f5af22973ab99fccd22373c04167c",
+            row.storage)
+
+    def test_legacy_receipt_corrections_remain_canonical(self):
+        rows = {row.filename: row
+                for row in ledger.entries(ledger.README.read_text())}
+        self.assertEqual(
+            "372,224 (108,184) / 0 / 72 (12,480)",
+            rows["kcopycatk.uftb"].first)
+        self.assertEqual(
+            "0 (40,776) / 374,136 / 65,568 (12,480)",
+            rows["kcopycatk.uftb"].second)
+        self.assertEqual(
+            "30,670 (3,121,728) / 7,645,846 (43,188) / "
+            "2,444,212 (5,693,316)",
+            rows["kbombkgiant.uftb"].second)
+
+    def test_stateful_penguin_sidecar_covers_every_power_substate(self):
+        row = next(
+            item for item in ledger.entries(ledger.README.read_text())
+            if item.filename == "kpenguink.uftb")
+        self.assertEqual(
+            "1,264 (52,024) / 192 / 491,504 (1,426,856)",
+            row.first)
+        self.assertEqual(
+            "796 (45,080) / 3,272 / 530,700 (1,391,992)",
+            row.second)
+        for cell in (row.first, row.second):
+            admitted, unreachable = ledger.parse_wdl(cell)
+            self.assertEqual(row.states // 2, admitted + unreachable)
+
+    def test_dragon_penguin_columns_follow_authenticated_file_owner(self):
+        row = next(
+            item for item in ledger.entries(ledger.README.read_text())
+            if item.filename == "kdragonkpenguin.uftb")
+        # This filename's authenticated header orders Dragon first even though
+        # the display key is sorted as Penguin+Dragon.  Reordering these cells
+        # to match the key silently reverses both cells in the opposed plot.
+        self.assertEqual(
+            "752,816 (1,903,140) / 965,350 (240) / "
+            "20,469,414 (127,740,720)",
+            row.first)
+        self.assertEqual(
+            "6,345,962 (5,766,916) / 206,072 / "
+            "11,875,666 (127,637,064)",
+            row.second)
+        catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))
+        self.assertEqual(
+            "kdragonkpenguin.uftb",
+            catalog.opposing[("penguin", "dragon")]["filename"])
+        dragon = catalog.opposed("dragon", "penguin")
+        self.assertEqual((752_816, 965_350, 20_469_414),
+                         (dragon.first.wins, dragon.first.losses,
+                          dragon.first.draws))
+        self.assertEqual((206_072, 6_345_962, 11_875_666),
+                         (dragon.second.wins, dragon.second.losses,
+                          dragon.second.draws))
+
+    def test_plot_catalog_maps_every_canonical_record(self):
+        catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))
+        for key, expected in ledger.record_catalog().items():
+            domain, encoded = key.split(":", 1)
+            names = encoded.split("+")
+            if domain == "single":
+                actual = catalog.singles.get(names[0])
+            else:
+                pair = tuple(sorted(names, key=plot.PIECE_INDEX.__getitem__))
+                actual = (catalog.same_team if domain == "same"
+                          else catalog.opposing).get(pair)
+            self.assertIsNotNone(actual, key)
+            self.assertEqual(expected["filename"], actual["filename"], key)
 
     def test_exact_certified_import_is_validated_and_persistent(self):
         rows = ledger.entries(ledger.README.read_text())
@@ -175,14 +290,36 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             ledger.parse_certified([
                 f"kjesterjesterk.uftb={encoded.replace('1 / 1; 2 / 0', 'bad')}"])
 
+    def test_certified_concrete_cells_survive_unrelated_ledger_updates(self):
+        with tempfile.TemporaryDirectory() as raw:
+            readme = Path(raw) / "README.md"
+            readme.write_text(ledger.README.read_text())
+            result = {
+                "result_kind": "concrete",
+                "first": "1 (2) / 3 / 4",
+                "second": "5 / 2 (1) / 2",
+                "reachability": "8 / 2; 9 / 1",
+                "storage": "S3 exact bound audit",
+            }
+            ledger.update(
+                readme, [], [], certified_values=[
+                    "kcopycatk.uftb=" + json.dumps(result)])
+            ledger.update(
+                readme, [], ["krk.uftb=S3 unrelated storage edit"])
+            row = next(item for item in ledger.entries(readme.read_text())
+                       if item.filename == "kcopycatk.uftb")
+            self.assertEqual(result["first"], row.first)
+            self.assertEqual(result["second"], row.second)
+            self.assertEqual(result["reachability"], row.reachability)
+
     def test_launch_gate_refuses_certified_and_untracked_recomputation(self):
         with self.assertRaisesRegex(RuntimeError, "status certified"):
             ledger.check_launch(ledger.README, "krk.uftb", resume=False)
         with self.assertRaisesRegex(RuntimeError, "status computing"):
             ledger.check_launch(
-                ledger.README, "kknightghostk.uftb", resume=False)
+                ledger.README, "kknightkghost.uftb", resume=False)
         ledger.check_launch(
-            ledger.README, "kknightghostk.uftb", resume=True)
+            ledger.README, "kknightkghost.uftb", resume=True)
         planned = next(
             entry.filename for entry in ledger.entries(ledger.README.read_text())
             if entry.filename and entry.status == "planned")

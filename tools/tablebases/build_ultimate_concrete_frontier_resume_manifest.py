@@ -71,8 +71,8 @@ def build(source: Path, wave: int, index: int,
         raise RuntimeError("retrograde propagation already began")
     frontier = re.findall(r"^frontier states [^\n]+", log_text, re.MULTILINE)
     reverse = re.findall(r"^reverse states [^\n]+", log_text, re.MULTILINE)
-    if not frontier or not reverse:
-        raise RuntimeError("retained log lacks complete-frontier/reverse evidence")
+    if not frontier:
+        raise RuntimeError("retained log lacks frontier evidence")
     resource = json.loads((source / resource_relative).read_text())
     if (resource.get("returncode") != -15 or
             not resource.get("scratch_retained") or
@@ -95,7 +95,6 @@ def build(source: Path, wave: int, index: int,
         "states": record["states"],
         "substates": substates,
         "last_frontier_marker": frontier[-1],
-        "last_reverse_marker": reverse[-1],
         "resource_violation": resource["violation"],
         "selection": {"wave": wave, "begin": index, "end": index + 1,
                       "classes": 1},
@@ -115,6 +114,24 @@ def build(source: Path, wave: int, index: int,
             for name in ("offsets", "predecessors")
         },
     }
+    if reverse:
+        document["last_reverse_marker"] = reverse[-1]
+    else:
+        frontier_mtime = max(
+            (source / f"scratch/{stem}.{name}").stat().st_mtime_ns
+            for name in ("nodes", "degrees"))
+        reverse_mtimes = {
+            name: (source / f"scratch/{stem}.{name}").stat().st_mtime_ns
+            for name in ("offsets", "predecessors")
+        }
+        if min(reverse_mtimes.values()) <= frontier_mtime:
+            raise RuntimeError(
+                "retained log lacks reverse marker or later reverse-plane evidence")
+        document["reverse_phase_evidence"] = {
+            "schema": "ultimate-reverse-phase-mtime-v1",
+            "frontier_planes_max_mtime_ns": frontier_mtime,
+            "reverse_plane_mtime_ns": reverse_mtimes,
+        }
     resume.authenticate_manifest(document)
     if transport_source is not None:
         document["source_work_directory"] = str(transport_source.resolve())

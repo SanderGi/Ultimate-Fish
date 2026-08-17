@@ -1,0 +1,17 @@
+.git
+.agents
+.codex
+**/.DS_Store
+**/__pycache__
+**/*.pyc
+ui/node_modules
+ui/.next
+src/ultimatefish
+src/ultimate_rules_test
+tests
+docs
+build
+dist
+*.xapk
+*.ipa
+training
