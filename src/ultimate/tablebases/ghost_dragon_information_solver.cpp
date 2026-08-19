@@ -709,9 +709,15 @@ DragonPatchCertificate rewrite_lower_dragon_edges(
             if (position.game_over())
                 continue;
             const std::vector<Move> moves = position.legal_moves();
-            if (moves.size() != offsets[ghost + 1] - offsets[ghost])
+            const std::size_t compiledMoves =
+              offsets[ghost + 1] - offsets[ghost];
+            if (moves.size() != compiledMoves)
                 throw std::runtime_error(
-                  "Dragon transition patch move-count residual");
+                  "Dragon transition patch move-count residual geometry " +
+                  std::to_string(geometryId) + " ghost " +
+                  std::to_string(ghost) + " legal " +
+                  std::to_string(moves.size()) + " compiled " +
+                  std::to_string(compiledMoves) + " upn " + position.upn());
             for (std::size_t ordinal = 0; ordinal < moves.size(); ++ordinal) {
                 Position child = position;
                 Undo undo;

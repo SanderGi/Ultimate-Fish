@@ -187,6 +187,74 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual("mixed", plot.OutcomeCatalog(summary).opposed(
             "berserker", "ninja").kind)
 
+    def test_near_forced_outcomes_keep_wld_breakdown_and_lighter_color(self):
+        catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))
+
+        prince = catalog.opposed("prince", "bishop")
+        self.assertEqual("win_mostly", prince.kind)
+        self.assertEqual(0, prince.first.losses)
+        self.assertEqual(0, prince.second.losses)
+        self.assertGreaterEqual(
+            prince.first.wins * 1000, prince.first.total * 985)
+        self.assertTrue(plot.cell_text(prince).startswith("W 99–79%\nL 0–0%"))
+
+        bishop = catalog.opposed("bishop", "prince")
+        self.assertEqual("loss_mostly", bishop.kind)
+        self.assertEqual(0, bishop.first.wins)
+        self.assertEqual(0, bishop.second.wins)
+        self.assertGreaterEqual(
+            bishop.second.losses * 1000, bishop.second.total * 985)
+        self.assertTrue(plot.cell_text(bishop).startswith("W 0–0%\nL 79–99%"))
+
+        self.assertEqual("#B8DA86", plot.COLORS["win_mostly"])
+        self.assertEqual("#F5BE98", plot.COLORS["loss_mostly"])
+        self.assertNotEqual(
+            plot.COLORS["win_star"], plot.COLORS["win_mostly"])
+        self.assertNotEqual(
+            plot.COLORS["loss_star"], plot.COLORS["loss_mostly"])
+
+    def test_near_forced_highlight_requires_no_opposite_outcome(self):
+        almost = plot.WDL(985, 0, 15)
+        no_loss = plot.WDL(700, 0, 300)
+        self.assertEqual("win_mostly", plot.classify(
+            almost, no_loss, allow_loss=True).kind)
+        self.assertEqual("mixed", plot.classify(
+            plot.WDL(985, 1, 14), no_loss, allow_loss=True).kind)
+
+        almost_loss = plot.WDL(0, 985, 15)
+        no_win = plot.WDL(0, 700, 300)
+        self.assertEqual("loss_mostly", plot.classify(
+            no_win, almost_loss, allow_loss=True).kind)
+        self.assertEqual("mixed", plot.classify(
+            no_win, plot.WDL(1, 985, 14), allow_loss=True).kind)
+
+        below_threshold = plot.WDL(984, 0, 16)
+        self.assertEqual("no_forced_loss", plot.classify(
+            below_threshold, no_loss, allow_loss=True).kind)
+        self.assertEqual("no_forced_win", plot.classify(
+            no_win, plot.WDL(0, 984, 16), allow_loss=True).kind)
+
+        self.assertEqual("#E0EFC4", plot.COLORS["no_forced_loss"])
+        self.assertEqual("#FCE2CE", plot.COLORS["no_forced_win"])
+        self.assertEqual(6, len({
+            plot.COLORS[kind] for kind in (
+                "win_star", "win_mostly", "no_forced_loss",
+                "no_forced_win", "loss_mostly", "loss_star",
+            )
+        }))
+
+    def test_legend_spacing_tracks_text_width_and_outcome_groups(self):
+        widths = [71, 190, 83, 97, 151, 88, 203, 129, 101, 144]
+        positions, total = plot.legend_positions(
+            widths, normal_gap=44, group_gap=105)
+        gaps = [
+            positions[index + 1] - positions[index] - widths[index]
+            for index in range(len(widths) - 1)
+        ]
+        self.assertEqual(
+            [44, 44, 105, 44, 105, 44, 44, 105, 44], gaps)
+        self.assertEqual(positions[-1] + widths[-1], total)
+
     def test_berserker_sniper_uses_admitted_not_omitted_counts(self):
         row = next(
             item for item in ledger.entries(ledger.README.read_text())

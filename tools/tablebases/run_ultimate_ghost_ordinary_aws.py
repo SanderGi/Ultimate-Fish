@@ -151,6 +151,10 @@ def main() -> None:
     parser.add_argument("--lower-ghost-model-sha256", required=True)
     parser.add_argument("--lower-ghost-observation-sha256", required=True)
     parser.add_argument("--parallelism", type=int, default=20)
+    parser.add_argument("--prebuilt-executable", type=Path,
+                        help=("use one SHA-pinned executable for transition "
+                              "generation, merge, and solve"))
+    parser.add_argument("--prebuilt-executable-sha256", default="")
     parser.add_argument("--solve-max-nodes", type=int, default=500_000_000,
                         help="exact ROBDD node budget for solve-only retries")
     parser.add_argument("--transitions-only", action="store_true",
@@ -175,6 +179,14 @@ def main() -> None:
         raise RuntimeError("solve mode requires --lower-ghost-sidecar")
     if args.solve_max_nodes < 500_000_000:
         raise RuntimeError("solve ROBDD node budget may not shrink below baseline")
+    if ((args.prebuilt_executable is None) !=
+            (not args.prebuilt_executable_sha256)):
+        raise RuntimeError(
+            "prebuilt executable and SHA-256 must be supplied together")
+    if args.prebuilt_executable is not None:
+        require_sha(args.prebuilt_executable,
+                    args.prebuilt_executable_sha256,
+                    "prebuilt executable")
 
     if args.finalize_existing:
         work = args.work.resolve(strict=True)
@@ -336,7 +348,13 @@ def main() -> None:
         definitions.append("-DULTIMATE_GHOST_ORDINARY_LOWER_DRAW_ONLY")
     build[-len(sources)-2:-len(sources)-2] = definitions
     if not args.solve_existing:
-        run(build, root, work / "work/logs/build.log")
+        if args.prebuilt_executable is None:
+            run(build, root, work / "work/logs/build.log")
+        else:
+            shutil.copyfile(args.prebuilt_executable, executable)
+            executable.chmod(0o755)
+            require_sha(executable, args.prebuilt_executable_sha256,
+                        "copied prebuilt executable")
     binding = [
         "--orientation", args.orientation,
         "--lower-dragon-table", ("implicit-draw" if implicit_lower

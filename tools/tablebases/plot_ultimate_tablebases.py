@@ -35,7 +35,8 @@ from plan_ultimate_tablebases import (  # noqa: E402
 )
 
 Kind = Literal[
-    "win_star", "draw", "mixed", "loss_star", "computing", "unknown",
+    "win_star", "win_mostly", "no_forced_loss", "draw", "mixed",
+    "no_forced_win", "loss_mostly", "loss_star", "computing", "unknown",
     "duplicate",
 ]
 
@@ -72,10 +73,14 @@ COLORS = {
     "header": "#173B5E",
     "row_header": "#E5EEF6",
     "grid": "#AAB8C5",
-    "win_star": "#D8EDB2",
+    "win_star": "#91C655",
+    "win_mostly": "#B8DA86",
+    "no_forced_loss": "#E0EFC4",
     "draw": "#DCE2E8",
     "mixed": "#FFE3A1",
-    "loss_star": "#F9CFB0",
+    "no_forced_win": "#FCE2CE",
+    "loss_mostly": "#F5BE98",
+    "loss_star": "#E98B58",
     "computing": "#C9D8E6",
     "unknown": "#FFFFFF",
     "duplicate": "#FFFFFF",
@@ -195,6 +200,19 @@ def classify(first: WDL, second: WDL, allow_loss: bool) -> Cell:
         return Cell("draw", first, second)
     if allow_loss and first.losses != first.total and second.losses == second.total:
         return Cell("loss_star", first, second)
+    # Keep the exact Win*/Loss* tiers visually distinct while highlighting
+    # near-forced outcomes that never cross into the opposite result.  Compare
+    # integer products so the 98.5% boundary is deterministic for large tables.
+    if (first.wins * 1000 >= first.total * 985 and
+            first.losses == 0 and second.losses == 0):
+        return Cell("win_mostly", first, second)
+    if (allow_loss and second.losses * 1000 >= second.total * 985 and
+            first.wins == 0 and second.wins == 0):
+        return Cell("loss_mostly", first, second)
+    if first.losses == 0 and second.losses == 0:
+        return Cell("no_forced_loss", first, second)
+    if allow_loss and first.wins == 0 and second.wins == 0:
+        return Cell("no_forced_win", first, second)
     return Cell("mixed", first, second)
 
 
@@ -405,6 +423,23 @@ def percentage(value: int, total: int) -> str:
     return f"{percent:.0f}"
 
 
+def legend_positions(
+    widths: list[int],
+    normal_gap: int,
+    group_gap: int,
+    group_starts: frozenset[int] = frozenset({3, 5, 8}),
+) -> tuple[list[int], int]:
+    """Place variable-width legend items with wider group boundaries."""
+    positions: list[int] = []
+    cursor = 0
+    for index, width in enumerate(widths):
+        if index:
+            cursor += group_gap if index in group_starts else normal_gap
+        positions.append(cursor)
+        cursor += width
+    return positions, cursor
+
+
 def cell_text(cell: Cell) -> str:
     if cell.kind in {"unknown", "duplicate", "computing"}:
         return ""
@@ -546,7 +581,14 @@ def draw_grid(
             text = cell_text(cell)
             if not text:
                 continue
-            selected_font = terminal_font if cell.kind != "mixed" else value_font
+            selected_font = (
+                value_font
+                if cell.kind in {
+                    "mixed", "win_mostly", "no_forced_loss",
+                    "no_forced_win", "loss_mostly",
+                }
+                else terminal_font
+            )
             draw.multiline_text(
                 (left + cell_width // 2, top + cell_height // 2),
                 text,
@@ -599,7 +641,7 @@ def render(readme: Path, radii: Path, output: Path, scale: int) -> None:
     )
     draw.text(
         (width // 2, 151 * scale),
-        "Only reachability-admitted states are counted · hatched cells are computing now · white cells are planned, deferred, or duplicates",
+        "Includes only positions reachable from another position · Each Copycat cell represents one symmetric linked mirrored pair · Positions that immediately simplify to less material are included",
         fill=COLORS["muted"],
         font=font(20 * scale),
         anchor="ma",
@@ -649,17 +691,29 @@ def render(readme: Path, radii: Path, output: Path, scale: int) -> None:
     legend_y = height - 126 * scale
     legend_items = (
         ("win_star", "Forced win when row starts"),
+        ("win_mostly", "No forced loss, mostly forced win when row starts"),
+        ("no_forced_loss", "No forced loss"),
         ("draw", "Forced draw"),
         ("mixed", "Outcome depends on state"),
+        ("no_forced_win", "No forced win"),
+        ("loss_mostly", "No forced win, mostly forced loss when column starts"),
         ("loss_star", "Forced loss when column starts"),
         ("computing", "Computing now"),
         ("unknown", "Not computed / duplicate"),
     )
     legend_font = font(21 * scale)
-    item_width = 570 * scale
-    legend_x = (width - item_width * len(legend_items)) // 2
+    item_widths = []
+    for _, label in legend_items:
+        bounds = draw.textbbox((0, 0), label, font=legend_font)
+        item_widths.append(60 * scale + bounds[2] - bounds[0])
+    positions, legend_width = legend_positions(
+        item_widths,
+        normal_gap=44 * scale,
+        group_gap=105 * scale,
+    )
+    legend_x = (width - legend_width) // 2
     for index, (kind, label) in enumerate(legend_items):
-        left = legend_x + index * item_width
+        left = legend_x + positions[index]
         draw.rounded_rectangle(
             (left, legend_y, left + 46 * scale, legend_y + 32 * scale),
             radius=6 * scale,

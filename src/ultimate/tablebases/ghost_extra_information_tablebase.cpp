@@ -3427,6 +3427,40 @@ class PromotedQueenRobddImport {
       "cannot determine physical memory for exact external solve gate");
 }
 
+[[nodiscard]] std::uint64_t cgroup_memory_limit_bytes(
+  std::uint64_t physicalBytes) {
+#ifdef __linux__
+    std::ifstream membership("/proc/self/cgroup");
+    std::string line;
+    while (std::getline(membership, line)) {
+        const std::size_t separator = line.find("::");
+        if (separator == std::string::npos)
+            continue;
+        std::string path = line.substr(separator + 2);
+        if (path.empty() || path.front() != '/')
+            continue;
+        const std::string base = "/sys/fs/cgroup" + path;
+        for (const char* name : {"memory.max", "memory.high"}) {
+            std::ifstream input(base + "/" + name);
+            std::string value;
+            if (!std::getline(input, value) || value == "max")
+                continue;
+            try {
+                const std::uint64_t limit = std::stoull(value);
+                if (limit)
+                    physicalBytes = std::min(physicalBytes, limit);
+            }
+            catch (const std::exception&) {
+                throw std::runtime_error(
+                  std::string("invalid cgroup memory limit in ") + name);
+            }
+        }
+        break;
+    }
+#endif
+    return physicalBytes;
+}
+
 void gate_external_ghost_extra_solve(
   const std::string& transitionPrefix,
   const ExternalTransitionDatabase& database,
@@ -3501,8 +3535,9 @@ void gate_external_ghost_extra_solve(
     const std::uint64_t residentBytes = std::max(
       ordinaryResident, std::max(markResident, copyResident));
     const std::uint64_t physicalBytes = physical_memory_bytes();
-    const std::uint64_t residentLimit = std::min<std::uint64_t>(
-      12ULL << 30, physicalBytes * 7 / 10);
+    const std::uint64_t cgroupBytes =
+      cgroup_memory_limit_bytes(physicalBytes);
+    const std::uint64_t residentLimit = cgroupBytes * 7 / 10;
     if (residentBytes > residentLimit)
         throw std::runtime_error(
           "exact external Ghost-extra solve exceeds the physical-memory gate");
@@ -3517,7 +3552,8 @@ void gate_external_ghost_extra_solve(
               << " available_bytes " << available
               << " budget_bytes " << Budget << " admitted 1\n" << std::flush;
     std::cout << "ghost_extra_external_memory_gate physical_bytes "
-              << physicalBytes << " resident_limit_bytes " << residentLimit
+              << physicalBytes << " cgroup_bytes " << cgroupBytes
+              << " resident_limit_bytes " << residentLimit
               << " ordinary_resident_bytes " << ordinaryResident
               << " compaction_mark_resident_bytes " << markResident
               << " compaction_copy_resident_bytes " << copyResident

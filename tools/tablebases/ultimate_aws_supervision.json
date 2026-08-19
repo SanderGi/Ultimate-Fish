@@ -13126,6 +13126,105 @@
       }
     },
     {
+      "id": "singleton-fix-opposed-knight-ghost-highmem-v7",
+      "ledger_files": [
+        "kknightkghost.uftb"
+      ],
+      "ledger_certifies": true,
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "unit": "ultimatefish-info-singleton-fix-v1-kknightkghost-solve-1b-highmem-v7.service",
+      "expected_allowed_cpus": "21",
+      "dependencies": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish-penguin/info-singleton-domain-fix-v1/kknightkghost-highmem-v6/work/logs/*",
+        "/mnt/ultimatefish-penguin/info-singleton-domain-fix-v1/kknightkghost-highmem-v6/work/solve/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish-penguin/info-singleton-domain-fix-v1/kknightkghost-highmem-v6/work/results/*",
+        "/mnt/ultimatefish-penguin/info-singleton-domain-fix-v1/kknightkghost-highmem-v6/work/artifact-manifest.json"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish-penguin/info-singleton-domain-fix-v1/kknightkghost-highmem-v6/work/transitions-ready.json",
+          "sha256": "61cdcf4ffb413e5438be8e4ed5fabffe72ab0efa36640abc05b5f3a1e0b288fc"
+        },
+        {
+          "path": "/mnt/ultimatefish-penguin/info-singleton-domain-fix-v1/kknightkghost-highmem-v6/ultimate_ghost_ordinary_information_tablebase",
+          "sha256": "1e74036139100da08c1fcd7d0dda43b3787508cc1019ee4203b76d53445c0473"
+        }
+      ],
+      "s3_certificates": []
+    },
+    {
+      "id": "singleton-fix-opposed-turtle-ghost-serialized-v5",
+      "ledger_files": [
+        "kturtlekghost.uftb"
+      ],
+      "ledger_certifies": true,
+      "instance_id": "i-03c81f90d2c59a2e7",
+      "unit": "ultimatefish-info-singleton-fix-v1-kturtlekghost-migrated-solve-1b-v5.service",
+      "expected_allowed_cpus": "22",
+      "dependencies": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish-penguin/kturtlekghost-migration-v2/solve-v4/work/logs/*",
+        "/mnt/ultimatefish-penguin/kturtlekghost-migration-v2/solve-v4/work/solve/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish-penguin/kturtlekghost-migration-v2/solve-v4/work/results/*",
+        "/mnt/ultimatefish-penguin/kturtlekghost-migration-v2/solve-v4/work/artifact-manifest.json"
+      ],
+      "source_bindings": [
+        {
+          "path": "/mnt/ultimatefish-penguin/kturtlekghost-migration-v2/restore/info-singleton-domain-fix-v1/kturtlekghost/work/transitions-ready.json",
+          "sha256": "73aa81ca59a6749b75cdf074585fdd077533c588e62e01515abfaa411d5cb3f2"
+        }
+      ],
+      "s3_certificates": []
+    },
+    {
+      "id": "singleton-fix-opposed-prince-ghost-fresh-v6",
+      "ledger_files": [
+        "kghostkprince.uftb"
+      ],
+      "ledger_certifies": true,
+      "instance_id": "i-08c0f44a1776cb34a",
+      "unit": "ultimatefish-info-singleton-fix-v1-kghostkprince-fresh-v6.service",
+      "expected_allowed_cpus": "0-7",
+      "dependencies": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/info-singleton-domain-fix-v1/kghostkprince-fresh-v6/work/logs/*",
+        "/mnt/ultimatefish/info-singleton-domain-fix-v1/kghostkprince-fresh-v6/work/solve/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/info-singleton-domain-fix-v1/kghostkprince-fresh-v6/work/results/*",
+        "/mnt/ultimatefish/info-singleton-domain-fix-v1/kghostkprince-fresh-v6/work/artifact-manifest.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
+      "id": "singleton-fix-same-checker-ghost-coherent-fresh-v9",
+      "ledger_files": [
+        "kghostcheckerk.uftb"
+      ],
+      "ledger_certifies": true,
+      "instance_id": "i-0986ed3d272721f02",
+      "unit": "ultimatefish-info-singleton-fix-v1-kghostcheckerk-coherent-fresh-v9.service",
+      "expected_allowed_cpus": "0-9",
+      "dependencies": [],
+      "checkpoint_paths": [
+        "/mnt/ultimatefish/info-singleton-domain-fix-v1/kghostcheckerk-coherent-fresh-v9/work/logs/*",
+        "/mnt/ultimatefish/info-singleton-domain-fix-v1/kghostcheckerk-coherent-fresh-v9/work/transitions/*.verified",
+        "/mnt/ultimatefish/info-singleton-domain-fix-v1/kghostcheckerk-coherent-fresh-v9/work/solve/*"
+      ],
+      "completion_paths": [
+        "/mnt/ultimatefish/info-singleton-domain-fix-v1/kghostcheckerk-coherent-fresh-v9/work/results/*",
+        "/mnt/ultimatefish/info-singleton-domain-fix-v1/kghostcheckerk-coherent-fresh-v9/work/artifact-manifest.json"
+      ],
+      "source_bindings": [],
+      "s3_certificates": []
+    },
+    {
       "id": "current-information-opposed-ghost-pair",
       "ledger_files": [
         "kghostkghost.uftb"
