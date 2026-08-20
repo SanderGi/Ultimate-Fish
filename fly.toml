@@ -16,7 +16,7 @@ primary_region = 'sjc'
   processes = ['app']
 
 [[vm]]
-  size=performance-1x
+  size = 'performance-1x'
   memory = '4gb'
   cpus = 1
   memory_mb = 4096
