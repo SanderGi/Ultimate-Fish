@@ -1035,6 +1035,10 @@ export function UltimateWorkbench() {
   const [positionOpen, setPositionOpen] = useState(false);
   const [positionText, setPositionText] = useState("");
   const [positionMessage, setPositionMessage] = useState("");
+  // Each browser tab owns an independent persistent information-search
+  // engine. Keeping this ID in memory (rather than localStorage) makes a
+  // duplicated tab independent too.
+  const engineClientId = useRef<string | null>(null);
   const analysisAbort = useRef<AbortController | null>(null);
   const requestSequence = useRef(0);
   const linePreviewSequence = useRef(0);
@@ -1259,10 +1263,11 @@ export function UltimateWorkbench() {
       payload: Record<string, unknown>,
       signal?: AbortSignal,
     ) => {
+      engineClientId.current ??= globalThis.crypto.randomUUID();
       const response = await fetch(`/api/engine${endpoint}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, clientId: engineClientId.current }),
         signal,
       });
       const result = (await response.json()) as EngineAnalysis & {
@@ -1339,10 +1344,11 @@ export function UltimateWorkbench() {
       onIteration: (iteration: EngineAnalysis) => void,
       signal?: AbortSignal,
     ): Promise<EngineAnalysis> => {
+      engineClientId.current ??= globalThis.crypto.randomUUID();
       const response = await fetch(`/api/engine${endpoint}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ ...payload, clientId: engineClientId.current }),
         signal,
       });
       if (!response.ok || !response.body) {

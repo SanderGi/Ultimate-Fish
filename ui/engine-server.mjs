@@ -393,6 +393,14 @@ function parseHistoryMetadata(lines) {
 const historyStateCache = new Map();
 const incrementalHistorySessions = new Map();
 
+function normalizedClientId(clientId) {
+  if (clientId === undefined) return "legacy";
+  if (typeof clientId !== "string" ||
+      !/^[A-Za-z0-9_-]{1,128}$/.test(clientId))
+    throw new Error("clientId must be a short URL-safe string");
+  return clientId;
+}
+
 class IncrementalHistorySession {
   constructor(initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
               enemyKingCandidates) {
@@ -403,6 +411,7 @@ class IncrementalHistorySession {
     this.enemyKingCandidates = enemyKingCandidates;
     this.moves = [];
     this.queue = Promise.resolve();
+    this.pendingOperations = 0;
     this.child = null;
     this.pending = "";
     this.active = null;
@@ -415,6 +424,10 @@ class IncrementalHistorySession {
     active?.reject(error);
     this.child?.kill("SIGTERM");
     this.child = null;
+  }
+
+  isBusy() {
+    return this.pendingOperations > 0 || this.active !== null;
   }
 
   start() {
@@ -480,6 +493,7 @@ class IncrementalHistorySession {
   }
 
   execute(requestedMoves, tailCommands, signal, onLine) {
+    this.pendingOperations += 1;
     const operation = this.queue.then(async () => {
       historyCommands(
         this.initialUpn, requestedMoves, this.observer, this.enemyKingKnown,
@@ -508,8 +522,9 @@ class IncrementalHistorySession {
       this.moves = [...requestedMoves];
       return lines;
     });
-    this.queue = operation.catch(() => undefined);
-    return operation;
+    const tracked = operation.finally(() => { this.pendingOperations -= 1; });
+    this.queue = tracked.catch(() => undefined);
+    return tracked;
   }
 
   async state(requestedMoves) {
@@ -529,6 +544,7 @@ class IncrementalHistorySession {
 
   prepare(requestedMoves) {
     const key = JSON.stringify(requestedMoves);
+    this.pendingOperations += 1;
     const operation = this.queue.then(async () => {
       if (this.preparedMoves === key ||
           this.moves.length !== requestedMoves.length ||
@@ -539,15 +555,16 @@ class IncrementalHistorySession {
       if (error) throw new Error(error);
       this.preparedMoves = key;
     });
-    this.queue = operation.catch(() => undefined);
-    return operation;
+    const tracked = operation.finally(() => { this.pendingOperations -= 1; });
+    this.queue = tracked.catch(() => undefined);
+    return tracked;
   }
 }
 
-function historySession(initialUpn, observer, enemyKingKnown,
+function historySession(clientId, initialUpn, observer, enemyKingKnown,
                         initialDeploymentKnown, enemyKingCandidates) {
   const sessionKey = JSON.stringify([
-    initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
+    clientId, initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
     enemyKingCandidates ?? null,
   ]);
   let session = incrementalHistorySessions.get(sessionKey);
@@ -556,36 +573,45 @@ function historySession(initialUpn, observer, enemyKingKnown,
       initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
       enemyKingCandidates,
     );
-    incrementalHistorySessions.set(sessionKey, session);
-    if (incrementalHistorySessions.size > 8) {
-      const oldest = incrementalHistorySessions.keys().next().value;
-      if (oldest && oldest !== sessionKey) {
-        incrementalHistorySessions.get(oldest)?.stop();
-        incrementalHistorySessions.delete(oldest);
-      }
+  }
+  // Refresh insertion order so the map also acts as an LRU. Never evict an
+  // active tab merely because more tabs connected; active sessions may
+  // temporarily exceed the idle cache bound.
+  incrementalHistorySessions.delete(sessionKey);
+  incrementalHistorySessions.set(sessionKey, session);
+  if (incrementalHistorySessions.size > 8) {
+    for (const [candidateKey, candidate] of incrementalHistorySessions) {
+      if (candidateKey === sessionKey || candidate.isBusy()) continue;
+      candidate.stop();
+      incrementalHistorySessions.delete(candidateKey);
+      if (incrementalHistorySessions.size <= 8) break;
     }
   }
   return session;
 }
 
-function incrementalHistoryState(initialUpn, moves, observer, enemyKingKnown,
+function incrementalHistoryState(clientId, initialUpn, moves, observer,
+                                 enemyKingKnown,
                                  initialDeploymentKnown, enemyKingCandidates) {
   return historySession(
-    initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
+    clientId, initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
     enemyKingCandidates,
   ).state(moves);
 }
 
-async function cachedHistoryState(initialUpn, moves, observer, enemyKingKnown,
+async function cachedHistoryState(clientId, initialUpn, moves, observer,
+                                  enemyKingKnown,
                                   initialDeploymentKnown, enemyKingCandidates) {
   const key = JSON.stringify([
-    initialUpn, moves, observer, enemyKingKnown, initialDeploymentKnown,
+    clientId, initialUpn, moves, observer, enemyKingKnown,
+    initialDeploymentKnown,
     enemyKingCandidates ?? null,
   ]);
   let pending = historyStateCache.get(key);
   if (!pending) {
     pending = incrementalHistoryState(
-      initialUpn, moves, observer, enemyKingKnown, initialDeploymentKnown,
+      clientId, initialUpn, moves, observer, enemyKingKnown,
+      initialDeploymentKnown,
       enemyKingCandidates,
     );
     historyStateCache.set(key, pending);
@@ -599,7 +625,7 @@ async function cachedHistoryState(initialUpn, moves, observer, enemyKingKnown,
 }
 
 function prepareHistoryIfOpponentMoves(
-  state, initialUpn, moves, observer, enemyKingKnown,
+  clientId, state, initialUpn, moves, observer, enemyKingKnown,
   initialDeploymentKnown, enemyKingCandidates,
 ) {
   const observerCode = observer === "white" ? "w" : "b";
@@ -610,12 +636,13 @@ function prepareHistoryIfOpponentMoves(
   if (!Number.isFinite(state.beliefs) || state.beliefs > 20_000)
     return;
   void historySession(
-    initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
+    clientId, initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
     enemyKingCandidates,
   ).prepare(moves).catch(() => undefined);
 }
 
-async function analyzeHistory(initialUpn, moves, observer, enemyKingKnown,
+async function analyzeHistory(clientId, initialUpn, moves, observer,
+                              enemyKingKnown,
                               initialDeploymentKnown, enemyKingCandidates,
                               requestedDepth,
                               requestedTime, signal, onIteration) {
@@ -629,11 +656,12 @@ async function analyzeHistory(initialUpn, moves, observer, enemyKingKnown,
   // state in the same persistent engine. Spawning a fresh process here used to
   // replay the entire history around every nominally short search.
   const state = await cachedHistoryState(
-    initialUpn, moves, observer, enemyKingKnown, initialDeploymentKnown,
+    clientId, initialUpn, moves, observer, enemyKingKnown,
+    initialDeploymentKnown,
     enemyKingCandidates,
   );
   const session = historySession(
-    initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
+    clientId, initialUpn, observer, enemyKingKnown, initialDeploymentKnown,
     enemyKingCandidates,
   );
   const lines = await session.search(moves, go, signal, (line, currentLines) => {
@@ -731,7 +759,7 @@ async function computerTurn(upn, player, requestedDepth, requestedTime, signal) 
 }
 
 async function computerHistory(
-  initialUpn, moves, player, playerEnemyKingKnown,
+  clientId, initialUpn, moves, player, playerEnemyKingKnown,
   initialDeploymentKnown, playerEnemyKingCandidates,
   engineEnemyKingKnown, engineEnemyKingCandidates, requestedDepth,
                                requestedTime, signal) {
@@ -745,7 +773,7 @@ async function computerHistory(
     playerEnemyKingCandidates;
   const history = [...moves];
   let currentState = await cachedHistoryState(
-    initialUpn, history, observer, engineKnown,
+    clientId, initialUpn, history, observer, engineKnown,
     initialDeploymentKnown, engineCandidates);
   let engine = null;
   const engineMoves = [];
@@ -758,7 +786,7 @@ async function computerHistory(
          concreteState.result === "ongoing";
        ++action) {
     engine = await analyzeHistory(
-      initialUpn, history, observer, engineKnown,
+      clientId, initialUpn, history, observer, engineKnown,
       initialDeploymentKnown, engineCandidates, requestedDepth,
       requestedTime, signal);
     if (!engine.bestmove || !currentState.upn) break;
@@ -777,7 +805,7 @@ async function computerHistory(
     if (concreteState.upn?.[0] !== playerCode &&
         concreteState.result === "ongoing")
       currentState = await cachedHistoryState(
-        initialUpn, history, observer, engineKnown,
+        clientId, initialUpn, history, observer, engineKnown,
         initialDeploymentKnown, engineCandidates);
   }
   if (engine && publicEngineNotations.length)
@@ -787,10 +815,10 @@ async function computerHistory(
     };
   if (engineMoves.length) {
     void cachedHistoryState(
-      initialUpn, history, observer, engineKnown,
+      clientId, initialUpn, history, observer, engineKnown,
       initialDeploymentKnown, engineCandidates).catch(() => undefined);
     void cachedHistoryState(
-      initialUpn, history, player, playerEnemyKingKnown,
+      clientId, initialUpn, history, player, playerEnemyKingKnown,
       initialDeploymentKnown, playerEnemyKingCandidates).catch(() => undefined);
     return {
       ...concreteState, engine, engineMoves, engineNotations,
@@ -799,7 +827,7 @@ async function computerHistory(
   }
   // No engine action was needed, so retain the exact player metadata contract.
   const playerState = await cachedHistoryState(
-    initialUpn, history, player, playerEnemyKingKnown,
+    clientId, initialUpn, history, player, playerEnemyKingKnown,
     initialDeploymentKnown, playerEnemyKingCandidates);
   return {
     ...playerState, engine, engineMoves, engineNotations,
@@ -840,6 +868,7 @@ const server = createServer(async (request, response) => {
     if (raw.length > 5_000_000)
       throw new Error("Request is too large");
     const body = JSON.parse(raw || "{}");
+    const clientId = normalizedClientId(body.clientId);
     if (request.url === "/draft-ai") {
       send(response, 200, await draftAuto(
         body.history, body.player, body.depth, body.timeLimit,
@@ -868,22 +897,24 @@ const server = createServer(async (request, response) => {
       // visible board was already hydrated by /replay, so both information
       // sets can use the idle interval without exposing a duplicate fetch.
       const prefetchedState = validPrefetch ? cachedHistoryState(
-        body.initialUpn, body.moves, prefetch.observer,
+        clientId, body.initialUpn, body.moves, prefetch.observer,
         prefetch.enemyKingKnown, body.initialDeploymentKnown ?? false,
         prefetch.enemyKingCandidates,
       ) : null;
       const result = await cachedHistoryState(
-        body.initialUpn, body.moves, body.observer, body.enemyKingKnown,
+        clientId, body.initialUpn, body.moves, body.observer,
+        body.enemyKingKnown,
         body.initialDeploymentKnown ?? false, body.enemyKingCandidates);
       send(response, 200, result);
       prepareHistoryIfOpponentMoves(
-        result, body.initialUpn, body.moves, body.observer,
+        clientId, result, body.initialUpn, body.moves, body.observer,
         body.enemyKingKnown, body.initialDeploymentKnown ?? false,
         body.enemyKingCandidates,
       );
       if (prefetchedState)
         void prefetchedState.then((prefetched) => prepareHistoryIfOpponentMoves(
-          prefetched, body.initialUpn, body.moves, prefetch.observer,
+          clientId, prefetched, body.initialUpn, body.moves,
+          prefetch.observer,
           prefetch.enemyKingKnown, body.initialDeploymentKnown ?? false,
           prefetch.enemyKingCandidates,
         )).catch(() => undefined);
@@ -902,7 +933,8 @@ const server = createServer(async (request, response) => {
         "cache-control": "no-store",
       });
       const result = await analyzeHistory(
-        body.initialUpn, body.moves, body.observer, body.enemyKingKnown,
+        clientId, body.initialUpn, body.moves, body.observer,
+        body.enemyKingKnown,
         body.initialDeploymentKnown ?? false, body.enemyKingCandidates,
         body.depth, body.movetime,
         cancellation.signal,
@@ -913,7 +945,8 @@ const server = createServer(async (request, response) => {
     }
     if (request.url === "/analyze-history") {
       send(response, 200, await analyzeHistory(
-        body.initialUpn, body.moves, body.observer, body.enemyKingKnown,
+        clientId, body.initialUpn, body.moves, body.observer,
+        body.enemyKingKnown,
         body.initialDeploymentKnown ?? false, body.enemyKingCandidates,
         body.depth, body.movetime,
         cancellation.signal));
@@ -921,7 +954,8 @@ const server = createServer(async (request, response) => {
     }
     if (request.url === "/computer-history") {
       send(response, 200, await computerHistory(
-        body.initialUpn, body.moves, body.player, body.enemyKingKnown,
+        clientId, body.initialUpn, body.moves, body.player,
+        body.enemyKingKnown,
         body.initialDeploymentKnown ?? false, body.enemyKingCandidates,
         body.engineEnemyKingKnown, body.engineEnemyKingCandidates,
         body.depth, body.movetime,

@@ -51,25 +51,47 @@ async function post(endpoint, body) {
   return result;
 }
 
-async function streamAnalysis(body) {
+async function readAnalysisStream(response, onEvent) {
+  assert.equal(response.status, 200);
+  assert.ok(response.body);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  const events = [];
+  let pending = "";
+  const consume = (line) => {
+    if (!line.trim()) return;
+    const event = JSON.parse(line);
+    events.push(event);
+    onEvent?.(event);
+  };
+  while (true) {
+    const { value, done } = await reader.read();
+    pending += decoder.decode(value, { stream: !done });
+    const lines = pending.split(/\r?\n/);
+    pending = lines.pop() ?? "";
+    lines.forEach(consume);
+    if (done) break;
+  }
+  consume(pending);
+  return events;
+}
+
+async function streamAnalysis(body, onEvent) {
   const response = await fetch(`${base}/analyze-stream`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
-  assert.equal(response.status, 200);
-  return (await response.text()).trim().split("\n").filter(Boolean).map((line) => JSON.parse(line));
+  return readAnalysisStream(response, onEvent);
 }
 
-async function streamHistoryAnalysis(body) {
+async function streamHistoryAnalysis(body, onEvent) {
   const response = await fetch(`${base}/analyze-history-stream`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
   });
-  assert.equal(response.status, 200);
-  return (await response.text()).trim().split("\n").filter(Boolean)
-    .map((line) => JSON.parse(line));
+  return readAnalysisStream(response, onEvent);
 }
 
 test("bridge exposes state, mate scores, results, and continuations", async () => {
@@ -387,6 +409,36 @@ test("aborting auto-analysis leaves the bridge responsive", async () => {
   await assert.rejects(pending, { name: "AbortError" });
   const health = await fetch(`${base}/health`).then((response) => response.json());
   assert.equal(health.ok, true);
+});
+
+test("same-position tabs search on independent engine sessions", async () => {
+  const analysisUpn =
+    "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,e1;jester,w,d1;ninja,w,b2;penguin,w,c2;devil,w,f2;sniper,w,g2;checker,w,h2;sludge,w,a2;king,b,e10;jester,b,d10;ninja,b,b9;penguin,b,c9;devil,b,f9;sniper,b,g9;checker,b,h9;sludge,b,a9";
+  const timeline = [];
+  const search = (clientId) => streamHistoryAnalysis({
+    clientId,
+    initialUpn: analysisUpn,
+    moves: [],
+    observer: "white",
+    enemyKingKnown: true,
+    depth: 50,
+    movetime: 600,
+  }, (event) => timeline.push({ clientId, type: event.type }));
+
+  await Promise.all([search("parallel-tab-a"), search("parallel-tab-b")]);
+
+  const firstResult = timeline.findIndex((event) => event.type === "result");
+  assert.ok(firstResult > 0, "both streams should report search progress");
+  const clientsMakingProgress = new Set(
+    timeline.slice(0, firstResult)
+      .filter((event) => event.type === "iteration")
+      .map((event) => event.clientId),
+  );
+  assert.deepEqual(
+    [...clientsMakingProgress].sort(),
+    ["parallel-tab-a", "parallel-tab-b"],
+    "one tab must not wait for the other tab's result before it starts",
+  );
 });
 
 test("bridge retains uncapped beliefs without false Ghost legal-dot partitions", async () => {

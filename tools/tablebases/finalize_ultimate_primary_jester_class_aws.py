@@ -194,7 +194,7 @@ install -m 0644 "$overlay" "$stage/overlays/{stem}.ufiw"
 archive="$root/{stem}.information.tar.zst"
 tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C "$stage" \
   -cf - "{stem}.entry.json" "{stem}.solve.log" "overlays/{stem}.ufiw" | \
-  zstd -T0 -19 -q -o "$archive"
+  zstd -T0 -19 -q -f -o "$archive"
 archive_sha=$(sha256sum "$archive" | cut -d' ' -f1)
 overlay_sha=$(sha256sum "$overlay" | cut -d' ' -f1)
 key={prefix}/primary-jester/sha256/$archive_sha/{stem}.information.tar.zst
@@ -281,6 +281,18 @@ def update_supervision(args: argparse.Namespace, value: dict[str, str],
         temporary.replace(path)
 
 
+def record_for_filename(filename: str) -> dict[str, object]:
+    # The concrete shard planner deliberately excludes relationship-expanded
+    # Angel graphs. The information inventory is canonical for those classes,
+    # so do not require a stale concrete-planner record at finalization time.
+    record = generate._records().get(filename)
+    if record is None:
+        record = certify.primary_records().get(filename)
+    if record is None:
+        raise ValueError(f"{filename}: no canonical information inventory record")
+    return dict(record)
+
+
 def finalize(args: argparse.Namespace, output: str) -> dict[str, object]:
     if (args.allow_post_solve_checkpoint_failure and
             args.filename != "kjestercheckerk.uftb"):
@@ -291,7 +303,7 @@ def finalize(args: argparse.Namespace, output: str) -> dict[str, object]:
     if len(bindings) != 3 or not put.get("VersionId"):
         raise ValueError("information archive S3 binding residual")
     archive_sha, overlay_sha, key = bindings
-    record = dict(generate._records()[args.filename])
+    record = record_for_filename(args.filename)
     if information.solver_domain(args.filename) not in {
             "primary-jester", "primary-jester-giant"}:
         raise ValueError("class is not a primary-Jester information stratum")

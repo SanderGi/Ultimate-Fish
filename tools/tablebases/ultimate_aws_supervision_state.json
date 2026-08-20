@@ -1,10 +1,10 @@
 {
-  "event_digest": "94e77179826653f810ca1c4dbda4a40795250d20ea83e305c10c6073fd47e18f",
-  "last_observed_epoch": 1787257218.677224,
-  "last_regular_report_epoch": 1787257218.677224,
+  "event_digest": "5a35a2b63f4ca007fe8b8f2e80f93e6b42ad9ed274caccd44dbfe31964ef0727",
+  "last_observed_epoch": 1787260584.578943,
+  "last_regular_report_epoch": 1787260584.578943,
   "report": {
     "errors": [],
-    "estimated_spend_usd": 2440.26,
+    "estimated_spend_usd": 1793.93,
     "fleet_burn_usd_per_hour": 9.41,
     "instances": {
       "i-024a2073283e4336e": {
@@ -25,36 +25,36 @@
           "allocation_known": true,
           "allocation_mismatches": {},
           "idle_vcpus": 28,
-          "measured_busy_vcpus": 4.008,
+          "measured_busy_vcpus": 3.997,
           "measured_fleet_capacity_percent": 12.5,
           "measured_jobs": {
             "checker-ghost-opposing-compositional-v4": {
-              "allocated_utilization_percent": 100.2,
-              "average_busy_vcpus": 1.002,
-              "cpu_delta_nsec": 63357874000,
-              "cpu_usage_nsec": 62783917201000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 3362622038000,
+              "cpu_usage_nsec": 66146539239000,
+              "sample_seconds": 3365.902
             },
             "current-opposed-ghost-pair-specialized-v1": {
-              "allocated_utilization_percent": 100.2,
-              "average_busy_vcpus": 1.002,
-              "cpu_delta_nsec": 63350773000,
-              "cpu_usage_nsec": 561605650291000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 100.0,
+              "average_busy_vcpus": 1.0,
+              "cpu_delta_nsec": 3365834341000,
+              "cpu_usage_nsec": 564971484632000,
+              "sample_seconds": 3365.902
             },
             "current-opposed-parasite-ghost-v1": {
-              "allocated_utilization_percent": 100.2,
-              "average_busy_vcpus": 1.002,
-              "cpu_delta_nsec": 63361470000,
-              "cpu_usage_nsec": 617548279183000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 99.8,
+              "average_busy_vcpus": 0.998,
+              "cpu_delta_nsec": 3359205785000,
+              "cpu_usage_nsec": 620907484968000,
+              "sample_seconds": 3365.902
             },
             "current-same-berserker-ghost-allocation-v4": {
-              "allocated_utilization_percent": 100.2,
-              "average_busy_vcpus": 1.002,
-              "cpu_delta_nsec": 63347393000,
-              "cpu_usage_nsec": 61540234875000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 100.0,
+              "average_busy_vcpus": 1.0,
+              "cpu_delta_nsec": 3365717499000,
+              "cpu_usage_nsec": 64905952374000,
+              "sample_seconds": 3365.902
             }
           },
           "measurement_complete": true,
@@ -71,7 +71,7 @@
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 400.95,
+        "estimated_spend_usd": 402.42,
         "instance_type": "c8gd.8xlarge",
         "launch_time": "2026-08-10T04:34:31+00:00",
         "name": "giant-ghost-opposing",
@@ -110,11 +110,11 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 727095,
-                  "sha256": "4bcbc56bbcc9b2edaa37fb32195c336eb1702127b9374dce3e748e3f9e447806",
+                  "bytes": 779135,
+                  "sha256": "68ea65be400f7835e3913bb615c0534ae44c754692a6aa92b21db57aad0a0d09",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "lman iteration 7 geometry 3785000/3943680 bdd_nodes 170633910 peak_rss_bytes 17411567616 elapsed 62112.1s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3790000/3943680 bdd_nodes 170663336 peak_rss_bytes 17411567616 elapsed 62130s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3795000/3943680 bdd_nodes 170701680 peak_rss_bytes 17411567616 elapsed 62148s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3800000/3943680 bdd_nodes 170709919 peak_rss_bytes 17411567616 elapsed 62165.4s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3805000/3943680 bdd_nodes 170727512 peak_rss_bytes 17411567616 elapsed 62184s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3810000/3943680 bdd_nodes 170753587 peak_rss_bytes 17411567616 elapsed 62203.7s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3815000/3943680 bdd_nodes 170786707 peak_rss_bytes 17411567616 elapsed 62223.6s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3820000/3943680 bdd_nodes 170825373 peak_rss_bytes 17411567616 elapsed 62243.5s\n"
+                  "tail": "teration 8 geometry 1820000/3943680 bdd_nodes 138656903 peak_rss_bytes 17411567616 elapsed 65570.2s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1825000/3943680 bdd_nodes 138757596 peak_rss_bytes 17411567616 elapsed 65574.4s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1830000/3943680 bdd_nodes 138795352 peak_rss_bytes 17411567616 elapsed 65579.9s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1835000/3943680 bdd_nodes 138853931 peak_rss_bytes 17411567616 elapsed 65586.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1840000/3943680 bdd_nodes 138930932 peak_rss_bytes 17411567616 elapsed 65593.7s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1845000/3943680 bdd_nodes 139023743 peak_rss_bytes 17411567616 elapsed 65599.7s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1850000/3943680 bdd_nodes 139128301 peak_rss_bytes 17411567616 elapsed 65605.7s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1855000/3943680 bdd_nodes 139240018 peak_rss_bytes 17411567616 elapsed 65611.7s\n"
                 },
                 {
                   "bytes": 152,
@@ -130,10 +130,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "3",
-                "CPUUsageNSec": "62783917201000",
+                "CPUUsageNSec": "66146539239000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "27423842304",
+                "MemoryCurrent": "33684008960",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 02:52:43 UTC"
               }
@@ -644,11 +644,11 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 140453,
-                  "sha256": "5c8fbb409e16b08bc7cc9a0a9b936022374441992638879dd9b42540cd69e624",
+                  "bytes": 143827,
+                  "sha256": "bf99384b9246b94b9af6203d79c0416430086e26b75d27525d6c7ffcab65219d",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "_extra_bellman iteration 2 geometry 295000/4929600 bdd_nodes 37498052 peak_rss_bytes 16429662208 elapsed 59472.8s\nreciprocal_ghost_extra_bellman iteration 2 geometry 300000/4929600 bdd_nodes 37646116 peak_rss_bytes 16429662208 elapsed 59619.7s\nreciprocal_ghost_extra_bellman iteration 2 geometry 305000/4929600 bdd_nodes 37770405 peak_rss_bytes 16429662208 elapsed 59770.6s\nreciprocal_ghost_extra_bellman iteration 2 geometry 310000/4929600 bdd_nodes 37882811 peak_rss_bytes 16429662208 elapsed 59925.3s\nreciprocal_ghost_extra_bellman iteration 2 geometry 315000/4929600 bdd_nodes 37964816 peak_rss_bytes 16429662208 elapsed 60074.3s\nreciprocal_ghost_extra_bellman iteration 2 geometry 320000/4929600 bdd_nodes 38030137 peak_rss_bytes 16429662208 elapsed 60223.7s\nreciprocal_ghost_extra_bellman iteration 2 geometry 325000/4929600 bdd_nodes 38079264 peak_rss_bytes 16429662208 elapsed 60373.7s\nreciprocal_ghost_extra_bellman iteration 2 geometry 330000/4929600 bdd_nodes 38117135 peak_rss_bytes 16429662208 elapsed 60526.8s\n"
+                  "tail": "st_extra_bellman iteration 2 geometry 425000/4929600 bdd_nodes 42105426 peak_rss_bytes 16429662208 elapsed 63006.4s\nreciprocal_ghost_extra_bellman iteration 2 geometry 430000/4929600 bdd_nodes 42307016 peak_rss_bytes 16429662208 elapsed 63147.8s\nreciprocal_ghost_extra_bellman iteration 2 geometry 435000/4929600 bdd_nodes 42462224 peak_rss_bytes 16429662208 elapsed 63300.3s\nreciprocal_ghost_extra_bellman iteration 2 geometry 440000/4929600 bdd_nodes 42583617 peak_rss_bytes 16429662208 elapsed 63444s\nreciprocal_ghost_extra_bellman iteration 2 geometry 445000/4929600 bdd_nodes 42681827 peak_rss_bytes 16429662208 elapsed 63580.3s\nreciprocal_ghost_extra_bellman iteration 2 geometry 450000/4929600 bdd_nodes 42758306 peak_rss_bytes 16429662208 elapsed 63715.1s\nreciprocal_ghost_extra_bellman iteration 2 geometry 455000/4929600 bdd_nodes 42818789 peak_rss_bytes 16429662208 elapsed 63859.5s\nreciprocal_ghost_extra_bellman iteration 2 geometry 460000/4929600 bdd_nodes 42874096 peak_rss_bytes 16429662208 elapsed 64015.1s\n"
                 },
                 {
                   "bytes": 133,
@@ -664,10 +664,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "0",
-                "CPUUsageNSec": "61540234875000",
+                "CPUUsageNSec": "64905952374000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "18452856832",
+                "MemoryCurrent": "13611380736",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 03:13:23 UTC"
               }
@@ -690,10 +690,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "1",
-                "CPUUsageNSec": "561605650291000",
+                "CPUUsageNSec": "564971484632000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "10660483072",
+                "MemoryCurrent": "10334584832",
                 "Result": "success",
                 "StateChangeTimestamp": "Fri 2026-08-14 08:19:51 UTC"
               }
@@ -723,29 +723,29 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "2",
-                "CPUUsageNSec": "617548279183000",
+                "CPUUsageNSec": "620907484968000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "8113979392",
+                "MemoryCurrent": "7018450944",
                 "Result": "success",
                 "StateChangeTimestamp": "Fri 2026-08-14 06:12:22 UTC"
               }
             }
           ],
           "memory": {
-            "MemAvailable": 51131244544,
+            "MemAvailable": 51128459264,
             "MemTotal": 66202484736,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 5454422016,
+              "free_bytes": 5421694976,
               "path": "/",
               "total_bytes": 8511270912
             },
             {
-              "free_bytes": 218862051328,
+              "free_bytes": 216840646656,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             }
@@ -766,115 +766,67 @@
       "i-03c81f90d2c59a2e7": {
         "cpu_allocation": {
           "active_cpu_sets": {
-            "compositional-v5-opposed-ghost-sniper": "10",
-            "information-jester-angel-opposed-v1": "4",
-            "information-jester-angel-same-v1": "3",
-            "penguin-ghost-opposing-fresh-v5": "2",
-            "remap-fix-opposed-knight-ghost-solve-v11": "0",
-            "remap-fix-v2-opposed-rook-ghost-source-order-solve-v6": "19",
-            "remap-fix-v2-opposed-turtle-ghost-compositional-v4": "23",
-            "same-ghost-pair-domain-cache-v1": "30",
-            "source-order-opposed-queen-ghost-solve-v8": "14"
+            "information-jester-angel-opposed-v3": "1,5,6,7,8,9,11,12",
+            "information-jester-angel-same-v3": "3,4,13,15,16,17,18,20"
           },
           "active_jobs": {
-            "compositional-v5-opposed-ghost-sniper": 1,
-            "information-jester-angel-opposed-v1": 1,
-            "information-jester-angel-same-v1": 1,
-            "penguin-ghost-opposing-fresh-v5": 1,
-            "remap-fix-opposed-knight-ghost-solve-v11": 1,
-            "remap-fix-v2-opposed-rook-ghost-source-order-solve-v6": 1,
-            "remap-fix-v2-opposed-turtle-ghost-compositional-v4": 1,
-            "same-ghost-pair-domain-cache-v1": 1,
-            "source-order-opposed-queen-ghost-solve-v8": 1
+            "information-jester-angel-opposed-v3": 8,
+            "information-jester-angel-same-v3": 8
           },
-          "allocated_vcpus": 9,
-          "allocation_known": true,
+          "allocated_vcpus": 16,
+          "allocation_known": false,
           "allocation_mismatches": {},
-          "idle_vcpus": 23,
-          "measured_busy_vcpus": 8.944,
-          "measured_fleet_capacity_percent": 28.0,
-          "measured_jobs": {
-            "compositional-v5-opposed-ghost-sniper": {
-              "allocated_utilization_percent": 99.8,
-              "average_busy_vcpus": 0.998,
-              "cpu_delta_nsec": 63112994000,
-              "cpu_usage_nsec": 59583698342000,
-              "sample_seconds": 63.244
-            },
-            "information-jester-angel-opposed-v1": {
-              "allocated_utilization_percent": 99.9,
-              "average_busy_vcpus": 0.999,
-              "cpu_delta_nsec": 63156244000,
-              "cpu_usage_nsec": 164581780000,
-              "sample_seconds": 63.244
-            },
-            "information-jester-angel-same-v1": {
-              "allocated_utilization_percent": 99.9,
-              "average_busy_vcpus": 0.999,
-              "cpu_delta_nsec": 63159325000,
-              "cpu_usage_nsec": 164586087000,
-              "sample_seconds": 63.244
-            },
-            "penguin-ghost-opposing-fresh-v5": {
-              "allocated_utilization_percent": 98.5,
-              "average_busy_vcpus": 0.985,
-              "cpu_delta_nsec": 62304345000,
-              "cpu_usage_nsec": 109567308301000,
-              "sample_seconds": 63.244
-            },
-            "remap-fix-opposed-knight-ghost-solve-v11": {
-              "allocated_utilization_percent": 99.8,
-              "average_busy_vcpus": 0.998,
-              "cpu_delta_nsec": 63116075000,
-              "cpu_usage_nsec": 85437892416000,
-              "sample_seconds": 63.244
-            },
-            "remap-fix-v2-opposed-rook-ghost-source-order-solve-v6": {
-              "allocated_utilization_percent": 99.0,
-              "average_busy_vcpus": 0.99,
-              "cpu_delta_nsec": 62635461000,
-              "cpu_usage_nsec": 47693637047000,
-              "sample_seconds": 63.244
-            },
-            "remap-fix-v2-opposed-turtle-ghost-compositional-v4": {
-              "allocated_utilization_percent": 99.0,
-              "average_busy_vcpus": 0.99,
-              "cpu_delta_nsec": 62619716000,
-              "cpu_usage_nsec": 54121568621000,
-              "sample_seconds": 63.244
-            },
-            "same-ghost-pair-domain-cache-v1": {
-              "allocated_utilization_percent": 99.9,
-              "average_busy_vcpus": 0.999,
-              "cpu_delta_nsec": 63152490000,
-              "cpu_usage_nsec": 38403522335000,
-              "sample_seconds": 63.244
-            },
-            "source-order-opposed-queen-ghost-solve-v8": {
-              "allocated_utilization_percent": 98.6,
-              "average_busy_vcpus": 0.986,
-              "cpu_delta_nsec": 62367802000,
-              "cpu_usage_nsec": 31638623881000,
-              "sample_seconds": 63.244
-            }
-          },
-          "measurement_complete": true,
+          "idle_vcpus": 16,
+          "measured_busy_vcpus": 0,
+          "measured_fleet_capacity_percent": 0.0,
+          "measured_jobs": {},
+          "measurement_complete": false,
           "overlaps": [],
           "unconfigured_active_units": {
-            "count": 0,
-            "details": [],
+            "count": 2,
+            "details": [
+              {
+                "properties": {
+                  "ActiveState": "active",
+                  "AllowedCPUs": "",
+                  "CPUUsageNSec": "5500000",
+                  "ExecMainStatus": "0",
+                  "LoadState": "loaded",
+                  "MemoryCurrent": "[not set]",
+                  "Result": "success",
+                  "StateChangeTimestamp": "Thu 2026-08-20 21:06:35 UTC"
+                },
+                "unit": "ultimatefish-mount.service"
+              },
+              {
+                "properties": {
+                  "ActiveState": "active",
+                  "AllowedCPUs": "2",
+                  "CPUUsageNSec": "22240253000",
+                  "ExecMainStatus": "0",
+                  "LoadState": "loaded",
+                  "MemoryCurrent": "60846080",
+                  "Result": "success",
+                  "StateChangeTimestamp": "Thu 2026-08-20 21:16:05 UTC"
+                },
+                "unit": "ultimatefish-validate-kjester-v3-one.service"
+              }
+            ],
             "probe_status": 0,
-            "sample": [],
-            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            "sample": [
+              "ultimatefish-mount.service",
+              "ultimatefish-validate-kjester-v3-one.service"
+            ],
+            "sha256": "dd83d2d86cf963aea1c8a122dec33558dd41709c05e51c4a5e74b49ff1005eb8"
           },
           "unconfigured_measured_jobs": {},
           "unknown_jobs": [],
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 653.3,
+        "estimated_spend_usd": 0.39,
         "instance_type": "r8gd.8xlarge",
-        "launch_time": "2026-08-09T06:30:02+00:00",
+        "launch_time": "2026-08-20T21:06:26+00:00",
         "name": "hidden-primary",
         "remote": {
           "jobs": [
@@ -901,7 +853,7 @@
               "diagnostics": [],
               "id": "concrete-jester-angel-source-v1",
               "source_binding_count": 5,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
                 "ActiveState": "inactive",
                 "ExecMainStatus": "0",
@@ -914,32 +866,32 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 685,
-                  "sha256": "b39b1aee07ba890634268570a633faf8a38a7a25ef21da0bbf120c420511aa25",
+                  "bytes": 5584,
+                  "sha256": "2c877b3344de746e6b54cb28ab54b23a27da5774c2bdb7f27c8e91f24f4d1c54",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
                 },
                 {
-                  "bytes": 100,
-                  "sha256": "779d103637132cda5eb48b02e70d330ca1bb81df94a537a2fef9a71c5d62860d",
+                  "bytes": 116,
+                  "sha256": "4f17b3bdaa46c92bd3ce8f9d532c1a1bb64134db584aed48e80d22c7994efdef",
                   "source_index": 1,
                   "status": "ok",
                   "tail": ""
                 }
               ],
-              "id": "information-jester-angel-same-v1",
-              "source_binding_count": 4,
+              "id": "information-jester-angel-same-v3",
+              "source_binding_count": 5,
               "sources_exact": true,
               "unit": {
                 "ActiveState": "active",
-                "AllowedCPUs": "3",
-                "CPUUsageNSec": "164586087000",
+                "AllowedCPUs": "3-4 13 15-18 20",
+                "CPUUsageNSec": "1496990993000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "753938432",
+                "MemoryCurrent": "1578979328",
                 "Result": "success",
-                "StateChangeTimestamp": "Thu 2026-08-20 20:17:36 UTC"
+                "StateChangeTimestamp": "Thu 2026-08-20 21:12:08 UTC"
               }
             },
             {
@@ -947,58 +899,48 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 752,
-                  "sha256": "9a946651edd932fb195a758176e498346bbd04014aa4ce432fc20773aefe27e4",
+                  "bytes": 5737,
+                  "sha256": "de0e0e9c24d599bd3595d4b4baa08198311d5aba4585e6b187c4e5f241e5e03f",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
                 },
                 {
-                  "bytes": 103,
-                  "sha256": "db23c8d7250d45a2f73c8777d7636e93148227505dced0687a787864e1b97030",
+                  "bytes": 119,
+                  "sha256": "ad5910478c4c45afa50b4b85f861e14430d1f2663f24c66e6b219897a180d8c7",
                   "source_index": 1,
                   "status": "ok",
                   "tail": ""
                 }
               ],
-              "id": "information-jester-angel-opposed-v1",
-              "source_binding_count": 4,
+              "id": "information-jester-angel-opposed-v3",
+              "source_binding_count": 5,
               "sources_exact": true,
               "unit": {
                 "ActiveState": "active",
-                "AllowedCPUs": "4",
-                "CPUUsageNSec": "164581780000",
+                "AllowedCPUs": "1 5-9 11-12",
+                "CPUUsageNSec": "1687148825000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "518381568",
+                "MemoryCurrent": "1606619136",
                 "Result": "success",
-                "StateChangeTimestamp": "Thu 2026-08-20 20:17:36 UTC"
+                "StateChangeTimestamp": "Thu 2026-08-20 21:12:08 UTC"
               }
             },
             {
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "412e9a526685dea0b050d921ae74340c54606fafd28413f21e122932ddf83bc5",
-                  "newest_mtime_ns": 1787228522315047759,
-                  "total_size": 2615
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "314fce8c8a48bb2fbd2d5170398e0a5d89e7f4bcbdb26e786841a8d51c909ea0",
-                  "newest_mtime_ns": 1787228523000000000,
-                  "total_size": 2615
+                  "exists": false
                 }
               ],
               "diagnostics": [],
               "id": "angel-graph-v2-same-checker-v1",
               "source_binding_count": 3,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
                 "ActiveState": "inactive",
                 "ExecMainStatus": "0",
@@ -1010,26 +952,16 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "0481090a10f71767c05bdc78c4831742e12810362a7c117ef84c9ed99a26bd68",
-                  "newest_mtime_ns": 1787229432665895235,
-                  "total_size": 2630
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "b160dbbf131457cb0f4411745997499f92b4aad59f210ba1f6a8e9c03074eb39",
-                  "newest_mtime_ns": 1787229434000000000,
-                  "total_size": 2630
+                  "exists": false
                 }
               ],
               "diagnostics": [],
               "id": "angel-graph-v2-opposed-sniper-v1",
               "source_binding_count": 4,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
                 "ActiveState": "inactive",
                 "ExecMainStatus": "0",
@@ -1041,26 +973,16 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "f449cce88e5caaf9bba341d6311d10e05476ea1e8765af2dd5dcf3fa49b7e4e0",
-                  "newest_mtime_ns": 1787230050366113293,
-                  "total_size": 2636
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "28ed00a5179e4c7b1197deeb4a20d1f3a02362dfb32631d561377e398f9cdf1e",
-                  "newest_mtime_ns": 1787230051000000000,
-                  "total_size": 2636
+                  "exists": false
                 }
               ],
               "diagnostics": [],
               "id": "angel-graph-v2-opposed-penguin-v1",
               "source_binding_count": 4,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
                 "ActiveState": "inactive",
                 "ExecMainStatus": "0",
@@ -1072,18 +994,13 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "a755252c4e4954eafa465c8e7d560a090076fbd52bc311b40046488ab8492920",
-                  "newest_mtime_ns": 1787217537772973473,
-                  "total_size": 3087
+                  "exists": false
                 }
               ],
               "diagnostics": [],
               "id": "preserve-same-berserker-memory-failures-v1",
               "source_binding_count": 1,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
                 "ActiveState": "inactive",
                 "ExecMainStatus": "0",
@@ -1095,18 +1012,13 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "0ffd0f31c888bfad59d29b8f617c0d5c6348d78d4fdcc553339c62a0c223648f",
-                  "newest_mtime_ns": 1787218348367937898,
-                  "total_size": 624
+                  "exists": false
                 }
               ],
               "diagnostics": [],
               "id": "build-ghost-pair-domain-cache-v1",
               "source_binding_count": 1,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
                 "ActiveState": "inactive",
                 "ExecMainStatus": "0",
@@ -1116,46 +1028,37 @@
             },
             {
               "checkpoints": [],
-              "completion": [],
-              "diagnostics": [
+              "completion": [
                 {
-                  "bytes": 4096,
-                  "sha256": "f9b9e0e4adae26db71618fa901e5f69874e7ab40de65531b8fc245f43683dc28",
-                  "source_index": 0,
-                  "status": "ok",
-                  "tail": ""
+                  "exists": false
+                },
+                {
+                  "exists": false
                 }
               ],
+              "diagnostics": [],
               "id": "same-ghost-pair-domain-cache-v1",
               "source_binding_count": 2,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
-                "ActiveState": "active",
-                "AllowedCPUs": "30",
-                "CPUUsageNSec": "38403522335000",
+                "ActiveState": "inactive",
                 "ExecMainStatus": "0",
-                "LoadState": "loaded",
-                "MemoryCurrent": "4851417088",
+                "LoadState": "not-found",
                 "Result": "success",
-                "StateChangeTimestamp": "Thu 2026-08-20 09:39:13 UTC"
+                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
               }
             },
             {
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "0f940858bc329c9c335e590ac0f4c07cbf780152804b535b4ba4881af30ccfa6",
-                  "newest_mtime_ns": 1787219210770910910,
-                  "total_size": 3095
+                  "exists": false
                 }
               ],
               "diagnostics": [],
               "id": "preserve-stopped-ghost-pair-domain-baseline-v1",
               "source_binding_count": 1,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
                 "ActiveState": "inactive",
                 "ExecMainStatus": "0",
@@ -1210,55 +1113,37 @@
             },
             {
               "checkpoints": [],
-              "completion": [],
-              "diagnostics": [
+              "completion": [
                 {
-                  "bytes": 1224,
-                  "sha256": "d255e622130cb2fa7a2a098c10dcccdba5b55d906cd5ac42066c278120c3a2a2",
-                  "source_index": 0,
-                  "status": "ok",
-                  "tail": ""
+                  "exists": false
                 },
                 {
-                  "bytes": 861,
-                  "sha256": "bd6d1dab807833acb03f0a473f40df58a47511fa3b27f916a570d8d53c8ddb2c",
-                  "source_index": 1,
-                  "status": "ok",
-                  "tail": ""
+                  "exists": false
+                },
+                {
+                  "exists": false
                 }
               ],
+              "diagnostics": [],
               "id": "penguin-ghost-opposing-fresh-v5",
               "source_binding_count": 3,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
-                "ActiveState": "active",
-                "AllowedCPUs": "2",
-                "CPUUsageNSec": "109567308301000",
+                "ActiveState": "inactive",
                 "ExecMainStatus": "0",
-                "LoadState": "loaded",
-                "MemoryCurrent": "27695263744",
+                "LoadState": "not-found",
                 "Result": "success",
-                "StateChangeTimestamp": "Thu 2026-08-20 03:21:45 UTC"
+                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
               }
             },
             {
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "61fde2980a4a910769e904e6590b50f957ec5ce8e6fe3931901c4e7ba5361d69",
-                  "newest_mtime_ns": 1786461112510506264,
-                  "total_size": 2672
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "c19669a944616e172abffd815b595b507811e8bf1eb592ddbecc88fd575f1dbd",
-                  "newest_mtime_ns": 1786461113000000000,
-                  "total_size": 2672
+                  "exists": false
                 }
               ],
               "diagnostics": [],
@@ -1276,20 +1161,10 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "d78d756bc42fe3d5b877c66adec095ed410eb4c142ee5130d5d743e4b8ee98a1",
-                  "newest_mtime_ns": 1786461592795653283,
-                  "total_size": 2670
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "95fcfb2e176ddfeaf025d5c7ee0684779b46002a6312fc7a6faa640b9a5a1f07",
-                  "newest_mtime_ns": 1786461594000000000,
-                  "total_size": 2670
+                  "exists": false
                 }
               ],
               "diagnostics": [],
@@ -1307,20 +1182,10 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "c4044bf4dfe4bb82db2073a6a674c6b185ebc19521647ebbe351d499acf17600",
-                  "newest_mtime_ns": 1786461638304249663,
-                  "total_size": 2662
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "424001314e789e40ec238c856efa2561cca112f4526623c3961caf7cc7e02fbb",
-                  "newest_mtime_ns": 1786461639000000000,
-                  "total_size": 2662
+                  "exists": false
                 }
               ],
               "diagnostics": [],
@@ -1338,20 +1203,10 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "45b60da65c0a41e819c0ab0d65e01cbb659807de138e70c8ab8717f938836024",
-                  "newest_mtime_ns": 1786461728051482709,
-                  "total_size": 2670
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "10ae3882aa0095a53a63f6cc43b7dd4149a8df63d3b806df4c3e2053cfbab04a",
-                  "newest_mtime_ns": 1786461729000000000,
-                  "total_size": 2670
+                  "exists": false
                 }
               ],
               "diagnostics": [],
@@ -1369,20 +1224,10 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "9586908a46d3eff914350a7e35e928dc89b8de2543c0a5927b70a6b52c716eb0",
-                  "newest_mtime_ns": 1786461246356354627,
-                  "total_size": 2666
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "b2af4d1c0c4c1786ecfc9160948da7b94d5143c59b3a3691f24d507078c79d81",
-                  "newest_mtime_ns": 1786461247000000000,
-                  "total_size": 2666
+                  "exists": false
                 }
               ],
               "diagnostics": [],
@@ -1400,20 +1245,10 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "3f835dcf055903c65aec7f2889f02e361083070fca0baaf7eefc9a604b6bdf14",
-                  "newest_mtime_ns": 1786461414401152696,
-                  "total_size": 2670
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "dc7762931a9eba7b272528c5a1cc3454553a78d19f1d63e2f4f540b88e02c84f",
-                  "newest_mtime_ns": 1786461415000000000,
-                  "total_size": 2670
+                  "exists": false
                 }
               ],
               "diagnostics": [],
@@ -1431,20 +1266,10 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "91afa38124b065ff15c5278e4bb74a462212e53a2d4f377c32a82bf4118c2f7d",
-                  "newest_mtime_ns": 1786461801569213674,
-                  "total_size": 2662
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "04cb989087d1413d2907d027725ef4876520ab78ceb9c2f26dbb687f17d2d8aa",
-                  "newest_mtime_ns": 1786461802000000000,
-                  "total_size": 2662
+                  "exists": false
                 }
               ],
               "diagnostics": [],
@@ -1462,20 +1287,10 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "48cab34c42ce1985ddaea4dff9e8f46eda3ddff456b787854d885ad4a4bd2d07",
-                  "newest_mtime_ns": 1786466895204120074,
-                  "total_size": 2677
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "e40fe3cc35e12d0a8ae16d0977e963c86ba9f90071ef5508f3b64bc042d3162e",
-                  "newest_mtime_ns": 1786466896000000000,
-                  "total_size": 2677
+                  "exists": false
                 }
               ],
               "diagnostics": [],
@@ -1493,20 +1308,10 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "19ff845b7784feda312293fe84c02428df517e5048b0ba1bdcfe59c4be3fe402",
-                  "newest_mtime_ns": 1786466929513094235,
-                  "total_size": 2681
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "ada1875ad4e715915bccebe32c394c339fc7277527d192de0c10b50493c44c4e",
-                  "newest_mtime_ns": 1786466930000000000,
-                  "total_size": 2681
+                  "exists": false
                 }
               ],
               "diagnostics": [],
@@ -1524,20 +1329,10 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "b1582cf3329fa3402b1cf46d581325e1af17df36952ba9adc6a42d84f0d99e1c",
-                  "newest_mtime_ns": 1786466926073196962,
-                  "total_size": 2675
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "f19928f5ee664c33289988b9cb6e34d205c6ac698f9038e57909336b79c4932b",
-                  "newest_mtime_ns": 1786466927000000000,
-                  "total_size": 2675
+                  "exists": false
                 }
               ],
               "diagnostics": [],
@@ -1555,20 +1350,10 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "aa12b549519dd3db8f9b9e226b228405504f242fa7b6eefbd17e46e245c0c9fc",
-                  "newest_mtime_ns": 1786467364320058318,
-                  "total_size": 2666
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "6e36d6435d4441acbfae1239e2965607c26f1825b2c2a21034deb0774ac3ede7",
-                  "newest_mtime_ns": 1786467365000000000,
-                  "total_size": 2666
+                  "exists": false
                 }
               ],
               "diagnostics": [],
@@ -1605,7 +1390,7 @@
               "diagnostics": [],
               "id": "current-concrete-opposed-berserker-parasite",
               "source_binding_count": 2,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
                 "ActiveState": "inactive",
                 "ExecMainStatus": "0",
@@ -1636,7 +1421,7 @@
               "diagnostics": [],
               "id": "current-concrete-opposed-berserker-ninja",
               "source_binding_count": 2,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
                 "ActiveState": "inactive",
                 "ExecMainStatus": "0",
@@ -1667,7 +1452,7 @@
               "diagnostics": [],
               "id": "current-concrete-opposed-berserker-checker",
               "source_binding_count": 5,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
                 "ActiveState": "inactive",
                 "ExecMainStatus": "0",
@@ -1679,26 +1464,16 @@
               "checkpoints": [],
               "completion": [
                 {
-                  "allocated_bytes": 474476544,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "9cac59ef343606e54b889a6562087a653d682969146be3c7dbc96cd4efbb4a90",
-                  "newest_mtime_ns": 1786654188273136015,
-                  "total_size": 474474056
+                  "exists": false
                 },
                 {
-                  "allocated_bytes": 4096,
-                  "exists": true,
-                  "match_count": 1,
-                  "metadata_sha256": "61adfc550f28a9f3d8362e9c226468761a75179be1ff0ff1e8ad5d55d2de301a",
-                  "newest_mtime_ns": 1786655521584628225,
-                  "total_size": 2549
+                  "exists": false
                 }
               ],
               "diagnostics": [],
               "id": "current-concrete-opposed-berserker-dragon",
               "source_binding_count": 2,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
                 "ActiveState": "inactive",
                 "ExecMainStatus": "0",
@@ -1708,160 +1483,118 @@
             },
             {
               "checkpoints": [],
-              "completion": [],
-              "diagnostics": [
+              "completion": [
                 {
-                  "bytes": 395464,
-                  "sha256": "b6c26ccd9b6edd262ec1c96271905adee23d1708b34ed95cf7a14fb4afb61506",
-                  "source_index": 0,
-                  "status": "ok",
-                  "tail": ""
+                  "exists": false
                 },
                 {
-                  "bytes": 137,
-                  "sha256": "8cff37f4f3dc452c515b77d463a46622f16ab9e08956198baace034364edb8ac",
-                  "source_index": 1,
-                  "status": "ok",
-                  "tail": ""
+                  "exists": false
                 }
               ],
+              "diagnostics": [],
               "id": "remap-fix-opposed-knight-ghost-solve-v11",
               "source_binding_count": 5,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
-                "ActiveState": "active",
-                "AllowedCPUs": "0",
-                "CPUUsageNSec": "85437892416000",
+                "ActiveState": "inactive",
                 "ExecMainStatus": "0",
-                "LoadState": "loaded",
-                "MemoryCurrent": "18121748480",
+                "LoadState": "not-found",
                 "Result": "success",
-                "StateChangeTimestamp": "Wed 2026-08-19 20:24:38 UTC"
+                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
               }
             },
             {
               "checkpoints": [],
-              "completion": [],
-              "diagnostics": [
+              "completion": [
                 {
-                  "bytes": 271313,
-                  "sha256": "242a982088208f669f425db840826247c72dc0904e79e739e7cae9d66aa1bbb5",
-                  "source_index": 0,
-                  "status": "ok",
-                  "tail": ""
+                  "exists": false
+                },
+                {
+                  "exists": false
                 }
               ],
+              "diagnostics": [],
               "id": "remap-fix-v2-opposed-turtle-ghost-compositional-v4",
               "source_binding_count": 5,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
-                "ActiveState": "active",
-                "AllowedCPUs": "23",
-                "CPUUsageNSec": "54121568621000",
+                "ActiveState": "inactive",
                 "ExecMainStatus": "0",
-                "LoadState": "loaded",
-                "MemoryCurrent": "17286971392",
+                "LoadState": "not-found",
                 "Result": "success",
-                "StateChangeTimestamp": "Thu 2026-08-20 04:59:47 UTC"
+                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
               }
             },
             {
               "checkpoints": [],
-              "completion": [],
-              "diagnostics": [
+              "completion": [
                 {
-                  "bytes": 415109,
-                  "sha256": "94a6bba51a76ed2ff16accc7edf374753688ebfbb021a3ddbb39564f4da7a791",
-                  "source_index": 0,
-                  "status": "ok",
-                  "tail": ""
+                  "exists": false
                 },
                 {
-                  "bytes": 131,
-                  "sha256": "4f82dc806562a8c71613fb9e46d48214336ec8b35583977123d2d17eb93e3e37",
-                  "source_index": 1,
-                  "status": "ok",
-                  "tail": ""
+                  "exists": false
                 }
               ],
+              "diagnostics": [],
               "id": "compositional-v5-opposed-ghost-sniper",
               "source_binding_count": 4,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
-                "ActiveState": "active",
-                "AllowedCPUs": "10",
-                "CPUUsageNSec": "59583698342000",
+                "ActiveState": "inactive",
                 "ExecMainStatus": "0",
-                "LoadState": "loaded",
-                "MemoryCurrent": "26890194944",
+                "LoadState": "not-found",
                 "Result": "success",
-                "StateChangeTimestamp": "Thu 2026-08-20 03:44:55 UTC"
+                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
               }
             },
             {
               "checkpoints": [],
-              "completion": [],
-              "diagnostics": [
+              "completion": [
                 {
-                  "bytes": 127835,
-                  "sha256": "4a4847c6cff602945420af84d881da681815f9c4a02b1d20c44f6596cf1c5f99",
-                  "source_index": 0,
-                  "status": "ok",
-                  "tail": ""
+                  "exists": false
+                },
+                {
+                  "exists": false
+                },
+                {
+                  "exists": false
                 }
               ],
+              "diagnostics": [],
               "id": "remap-fix-v2-opposed-rook-ghost-source-order-solve-v6",
               "source_binding_count": 4,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
-                "ActiveState": "active",
-                "AllowedCPUs": "19",
-                "CPUUsageNSec": "47693637047000",
+                "ActiveState": "inactive",
                 "ExecMainStatus": "0",
-                "LoadState": "loaded",
-                "MemoryCurrent": "25311432704",
+                "LoadState": "not-found",
                 "Result": "success",
-                "StateChangeTimestamp": "Thu 2026-08-20 06:50:12 UTC"
+                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
               }
             },
             {
               "checkpoints": [],
-              "completion": [],
-              "diagnostics": [
+              "completion": [
                 {
-                  "bytes": 23765,
-                  "sha256": "4400aa1eb53aa267f326d204dce62b02b46500d0de8aded357b9cda865525f85",
-                  "source_index": 0,
-                  "status": "ok",
-                  "tail": ""
+                  "exists": false
                 },
                 {
-                  "bytes": 42272,
-                  "sha256": "03ffb8d5838aa3e376a37ebd431d36aa3055b50ab984dce8498a53769f60e57c",
-                  "source_index": 1,
-                  "status": "ok",
-                  "tail": ""
+                  "exists": false
                 },
                 {
-                  "bytes": 1825,
-                  "sha256": "603d70e3d2846f6940884dad883e4cf7796a19f66d5c7bd7243bdb69376c9233",
-                  "source_index": 2,
-                  "status": "ok",
-                  "tail": ""
+                  "exists": false
                 }
               ],
+              "diagnostics": [],
               "id": "source-order-opposed-queen-ghost-solve-v8",
               "source_binding_count": 4,
-              "sources_exact": true,
+              "sources_exact": false,
               "unit": {
-                "ActiveState": "active",
-                "AllowedCPUs": "14",
-                "CPUUsageNSec": "31638623881000",
+                "ActiveState": "inactive",
                 "ExecMainStatus": "0",
-                "LoadState": "loaded",
-                "MemoryCurrent": "2234867712",
+                "LoadState": "not-found",
                 "Result": "success",
-                "StateChangeTimestamp": "Thu 2026-08-20 11:27:21 UTC"
+                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
               }
             },
             {
@@ -2010,37 +1743,67 @@
             }
           ],
           "memory": {
-            "MemAvailable": 251314806784,
+            "MemAvailable": 261349773312,
             "MemTotal": 265470873600,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 39384309760,
+              "free_bytes": 39437357056,
               "path": "/",
               "total_bytes": 42871009280
             },
             {
-              "free_bytes": 202845339648,
+              "free_bytes": 1885093965824,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             },
             {
-              "free_bytes": 171480698880,
+              "free_bytes": 170241019904,
               "path": "/mnt/ultimatefish-penguin",
               "total_bytes": 536608768000
             }
           ],
           "probe_compacted": true,
           "probe_compaction_level": 2,
-          "probe_encoded_bytes": 13220,
+          "probe_encoded_bytes": 8554,
           "unconfigured_active_units": {
-            "count": 0,
-            "details": [],
+            "count": 2,
+            "details": [
+              {
+                "properties": {
+                  "ActiveState": "active",
+                  "AllowedCPUs": "",
+                  "CPUUsageNSec": "5500000",
+                  "ExecMainStatus": "0",
+                  "LoadState": "loaded",
+                  "MemoryCurrent": "[not set]",
+                  "Result": "success",
+                  "StateChangeTimestamp": "Thu 2026-08-20 21:06:35 UTC"
+                },
+                "unit": "ultimatefish-mount.service"
+              },
+              {
+                "properties": {
+                  "ActiveState": "active",
+                  "AllowedCPUs": "2",
+                  "CPUUsageNSec": "22240253000",
+                  "ExecMainStatus": "0",
+                  "LoadState": "loaded",
+                  "MemoryCurrent": "60846080",
+                  "Result": "success",
+                  "StateChangeTimestamp": "Thu 2026-08-20 21:16:05 UTC"
+                },
+                "unit": "ultimatefish-validate-kjester-v3-one.service"
+              }
+            ],
             "probe_status": 0,
-            "sample": [],
-            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            "sample": [
+              "ultimatefish-mount.service",
+              "ultimatefish-validate-kjester-v3-one.service"
+            ],
+            "sha256": "dd83d2d86cf963aea1c8a122dec33558dd41709c05e51c4a5e74b49ff1005eb8"
           }
         },
         "resource_warnings": []
@@ -2049,41 +1812,32 @@
         "cpu_allocation": {
           "active_cpu_sets": {
             "compositional-v3-same-rook-ghost-solve": "13",
-            "concrete-pawn-berserker-opposed-v1": "0,1,2,3,4,5,6,7",
             "memory-fix-opposed-prince-ghost-solve-2b-v7": "14"
           },
           "active_jobs": {
             "compositional-v3-same-rook-ghost-solve": 1,
-            "concrete-pawn-berserker-opposed-v1": 8,
             "memory-fix-opposed-prince-ghost-solve-2b-v7": 1
           },
-          "allocated_vcpus": 10,
+          "allocated_vcpus": 2,
           "allocation_known": true,
           "allocation_mismatches": {},
-          "idle_vcpus": 22,
-          "measured_busy_vcpus": 2.076,
-          "measured_fleet_capacity_percent": 6.5,
+          "idle_vcpus": 30,
+          "measured_busy_vcpus": 1.992,
+          "measured_fleet_capacity_percent": 6.2,
           "measured_jobs": {
             "compositional-v3-same-rook-ghost-solve": {
-              "allocated_utilization_percent": 95.1,
-              "average_busy_vcpus": 0.951,
-              "cpu_delta_nsec": 60153086000,
-              "cpu_usage_nsec": 55744683178000,
-              "sample_seconds": 63.244
-            },
-            "concrete-pawn-berserker-opposed-v1": {
-              "allocated_utilization_percent": 1.6,
-              "average_busy_vcpus": 0.125,
-              "cpu_delta_nsec": 7918052000,
-              "cpu_usage_nsec": 10666678998000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 99.3,
+              "average_busy_vcpus": 0.993,
+              "cpu_delta_nsec": 3341866601000,
+              "cpu_usage_nsec": 59086549779000,
+              "sample_seconds": 3365.902
             },
             "memory-fix-opposed-prince-ghost-solve-2b-v7": {
-              "allocated_utilization_percent": 100.0,
-              "average_busy_vcpus": 1.0,
-              "cpu_delta_nsec": 63268085000,
-              "cpu_usage_nsec": 70554685051000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 3363805093000,
+              "cpu_usage_nsec": 73918490144000,
+              "sample_seconds": 3365.902
             }
           },
           "measurement_complete": true,
@@ -2100,45 +1854,12 @@
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 398.95,
+        "estimated_spend_usd": 400.41,
         "instance_type": "c8gd.8xlarge",
         "launch_time": "2026-08-10T05:51:20+00:00",
         "name": "crossed-and-jester-ghost",
         "remote": {
           "jobs": [
-            {
-              "checkpoints": [],
-              "completion": [],
-              "diagnostics": [
-                {
-                  "bytes": 51903,
-                  "sha256": "7eaacb728d8cca7d16d308843ad8f624d0a340adc4ce85ebf54c652171571cce",
-                  "source_index": 0,
-                  "status": "ok",
-                  "tail": ""
-                },
-                {
-                  "bytes": 2048,
-                  "sha256": "4eebf3e2c70470141d47d40a9467dae74ccbfffa8d793022b315ad0dc802b3f3",
-                  "source_index": 1,
-                  "status": "ok",
-                  "tail": ""
-                }
-              ],
-              "id": "concrete-pawn-berserker-opposed-v1",
-              "source_binding_count": 6,
-              "sources_exact": true,
-              "unit": {
-                "ActiveState": "active",
-                "AllowedCPUs": "0-7",
-                "CPUUsageNSec": "10666678998000",
-                "ExecMainStatus": "0",
-                "LoadState": "loaded",
-                "MemoryCurrent": "48331829248",
-                "Result": "success",
-                "StateChangeTimestamp": "Thu 2026-08-20 19:25:27 UTC"
-              }
-            },
             {
               "checkpoints": [],
               "completion": [
@@ -2286,8 +2007,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 187749,
-                  "sha256": "aa135d3cb7bf374d78d3cdbea2b8a2a0e620bff59008c2bbb1781fbe6e6c8cb8",
+                  "bytes": 194449,
+                  "sha256": "1884789f23142d9fa7fae9e9509ad223530d57e30c2b7385ab7f29631ee717d8",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -2306,10 +2027,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "13",
-                "CPUUsageNSec": "55744683178000",
+                "CPUUsageNSec": "59086549779000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "5377445888",
+                "MemoryCurrent": "9379897344",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 04:49:14 UTC"
               }
@@ -2319,8 +2040,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 200603,
-                  "sha256": "9a26bc1010b45a33448e0ff7b13bcb94160fe65340d83d868e38f4251ee2b671",
+                  "bytes": 212496,
+                  "sha256": "a943ad691fdcc3823ddc56005180e825c6b7443216e191c7642a4d617840f69b",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -2339,10 +2060,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "14",
-                "CPUUsageNSec": "70554685051000",
+                "CPUUsageNSec": "73918490144000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "10909421568",
+                "MemoryCurrent": "23772188672",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 00:44:15 UTC"
               }
@@ -2440,6 +2161,18 @@
             {
               "checkpoints": [],
               "completion": [],
+              "id": "concrete-pawn-berserker-opposed-v1",
+              "sources": [],
+              "unit": {
+                "ActiveState": "inactive",
+                "ExecMainStatus": "0",
+                "LoadState": "not-found",
+                "Result": "success"
+              }
+            },
+            {
+              "checkpoints": [],
+              "completion": [],
               "id": "jester-ghost-verify-shards",
               "sources": [],
               "unit": {
@@ -2499,26 +2232,26 @@
             }
           ],
           "memory": {
-            "MemAvailable": 59336839168,
+            "MemAvailable": 62997946368,
             "MemTotal": 66202484736,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 5484552192,
+              "free_bytes": 5484109824,
               "path": "/",
               "total_bytes": 8511270912
             },
             {
-              "free_bytes": 887562371072,
+              "free_bytes": 888716816384,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             }
           ],
           "probe_compacted": true,
           "probe_compaction_level": 2,
-          "probe_encoded_bytes": 4558,
+          "probe_encoded_bytes": 4058,
           "unconfigured_active_units": {
             "count": 0,
             "details": [],
@@ -2545,29 +2278,29 @@
           "allocation_known": true,
           "allocation_mismatches": {},
           "idle_vcpus": 29,
-          "measured_busy_vcpus": 3.004,
+          "measured_busy_vcpus": 2.999,
           "measured_fleet_capacity_percent": 9.4,
           "measured_jobs": {
             "current-same-pawn-ghost-solve-v2": {
-              "allocated_utilization_percent": 100.1,
-              "average_busy_vcpus": 1.001,
-              "cpu_delta_nsec": 63329274000,
-              "cpu_usage_nsec": 428614791064000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 100.0,
+              "average_busy_vcpus": 1.0,
+              "cpu_delta_nsec": 3365239195000,
+              "cpu_usage_nsec": 431980030259000,
+              "sample_seconds": 3365.902
             },
             "remap-fix-v2-opposed-copycat-ghost-source-order-solve-v6": {
-              "allocated_utilization_percent": 100.1,
-              "average_busy_vcpus": 1.001,
-              "cpu_delta_nsec": 63331992000,
-              "cpu_usage_nsec": 48383500263000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 3361430647000,
+              "cpu_usage_nsec": 51744930910000,
+              "sample_seconds": 3365.902
             },
             "singleton-fix-same-checker-ghost-gated-solve-v11": {
-              "allocated_utilization_percent": 100.2,
-              "average_busy_vcpus": 1.002,
-              "cpu_delta_nsec": 63339125000,
-              "cpu_usage_nsec": 107663732310000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 100.0,
+              "average_busy_vcpus": 1.0,
+              "cpu_delta_nsec": 3365685440000,
+              "cpu_usage_nsec": 111029417750000,
+              "sample_seconds": 3365.902
             }
           },
           "measurement_complete": true,
@@ -2584,7 +2317,7 @@
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 400.96,
+        "estimated_spend_usd": 402.42,
         "instance_type": "c8gd.8xlarge",
         "launch_time": "2026-08-10T04:34:29+00:00",
         "name": "giant-ghost-same",
@@ -3602,8 +3335,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 1034260,
-                  "sha256": "bc99e72629687b60644ffac6b22cafe95f2cfd766c4c3058b0d4e5a297063ad2",
+                  "bytes": 1059442,
+                  "sha256": "201eead494fe3fc6df181c92ccbf71e55d2baa84d10439152f9ea4f545c0f6e7",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -3622,10 +3355,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "1",
-                "CPUUsageNSec": "107663732310000",
+                "CPUUsageNSec": "111029417750000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "30502817792",
+                "MemoryCurrent": "28938702848",
                 "Result": "success",
                 "StateChangeTimestamp": "Wed 2026-08-19 14:23:15 UTC"
               }
@@ -3635,8 +3368,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 1768661,
-                  "sha256": "5600f1711701308fce1b0228c01a3fdb606c745d46507c6e834b435c69b3eca7",
+                  "bytes": 1776461,
+                  "sha256": "58128e3201a6e39daa2a980195e8fed8ab4e86cd7bbdbf179d59a8cf0a4aff1f",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -3655,10 +3388,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "0",
-                "CPUUsageNSec": "428614791064000",
+                "CPUUsageNSec": "431980030259000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "15757197312",
+                "MemoryCurrent": "14554611712",
                 "Result": "success",
                 "StateChangeTimestamp": "Sat 2026-08-15 21:11:44 UTC"
               }
@@ -3668,8 +3401,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 216503,
-                  "sha256": "726378e027d11a124afa289c02bb3435a35236f3ad45e16eb7f627c0aefadfd4",
+                  "bytes": 231490,
+                  "sha256": "b87f11ac0c4f1b4f3cceddd58d1fd41e90afd944b4014443549233950d794ce5",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -3681,10 +3414,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "2",
-                "CPUUsageNSec": "48383500263000",
+                "CPUUsageNSec": "51744930910000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "17976987648",
+                "MemoryCurrent": "20747567104",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 06:50:26 UTC"
               }
@@ -3821,19 +3554,19 @@
             }
           ],
           "memory": {
-            "MemAvailable": 59408879616,
+            "MemAvailable": 59367612416,
             "MemTotal": 66202484736,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 5437677568,
+              "free_bytes": 5422272512,
               "path": "/",
               "total_bytes": 8511270912
             },
             {
-              "free_bytes": 571265507328,
+              "free_bytes": 570455465984,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             }
@@ -3877,64 +3610,64 @@
           "allocation_known": true,
           "allocation_mismatches": {},
           "idle_vcpus": 15,
-          "measured_busy_vcpus": 16.55,
-          "measured_fleet_capacity_percent": 51.7,
+          "measured_busy_vcpus": 16.729,
+          "measured_fleet_capacity_percent": 52.3,
           "measured_jobs": {
             "bomb-ghost-opposing-strong-solve-v8": {
-              "allocated_utilization_percent": 97.5,
-              "average_busy_vcpus": 0.975,
-              "cpu_delta_nsec": 61640352000,
-              "cpu_usage_nsec": 51505174840000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 3361812089000,
+              "cpu_usage_nsec": 54866986929000,
+              "sample_seconds": 3365.902
             },
             "crossed-jester-ghost-current-migrated-v2": {
-              "allocated_utilization_percent": 97.3,
-              "average_busy_vcpus": 0.973,
-              "cpu_delta_nsec": 61541732000,
-              "cpu_usage_nsec": 102164293245000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 3361835649000,
+              "cpu_usage_nsec": 105526128894000,
+              "sample_seconds": 3365.902
             },
             "dragon-ghost-opposing-memory-v5": {
-              "allocated_utilization_percent": 97.3,
-              "average_busy_vcpus": 0.973,
-              "cpu_delta_nsec": 61550979000,
-              "cpu_usage_nsec": 41943356629000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 74.6,
+              "average_busy_vcpus": 0.746,
+              "cpu_delta_nsec": 2511405527000,
+              "cpu_usage_nsec": 44454762156000,
+              "sample_seconds": 3365.902
             },
             "jester-ghost-same-lower-binding-v2": {
-              "allocated_utilization_percent": 97.3,
-              "average_busy_vcpus": 0.973,
-              "cpu_delta_nsec": 61558178000,
-              "cpu_usage_nsec": 57446854776000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 3361130634000,
+              "cpu_usage_nsec": 60807985410000,
+              "sample_seconds": 3365.902
             },
             "memory-fix-same-sniper-ghost-solve-v2": {
-              "allocated_utilization_percent": 97.3,
-              "average_busy_vcpus": 0.973,
-              "cpu_delta_nsec": 61542625000,
-              "cpu_usage_nsec": 52478025620000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 3362489597000,
+              "cpu_usage_nsec": 55840515217000,
+              "sample_seconds": 3365.902
             },
             "remap-fix-opposed-berserker-ghost-transitions-v5": {
-              "allocated_utilization_percent": 97.5,
-              "average_busy_vcpus": 9.747,
-              "cpu_delta_nsec": 616406685000,
-              "cpu_usage_nsec": 996669559945000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 100.0,
+              "average_busy_vcpus": 10.003,
+              "cpu_delta_nsec": 33670109913000,
+              "cpu_usage_nsec": 1030339669858000,
+              "sample_seconds": 3365.902
             },
             "source-order-opposed-ninja-ghost-solve-v7": {
-              "allocated_utilization_percent": 97.4,
-              "average_busy_vcpus": 0.974,
-              "cpu_delta_nsec": 61617697000,
-              "cpu_usage_nsec": 30394456426000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 100.0,
+              "average_busy_vcpus": 1.0,
+              "cpu_delta_nsec": 3365343210000,
+              "cpu_usage_nsec": 33759799636000,
+              "sample_seconds": 3365.902
             },
             "source-order-same-prince-ghost-solve-v3": {
-              "allocated_utilization_percent": 96.2,
-              "average_busy_vcpus": 0.962,
-              "cpu_delta_nsec": 60857905000,
-              "cpu_usage_nsec": 47061664962000,
-              "sample_seconds": 63.244
+              "allocated_utilization_percent": 98.4,
+              "average_busy_vcpus": 0.984,
+              "cpu_delta_nsec": 3313470695000,
+              "cpu_usage_nsec": 50375135657000,
+              "sample_seconds": 3365.902
             }
           },
           "measurement_complete": true,
@@ -3951,7 +3684,7 @@
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 586.1,
+        "estimated_spend_usd": 588.29,
         "instance_type": "r8gd.8xlarge",
         "launch_time": "2026-08-10T11:04:50+00:00",
         "name": "concrete-primary",
@@ -3975,10 +3708,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "29",
-                "CPUUsageNSec": "102164293245000",
+                "CPUUsageNSec": "105526128894000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "71935946752",
+                "MemoryCurrent": "74410651648",
                 "Result": "success",
                 "StateChangeTimestamp": "Wed 2026-08-19 15:38:46 UTC"
               }
@@ -4093,11 +3826,11 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 99189,
-                  "sha256": "0bd415f6fdefc854c1a2be44a96a4e01f4ad7111359b0e1cbe39bff0bc3c1fc4",
+                  "bytes": 103209,
+                  "sha256": "699060c8a77ebf5a5fa6f07cb1feb289f1ac256ba952f579417819b736bbf4fd",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "_extra_bellman iteration 8 geometry 185000/492960 bdd_nodes 182288292 peak_rss_bytes 13596336128 elapsed 56092.3s\nreciprocal_ghost_extra_bellman iteration 8 geometry 190000/492960 bdd_nodes 189303095 peak_rss_bytes 13596336128 elapsed 56127.2s\nreciprocal_ghost_extra_bellman iteration 8 geometry 195000/492960 bdd_nodes 199232735 peak_rss_bytes 13596336128 elapsed 56162.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 200000/492960 bdd_nodes 204493462 peak_rss_bytes 13596336128 elapsed 56197.3s\nreciprocal_ghost_extra_bellman iteration 8 geometry 205000/492960 bdd_nodes 214799282 peak_rss_bytes 13596336128 elapsed 56229.5s\nreciprocal_ghost_extra_bellman iteration 8 geometry 210000/492960 bdd_nodes 221127123 peak_rss_bytes 13596336128 elapsed 56259.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 215000/492960 bdd_nodes 228349492 peak_rss_bytes 13596336128 elapsed 56295.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 220000/492960 bdd_nodes 237922357 peak_rss_bytes 13596336128 elapsed 56332.4s\n"
+                  "tail": "st_extra_bellman iteration 8 geometry 340000/492960 bdd_nodes 408243650 peak_rss_bytes 13596336128 elapsed 57933.6s\nreciprocal_ghost_extra_bellman iteration 8 geometry 345000/492960 bdd_nodes 421169104 peak_rss_bytes 13596336128 elapsed 58168.1s\nreciprocal_ghost_extra_bellman iteration 8 geometry 350000/492960 bdd_nodes 429498271 peak_rss_bytes 13596336128 elapsed 58277.3s\nreciprocal_ghost_extra_bellman iteration 8 geometry 355000/492960 bdd_nodes 436153122 peak_rss_bytes 13596336128 elapsed 58356.4s\nreciprocal_ghost_extra_bellman iteration 8 geometry 360000/492960 bdd_nodes 446235855 peak_rss_bytes 13596336128 elapsed 58489.6s\nreciprocal_ghost_extra_bellman iteration 8 geometry 365000/492960 bdd_nodes 456559872 peak_rss_bytes 13687336960 elapsed 58632.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 370000/492960 bdd_nodes 470655803 peak_rss_bytes 13814980608 elapsed 58954.4s\nreciprocal_ghost_extra_bellman iteration 8 geometry 375000/492960 bdd_nodes 481899691 peak_rss_bytes 13917007872 elapsed 59199s\n"
                 },
                 {
                   "bytes": 156,
@@ -4113,10 +3846,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "11",
-                "CPUUsageNSec": "51505174840000",
+                "CPUUsageNSec": "54866986929000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "24917434368",
+                "MemoryCurrent": "21489684480",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 04:38:55 UTC"
               }
@@ -4194,10 +3927,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "10",
-                "CPUUsageNSec": "57446854776000",
+                "CPUUsageNSec": "60807985410000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "34765996032",
+                "MemoryCurrent": "34909892608",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 04:16:00 UTC"
               }
@@ -4207,11 +3940,11 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 100436,
-                  "sha256": "cfedd7c9ccdb3bbac8fad05ae33bfcfdb3cc5fefb145dc57622b64183ce7c888",
+                  "bytes": 105106,
+                  "sha256": "a4abe96c5c1253f333f47009f9d94029c4ebabc1956f6f6f88fcabe9868efa82",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "st_extra_bellman iteration 7 geometry 265000/492960 bdd_nodes 263016929 peak_rss_bytes 23717629952 elapsed 47903.4s\nreciprocal_ghost_extra_bellman iteration 7 geometry 270000/492960 bdd_nodes 263960493 peak_rss_bytes 23717629952 elapsed 47979.9s\nreciprocal_ghost_extra_bellman iteration 7 geometry 275000/492960 bdd_nodes 266575723 peak_rss_bytes 23717629952 elapsed 48055s\nreciprocal_ghost_extra_bellman iteration 7 geometry 280000/492960 bdd_nodes 268812313 peak_rss_bytes 23717629952 elapsed 48141.4s\nreciprocal_ghost_extra_bellman iteration 7 geometry 285000/492960 bdd_nodes 271227041 peak_rss_bytes 23717629952 elapsed 48223.9s\nreciprocal_ghost_extra_bellman iteration 7 geometry 290000/492960 bdd_nodes 273709963 peak_rss_bytes 23717629952 elapsed 48297.3s\nreciprocal_ghost_extra_bellman iteration 7 geometry 295000/492960 bdd_nodes 275737834 peak_rss_bytes 23717629952 elapsed 48375.8s\nreciprocal_ghost_extra_bellman iteration 7 geometry 300000/492960 bdd_nodes 279272568 peak_rss_bytes 23717629952 elapsed 48444.5s\n"
+                  "tail": "_extra_bellman iteration 7 geometry 445000/492960 bdd_nodes 485125136 peak_rss_bytes 23717629952 elapsed 51038.7s\nreciprocal_ghost_extra_bellman iteration 7 geometry 450000/492960 bdd_nodes 494378225 peak_rss_bytes 23717629952 elapsed 51139.4s\nreciprocal_ghost_extra_bellman iteration 7 geometry 455000/492960 bdd_nodes 507804463 peak_rss_bytes 23717629952 elapsed 51299.9s\nreciprocal_ghost_extra_bellman iteration 7 geometry 460000/492960 bdd_nodes 514017656 peak_rss_bytes 23717629952 elapsed 51373.7s\nreciprocal_ghost_extra_bellman iteration 7 geometry 465000/492960 bdd_nodes 526081517 peak_rss_bytes 23717629952 elapsed 51518.2s\nreciprocal_ghost_extra_bellman iteration 7 geometry 470000/492960 bdd_nodes 534945847 peak_rss_bytes 23717629952 elapsed 51622.8s\nreciprocal_ghost_extra_bellman iteration 7 geometry 475000/492960 bdd_nodes 543207458 peak_rss_bytes 23717629952 elapsed 51720.9s\nreciprocal_ghost_extra_bellman iteration 7 geometry 480000/492960 bdd_nodes 555537576 peak_rss_bytes 23717629952 elapsed 51860.1s\n"
                 },
                 {
                   "bytes": 139,
@@ -4227,10 +3960,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "24",
-                "CPUUsageNSec": "41943356629000",
+                "CPUUsageNSec": "44454762156000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "37664292864",
+                "MemoryCurrent": "29085618176",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 02:39:32 UTC"
               }
@@ -4640,10 +4373,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "0-9",
-                "CPUUsageNSec": "996669559945000",
+                "CPUUsageNSec": "1030339669858000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "31223377920",
+                "MemoryCurrent": "40234147840",
                 "Result": "success",
                 "StateChangeTimestamp": "Wed 2026-08-19 16:33:47 UTC"
               }
@@ -4653,11 +4386,11 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 431285,
-                  "sha256": "dd13f6185dd0a92589081d6ae8da0f748db63d18bb41d5b02c77b5fb8d69112e",
+                  "bytes": 445185,
+                  "sha256": "244eb3067105ae25a48e52da1ecad85b7e973874d8b30eafd62178a48442d852",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "host_extra_bellman iteration 5 geometry 485000/3943680 bdd_nodes 15010387 peak_rss_bytes 13160882176 elapsed 51615.6s\nreciprocal_ghost_extra_bellman iteration 5 geometry 490000/3943680 bdd_nodes 15059233 peak_rss_bytes 13160882176 elapsed 51650.2s\nreciprocal_ghost_extra_bellman iteration 5 geometry 495000/3943680 bdd_nodes 15081354 peak_rss_bytes 13160882176 elapsed 51684.6s\nreciprocal_ghost_extra_bellman iteration 5 geometry 500000/3943680 bdd_nodes 15139507 peak_rss_bytes 13160882176 elapsed 51711.8s\nreciprocal_ghost_extra_bellman iteration 5 geometry 505000/3943680 bdd_nodes 15345231 peak_rss_bytes 13160882176 elapsed 51737s\nreciprocal_ghost_extra_bellman iteration 5 geometry 510000/3943680 bdd_nodes 15721295 peak_rss_bytes 13160882176 elapsed 51761.9s\nreciprocal_ghost_extra_bellman iteration 5 geometry 515000/3943680 bdd_nodes 15928822 peak_rss_bytes 13160882176 elapsed 51794.3s\nreciprocal_ghost_extra_bellman iteration 5 geometry 520000/3943680 bdd_nodes 16096112 peak_rss_bytes 13160882176 elapsed 51828s\n"
+                  "tail": "_bellman iteration 5 geometry 1020000/3943680 bdd_nodes 33316478 peak_rss_bytes 13160882176 elapsed 54954s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1025000/3943680 bdd_nodes 33455045 peak_rss_bytes 13160882176 elapsed 54983.7s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1030000/3943680 bdd_nodes 33558819 peak_rss_bytes 13160882176 elapsed 55014.9s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1035000/3943680 bdd_nodes 33610938 peak_rss_bytes 13160882176 elapsed 55047.3s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1040000/3943680 bdd_nodes 33653646 peak_rss_bytes 13160882176 elapsed 55083.3s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1045000/3943680 bdd_nodes 33742438 peak_rss_bytes 13160882176 elapsed 55118.1s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1050000/3943680 bdd_nodes 33875045 peak_rss_bytes 13160882176 elapsed 55152.7s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1055000/3943680 bdd_nodes 34039925 peak_rss_bytes 13160882176 elapsed 55186.2s\n"
                 },
                 {
                   "bytes": 138,
@@ -4673,10 +4406,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "21",
-                "CPUUsageNSec": "52478025620000",
+                "CPUUsageNSec": "55840515217000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "24659173376",
+                "MemoryCurrent": "22967803904",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 05:40:37 UTC"
               }
@@ -4686,11 +4419,11 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 302160,
-                  "sha256": "da1c79b8928df10b7a4291e848236117ba9baf344a70386de664f5944f0e819d",
+                  "bytes": 319340,
+                  "sha256": "29643f268083cbaf1217290140d9ac10f9e9fe5026f79fe166615ad2a71e2f6e",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "ciprocal_ghost_extra_bellman iteration 12 geometry 585000/985920 bdd_nodes 67611617 peak_rss_bytes 7586234368 elapsed 47645.9s\nreciprocal_ghost_extra_bellman iteration 12 geometry 590000/985920 bdd_nodes 67780352 peak_rss_bytes 7586234368 elapsed 47659.6s\nreciprocal_ghost_extra_bellman iteration 12 geometry 595000/985920 bdd_nodes 68222398 peak_rss_bytes 7586234368 elapsed 47670.1s\nreciprocal_ghost_extra_bellman iteration 12 geometry 600000/985920 bdd_nodes 68887206 peak_rss_bytes 7586234368 elapsed 47684s\nreciprocal_ghost_extra_bellman iteration 12 geometry 605000/985920 bdd_nodes 69420114 peak_rss_bytes 7586234368 elapsed 47700.4s\nreciprocal_ghost_extra_bellman iteration 12 geometry 610000/985920 bdd_nodes 69773596 peak_rss_bytes 7586234368 elapsed 47716s\nreciprocal_ghost_extra_bellman iteration 12 geometry 615000/985920 bdd_nodes 70001648 peak_rss_bytes 7586234368 elapsed 47729.8s\nreciprocal_ghost_extra_bellman iteration 12 geometry 620000/985920 bdd_nodes 70434319 peak_rss_bytes 7586234368 elapsed 47739s\n"
+                  "tail": "ocal_ghost_extra_bellman iteration 13 geometry 250000/985920 bdd_nodes 30481098 peak_rss_bytes 7594401792 elapsed 50807.2s\nreciprocal_ghost_extra_bellman iteration 13 geometry 255000/985920 bdd_nodes 31126287 peak_rss_bytes 7594401792 elapsed 50840.9s\nreciprocal_ghost_extra_bellman iteration 13 geometry 260000/985920 bdd_nodes 31586070 peak_rss_bytes 7594401792 elapsed 50886.7s\nreciprocal_ghost_extra_bellman iteration 13 geometry 265000/985920 bdd_nodes 31832121 peak_rss_bytes 7594401792 elapsed 50932.1s\nreciprocal_ghost_extra_bellman iteration 13 geometry 270000/985920 bdd_nodes 31936567 peak_rss_bytes 7594401792 elapsed 50978.1s\nreciprocal_ghost_extra_bellman iteration 13 geometry 275000/985920 bdd_nodes 32086354 peak_rss_bytes 7594401792 elapsed 51019.2s\nreciprocal_ghost_extra_bellman iteration 13 geometry 280000/985920 bdd_nodes 32834176 peak_rss_bytes 7594401792 elapsed 51053.5s\nreciprocal_ghost_extra_bellman iteration 13 geometry 285000/985920 bdd_nodes 33429099 peak_rss_bytes 7594401792 elapsed 51100s\n"
                 }
               ],
               "id": "source-order-same-prince-ghost-solve-v3",
@@ -4699,10 +4432,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "22",
-                "CPUUsageNSec": "47061664962000",
+                "CPUUsageNSec": "50375135657000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "15322759168",
+                "MemoryCurrent": "18467778560",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 07:00:02 UTC"
               }
@@ -4712,11 +4445,11 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 75295,
-                  "sha256": "a232a39f444b61d1313f5fab995683fffea11e07e4b7ff1ebad86ee3568d3473",
+                  "bytes": 79967,
+                  "sha256": "b2dd61851e1e8373761c8fc9ace13cc45d4ac1ce3c441f7347b4a8ece25e33e5",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "st_extra_bellman iteration 9 geometry 255000/492960 bdd_nodes 277452681 peak_rss_bytes 11080343552 elapsed 29796.5s\nreciprocal_ghost_extra_bellman iteration 9 geometry 260000/492960 bdd_nodes 288231734 peak_rss_bytes 11080343552 elapsed 29876.2s\nreciprocal_ghost_extra_bellman iteration 9 geometry 265000/492960 bdd_nodes 289982399 peak_rss_bytes 11080343552 elapsed 29948.4s\nreciprocal_ghost_extra_bellman iteration 9 geometry 270000/492960 bdd_nodes 290798392 peak_rss_bytes 11080343552 elapsed 30020.4s\nreciprocal_ghost_extra_bellman iteration 9 geometry 275000/492960 bdd_nodes 294109057 peak_rss_bytes 11080343552 elapsed 30112.7s\nreciprocal_ghost_extra_bellman iteration 9 geometry 280000/492960 bdd_nodes 296364457 peak_rss_bytes 11080343552 elapsed 30197.1s\nreciprocal_ghost_extra_bellman iteration 9 geometry 285000/492960 bdd_nodes 299908687 peak_rss_bytes 11080343552 elapsed 30289s\nreciprocal_ghost_extra_bellman iteration 9 geometry 290000/492960 bdd_nodes 303076454 peak_rss_bytes 11080343552 elapsed 30367.3s\n"
+                  "tail": "_extra_bellman iteration 9 geometry 435000/492960 bdd_nodes 522639236 peak_rss_bytes 11080343552 elapsed 33150.6s\nreciprocal_ghost_extra_bellman iteration 9 geometry 440000/492960 bdd_nodes 535179001 peak_rss_bytes 11080343552 elapsed 33262.8s\nreciprocal_ghost_extra_bellman iteration 9 geometry 445000/492960 bdd_nodes 542771990 peak_rss_bytes 11080343552 elapsed 33341.5s\nreciprocal_ghost_extra_bellman iteration 9 geometry 450000/492960 bdd_nodes 550924988 peak_rss_bytes 11080343552 elapsed 33420.1s\nreciprocal_ghost_extra_bellman iteration 9 geometry 455000/492960 bdd_nodes 562603733 peak_rss_bytes 11080343552 elapsed 33513.9s\nreciprocal_ghost_extra_bellman iteration 9 geometry 460000/492960 bdd_nodes 568640491 peak_rss_bytes 11080343552 elapsed 33588.5s\nreciprocal_ghost_extra_bellman iteration 9 geometry 465000/492960 bdd_nodes 579725523 peak_rss_bytes 11080343552 elapsed 33676.6s\nreciprocal_ghost_extra_bellman iteration 9 geometry 470000/492960 bdd_nodes 588195020 peak_rss_bytes 11080343552 elapsed 33760.3s\n"
                 },
                 {
                   "bytes": 55890,
@@ -4739,10 +4472,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "12",
-                "CPUUsageNSec": "30394456426000",
+                "CPUUsageNSec": "33759799636000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "20125270016",
+                "MemoryCurrent": "17932648448",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 11:52:44 UTC"
               }
@@ -4761,24 +4494,24 @@
             }
           ],
           "memory": {
-            "MemAvailable": 182818463744,
+            "MemAvailable": 182004170752,
             "MemTotal": 265470873600,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 5315813376,
+              "free_bytes": 5308915712,
               "path": "/",
               "total_bytes": 8511270912
             },
             {
-              "free_bytes": 466825682944,
+              "free_bytes": 462062850048,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             },
             {
-              "free_bytes": 933539319808,
+              "free_bytes": 924949426176,
               "path": "/mnt/ultimatefish-overflow",
               "total_bytes": 1098974756864
             },
@@ -4788,14 +4521,14 @@
               "total_bytes": 536608768000
             },
             {
-              "free_bytes": 586169413632,
+              "free_bytes": 583706304512,
               "path": "/mnt/ultimatefish-jg",
               "total_bytes": 643930521600
             }
           ],
           "probe_compacted": true,
           "probe_compaction_level": 1,
-          "probe_encoded_bytes": 19913,
+          "probe_encoded_bytes": 19915,
           "unconfigured_active_units": {
             "count": 0,
             "details": [],
@@ -6214,73 +5947,14 @@
         }
       },
       "angel-graph-v2-opposed-penguin-v1": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "sources/bundles/angel-graph-v2/sha256/b4843c84f60ff556adb6f85ff1de8182c4a651f78b6a303ce50924337128eed3/ultimatefish-angel-graph-v2-source.tar",
-            "sha256": "b4843c84f60ff556adb6f85ff1de8182c4a651f78b6a303ce50924337128eed3",
-            "size": 765440,
-            "version_id": "YvsPCRfoshXb.5QqqNzwTqid9Am2sK1m"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "sources/dependencies/manifests/sha256/990832f4acaf9c97d4e7d6940c4b977862cfaa065d8c41bba5438035b36653d6/manifest.json",
-            "sha256": "990832f4acaf9c97d4e7d6940c4b977862cfaa065d8c41bba5438035b36653d6",
-            "size": 28223,
-            "version_id": "UL0g1Mye0KIM8XC1TSfhDpJOfPo_h_3m"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "sources/dependencies/legacy-concrete/sha256/5abd70c847e799b85ed08c49f01c4e5deb3d253505583b8bc145290a84417edd/kpenguink.uftb",
-            "sha256": "5abd70c847e799b85ed08c49f01c4e5deb3d253505583b8bc145290a84417edd",
-            "size": 4929640,
-            "version_id": "iKra4qhe7X2JlXtgJ1VORJz6C1M45ZRr"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/angel-graph-v2/concrete/v2/model/f36a5a240ccac9913d80120ca008adfa0cd10e3a8002b852569a13e153a1c33f/wave-0/sha256/b7d46b6df7f626b053da0d8cd457486787793c6fa23b6177d9bd2f12e96753ba/kpenguinkangel-b7d46b6df7f626b053da0d8cd457486787793c6fa23b6177d9bd2f12e96753ba.tar.zst",
-            "sha256": "b7d46b6df7f626b053da0d8cd457486787793c6fa23b6177d9bd2f12e96753ba",
-            "size": 1328681,
-            "version_id": "OkcQVMKyrgHQvAsORCar3yPNOHgdy.FV"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/angel-graph-v2/concrete/v2/certificates/sha256/da8506e424631abafa17f80f32f194bc06e1091ac8d200e76c56987153e78359/wave-certificate.json",
-            "sha256": "da8506e424631abafa17f80f32f194bc06e1091ac8d200e76c56987153e78359",
-            "size": 2636,
-            "version_id": "OtIBfhS5M7.h6MITxibjMSEOmjAWSWGG"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/angel-graph-v2/reachability/sha256/3862e906660ee5cd146ee7553561b3eee63a34588d5f5fbf6039709b18067aac/kpenguinkangel.reachability-v2.txt",
-            "sha256": "3862e906660ee5cd146ee7553561b3eee63a34588d5f5fbf6039709b18067aac",
-            "size": 5846,
-            "version_id": "6LBbuTDVctp4ci30ZJYuu1fCRgOZADex"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "f449cce88e5caaf9bba341d6311d10e05476ea1e8765af2dd5dcf3fa49b7e4e0",
-            "newest_mtime_ns": 1787230050366113293,
-            "total_size": 2636
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "28ed00a5179e4c7b1197deeb4a20d1f3a02362dfb32631d561377e398f9cdf1e",
-            "newest_mtime_ns": 1787230051000000000,
-            "total_size": 2636
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -6299,8 +5973,8 @@
           }
         },
         "result_certificate_declared": true,
-        "source_exact": true,
-        "status": "CERTIFIED",
+        "source_exact": false,
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -6428,73 +6102,14 @@
         "unit": {}
       },
       "angel-graph-v2-opposed-sniper-v1": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "sources/bundles/angel-graph-v2/sha256/b4843c84f60ff556adb6f85ff1de8182c4a651f78b6a303ce50924337128eed3/ultimatefish-angel-graph-v2-source.tar",
-            "sha256": "b4843c84f60ff556adb6f85ff1de8182c4a651f78b6a303ce50924337128eed3",
-            "size": 765440,
-            "version_id": "YvsPCRfoshXb.5QqqNzwTqid9Am2sK1m"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "sources/dependencies/manifests/sha256/990832f4acaf9c97d4e7d6940c4b977862cfaa065d8c41bba5438035b36653d6/manifest.json",
-            "sha256": "990832f4acaf9c97d4e7d6940c4b977862cfaa065d8c41bba5438035b36653d6",
-            "size": 28223,
-            "version_id": "UL0g1Mye0KIM8XC1TSfhDpJOfPo_h_3m"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "sources/dependencies/legacy-concrete/sha256/473022c95908a45eec7ac8aab7752482d30033cb24f66b65bdf329a7c49c49c5/ksniperk.uftb",
-            "sha256": "473022c95908a45eec7ac8aab7752482d30033cb24f66b65bdf329a7c49c49c5",
-            "size": 4929640,
-            "version_id": "zgd_7Of45KYhZB_In9djM_qTPeD4xv42"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/angel-graph-v2/concrete/v2/model/f36a5a240ccac9913d80120ca008adfa0cd10e3a8002b852569a13e153a1c33f/wave-0/sha256/1cd542d52dc1764f66086a14056223efc8b330ec272c3187041ebade532da287/ksniperkangel-1cd542d52dc1764f66086a14056223efc8b330ec272c3187041ebade532da287.tar.zst",
-            "sha256": "1cd542d52dc1764f66086a14056223efc8b330ec272c3187041ebade532da287",
-            "size": 760732,
-            "version_id": "Q0yUaXhzwzHcfbSEI.fG4cqwxjjcNF5c"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/angel-graph-v2/concrete/v2/certificates/sha256/653211f294f3816c29c3f9d960614910e4d5bc9cc0d13f4373b5d9ce92d0298f/wave-certificate.json",
-            "sha256": "653211f294f3816c29c3f9d960614910e4d5bc9cc0d13f4373b5d9ce92d0298f",
-            "size": 2630,
-            "version_id": "cMyGrLBKUDmL_GIXVi3kT3QhQS82byoG"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/angel-graph-v2/reachability/sha256/0ba190a35f4bc7077557229d03d1ab8b2fabdae3b0585409c1ca19b09042d440/ksniperkangel.reachability-v2.txt",
-            "sha256": "0ba190a35f4bc7077557229d03d1ab8b2fabdae3b0585409c1ca19b09042d440",
-            "size": 4445,
-            "version_id": "VMqJ9uuJ9BbB3_JnwFazLxTY7URlxbdt"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "0481090a10f71767c05bdc78c4831742e12810362a7c117ef84c9ed99a26bd68",
-            "newest_mtime_ns": 1787229432665895235,
-            "total_size": 2630
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "b160dbbf131457cb0f4411745997499f92b4aad59f210ba1f6a8e9c03074eb39",
-            "newest_mtime_ns": 1787229434000000000,
-            "total_size": 2630
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -6513,8 +6128,8 @@
           }
         },
         "result_certificate_declared": true,
-        "source_exact": true,
-        "status": "CERTIFIED",
+        "source_exact": false,
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -6626,65 +6241,14 @@
         "unit": {}
       },
       "angel-graph-v2-same-checker-v1": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "sources/bundles/angel-graph-v2/sha256/b4843c84f60ff556adb6f85ff1de8182c4a651f78b6a303ce50924337128eed3/ultimatefish-angel-graph-v2-source.tar",
-            "sha256": "b4843c84f60ff556adb6f85ff1de8182c4a651f78b6a303ce50924337128eed3",
-            "size": 765440,
-            "version_id": "YvsPCRfoshXb.5QqqNzwTqid9Am2sK1m"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "sources/dependencies/manifests/sha256/990832f4acaf9c97d4e7d6940c4b977862cfaa065d8c41bba5438035b36653d6/manifest.json",
-            "sha256": "990832f4acaf9c97d4e7d6940c4b977862cfaa065d8c41bba5438035b36653d6",
-            "size": 28223,
-            "version_id": "UL0g1Mye0KIM8XC1TSfhDpJOfPo_h_3m"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/angel-graph-v2/concrete/v2/model/f36a5a240ccac9913d80120ca008adfa0cd10e3a8002b852569a13e153a1c33f/wave-0/sha256/e46148b4562bb3b9a4d048b4033c872428e76a16b42bb0a5c5a8b207843fb5f1/kcheckerangelk-e46148b4562bb3b9a4d048b4033c872428e76a16b42bb0a5c5a8b207843fb5f1.tar.zst",
-            "sha256": "e46148b4562bb3b9a4d048b4033c872428e76a16b42bb0a5c5a8b207843fb5f1",
-            "size": 397589,
-            "version_id": "qr5knrJqBW3Bhkd_0kDAUj7fGRYPzmIb"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/angel-graph-v2/concrete/v2/certificates/sha256/1f517191ceae39d6ac97abebf11f324a775ae8a3cd6b4694b481e12e0dfa081d/wave-certificate.json",
-            "sha256": "1f517191ceae39d6ac97abebf11f324a775ae8a3cd6b4694b481e12e0dfa081d",
-            "size": 2615,
-            "version_id": "NAGtTz4FLl_khTTUwpinek3tk4LXMCrF"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/angel-graph-v2/reachability/sha256/a14ab84ada4d5b2b103812120d8898dda6ce55b309e03203cb0b714362dab602/kcheckerangelk.reachability-v2.txt",
-            "sha256": "a14ab84ada4d5b2b103812120d8898dda6ce55b309e03203cb0b714362dab602",
-            "size": 3600,
-            "version_id": "Wg7y9ycdg_EIYiup1et83ev40XID90cR"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "412e9a526685dea0b050d921ae74340c54606fafd28413f21e122932ddf83bc5",
-            "newest_mtime_ns": 1787228522315047759,
-            "total_size": 2615
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "314fce8c8a48bb2fbd2d5170398e0a5d89e7f4bcbdb26e786841a8d51c909ea0",
-            "newest_mtime_ns": 1787228523000000000,
-            "total_size": 2615
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -6703,8 +6267,8 @@
           }
         },
         "result_certificate_declared": true,
-        "source_exact": true,
-        "status": "CERTIFIED",
+        "source_exact": false,
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -7762,11 +7326,11 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 99189,
-            "sha256": "0bd415f6fdefc854c1a2be44a96a4e01f4ad7111359b0e1cbe39bff0bc3c1fc4",
+            "bytes": 103209,
+            "sha256": "699060c8a77ebf5a5fa6f07cb1feb289f1ac256ba952f579417819b736bbf4fd",
             "source_index": 0,
             "status": "ok",
-            "tail": "_extra_bellman iteration 8 geometry 185000/492960 bdd_nodes 182288292 peak_rss_bytes 13596336128 elapsed 56092.3s\nreciprocal_ghost_extra_bellman iteration 8 geometry 190000/492960 bdd_nodes 189303095 peak_rss_bytes 13596336128 elapsed 56127.2s\nreciprocal_ghost_extra_bellman iteration 8 geometry 195000/492960 bdd_nodes 199232735 peak_rss_bytes 13596336128 elapsed 56162.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 200000/492960 bdd_nodes 204493462 peak_rss_bytes 13596336128 elapsed 56197.3s\nreciprocal_ghost_extra_bellman iteration 8 geometry 205000/492960 bdd_nodes 214799282 peak_rss_bytes 13596336128 elapsed 56229.5s\nreciprocal_ghost_extra_bellman iteration 8 geometry 210000/492960 bdd_nodes 221127123 peak_rss_bytes 13596336128 elapsed 56259.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 215000/492960 bdd_nodes 228349492 peak_rss_bytes 13596336128 elapsed 56295.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 220000/492960 bdd_nodes 237922357 peak_rss_bytes 13596336128 elapsed 56332.4s\n"
+            "tail": "st_extra_bellman iteration 8 geometry 340000/492960 bdd_nodes 408243650 peak_rss_bytes 13596336128 elapsed 57933.6s\nreciprocal_ghost_extra_bellman iteration 8 geometry 345000/492960 bdd_nodes 421169104 peak_rss_bytes 13596336128 elapsed 58168.1s\nreciprocal_ghost_extra_bellman iteration 8 geometry 350000/492960 bdd_nodes 429498271 peak_rss_bytes 13596336128 elapsed 58277.3s\nreciprocal_ghost_extra_bellman iteration 8 geometry 355000/492960 bdd_nodes 436153122 peak_rss_bytes 13596336128 elapsed 58356.4s\nreciprocal_ghost_extra_bellman iteration 8 geometry 360000/492960 bdd_nodes 446235855 peak_rss_bytes 13596336128 elapsed 58489.6s\nreciprocal_ghost_extra_bellman iteration 8 geometry 365000/492960 bdd_nodes 456559872 peak_rss_bytes 13687336960 elapsed 58632.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 370000/492960 bdd_nodes 470655803 peak_rss_bytes 13814980608 elapsed 58954.4s\nreciprocal_ghost_extra_bellman iteration 8 geometry 375000/492960 bdd_nodes 481899691 peak_rss_bytes 13917007872 elapsed 59199s\n"
           },
           {
             "bytes": 156,
@@ -7787,10 +7351,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "11",
-          "CPUUsageNSec": "51505174840000",
+          "CPUUsageNSec": "54866986929000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "24917434368",
+          "MemoryCurrent": "21489684480",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 04:38:55 UTC"
         }
@@ -7834,41 +7398,11 @@
         }
       },
       "build-ghost-pair-domain-cache-v1": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "sources/bundles/ghost-pair-domain-cache-v1/sha256/79418c52ba8f1d28d179719076b8aa061a6b8c7b04729d2286231923136259de/ghost-pair-domain-cache-v1-source.tar.zst",
-            "sha256": "79418c52ba8f1d28d179719076b8aa061a6b8c7b04729d2286231923136259de",
-            "size": 42627,
-            "version_id": "R4hyfQbU3keHm3HAS95g4IayBw23smu2"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "sources/wrappers/sha256/accd107dddc41bd16b1e565c921ca0003019e12dae2e562b4fbc7150a5dbb4cf/ultimatefish-build-ghost-pair-domain-cache-v1.sh",
-            "sha256": "accd107dddc41bd16b1e565c921ca0003019e12dae2e562b4fbc7150a5dbb4cf",
-            "size": 5197,
-            "version_id": "2wP8cymC2TfZhvd7DTAEIT8U9qVITWZt"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "sources/binaries/ghost-pair-domain-cache-v1/sha256/e5adb01295e596b6d56a028ebbd3e1b9e3d9fed0a5ad555f2d08180f3f37349a/ultimate_ghost_pair_information_tablebase",
-            "sha256": "e5adb01295e596b6d56a028ebbd3e1b9e3d9fed0a5ad555f2d08180f3f37349a",
-            "size": 687840,
-            "version_id": "qRnB7mCqGpoNzunTMSpXoUu0fN7MvMDF"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "0ffd0f31c888bfad59d29b8f617c0d5c6348d78d4fdcc553339c62a0c223648f",
-            "newest_mtime_ns": 1787218348367937898,
-            "total_size": 624
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -7877,8 +7411,8 @@
         "ledger_files": [],
         "ledger_results": {},
         "result_certificate_declared": true,
-        "source_exact": true,
-        "status": "CERTIFIED",
+        "source_exact": false,
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -7909,11 +7443,11 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 727095,
-            "sha256": "4bcbc56bbcc9b2edaa37fb32195c336eb1702127b9374dce3e748e3f9e447806",
+            "bytes": 779135,
+            "sha256": "68ea65be400f7835e3913bb615c0534ae44c754692a6aa92b21db57aad0a0d09",
             "source_index": 0,
             "status": "ok",
-            "tail": "lman iteration 7 geometry 3785000/3943680 bdd_nodes 170633910 peak_rss_bytes 17411567616 elapsed 62112.1s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3790000/3943680 bdd_nodes 170663336 peak_rss_bytes 17411567616 elapsed 62130s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3795000/3943680 bdd_nodes 170701680 peak_rss_bytes 17411567616 elapsed 62148s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3800000/3943680 bdd_nodes 170709919 peak_rss_bytes 17411567616 elapsed 62165.4s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3805000/3943680 bdd_nodes 170727512 peak_rss_bytes 17411567616 elapsed 62184s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3810000/3943680 bdd_nodes 170753587 peak_rss_bytes 17411567616 elapsed 62203.7s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3815000/3943680 bdd_nodes 170786707 peak_rss_bytes 17411567616 elapsed 62223.6s\nreciprocal_ghost_extra_bellman iteration 7 geometry 3820000/3943680 bdd_nodes 170825373 peak_rss_bytes 17411567616 elapsed 62243.5s\n"
+            "tail": "teration 8 geometry 1820000/3943680 bdd_nodes 138656903 peak_rss_bytes 17411567616 elapsed 65570.2s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1825000/3943680 bdd_nodes 138757596 peak_rss_bytes 17411567616 elapsed 65574.4s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1830000/3943680 bdd_nodes 138795352 peak_rss_bytes 17411567616 elapsed 65579.9s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1835000/3943680 bdd_nodes 138853931 peak_rss_bytes 17411567616 elapsed 65586.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1840000/3943680 bdd_nodes 138930932 peak_rss_bytes 17411567616 elapsed 65593.7s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1845000/3943680 bdd_nodes 139023743 peak_rss_bytes 17411567616 elapsed 65599.7s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1850000/3943680 bdd_nodes 139128301 peak_rss_bytes 17411567616 elapsed 65605.7s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1855000/3943680 bdd_nodes 139240018 peak_rss_bytes 17411567616 elapsed 65611.7s\n"
           },
           {
             "bytes": 152,
@@ -7934,10 +7468,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "3",
-          "CPUUsageNSec": "62783917201000",
+          "CPUUsageNSec": "66146539239000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "27423842304",
+          "MemoryCurrent": "33684008960",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 02:52:43 UTC"
         }
@@ -7997,8 +7531,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 187749,
-            "sha256": "aa135d3cb7bf374d78d3cdbea2b8a2a0e620bff59008c2bbb1781fbe6e6c8cb8",
+            "bytes": 194449,
+            "sha256": "1884789f23142d9fa7fae9e9509ad223530d57e30c2b7385ab7f29631ee717d8",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -8022,10 +7556,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "13",
-          "CPUUsageNSec": "55744683178000",
+          "CPUUsageNSec": "59086549779000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "5377445888",
+          "MemoryCurrent": "9379897344",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 04:49:14 UTC"
         }
@@ -8033,41 +7567,30 @@
       "compositional-v5-opposed-ghost-sniper": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [],
-        "dependencies": [],
-        "diagnostics": [
+        "completion": [
           {
-            "bytes": 415109,
-            "sha256": "94a6bba51a76ed2ff16accc7edf374753688ebfbb021a3ddbb39564f4da7a791",
-            "source_index": 0,
-            "status": "ok",
-            "tail": ""
+            "exists": false
           },
           {
-            "bytes": 131,
-            "sha256": "4f82dc806562a8c71613fb9e46d48214336ec8b35583977123d2d17eb93e3e37",
-            "source_index": 1,
-            "status": "ok",
-            "tail": ""
+            "exists": false
           }
         ],
+        "dependencies": [],
+        "diagnostics": [],
         "ledger_certifies": true,
         "ledger_files": [
           "kghostksniper.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": false,
-        "source_exact": true,
-        "status": "RUNNING",
+        "source_exact": false,
+        "status": "FAILED",
         "unit": {
-          "ActiveState": "active",
-          "AllowedCPUs": "10",
-          "CPUUsageNSec": "59583698342000",
+          "ActiveState": "inactive",
           "ExecMainStatus": "0",
-          "LoadState": "loaded",
-          "MemoryCurrent": "26890194944",
+          "LoadState": "not-found",
           "Result": "success",
-          "StateChangeTimestamp": "Thu 2026-08-20 03:44:55 UTC"
+          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
         }
       },
       "concrete-ghost-kchecker-certified": {
@@ -8161,7 +7684,7 @@
         ],
         "ledger_results": {},
         "result_certificate_declared": true,
-        "source_exact": true,
+        "source_exact": false,
         "status": "CERTIFIED",
         "unit": {
           "ActiveState": "inactive",
@@ -8171,43 +7694,57 @@
         }
       },
       "concrete-pawn-berserker-opposed-v1": {
-        "certificates": [],
+        "certificates": [
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": true,
+            "key": "results/current-concrete-edb3c620/pawn-berserker-opposed-v1/concrete/v2/model/edb3c62023be556e8b87167419db14dcfee639b63ee3fd7c25b5d36162bf9e7a/wave-1/sha256/b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989/kpawnkberserker-b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989.tar.zst",
+            "sha256": "b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989",
+            "size": 45106891,
+            "version_id": "ruHlTz0zj8eA5LaTUe249rvflj4QjPDV"
+          },
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": true,
+            "key": "results/current-concrete-edb3c620/pawn-berserker-opposed-v1/concrete/v2/certificates/sha256/5dda525419c1822177f767c030033d4e328944a236727f3acc2e55c1c8769dee/wave-certificate.json",
+            "sha256": "5dda525419c1822177f767c030033d4e328944a236727f3acc2e55c1c8769dee",
+            "size": 2746,
+            "version_id": "YNmWUtu1udIxKDP1beYKFFBBWbhxA3j1"
+          },
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": true,
+            "key": "results/current-concrete-edb3c620/pawn-berserker-opposed-v1/reachability/sha256/a97c5fdd24a85e01fd080208ee10147c58307290984a71bb06b3069fe6599e1d/kpawnkberserker.reachability-v2.txt",
+            "sha256": "a97c5fdd24a85e01fd080208ee10147c58307290984a71bb06b3069fe6599e1d",
+            "size": 6710,
+            "version_id": "SsMJbSxkMtHQ2_HB58Jhs.dvYUnFhdzO"
+          }
+        ],
         "checkpoints": [],
         "completion": [],
         "dependencies": [],
-        "diagnostics": [
-          {
-            "bytes": 51903,
-            "sha256": "7eaacb728d8cca7d16d308843ad8f624d0a340adc4ce85ebf54c652171571cce",
-            "source_index": 0,
-            "status": "ok",
-            "tail": ""
-          },
-          {
-            "bytes": 2048,
-            "sha256": "4eebf3e2c70470141d47d40a9467dae74ccbfffa8d793022b315ad0dc802b3f3",
-            "source_index": 1,
-            "status": "ok",
-            "tail": ""
-          }
-        ],
+        "diagnostics": [],
         "ledger_certifies": true,
         "ledger_files": [
           "kpawnkberserker.uftb"
         ],
-        "ledger_results": {},
-        "result_certificate_declared": false,
-        "source_exact": true,
-        "status": "RUNNING",
+        "ledger_results": {
+          "kpawnkberserker.uftb": {
+            "first": "22,818,110 (39,152,960) / 258,732,582 (31,847,016) / 24,163,948 (2,864,584)",
+            "reachability": "305,714,640 / 73,864,560; 101,852,814 / 277,726,386",
+            "result_kind": "concrete",
+            "second": "92,795,246 (277,726,386) / 1,514,284 / 7,543,284",
+            "storage": "S3 table sha256:b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989 VersionId ruHlTz0zj8eA5LaTUe249rvflj4QjPDV; certificate sha256:5dda525419c1822177f767c030033d4e328944a236727f3acc2e55c1c8769dee VersionId YNmWUtu1udIxKDP1beYKFFBBWbhxA3j1; reachability sha256:a97c5fdd24a85e01fd080208ee10147c58307290984a71bb06b3069fe6599e1d VersionId SsMJbSxkMtHQ2_HB58Jhs.dvYUnFhdzO"
+          }
+        },
+        "result_certificate_declared": true,
+        "source_exact": false,
+        "status": "CERTIFIED",
         "unit": {
-          "ActiveState": "active",
-          "AllowedCPUs": "0-7",
-          "CPUUsageNSec": "10666678998000",
+          "ActiveState": "inactive",
           "ExecMainStatus": "0",
-          "LoadState": "loaded",
-          "MemoryCurrent": "48331829248",
-          "Result": "success",
-          "StateChangeTimestamp": "Thu 2026-08-20 19:25:27 UTC"
+          "LoadState": "not-found",
+          "Result": "success"
         }
       },
       "concrete-wave0-001": {
@@ -8445,49 +7982,14 @@
         "unit": {}
       },
       "concrete-wave0-batch-v3-01-class059": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/5fab24af1ade0ae296904c4ace99224dce7d37b1fb3a386cce4628534b1fc353/kcopycatcopycatk-5fab24af1ade0ae296904c4ace99224dce7d37b1fb3a386cce4628534b1fc353.tar.zst",
-            "sha256": "5fab24af1ade0ae296904c4ace99224dce7d37b1fb3a386cce4628534b1fc353",
-            "size": 2072100,
-            "version_id": "5OL3kuxQN02gA20M0_A4Q32fDHWtnqgX"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/cc9f92ac2e74b87b3ba9f73a1bd676f335df80ddfcd5787682d036cc6302d186/wave-certificate.json",
-            "sha256": "cc9f92ac2e74b87b3ba9f73a1bd676f335df80ddfcd5787682d036cc6302d186",
-            "size": 2672,
-            "version_id": "Jg6orHnq_0Ghawpfaomlt.kE1Zi.jt3G"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/reachability/sha256/62c7fcc812551dd3edd8b8004cd4a4426db3df085075419f901939545a493bcc/kcopycatcopycatk.reachability-v1.json",
-            "sha256": "62c7fcc812551dd3edd8b8004cd4a4426db3df085075419f901939545a493bcc",
-            "size": 1460,
-            "version_id": "hR4mGyX.63ssVWqR6NpdoF2MmsTSLemH"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "61fde2980a4a910769e904e6590b50f957ec5ce8e6fe3931901c4e7ba5361d69",
-            "newest_mtime_ns": 1786461112510506264,
-            "total_size": 2672
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "c19669a944616e172abffd815b595b507811e8bf1eb592ddbecc88fd575f1dbd",
-            "newest_mtime_ns": 1786461113000000000,
-            "total_size": 2672
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -8507,7 +8009,7 @@
         },
         "result_certificate_declared": true,
         "source_exact": false,
-        "status": "CERTIFIED",
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -8516,49 +8018,14 @@
         }
       },
       "concrete-wave0-batch-v3-03-class056": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/ab9d2be90a977c50cdef22f921006e782005aec6482d09e22b08549989a5fb13/kcopycatbishopk-ab9d2be90a977c50cdef22f921006e782005aec6482d09e22b08549989a5fb13.tar.zst",
-            "sha256": "ab9d2be90a977c50cdef22f921006e782005aec6482d09e22b08549989a5fb13",
-            "size": 5274764,
-            "version_id": "rudC.rFuGy7SCcH4oxSy2mhvq92QmJLI"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/e7bd67b7eba1977fbe23a0082fec2235e747d7b6ea0a1d36a619fea75a16b379/wave-certificate.json",
-            "sha256": "e7bd67b7eba1977fbe23a0082fec2235e747d7b6ea0a1d36a619fea75a16b379",
-            "size": 2670,
-            "version_id": "S9NibcQK77cLU2pcH3p2_c20SQf534Lw"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/reachability/sha256/d25b8df5fad557439d3f2b848b3e7e1c48a502d8fbb9fc96969d9afe6c9e249f/kcopycatbishopk.reachability-v1.json",
-            "sha256": "d25b8df5fad557439d3f2b848b3e7e1c48a502d8fbb9fc96969d9afe6c9e249f",
-            "size": 1459,
-            "version_id": "tFEU16zPa.qwxQz2pC6sZWqdfH7.6717"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "d78d756bc42fe3d5b877c66adec095ed410eb4c142ee5130d5d743e4b8ee98a1",
-            "newest_mtime_ns": 1786461592795653283,
-            "total_size": 2670
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "95fcfb2e176ddfeaf025d5c7ee0684779b46002a6312fc7a6faa640b9a5a1f07",
-            "newest_mtime_ns": 1786461594000000000,
-            "total_size": 2670
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -8578,7 +8045,7 @@
         },
         "result_certificate_declared": true,
         "source_exact": false,
-        "status": "CERTIFIED",
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -8587,49 +8054,14 @@
         }
       },
       "concrete-wave0-batch-v3-04-class057": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/2982ef9e9d6ef502e19473e6df03e159d2573fe1b3a41e81b0da2e134958d569/kcopycatbombk-2982ef9e9d6ef502e19473e6df03e159d2573fe1b3a41e81b0da2e134958d569.tar.zst",
-            "sha256": "2982ef9e9d6ef502e19473e6df03e159d2573fe1b3a41e81b0da2e134958d569",
-            "size": 2933380,
-            "version_id": "Cw269O.8NJV6DKd2mXeEDUAFGXsBsT0I"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/1d669cf6b9ca13864824ec6b4d572d5c30c4f31564bff3df11e978e8d1676fed/wave-certificate.json",
-            "sha256": "1d669cf6b9ca13864824ec6b4d572d5c30c4f31564bff3df11e978e8d1676fed",
-            "size": 2662,
-            "version_id": "57MXPXmTV7JERWkdwDi1zje4oN.Y7AwH"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/reachability/sha256/5c3529a62f27db83e0edd7bc947cae2f385b9240d0deb60355bbc827781d0103/kcopycatbombk.reachability-v1.json",
-            "sha256": "5c3529a62f27db83e0edd7bc947cae2f385b9240d0deb60355bbc827781d0103",
-            "size": 1460,
-            "version_id": "9XPwrhkUBP3dbUvPEwScgT2H8G0Hiipi"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "c4044bf4dfe4bb82db2073a6a674c6b185ebc19521647ebbe351d499acf17600",
-            "newest_mtime_ns": 1786461638304249663,
-            "total_size": 2662
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "424001314e789e40ec238c856efa2561cca112f4526623c3961caf7cc7e02fbb",
-            "newest_mtime_ns": 1786461639000000000,
-            "total_size": 2662
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -8649,7 +8081,7 @@
         },
         "result_certificate_declared": true,
         "source_exact": false,
-        "status": "CERTIFIED",
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -8658,49 +8090,14 @@
         }
       },
       "concrete-wave0-batch-v3-05-class060": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/90b889417ef6e4d332bd3f4e1e14cb0e0e753cb3bc053fb5cee61b62f55b07b1/kcopycatdragonk-90b889417ef6e4d332bd3f4e1e14cb0e0e753cb3bc053fb5cee61b62f55b07b1.tar.zst",
-            "sha256": "90b889417ef6e4d332bd3f4e1e14cb0e0e753cb3bc053fb5cee61b62f55b07b1",
-            "size": 5028540,
-            "version_id": "fC.lBXxgCsJIit40YKPG8b6N7IFkoleE"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/0c1799c9ed42a1df258884e260062e7adbee81baada5ca0de8f24c8741591b81/wave-certificate.json",
-            "sha256": "0c1799c9ed42a1df258884e260062e7adbee81baada5ca0de8f24c8741591b81",
-            "size": 2670,
-            "version_id": "Ja5gFFJ.UTjJioTamiiY9pdVD5kfMY8f"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/reachability/sha256/bb73424d00beb49790c72893035f3e63ce418a3798b9449d1a5ab16a0262230d/kcopycatdragonk.reachability-v1.json",
-            "sha256": "bb73424d00beb49790c72893035f3e63ce418a3798b9449d1a5ab16a0262230d",
-            "size": 1459,
-            "version_id": "T68wx33azRQBcZ5HllydLmrlpCSAkrxp"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "45b60da65c0a41e819c0ab0d65e01cbb659807de138e70c8ab8717f938836024",
-            "newest_mtime_ns": 1786461728051482709,
-            "total_size": 2670
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "10ae3882aa0095a53a63f6cc43b7dd4149a8df63d3b806df4c3e2053cfbab04a",
-            "newest_mtime_ns": 1786461729000000000,
-            "total_size": 2670
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -8720,7 +8117,7 @@
         },
         "result_certificate_declared": true,
         "source_exact": false,
-        "status": "CERTIFIED",
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -8729,49 +8126,14 @@
         }
       },
       "concrete-wave0-batch-v3-06-class062": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/ecfce4efda4f2236744b61cd203cd3375136b024016ea176ce2dd27032653543/kcopycatgiantk-ecfce4efda4f2236744b61cd203cd3375136b024016ea176ce2dd27032653543.tar.zst",
-            "sha256": "ecfce4efda4f2236744b61cd203cd3375136b024016ea176ce2dd27032653543",
-            "size": 6184715,
-            "version_id": "UYuKIDogJI9wKeXpNfz8pXmrUJjNWhfU"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/69d678526217108832cbe515931c05553a191d2049873ed7403023168caa8695/wave-certificate.json",
-            "sha256": "69d678526217108832cbe515931c05553a191d2049873ed7403023168caa8695",
-            "size": 2666,
-            "version_id": "vIc.iZWjVjsNE4avn61W3073iK.a0AE5"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/reachability/sha256/70a61bf94b4af7225d5dda08f59fb9bf1d1ceba0c17cde333bdf51a4c1f685d7/kcopycatgiantk.reachability-v1.json",
-            "sha256": "70a61bf94b4af7225d5dda08f59fb9bf1d1ceba0c17cde333bdf51a4c1f685d7",
-            "size": 1460,
-            "version_id": "pg9jlWaS31xV6ft9nlVle42OHBdYWkWG"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "9586908a46d3eff914350a7e35e928dc89b8de2543c0a5927b70a6b52c716eb0",
-            "newest_mtime_ns": 1786461246356354627,
-            "total_size": 2666
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "b2af4d1c0c4c1786ecfc9160948da7b94d5143c59b3a3691f24d507078c79d81",
-            "newest_mtime_ns": 1786461247000000000,
-            "total_size": 2666
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -8791,7 +8153,7 @@
         },
         "result_certificate_declared": true,
         "source_exact": false,
-        "status": "CERTIFIED",
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -8800,49 +8162,14 @@
         }
       },
       "concrete-wave0-batch-v3-07-class063": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/83080152221582a43592ccf09f2183d88f55f4a9b117db82ae7bed79985eab8b/kcopycatjesterk-83080152221582a43592ccf09f2183d88f55f4a9b117db82ae7bed79985eab8b.tar.zst",
-            "sha256": "83080152221582a43592ccf09f2183d88f55f4a9b117db82ae7bed79985eab8b",
-            "size": 4961069,
-            "version_id": "UTY4.C7s24MyH5nOupWYb0RjpN3YbSt0"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/0af40fcfbd00673c6a1dba805d3b6f742de4a128a2fdd22d1787c72bd194e014/wave-certificate.json",
-            "sha256": "0af40fcfbd00673c6a1dba805d3b6f742de4a128a2fdd22d1787c72bd194e014",
-            "size": 2670,
-            "version_id": "uagKfJnMtOziaJYmJZbvqD5pVIORx.mB"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/reachability/sha256/8013e910cd9e393125489e6e43cfe956ebd4b98c5e9c2e147459429883bc9beb/kcopycatjesterk.reachability-v1.json",
-            "sha256": "8013e910cd9e393125489e6e43cfe956ebd4b98c5e9c2e147459429883bc9beb",
-            "size": 1453,
-            "version_id": "AMidBdmRmmRjT94wQ_chm5RyHATH42.V"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "3f835dcf055903c65aec7f2889f02e361083070fca0baaf7eefc9a604b6bdf14",
-            "newest_mtime_ns": 1786461414401152696,
-            "total_size": 2670
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "dc7762931a9eba7b272528c5a1cc3454553a78d19f1d63e2f4f540b88e02c84f",
-            "newest_mtime_ns": 1786461415000000000,
-            "total_size": 2670
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -8854,7 +8181,7 @@
         "ledger_results": {},
         "result_certificate_declared": true,
         "source_exact": false,
-        "status": "CERTIFIED",
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -8863,49 +8190,14 @@
         }
       },
       "concrete-wave0-batch-v3-08-class066": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/07f204048979078b351b700efdcd347a168bb25eebd23c5a1821badb99fc1452/kcopycatkbomb-07f204048979078b351b700efdcd347a168bb25eebd23c5a1821badb99fc1452.tar.zst",
-            "sha256": "07f204048979078b351b700efdcd347a168bb25eebd23c5a1821badb99fc1452",
-            "size": 4649167,
-            "version_id": "lT0q95zeZHS.I8SNzU7golLURvOgw51F"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/e258fbf5f32cfa84ff2eca8a64c0fb0f5a5a5e15974c5e5cf0d443c5f5154fc6/wave-certificate.json",
-            "sha256": "e258fbf5f32cfa84ff2eca8a64c0fb0f5a5a5e15974c5e5cf0d443c5f5154fc6",
-            "size": 2662,
-            "version_id": "WGcMMMkUw_YdlaADZxk8rtZ6hQuX1OL8"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/reachability/sha256/a4215f51dd09ac558691a903e79b6465d393120f13aeaa1e545676be38be17a4/kcopycatkbomb.reachability-v1.json",
-            "sha256": "a4215f51dd09ac558691a903e79b6465d393120f13aeaa1e545676be38be17a4",
-            "size": 1467,
-            "version_id": "TQHGV5UErZD.3HJkLw9nCYz0mQWtZlKB"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "91afa38124b065ff15c5278e4bb74a462212e53a2d4f377c32a82bf4118c2f7d",
-            "newest_mtime_ns": 1786461801569213674,
-            "total_size": 2662
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "04cb989087d1413d2907d027725ef4876520ab78ceb9c2f26dbb687f17d2d8aa",
-            "newest_mtime_ns": 1786461802000000000,
-            "total_size": 2662
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -8925,7 +8217,7 @@
         },
         "result_certificate_declared": true,
         "source_exact": false,
-        "status": "CERTIFIED",
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -11256,49 +10548,14 @@
         "unit": {}
       },
       "concrete-wave0-batch-v4r2-21-class110": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/af636bef947f19a1fed9fe16fe066014f6d7b47234d638adbff4e882168ce3d0/kjestercheckerk-af636bef947f19a1fed9fe16fe066014f6d7b47234d638adbff4e882168ce3d0.tar.zst",
-            "sha256": "af636bef947f19a1fed9fe16fe066014f6d7b47234d638adbff4e882168ce3d0",
-            "size": 4430890,
-            "version_id": "Y4RULDFkuU9.aSlGYEyV0FkrknSXdYu1"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/0b2b329eeceefefc1e7f412c6749b830c26ae075b070d8adfb63b33f0a0b9a15/wave-certificate.json",
-            "sha256": "0b2b329eeceefefc1e7f412c6749b830c26ae075b070d8adfb63b33f0a0b9a15",
-            "size": 2677,
-            "version_id": "L4PJDGyeBOCR._GzRFmEKwRyK6liUDPg"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/reachability/sha256/65d909fdd0bc9322f4af2dab86908c36a5f57e5338b3fd3394aa8508ff289286/kjestercheckerk.reachability-v1.json",
-            "sha256": "65d909fdd0bc9322f4af2dab86908c36a5f57e5338b3fd3394aa8508ff289286",
-            "size": 1480,
-            "version_id": "X30Ap1HUqgg081DkOS9ZRlUm.FjFZsXr"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "48cab34c42ce1985ddaea4dff9e8f46eda3ddff456b787854d885ad4a4bd2d07",
-            "newest_mtime_ns": 1786466895204120074,
-            "total_size": 2677
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "e40fe3cc35e12d0a8ae16d0977e963c86ba9f90071ef5508f3b64bc042d3162e",
-            "newest_mtime_ns": 1786466896000000000,
-            "total_size": 2677
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -11310,7 +10567,7 @@
         "ledger_results": {},
         "result_certificate_declared": true,
         "source_exact": false,
-        "status": "CERTIFIED",
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -11319,49 +10576,14 @@
         }
       },
       "concrete-wave0-batch-v4r2-22-class113": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/52ab5e31764d4dad1653829b2275ecb4ca0177d9092fe2ac1f448ad9e98c3d62/kjesterkchecker-52ab5e31764d4dad1653829b2275ecb4ca0177d9092fe2ac1f448ad9e98c3d62.tar.zst",
-            "sha256": "52ab5e31764d4dad1653829b2275ecb4ca0177d9092fe2ac1f448ad9e98c3d62",
-            "size": 12117725,
-            "version_id": "WSh6OHnddwsyoAFDvaQ2O4_3fdbAhtYz"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/4391f1b696051c8876c1a8c5a4b36933dcae7b2669db9eb07aa43a6a209c52c7/wave-certificate.json",
-            "sha256": "4391f1b696051c8876c1a8c5a4b36933dcae7b2669db9eb07aa43a6a209c52c7",
-            "size": 2681,
-            "version_id": "FVhE2WIjGEYEX6YmoMbaYFyg3VVMlQlx"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/reachability/sha256/8b9f7f84cf460724d116946e61d626718d744e6fe062a147de27aacbd0ca3206/kjesterkchecker.reachability-v1.json",
-            "sha256": "8b9f7f84cf460724d116946e61d626718d744e6fe062a147de27aacbd0ca3206",
-            "size": 1481,
-            "version_id": "l5HuvRaCeNOgLxsV4H_VwWexig32tJZ4"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "19ff845b7784feda312293fe84c02428df517e5048b0ba1bdcfe59c4be3fe402",
-            "newest_mtime_ns": 1786466929513094235,
-            "total_size": 2681
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "ada1875ad4e715915bccebe32c394c339fc7277527d192de0c10b50493c44c4e",
-            "newest_mtime_ns": 1786466930000000000,
-            "total_size": 2681
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -11373,7 +10595,7 @@
         "ledger_results": {},
         "result_certificate_declared": true,
         "source_exact": false,
-        "status": "CERTIFIED",
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -11382,49 +10604,14 @@
         }
       },
       "concrete-wave0-batch-v4r2-23-class122": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/bb3cb223021378861d1217a26da97bfac997d35b2a3aba8843f27d4dd3e65f41/kknightcheckerk-bb3cb223021378861d1217a26da97bfac997d35b2a3aba8843f27d4dd3e65f41.tar.zst",
-            "sha256": "bb3cb223021378861d1217a26da97bfac997d35b2a3aba8843f27d4dd3e65f41",
-            "size": 345238,
-            "version_id": "8EMpS4__J6eSRqr86zuh4L45UYApSkMo"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/0aafe01c90850536a616274e10269ec2e89454521054ccf9ac531eae8aa20bf3/wave-certificate.json",
-            "sha256": "0aafe01c90850536a616274e10269ec2e89454521054ccf9ac531eae8aa20bf3",
-            "size": 2675,
-            "version_id": "._hiPZGaD3TOyhBisXbSllIPqa_2nlgD"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/reachability/sha256/869a3aacccb6307ef21428133917571d1ed6dfabe19f2d62585bd4ef9096dcf8/kknightcheckerk.reachability-v1.json",
-            "sha256": "869a3aacccb6307ef21428133917571d1ed6dfabe19f2d62585bd4ef9096dcf8",
-            "size": 1478,
-            "version_id": "bdyoO40q2EyKHhjVICgLVT99qIMyu1e0"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "b1582cf3329fa3402b1cf46d581325e1af17df36952ba9adc6a42d84f0d99e1c",
-            "newest_mtime_ns": 1786466926073196962,
-            "total_size": 2675
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "f19928f5ee664c33289988b9cb6e34d205c6ac698f9038e57909336b79c4932b",
-            "newest_mtime_ns": 1786466927000000000,
-            "total_size": 2675
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -11444,7 +10631,7 @@
         },
         "result_certificate_declared": true,
         "source_exact": false,
-        "status": "CERTIFIED",
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -11453,49 +10640,14 @@
         }
       },
       "concrete-wave0-batch-v4r2-24-class132": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/44cea891154724a41d4572804efb7aa3cb17775e196db861639271dba45683b1/wave-0/sha256/5f2d6a524e5793a728bc1a0dbb621735cd31c819b1288ef5a82e7c8321d78ed7/kmagecheckerk-5f2d6a524e5793a728bc1a0dbb621735cd31c819b1288ef5a82e7c8321d78ed7.tar.zst",
-            "sha256": "5f2d6a524e5793a728bc1a0dbb621735cd31c819b1288ef5a82e7c8321d78ed7",
-            "size": 315272,
-            "version_id": "F0EVoFieUU1HF2sqRSr80S2QPR0wklb9"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/certificates/sha256/ab54a5a0e288d50ec6e4479b9a25b5224309fa21c8599069b3a5e2b9b7a4fcff/wave-certificate.json",
-            "sha256": "ab54a5a0e288d50ec6e4479b9a25b5224309fa21c8599069b3a5e2b9b7a4fcff",
-            "size": 2666,
-            "version_id": "XROm8jKz3598eZwHNP3Cw8GdMhcnwWjR"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/reachability/sha256/dc578e6bce1b3db0412e587cb833a3a83ebad370567e4cc24d4a651f812ae378/kmagecheckerk.reachability-v1.json",
-            "sha256": "dc578e6bce1b3db0412e587cb833a3a83ebad370567e4cc24d4a651f812ae378",
-            "size": 1474,
-            "version_id": "C2R4GrBao8GwkM9ulF7BKK4hOWc1r2yd"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "aa12b549519dd3db8f9b9e226b228405504f242fa7b6eefbd17e46e245c0c9fc",
-            "newest_mtime_ns": 1786467364320058318,
-            "total_size": 2666
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "6e36d6435d4441acbfae1239e2965607c26f1825b2c2a21034deb0774ac3ede7",
-            "newest_mtime_ns": 1786467365000000000,
-            "total_size": 2666
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -11515,7 +10667,7 @@
         },
         "result_certificate_declared": true,
         "source_exact": false,
-        "status": "CERTIFIED",
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -11676,10 +10828,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "29",
-          "CPUUsageNSec": "102164293245000",
+          "CPUUsageNSec": "105526128894000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "71935946752",
+          "MemoryCurrent": "74410651648",
           "Result": "success",
           "StateChangeTimestamp": "Wed 2026-08-19 15:38:46 UTC"
         }
@@ -11848,7 +11000,7 @@
           }
         },
         "result_certificate_declared": true,
-        "source_exact": true,
+        "source_exact": false,
         "status": "CERTIFIED",
         "unit": {
           "ActiveState": "inactive",
@@ -11858,49 +11010,14 @@
         }
       },
       "current-concrete-opposed-berserker-dragon": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/3b1917db24e5c05810e42e1cf0000636350bddd91eaad564d39debadfad546bc/kberserkerkdragon-3b1917db24e5c05810e42e1cf0000636350bddd91eaad564d39debadfad546bc.tar.zst",
-            "sha256": "3b1917db24e5c05810e42e1cf0000636350bddd91eaad564d39debadfad546bc",
-            "size": 25056650,
-            "version_id": "A7NUg91DR6U8MyBmJ2yi2heWnDtI8w9Y"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/current-concrete-7088db91/concrete/v2/certificates/sha256/6bb136f9bc766e410ee59bda572501258cdd7f3afc87c1959c98d6c11355381d/wave-certificate.json",
-            "sha256": "6bb136f9bc766e410ee59bda572501258cdd7f3afc87c1959c98d6c11355381d",
-            "size": 2549,
-            "version_id": "sJ4f3hH7lB7zWT0XlgfJNrNFWhO63DMq"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/reachability-corrections-20260817/concrete/v2/sha256/2f5178ade8f4b050ee92171d7ea0bad7e6c6464454e1dc9ff255764fb3cbf27b/kberserkerkdragon.reachability-v2.txt",
-            "sha256": "2f5178ade8f4b050ee92171d7ea0bad7e6c6464454e1dc9ff255764fb3cbf27b",
-            "size": 1755,
-            "version_id": "1PAwUtxu6vGW5ZQ1wXyTQ_11mW_r9BmF"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 474476544,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "9cac59ef343606e54b889a6562087a653d682969146be3c7dbc96cd4efbb4a90",
-            "newest_mtime_ns": 1786654188273136015,
-            "total_size": 474474056
+            "exists": false
           },
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "61adfc550f28a9f3d8362e9c226468761a75179be1ff0ff1e8ad5d55d2de301a",
-            "newest_mtime_ns": 1786655521584628225,
-            "total_size": 2549
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -11919,8 +11036,8 @@
           }
         },
         "result_certificate_declared": true,
-        "source_exact": true,
-        "status": "CERTIFIED",
+        "source_exact": false,
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -12060,7 +11177,7 @@
           }
         },
         "result_certificate_declared": true,
-        "source_exact": true,
+        "source_exact": false,
         "status": "CERTIFIED",
         "unit": {
           "ActiveState": "inactive",
@@ -12249,7 +11366,7 @@
           }
         },
         "result_certificate_declared": true,
-        "source_exact": true,
+        "source_exact": false,
         "status": "CERTIFIED",
         "unit": {
           "ActiveState": "inactive",
@@ -12867,10 +11984,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "1",
-          "CPUUsageNSec": "561605650291000",
+          "CPUUsageNSec": "564971484632000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "10660483072",
+          "MemoryCurrent": "10334584832",
           "Result": "success",
           "StateChangeTimestamp": "Fri 2026-08-14 08:19:51 UTC"
         }
@@ -12907,10 +12024,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "2",
-          "CPUUsageNSec": "617548279183000",
+          "CPUUsageNSec": "620907484968000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "8113979392",
+          "MemoryCurrent": "7018450944",
           "Result": "success",
           "StateChangeTimestamp": "Fri 2026-08-14 06:12:22 UTC"
         }
@@ -12922,11 +12039,11 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 140453,
-            "sha256": "5c8fbb409e16b08bc7cc9a0a9b936022374441992638879dd9b42540cd69e624",
+            "bytes": 143827,
+            "sha256": "bf99384b9246b94b9af6203d79c0416430086e26b75d27525d6c7ffcab65219d",
             "source_index": 0,
             "status": "ok",
-            "tail": "_extra_bellman iteration 2 geometry 295000/4929600 bdd_nodes 37498052 peak_rss_bytes 16429662208 elapsed 59472.8s\nreciprocal_ghost_extra_bellman iteration 2 geometry 300000/4929600 bdd_nodes 37646116 peak_rss_bytes 16429662208 elapsed 59619.7s\nreciprocal_ghost_extra_bellman iteration 2 geometry 305000/4929600 bdd_nodes 37770405 peak_rss_bytes 16429662208 elapsed 59770.6s\nreciprocal_ghost_extra_bellman iteration 2 geometry 310000/4929600 bdd_nodes 37882811 peak_rss_bytes 16429662208 elapsed 59925.3s\nreciprocal_ghost_extra_bellman iteration 2 geometry 315000/4929600 bdd_nodes 37964816 peak_rss_bytes 16429662208 elapsed 60074.3s\nreciprocal_ghost_extra_bellman iteration 2 geometry 320000/4929600 bdd_nodes 38030137 peak_rss_bytes 16429662208 elapsed 60223.7s\nreciprocal_ghost_extra_bellman iteration 2 geometry 325000/4929600 bdd_nodes 38079264 peak_rss_bytes 16429662208 elapsed 60373.7s\nreciprocal_ghost_extra_bellman iteration 2 geometry 330000/4929600 bdd_nodes 38117135 peak_rss_bytes 16429662208 elapsed 60526.8s\n"
+            "tail": "st_extra_bellman iteration 2 geometry 425000/4929600 bdd_nodes 42105426 peak_rss_bytes 16429662208 elapsed 63006.4s\nreciprocal_ghost_extra_bellman iteration 2 geometry 430000/4929600 bdd_nodes 42307016 peak_rss_bytes 16429662208 elapsed 63147.8s\nreciprocal_ghost_extra_bellman iteration 2 geometry 435000/4929600 bdd_nodes 42462224 peak_rss_bytes 16429662208 elapsed 63300.3s\nreciprocal_ghost_extra_bellman iteration 2 geometry 440000/4929600 bdd_nodes 42583617 peak_rss_bytes 16429662208 elapsed 63444s\nreciprocal_ghost_extra_bellman iteration 2 geometry 445000/4929600 bdd_nodes 42681827 peak_rss_bytes 16429662208 elapsed 63580.3s\nreciprocal_ghost_extra_bellman iteration 2 geometry 450000/4929600 bdd_nodes 42758306 peak_rss_bytes 16429662208 elapsed 63715.1s\nreciprocal_ghost_extra_bellman iteration 2 geometry 455000/4929600 bdd_nodes 42818789 peak_rss_bytes 16429662208 elapsed 63859.5s\nreciprocal_ghost_extra_bellman iteration 2 geometry 460000/4929600 bdd_nodes 42874096 peak_rss_bytes 16429662208 elapsed 64015.1s\n"
           },
           {
             "bytes": 133,
@@ -12947,10 +12064,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "0",
-          "CPUUsageNSec": "61540234875000",
+          "CPUUsageNSec": "64905952374000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "18452856832",
+          "MemoryCurrent": "13611380736",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 03:13:23 UTC"
         }
@@ -13010,8 +12127,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 1768661,
-            "sha256": "5600f1711701308fce1b0228c01a3fdb606c745d46507c6e834b435c69b3eca7",
+            "bytes": 1776461,
+            "sha256": "58128e3201a6e39daa2a980195e8fed8ab4e86cd7bbdbf179d59a8cf0a4aff1f",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -13035,10 +12152,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "0",
-          "CPUUsageNSec": "428614791064000",
+          "CPUUsageNSec": "431980030259000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "15757197312",
+          "MemoryCurrent": "14554611712",
           "Result": "success",
           "StateChangeTimestamp": "Sat 2026-08-15 21:11:44 UTC"
         }
@@ -13102,11 +12219,11 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 100436,
-            "sha256": "cfedd7c9ccdb3bbac8fad05ae33bfcfdb3cc5fefb145dc57622b64183ce7c888",
+            "bytes": 105106,
+            "sha256": "a4abe96c5c1253f333f47009f9d94029c4ebabc1956f6f6f88fcabe9868efa82",
             "source_index": 0,
             "status": "ok",
-            "tail": "st_extra_bellman iteration 7 geometry 265000/492960 bdd_nodes 263016929 peak_rss_bytes 23717629952 elapsed 47903.4s\nreciprocal_ghost_extra_bellman iteration 7 geometry 270000/492960 bdd_nodes 263960493 peak_rss_bytes 23717629952 elapsed 47979.9s\nreciprocal_ghost_extra_bellman iteration 7 geometry 275000/492960 bdd_nodes 266575723 peak_rss_bytes 23717629952 elapsed 48055s\nreciprocal_ghost_extra_bellman iteration 7 geometry 280000/492960 bdd_nodes 268812313 peak_rss_bytes 23717629952 elapsed 48141.4s\nreciprocal_ghost_extra_bellman iteration 7 geometry 285000/492960 bdd_nodes 271227041 peak_rss_bytes 23717629952 elapsed 48223.9s\nreciprocal_ghost_extra_bellman iteration 7 geometry 290000/492960 bdd_nodes 273709963 peak_rss_bytes 23717629952 elapsed 48297.3s\nreciprocal_ghost_extra_bellman iteration 7 geometry 295000/492960 bdd_nodes 275737834 peak_rss_bytes 23717629952 elapsed 48375.8s\nreciprocal_ghost_extra_bellman iteration 7 geometry 300000/492960 bdd_nodes 279272568 peak_rss_bytes 23717629952 elapsed 48444.5s\n"
+            "tail": "_extra_bellman iteration 7 geometry 445000/492960 bdd_nodes 485125136 peak_rss_bytes 23717629952 elapsed 51038.7s\nreciprocal_ghost_extra_bellman iteration 7 geometry 450000/492960 bdd_nodes 494378225 peak_rss_bytes 23717629952 elapsed 51139.4s\nreciprocal_ghost_extra_bellman iteration 7 geometry 455000/492960 bdd_nodes 507804463 peak_rss_bytes 23717629952 elapsed 51299.9s\nreciprocal_ghost_extra_bellman iteration 7 geometry 460000/492960 bdd_nodes 514017656 peak_rss_bytes 23717629952 elapsed 51373.7s\nreciprocal_ghost_extra_bellman iteration 7 geometry 465000/492960 bdd_nodes 526081517 peak_rss_bytes 23717629952 elapsed 51518.2s\nreciprocal_ghost_extra_bellman iteration 7 geometry 470000/492960 bdd_nodes 534945847 peak_rss_bytes 23717629952 elapsed 51622.8s\nreciprocal_ghost_extra_bellman iteration 7 geometry 475000/492960 bdd_nodes 543207458 peak_rss_bytes 23717629952 elapsed 51720.9s\nreciprocal_ghost_extra_bellman iteration 7 geometry 480000/492960 bdd_nodes 555537576 peak_rss_bytes 23717629952 elapsed 51860.1s\n"
           },
           {
             "bytes": 139,
@@ -13127,10 +12244,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "24",
-          "CPUUsageNSec": "41943356629000",
+          "CPUUsageNSec": "44454762156000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "37664292864",
+          "MemoryCurrent": "29085618176",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 02:39:32 UTC"
         }
@@ -13271,7 +12388,7 @@
           "Result": "success"
         }
       },
-      "information-jester-angel-opposed-v1": {
+      "information-jester-angel-opposed-v3": {
         "certificates": [],
         "checkpoints": [],
         "completion": [],
@@ -13280,15 +12397,15 @@
         ],
         "diagnostics": [
           {
-            "bytes": 752,
-            "sha256": "9a946651edd932fb195a758176e498346bbd04014aa4ce432fc20773aefe27e4",
+            "bytes": 5737,
+            "sha256": "de0e0e9c24d599bd3595d4b4baa08198311d5aba4585e6b187c4e5f241e5e03f",
             "source_index": 0,
             "status": "ok",
             "tail": ""
           },
           {
-            "bytes": 103,
-            "sha256": "db23c8d7250d45a2f73c8777d7636e93148227505dced0687a787864e1b97030",
+            "bytes": 119,
+            "sha256": "ad5910478c4c45afa50b4b85f861e14430d1f2663f24c66e6b219897a180d8c7",
             "source_index": 1,
             "status": "ok",
             "tail": ""
@@ -13304,16 +12421,16 @@
         "status": "RUNNING",
         "unit": {
           "ActiveState": "active",
-          "AllowedCPUs": "4",
-          "CPUUsageNSec": "164581780000",
+          "AllowedCPUs": "1 5-9 11-12",
+          "CPUUsageNSec": "1687148825000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "518381568",
+          "MemoryCurrent": "1606619136",
           "Result": "success",
-          "StateChangeTimestamp": "Thu 2026-08-20 20:17:36 UTC"
+          "StateChangeTimestamp": "Thu 2026-08-20 21:12:08 UTC"
         }
       },
-      "information-jester-angel-same-v1": {
+      "information-jester-angel-same-v3": {
         "certificates": [],
         "checkpoints": [],
         "completion": [],
@@ -13322,15 +12439,15 @@
         ],
         "diagnostics": [
           {
-            "bytes": 685,
-            "sha256": "b39b1aee07ba890634268570a633faf8a38a7a25ef21da0bbf120c420511aa25",
+            "bytes": 5584,
+            "sha256": "2c877b3344de746e6b54cb28ab54b23a27da5774c2bdb7f27c8e91f24f4d1c54",
             "source_index": 0,
             "status": "ok",
             "tail": ""
           },
           {
-            "bytes": 100,
-            "sha256": "779d103637132cda5eb48b02e70d330ca1bb81df94a537a2fef9a71c5d62860d",
+            "bytes": 116,
+            "sha256": "4f17b3bdaa46c92bd3ce8f9d532c1a1bb64134db584aed48e80d22c7994efdef",
             "source_index": 1,
             "status": "ok",
             "tail": ""
@@ -13346,13 +12463,13 @@
         "status": "RUNNING",
         "unit": {
           "ActiveState": "active",
-          "AllowedCPUs": "3",
-          "CPUUsageNSec": "164586087000",
+          "AllowedCPUs": "3-4 13 15-18 20",
+          "CPUUsageNSec": "1496990993000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "753938432",
+          "MemoryCurrent": "1578979328",
           "Result": "success",
-          "StateChangeTimestamp": "Thu 2026-08-20 20:17:36 UTC"
+          "StateChangeTimestamp": "Thu 2026-08-20 21:12:08 UTC"
         }
       },
       "jester-ghost-measure": {
@@ -13455,10 +12572,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "10",
-          "CPUUsageNSec": "57446854776000",
+          "CPUUsageNSec": "60807985410000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "34765996032",
+          "MemoryCurrent": "34909892608",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 04:16:00 UTC"
         }
@@ -13617,8 +12734,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 200603,
-            "sha256": "9a26bc1010b45a33448e0ff7b13bcb94160fe65340d83d868e38f4251ee2b671",
+            "bytes": 212496,
+            "sha256": "a943ad691fdcc3823ddc56005180e825c6b7443216e191c7642a4d617840f69b",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -13642,10 +12759,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "14",
-          "CPUUsageNSec": "70554685051000",
+          "CPUUsageNSec": "73918490144000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "10909421568",
+          "MemoryCurrent": "23772188672",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 00:44:15 UTC"
         }
@@ -13689,11 +12806,11 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 431285,
-            "sha256": "dd13f6185dd0a92589081d6ae8da0f748db63d18bb41d5b02c77b5fb8d69112e",
+            "bytes": 445185,
+            "sha256": "244eb3067105ae25a48e52da1ecad85b7e973874d8b30eafd62178a48442d852",
             "source_index": 0,
             "status": "ok",
-            "tail": "host_extra_bellman iteration 5 geometry 485000/3943680 bdd_nodes 15010387 peak_rss_bytes 13160882176 elapsed 51615.6s\nreciprocal_ghost_extra_bellman iteration 5 geometry 490000/3943680 bdd_nodes 15059233 peak_rss_bytes 13160882176 elapsed 51650.2s\nreciprocal_ghost_extra_bellman iteration 5 geometry 495000/3943680 bdd_nodes 15081354 peak_rss_bytes 13160882176 elapsed 51684.6s\nreciprocal_ghost_extra_bellman iteration 5 geometry 500000/3943680 bdd_nodes 15139507 peak_rss_bytes 13160882176 elapsed 51711.8s\nreciprocal_ghost_extra_bellman iteration 5 geometry 505000/3943680 bdd_nodes 15345231 peak_rss_bytes 13160882176 elapsed 51737s\nreciprocal_ghost_extra_bellman iteration 5 geometry 510000/3943680 bdd_nodes 15721295 peak_rss_bytes 13160882176 elapsed 51761.9s\nreciprocal_ghost_extra_bellman iteration 5 geometry 515000/3943680 bdd_nodes 15928822 peak_rss_bytes 13160882176 elapsed 51794.3s\nreciprocal_ghost_extra_bellman iteration 5 geometry 520000/3943680 bdd_nodes 16096112 peak_rss_bytes 13160882176 elapsed 51828s\n"
+            "tail": "_bellman iteration 5 geometry 1020000/3943680 bdd_nodes 33316478 peak_rss_bytes 13160882176 elapsed 54954s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1025000/3943680 bdd_nodes 33455045 peak_rss_bytes 13160882176 elapsed 54983.7s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1030000/3943680 bdd_nodes 33558819 peak_rss_bytes 13160882176 elapsed 55014.9s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1035000/3943680 bdd_nodes 33610938 peak_rss_bytes 13160882176 elapsed 55047.3s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1040000/3943680 bdd_nodes 33653646 peak_rss_bytes 13160882176 elapsed 55083.3s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1045000/3943680 bdd_nodes 33742438 peak_rss_bytes 13160882176 elapsed 55118.1s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1050000/3943680 bdd_nodes 33875045 peak_rss_bytes 13160882176 elapsed 55152.7s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1055000/3943680 bdd_nodes 34039925 peak_rss_bytes 13160882176 elapsed 55186.2s\n"
           },
           {
             "bytes": 138,
@@ -13714,10 +12831,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "21",
-          "CPUUsageNSec": "52478025620000",
+          "CPUUsageNSec": "55840515217000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "24659173376",
+          "MemoryCurrent": "22967803904",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 05:40:37 UTC"
         }
@@ -13911,41 +13028,33 @@
       "penguin-ghost-opposing-fresh-v5": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [],
-        "dependencies": [],
-        "diagnostics": [
+        "completion": [
           {
-            "bytes": 1224,
-            "sha256": "d255e622130cb2fa7a2a098c10dcccdba5b55d906cd5ac42066c278120c3a2a2",
-            "source_index": 0,
-            "status": "ok",
-            "tail": ""
+            "exists": false
           },
           {
-            "bytes": 861,
-            "sha256": "bd6d1dab807833acb03f0a473f40df58a47511fa3b27f916a570d8d53c8ddb2c",
-            "source_index": 1,
-            "status": "ok",
-            "tail": ""
+            "exists": false
+          },
+          {
+            "exists": false
           }
         ],
+        "dependencies": [],
+        "diagnostics": [],
         "ledger_certifies": true,
         "ledger_files": [
           "kghostkpenguin.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": false,
-        "source_exact": true,
-        "status": "RUNNING",
+        "source_exact": false,
+        "status": "FAILED",
         "unit": {
-          "ActiveState": "active",
-          "AllowedCPUs": "2",
-          "CPUUsageNSec": "109567308301000",
+          "ActiveState": "inactive",
           "ExecMainStatus": "0",
-          "LoadState": "loaded",
-          "MemoryCurrent": "27695263744",
+          "LoadState": "not-found",
           "Result": "success",
-          "StateChangeTimestamp": "Thu 2026-08-20 03:21:45 UTC"
+          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
         }
       },
       "penguin-ghost-same-compositional-resume-v3": {
@@ -14101,41 +13210,11 @@
         "unit": {}
       },
       "preserve-same-berserker-memory-failures-v1": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "sources/wrappers/sha256/dfe80f95025e0468396fc15a72e277fbe2b4a561725f8290ef1fff61083abfdf/ultimatefish-preserve-same-berserker-failures-v1.sh",
-            "sha256": "dfe80f95025e0468396fc15a72e277fbe2b4a561725f8290ef1fff61083abfdf",
-            "size": 5292,
-            "version_id": "t6P1EmERjaGm7mszgPq.qNqE_mPvnlun"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/sha256/a7ec5e8d6b763d1bf8b0b6f70bae58e95058914669a4571cc144ccc580f263ec/same-berserker-memory-gate-failures-v9-v11-a7ec5e8d6b763d1bf8b0b6f70bae58e95058914669a4571cc144ccc580f263ec.tar.zst",
-            "sha256": "a7ec5e8d6b763d1bf8b0b6f70bae58e95058914669a4571cc144ccc580f263ec",
-            "size": 7356,
-            "version_id": "GEjrNYk9YX90eoPolqaaGyyJkuu6dGAc"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/sha256/a7ec5e8d6b763d1bf8b0b6f70bae58e95058914669a4571cc144ccc580f263ec/certificates/422b3503272160c82db0e5b9f458202276bf0e9c69b4bbf6393e212881b07034.json",
-            "sha256": "422b3503272160c82db0e5b9f458202276bf0e9c69b4bbf6393e212881b07034",
-            "size": 1356,
-            "version_id": "cg8nPDvNDr36aPdlcn0Fv4FI.SVu3_YS"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "a755252c4e4954eafa465c8e7d560a090076fbd52bc311b40046488ab8492920",
-            "newest_mtime_ns": 1787217537772973473,
-            "total_size": 3087
+            "exists": false
           }
         ],
         "dependencies": [],
@@ -14144,8 +13223,8 @@
         "ledger_files": [],
         "ledger_results": {},
         "result_certificate_declared": true,
-        "source_exact": true,
-        "status": "CERTIFIED",
+        "source_exact": false,
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -14154,41 +13233,11 @@
         }
       },
       "preserve-stopped-ghost-pair-domain-baseline-v1": {
-        "certificates": [
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "sources/wrappers/sha256/d3ef350e0365db1db98eb9484e1e7da28ffe7ee69344ed3ebf481f4412613a70/ultimatefish-preserve-stop-ghost-pair-baseline-v1.sh",
-            "sha256": "d3ef350e0365db1db98eb9484e1e7da28ffe7ee69344ed3ebf481f4412613a70",
-            "size": 4677,
-            "version_id": "fBxwYoJ85EXf4n8ona9m9X8vZmFxn8Ky"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/sha256/ce1c7cb5cbe0496f6704a78ae3560555584d9f2f20aa98f0597754dfe724d2b0/ghost-pair-domain-initialization-baseline-v1-ce1c7cb5cbe0496f6704a78ae3560555584d9f2f20aa98f0597754dfe724d2b0.tar.zst",
-            "sha256": "ce1c7cb5cbe0496f6704a78ae3560555584d9f2f20aa98f0597754dfe724d2b0",
-            "size": 7057,
-            "version_id": "bV9oA7z1CVUM69dTJhH1YV8QFICmzLoV"
-          },
-          {
-            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-            "exact": true,
-            "key": "results/sha256/ce1c7cb5cbe0496f6704a78ae3560555584d9f2f20aa98f0597754dfe724d2b0/certificates/a563db55b3965f4a90a0cce7e4e716470a1a913a9d3f2820dfdc5a537e21ccc1.json",
-            "sha256": "a563db55b3965f4a90a0cce7e4e716470a1a913a9d3f2820dfdc5a537e21ccc1",
-            "size": 1364,
-            "version_id": "ljSxFlpM5FSik1D9R4MBURMxlULE0mFm"
-          }
-        ],
+        "certificates": [],
         "checkpoints": [],
         "completion": [
           {
-            "allocated_bytes": 4096,
-            "exists": true,
-            "match_count": 1,
-            "metadata_sha256": "0f940858bc329c9c335e590ac0f4c07cbf780152804b535b4ba4881af30ccfa6",
-            "newest_mtime_ns": 1787219210770910910,
-            "total_size": 3095
+            "exists": false
           }
         ],
         "dependencies": [
@@ -14199,8 +13248,8 @@
         "ledger_files": [],
         "ledger_results": {},
         "result_certificate_declared": true,
-        "source_exact": true,
-        "status": "CERTIFIED",
+        "source_exact": false,
+        "status": "SOURCE_MISMATCH",
         "unit": {
           "ActiveState": "inactive",
           "ExecMainStatus": "0",
@@ -14325,10 +13374,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "0-9",
-          "CPUUsageNSec": "996669559945000",
+          "CPUUsageNSec": "1030339669858000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "31223377920",
+          "MemoryCurrent": "40234147840",
           "Result": "success",
           "StateChangeTimestamp": "Wed 2026-08-19 16:33:47 UTC"
         }
@@ -14336,41 +13385,30 @@
       "remap-fix-opposed-knight-ghost-solve-v11": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [],
-        "dependencies": [],
-        "diagnostics": [
+        "completion": [
           {
-            "bytes": 395464,
-            "sha256": "b6c26ccd9b6edd262ec1c96271905adee23d1708b34ed95cf7a14fb4afb61506",
-            "source_index": 0,
-            "status": "ok",
-            "tail": ""
+            "exists": false
           },
           {
-            "bytes": 137,
-            "sha256": "8cff37f4f3dc452c515b77d463a46622f16ab9e08956198baace034364edb8ac",
-            "source_index": 1,
-            "status": "ok",
-            "tail": ""
+            "exists": false
           }
         ],
+        "dependencies": [],
+        "diagnostics": [],
         "ledger_certifies": true,
         "ledger_files": [
           "kknightkghost.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": false,
-        "source_exact": true,
-        "status": "RUNNING",
+        "source_exact": false,
+        "status": "FAILED",
         "unit": {
-          "ActiveState": "active",
-          "AllowedCPUs": "0",
-          "CPUUsageNSec": "85437892416000",
+          "ActiveState": "inactive",
           "ExecMainStatus": "0",
-          "LoadState": "loaded",
-          "MemoryCurrent": "18121748480",
+          "LoadState": "not-found",
           "Result": "success",
-          "StateChangeTimestamp": "Wed 2026-08-19 20:24:38 UTC"
+          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
         }
       },
       "remap-fix-v2-opposed-copycat-ghost-source-order-solve-v6": {
@@ -14380,8 +13418,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 216503,
-            "sha256": "726378e027d11a124afa289c02bb3435a35236f3ad45e16eb7f627c0aefadfd4",
+            "bytes": 231490,
+            "sha256": "b87f11ac0c4f1b4f3cceddd58d1fd41e90afd944b4014443549233950d794ce5",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -14398,10 +13436,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "2",
-          "CPUUsageNSec": "48383500263000",
+          "CPUUsageNSec": "51744930910000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "17976987648",
+          "MemoryCurrent": "20747567104",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 06:50:26 UTC"
         }
@@ -14457,34 +13495,33 @@
       "remap-fix-v2-opposed-rook-ghost-source-order-solve-v6": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [],
-        "dependencies": [],
-        "diagnostics": [
+        "completion": [
           {
-            "bytes": 127835,
-            "sha256": "4a4847c6cff602945420af84d881da681815f9c4a02b1d20c44f6596cf1c5f99",
-            "source_index": 0,
-            "status": "ok",
-            "tail": ""
+            "exists": false
+          },
+          {
+            "exists": false
+          },
+          {
+            "exists": false
           }
         ],
+        "dependencies": [],
+        "diagnostics": [],
         "ledger_certifies": true,
         "ledger_files": [
           "krookkghost.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": false,
-        "source_exact": true,
-        "status": "RUNNING",
+        "source_exact": false,
+        "status": "FAILED",
         "unit": {
-          "ActiveState": "active",
-          "AllowedCPUs": "19",
-          "CPUUsageNSec": "47693637047000",
+          "ActiveState": "inactive",
           "ExecMainStatus": "0",
-          "LoadState": "loaded",
-          "MemoryCurrent": "25311432704",
+          "LoadState": "not-found",
           "Result": "success",
-          "StateChangeTimestamp": "Thu 2026-08-20 06:50:12 UTC"
+          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
         }
       },
       "remap-fix-v2-opposed-rook-ghost-transitions-v1": {
@@ -14506,34 +13543,30 @@
       "remap-fix-v2-opposed-turtle-ghost-compositional-v4": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [],
-        "dependencies": [],
-        "diagnostics": [
+        "completion": [
           {
-            "bytes": 271313,
-            "sha256": "242a982088208f669f425db840826247c72dc0904e79e739e7cae9d66aa1bbb5",
-            "source_index": 0,
-            "status": "ok",
-            "tail": ""
+            "exists": false
+          },
+          {
+            "exists": false
           }
         ],
+        "dependencies": [],
+        "diagnostics": [],
         "ledger_certifies": true,
         "ledger_files": [
           "kturtlekghost.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": false,
-        "source_exact": true,
-        "status": "RUNNING",
+        "source_exact": false,
+        "status": "FAILED",
         "unit": {
-          "ActiveState": "active",
-          "AllowedCPUs": "23",
-          "CPUUsageNSec": "54121568621000",
+          "ActiveState": "inactive",
           "ExecMainStatus": "0",
-          "LoadState": "loaded",
-          "MemoryCurrent": "17286971392",
+          "LoadState": "not-found",
           "Result": "success",
-          "StateChangeTimestamp": "Thu 2026-08-20 04:59:47 UTC"
+          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
         }
       },
       "remap-fix-v2-opposed-turtle-ghost-solve-v2": {
@@ -14651,36 +13684,32 @@
       "same-ghost-pair-domain-cache-v1": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [],
+        "completion": [
+          {
+            "exists": false
+          },
+          {
+            "exists": false
+          }
+        ],
         "dependencies": [
           "build-ghost-pair-domain-cache-v1"
         ],
-        "diagnostics": [
-          {
-            "bytes": 4096,
-            "sha256": "f9b9e0e4adae26db71618fa901e5f69874e7ab40de65531b8fc245f43683dc28",
-            "source_index": 0,
-            "status": "ok",
-            "tail": ""
-          }
-        ],
+        "diagnostics": [],
         "ledger_certifies": false,
         "ledger_files": [
           "kghostghostk.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": true,
-        "source_exact": true,
-        "status": "RUNNING",
+        "source_exact": false,
+        "status": "FAILED",
         "unit": {
-          "ActiveState": "active",
-          "AllowedCPUs": "30",
-          "CPUUsageNSec": "38403522335000",
+          "ActiveState": "inactive",
           "ExecMainStatus": "0",
-          "LoadState": "loaded",
-          "MemoryCurrent": "4851417088",
+          "LoadState": "not-found",
           "Result": "success",
-          "StateChangeTimestamp": "Thu 2026-08-20 09:39:13 UTC"
+          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
         }
       },
       "singleton-fix-opposed-prince-ghost-fresh-v6": {
@@ -14722,8 +13751,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 1034260,
-            "sha256": "bc99e72629687b60644ffac6b22cafe95f2cfd766c4c3058b0d4e5a297063ad2",
+            "bytes": 1059442,
+            "sha256": "201eead494fe3fc6df181c92ccbf71e55d2baa84d10439152f9ea4f545c0f6e7",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -14747,10 +13776,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "1",
-          "CPUUsageNSec": "107663732310000",
+          "CPUUsageNSec": "111029417750000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "30502817792",
+          "MemoryCurrent": "28938702848",
           "Result": "success",
           "StateChangeTimestamp": "Wed 2026-08-19 14:23:15 UTC"
         }
@@ -14794,11 +13823,11 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 75295,
-            "sha256": "a232a39f444b61d1313f5fab995683fffea11e07e4b7ff1ebad86ee3568d3473",
+            "bytes": 79967,
+            "sha256": "b2dd61851e1e8373761c8fc9ace13cc45d4ac1ce3c441f7347b4a8ece25e33e5",
             "source_index": 0,
             "status": "ok",
-            "tail": "st_extra_bellman iteration 9 geometry 255000/492960 bdd_nodes 277452681 peak_rss_bytes 11080343552 elapsed 29796.5s\nreciprocal_ghost_extra_bellman iteration 9 geometry 260000/492960 bdd_nodes 288231734 peak_rss_bytes 11080343552 elapsed 29876.2s\nreciprocal_ghost_extra_bellman iteration 9 geometry 265000/492960 bdd_nodes 289982399 peak_rss_bytes 11080343552 elapsed 29948.4s\nreciprocal_ghost_extra_bellman iteration 9 geometry 270000/492960 bdd_nodes 290798392 peak_rss_bytes 11080343552 elapsed 30020.4s\nreciprocal_ghost_extra_bellman iteration 9 geometry 275000/492960 bdd_nodes 294109057 peak_rss_bytes 11080343552 elapsed 30112.7s\nreciprocal_ghost_extra_bellman iteration 9 geometry 280000/492960 bdd_nodes 296364457 peak_rss_bytes 11080343552 elapsed 30197.1s\nreciprocal_ghost_extra_bellman iteration 9 geometry 285000/492960 bdd_nodes 299908687 peak_rss_bytes 11080343552 elapsed 30289s\nreciprocal_ghost_extra_bellman iteration 9 geometry 290000/492960 bdd_nodes 303076454 peak_rss_bytes 11080343552 elapsed 30367.3s\n"
+            "tail": "_extra_bellman iteration 9 geometry 435000/492960 bdd_nodes 522639236 peak_rss_bytes 11080343552 elapsed 33150.6s\nreciprocal_ghost_extra_bellman iteration 9 geometry 440000/492960 bdd_nodes 535179001 peak_rss_bytes 11080343552 elapsed 33262.8s\nreciprocal_ghost_extra_bellman iteration 9 geometry 445000/492960 bdd_nodes 542771990 peak_rss_bytes 11080343552 elapsed 33341.5s\nreciprocal_ghost_extra_bellman iteration 9 geometry 450000/492960 bdd_nodes 550924988 peak_rss_bytes 11080343552 elapsed 33420.1s\nreciprocal_ghost_extra_bellman iteration 9 geometry 455000/492960 bdd_nodes 562603733 peak_rss_bytes 11080343552 elapsed 33513.9s\nreciprocal_ghost_extra_bellman iteration 9 geometry 460000/492960 bdd_nodes 568640491 peak_rss_bytes 11080343552 elapsed 33588.5s\nreciprocal_ghost_extra_bellman iteration 9 geometry 465000/492960 bdd_nodes 579725523 peak_rss_bytes 11080343552 elapsed 33676.6s\nreciprocal_ghost_extra_bellman iteration 9 geometry 470000/492960 bdd_nodes 588195020 peak_rss_bytes 11080343552 elapsed 33760.3s\n"
           },
           {
             "bytes": 55890,
@@ -14826,10 +13855,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "12",
-          "CPUUsageNSec": "30394456426000",
+          "CPUUsageNSec": "33759799636000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "20125270016",
+          "MemoryCurrent": "17932648448",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 11:52:44 UTC"
         }
@@ -14980,48 +14009,33 @@
       "source-order-opposed-queen-ghost-solve-v8": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [],
-        "dependencies": [],
-        "diagnostics": [
+        "completion": [
           {
-            "bytes": 23765,
-            "sha256": "4400aa1eb53aa267f326d204dce62b02b46500d0de8aded357b9cda865525f85",
-            "source_index": 0,
-            "status": "ok",
-            "tail": ""
+            "exists": false
           },
           {
-            "bytes": 42272,
-            "sha256": "03ffb8d5838aa3e376a37ebd431d36aa3055b50ab984dce8498a53769f60e57c",
-            "source_index": 1,
-            "status": "ok",
-            "tail": ""
+            "exists": false
           },
           {
-            "bytes": 1825,
-            "sha256": "603d70e3d2846f6940884dad883e4cf7796a19f66d5c7bd7243bdb69376c9233",
-            "source_index": 2,
-            "status": "ok",
-            "tail": ""
+            "exists": false
           }
         ],
+        "dependencies": [],
+        "diagnostics": [],
         "ledger_certifies": false,
         "ledger_files": [
           "kqueenkghost.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": true,
-        "source_exact": true,
-        "status": "RUNNING",
+        "source_exact": false,
+        "status": "FAILED",
         "unit": {
-          "ActiveState": "active",
-          "AllowedCPUs": "14",
-          "CPUUsageNSec": "31638623881000",
+          "ActiveState": "inactive",
           "ExecMainStatus": "0",
-          "LoadState": "loaded",
-          "MemoryCurrent": "2234867712",
+          "LoadState": "not-found",
           "Result": "success",
-          "StateChangeTimestamp": "Thu 2026-08-20 11:27:21 UTC"
+          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
         }
       },
       "source-order-pawn-implication-build-v7": {
@@ -15098,11 +14112,11 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 302160,
-            "sha256": "da1c79b8928df10b7a4291e848236117ba9baf344a70386de664f5944f0e819d",
+            "bytes": 319340,
+            "sha256": "29643f268083cbaf1217290140d9ac10f9e9fe5026f79fe166615ad2a71e2f6e",
             "source_index": 0,
             "status": "ok",
-            "tail": "ciprocal_ghost_extra_bellman iteration 12 geometry 585000/985920 bdd_nodes 67611617 peak_rss_bytes 7586234368 elapsed 47645.9s\nreciprocal_ghost_extra_bellman iteration 12 geometry 590000/985920 bdd_nodes 67780352 peak_rss_bytes 7586234368 elapsed 47659.6s\nreciprocal_ghost_extra_bellman iteration 12 geometry 595000/985920 bdd_nodes 68222398 peak_rss_bytes 7586234368 elapsed 47670.1s\nreciprocal_ghost_extra_bellman iteration 12 geometry 600000/985920 bdd_nodes 68887206 peak_rss_bytes 7586234368 elapsed 47684s\nreciprocal_ghost_extra_bellman iteration 12 geometry 605000/985920 bdd_nodes 69420114 peak_rss_bytes 7586234368 elapsed 47700.4s\nreciprocal_ghost_extra_bellman iteration 12 geometry 610000/985920 bdd_nodes 69773596 peak_rss_bytes 7586234368 elapsed 47716s\nreciprocal_ghost_extra_bellman iteration 12 geometry 615000/985920 bdd_nodes 70001648 peak_rss_bytes 7586234368 elapsed 47729.8s\nreciprocal_ghost_extra_bellman iteration 12 geometry 620000/985920 bdd_nodes 70434319 peak_rss_bytes 7586234368 elapsed 47739s\n"
+            "tail": "ocal_ghost_extra_bellman iteration 13 geometry 250000/985920 bdd_nodes 30481098 peak_rss_bytes 7594401792 elapsed 50807.2s\nreciprocal_ghost_extra_bellman iteration 13 geometry 255000/985920 bdd_nodes 31126287 peak_rss_bytes 7594401792 elapsed 50840.9s\nreciprocal_ghost_extra_bellman iteration 13 geometry 260000/985920 bdd_nodes 31586070 peak_rss_bytes 7594401792 elapsed 50886.7s\nreciprocal_ghost_extra_bellman iteration 13 geometry 265000/985920 bdd_nodes 31832121 peak_rss_bytes 7594401792 elapsed 50932.1s\nreciprocal_ghost_extra_bellman iteration 13 geometry 270000/985920 bdd_nodes 31936567 peak_rss_bytes 7594401792 elapsed 50978.1s\nreciprocal_ghost_extra_bellman iteration 13 geometry 275000/985920 bdd_nodes 32086354 peak_rss_bytes 7594401792 elapsed 51019.2s\nreciprocal_ghost_extra_bellman iteration 13 geometry 280000/985920 bdd_nodes 32834176 peak_rss_bytes 7594401792 elapsed 51053.5s\nreciprocal_ghost_extra_bellman iteration 13 geometry 285000/985920 bdd_nodes 33429099 peak_rss_bytes 7594401792 elapsed 51100s\n"
           }
         ],
         "ledger_certifies": true,
@@ -15116,10 +14130,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "22",
-          "CPUUsageNSec": "47061664962000",
+          "CPUUsageNSec": "50375135657000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "15322759168",
+          "MemoryCurrent": "18467778560",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 07:00:02 UTC"
         }
@@ -15157,86 +14171,85 @@
         "unit": {}
       }
     },
-    "observed_at": "2026-08-20T20:20:18.677224+00:00",
+    "observed_at": "2026-08-20T21:16:24.578943+00:00",
     "scheduling": {
       "blocked": {},
       "hosts": {
         "i-024a2073283e4336e": {
           "disk_budget_bytes": {
-            "/": 3306938368,
-            "/mnt/ultimatefish": 165174960128
+            "/": 3274211328,
+            "/mnt/ultimatefish": 163153555456
           },
           "disk_reserved_bytes": {
             "/": 0,
             "/mnt/ultimatefish": 165356240896
           },
-          "measured_busy_vcpus": 4.008,
+          "measured_busy_vcpus": 3.997,
           "measurement_complete": true,
-          "memory_budget_bytes": 42541309952,
-          "memory_reserved_bytes": 70087417856,
-          "predicted_busy_vcpus": 4.008,
+          "memory_budget_bytes": 42538524672,
+          "memory_reserved_bytes": 68668727296,
+          "predicted_busy_vcpus": 3.997,
           "selected": [],
           "target_busy_vcpus": 22.4
         },
         "i-03c81f90d2c59a2e7": {
           "disk_budget_bytes": {
-            "/": 37236826112,
-            "/mnt/ultimatefish": 149158248448,
-            "/mnt/ultimatefish-penguin": 117793607680
+            "/": 37289873408,
+            "/mnt/ultimatefish": 1831406874624,
+            "/mnt/ultimatefish-penguin": 116553928704
           },
           "disk_reserved_bytes": {
             "/": 0,
-            "/mnt/ultimatefish": 704010946560,
-            "/mnt/ultimatefish-penguin": 360777252864
+            "/mnt/ultimatefish": 107374182400,
+            "/mnt/ultimatefish-penguin": 85899345920
           },
-          "measured_busy_vcpus": 8.944,
-          "measurement_complete": true,
-          "memory_budget_bytes": 234134937600,
-          "memory_reserved_bytes": 644213346304,
-          "predicted_busy_vcpus": 8.944,
+          "measured_busy_vcpus": 0.0,
+          "measurement_complete": false,
+          "memory_budget_bytes": 244169904128,
+          "memory_reserved_bytes": 220152700928,
           "selected": [],
           "target_busy_vcpus": 22.4
         },
         "i-08c0f44a1776cb34a": {
           "disk_budget_bytes": {
-            "/": 3337068544,
-            "/mnt/ultimatefish": 404378550272
+            "/": 3336626176,
+            "/mnt/ultimatefish": 405532995584
           },
           "disk_reserved_bytes": {
             "/": 0,
-            "/mnt/ultimatefish": 347892350976
+            "/mnt/ultimatefish": 176093659136
           },
-          "measured_busy_vcpus": 2.076,
+          "measured_busy_vcpus": 1.992,
           "measurement_complete": true,
-          "memory_budget_bytes": 50746904576,
-          "memory_reserved_bytes": 98590060544,
-          "predicted_busy_vcpus": 2.076,
+          "memory_budget_bytes": 54408011776,
+          "memory_reserved_bytes": 69927129088,
+          "predicted_busy_vcpus": 1.992,
           "selected": [],
           "target_busy_vcpus": 22.4
         },
         "i-0986ed3d272721f02": {
           "disk_budget_bytes": {
-            "/": 3290193920,
-            "/mnt/ultimatefish": 517578416128
+            "/": 3274788864,
+            "/mnt/ultimatefish": 516768374784
           },
           "disk_reserved_bytes": {
             "/": 0,
             "/mnt/ultimatefish": 85899345920
           },
-          "measured_busy_vcpus": 3.004,
+          "measured_busy_vcpus": 2.999,
           "measurement_complete": true,
-          "memory_budget_bytes": 50818945024,
-          "memory_reserved_bytes": 24972685312,
-          "predicted_busy_vcpus": 3.004,
+          "memory_budget_bytes": 50777677824,
+          "memory_reserved_bytes": 22202105856,
+          "predicted_busy_vcpus": 2.999,
           "selected": [],
           "target_busy_vcpus": 22.4
         },
         "i-0b4523116b2f7765c": {
           "disk_budget_bytes": {
-            "/": 3168329728,
-            "/mnt/ultimatefish": 144703135744,
-            "/mnt/ultimatefish-jg": 532482322432,
-            "/mnt/ultimatefish-overflow": 647923994624,
+            "/": 3161432064,
+            "/mnt/ultimatefish": 139940302848,
+            "/mnt/ultimatefish-jg": 530019213312,
+            "/mnt/ultimatefish-overflow": 639334100992,
             "/mnt/ultimatefish-resume": 113797296128
           },
           "disk_reserved_bytes": {
@@ -15246,19 +14259,19 @@
             "/mnt/ultimatefish-overflow": 536870912000,
             "/mnt/ultimatefish-resume": 0
           },
-          "measured_busy_vcpus": 16.55,
+          "measured_busy_vcpus": 16.729,
           "measurement_complete": true,
-          "memory_budget_bytes": 165638594560,
-          "memory_reserved_bytes": 715501932544,
-          "predicted_busy_vcpus": 16.55,
+          "memory_budget_bytes": 164824301568,
+          "memory_reserved_bytes": 725628727296,
+          "predicted_busy_vcpus": 16.729,
           "selected": [],
           "target_busy_vcpus": 22.4
         }
       },
-      "measured_busy_vcpus": 34.582,
+      "measured_busy_vcpus": 25.717,
       "measured_capacity_vcpus": 160,
-      "measured_utilization_percent": 21.6,
-      "measurement_complete": true,
+      "measured_utilization_percent": 16.1,
+      "measurement_complete": false,
       "selected": [],
       "stage_jobs": [],
       "underutilized": false,

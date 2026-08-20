@@ -200,8 +200,17 @@ The corrected path appends the same length-delimited `nextDecision` key used by
 the engine belief tracker. Both Angel orientations now exercise the compact
 index-492966 legal-dot witness in self-test, and their fresh runs are bound to
 information model
-`bd3a0c5fbab17f460cc90903a3374e528b86103329df0563c3c3d15767bfbb1f`;
-the failed trees remain non-certifying evidence.
+`5582d014c827845df5eb658078ad0be8f367b9fde087bf22509e673fdfd23c66`;
+the failed trees remain non-certifying evidence. This model also precomputes
+graph-node eligibility and royal-pair classification in deterministic parallel
+blocks, then builds independent pair equations with a serialized fixed-point
+definition gate. The pair vector and dense overlay order remain canonical.
+As an exhaustive regression, the complete K+Jester-v-K solve was run with one
+worker and eight workers: both outputs were byte-identical at
+`b8aeceb739780ae9ab74c82cc476478c53d2e4296dd91010b073b9d6c46ee7f9`,
+which is also the certified lower overlay hash, and both reported zero Bellman
+and rank residuals. On Jester/Angel, the eight-worker graph phase measured
+about 7.5-8.8 times the prior serial pair rate.
 
 The completed K+K+2 primary-Jester strata are regenerated with an explicit
 lower-class cardinality split. A still-ambiguous two-world royal pair probes

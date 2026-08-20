@@ -46,6 +46,7 @@ class DirectNativeLogTests(unittest.TestCase):
         compile(self._parser(script), "<direct-native-log-parser>", "exec")
         self.assertNotIn('test -s "$checkpoint"', script)
         self.assertIn('install -m 0644 "$solve_log"', script)
+        self.assertIn('zstd -T0 -19 -q -f -o "$archive"', script)
 
     def test_direct_log_keeps_legal_and_unreachable_counts_separate(self):
         script = finalizer.remote_script(self._args("/work/solve.log"))
@@ -99,6 +100,13 @@ class DirectNativeLogTests(unittest.TestCase):
         entry["tablebase_sha256"] = "c" * 64
         with self.assertRaisesRegex(ValueError, "concrete source binding"):
             finalizer.validate_expected_bindings(args, entry)
+
+    def test_angel_record_uses_canonical_information_inventory(self):
+        record = finalizer.record_for_filename("kjesterkangel.uftb")
+        self.assertEqual("jester", record["primary"])
+        self.assertEqual("angel", record["secondary"])
+        self.assertTrue(record["opposing"])
+        self.assertEqual(75_915_840, record["states"])
 
     def test_certified_result_retires_matching_supervision_job(self):
         with tempfile.TemporaryDirectory() as directory:

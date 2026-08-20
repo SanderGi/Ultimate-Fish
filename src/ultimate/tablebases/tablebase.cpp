@@ -2230,44 +2230,90 @@ class TablebaseGenerator {
         // Prince owner observes the compulsory second-step dots before making
         // that choice. Keep those nodes in the paired graph without making
         // them appear reachable as standalone positions in the ledger.
-        std::vector<std::int8_t> graphNodeCache(stateCount_, -1);
-        const auto graph_node = [&](std::uint32_t index) {
-            std::int8_t& cached = graphNodeCache[index];
-            if (cached >= 0)
-                return cached != 0;
-            Position position;
-            const bool reconstructed = make_position_at(index, position);
-            const bool value = reconstructed &&
-              (position.has_forced_action()
-                ? !position.legal_moves().empty()
-                : position.ordinary_predecessor_king_safe());
-            cached = value ? 1 : 0;
-            return value;
-        };
+        std::vector<std::int8_t> graphNodeCache(stateCount_, 0);
+        const std::uint32_t informationWorkers = std::min(
+          workerThreads_, std::max(1u, std::thread::hardware_concurrency()));
+        constexpr std::uint32_t FrontierBlock = 4096;
+        std::atomic<std::uint32_t> nextFrontier{0};
+        std::vector<std::future<void>> frontierTasks;
+        frontierTasks.reserve(informationWorkers);
+        for (std::uint32_t worker = 0; worker < informationWorkers; ++worker)
+            frontierTasks.push_back(std::async(std::launch::async,
+              [&, this] {
+                  while (true) {
+                      const std::uint32_t begin = nextFrontier.fetch_add(
+                        FrontierBlock, std::memory_order_relaxed);
+                      if (begin >= stateCount_)
+                          break;
+                      const std::uint32_t end = std::min(
+                        stateCount_, static_cast<std::uint32_t>(begin + FrontierBlock));
+                      for (std::uint32_t index = begin; index < end; ++index) {
+                          Position position;
+                          const bool reconstructed = make_position_at(index, position);
+                          graphNodeCache[index] = reconstructed &&
+                            (position.has_forced_action()
+                              ? !position.legal_moves().empty()
+                              : position.ordinary_predecessor_king_safe());
+                      }
+                  }
+              }));
+        for (auto& task : frontierTasks)
+            task.get();
 
         std::vector<std::uint32_t> pairs;
         pairs.reserve(stateCount_ / 2);
         std::vector<std::int32_t> pairForIndex(stateCount_, -1);
+        // 1 is an admitted royal pair; 2 is a pair split by the observer's
+        // private pre-decision legal dots. Each representative is independent,
+        // and the serial compaction below preserves the canonical pair order.
+        std::vector<std::uint8_t> pairClass(stateCount_, 0);
+        std::atomic<std::uint32_t> nextPairCandidate{0};
+        frontierTasks.clear();
+        for (std::uint32_t worker = 0; worker < informationWorkers; ++worker)
+            frontierTasks.push_back(std::async(std::launch::async,
+              [&, this] {
+                  while (true) {
+                      const std::uint32_t begin = nextPairCandidate.fetch_add(
+                        FrontierBlock, std::memory_order_relaxed);
+                      if (begin >= stateCount_)
+                          break;
+                      const std::uint32_t end = std::min(
+                        stateCount_, static_cast<std::uint32_t>(begin + FrontierBlock));
+                      for (std::uint32_t index = begin; index < end; ++index) {
+                          if (!graphNodeCache[index])
+                              continue;
+                          const std::uint32_t other =
+                            primary_jester_alternative(index);
+                          if (index >= other || !graphNodeCache[other])
+                              continue;
+                          Position first, second;
+                          if (!make_primary_jester_world(index, false, first) ||
+                              !make_primary_jester_world(index, true, second))
+                              throw std::runtime_error(
+                                "admitted royal assignment failed reconstruction");
+                          if (primary_jester_view_key(first) !=
+                              primary_jester_view_key(second))
+                              continue;
+                          if (first.side_to_move() == observerColor &&
+                              primary_jester_decision_markers(first) !=
+                                primary_jester_decision_markers(second))
+                              pairClass[index] = 2;
+                          else
+                              pairClass[index] = 1;
+                      }
+                  }
+              }));
+        for (auto& task : frontierTasks)
+            task.get();
         std::array<std::uint64_t, 2> dotSplitPairs{};
         const auto frontierStart = std::chrono::steady_clock::now();
         for (std::uint32_t index = 0; index < stateCount_; ++index) {
-            if (!graph_node(index))
+            if (!pairClass[index])
                 continue;
             const std::uint32_t other = primary_jester_alternative(index);
-            if (index >= other || !graph_node(other))
+            if (pairClass[index] == 2) {
+                ++dotSplitPairs[static_cast<std::size_t>(observerColor)];
                 continue;
-            Position first, second;
-            if (!make_primary_jester_world(index, false, first) ||
-                !make_primary_jester_world(index, true, second))
-                throw std::runtime_error("admitted royal assignment failed reconstruction");
-            if (primary_jester_view_key(first) != primary_jester_view_key(second))
-                continue;
-            if (first.side_to_move() == observerColor) {
-                if (primary_jester_decision_markers(first) !=
-                    primary_jester_decision_markers(second)) {
-                    ++dotSplitPairs[static_cast<std::size_t>(observerColor)];
-                    continue;
-                }
             }
             if (pairs.size() >= static_cast<std::size_t>(InformationTrue))
                 throw std::runtime_error("too many information pairs for token encoding");
@@ -2409,16 +2455,35 @@ class TablebaseGenerator {
             InformationToken onyx = InformationFalse;
         };
 
-        std::uint64_t observationChecks = 0;
-        std::uint64_t emptyCommonActionSets = 0;
-        std::uint64_t lowerPairProbes = 0;
-        std::uint64_t lowerSingletonProbes = 0;
-        std::uint64_t lowerTerminalGroups = 0;
-        std::uint64_t lowerOwnerOverlayDifferences = 0;
-        std::uint32_t firstEmptyCommonActionSet =
-          std::numeric_limits<std::uint32_t>::max();
+        struct InformationGraphStats {
+            std::uint64_t observationChecks = 0;
+            std::uint64_t emptyCommonActionSets = 0;
+            std::uint64_t lowerPairProbes = 0;
+            std::uint64_t lowerSingletonProbes = 0;
+            std::uint64_t lowerTerminalGroups = 0;
+            std::uint64_t lowerOwnerOverlayDifferences = 0;
+            std::uint32_t firstEmptyCommonActionSet =
+              std::numeric_limits<std::uint32_t>::max();
+        };
+        const std::uint32_t graphWorkers = std::min<std::uint32_t>(
+          informationWorkers, static_cast<std::uint32_t>(pairs.size()));
+        std::vector<InformationGraphStats> graphStats(graphWorkers);
+        std::mutex definitionMutex;
+        std::mutex progressMutex;
+        std::atomic<std::size_t> nextGraphPair{0};
+        std::atomic<std::uint64_t> completedGraphPairs{0};
+        std::atomic<std::uint64_t> progressObservations{0};
         const auto graphStart = std::chrono::steady_clock::now();
-        for (std::size_t pairId = 0; pairId < pairs.size(); ++pairId) {
+        const auto processPair = [&](std::size_t pairId,
+                                     InformationGraphStats& stats) {
+            auto& observationChecks = stats.observationChecks;
+            auto& emptyCommonActionSets = stats.emptyCommonActionSets;
+            auto& lowerPairProbes = stats.lowerPairProbes;
+            auto& lowerSingletonProbes = stats.lowerSingletonProbes;
+            auto& lowerTerminalGroups = stats.lowerTerminalGroups;
+            auto& lowerOwnerOverlayDifferences =
+              stats.lowerOwnerOverlayDifferences;
+            auto& firstEmptyCommonActionSet = stats.firstEmptyCommonActionSet;
             const std::uint32_t representative = pairs[pairId];
             const std::array<std::uint32_t, 2> worlds{
               representative, primary_jester_alternative(representative)};
@@ -2428,6 +2493,7 @@ class TablebaseGenerator {
                 throw std::runtime_error("paired information node is invalid");
 
             if (positions.front().game_over()) {
+                std::lock_guard<std::mutex> lock(definitionMutex);
                 for (std::size_t world = 0; world < worlds.size(); ++world) {
                     const auto winner = positions[world].winner();
                     const std::array<InformationToken, 1> child{{boolean_token(
@@ -2440,7 +2506,7 @@ class TablebaseGenerator {
                   winner && *winner == observerColor)}};
                 onyx->define_or(static_cast<std::uint32_t>(pairId),
                                 child.data(), child.size());
-                continue;
+                return;
             }
 
             std::array<std::vector<MoveEdge>, 2> edges;
@@ -2621,6 +2687,7 @@ class TablebaseGenerator {
                 }
             }
 
+            std::lock_guard<std::mutex> lock(definitionMutex);
             if (positions.front().side_to_move() == ownerColor) {
                 std::vector<InformationToken> blackChildren;
                 for (std::size_t world = 0; world < worlds.size(); ++world) {
@@ -2664,14 +2731,70 @@ class TablebaseGenerator {
                 }
             }
 
-            if ((pairId + 1) % 100'000 == 0) {
-                const double elapsed = std::chrono::duration<double>(
-                  std::chrono::steady_clock::now() - graphStart).count();
-                std::cout << "information_graph pairs " << pairId + 1 << '/'
-                          << pairs.size() << " observations " << observationChecks
-                          << " elapsed " << elapsed << "s\n" << std::flush;
-            }
+        };
+        constexpr std::size_t GraphBlock = 128;
+        std::vector<std::future<void>> graphTasks;
+        graphTasks.reserve(graphWorkers);
+        for (std::uint32_t worker = 0; worker < graphWorkers; ++worker)
+            graphTasks.push_back(std::async(std::launch::async,
+              [&, worker] {
+                  InformationGraphStats& stats = graphStats[worker];
+                  while (true) {
+                      const std::size_t begin = nextGraphPair.fetch_add(
+                        GraphBlock, std::memory_order_relaxed);
+                      if (begin >= pairs.size())
+                          break;
+                      const std::size_t end = std::min(
+                        pairs.size(), begin + GraphBlock);
+                      for (std::size_t pairId = begin; pairId < end; ++pairId) {
+                          const std::uint64_t observationsBefore =
+                            stats.observationChecks;
+                          processPair(pairId, stats);
+                          progressObservations.fetch_add(
+                            stats.observationChecks - observationsBefore,
+                            std::memory_order_relaxed);
+                          const std::uint64_t completed =
+                            completedGraphPairs.fetch_add(
+                              1, std::memory_order_relaxed) + 1;
+                          if (completed % 100'000 == 0) {
+                              std::lock_guard<std::mutex> progressLock(progressMutex);
+                              const double elapsed = std::chrono::duration<double>(
+                                std::chrono::steady_clock::now() - graphStart).count();
+                              std::cout << "information_graph pairs " << completed
+                                        << '/' << pairs.size() << " observations "
+                                        << progressObservations.load(
+                                             std::memory_order_relaxed)
+                                        << " elapsed " << elapsed << "s\n"
+                                        << std::flush;
+                          }
+                      }
+                  }
+              }));
+        for (auto& task : graphTasks)
+            task.get();
+        InformationGraphStats graphTotals;
+        for (const InformationGraphStats& stats : graphStats) {
+            graphTotals.observationChecks += stats.observationChecks;
+            graphTotals.emptyCommonActionSets += stats.emptyCommonActionSets;
+            graphTotals.lowerPairProbes += stats.lowerPairProbes;
+            graphTotals.lowerSingletonProbes += stats.lowerSingletonProbes;
+            graphTotals.lowerTerminalGroups += stats.lowerTerminalGroups;
+            graphTotals.lowerOwnerOverlayDifferences +=
+              stats.lowerOwnerOverlayDifferences;
+            graphTotals.firstEmptyCommonActionSet = std::min(
+              graphTotals.firstEmptyCommonActionSet,
+              stats.firstEmptyCommonActionSet);
         }
+        const std::uint64_t emptyCommonActionSets =
+          graphTotals.emptyCommonActionSets;
+        const std::uint64_t lowerPairProbes = graphTotals.lowerPairProbes;
+        const std::uint64_t lowerSingletonProbes =
+          graphTotals.lowerSingletonProbes;
+        const std::uint64_t lowerTerminalGroups = graphTotals.lowerTerminalGroups;
+        const std::uint64_t lowerOwnerOverlayDifferences =
+          graphTotals.lowerOwnerOverlayDifferences;
+        const std::uint32_t firstEmptyCommonActionSet =
+          graphTotals.firstEmptyCommonActionSet;
         std::cout << "information_uniform_actions empty_sets "
                   << emptyCommonActionSets << " first_index ";
         if (firstEmptyCommonActionSet == std::numeric_limits<std::uint32_t>::max())

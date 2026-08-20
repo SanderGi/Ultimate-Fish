@@ -201,16 +201,16 @@
       ]
     },
     {
-      "id": "information-jester-angel-same-v2",
+      "id": "information-jester-angel-same-v3",
       "ledger_files": [
         "kjesterangelk.uftb"
       ],
-      "ledger_certifies": false,
+      "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-info-kjesterangelk-v2.service",
-      "expected_allowed_cpus": "3",
+      "unit": "ultimatefish-info-kjesterangelk-v3.service",
+      "expected_allowed_cpus": "3-4,13,15-18,20",
       "resource_requirements": {
-        "cpu_threads": 1,
+        "cpu_threads": 8,
         "memory_peak_bytes": 120259084288,
         "disk_peak_bytes": {
           "/mnt/ultimatefish": 107374182400
@@ -220,59 +220,59 @@
         "concrete-jester-angel-source-v1"
       ],
       "checkpoint_paths": [
-        "/mnt/ultimatefish/jester-angel-info-v2/same/scratch/*",
-        "/mnt/ultimatefish/jester-angel-info-v2/same/solve.log"
+        "/mnt/ultimatefish/jester-angel-info-v3/same/scratch/*",
+        "/mnt/ultimatefish/jester-angel-info-v3/same/solve.log"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/jester-angel-info-v2/same/kjesterangelk.ufiw"
+        "/mnt/ultimatefish/jester-angel-info-v3/same/kjesterangelk.ufiw"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/jester-angel-info-same-v2-bdd78e62.sh",
-          "sha256": "bdd78e62d45b556d88898d240e97c6dc3c6c7ea59c5efc1db0efe04281371bd8"
+          "path": "/tmp/ultimatefish-solve-jester-angel-same-v3-i03.sh",
+          "sha256": "ca1f7235e4ca8b2b35ac0972bc276ba52f2a790b2ed14304c45a963d7bde18fa"
         },
         {
-          "path": "/mnt/ultimatefish/jester-angel-v2-stage-a76ecfa9/binary/ultimate_tablebase",
-          "sha256": "6290e46bb86d5c1d35efb1731ab9d24314325e0dab6d47b31382f59c7610e359"
+          "path": "/mnt/ultimatefish/jester-angel-v3b-stage-20db30fc/binary/ultimate_tablebase",
+          "sha256": "5a9349006bece04d031ffe3ac6924f23793695dcd75cb194dfbfbaaea689197f"
         },
         {
-          "path": "/mnt/ultimatefish/jester-angel-v2-source-a76ecfa9/src/ultimate/tablebases/tablebase.cpp",
-          "sha256": "7b2ae39ece77eafbd927345a03305c4a2e5aedce19d647b1e259f5cdc899ca14"
+          "path": "/mnt/ultimatefish/jester-angel-v3b-source-20db30fc/src/ultimate/tablebases/tablebase.cpp",
+          "sha256": "2fcaa42fb4616fc5e17c9c1bcbaa81d1b003bd86d08ce80444b1cbeaa2bdaf81"
         },
         {
-          "path": "/mnt/ultimatefish/jester-angel-v1-dependencies-v2-900622da/kjesterk.uftb",
+          "path": "/mnt/ultimatefish-penguin/jester-angel-v1-source-work/dependencies/kjesterk.uftb",
           "sha256": "3d896b07c0f7ee97da5aabefee6551c90732bbc200343a4af51a08b678e236aa"
         },
         {
-          "path": "/mnt/ultimatefish/primary-jester-af8d/seed/ultimatefish-information-overlays.primary-af8d/kjesterk.ufiw",
+          "path": "/mnt/ultimatefish-penguin/jester-angel-v3-dependencies/overlays/kjesterk-af8d.ufiw",
           "sha256": "b8aeceb739780ae9ab74c82cc476478c53d2e4296dd91010b073b9d6c46ee7f9"
         }
       ],
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish/jester-angel-info-v2/same/solve.log",
+          "path": "/mnt/ultimatefish/jester-angel-info-v3/same/solve.log",
           "max_bytes": 4096
         },
         {
           "kind": "journal",
-          "unit": "ultimatefish-info-kjesterangelk-v2.service",
+          "unit": "ultimatefish-info-kjesterangelk-v3.service",
           "max_bytes": 2048
         }
       ],
       "s3_certificates": [
         {
           "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-          "key": "sources/wrappers/sha256/bdd78e62d45b556d88898d240e97c6dc3c6c7ea59c5efc1db0efe04281371bd8/ultimatefish-solve-jester-angel-same-v2-i03.sh",
-          "version_id": "fW3lUwJbTwUlEsgzh5mhLIeSRe3g52Dc",
-          "sha256": "bdd78e62d45b556d88898d240e97c6dc3c6c7ea59c5efc1db0efe04281371bd8",
-          "size": 2188
+          "key": "launch/ultimatefish-solve-jester-angel-same-v3-i03.sh",
+          "version_id": "zxfWx0XDf638MJ7wTLsPEK_WgEJUGrSq",
+          "sha256": "ca1f7235e4ca8b2b35ac0972bc276ba52f2a790b2ed14304c45a963d7bde18fa",
+          "size": 2179
         },
         {
           "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-          "key": "sources/bundles/jester-angel-v1/sha256/a76ecfa97eddfc788fa3008124d17b7f017c8e85eae0533aae728f3c9ab54814/ultimatefish-jester-angel-v1-source.tar",
-          "version_id": "8Q2gEs4aobJ7PeY7NB05YrJNJHLQzJuN",
-          "sha256": "a76ecfa97eddfc788fa3008124d17b7f017c8e85eae0533aae728f3c9ab54814",
+          "key": "sources/bundles/jester-angel-v1/sha256/20db30fcf7fd2dbc19bbbd1a1a860c3b06765551150ef8b0736b78d15b2dfe97/ultimatefish-jester-angel-v1-source.tar",
+          "version_id": "XJuPcn2ij3cr2OWIApeI0B9ORQP.Z5WJ",
+          "sha256": "20db30fcf7fd2dbc19bbbd1a1a860c3b06765551150ef8b0736b78d15b2dfe97",
           "size": 768000
         },
         {
@@ -288,20 +288,49 @@
           "version_id": "xo5ZIZTTmrUkSf3hXlfnmEqMxqDfZVJ1",
           "sha256": "a9aab6f73aa59599bde15c2691cc92d3c8a67238b65618409b7fa8fdd78dee17",
           "size": 11037180
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/jester-angel-information-v3/primary-jester/sha256/6a9fa1cb3be32b881c1f1d3f68eba84a0ef5221a38c92020c8e2436738f7f7ac/kjesterangelk.information.tar.zst",
+          "version_id": "V343loE_urhguZR1JTE12lZZAla.TS00",
+          "sha256": "6a9fa1cb3be32b881c1f1d3f68eba84a0ef5221a38c92020c8e2436738f7f7ac",
+          "size": 45996
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/jester-angel-information-v3/primary-jester/certificates/sha256/e96aeab184afaca44577414eb293f48062bec8de47e6996dfa0154ddc7046513/certificate.json",
+          "version_id": "hAWYLibnjGo1D5kswkBQ0bQfoelW987i",
+          "sha256": "e96aeab184afaca44577414eb293f48062bec8de47e6996dfa0154ddc7046513",
+          "size": 3283
         }
-      ]
+      ],
+      "result_certificate_keys": {
+        "kjesterangelk.uftb": [
+          "results/jester-angel-information-v3/primary-jester/sha256/6a9fa1cb3be32b881c1f1d3f68eba84a0ef5221a38c92020c8e2436738f7f7ac/kjesterangelk.information.tar.zst"
+        ]
+      },
+      "ledger_results": {
+        "kjesterangelk.uftb": {
+          "result_kind": "information v2",
+          "first": "47,657,148 (9,279,732) / 0 / 0",
+          "second": "251,944 / 50,814,456 / 5,870,480",
+          "reachability": "47,657,148 / 9,279,732; 56,936,880 / 0",
+          "storage": "S3 information archive sha256:6a9fa1cb3be32b881c1f1d3f68eba84a0ef5221a38c92020c8e2436738f7f7ac VersionId V343loE_urhguZR1JTE12lZZAla.TS00; certificate sha256:e96aeab184afaca44577414eb293f48062bec8de47e6996dfa0154ddc7046513 VersionId hAWYLibnjGo1D5kswkBQ0bQfoelW987i"
+        }
+      },
+      "s3_only_certified": true
     },
     {
-      "id": "information-jester-angel-opposed-v2",
+      "id": "information-jester-angel-opposed-v3",
       "ledger_files": [
         "kjesterkangel.uftb"
       ],
-      "ledger_certifies": false,
+      "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-info-kjesterkangel-v2.service",
-      "expected_allowed_cpus": "4",
+      "unit": "ultimatefish-info-kjesterkangel-v3.service",
+      "expected_allowed_cpus": "1,5-9,11-12",
       "resource_requirements": {
-        "cpu_threads": 1,
+        "cpu_threads": 8,
         "memory_peak_bytes": 103079215104,
         "disk_peak_bytes": {
           "/mnt/ultimatefish-penguin": 85899345920
@@ -311,59 +340,59 @@
         "concrete-jester-angel-source-v1"
       ],
       "checkpoint_paths": [
-        "/mnt/ultimatefish-penguin/jester-angel-info-v2/opposed/scratch/*",
-        "/mnt/ultimatefish-penguin/jester-angel-info-v2/opposed/solve.log"
+        "/mnt/ultimatefish-penguin/jester-angel-info-v3/opposed/scratch/*",
+        "/mnt/ultimatefish-penguin/jester-angel-info-v3/opposed/solve.log"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-penguin/jester-angel-info-v2/opposed/kjesterkangel.ufiw"
+        "/mnt/ultimatefish-penguin/jester-angel-info-v3/opposed/kjesterkangel.ufiw"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/jester-angel-info-opposed-v2-06487db0.sh",
-          "sha256": "06487db0d3cbb9d85b245b29186479ae690c00b43e1fda1bff48d3f4fb825915"
+          "path": "/tmp/ultimatefish-solve-jester-angel-opposed-v3-i03.sh",
+          "sha256": "beb743cbd70032cd3ecb96da1759a44e8f80f9d9ac0a997d4da696b720a8746d"
         },
         {
-          "path": "/mnt/ultimatefish/jester-angel-v2-stage-a76ecfa9/binary/ultimate_tablebase",
-          "sha256": "6290e46bb86d5c1d35efb1731ab9d24314325e0dab6d47b31382f59c7610e359"
+          "path": "/mnt/ultimatefish/jester-angel-v3b-stage-20db30fc/binary/ultimate_tablebase",
+          "sha256": "5a9349006bece04d031ffe3ac6924f23793695dcd75cb194dfbfbaaea689197f"
         },
         {
-          "path": "/mnt/ultimatefish/jester-angel-v2-source-a76ecfa9/src/ultimate/tablebases/tablebase.cpp",
-          "sha256": "7b2ae39ece77eafbd927345a03305c4a2e5aedce19d647b1e259f5cdc899ca14"
+          "path": "/mnt/ultimatefish/jester-angel-v3b-source-20db30fc/src/ultimate/tablebases/tablebase.cpp",
+          "sha256": "2fcaa42fb4616fc5e17c9c1bcbaa81d1b003bd86d08ce80444b1cbeaa2bdaf81"
         },
         {
-          "path": "/mnt/ultimatefish/jester-angel-v1-dependencies-v2-900622da/kjesterk.uftb",
+          "path": "/mnt/ultimatefish-penguin/jester-angel-v1-source-work/dependencies/kjesterk.uftb",
           "sha256": "3d896b07c0f7ee97da5aabefee6551c90732bbc200343a4af51a08b678e236aa"
         },
         {
-          "path": "/mnt/ultimatefish/primary-jester-af8d/seed/ultimatefish-information-overlays.primary-af8d/kjesterk.ufiw",
+          "path": "/mnt/ultimatefish-penguin/jester-angel-v3-dependencies/overlays/kjesterk-af8d.ufiw",
           "sha256": "b8aeceb739780ae9ab74c82cc476478c53d2e4296dd91010b073b9d6c46ee7f9"
         }
       ],
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish-penguin/jester-angel-info-v2/opposed/solve.log",
+          "path": "/mnt/ultimatefish-penguin/jester-angel-info-v3/opposed/solve.log",
           "max_bytes": 4096
         },
         {
           "kind": "journal",
-          "unit": "ultimatefish-info-kjesterkangel-v2.service",
+          "unit": "ultimatefish-info-kjesterkangel-v3.service",
           "max_bytes": 2048
         }
       ],
       "s3_certificates": [
         {
           "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-          "key": "sources/wrappers/sha256/06487db0d3cbb9d85b245b29186479ae690c00b43e1fda1bff48d3f4fb825915/ultimatefish-solve-jester-angel-opposed-v2-i03.sh",
-          "version_id": "WyvyH_6JMdDTXRBmKFPUonZAHuGzY64o",
-          "sha256": "06487db0d3cbb9d85b245b29186479ae690c00b43e1fda1bff48d3f4fb825915",
-          "size": 2222
+          "key": "launch/ultimatefish-solve-jester-angel-opposed-v3-i03.sh",
+          "version_id": "d_fxWkUkcf2HGr_TtQnAfANnlnC_MY8B",
+          "sha256": "beb743cbd70032cd3ecb96da1759a44e8f80f9d9ac0a997d4da696b720a8746d",
+          "size": 2208
         },
         {
           "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-          "key": "sources/bundles/jester-angel-v1/sha256/a76ecfa97eddfc788fa3008124d17b7f017c8e85eae0533aae728f3c9ab54814/ultimatefish-jester-angel-v1-source.tar",
-          "version_id": "8Q2gEs4aobJ7PeY7NB05YrJNJHLQzJuN",
-          "sha256": "a76ecfa97eddfc788fa3008124d17b7f017c8e85eae0533aae728f3c9ab54814",
+          "key": "sources/bundles/jester-angel-v1/sha256/20db30fcf7fd2dbc19bbbd1a1a860c3b06765551150ef8b0736b78d15b2dfe97/ultimatefish-jester-angel-v1-source.tar",
+          "version_id": "XJuPcn2ij3cr2OWIApeI0B9ORQP.Z5WJ",
+          "sha256": "20db30fcf7fd2dbc19bbbd1a1a860c3b06765551150ef8b0736b78d15b2dfe97",
           "size": 768000
         },
         {
@@ -379,8 +408,37 @@
           "version_id": "fDbTfFgbotfRmIl0_heZU6k0jisUidJ6",
           "sha256": "6d15ba5a97271fddf1668fdb2cb5e96094d39c6c82f4348ce05bea6a35ac3c5f",
           "size": 13721837
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/jester-angel-information-v3/primary-jester/sha256/d2337ca267697790ff854744a8de9877a6a733a805b5eb75d293738886c074ca/kjesterkangel.information.tar.zst",
+          "version_id": "ItTwp9vjpYEMyp7b79klFN3GiGBzpEFn",
+          "sha256": "d2337ca267697790ff854744a8de9877a6a733a805b5eb75d293738886c074ca",
+          "size": 926803
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/jester-angel-information-v3/primary-jester/certificates/sha256/83475c0d2ba81af9df246cd2b187cc06b24b564a6d6a1c47d6cfe9e15ac5107a/certificate.json",
+          "version_id": "M5LV10OOesWPgtJS8SQ9NnrtQNNiCPvN",
+          "sha256": "83475c0d2ba81af9df246cd2b187cc06b24b564a6d6a1c47d6cfe9e15ac5107a",
+          "size": 3351
         }
-      ]
+      ],
+      "result_certificate_keys": {
+        "kjesterkangel.uftb": [
+          "results/jester-angel-information-v3/primary-jester/sha256/d2337ca267697790ff854744a8de9877a6a733a805b5eb75d293738886c074ca/kjesterkangel.information.tar.zst"
+        ]
+      },
+      "ledger_results": {
+        "kjesterkangel.uftb": {
+          "result_kind": "information v2",
+          "first": "22,519,462 (3,093,244) / 0 / 12,345,214",
+          "second": "125,972 / 15,518,030 / 22,313,918",
+          "reachability": "34,864,676 / 3,093,244; 37,957,920 / 0",
+          "storage": "S3 information archive sha256:d2337ca267697790ff854744a8de9877a6a733a805b5eb75d293738886c074ca VersionId ItTwp9vjpYEMyp7b79klFN3GiGBzpEFn; certificate sha256:83475c0d2ba81af9df246cd2b187cc06b24b564a6d6a1c47d6cfe9e15ac5107a VersionId M5LV10OOesWPgtJS8SQ9NnrtQNNiCPvN"
+        }
+      },
+      "s3_only_certified": true
     },
     {
       "id": "concrete-pawn-berserker-opposed-v1",
@@ -5039,13 +5097,13 @@
       "s3_certificates": []
     },
     {
-      "id": "penguin-ghost-opposing-fresh-v5",
+      "id": "penguin-ghost-opposing-resume-after-stop-v2",
       "ledger_files": [
         "kghostkpenguin.uftb"
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-info-kghostkpenguin-fresh-v5.service",
+      "unit": "ultimatefish-info-kghostkpenguin-resume-after-stop-v2.service",
       "expected_allowed_cpus": "2",
       "dependencies": [],
       "checkpoint_paths": [
@@ -5067,31 +5125,46 @@
       },
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish-penguin/ultimatefish-run-kghostkpenguin-fresh-v5.sh",
-          "sha256": "20efd098f1c01be5a0c7b9b8ca1631e25cbabb69728322ad89b6384b001d685f"
+          "path": "/tmp/ultimatefish-resume-kghostkpenguin-after-stop-v2.sh",
+          "sha256": "cac389df75fd0777628c06d4758aa6107fd009e8d3930a64820d7df196c571bc"
         },
         {
-          "path": "/mnt/ultimatefish/compositional-transitions-v4-source/source.tar.gz",
-          "sha256": "52afea0cb343cba4e0b17f15083174086385a6d692ce4c969b92d464e647d9a3"
-        },
-        {
-          "path": "/mnt/ultimatefish/compositional-transitions-v4-source/ultimate_ghost_penguin_compositional_v4_linux",
+          "path": "/mnt/ultimatefish/recovery-binaries-after-stop-v1/penguin",
           "sha256": "999ce0cc34ea4583b1b15f64df69af3bb0b3743981352cf126bc906bc84faf55"
+        },
+        {
+          "path": "/mnt/ultimatefish-penguin/opposed-kghostkpenguin-fresh-v5/work/transitions-ready.json",
+          "sha256": "fa166c7347e4751bb234b21b24e5fcc81895f01926042223a1e5ba03b3116938"
         }
       ],
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish-penguin/opposed-kghostkpenguin-fresh-v5/work/logs/self-test.log",
+          "path": "/mnt/ultimatefish-penguin/opposed-kghostkpenguin-fresh-v5/work/logs/resume-after-stop-v1.log",
           "max_bytes": 4096
         },
         {
           "kind": "journal",
-          "unit": "ultimatefish-info-kghostkpenguin-fresh-v5.service",
+          "unit": "ultimatefish-info-kghostkpenguin-resume-after-stop-v2.service",
           "max_bytes": 4096
         }
       ],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "sources/wrappers/sha256/cac389df75fd0777628c06d4758aa6107fd009e8d3930a64820d7df196c571bc/ultimatefish-resume-kghostkpenguin-after-stop-v1.sh",
+          "version_id": "A0Fkz6XOdYBHNtxc2OVk4UcXKVYSgszI",
+          "sha256": "cac389df75fd0777628c06d4758aa6107fd009e8d3930a64820d7df196c571bc",
+          "size": 3082
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "sources/binaries/sha256/999ce0cc34ea4583b1b15f64df69af3bb0b3743981352cf126bc906bc84faf55/ultimate_ghost_penguin_compositional_v3_linux",
+          "version_id": "iV6sa521yjXCjpVSkOLaOxgCqvt9MHqM",
+          "sha256": "999ce0cc34ea4583b1b15f64df69af3bb0b3743981352cf126bc906bc84faf55",
+          "size": 757712
+        }
+      ]
     },
     {
       "id": "penguin-ghost-same-exact",
@@ -17489,13 +17562,13 @@
       }
     },
     {
-      "id": "remap-fix-opposed-knight-ghost-solve-v11",
+      "id": "remap-fix-opposed-knight-ghost-resume-after-stop-v2",
       "ledger_files": [
         "kknightkghost.uftb"
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-info-remap-fix-v1-kknightkghost-solve-v11.service",
+      "unit": "ultimatefish-info-kknightkghost-resume-after-stop-v2.service",
       "expected_allowed_cpus": "0",
       "dependencies": [],
       "checkpoint_paths": [
@@ -17509,35 +17582,35 @@
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v1/kknightkghost-fresh-v8/work/logs/solve.log",
+          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v1/kknightkghost-fresh-v8/work/logs/resume-after-stop-v2.log",
           "max_bytes": 4096
         },
         {
           "kind": "journal",
-          "unit": "ultimatefish-info-remap-fix-v1-kknightkghost-solve-v11.service",
+          "unit": "ultimatefish-info-kknightkghost-resume-after-stop-v2.service",
           "max_bytes": 2048
         }
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/remap-fix-v1-source/src/ultimate/tablebases/ghost_dragon_information_solver.cpp",
-          "sha256": "ca679a7817bf03160f9fe9c53335aea6e82b5b653a0501b850b5168d45705900"
+          "path": "/mnt/ultimatefish/recovery-wrappers-after-stop-v1/knight-v2.sh",
+          "sha256": "c14bbf4fec073696fea230f338c582c1d20fda6c6e7e5b7a51745e5ebafc6ae3"
         },
         {
-          "path": "/mnt/ultimatefish/remap-fix-v1-source/tools/tablebases/run_ultimate_ghost_ordinary_aws.py",
-          "sha256": "ee805e9dc7f9c24c36b9dbd8cab172eed5dc9af574e75fc3df69b8acb1e29d44"
+          "path": "/mnt/ultimatefish/knight-resume-build-v1/source.tar.gz",
+          "sha256": "0343a2ce487c4e4fd113451b691fd6b03a7698f372f855d008dee84c3cbd9856"
         },
         {
-          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v1/kknightkghost-fresh-v8/ultimate_ghost_ordinary_information_tablebase",
-          "sha256": "99f700f88cbfc1b28e887516a905f0f15f18597f041befc317e02bfe2015a224"
+          "path": "/mnt/ultimatefish/knight-resume-build-v1/ultimate_ghost_knight_resume_v1_linux",
+          "sha256": "b3cb47f867790ae392ca5fcf0bbabbc4b206bce4bdfdd66e915e3e7629cc273a"
         },
         {
           "path": "/mnt/ultimatefish-penguin/info-remap-fix-v1/kknightkghost-fresh-v8/work/transitions-ready.json",
           "sha256": "32c81f2b49a53efdc804260e852713b467fe4f6f4b2e0407d33f811b673819b2"
         },
         {
-          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v1/launchers/ultimatefish-run-kknightkghost-remap-fix-solve-v11.sh",
-          "sha256": "82ed8ccdc547af180462c8ad613c254f8ae93ace82030f8bccfd9d80c55401d4"
+          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v1/kknightkghost-fresh-v8/work/self-test/kknightkghost.normalized.uftb",
+          "sha256": "bec485f07ea2a1b9165877375d70f21ff1b1408c0278baebfb6ae978e843640d"
         }
       ],
       "s3_certificates": [
@@ -17554,6 +17627,27 @@
           "version_id": "2yeaJh1hGAzByJ6gsKHvbWsyeo162vpB",
           "sha256": "82ed8ccdc547af180462c8ad613c254f8ae93ace82030f8bccfd9d80c55401d4",
           "size": 2198
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "sources/bundles/sha256/0343a2ce487c4e4fd113451b691fd6b03a7698f372f855d008dee84c3cbd9856/ultimatefish-compositional-transitions-v5.tar.gz",
+          "version_id": "QdBG6EaSlckJI_v1rCztxgmbr0fOYW0L",
+          "sha256": "0343a2ce487c4e4fd113451b691fd6b03a7698f372f855d008dee84c3cbd9856",
+          "size": 160638
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "sources/binaries/sha256/b3cb47f867790ae392ca5fcf0bbabbc4b206bce4bdfdd66e915e3e7629cc273a/ultimate_ghost_knight_resume_v1_linux",
+          "version_id": "UxmpVebDGCf7857j5Sw5RQBM.20vLzWe",
+          "sha256": "b3cb47f867790ae392ca5fcf0bbabbc4b206bce4bdfdd66e915e3e7629cc273a",
+          "size": 756936
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "sources/wrappers/sha256/c14bbf4fec073696fea230f338c582c1d20fda6c6e7e5b7a51745e5ebafc6ae3/ultimatefish-resume-kknightkghost-after-stop-v2.sh",
+          "version_id": "Mz.oo027lys51FkpVdkpe7NcjK2aympl",
+          "sha256": "c14bbf4fec073696fea230f338c582c1d20fda6c6e7e5b7a51745e5ebafc6ae3",
+          "size": 3279
         }
       ]
     },
@@ -18043,13 +18137,13 @@
       ]
     },
     {
-      "id": "remap-fix-v2-opposed-turtle-ghost-compositional-v4",
+      "id": "remap-fix-v2-opposed-turtle-ghost-resume-after-stop-v1",
       "ledger_files": [
         "kturtlekghost.uftb"
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-info-kturtlekghost-compositional-v4.service",
+      "unit": "ultimatefish-info-kturtlekghost-resume-after-stop-v1.service",
       "expected_allowed_cpus": "23",
       "resource_requirements": {
         "cpu_threads": 1,
@@ -18073,22 +18167,22 @@
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v2/kturtlekghost-fresh-v1/work/logs/compositional-merge-solve-v4.log",
+          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v2/kturtlekghost-fresh-v1/work/logs/resume-after-stop-v1.log",
           "max_bytes": 4096
         }
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/turtle-compositional-v4-source/ultimatefish-resume-kturtlekghost-compositional-v4.sh",
-          "sha256": "8ef11f46b27ae16b90240753a62bd2691b60dbe255c23ada30938c8ecacac494"
+          "path": "/mnt/ultimatefish/recovery-wrappers-after-stop-v1/turtle.sh",
+          "sha256": "f9336f549f302395b4101a82308bf6f21cbd792281ac4bff221dccfe9c1e5f8d"
         },
         {
-          "path": "/mnt/ultimatefish/compositional-transitions-v5-source/source.tar.gz",
-          "sha256": "0343a2ce487c4e4fd113451b691fd6b03a7698f372f855d008dee84c3cbd9856"
-        },
-        {
-          "path": "/mnt/ultimatefish/compositional-transitions-v5-source/ultimate_ghost_turtle_compositional_v5_linux",
+          "path": "/mnt/ultimatefish/recovery-binaries-after-stop-v1/turtle",
           "sha256": "c073ee36e7d6ef2811849a6b1f77a15618c1ab893f750045fcf32b34d08cf852"
+        },
+        {
+          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v2/kturtlekghost-fresh-v1/work/self-test/kturtlekghost.normalized.uftb",
+          "sha256": "85b8d05decef63632f5fff6127288ff2b2a306d07afe5f3b144bed236fb5f2a0"
         },
         {
           "path": "/mnt/ultimatefish-penguin/info-remap-fix-v2/kturtlekghost-fresh-v1/work/transitions-ready.json",
@@ -18120,6 +18214,13 @@
           "version_id": "TfUboUB2eeo3tUAsW.yPavzR9kYwdEaR",
           "sha256": "8ef11f46b27ae16b90240753a62bd2691b60dbe255c23ada30938c8ecacac494",
           "size": 4825
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "sources/wrappers/sha256/f9336f549f302395b4101a82308bf6f21cbd792281ac4bff221dccfe9c1e5f8d/ultimatefish-resume-kturtlekghost-after-stop-v1.sh",
+          "version_id": "tG36lA5dpm8PoSnpJ4KMh.3swETWQUld",
+          "sha256": "f9336f549f302395b4101a82308bf6f21cbd792281ac4bff221dccfe9c1e5f8d",
+          "size": 3356
         }
       ]
     },
@@ -18940,13 +19041,13 @@
       ]
     },
     {
-      "id": "remap-fix-v2-opposed-rook-ghost-source-order-solve-v6",
+      "id": "remap-fix-v2-opposed-rook-ghost-resume-after-stop-v7",
       "ledger_files": [
         "krookkghost.uftb"
       ],
       "ledger_certifies": true,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-info-krookkghost-source-order-v6.service",
+      "unit": "ultimatefish-info-krookkghost-resume-after-stop-v7.service",
       "expected_allowed_cpus": "19",
       "resource_requirements": {
         "cpu_threads": 1,
@@ -18969,22 +19070,22 @@
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v2/krookkghost-fresh-v1/work/logs/solve.log",
+          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v2/krookkghost-fresh-v1/work/logs/resume-after-stop-v7.log",
           "max_bytes": 4096
         }
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/source-order-v6-rook-a26d3665/ultimatefish-solve-krookkghost-source-order-v6.sh",
-          "sha256": "41ea1e9e0f554b8a5bd6b8524782e0f12a4d490025c8c0644585650bebe7634d"
+          "path": "/tmp/ultimatefish-resume-krookkghost-after-stop-v7.sh",
+          "sha256": "f9bc88bf7d0741ab1d5a1cb98e4371e881788e68e375c0a3723acd01c4644c95"
         },
         {
-          "path": "/mnt/ultimatefish/source-order-v6-rook-a26d3665/source.tar.gz",
-          "sha256": "a26d3665f7f07215f18d9b831f7178b18e0b46e5346dbd47116a10e88ec06064"
-        },
-        {
-          "path": "/mnt/ultimatefish/source-order-v6-rook-a26d3665/ultimate_ghost_rook_source_order_v6_linux",
+          "path": "/mnt/ultimatefish/recovery-binaries-after-stop-v1/rook",
           "sha256": "cd15f2ee785be750f86b68d10832ca3fbcc5f405b9f3e5a21fd6489a44a3fda1"
+        },
+        {
+          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v2/krookkghost-fresh-v1/work/self-test-source-order-v6/krookkghost.normalized.uftb",
+          "sha256": "790d422dd9b80c916a9752b22ec4fe2a9e87c8bccce23c7179155366513a3785"
         },
         {
           "path": "/mnt/ultimatefish-penguin/info-remap-fix-v2/krookkghost-fresh-v1/work/transitions-ready.json",
@@ -19012,6 +19113,13 @@
           "version_id": "1Fy22F9anW0jTXK8FSSvOI9UqYnXQ5Yx",
           "sha256": "41ea1e9e0f554b8a5bd6b8524782e0f12a4d490025c8c0644585650bebe7634d",
           "size": 6413
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "sources/wrappers/sha256/f9bc88bf7d0741ab1d5a1cb98e4371e881788e68e375c0a3723acd01c4644c95/ultimatefish-resume-krookkghost-after-stop-v7.sh",
+          "version_id": "d3.uJnCl3HcETmeKPFHUQKOmufNjELW4",
+          "sha256": "f9bc88bf7d0741ab1d5a1cb98e4371e881788e68e375c0a3723acd01c4644c95",
+          "size": 3308
         }
       ]
     },
@@ -19469,13 +19577,13 @@
       ]
     },
     {
-      "id": "source-order-opposed-queen-ghost-solve-v8",
+      "id": "source-order-opposed-queen-ghost-resume-after-stop-v9",
       "ledger_files": [
         "kqueenkghost.uftb"
       ],
       "ledger_certifies": false,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-info-kqueenkghost-source-order-v8.service",
+      "unit": "ultimatefish-info-kqueenkghost-resume-after-stop-v9.service",
       "expected_allowed_cpus": "14",
       "resource_requirements": {
         "cpu_threads": 1,
@@ -19486,7 +19594,7 @@
       },
       "dependencies": [],
       "checkpoint_paths": [
-        "/mnt/ultimatefish-penguin/info-remap-fix-v2/kqueenkghost-fresh-v1/work/logs/solve-source-order-v8.log",
+        "/mnt/ultimatefish-penguin/info-remap-fix-v2/kqueenkghost-fresh-v1/work/logs/resume-after-stop-v9.log",
         "/mnt/ultimatefish-penguin/info-remap-fix-v2/kqueenkghost-fresh-v1/work/queen-v7-resume-expanded.sha256",
         "/mnt/ultimatefish-penguin/info-remap-fix-v2/kqueenkghost-fresh-v1/work/solve-source-order-v7/*"
       ],
@@ -19498,7 +19606,7 @@
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v2/kqueenkghost-fresh-v1/work/logs/solve-source-order-v8.log",
+          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v2/kqueenkghost-fresh-v1/work/logs/resume-after-stop-v9.log",
           "max_bytes": 4096
         },
         {
@@ -19514,16 +19622,16 @@
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/source-order-v7-queen-7cb5a18a/ultimatefish-resume-kqueenkghost-source-order-v8.sh",
-          "sha256": "e5f58d7f0ac005a9da10a683cc248150aa5e551026fd020e669a01bd4688d54d"
+          "path": "/tmp/ultimatefish-resume-kqueenkghost-after-stop-v9.sh",
+          "sha256": "c8975e14163f7571bd9d7abe9b5ceb0eff6017b0778f59a05094768fe8737802"
         },
         {
-          "path": "/mnt/ultimatefish/source-order-v7-queen-7cb5a18a/source.tar.gz",
-          "sha256": "7cb5a18a5f93a320101365eaaf66125ee0b878c7a99958ddd45cc22e945563ae"
-        },
-        {
-          "path": "/mnt/ultimatefish/source-order-v7-queen-7cb5a18a/ultimate_ghost_queen_resume_v7_ordinary_linux",
+          "path": "/mnt/ultimatefish/recovery-binaries-after-stop-v1/queen",
           "sha256": "4d33dec7ac7352e1447ae4afc1d7b92d6edc762c0ca3e178fadc4aac4c12a03b"
+        },
+        {
+          "path": "/mnt/ultimatefish-penguin/info-remap-fix-v2/kqueenkghost-fresh-v1/tablebases/kqueenkghost.uftb",
+          "sha256": "30fa9eb2a4d9519b44c2f5d2ce6406acd323ccc41898cf7b233120718f97126d"
         },
         {
           "path": "/mnt/ultimatefish-penguin/info-remap-fix-v2/kqueenkghost-fresh-v1/work/queen-v7-resume-expanded.sha256",
@@ -19558,6 +19666,13 @@
           "version_id": "WxnZuM9HYqwvK4MFGo9IjTs2A9_8eto3",
           "sha256": "a26d3665f7f07215f18d9b831f7178b18e0b46e5346dbd47116a10e88ec06064",
           "size": 698027
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "sources/wrappers/sha256/c8975e14163f7571bd9d7abe9b5ceb0eff6017b0778f59a05094768fe8737802/ultimatefish-resume-kqueenkghost-after-stop-v9.sh",
+          "version_id": "Jwsqz2elNHONcSarqXPUGw16B7jNbAto",
+          "sha256": "c8975e14163f7571bd9d7abe9b5ceb0eff6017b0778f59a05094768fe8737802",
+          "size": 2990
         }
       ]
     },

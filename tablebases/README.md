@@ -274,15 +274,22 @@ generated exclusively from the canonical ledger below by
 > sha256:3e7c664b5c16541c6844b9b9c46a768ec94c42e6fc65381ae46f0a5c318e2246,
 > VersionId `FhQAJX9Q6w77O5XteZUCt77T9EmcrtLd`.
 
-> **Current AWS fleet audit (2026-08-20 13:47 PDT / 20:47 UTC):** the
-> fail-closed supervisor completed across all five hosts with no EC2, SSM, S3,
-> source-binding, ledger-status, CPU-overlap, or blocked-job errors. The latest
-> complete interval measured 34.222 busy vCPUs out of 160 (21.4%): 16.458 on
-> i0b, 8.855 on i03, 3.968 on i024, 1.968 on i08, and 2.973 on i098.
-> Low utilization remains chiefly the serial merge/fixed-point architecture;
-> jobs are admitted by live RAM and disk headroom rather than CPU idleness
-> alone. The ledger has 26 **COMPUTING** rows, one **PRESERVING** row, and no
-> **BLOCKED** rows.
+> **Current AWS fleet audit (2026-08-20 14:17 PDT / 21:17 UTC):** i03 was
+> externally stopped with EC2 reason `User initiated` at about 21:04 UTC. Its
+> 500-GB `ufpenguin` EBS volume and all concrete Jester/Angel inputs survived;
+> the stop erased the documented 1.9-TB instance-store scratch volume. After
+> restart, the EBS UUID/serial were checked and remounted at
+> `/mnt/ultimatefish-penguin`, and only the explicitly blank instance-store
+> device was reformatted and mounted at `/mnt/ultimatefish`. The supervisor
+> now reports the interrupted transient i03 jobs as failed/source-missing
+> pending authenticated recovery rather than pretending they are advancing.
+> The other four hosts remained live. A comparable whole-fleet utilization
+> interval is not yet available after the reboot; the first incomplete sample
+> measured 25.717/160 busy vCPUs, while the two restarted Jester/Angel jobs
+> independently sustained up to sixteen i03 CPUs. The ledger still has 26
+> **COMPUTING** rows and one **PRESERVING** row; certified S3 results remain
+> certified even when their retired local source copies disappeared with the
+> scratch device.
 > The newly unblocked opposed Pawn/Berserker run used all eight assigned CPUs
 > during its parallel forward and reverse scans, finished 759,158,400 states
 > and 20,524,848,981 edges with verification residual zero, then passed an
@@ -294,10 +301,16 @@ generated exclusively from the canonical ledger below by
 > that Angel's relationship-aware transition serializer omitted the next
 > mover's private legal-dot channel: opposed reached an inconsistent lower
 > Jester pair, while same-side retained two worlds whose root pair IDs were
-> both `-1`. The serializer now appends the authenticated `nextDecision` view,
-> the index-492966 private-dot split is a same/opposed regression, and fresh v2
-> overlays are active on i03 CPUs 3 and 4 under model
-> sha256:bd3a0c5fbab17f460cc90903a3374e528b86103329df0563c3c3d15767bfbb1f.
+> both `-1`. The serializer now appends the authenticated `nextDecision` view.
+> The graph-node frontier and pair equations are block-parallel under v3 model
+> sha256:5582d014c827845df5eb658078ad0be8f367b9fde087bf22509e673fdfd23c66,
+> from deterministic 16-file bundle sha256:20db30fcf7fd2dbc19bbbd1a1a860c3b06765551150ef8b0736b78d15b2dfe97
+> VersionId `XJuPcn2ij3cr2OWIApeI0B9ORQP.Z5WJ`. A complete one-worker/eight-worker
+> K+Jester cross-check produced byte-identical sha256:b8aeceb739780ae9ab74c82cc476478c53d2e4296dd91010b073b9d6c46ee7f9,
+> exactly matching the certified lower overlay with zero Bellman/rank
+> residuals. At 21:17 UTC the opposed and same graphs were respectively at
+> 4,500,000/36,314,432 and 2,900,000/52,074,176 pairs, about 7.5-8.8 times the
+> old serial graph rate, on disjoint eight-CPU masks.
 > Ten current jobs that previously exposed only systemd state now have bounded
 > file/journal diagnostics. Response compaction sheds active checkpoint
 > aggregates first, retains diagnostic status and sample hashes, and preserves
@@ -621,7 +634,7 @@ generated exclusively from the canonical ledger below by
 > records a newer unit or a non-running status.
 
 <!-- COMPUTATION_LEDGER_START -->
-Ledger totals: **444 certified**, **1 preserving**, **26 computing**, **47 exact draws**, **2 planned**, **0 blocked**, and **104 deferred**; 624 unique material classes.
+Ledger totals: **446 certified**, **1 preserving**, **24 computing**, **47 exact draws**, **2 planned**, **0 blocked**, and **104 deferred**; 624 unique material classes.
 
 | Key | Class | Domain | File | Status | Indexed states | Result domain | First starts W / L / D | Second starts W / L / D | Reachable / unreachable (first; second) | Canonical storage |
 | --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | --- |
@@ -670,7 +683,7 @@ Ledger totals: **444 certified**, **1 preserving**, **26 computing**, **47 exact
 | `same:jester+checker` | King+Jester+Checker vs King | same | `kjestercheckerk.uftb` | **CERTIFIED** | 151,831,680 | information v2 | 31,055,752 (7,744,856) / 0 (3,153,552) / 0 (33,961,680) | 326,443 / 31,972,189 (6,902,168) / 5,659,288 (31,055,752) | 31,055,752 / 44,860,088; 37,957,920 / 37,957,920 | S3 information archive sha256:4be02ec360751350f94e54cf327e44fb65df02957d303787d1e87a8cad4b61ba VersionId x8iSCbqmyQKVL9Z3lHSgQIKUlgKqjb0d; certificate sha256:7107f8a80d6edb0707fd80309310a557477d021df48811f252c8b2340cd4ad1f VersionId TU9P5HDbtvHiB1_Uf09Pa05GKafK1MLg |
 | `same:jester+giant` | King+Jester+Giant vs King | same | `kjestergiantk.uftb` | **CERTIFIED** | 37,957,920 | information v2 | 9,347,536 (3,939,164) / 0 / 0 (5,692,260) | 260,316 / 11,300,932 / 1,725,452 (5,692,260) | 9,347,536 / 9,631,424; 13,286,700 / 5,692,260 | S3 information archive sha256:465748d3658d0d899fe107ca94864b4fca6cd6ac27d9f8ad0a0ace0023e49a52 VersionId DKOqUaJDqnZthHXHZ_fIWKfL6j1qQB0p; certificate sha256:dcfd5627b4baadd75cecf80293037e92c067d14bfab563516d203a0945fe120d VersionId At6IWH72LNtfnkwSirSWgjQVdg.dcOm4 |
 | `same:jester+copycat` | King+Jester+Copycat vs King | same | `kcopycatjesterk.uftb` | **CERTIFIED** | 75,915,840 | information v2 | 25,893,408 (10,623,072) / 0 / 0 (1,441,440) | 657,112 / 33,403,112 / 2,456,256 (1,441,440) | 25,893,408 / 12,064,512; 36,516,480 / 1,441,440 | S3 information archive sha256:313e11fb19d643b072e92acb54d11ccddc7b92692f6c2b44fc489ebf7c7338a3 VersionId milQX8s6nAizS48Gm8lhgc3HBanXVtD0; certificate sha256:37f49d86a01e58f3987436b3852083add9070e3c67dc171a6f5e90c8263eeb0b VersionId YzeeGeGa9wyn9wAKG8U.bJrhMx8TaAI6 |
-| `same:jester+angel` | King+Jester+Angel vs King | same | `kjesterangelk.uftb` | **COMPUTING** | 113,873,760 | information required | — | — | — | Exact v9 source graph completed in 84.0188 seconds with 1,083,519,408 edges, win/loss/draw 60,156,096/50,814,456/2,903,208, verification residual zero, and logical sha256:0c52518058082de282fe2e3dbaec3b507dd091ba4dea7076740ddaaf853d2da9. Its S3-restored archive is sha256:a9aab6f73aa59599bde15c2691cc92d3c8a67238b65618409b7fa8fdd78dee17 VersionId `xo5ZIZTTmrUkSf3hXlfnmEqMxqDfZVJ1`. The first information run failed closed after its Angel transition key grouped two legal-dot-refined singleton worlds as a pair (`pair -1` in both). The corrected relationship-aware key now carries the next mover's private `nextDecision` observation and passes the index-492966 split regression in both orientations. Fresh v2 unit `ultimatefish-info-kjesterangelk-v2` is active on i03 CPU 3 under 96/112-GiB controls from deterministic source bundle sha256:a76ecfa97eddfc788fa3008124d17b7f017c8e85eae0533aae728f3c9ab54814 VersionId `8Q2gEs4aobJ7PeY7NB05YrJNJHLQzJuN`, binary sha256:6290e46bb86d5c1d35efb1731ab9d24314325e0dab6d47b31382f59c7610e359, and information model sha256:bd3a0c5fbab17f460cc90903a3374e528b86103329df0563c3c3d15767bfbb1f. At 20:40 UTC it had reached 7,000,000 pairs and source index 8,982,672/113,873,760 with about 743 MB cgroup memory. The failed v1 tree and log remain retained and non-certifying. |
+| `same:jester+angel` | King+Jester+Angel vs King | same | `kjesterangelk.uftb` | **CERTIFIED** | 113,873,760 | information v2 | 47,657,148 (9,279,732) / 0 / 0 | 251,944 / 50,814,456 / 5,870,480 | 47,657,148 / 9,279,732; 56,936,880 / 0 | S3 information archive sha256:6a9fa1cb3be32b881c1f1d3f68eba84a0ef5221a38c92020c8e2436738f7f7ac VersionId V343loE_urhguZR1JTE12lZZAla.TS00; certificate sha256:e96aeab184afaca44577414eb293f48062bec8de47e6996dfa0154ddc7046513 VersionId hAWYLibnjGo1D5kswkBQ0bQfoelW987i |
 | `same:jester+fisherman` | King+Jester+Fisherman vs King | same | `kjesterfishermank.uftb` | **CERTIFIED** | 37,957,920 | information v2 | 15,885,716 (3,093,244) / 0 / 0 | 125,972 / 15,952,244 / 2,900,744 | 15,885,716 / 3,093,244; 18,978,960 / 0 | S3 information archive sha256:465748d3658d0d899fe107ca94864b4fca6cd6ac27d9f8ad0a0ace0023e49a52 VersionId DKOqUaJDqnZthHXHZ_fIWKfL6j1qQB0p; certificate sha256:dcfd5627b4baadd75cecf80293037e92c067d14bfab563516d203a0945fe120d VersionId At6IWH72LNtfnkwSirSWgjQVdg.dcOm4 |
 | `same:jester+dragon` | King+Jester+Dragon vs King | same | `kjesterdragonk.uftb` | **CERTIFIED** | 37,957,920 | information v2 | 12,877,956 (6,101,004) / 0 / 0 | 431,414 / 17,350,088 / 1,197,458 | 12,877,956 / 6,101,004; 18,978,960 / 0 | S3 information archive sha256:465748d3658d0d899fe107ca94864b4fca6cd6ac27d9f8ad0a0ace0023e49a52 VersionId DKOqUaJDqnZthHXHZ_fIWKfL6j1qQB0p; certificate sha256:dcfd5627b4baadd75cecf80293037e92c067d14bfab563516d203a0945fe120d VersionId At6IWH72LNtfnkwSirSWgjQVdg.dcOm4 |
 | `same:knight+knight` | King+2 Knights vs King | same | `kknightknightk.uftb` | **CERTIFIED** | 18,978,960 | concrete | 360 (1,964,462) / 0 / 7,524,658 | 0 (804,804) / 68 / 8,684,608 | 7,525,018 / 1,964,462; 8,684,676 / 804,804 | S3 legacy archive sha256:e296deebc6d0f4ef2c53e14eab86fd1c2bbc9954a6051ffca5ce7b9623b08263 VersionId YTpSbC_DShKsF8QwShKRSIBUVf8PH0VJ; preservation certificate sha256:1232600dfdc1be8be002701245e6523bfde8334dd4594c8241429a88b5cd825d VersionId 5hp3sJXKSZLcNwkzKEcs8AXrYuGea3RY; reachability v2 sha256:52887f4e29eab71e92dd0aaec2019f4a5a3f59b8010ad4d4de7f0816559f889a VersionId dnNKI2aUC80gBjlcQWpvjNLGrcmH0fen |
@@ -970,7 +983,7 @@ Ledger totals: **444 certified**, **1 preserving**, **26 computing**, **47 exact
 | `opposed:jester+checker` | King+Jester vs King+Checker | opposed | `kjesterkchecker.uftb` | **CERTIFIED** | 151,831,680 | information v2 | 31,771,432 (6,186,488) / 0 (3,981,336) / 0 (33,976,584) | 404,122 (842,688) / 30,510,410 (5,995,864) / 7,043,388 (31,119,368) | 31,771,432 / 44,144,408; 37,957,920 / 37,957,920 | S3 information archive sha256:5e517cb12ed39a57143b5ed281d33edf334a470a5ecab90a3802ec4e42b54a61 VersionId Y6IAws9rsMYyhpydNzHhTlAHd_wVXMNl; certificate sha256:e730d7230b179cf3d1f4812291ad31bab7a9c73bec6f111ecdae85d794d20977 VersionId ZJwajqCsNlBtbf0B0PCcBCcTroo99mul |
 | `opposed:jester+giant` | King+Jester vs King+Giant | opposed | `kjesterkgiant.uftb` | **CERTIFIED** | 37,957,920 | information v2 | 10,988,108 (2,193,308) / 32 / 105,252 (5,692,260) | 516,144 / 7,775,374 / 4,995,182 (5,692,260) | 11,093,392 / 7,885,568; 13,286,700 / 5,692,260 | S3 information archive sha256:465748d3658d0d899fe107ca94864b4fca6cd6ac27d9f8ad0a0ace0023e49a52 VersionId DKOqUaJDqnZthHXHZ_fIWKfL6j1qQB0p; certificate sha256:dcfd5627b4baadd75cecf80293037e92c067d14bfab563516d203a0945fe120d VersionId At6IWH72LNtfnkwSirSWgjQVdg.dcOm4 |
 | `opposed:jester+copycat` | King+Jester vs King+Copycat | opposed | `kcopycatkjester.uftb` | **CERTIFIED** | 75,915,840 | information v2 | 13,451,688 / 355,480 / 22,709,312 (1,441,440) | 9,262,160 (5,955,168) / 0 / 21,299,152 (1,441,440) | 36,516,480 / 1,441,440; 30,561,312 / 7,396,608 | S3 information archive sha256:74f04b912f6d6261c3ddc183f6a5dd58f43dbc2b682545cba73c4f9473bf7f65 VersionId LbFNB.TV.CnUlvJialCImd6s0m2TwjYX; certificate sha256:53d9234c2fb54dfaaa0be7885e6cc4bc77af06f35847c33949d31adbcb5a95f6 VersionId 9KbUPkprlvNO.s8M.XDAc1b8mjJMH73h |
-| `opposed:jester+angel` | King+Jester vs King+Angel | opposed | `kjesterkangel.uftb` | **COMPUTING** | 75,915,840 | information required | — | — | — | Exact v9 source graph completed in 41.493 seconds with 734,490,080 edges, win/loss/draw 28,875,292/15,534,710/31,505,838, verification residual zero, and logical sha256:eb4d6890acfaa8f3dc1429f94868206e0405c92f3dd4d36a91549d932f310718. Its S3-restored archive is sha256:6d15ba5a97271fddf1668fdb2cb5e96094d39c6c82f4348ce05bea6a35ac3c5f VersionId `fDbTfFgbotfRmIl0_heZU6k0jisUidJ6`. The first information run completed its 75,915,840-state frontier and then failed closed because one lower Jester pair carried inconsistent uninformed-side flags. The same missing `nextDecision` channel caused that pair to survive despite distinct private legal dots. Fresh v2 unit `ultimatefish-info-kjesterkangel-v2` is active on i03 CPU 4 under 80/96-GiB controls from deterministic source bundle sha256:a76ecfa97eddfc788fa3008124d17b7f017c8e85eae0533aae728f3c9ab54814 VersionId `8Q2gEs4aobJ7PeY7NB05YrJNJHLQzJuN`, binary sha256:6290e46bb86d5c1d35efb1731ab9d24314325e0dab6d47b31382f59c7610e359, and information model sha256:bd3a0c5fbab17f460cc90903a3374e528b86103329df0563c3c3d15767bfbb1f. At 20:40 UTC it had reached 7,000,000 pairs and source index 8,508,352/75,915,840 with about 507 MB cgroup memory. The failed v1 tree and log remain retained and non-certifying. |
+| `opposed:jester+angel` | King+Jester vs King+Angel | opposed | `kjesterkangel.uftb` | **CERTIFIED** | 75,915,840 | information v2 | 22,519,462 (3,093,244) / 0 / 12,345,214 | 125,972 / 15,518,030 / 22,313,918 | 34,864,676 / 3,093,244; 37,957,920 / 0 | S3 information archive sha256:d2337ca267697790ff854744a8de9877a6a733a805b5eb75d293738886c074ca VersionId ItTwp9vjpYEMyp7b79klFN3GiGBzpEFn; certificate sha256:83475c0d2ba81af9df246cd2b187cc06b24b564a6d6a1c47d6cfe9e15ac5107a VersionId M5LV10OOesWPgtJS8SQ9NnrtQNNiCPvN |
 | `opposed:jester+fisherman` | King+Jester vs King+Fisherman | opposed | `kjesterkfisherman.uftb` | **CERTIFIED** | 37,957,920 | information v2 | 2,499,754 (3,093,244) / 0 / 13,385,962 | 125,972 / 11,842 / 18,841,146 | 15,885,716 / 3,093,244; 18,978,960 / 0 | S3 information archive sha256:465748d3658d0d899fe107ca94864b4fca6cd6ac27d9f8ad0a0ace0023e49a52 VersionId DKOqUaJDqnZthHXHZ_fIWKfL6j1qQB0p; certificate sha256:dcfd5627b4baadd75cecf80293037e92c067d14bfab563516d203a0945fe120d VersionId At6IWH72LNtfnkwSirSWgjQVdg.dcOm4 |
 | `opposed:jester+dragon` | King+Jester vs King+Dragon | opposed | `kjesterkdragon.uftb` | **CERTIFIED** | 37,957,920 | information v2 | 2,493,996 (3,093,244) / 6,688,516 / 6,703,204 | 15,063,608 / 5,426 / 3,909,926 | 15,885,716 / 3,093,244; 18,978,960 / 0 | S3 information archive sha256:465748d3658d0d899fe107ca94864b4fca6cd6ac27d9f8ad0a0ace0023e49a52 VersionId DKOqUaJDqnZthHXHZ_fIWKfL6j1qQB0p; certificate sha256:dcfd5627b4baadd75cecf80293037e92c067d14bfab563516d203a0945fe120d VersionId At6IWH72LNtfnkwSirSWgjQVdg.dcOm4 |
 | `opposed:knight+knight` | King+Knight vs King+Knight | opposed | — | **DRAW** | — | insufficient material | 0 / 0 / 1 | 0 / 0 / 1 | closed-form draw | — |
