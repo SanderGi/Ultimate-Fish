@@ -34,6 +34,9 @@ Exact::TransitionOptions transition_options(Exact::Orientation orientation,
     Exact::TransitionOptions options;
     options.orientation = orientation;
     options.prefix = prefix;
+    options.sourceSha256 = std::string(64, 'a');
+    options.modelSha256 = std::string(64, 'b');
+    options.observationSha256 = std::string(64, 'c');
     options.lowerBombTable =
       std::filesystem::exists("tablebases/kbombk.uftb")
         ? "tablebases/kbombk.uftb" : "../tablebases/kbombk.uftb";

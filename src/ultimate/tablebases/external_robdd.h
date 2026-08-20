@@ -71,6 +71,10 @@ class ExternalRobdd {
     [[nodiscard]] Id logical_and(Id lhs, Id rhs);
     [[nodiscard]] Id logical_or(Id lhs, Id rhs);
     [[nodiscard]] Id ite(Id condition, Id whenTrue, Id whenFalse);
+    // Exact logical implication without materializing lhs & !rhs.  This is a
+    // read-only structural walk, so proof-only monotonicity checks do not add
+    // nodes to the persistent arena or dirty its mmap.
+    [[nodiscard]] bool implies(Id lhs, Id rhs);
     [[nodiscard]] Id any(std::uint64_t low, std::uint16_t high);
     [[nodiscard]] Id subset_of(std::uint64_t low, std::uint16_t high);
     [[nodiscard]] Id compose(Id root, const std::vector<Id>& image,

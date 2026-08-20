@@ -1,0 +1,15 @@
+{
+  "files": [
+    {
+      "bytes": 1232448,
+      "filename": "kcopycatk.uftb",
+      "sha256": "98dbd354da959fa923ed9b712c1bde7147f2039a9bcf50306cbdc2a9b3098aeb"
+    },
+    {
+      "bytes": 47447464,
+      "filename": "kcopycatlinkedk.uftb",
+      "sha256": "e55924a8b97acedcbc9876b95a23837030d5112a35d2b06ec0cb85ff4ab16dd2"
+    }
+  ],
+  "schema": "ultimate-concrete-k2-dependencies-v2"
+}

@@ -26,6 +26,17 @@ LOWER_DRAGON_SHA256 = (
     "28d3cbeba82d02611a48bf2d0a6a527d11ff4cd3049f04bf2b4b929a05ed86c6")
 LOWER_DRAGON_MODEL_SHA256 = (
     "eecb6c6e76332513628406802e242e5a527ba230ed9ae6aac26b08a853328755")
+# The second fingerprint differs only in the byte-equivalence-certified,
+# read-only v6 verifier scheduler.  The lower artifact remains bound to its
+# original generator model below.
+LOWER_DRAGON_COMPATIBLE_GENERATOR_MODELS = frozenset((
+    LOWER_DRAGON_MODEL_SHA256,
+    "44e8fb58592409485a91811eee2f43e231c634e075a273b57d5b2b5c0de3774d",
+    # Opposed Copycat/Angel-only source expansion; Dragon is unaffected.
+    "7c57b24e12de67e0b0cebd0158b8dafdb141e7d7351c6565ffc7f941ed0dd9e3",
+    # Scheduling-only completed-frontier parallel replay; byte-equivalent.
+    "3295d8a019a00a35df8553ed20270360d2e3afe5b3aef80fdae7fc2779adb7f4",
+))
 FROZEN_FINGERPRINTS = {
     "kbishopghostk.uftb":
         "416f3792dfa0b5f5317a0ee4f8ae91b2a4dd874807d7223c5918dc0b291a2dcf",
@@ -134,7 +145,8 @@ def build_manifest(filename: str) -> dict[str, object]:
         raise RuntimeError("kghostk lower UFGM SHA-256 mismatch")
     if (sha256_bytes(lower_dragon_payload) != LOWER_DRAGON_SHA256 or
             information.concrete_tablebase_model_fingerprint(
-                "kdragonk.uftb") != LOWER_DRAGON_MODEL_SHA256):
+                "kdragonk.uftb") not in
+            LOWER_DRAGON_COMPATIBLE_GENERATOR_MODELS):
         raise RuntimeError("kdragonk lower concrete binding mismatch")
     lower = lower_binding(lower_payload)
     observation = information.observation_model_fingerprint()

@@ -410,6 +410,7 @@ AFFECTED_FILENAMES = (
     "kberserkerghostk.uftb", "kberserkerkghost.uftb",
     "kcopycatghostk.uftb", "kcopycatjesterk.uftb",
     "kcopycatkghost.uftb", "kcopycatkjester.uftb",
+    "kjesterangelk.uftb", "kjesterkangel.uftb",
 )
 
 # Exact source domains currently implemented by the repository.  Keep this
@@ -435,6 +436,7 @@ PRIMARY_JESTER_FILENAMES = (
     "kjestersniperk.uftb", "kjesterksniper.uftb",
     "kjesterprincek.uftb", "kjesterkprince.uftb",
     "kjestercheckerk.uftb", "kjesterkchecker.uftb",
+    "kjesterangelk.uftb", "kjesterkangel.uftb",
     "kcopycatjesterk.uftb", "kcopycatkjester.uftb",
 )
 PRIMARY_JESTER_GIANT_FILENAMES = (
@@ -462,7 +464,7 @@ PRIMARY_JESTER_EXTRA_LOWER_TABLES = {
     "prince": "kprincek.uftb",
 }
 PRIMARY_JESTER_INSUFFICIENT_EXTRAS = frozenset({
-    "knight", "bishop", "turtle", "mage", "fisherman", "checker",
+    "knight", "bishop", "turtle", "mage", "fisherman", "checker", "angel",
 })
 SOLVER_DOMAIN_FILENAMES = {
     "primary-jester": PRIMARY_JESTER_FILENAMES,
@@ -597,11 +599,12 @@ def _planner() -> Any:
 
 def affected_inventory(*, root: Path = ROOT,
                        require_files: bool = True) -> tuple[dict[str, object], ...]:
-    """Return all 84 closed classes whose public view hides Jester or Ghost."""
+    """Return all closed classes whose public view hides Jester or Ghost."""
     # Storage-budget selection was never an epistemic boundary. Enumerate all
     # closed classes and the requested symmetric Copycat catalog explicitly.
     planned = (*_planner().inventory(1 << 60),
-               *_planner().mirror_copycat_candidates())
+               *_planner().mirror_copycat_candidates(),
+               *_planner().angel_candidates())
     selected = tuple(
         dict(record) for record in planned
         if ({str(record["primary"]), str(record["secondary"])}

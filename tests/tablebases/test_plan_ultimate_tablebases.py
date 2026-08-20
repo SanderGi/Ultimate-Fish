@@ -138,6 +138,61 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertEqual(tb.compound_copycat_pair_states(),
                          by_name["kcopycatkcopycat.uftb"]["states"])
 
+    def test_visible_angel_inventory_has_exact_topology_factors(self):
+        records = tb.angel_candidates()
+        self.assertEqual(30, len(records))
+        self.assertEqual(30, len({record["filename"] for record in records}))
+        self.assertTrue(all(record["phase"] in {
+            "kings+2-angel-graph-v1", "kings+2-angel-copycat-graph-v1"}
+                            for record in records))
+        self.assertTrue(all(
+            {record["primary"], record["secondary"]} & {"angel"}
+            for record in records))
+        self.assertFalse(any(
+            ({record["primary"], record["secondary"]} - {"angel"}) &
+            tb.ANGEL_DEFERRED_COMPANIONS
+            for record in records))
+        by_name = {record["filename"]: record for record in records}
+        self.assertEqual(113_873_760, by_name["krookangelk.uftb"]["states"])
+        self.assertEqual(75_915_840, by_name["krookkangel.uftb"]["states"])
+        self.assertEqual(910_990_080,
+                         by_name["kpenguinangelk.uftb"]["states"])
+        self.assertEqual(607_326_720,
+                         by_name["kpenguinkangel.uftb"]["states"])
+        self.assertIn("kangeldragonk.uftb", by_name)
+        self.assertIn("kangelkdragon.uftb", by_name)
+        self.assertEqual(
+            151_831_680, by_name["kcopycatkangel.uftb"]["states"])
+        self.assertEqual(
+            303_663_360, by_name["kcopycatangelk.uftb"]["states"])
+        self.assertEqual(37_957_920, tb.linked_copycat_pair_states())
+        self.assertNotIn("kangelangelk.uftb", by_name)
+        self.assertNotIn("kangelkangel.uftb", by_name)
+        self.assertNotIn("kghostangelk.uftb", by_name)
+        self.assertIn("kjesterangelk.uftb", by_name)
+        self.assertIn("kjesterkangel.uftb", by_name)
+        self.assertEqual(113_873_760,
+                         by_name["kjesterangelk.uftb"]["states"])
+        self.assertEqual(75_915_840,
+                         by_name["kjesterkangel.uftb"]["states"])
+        self.assertFalse(tb.deferred_material("angel", "angel"))
+        self.assertFalse(tb.deferred_material("copycat", "angel"))
+        self.assertFalse(tb.deferred_material(
+            "copycat", "angel", opposing=True))
+
+    def test_one_angel_insufficient_material_is_closed_form(self):
+        pieces = {piece.name: piece for piece in tb.PIECES}
+        angel = pieces["angel"]
+        same_draws = {name for name in ("knight", "turtle", "mage", "fisherman")
+                      if not tb.sufficient_pair(pieces[name], angel, True)}
+        opposed_draws = {name for name in
+                         ("knight", "bishop", "turtle", "mage", "fisherman")
+                         if not tb.sufficient_pair(pieces[name], angel, False)}
+        self.assertEqual({"knight", "turtle", "mage", "fisherman"}, same_draws)
+        self.assertEqual(
+            {"knight", "bishop", "turtle", "mage", "fisherman"},
+            opposed_draws)
+
     def test_stateful_candidate_closures_are_explicit(self):
         candidates = tb.stateful_candidates()
         self.assertTrue(candidates)

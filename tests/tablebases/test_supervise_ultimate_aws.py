@@ -12,6 +12,7 @@ import shlex
 import subprocess
 import tempfile
 import unittest
+import zlib
 from unittest import mock
 
 
@@ -138,6 +139,56 @@ class SupervisionTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "superseded.*advanceable"):
             SUPERVISOR.validate_config(invalid)
 
+    def test_current_queue_rejects_superseded_dependency(self) -> None:
+        invalid = config()
+        invalid["jobs"][0]["superseded_by"] = "replacement"
+        replacement = json.loads(json.dumps(invalid["jobs"][0]))
+        replacement["id"] = "replacement"
+        replacement.pop("superseded_by")
+        replacement["unit"] = "ultimatefish-replacement.service"
+        invalid["jobs"].append(replacement)
+        with self.assertRaisesRegex(
+                RuntimeError,
+                "third depends on superseded first.*replacement"):
+            SUPERVISOR.validate_config(invalid)
+
+    def test_ledger_readme_parser_rejects_conflicting_duplicate_rows(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "README.md"
+            path.write_text(
+                "| `opposed:bomb+ghost` | King+Bomb vs King+Ghost | opposed | "
+                "`kbombkghost.uftb` | **COMPUTING** | 1 | information | — | — | — | — |\n")
+            self.assertEqual(
+                {"kbombkghost.uftb": "COMPUTING"},
+                SUPERVISOR.ledger_readme_statuses(path))
+            path.write_text(path.read_text() + (
+                "| `duplicate` | duplicate | opposed | `kbombkghost.uftb` | "
+                "**PRESERVING** | 1 | information | — | — | — | — |\n"))
+            with self.assertRaisesRegex(RuntimeError, "conflicts"):
+                SUPERVISOR.ledger_readme_statuses(path)
+
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    @mock.patch.object(SUPERVISOR, "ec2_inventory")
+    def test_active_job_with_stale_preserving_ledger_row_fails_closed(
+            self, inventory: mock.Mock, probe: mock.Mock) -> None:
+        inventory.return_value = self.ec2
+        probe.return_value = remote()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "README.md"
+            path.write_text(
+                "| `opposed:bomb+ghost` | King+Bomb vs King+Ghost | opposed | "
+                "`kbombkghost.uftb` | **PRESERVING** | 1 | information | — | — | — | — |\n")
+            document = config()
+            document["ledger_readme"] = str(path)
+            document["jobs"][0]["ledger_files"] = ["kbombkghost.uftb"]
+            output, state = SUPERVISOR.supervise(document, {}, self.now)
+
+        self.assertTrue(output["delegate_sol"])
+        self.assertEqual("error", output["severity"])
+        self.assertEqual(
+            "LEDGER_STATUS", state["report"]["errors"][0]["fleet"])
+        self.assertIn("PRESERVING", state["report"]["errors"][0]["error"])
+
     def test_remote_probe_command_has_no_configured_shell_text(self) -> None:
         definition = config()["instances"][0]
         jobs = config()["jobs"]
@@ -146,7 +197,7 @@ class SupervisionTests(unittest.TestCase):
         self.assertNotIn("ultimatefish-first.service", command)
         self.assertIn("python3 -c", command)
         arguments = shlex.split(command)
-        program = base64.b64decode(arguments[3]).decode()
+        program = zlib.decompress(base64.b64decode(arguments[3])).decode()
         payload = json.loads(base64.b64decode(arguments[4]))
         self.assertIn("sys.argv[2]", program)
         self.assertEqual("first", payload["jobs"][0]["id"])
@@ -312,7 +363,10 @@ class SupervisionTests(unittest.TestCase):
                 record["unit"]["ActiveState"] == "active"
                 and record["checkpoints"] == []
                 and record["completion"] == []
-                and record["diagnostics"] == []
+                and record["diagnostics"][0]["status"] == "ok"
+                and len(record["diagnostics"][0]["tail"])
+                    <= SUPERVISOR.ACTIVE_DIAGNOSTIC_TAIL_BYTES
+                and record["diagnostics"][0]["sha256"]
                 for record in active_records))
             inactive_record = observed["jobs"][-1]
             self.assertTrue(inactive_record["checkpoints"][0]["exists"])
@@ -511,7 +565,9 @@ class SupervisionTests(unittest.TestCase):
         # budget even when the 24 batch records fit in isolation.
         all_jobs_by_host = {}
         for job in document["jobs"]:
-            if not job.get("queue_stage"):
+            if (not job.get("queue_stage") and
+                    not job.get("superseded_by") and
+                    not job.get("s3_only_certified")):
                 all_jobs_by_host.setdefault(job["instance_id"], []).append(job)
         sizes = {instance_id: check_host_payload(instance_id, jobs)
                  for instance_id, jobs in all_jobs_by_host.items()}
@@ -524,7 +580,8 @@ class SupervisionTests(unittest.TestCase):
             jobs = [job for job in document["jobs"]
                     if job["instance_id"] == definition["instance_id"]
                     and not job.get("queue_stage")
-                    and not job.get("superseded_by")]
+                    and not job.get("superseded_by")
+                    and not job.get("s3_only_certified")]
             table, compact_jobs = SUPERVISOR.compact_source_bindings(jobs)
             self.assertLess(
                 len(table),
@@ -546,14 +603,18 @@ class SupervisionTests(unittest.TestCase):
         worst_jobs = [job for job in document["jobs"]
                       if job["instance_id"] == worst["instance_id"]
                       and not job.get("queue_stage")
-                      and not job.get("superseded_by")]
+                      and not job.get("superseded_by")
+                      and not job.get("s3_only_certified")]
         table, _ = SUPERVISOR.compact_source_bindings(worst_jobs)
-        # Completed Copycat batch records and the S3-only Fisherman archive are
-        # retired from live probes; their version-pinned ledger results remain
-        # authoritative.  The Checker frontier resume and high-memory crossed
-        # Jester/Ghost migration and the opposed Checker solve-only resume
-        # contribute their live bindings.
-        self.assertEqual(111, len(table))
+        # Completed and superseded jobs are retired from live probes; their
+        # version-pinned ledger results and retained evidence remain
+        # authoritative.  Only the current high-memory jobs contribute live
+        # i0b bindings after the fleet reconciliation.  The current opposed
+        # Checker recovery now runs on i024, while the Bomb and Ninja solves
+        # bind only their small restored executables, wrappers, and markers
+        # locally and authenticate their large migration archives through S3
+        # instead of the bounded hash table.
+        self.assertEqual(115, len(table))
 
     def test_cpu_allocation_reports_idle_capacity_and_overlap(self) -> None:
         definition = config()["instances"][0]
@@ -657,6 +718,17 @@ class SupervisionTests(unittest.TestCase):
         document["jobs"][0]["expected_allowed_cpus"] = "32"
         with self.assertRaisesRegex(RuntimeError, "expected_allowed_cpus"):
             SUPERVISOR.validate_config(document)
+
+    def test_systemd_space_separated_cpu_ranges_are_canonical(self) -> None:
+        document = config()
+        document["jobs"][0]["expected_allowed_cpus"] = "0-7,9-15"
+        observed = remote()
+        observed["jobs"][0]["unit"]["AllowedCPUs"] = "0-7 9-15"
+        report = SUPERVISOR.cpu_allocation(
+            document["instances"][0], observed, document["jobs"])
+        self.assertEqual({}, report["allocation_mismatches"])
+        self.assertEqual(15, report["active_jobs"]["first"])
+        self.assertEqual([], report["unknown_jobs"])
 
     def test_resource_scheduler_backfills_only_jobs_that_fit(self) -> None:
         document = config()
@@ -810,6 +882,67 @@ class SupervisionTests(unittest.TestCase):
     @mock.patch.object(SUPERVISOR, "head_certificate")
     @mock.patch.object(SUPERVISOR, "local_probe")
     @mock.patch.object(SUPERVISOR, "ec2_inventory")
+    def test_source_only_s3_objects_cannot_certify_ledger_result(
+            self, inventory: mock.Mock, probe: mock.Mock,
+            head: mock.Mock) -> None:
+        document = config()
+        first = document["jobs"][0]
+        first["ledger_files"] = ["first.uftb"]
+        first["ledger_certifies"] = True
+        first["s3_certificates"][0]["key"] = "sources/first-wrapper"
+        inventory.return_value = self.ec2
+        probe.return_value = remote(first="inactive", complete=True)
+        head.return_value = {
+            "bucket": "private", "key": "sources/first-wrapper",
+            "version_id": "v1", "size": 12, "sha256": SHA_B,
+            "exact": True,
+        }
+        output, state = SUPERVISOR.supervise(document, {}, self.now)
+        observed = output["report"]["jobs"]["first"]
+        self.assertEqual("COMPLETED_UNCERTIFIED", observed["status"])
+        self.assertFalse(state["report"]["jobs"]["first"]
+                         ["result_certificate_declared"])
+        self.assertEqual("INACTIVE",
+                         output["report"]["jobs"]["second"]["status"])
+        self.assertEqual([], output["ready_jobs"])
+
+    def test_result_certificate_namespaces_are_fail_closed(self) -> None:
+        definition = config()["jobs"][0]
+        definition["ledger_files"] = ["first.uftb"]
+        definition["ledger_certifies"] = True
+        definition["s3_certificates"][0]["key"] = "sources/first"
+        self.assertFalse(SUPERVISOR.has_result_certificate(definition))
+        definition["s3_certificates"][0]["key"] = "checkpoints/first"
+        self.assertFalse(SUPERVISOR.has_result_certificate(definition))
+        definition["s3_certificates"][0]["key"] = "results/first"
+        self.assertTrue(SUPERVISOR.has_result_certificate(definition))
+        definition["s3_certificates"][0]["key"] = (
+            "hidden/first/existing-ufiw/sha256/result.tar.zst")
+        self.assertTrue(SUPERVISOR.has_result_certificate(definition))
+        definition["s3_certificates"][0]["key"] = (
+            "results/dependency/dependency-result.tar.zst")
+        definition["result_certificate_keys"] = {"first.uftb": []}
+        self.assertFalse(SUPERVISOR.has_result_certificate(definition))
+        definition["result_certificate_keys"] = {
+            "first.uftb": ["results/dependency/dependency-result.tar.zst"]}
+        self.assertTrue(SUPERVISOR.has_result_certificate(definition))
+        definition["ledger_files"] = ["first.uftb", "second.uftb"]
+        definition["s3_certificates"] = [
+            {"key": "results/first/first-result.tar.zst"}]
+        definition["result_certificate_keys"] = {
+            "first.uftb": ["results/first/first-result.tar.zst"],
+            "second.uftb": [],
+        }
+        self.assertFalse(SUPERVISOR.has_result_certificate(definition))
+        definition["s3_certificates"].append(
+            {"key": "results/second/second-result.tar.zst"})
+        definition["result_certificate_keys"]["second.uftb"] = [
+            "results/second/second-result.tar.zst"]
+        self.assertTrue(SUPERVISOR.has_result_certificate(definition))
+
+    @mock.patch.object(SUPERVISOR, "head_certificate")
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    @mock.patch.object(SUPERVISOR, "ec2_inventory")
     def test_queued_source_bindings_wait_without_source_mismatch(
             self, inventory: mock.Mock, probe: mock.Mock,
             head: mock.Mock) -> None:
@@ -871,7 +1004,6 @@ class SupervisionTests(unittest.TestCase):
         document = config()
         first = document["jobs"][0]
         first["s3_only_certified"] = True
-        first["source_bindings"] = []
         inventory.return_value = self.ec2
         probe.return_value = remote(first="inactive", complete=False)
         probe.return_value["jobs"][0]["sources"] = []
@@ -879,17 +1011,23 @@ class SupervisionTests(unittest.TestCase):
             "bucket": "private", "key": "results/first", "version_id": "v1",
             "size": 12, "sha256": SHA_B, "exact": True,
         }
-        output, _ = SUPERVISOR.supervise(document, {}, self.now)
+        output, state = SUPERVISOR.supervise(document, {}, self.now)
         self.assertEqual("CERTIFIED", output["report"]["jobs"]["first"]["status"])
+        arguments = shlex.split(probe.call_args.args[0])
+        payload = json.loads(base64.b64decode(arguments[4]))
+        self.assertNotIn("first", {job["id"] for job in payload["jobs"]})
+        self.assertFalse(state["report"]["jobs"]["first"]["source_exact"])
         self.assertEqual("READY", output["report"]["jobs"]["second"]["status"])
 
     def test_s3_only_certification_is_archival_and_version_bound(self) -> None:
         document = config()
         first = document["jobs"][0]
         first["s3_only_certified"] = True
+        SUPERVISOR.validate_config(document)
+        first["advanceable"] = True
         with self.assertRaisesRegex(RuntimeError, "archival only"):
             SUPERVISOR.validate_config(document)
-        first["source_bindings"] = []
+        first.pop("advanceable")
         first["s3_certificates"] = []
         with self.assertRaisesRegex(RuntimeError, "requires certificates"):
             SUPERVISOR.validate_config(document)

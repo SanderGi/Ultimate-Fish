@@ -15,8 +15,9 @@ Pawn promotion creates a strict dependency DAG:
 * wave 2: two Pawns (depends on complete waves 0 and 1).
 
 Ranges are half-open indices into the filename-sorted inventory for one wave.
-``--bootstrap-penguin`` regenerates the exact K+Penguin-v-K dependency before
-any K+K+2 class containing Penguin is admitted.
+The bootstrap modes regenerate exact dependencies outside the ordinary pair
+inventory: K+Penguin-v-K and the arbitrary linked-Copycat pair reached after an
+Angel rescue.
 """
 
 from __future__ import annotations
@@ -65,6 +66,11 @@ def encoded_filename(filename: str) -> str:
         raise RuntimeError(f"ambiguous encoded filename alias for {filename}")
     return matches[0] if matches else filename
 GIANT_TAG = 0x32474E4149474655
+ANGEL_TAG = 0x314C45474E414655
+ANGEL_GIANT_TAG = 0x314741474E414655
+LINKED_COPYCAT_TAG = 0x314B4E4C43434655
+ANGEL_COPYCAT_TAG = 0x3152504343414655
+LINKED_COPYCAT_LOWER = "kcopycatlinkedk.uftb"
 PIECE_TYPES = (
     "king", "jester", "knight", "pawn", "queen", "rook", "bishop",
     "berserker", "bomb", "ninja", "turtle", "ghost", "mage", "goop",
@@ -106,10 +112,6 @@ PINNED_BUILD = (
 DEFERRED_DYNAMIC = {
     "devil": "each spawn adds a persistent Minion board model",
     "sludge": "moves leave one or two persistent Goop board models",
-    "angel": (
-        "linking creates a Halo plus off-board host/attachment/order state; rescue "
-        "relocates the host and nested Angels require a larger closure"
-    ),
 }
 COPYCAT_MIRROR_SEMANTICS = "linked-horizontal-mirror-single-index-v1"
 
@@ -179,7 +181,7 @@ def uftb_extent(path: Path) -> dict[str, int | str]:
             raise RuntimeError("truncated UFTB header")
         (magic, version, primary, states, legacy_edges, substates,
          wdl_bytes, dtw_bytes, exceptions) = base.unpack(header)
-        if magic != b"UFTB1\0\0\0" or version not in (4, 5, 6, 7):
+        if magic != b"UFTB1\0\0\0" or version not in (4, 5, 6, 7, 8, 9, 10):
             raise RuntimeError("invalid UFTB magic/version")
         header_bytes = base.size
         secondary = -1
@@ -233,6 +235,8 @@ def normalized_record(record: Mapping[str, object]) -> dict[str, object]:
         normalized["mirror_simplification"] = COPYCAT_MIRROR_SEMANTICS
         normalized["truncates_native_separation"] = bool(
             record.get("truncates_native_separation"))
+    if record.get("linked_copycat_pair"):
+        normalized["linked_copycat_pair"] = True
     return normalized
 
 
@@ -254,11 +258,23 @@ def mirror_copycat_inventory() -> tuple[dict[str, object], ...]:
     return rows
 
 
+def angel_inventory() -> tuple[dict[str, object], ...]:
+    rows = tuple(plan.angel_candidates())
+    if (len(rows) != 30 or len({str(row["filename"]) for row in rows}) != 30 or
+            sum(int(row["packed_bytes"]) for row in rows) != 9_347_137_800):
+        raise RuntimeError("visible one-Angel K+K+2 inventory residual")
+    return rows
+
+
 def supported_inventory() -> tuple[dict[str, object], ...]:
-    rows = tuple(sorted((*closed_inventory(), *mirror_copycat_inventory()),
-                        key=lambda row: str(row["filename"])))
-    if (len(rows) != 268 or len({str(row["filename"]) for row in rows}) != 268 or
-            sum(int(row["packed_bytes"]) for row in rows) != 94_657_563_000):
+    # Retain the entire pre-Angel inventory as a stable prefix. Existing
+    # checkpoint/service records address wave entries by index; inserting new
+    # filenames into that prefix could make a retry select different material.
+    legacy = tuple(sorted((*closed_inventory(), *mirror_copycat_inventory()),
+                          key=lambda row: str(row["filename"])))
+    rows = (*legacy, *angel_inventory())
+    if (len(rows) != 298 or len({str(row["filename"]) for row in rows}) != 298 or
+            sum(int(row["packed_bytes"]) for row in rows) != 104_004_700_800):
         raise RuntimeError("supported K+K+2 inventory residual")
     return rows
 
@@ -311,6 +327,8 @@ def class_dependency_filenames(
     }
     names = (str(record["primary"]), str(record["secondary"]))
     result = {singles[name] for name in names if name in singles}
+    if (names == ("copycat", "angel") and not bool(record["opposing"])):
+        result.add(LINKED_COPYCAT_LOWER)
     if wave:
         promoted = list(names)
         promoted[promoted.index("pawn")] = "queen"
@@ -448,7 +466,7 @@ def deferred_dynamic_inventory() -> tuple[dict[str, object], ...]:
                     "opposing": not same_team,
                 })
     rows.sort(key=lambda row: str(row["filename"]))
-    if len(rows) != 90 or len({str(row["filename"]) for row in rows}) != 90:
+    if len(rows) != 60 or len({str(row["filename"]) for row in rows}) != 60:
         raise RuntimeError("deferred dynamic K+K+2 inventory residual")
     return tuple(rows)
 
@@ -461,18 +479,27 @@ def deferred_domain_plan() -> dict[str, object]:
         for family in sorted(DEFERRED_DYNAMIC)
     }
     return {
-        "schema": "ultimate-deferred-dynamic-k2-v2",
+        "schema": "ultimate-deferred-dynamic-k2-v3",
         "status": "explicitly-deferred-no-symbolic-work-authorized",
-        "classes": 90, "by_family_overlap": by_family,
+        "classes": 60, "by_family_overlap": by_family,
         "families": DEFERRED_DYNAMIC,
         "inventory": list(rows),
+        "visible_one_angel_classes_in_scope": 30,
+        "one_angel_graph_semantics": "deployed-attached-host-halo-copycat-v2",
+        "angel_graph_classes_deferred": 2,
+        "angel_graph_deferred_reason": (
+            "Ghost requires perfect-recall attachment beliefs"
+        ),
         "copycat_mirror_classes_in_scope": 36,
         "copycat_mirror_semantics": COPYCAT_MIRROR_SEMANTICS,
-        "copycat_native_separation_classes": 0,
+        "copycat_native_separation_classes": 1,
+        "copycat_native_separation_lower_states":
+            plan.linked_copycat_pair_states(),
         "copycat_separator_classes_deferred": 6,
         "completeness": (
             "The supported inventory is intentionally incomplete for these "
-            "90 Devil/Minion, Sludge/Goop, and Angel/Halo classes."
+            "60 Devil/Minion and Sludge/Goop classes plus the two sufficient "
+            "Ghost/Angel graph classes."
         ),
     }
 def load_dependency_manifest(path: Path) -> dict[str, dict[str, object]]:
@@ -569,14 +596,17 @@ def build_binary(work: Path) -> tuple[Path, list[str]]:
     return binary, command
 
 
-def class_command(record: Mapping[str, object], *, dry_run: int = 0,
-                  dry_run_begin: int = 0) -> list[str]:
+def class_command(record: Mapping[str, object], *, workers: int = 4,
+                  dry_run: int = 0, dry_run_begin: int = 0) -> list[str]:
     name = str(record["filename"])
     command = [
         "binary/ultimate_tablebase", "--piece", str(record["primary"]),
+        "--workers", str(workers),
     ]
     if record["secondary"]:
         command.extend(["--piece2", str(record["secondary"])])
+    if record.get("linked_copycat_pair"):
+        command.append("--linked-copycat-pair")
     if record["opposing"]:
         command.append("--opposing")
     if dry_run:
@@ -600,7 +630,7 @@ def parse_uftb(path: Path, record: Mapping[str, object],
             raise RuntimeError("truncated generated UFTB header")
         (magic, version, primary, states, legacy_edges, substates,
          wdl_bytes, dtw_bytes, exceptions) = base.unpack(header)
-        if magic != b"UFTB1\0\0\0" or version not in (4, 5, 6, 7):
+        if magic != b"UFTB1\0\0\0" or version not in (4, 5, 6, 7, 8, 9, 10):
             raise RuntimeError("generated UFTB magic/version residual")
         secondary = -1
         secondary_color = 0
@@ -632,23 +662,54 @@ def parse_uftb(path: Path, record: Mapping[str, object],
         primary_spec = next(
             piece for piece in plan.PIECES
             if piece.name == record["primary"])
-        if record["secondary"]:
+        linked_copycat = bool(record.get("linked_copycat_pair"))
+        if linked_copycat:
+            expected_substates = 1
+            material_residual = (
+                version != 10 or
+                secondary != PIECE_INDEX["copycatclone"] or
+                secondary_color != 0)
+        elif record["secondary"]:
             secondary_piece = PIECE_INDEX[str(record["secondary"])]
             secondary_spec = next(
                 piece for piece in plan.PIECES
                 if piece.name == record["secondary"])
-            expected_substates = plan.pair_state_factor(
-                primary_spec, secondary_spec)
+            if "angel" in {str(record["primary"]),
+                            str(record["secondary"])}:
+                companion = (secondary_spec if primary_spec.name == "angel"
+                             else primary_spec)
+                expected_substates = plan.angel_pair_state_factor(
+                    companion, not bool(record["opposing"]))
+            else:
+                expected_substates = plan.pair_state_factor(
+                    primary_spec, secondary_spec)
             material_residual = (version < 5 or secondary != secondary_piece or
                                  secondary_color != int(bool(record["opposing"])))
         else:
             expected_substates = plan.material_state_factor(primary_spec)
             material_residual = version != 4
-        giant = "giant" in {record["primary"], record["secondary"]}
+        material = {record["primary"], record["secondary"]}
+        giant = "giant" in material
+        angel = "angel" in material
+        angel_copycat = (angel and record["primary"] == "copycat" and
+                         record["secondary"] == "angel" and
+                         not bool(record["opposing"]))
+        codec_residual = (
+            (linked_copycat and
+             (version != 10 or codec_tag != LINKED_COPYCAT_TAG)) or
+            (angel_copycat and
+             (version != 10 or codec_tag != ANGEL_COPYCAT_TAG)) or
+            (angel and not angel_copycat and
+             (version != 9 or codec_tag !=
+              (ANGEL_GIANT_TAG if giant else ANGEL_TAG))) or
+            (not angel and not linked_copycat and
+             ((version == 7) != giant or version in (8, 9, 10) or
+                            (giant and codec_tag != GIANT_TAG)))
+        )
         if (primary != primary_piece or material_residual or
                 states != expected_states or substates != expected_substates or
                 wdl_bytes != (states + 3) // 4 or dtw_bytes != states or
-                (version == 7) != giant or (giant and codec_tag != GIANT_TAG) or
+                codec_residual or
                 (version == 6 and exact_edges <= 0xFFFFFFFF)):
             raise RuntimeError("generated UFTB material/codec header residual")
 
@@ -898,6 +959,27 @@ def penguin_bootstrap_plan() -> tuple[
     }
 
 
+def linked_copycat_bootstrap_plan() -> tuple[
+        tuple[dict[str, object], ...], dict[str, object]]:
+    """Return the proper-lower graph reached by same Copycat/Angel rescue."""
+    states = plan.linked_copycat_pair_states()
+    packed = states + (states + 3) // 4
+    record: dict[str, object] = {
+        "name": "Klinked-copycat-vK", "filename": LINKED_COPYCAT_LOWER,
+        "primary": "copycat", "secondary": "", "opposing": False,
+        "states": states, "packed_bytes": packed, "shards": 1,
+        "phase": "kings+linked-copycat-lower-v1",
+        "linked_copycat_pair": True,
+    }
+    return (record,), {
+        "wave": "bootstrap-linked-copycat", "begin": 0, "end": 1,
+        "classes": 1, "states": states, "packed_bytes": packed,
+        "max_states": states,
+        "static_scratch_floor_bytes": states * (8 + 4 + 8) + packed,
+        "resident_floor_bytes": states * 4 + (2 << 30),
+    }
+
+
 def require_aws_full(args: argparse.Namespace, measurement: Mapping[str, object],
                      work: Path) -> None:
     if sys.platform == "darwin":
@@ -932,6 +1014,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--range-begin", type=int)
     parser.add_argument("--range-end", type=int)
     parser.add_argument("--bootstrap-penguin", action="store_true")
+    parser.add_argument("--bootstrap-linked-copycat", action="store_true")
     parser.add_argument("--full", action="store_true")
     parser.add_argument(
         "--resume-existing", action="store_true",
@@ -942,6 +1025,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--reverse-edge-bytes-limit", type=int, default=0)
     parser.add_argument("--minimum-free-bytes", type=int, default=0)
     parser.add_argument("--monitor-interval", type=float, default=5.0)
+    parser.add_argument("--workers", type=int, choices=range(1, 33), default=4)
     parser.add_argument("--dry-run-samples", type=int, default=20_000)
     parser.add_argument("--s3-prefix")
     return parser.parse_args(argv)
@@ -956,17 +1040,20 @@ def main(argv: list[str] | None = None) -> int:
             "--resume-existing is disabled: the current disk-backed generator "
             "truncates mapped scratch on open, so resource-stop files are "
             "audit evidence rather than resumable checkpoints")
-    if args.bootstrap_penguin:
+    if args.bootstrap_penguin and args.bootstrap_linked_copycat:
+        raise RuntimeError("bootstrap modes are mutually exclusive")
+    if args.bootstrap_penguin or args.bootstrap_linked_copycat:
         if any(value is not None for value in
                (args.wave, args.range_begin, args.range_end)):
-            raise RuntimeError("--bootstrap-penguin is exclusive with wave/range")
-        selected, measurement = penguin_bootstrap_plan()
+            raise RuntimeError("bootstrap mode is exclusive with wave/range")
+        selected, measurement = (penguin_bootstrap_plan()
+          if args.bootstrap_penguin else linked_copycat_bootstrap_plan())
         required: tuple[str, ...] = ()
-        wave_label = "bootstrap-penguin"
+        wave_label = str(measurement["wave"])
     else:
         if any(value is None for value in
                (args.wave, args.range_begin, args.range_end)):
-            raise RuntimeError("wave/range are required without --bootstrap-penguin")
+            raise RuntimeError("wave/range are required without a bootstrap mode")
         selected, measurement = selection_plan(
             args.wave, args.range_begin, args.range_end)
         required = required_dependency_filenames(args.wave, selected)
@@ -974,7 +1061,16 @@ def main(argv: list[str] | None = None) -> int:
     model = generator_model_sha256()
     costs = wave_costs()
     dependency_records = load_dependency_manifest(args.dependency_manifest)
-    missing_dependencies = sorted(set(required) - set(dependency_records))
+    # A manifest entry authenticates a dependency but does not prove its
+    # payload was actually extracted on this host.  The old plan-only gate
+    # checked only names in the manifest, allowing systemd to start and fail
+    # moments later in stage_dependencies().  Report both absent records and
+    # absent local payloads before any work directory is created.
+    missing_dependencies = sorted({
+        name for name in required
+        if name not in dependency_records or
+           not (args.dependencies / name).is_file()
+    })
     plan_document = {
         "schema": SCHEMA, "status": "plan-only-full-not-launched",
         "generator_model_sha256": model,
@@ -982,12 +1078,15 @@ def main(argv: list[str] | None = None) -> int:
         "closed_classes": 232, "closed_packed_bytes": 87_872_584_800,
         "copycat_mirror_classes": 36,
         "copycat_mirror_packed_bytes": 6_784_978_200,
-        "supported_classes": 268,
-        "supported_packed_bytes": 94_657_563_000,
+        "angel_graph_classes": 30,
+        "angel_graph_packed_bytes": 9_347_137_800,
+        "supported_classes": 298,
+        "supported_packed_bytes": 104_004_700_800,
         "stateless_classes_complete": 160,
         "deferred_dynamic": deferred_domain_plan(),
         "wave_costs": costs,
         "selection": measurement,
+        "worker_threads": args.workers,
         "selected": [normalized_record(row) for row in selected],
         "required_dependencies": len(required),
         "missing_dependencies": missing_dependencies,
@@ -1069,7 +1168,8 @@ def main(argv: list[str] | None = None) -> int:
                 log = work / "logs/preflight" / (
                     f"{Path(str(record['filename'])).stem}-{sample}.log")
                 run_logged(
-                    class_command(record, dry_run=count, dry_run_begin=begin),
+                    class_command(record, workers=args.workers,
+                                  dry_run=count, dry_run_begin=begin),
                     log, work, environment)
 
     completed = []
@@ -1079,7 +1179,7 @@ def main(argv: list[str] | None = None) -> int:
         retained_logs = (rotate_resource_stop_log(log)
                          if args.resume_existing else ())
         resources = run_logged_monitored(
-            class_command(record), log, work, environment,
+            class_command(record, workers=args.workers), log, work, environment,
             checkpoint_stem=Path(filename).stem, output_name=filename,
             scratch_limit=args.scratch_limit,
             resident_limit=args.resident_limit,
@@ -1090,6 +1190,7 @@ def main(argv: list[str] | None = None) -> int:
         verification = parse_uftb(output, record, log)
         result_manifest = {
             "schema": ARCHIVE_SCHEMA, "generator_model_sha256": model,
+            "worker_threads": args.workers,
             "inventory_sha256": inventory_sha256(), "record": normalized_record(record),
             "output": verification, "proof_log_sha256": sha256_path(log),
             "retained_resource_stop_log_sha256":
@@ -1146,7 +1247,8 @@ def main(argv: list[str] | None = None) -> int:
         "schema": CERTIFICATE_SCHEMA,
         "status": "head-download-full-sha-archive-restore-verified",
         "generator_model_sha256": model, "inventory_sha256": inventory_sha256(),
-        "selection": measurement, "completed": completed,
+        "selection": measurement, "worker_threads": args.workers,
+        "completed": completed,
         "local_outputs_retained": True, "local_scratch_retained": True,
         "safe_to_delete_gate": False,
     }
@@ -1163,6 +1265,7 @@ def main(argv: list[str] | None = None) -> int:
     print(json.dumps({
         "status": "wave-range-generated-and-s3-restored",
         "generator_model_sha256": model, "selection": measurement,
+        "worker_threads": args.workers,
         "certificate_sha256": certificate_sha,
         "certificate_s3": certificate_remote,
         "safe_to_delete_gate": False,

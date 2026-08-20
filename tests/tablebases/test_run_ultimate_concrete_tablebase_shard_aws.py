@@ -24,6 +24,15 @@ SPEC.loader.exec_module(runner)
 
 
 class ConcreteAwsRunnerTest(unittest.TestCase):
+    def test_class_command_binds_admitted_worker_count(self) -> None:
+        record = {
+            "filename": "kberserkerkangel.uftb",
+            "primary": "berserker", "secondary": "angel",
+            "opposing": True,
+        }
+        command = runner.class_command(record, workers=7)
+        self.assertEqual("7", command[command.index("--workers") + 1])
+
     def test_resume_existing_fails_before_touching_audit_scratch(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -56,12 +65,13 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
 
     def test_inventory_and_wave_conservation(self) -> None:
         self.assertEqual(232, len(runner.closed_inventory()))
+        self.assertEqual(30, len(runner.angel_inventory()))
         rows = runner.supported_inventory()
-        self.assertEqual(268, len(rows))
-        self.assertEqual(94_657_563_000,
+        self.assertEqual(298, len(rows))
+        self.assertEqual(104_004_700_800,
                          sum(int(row["packed_bytes"]) for row in rows))
-        expected = ((226, 85_832_346_600),
-                    (40, 8_540_532_000),
+        expected = ((254, 94_705_010_400),
+                    (42, 9_015_006_000),
                     (2, 284_684_400))
         self.assertEqual(expected, tuple(
             (len(runner.wave_inventory(wave)),
@@ -82,7 +92,7 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
                              sum(item["states"] for item in ranges))
 
     def test_copycat_scope_and_dynamic_deferral_are_explicit(self) -> None:
-        self.assertEqual({"devil", "sludge", "angel"},
+        self.assertEqual({"devil", "sludge"},
                          set(runner.DEFERRED_DYNAMIC))
         self.assertEqual(36, len(runner.mirror_copycat_inventory()))
         self.assertFalse(any(bool(row["truncates_native_separation"])
@@ -90,9 +100,23 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
         self.assertTrue(all(row["secondary"] not in runner.plan.COPYCAT_SEPARATORS
                             for row in runner.mirror_copycat_inventory()))
         deferred = runner.deferred_domain_plan()
-        self.assertEqual(90, deferred["classes"])
-        self.assertEqual(90, len(deferred["inventory"]))
+        self.assertEqual(60, deferred["classes"])
+        self.assertEqual(60, len(deferred["inventory"]))
+        self.assertEqual(30, deferred["visible_one_angel_classes_in_scope"])
+        self.assertEqual(2, deferred["angel_graph_classes_deferred"])
+        self.assertEqual(1, deferred["copycat_native_separation_classes"])
+        self.assertEqual(37_957_920,
+                         deferred["copycat_native_separation_lower_states"])
         self.assertIn("incomplete", deferred["completeness"])
+
+    def test_legacy_wave_indexes_are_a_stable_prefix(self) -> None:
+        legacy = tuple(sorted(
+            (*runner.closed_inventory(), *runner.mirror_copycat_inventory()),
+            key=lambda row: str(row["filename"])))
+        for wave in range(3):
+            old_wave = tuple(row for row in legacy
+                             if runner.dependency_wave(row) == wave)
+            self.assertEqual(old_wave, runner.wave_inventory(wave)[:len(old_wave)])
 
     def test_pawn_dependency_waves(self) -> None:
         singles = set(runner.base_dependency_filenames())
@@ -102,7 +126,8 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
             for row in runner.wave_inventory(wave):
                 self.assertEqual(wave, runner.dependency_wave(row))
                 dependencies = set(runner.class_dependency_filenames(row))
-                self.assertEqual(1 if wave else 0,
+                lower_graphs = 1 if row["filename"] == "kcopycatangelk.uftb" else 0
+                self.assertEqual((1 if wave else 0) + lower_graphs,
                                  len(dependencies - singles))
                 self.assertNotIn(str(row["filename"]), dependencies)
             self.assertTrue(set(runner.required_dependency_filenames(wave)).isdisjoint(
@@ -126,6 +151,18 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
         self.assertEqual(
             {"kpawnk.uftb", "kqk.uftb", "kpawnqueenk.uftb"},
             set(runner.class_dependency_filenames(pawn_pair)))
+        pawn_angel = next(
+            row for row in runner.wave_inventory(1)
+            if row["filename"] == "kpawnangelk.uftb")
+        self.assertEqual(
+            {"kpawnk.uftb", "kqk.uftb", "kqueenangelk.uftb"},
+            set(runner.class_dependency_filenames(pawn_angel)))
+        copycat_angel = next(
+            row for row in runner.wave_inventory(0)
+            if row["filename"] == "kcopycatangelk.uftb")
+        self.assertEqual(
+            {"kcopycatk.uftb", runner.LINKED_COPYCAT_LOWER},
+            set(runner.class_dependency_filenames(copycat_angel)))
 
     def test_default_is_plan_only(self) -> None:
         arguments = [
@@ -151,6 +188,25 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
                 "--work-directory", "work", "--dependencies", "dependencies",
                 "--dependency-manifest", "manifest", "--bootstrap-penguin",
                 "--wave", "0", "--range-begin", "0", "--range-end", "1",
+            ])
+
+    def test_linked_copycat_bootstrap_is_exact_and_mutually_exclusive(self) -> None:
+        selected, measurement = runner.linked_copycat_bootstrap_plan()
+        self.assertEqual(runner.LINKED_COPYCAT_LOWER, selected[0]["filename"])
+        self.assertEqual(37_957_920, selected[0]["states"])
+        self.assertTrue(selected[0]["linked_copycat_pair"])
+        self.assertIn("--linked-copycat-pair",
+                      runner.class_command(selected[0], workers=7))
+        args = runner.parse_args([
+            "--work-directory", "work", "--dependencies", "dependencies",
+            "--dependency-manifest", "manifest", "--bootstrap-linked-copycat",
+        ])
+        self.assertTrue(args.bootstrap_linked_copycat)
+        with self.assertRaisesRegex(RuntimeError, "mutually exclusive"):
+            runner.main([
+                "--work-directory", "work", "--dependencies", "dependencies",
+                "--dependency-manifest", "manifest", "--bootstrap-penguin",
+                "--bootstrap-linked-copycat",
             ])
 
     def test_penguin_bootstrap_v4_header_uses_four_causal_states(self) -> None:
@@ -336,12 +392,97 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "codec header"):
                 runner.parse_uftb(output, record, log)
 
+    def test_angel_v9_header_requires_exact_graph_factor_and_tag(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "krookangelk.uftb"
+            record = {
+                "filename": output.name, "primary": "rook",
+                "secondary": "angel", "opposing": False,
+                "states": 4, "packed_bytes": 5, "shards": 1,
+                "phase": "test",
+            }
+            header = struct.pack(
+                "<8sIIIIIIIIIIQQ", b"UFTB1\0\0\0", 9,
+                runner.PIECE_INDEX["rook"], 4, 7, 3, 1, 4, 0,
+                runner.PIECE_INDEX["angel"], 0, 7, runner.ANGEL_TAG)
+            output.write_bytes(header + bytes([0b_11_10_01_01]) + bytes(4))
+            log = root / "proof.log"
+            log.write_text(
+                f"verifyok states 4\noutput outputs/{output.name} edges 7 "
+                "win 1 loss 1 draw 2\ncomplete states 4/4 elapsed 1s\n")
+            verified = runner.parse_uftb(output, record, log)
+            self.assertEqual(9, verified["version"])
+            self.assertEqual(3, verified["substates"])
+            damaged = bytearray(output.read_bytes())
+            struct.pack_into("<Q", damaged, 56, runner.GIANT_TAG)
+            output.write_bytes(damaged)
+            with self.assertRaisesRegex(RuntimeError, "codec header"):
+                runner.parse_uftb(output, record, log)
+
+    def test_linked_copycat_v10_header_requires_exact_graph_tag(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / runner.LINKED_COPYCAT_LOWER
+            record = dict(runner.linked_copycat_bootstrap_plan()[0][0])
+            record["states"] = 4
+            record["packed_bytes"] = 5
+            header = struct.pack(
+                "<8sIIIIIIIIIIQQ", b"UFTB1\0\0\0", 10,
+                runner.PIECE_INDEX["copycat"], 4, 7, 1, 1, 4, 0,
+                runner.PIECE_INDEX["copycatclone"], 0, 7,
+                runner.LINKED_COPYCAT_TAG)
+            output.write_bytes(header + bytes([0b_11_10_01_01]) + bytes(4))
+            log = root / "proof.log"
+            log.write_text(
+                f"verifyok states 4\noutput outputs/{output.name} edges 7 "
+                "win 1 loss 1 draw 2\ncomplete states 4/4 elapsed 1s\n")
+            verified = runner.parse_uftb(output, record, log)
+            self.assertEqual(10, verified["version"])
+            self.assertEqual(1, verified["substates"])
+            damaged = bytearray(output.read_bytes())
+            struct.pack_into("<Q", damaged, 56, runner.ANGEL_COPYCAT_TAG)
+            output.write_bytes(damaged)
+            with self.assertRaisesRegex(RuntimeError, "codec header"):
+                runner.parse_uftb(output, record, log)
+
+    def test_same_copycat_angel_v10_header_requires_four_graph_modes(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "kcopycatangelk.uftb"
+            record = next(
+                dict(row) for row in runner.angel_inventory()
+                if row["filename"] == output.name)
+            record["states"] = 4
+            record["packed_bytes"] = 5
+            header = struct.pack(
+                "<8sIIIIIIIIIIQQ", b"UFTB1\0\0\0", 10,
+                runner.PIECE_INDEX["copycat"], 4, 7, 4, 1, 4, 0,
+                runner.PIECE_INDEX["angel"], 0, 7,
+                runner.ANGEL_COPYCAT_TAG)
+            output.write_bytes(header + bytes([0b_11_10_01_01]) + bytes(4))
+            log = root / "proof.log"
+            log.write_text(
+                f"verifyok states 4\noutput outputs/{output.name} edges 7 "
+                "win 1 loss 1 draw 2\ncomplete states 4/4 elapsed 1s\n")
+            self.assertEqual(4, runner.parse_uftb(
+                output, record, log)["substates"])
+            damaged = bytearray(output.read_bytes())
+            struct.pack_into("<I", damaged, 24, 3)
+            output.write_bytes(damaged)
+            with self.assertRaisesRegex(RuntimeError, "codec header"):
+                runner.parse_uftb(output, record, log)
+
     def test_uftb_extent_uses_versioned_header_not_planner_payload(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             for version, extra, expected_header in (
                     (4, b"", 40),
-                    (5, struct.pack("<II", runner.PIECE_INDEX["queen"], 0), 48)):
+                    (5, struct.pack("<II", runner.PIECE_INDEX["queen"], 0), 48),
+                    (9, struct.pack("<IIQQ", runner.PIECE_INDEX["angel"], 0,
+                                    7, runner.ANGEL_TAG), 64),
+                    (10, struct.pack("<IIQQ", runner.PIECE_INDEX["copycatclone"],
+                                     0, 7, runner.LINKED_COPYCAT_TAG), 64)):
                 path = root / f"synthetic-v{version}.uftb"
                 header = struct.pack(
                     "<8sIIIIIIII", b"UFTB1\0\0\0", version,

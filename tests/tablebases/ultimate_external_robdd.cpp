@@ -42,6 +42,41 @@ int main() {
         if (bdd.evaluate(formula, assignment, 0) != expected[assignment])
             throw std::runtime_error("external ROBDD truth table mismatch");
     }
+    const std::array<ExternalRobdd::Id, 7> implicationRoots{
+      ExternalRobdd::False, ExternalRobdd::True, x0, x1, conjunction,
+      formula, bdd.logical_not(formula)};
+    const std::uint32_t beforeImplication = bdd.node_count();
+    for (const auto lhs : implicationRoots)
+        for (const auto rhs : implicationRoots) {
+            bool expectedImplication = true;
+            for (unsigned assignment = 0; assignment < expected.size();
+                 ++assignment)
+                expectedImplication &= !bdd.evaluate(lhs, assignment, 0) ||
+                                       bdd.evaluate(rhs, assignment, 0);
+            if (bdd.implies(lhs, rhs) != expectedImplication)
+                throw std::runtime_error(
+                  "external ROBDD implication mismatch");
+        }
+    if (bdd.node_count() != beforeImplication)
+        throw std::runtime_error(
+          "external ROBDD implication dirtied the node arena");
+    const std::uint32_t persistedNodes = bdd.node_count();
+    bdd.flush();
+
+    // A completed fixed point must be reusable without replaying all earlier
+    // Bellman iterations.  Reopening discovers the dense logical prefix from
+    // the preallocated arena, validates it, and retains collision-free unique
+    // reduction for both old and newly appended tuples.
+    ExternalRobdd reopened(
+      "/tmp/ultimate-external-robdd", limits, false);
+    if (reopened.node_count() != persistedNodes ||
+        reopened.logical_and(reopened.variable(0), reopened.variable(1)) !=
+          conjunction)
+        throw std::runtime_error("external ROBDD fixed-point reopen failed");
+    for (unsigned assignment = 0; assignment < expected.size(); ++assignment)
+        if (reopened.evaluate(formula, assignment, 0) != expected[assignment])
+            throw std::runtime_error(
+              "reopened external ROBDD changed a persisted function");
 
     std::vector<ExternalRobdd::Id> image(8);
     for (unsigned variable = 0; variable < image.size(); ++variable)
@@ -97,5 +132,6 @@ int main() {
               << " compact_nodes " << compacted->node_count()
               << " marked " << certificate.markedNodes
               << " structural_residual 0 root_residual 0"
+              << " implication_read_only 1 reopen_exact 1"
               << " cache_eviction_exact 1 budget_gate 1\n";
 }

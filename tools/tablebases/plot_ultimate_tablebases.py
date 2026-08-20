@@ -25,9 +25,10 @@ TOOLS = Path(__file__).resolve().parent
 sys.path.insert(0, str(TOOLS))
 
 from plan_ultimate_tablebases import (  # noqa: E402
-    COPYCAT_SEPARATORS,
     DEFERRED_DYNAMIC_K2,
     PIECES,
+    angel_candidates,
+    deferred_material,
     inventory,
     mirror_copycat_candidates,
     stateful_candidates,
@@ -235,8 +236,8 @@ class OutcomeCatalog:
         # kdragonkpenguin header).  The exact inventory record must win so a
         # certified result cannot be hidden or interpreted with reversed owners.
         records_by_filename: dict[str, dict[str, object]] = {}
-        for record in (*stateful_candidates(), *mirror_copycat_candidates(),
-                       *inventory()):
+        for record in (*stateful_candidates(), *angel_candidates(),
+                       *mirror_copycat_candidates(), *inventory()):
             records_by_filename[str(record["filename"])] = record
         records = list(records_by_filename.values())
         self.singles = {
@@ -325,11 +326,10 @@ class OutcomeCatalog:
             # Two same-team Berserkers are exchange-folded; there is no
             # distinguished row Berserker whose radius can be sliced.
             return Cell("unknown")
-        names = {"berserker", column}
-        if (names & DEFERRED_DYNAMIC_K2 or
-                "copycat" in names and bool(names & COPYCAT_SEPARATORS)):
+        if deferred_material("berserker", column):
             return Cell("unknown")
-        first, second = sorted(names, key=PIECE_INDEX.__getitem__)
+        first, second = sorted(("berserker", column),
+                               key=PIECE_INDEX.__getitem__)
         if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
             return known_draw()
         return self._radius_cell_for_record(
@@ -345,11 +345,10 @@ class OutcomeCatalog:
                 radius,
                 allow_loss=True,
             )
-        names = {"berserker", column}
-        if (names & DEFERRED_DYNAMIC_K2 or
-                "copycat" in names and bool(names & COPYCAT_SEPARATORS)):
+        if deferred_material("berserker", column, opposing=True):
             return Cell("unknown")
-        first, second = sorted(names, key=PIECE_INDEX.__getitem__)
+        first, second = sorted(("berserker", column),
+                               key=PIECE_INDEX.__getitem__)
         if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], False):
             return known_draw()
         record = self.opposing.get((first, second))
@@ -364,9 +363,7 @@ class OutcomeCatalog:
     def together(self, row: str, column: str) -> Cell:
         if PIECE_INDEX[column] > PIECE_INDEX[row]:
             return Cell("duplicate")
-        names = {row, column}
-        if (names & DEFERRED_DYNAMIC_K2 or
-                "copycat" in names and bool(names & COPYCAT_SEPARATORS)):
+        if deferred_material(row, column):
             return Cell("unknown")
         first, second = sorted((row, column), key=PIECE_INDEX.__getitem__)
         if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
@@ -374,9 +371,7 @@ class OutcomeCatalog:
         return self._cell_for_record(self.same_team.get((first, second)))
 
     def opposed(self, row: str, column: str) -> Cell:
-        names = {row, column}
-        if (names & DEFERRED_DYNAMIC_K2 or
-                "copycat" in names and bool(names & COPYCAT_SEPARATORS)):
+        if deferred_material(row, column, opposing=True):
             return Cell("unknown")
         first, second = sorted((row, column), key=PIECE_INDEX.__getitem__)
         if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], False):

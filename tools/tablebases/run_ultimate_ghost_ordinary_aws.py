@@ -165,6 +165,14 @@ def main() -> None:
                               "with the current compiler before reuse"))
     parser.add_argument("--solve-existing", action="store_true",
                         help="solve an authenticated transitions-only work tree")
+    parser.add_argument(
+        "--existing-transition-prefix", default="",
+        help=("solve-existing transition prefix relative to the work tree; "
+              "defaults to work/transitions/<tablebase stem>"))
+    parser.add_argument(
+        "--existing-transition-certificate", default="work/transitions-ready.json",
+        help=("solve-existing certificate path relative to the work tree; "
+              "defaults to work/transitions-ready.json"))
     parser.add_argument("--finalize-existing", action="store_true",
                         help="authenticate existing outputs and write the manifest")
     args = parser.parse_args()
@@ -179,6 +187,13 @@ def main() -> None:
         raise RuntimeError("solve mode requires --lower-ghost-sidecar")
     if args.solve_max_nodes < 500_000_000:
         raise RuntimeError("solve ROBDD node budget may not shrink below baseline")
+    for value, label in ((args.existing_transition_prefix,
+                          "existing transition prefix"),
+                         (args.existing_transition_certificate,
+                          "existing transition certificate")):
+        path = Path(value)
+        if path.is_absolute() or ".." in path.parts:
+            raise RuntimeError(f"{label} must remain inside the work tree")
     if ((args.prebuilt_executable is None) !=
             (not args.prebuilt_executable_sha256)):
         raise RuntimeError(
@@ -259,10 +274,11 @@ def main() -> None:
         raise RuntimeError("resume-transitions work directory is missing")
     work = args.work.resolve()
     if args.solve_existing:
-        if not (work / "work/transitions-ready.json").is_file():
+        certificate_path = work / args.existing_transition_certificate
+        if not certificate_path.is_file():
             raise RuntimeError("solve-existing work lacks its transition certificate")
         certificate = json.loads(
-            (work / "work/transitions-ready.json").read_text())
+            certificate_path.read_text())
         expected = {"filename": args.filename, "piece": args.piece,
                     "orientation": args.orientation,
                     "source_sha256": args.source_sha256,
@@ -406,7 +422,9 @@ def main() -> None:
                     future.result()
         shared.run_ranges(commands, work, args.parallelism)
     stem = Path(args.filename).stem
-    merged = f"work/transitions/{stem}"
+    merged = (args.existing_transition_prefix
+              if args.solve_existing and args.existing_transition_prefix
+              else f"work/transitions/{stem}")
     merge = [str(executable), "--merge-transitions", "--orientation",
              args.orientation, "--transition-prefix", merged]
     for index in range(SHARDS):

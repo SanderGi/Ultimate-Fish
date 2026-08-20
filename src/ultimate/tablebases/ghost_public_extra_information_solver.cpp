@@ -777,6 +777,26 @@ void reciprocal_fresh_admission_self_test() {
 
 [[nodiscard]] bool run_reciprocal_fixed_point(
   ExternalGhostExtraFixedPoint& solver, ExtraGeometryDomain& domain) {
+    if (solver.options_.resumeConverged) {
+        std::cout << "reciprocal_ghost_extra_resume_converged iteration "
+                  << solver.iteration_
+                  << " independent_bellman_verification 1\n" << std::flush;
+        // The verifier performs a complete Bellman sweep into the alternate
+        // arrays and requires canonical ROBDD equality with every retained
+        // current root.  It therefore proves the fixed point independently
+        // without another mutating iteration.  Preserve the frozen reporter
+        // bypass used by the ordinary-piece adapter.
+        domain.geometries_.push_back(domain.geometries_.front());
+        try {
+            solver.verify();
+        }
+        catch (...) {
+            domain.geometries_.pop_back();
+            throw;
+        }
+        domain.geometries_.pop_back();
+        return true;
+    }
     const auto started = std::chrono::steady_clock::now();
     for (;;) {
         ++solver.iteration_;
@@ -801,9 +821,7 @@ void reciprocal_fresh_admission_self_test() {
                   std::uint64_t(geometry) * Squares + actual;
                 const ExternalRobdd::Id oldOwner = solver.ownerCurrent_[index];
                 const ExternalRobdd::Id newOwner = solver.ownerNext_[index];
-                if (solver.bdd_->logical_and(oldOwner,
-                      solver.bdd_->logical_not(newOwner)) !=
-                    ExternalRobdd::False)
+                if (!solver.bdd_->implies(oldOwner, newOwner))
                     throw std::runtime_error(
                       "reciprocal owner least fixed point regressed");
                 changedOwner += oldOwner != newOwner;
@@ -824,9 +842,7 @@ void reciprocal_fresh_admission_self_test() {
                   solver.observerCurrent_[stratum];
                 const ExternalRobdd::Id newObserver =
                   solver.observerNext_[stratum];
-                if (solver.bdd_->logical_and(oldObserver,
-                      solver.bdd_->logical_not(newObserver)) !=
-                    ExternalRobdd::False)
+                if (!solver.bdd_->implies(oldObserver, newObserver))
                     throw std::runtime_error(
                       "reciprocal observer least fixed point regressed");
                 changedObserver += oldObserver != newObserver;
@@ -1145,6 +1161,11 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     legacy.bddLimits.budgetBytes = options.bddBudgetBytes;
     legacy.compactEvery = options.compactEvery;
     legacy.measureIterations = options.measureIterations;
+    legacy.resumeFixedPoint = options.resumeFixedPoint;
+    legacy.resumeConverged = options.resumeConverged;
+    legacy.resumeCurrentInNextSlot = options.resumeCurrentInNextSlot;
+    legacy.resumeBddSlot = options.resumeBddSlot;
+    legacy.resumeIteration = options.resumeIteration;
     gate_external_ghost_extra_solve(options.transitionPrefix, database, legacy);
     LowerGhostSymbolicSidecar lower(options.lowerGhostSidecar,
       options.lowerGhostSourceSha256, options.lowerGhostModelSha256,

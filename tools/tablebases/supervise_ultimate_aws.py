@@ -29,6 +29,7 @@ import re
 import subprocess
 import tempfile
 import time
+import zlib
 from typing import Any
 
 
@@ -51,6 +52,10 @@ REMOTE_REQUEST_BUDGET = 97_000
 # is returned.  Keep the aggregate per-job cap below the SSM output margin.
 DIAGNOSTIC_SOURCE_MAX_BYTES = 4_096
 DIAGNOSTIC_JOB_MAX_BYTES = 8_192
+# A crowded host may need to compact active diagnostics below their configured
+# collection limit to fit SSM's response cap.  Keep enough recent text to show
+# the current phase/progress marker while retaining the full sample hash.
+ACTIVE_DIAGNOSTIC_TAIL_BYTES = 1_024
 # SSM can leave a Run Command invocation pending for minutes when an agent or
 # endpoint is unhealthy.  Bound one host probe so the five-minute LaunchAgent
 # never serializes behind an unbounded transport retry.
@@ -61,10 +66,14 @@ SSM_POLL_BACKOFF_MAX_SECONDS = 5
 TERMINAL_OK = {"CERTIFIED"}
 TERMINAL_BAD = {"FAILED", "SOURCE_MISMATCH", "RESOURCE_LIMIT"}
 UNIT = re.compile(r"[A-Za-z0-9_.@-]+\.service")
-CPU_SET = re.compile(r"[0-9,-]+")
+CPU_SET = re.compile(
+    r"[0-9]+(?:-[0-9]+)?(?:[,\s]+[0-9]+(?:-[0-9]+)?)*")
 DEFAULT_TARGET_UTILIZATION = .70
 DEFAULT_UNDERUTILIZED_FRACTION = .50
 DEFAULT_UNDERUTILIZED_SAMPLES = 2
+LEDGER_ROW = re.compile(
+    r"^\| `[^`]+` \| [^|]* \| [^|]* \| "
+    r"`([a-z0-9]+\.uftb)` \| \*\*([A-Z_]+)\*\* \|")
 
 
 def canonical_json(value: object) -> str:
@@ -73,6 +82,50 @@ def canonical_json(value: object) -> str:
 
 def sha256_bytes(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
+
+
+def ledger_readme_path(config: dict[str, Any]) -> Path | None:
+    value = config.get("ledger_readme")
+    if value is None:
+        return None
+    path = Path(value)
+    return path if path.is_absolute() else ROOT / path
+
+
+def ledger_readme_statuses(path: Path) -> dict[str, str]:
+    """Return each table filename's public ledger status, failing on drift."""
+    statuses: dict[str, str] = {}
+    for line_number, line in enumerate(path.read_text().splitlines(), 1):
+        match = LEDGER_ROW.match(line)
+        if not match:
+            continue
+        filename, status = match.groups()
+        previous = statuses.setdefault(filename, status)
+        if previous != status:
+            raise RuntimeError(
+                f"{path}:{line_number} conflicts with the earlier "
+                f"{filename} status {previous}")
+    return statuses
+
+
+def active_ledger_status_errors(config: dict[str, Any],
+                                jobs: dict[str, Any]) -> list[str]:
+    """Detect active work hidden behind a stale non-computing README row."""
+    path = ledger_readme_path(config)
+    if path is None:
+        return []
+    statuses = ledger_readme_statuses(path)
+    errors: list[str] = []
+    for identifier, job in jobs.items():
+        if job["status"] != "RUNNING":
+            continue
+        for filename in job["ledger_files"]:
+            status = statuses.get(filename)
+            if status not in {"COMPUTING", "CERTIFIED"}:
+                errors.append(
+                    f"active job {identifier} tracks {filename}, but "
+                    f"{path} reports {status or 'no row'}")
+    return errors
 
 
 def run(argv: list[str], *, timeout: int = 60) -> str:
@@ -185,6 +238,14 @@ def validate_config(config: dict[str, Any]) -> None:
             "utilization fractions must satisfy 0 < underutilized < target <= 1")
     if samples < 2:
         raise RuntimeError("underutilized_samples must be at least two")
+    ledger_readme = config.get("ledger_readme")
+    if ledger_readme is not None:
+        if (not isinstance(ledger_readme, str) or not ledger_readme or
+                "\x00" in ledger_readme):
+            raise RuntimeError("ledger_readme must be a nonempty path")
+        readme_path = Path(ledger_readme)
+        if not readme_path.is_absolute() and ".." in readme_path.parts:
+            raise RuntimeError("relative ledger_readme must stay within the repository")
     instances = config.get("instances")
     jobs = config.get("jobs")
     if not isinstance(instances, list) or not instances or len(instances) > 5:
@@ -243,7 +304,7 @@ def validate_config(config: dict[str, Any]) -> None:
             if not job.get("s3_certificates"):
                 raise RuntimeError(
                     f"{identifier} S3-only certification requires certificates")
-            if job.get("advanceable") or job.get("source_bindings"):
+            if job.get("advanceable"):
                 raise RuntimeError(
                     f"{identifier} S3-only certification is archival only")
         ledger_files = job.get("ledger_files", [])
@@ -262,6 +323,16 @@ def validate_config(config: dict[str, Any]) -> None:
                                       for value in result.values())):
                 raise RuntimeError(
                     f"{identifier} has invalid ledger result for {filename}")
+        explicit_results = job.get("result_certificate_keys")
+        if explicit_results is not None:
+            if (not isinstance(explicit_results, dict) or
+                    set(explicit_results) != set(map(str, ledger_files)) or
+                    any(not isinstance(keys, list) or
+                        any(not isinstance(key, str) or not key or "\n" in key
+                            for key in keys)
+                        for keys in explicit_results.values())):
+                raise RuntimeError(
+                    f"{identifier} has invalid result_certificate_keys")
         expected_cpus = job.get("expected_allowed_cpus")
         if expected_cpus is not None:
             try:
@@ -306,6 +377,16 @@ def validate_config(config: dict[str, Any]) -> None:
         for dependency in job.get("dependencies", []):
             if dependency not in job_ids or dependency == job["id"]:
                 raise RuntimeError(f"{job['id']} has an invalid dependency")
+    jobs_by_id = {str(job["id"]): job for job in jobs}
+    for job in jobs:
+        if job.get("superseded_by") or not job.get("queue_stage"):
+            continue
+        for dependency in job.get("dependencies", []):
+            replacement = jobs_by_id[str(dependency)].get("superseded_by")
+            if replacement:
+                raise RuntimeError(
+                    f"{job['id']} depends on superseded {dependency}; "
+                    f"use current replacement {replacement}")
 
 
 def glob_magic(path: str) -> bool:
@@ -319,7 +400,10 @@ def parse_cpu_set(value: object, capacity: int) -> set[int]:
     if not CPU_SET.fullmatch(text):
         raise ValueError(f"invalid CPU set: {text!r}")
     result: set[int] = set()
-    for component in text.split(","):
+    # systemd renders a discontinuous AllowedCPUs mask with spaces even when
+    # it was supplied as a comma-separated list.  Accept both representations
+    # so a healthy multi-range cgroup is not misclassified as an unknown job.
+    for component in re.split(r"[,\s]+", text):
         if "-" in component:
             first_text, last_text = component.split("-", 1)
             first, last = int(first_text), int(last_text)
@@ -545,31 +629,69 @@ encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
 if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
  # Live checkpoint and diagnostic details are useful for progress, but unit
  # state and authenticated source bindings are sufficient to classify a live
- # job.  If a busy host exceeds the response budget, discard only those
- # regenerable fields from active records.  Inactive records retain complete
- # artifact evidence so completion can never be certified from a compacted
- # observation.  The next probe will see a newly inactive job in full.
+ # job.  If a busy host exceeds the response budget, discard bulky filesystem
+ # aggregates from active records first, but retain bounded diagnostic tails;
+ # otherwise long-running stalls become invisible precisely on busy hosts.
+ # Inactive records retain complete artifact evidence so completion can never
+ # be certified from a compacted observation.  The next probe will see a newly
+ # inactive job in full.
  for record in jobs:
   if record.get('u',{}).get('ActiveState') in {'active','activating','reloading'}:
-   record['k']=[]; record['c']=[]; record['d']=[]
+   record['k']=[]; record['c']=[]
  document['q']=1
  document.pop('b',None)
  encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
  document['b']=len(encoded.encode())
  encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
  if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
+  # Preserve each diagnostic's status, source size, and full collected-sample
+  # hash, but shorten only the printable tail.  A changing hash still proves
+  # forward log activity even when the exact progress line falls outside the
+  # compact tail.
+  for record in jobs:
+   if record.get('u',{}).get('ActiveState') in {'active','activating','reloading'}:
+    for item in record.get('d',[]):
+     if isinstance(item,dict) and isinstance(item.get('t'),str):
+      item['t']=item['t'][-__ACTIVE_DIAGNOSTIC_TAIL_BYTES__:]
+  document.pop('b',None)
+  encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+  document['b']=len(encoded.encode())
+  encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+ if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
+  # As a final active-only reduction retain metadata/hash evidence and omit
+  # text.  This is still sufficient for the supervisor to detect log growth.
+  for record in jobs:
+   if record.get('u',{}).get('ActiveState') in {'active','activating','reloading'}:
+    for item in record.get('d',[]):
+     if isinstance(item,dict): item['t']=''
+  document.pop('b',None)
+  encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+  document['b']=len(encoded.encode())
+  encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+ if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
   # A host with substantial stopped-job history can still exceed the cap.
   # Completion aggregates are the only filesystem evidence used to promote
-  # an inactive unit; retain all of them and remove checkpoint/diagnostic
-  # history.  This remains fail-closed because an absent or malformed
-  # completion aggregate cannot certify a job.
+  # an inactive unit; retain all of them and remove its checkpoint/diagnostic
+  # history.  Keep active diagnostic evidence unless it is the only remaining
+  # way to fit the transport cap.  This remains fail-closed because an absent
+  # or malformed completion aggregate cannot certify a job.
   for record in jobs:
-   record['k']=[]; record['d']=[]
+   record['k']=[]
+   if record.get('u',{}).get('ActiveState') not in {'active','activating','reloading'}:
+    record['d']=[]
   document['q']=2
   document.pop('b',None)
   encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
   document['b']=len(encoded.encode())
   encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+  if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
+   # Last-resort transport fallback: completion and unit state still dominate
+   # diagnostics because they protect certification correctness.
+   for record in jobs: record['d']=[]
+   document.pop('b',None)
+   encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+   document['b']=len(encoded.encode())
+   encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
   if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
    encoded=json.dumps({'probe_error':'bounded remote output budget exceeded',
                        'probe_encoded_bytes':len(encoded.encode()),
@@ -578,11 +700,16 @@ print('ULTIMATE_SUPERVISION_JSON='+encoded)
 '''
     program = program.replace(
         "__REMOTE_OUTPUT_BUDGET__", str(REMOTE_OUTPUT_BUDGET))
+    program = program.replace(
+        "__ACTIVE_DIAGNOSTIC_TAIL_BYTES__",
+        str(ACTIVE_DIAGNOSTIC_TAIL_BYTES))
     # The wrapper imports only the modules used by the embedded program.  The
     # source is immutable local text; no remote shell interpolation is used.
-    encoded_program = base64.b64encode(program.encode()).decode()
+    encoded_program = base64.b64encode(
+        zlib.compress(program.encode(), level=9)).decode()
     wrapper = (
-        "python3 -c 'import base64,sys;exec(base64.b64decode(sys.argv[1]))' "
+        "python3 -c 'import base64,sys,zlib;exec(zlib.decompress("
+        "base64.b64decode(sys.argv[1])))' "
         f"{encoded_program} {encoded}")
     request_bytes = len(wrapper.encode())
     if request_bytes >= REMOTE_REQUEST_BUDGET:
@@ -774,6 +901,40 @@ def cached_certificates(definition: dict[str, Any], previous_job: dict[str, Any]
                item.get("sha256"), int(item.get("size", -1)))
               for item in cached if item.get("exact")}
     return list(cached) if expected and expected == actual else []
+
+
+def has_result_certificate(definition: dict[str, Any]) -> bool:
+    """Return whether a ledger-producing job names a preserved result object.
+
+    Source bundles, binaries, wrappers, and migration checkpoints authenticate
+    inputs but cannot certify a completed tablebase.  Historical result
+    archives live either below ``results/``, below a class-specific
+    ``.../results/`` prefix, or in the older ``existing-ufiw`` namespace.
+    Non-ledger build/staging jobs retain the legacy behavior because their
+    immutable output can itself be a source artifact.
+    """
+    if not definition.get("ledger_certifies") or not definition.get("ledger_files"):
+        return True
+    result_keys = []
+    for certificate in definition.get("s3_certificates", []):
+        key = str(certificate.get("key", ""))
+        if (key.startswith("results/") or "/results/" in key or
+                "/existing-ufiw/" in key):
+            result_keys.append(key)
+
+    explicit = definition.get("result_certificate_keys")
+    if explicit is not None:
+        available = {str(item.get("key", ""))
+                     for item in definition.get("s3_certificates", [])}
+        return (isinstance(explicit, dict) and
+                set(explicit) == set(map(str, definition["ledger_files"])) and
+                all(isinstance(keys, list) and keys and
+                    all(key in available and key in result_keys for key in keys)
+                    for keys in explicit.values()))
+    # Legacy records predate explicit per-ledger associations; retain their
+    # namespace rule. New jobs use result_certificate_keys so a dependency
+    # archive below results/ cannot certify the consuming row.
+    return bool(result_keys)
 
 
 def unit_status(properties: dict[str, Any]) -> str:
@@ -1121,7 +1282,8 @@ def probe_instance(config: dict[str, Any], definition: dict[str, Any],
               if job.get("queue_stage") and not job.get("advanceable") and
               not job.get("superseded_by")]
     superseded = [job for job in jobs if job.get("superseded_by")]
-    omitted = queued + superseded
+    archival = [job for job in jobs if job.get("s3_only_certified")]
+    omitted = queued + superseded + archival
     probed = [job for job in jobs if job not in omitted]
     if state == "running":
         try:
@@ -1143,7 +1305,7 @@ def probe_instance(config: dict[str, Any], definition: dict[str, Any],
                              "ActiveState": "inactive", "Result": "success",
                              "ExecMainStatus": "0"},
                     "checkpoints": [], "completion": [], "sources": [],
-                } for job in queued)
+                } for job in queued + archival)
         except Exception as exception:  # one host must not hide the other four
             error = str(exception)
     warnings = resource_warnings(definition, remote) if remote else []
@@ -1242,7 +1404,8 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         # source hash vector by design; do not turn that staging boundary into
         # a live SOURCE_MISMATCH failure.
         source_matches = source_exact(definition, remote) if remote else False
-        if (not superseded and not definition.get("queue_stage") and remote
+        if (not superseded and not definition.get("queue_stage") and
+                not definition.get("s3_only_certified") and remote
                 and not source_matches):
             status = "SOURCE_MISMATCH"
         completion = all_paths_exist(remote.get("completion", []))
@@ -1255,6 +1418,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         # its journal records failure.  Completion evidence may still certify
         # it below; without that evidence, fail closed and delegate diagnosis.
         if (not superseded and not definition.get("queue_stage") and
+                not definition.get("s3_only_certified") and
                 remote.get("unit", {}).get("LoadState") == "not-found" and
                 previous_status == "RUNNING" and not completion):
             status = "FAILED"
@@ -1277,8 +1441,10 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                             definition["s3_certificates"]))
                 except Exception as error:
                     errors.append({"job": identifier, "error": str(error)})
+        result_certificate = has_result_certificate(definition)
         if (not superseded and (completion or s3_only) and certificates and
-                all(item["exact"] for item in certificates)):
+                all(item["exact"] for item in certificates) and
+                result_certificate):
             status = "CERTIFIED"
         elif (not superseded and completion and
               status in {"INACTIVE", "SOURCE_MISMATCH"}):
@@ -1299,6 +1465,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
             "ledger_files": definition.get("ledger_files", []),
             "ledger_certifies": bool(definition.get("ledger_certifies")),
             "ledger_results": definition.get("ledger_results", {}),
+            "result_certificate_declared": result_certificate,
         }
 
     # Resolve readiness only after every job's observed status is known.
@@ -1314,6 +1481,15 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
               all(jobs.get(dependency, {}).get("status") in TERMINAL_OK
                   for dependency in dependencies)):
             result["status"] = "AWAITING_STAGE"
+
+    try:
+        for error in active_ledger_status_errors(config, jobs):
+            errors.append({"fleet": "LEDGER_STATUS", "error": error})
+    except (OSError, RuntimeError) as error:
+        errors.append({
+            "fleet": "LEDGER_STATUS",
+            "error": f"cannot authenticate public ledger status: {error}",
+        })
 
     budget = float(config["budget_usd"])
     if total_spend >= budget:

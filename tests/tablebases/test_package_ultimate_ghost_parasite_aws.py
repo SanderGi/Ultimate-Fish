@@ -45,6 +45,17 @@ class ParasiteGhostAwsBundleTests(unittest.TestCase):
         return Path(prefix).name, begin, count
 
     def test_both_manifests_are_gap_free_and_fingerprint_isolated(self):
+        self.assertIn(
+            package.information.concrete_tablebase_model_fingerprint(
+                "kparasitek.uftb"),
+            package.LOWER_PARASITE_COMPATIBLE_GENERATOR_MODELS)
+        self.assertIn(package.LOWER_PARASITE_MODEL_SHA256,
+                      package.LOWER_PARASITE_COMPATIBLE_GENERATOR_MODELS)
+        self.assertIn(
+            package.information.tracked_ghost_tablebase_model_fingerprint(),
+            package.LOWER_TRACKED_GHOST_COMPATIBLE_GENERATOR_MODELS)
+        self.assertIn(package.LOWER_TRACKED_GHOST_MODEL_SHA256,
+                      package.LOWER_TRACKED_GHOST_COMPATIBLE_GENERATOR_MODELS)
         for filename, orientation in (("kghostparasitek.uftb", "same"),
                                       ("kghostkparasite.uftb", "opposing")):
             with self.subTest(filename=filename):

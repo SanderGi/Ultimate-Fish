@@ -79,14 +79,42 @@ PIECES = (
           note="2x2 footprint makes some anchor tuples invalid"),
     Piece("copycat", decisive=True, stateless=False, closed_k2=False,
           note="linked mirror clone is position-derived until an external effect displaces it"),
-    Piece("angel", stateless=False, closed_k2=False,
-          note="insufficient alone; attachment/host/Halo state"),
+    Piece("angel", support=True, state_factor=2, stateless=False,
+          closed_k2=False,
+          note="insufficient alone; exact one-Angel deployed/attached/Halo codec"),
     Piece("fisherman", support=True),
     Piece("dragon", decisive=True),
 )
 
-DEFERRED_DYNAMIC_K2 = frozenset({"devil", "sludge", "angel"})
+DEFERRED_DYNAMIC_K2 = frozenset({"devil", "sludge"})
 COPYCAT_SEPARATORS = frozenset({"penguin", "mage", "fisherman"})
+# The v9/v10 Angel graph codecs cover one-Angel public-information domains.
+# Angel/Angel has no attacking material and is an exact closed-form draw, so
+# its ordered rescue stack never needs indexing. Ghost still needs an
+# information-state attachment graph. Jester/Angel is closed by the v9 Angel
+# graph plus the primary-Jester public-observation overlay. Same-team
+# Copycat/Angel uses the v10
+# four-host-mode graph plus an exact arbitrary-linked-pair lower table.
+ANGEL_DEFERRED_COMPANIONS = frozenset({
+    "ghost", "devil", "sludge", "angel",
+})
+
+
+def deferred_material(first: str, second: str = "", *,
+                      opposing: bool = False) -> bool:
+    """Return whether this material lies outside the exact campaign codecs."""
+    names = {first, second} - {""}
+    if names & DEFERRED_DYNAMIC_K2:
+        return True
+    if "angel" in names:
+        if not second:
+            return False
+        companion = second if first == "angel" else first
+        if companion == "angel":
+            return False
+        if companion in ANGEL_DEFERRED_COMPANIONS:
+            return True
+    return "copycat" in names and bool(names & COPYCAT_SEPARATORS)
 
 
 def placement_states(extra_models: int, identical_pair: bool = False) -> int:
@@ -117,6 +145,15 @@ def compound_copycat_pair_states(identical_pair: bool = False) -> int:
     return result // 2 if identical_pair else result
 
 
+def linked_copycat_pair_states() -> int:
+    """K+arbitrarily displaced reciprocal Copycat pair versus King.
+
+    Angel rescue can move the struck half to its Halo while leaving the linked
+    partner in place. Both explicit half squares are horizontally folded.
+    """
+    return placement_states(2)
+
+
 def material_state_factor(piece: Piece, *, four_models: bool = False,
                           other: Piece | None = None) -> int:
     """Return the exact substate factor in this material domain.
@@ -137,6 +174,22 @@ def material_state_factor(piece: Piece, *, four_models: bool = False,
 def pair_state_factor(first: Piece, second: Piece) -> int:
     return (material_state_factor(first, four_models=True, other=second) *
             material_state_factor(second, four_models=True, other=first))
+
+
+def angel_pair_state_factor(companion: Piece, same_team: bool) -> int:
+    """Exact one-Angel topology factor for a K+K+2 material class.
+
+    An opposed Angel has two modes: deployed or attached to its own King.  A
+    same-team Angel ordinarily has a third mode in which it is attached to the
+    companion. Copycat has two independently protectable linked halves, so its
+    same-team graph has four modes.
+    The dense Angel slot stores the deployed square or the live Halo square, so
+    the ordinary four-model placement count remains valid.
+    """
+    angel = next(piece for piece in PIECES if piece.name == "angel")
+    return (((4 if companion.name == "copycat" else 3)
+             if same_team else 2) *
+            material_state_factor(companion, four_models=True, other=angel))
 
 
 def single_material_states(piece: Piece) -> int:
@@ -228,6 +281,59 @@ def stateful_candidates() -> list[dict[str, object]]:
         int(record["packed_bytes"]), str(record["filename"])))
 
 
+def angel_candidates() -> list[dict[str, object]]:
+    """Return exact visible Angel K+K+2 computation domains.
+
+    Insufficient pairings are intentionally absent: the ledger records those
+    as closed-form draws.  Unsupported multi-rescue, hidden-information,
+    spawning topologies remain explicit deferrals. The same-team Copycat graph
+    is admitted only with its exact displaced-pair lower dependency.
+    """
+    order = {piece.name: index for index, piece in enumerate(PIECES)}
+    angel = next(piece for piece in PIECES if piece.name == "angel")
+    result: list[dict[str, object]] = []
+    for companion in PIECES:
+        if (companion.name in ANGEL_DEFERRED_COMPANIONS or
+                companion.name == "copycat"):
+            continue
+        first, second = sorted((companion, angel),
+                               key=lambda piece: order[piece.name])
+        if sufficient_pair(first, second, True):
+            states = (placement_states(2) *
+                      angel_pair_state_factor(companion, True))
+            result.append(class_record(
+                f"K{first.name}{second.name}vK", states,
+                "kings+2-angel-graph-v1", primary=first.name,
+                secondary=second.name,
+                filename=f"k{first.name}{second.name}k.uftb",
+                note="exact one-Angel deployed/attached/host/Halo graph"))
+        if sufficient_pair(first, second, False):
+            states = (placement_states(2) *
+                      angel_pair_state_factor(companion, False))
+            result.append(class_record(
+                f"K{first.name}vK{second.name}", states,
+                "kings+2-angel-graph-v1", primary=first.name,
+                secondary=second.name, opposing=True,
+                filename=f"k{first.name}k{second.name}.uftb",
+                note="exact one-Angel deployed/attached/host/Halo graph"))
+    result.append(class_record(
+        "KcopycatvKangel", compound_copycat_pair_states() * 2,
+        "kings+2-angel-graph-v1", primary="copycat", secondary="angel",
+        opposing=True, filename="kcopycatkangel.uftb",
+        note=("exact opposed Angel deployed/attached-to-own-King graph with "
+              "an intact linked-mirror Copycat compound")))
+    result.append(class_record(
+        "KcopycatangelvK", compound_copycat_pair_states() * 4,
+        "kings+2-angel-copycat-graph-v1", primary="copycat",
+        secondary="angel", filename="kcopycatangelk.uftb",
+        note=("exact deployed/own-King/primary-half/clone-half Angel graph; "
+              f"rescue enters {linked_copycat_pair_states():,}-state exact "
+              "arbitrary-linked-Copycat lower table")))
+    if len(result) != 30 or len({str(row["filename"]) for row in result}) != 30:
+        raise RuntimeError("visible one-Angel K+K+2 inventory residual")
+    return sorted(result, key=lambda record: str(record["filename"]))
+
+
 def mirror_copycat_candidates() -> list[dict[str, object]]:
     """User-approved linked-mirror K+K+2 Copycat planning domain.
 
@@ -241,7 +347,8 @@ def mirror_copycat_candidates() -> list[dict[str, object]]:
     """
     result: list[dict[str, object]] = []
     for secondary in PIECES:
-        if secondary.name in DEFERRED_DYNAMIC_K2 | COPYCAT_SEPARATORS:
+        if secondary.name in (DEFERRED_DYNAMIC_K2 | COPYCAT_SEPARATORS |
+                              {"angel"}):
             continue
         for opposing in (False, True):
             states = compound_copycat_pair_states(

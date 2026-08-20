@@ -23,6 +23,7 @@ import os
 from pathlib import Path
 import shutil
 import struct
+import subprocess
 import sys
 from typing import Any, BinaryIO
 
@@ -35,6 +36,8 @@ import run_ultimate_concrete_tablebase_shard_aws as concrete  # noqa: E402
 
 SCHEMA = "ultimate-concrete-frontier-resume-v1"
 RESULT_SCHEMA = "ultimate-concrete-frontier-resume-result-v1"
+EXECUTION_EQUIVALENCE_SCHEMA = \
+    "ultimate-concrete-frontier-execution-equivalence-v1"
 DEFAULT_MANIFEST = ROOT / "tools/tablebases/ultimate_concrete_wave0_018_resume.json"
 CHECKPOINT_MAGIC = b"UFTBCP4\0"
 BLOCK = 4 << 20
@@ -51,6 +54,37 @@ def sha256_path(path: Path) -> str:
         for block in iter(lambda: stream.read(BLOCK), b""):
             digest.update(block)
     return digest.hexdigest()
+
+
+def historical_generator_model_sha256(root: Path) -> str:
+    """Evaluate a retained bundle with its own pinned inventory contract.
+
+    ``generator_model_sha256(root)`` hashes file payloads below ``root`` but
+    builds its contract from the currently imported planner.  Once the
+    supported inventory expands, that makes an unchanged historical bundle
+    appear to have a different model.  A retained bundle includes the exact
+    runner and planner that defined its hash, so use those files for the
+    historical check.  Tiny unit fixtures without a runnable bundle retain
+    the injectable current-helper fallback.
+    """
+    runner = root / "tools/tablebases/run_ultimate_concrete_tablebase_shard_aws.py"
+    if not runner.is_file():
+        return concrete.generator_model_sha256(root)
+    code = (
+        "import pathlib,sys;"
+        "root=pathlib.Path(sys.argv[1]);"
+        "sys.path.insert(0,str(root/'tools/tablebases'));"
+        "import run_ultimate_concrete_tablebase_shard_aws as r;"
+        "print(r.generator_model_sha256(root))"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code, str(root)], check=True, text=True,
+        capture_output=True)
+    digest = result.stdout.strip()
+    if len(digest) != 64 or any(character not in "0123456789abcdef"
+                                for character in digest):
+        raise RuntimeError("historical source-bundle model output is malformed")
+    return digest
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
@@ -198,7 +232,7 @@ def authenticate_manifest(document: dict[str, Any]) -> dict[str, Any]:
     if run_plan.get("selected") != [record] or run_plan.get("status") != \
             "full-preflight":
         raise RuntimeError("preserved run-plan selection/status residual")
-    if concrete.generator_model_sha256(source / "bundle") != \
+    if historical_generator_model_sha256(source / "bundle") != \
             document["generator_model_sha256"]:
         raise RuntimeError("preserved source-bundle model residual")
     if files["binary"]["sha256"] != document["binary_sha256"]:
@@ -316,6 +350,18 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--local-only", action="store_true",
                         help="run and verify locally without packaging or S3 upload")
     parser.add_argument("--aws-execution-ack")
+    parser.add_argument("--workers", type=int, choices=range(1, 9), default=1,
+                        help="parallel workers for deterministic graph scans")
+    parser.add_argument(
+        "--execution-bundle-root", type=Path,
+        help=("authenticated replacement source root used only after the "
+              "preserved frontier is loaded"))
+    parser.add_argument("--execution-binary", type=Path)
+    parser.add_argument("--execution-model-sha256")
+    parser.add_argument("--execution-inventory-sha256")
+    parser.add_argument("--execution-binary-sha256")
+    parser.add_argument("--execution-equivalence-certificate", type=Path)
+    parser.add_argument("--execution-equivalence-sha256")
     parser.add_argument("--resident-limit", type=int, default=0)
     parser.add_argument("--scratch-limit", type=int, default=0)
     parser.add_argument("--reverse-edge-bytes-limit", type=int, default=0)
@@ -324,6 +370,88 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--monitor-interval", type=float, default=5.0)
     parser.add_argument("--s3-prefix")
     return parser.parse_args(argv)
+
+
+def execution_context(args: argparse.Namespace,
+                      document: dict[str, Any]) -> dict[str, Any]:
+    """Authenticate an optional scheduling-only replacement executable.
+
+    A retained frontier is data produced by one exact model.  Reusing it with
+    any other binary must therefore fail closed unless an immutable
+    equivalence certificate binds both model hashes and the replacement
+    executable.  This is intentionally separate from the frontier manifest:
+    the preserved source tree and its evidence remain untouched.
+    """
+    names = (
+        "execution_bundle_root", "execution_binary",
+        "execution_model_sha256", "execution_inventory_sha256",
+        "execution_binary_sha256",
+        "execution_equivalence_certificate",
+        "execution_equivalence_sha256",
+    )
+    supplied = [getattr(args, name) is not None for name in names]
+    if any(supplied) and not all(supplied):
+        raise RuntimeError(
+            "replacement execution requires every source/binary/equivalence binding")
+    if not any(supplied):
+        source = Path(document["source_work_directory"]).resolve()
+        return {
+            "bundle_root": source / "bundle",
+            "binary": source / document["binary"]["relative_path"],
+            "model_sha256": document["generator_model_sha256"],
+            "inventory_sha256": document["inventory_sha256"],
+            "binary_sha256": document["binary_sha256"],
+            "frontier_model_sha256": document["generator_model_sha256"],
+            "frontier_inventory_sha256": document["inventory_sha256"],
+            "equivalence": None,
+        }
+
+    bundle = args.execution_bundle_root.resolve()
+    binary = args.execution_binary.resolve()
+    certificate_path = args.execution_equivalence_certificate.resolve()
+    if not bundle.is_dir() or not binary.is_file() or \
+            not certificate_path.is_file():
+        raise RuntimeError("replacement execution input is missing")
+    if concrete.generator_model_sha256(bundle) != args.execution_model_sha256:
+        raise RuntimeError("replacement execution model residual")
+    if concrete.inventory_sha256() != args.execution_inventory_sha256:
+        raise RuntimeError("replacement execution inventory residual")
+    if sha256_path(binary) != args.execution_binary_sha256:
+        raise RuntimeError("replacement execution binary residual")
+    if sha256_path(certificate_path) != args.execution_equivalence_sha256:
+        raise RuntimeError("replacement execution equivalence SHA-256 residual")
+    certificate = json.loads(certificate_path.read_text(encoding="utf-8"))
+    if (certificate.get("schema") != EXECUTION_EQUIVALENCE_SCHEMA or
+            certificate.get("status") !=
+                "frontier-semantics-byte-identical-verified" or
+            certificate.get("frontier_model_sha256") !=
+                document["generator_model_sha256"] or
+            certificate.get("execution_model_sha256") !=
+                args.execution_model_sha256 or
+            certificate.get("frontier_inventory_sha256") !=
+                document["inventory_sha256"] or
+            certificate.get("execution_inventory_sha256") !=
+                args.execution_inventory_sha256 or
+            certificate.get("execution_binary_sha256") !=
+                args.execution_binary_sha256 or
+            certificate.get("output_residual") != 0 or
+            certificate.get("bellman_residual") != 0):
+        raise RuntimeError("replacement execution equivalence binding residual")
+    return {
+        "bundle_root": bundle,
+        "binary": binary,
+        "model_sha256": args.execution_model_sha256,
+        "inventory_sha256": args.execution_inventory_sha256,
+        "binary_sha256": args.execution_binary_sha256,
+        "frontier_model_sha256": document["generator_model_sha256"],
+        "frontier_inventory_sha256": document["inventory_sha256"],
+        "equivalence": {
+            "path": str(certificate_path),
+            "bytes": certificate_path.stat().st_size,
+            "sha256": args.execution_equivalence_sha256,
+            "certificate": certificate,
+        },
+    }
 
 
 def preserve_completed(args: argparse.Namespace, document: dict[str, Any], *,
@@ -373,7 +501,7 @@ def preserve_completed(args: argparse.Namespace, document: dict[str, Any], *,
     if (sha256_path(binary) != document["binary_sha256"] or
             sha256_path(dependency_manifest) !=
                 document["dependency_manifest_sha256"] or
-            concrete.generator_model_sha256(source / "bundle") !=
+            historical_generator_model_sha256(source / "bundle") !=
                 document["generator_model_sha256"]):
         raise RuntimeError("completed resume source/binary binding residual")
     verification = concrete.parse_uftb(output, record, log)
@@ -473,7 +601,18 @@ def validate_full_gates(args: argparse.Namespace, work: Path,
     if available_memory < args.minimum_host_memory_available_bytes or \
             available_memory < required_memory:
         raise RuntimeError("host memory headroom gate failed")
-    available_disk = shutil.disk_usage(work.parent).free
+    # The destination is deliberately required not to exist yet.  Probe the
+    # nearest existing ancestor so a fresh resume root can pass its fail-closed
+    # disk gate without first mutating the filesystem.  In particular,
+    # shutil.disk_usage(work.parent) raises FileNotFoundError when both the
+    # class directory and its campaign parent are new.
+    disk_probe = work.parent
+    while not disk_probe.exists():
+        parent = disk_probe.parent
+        if parent == disk_probe:
+            raise RuntimeError("resume destination has no existing ancestor")
+        disk_probe = parent
+    available_disk = shutil.disk_usage(disk_probe).free
     if available_disk < args.minimum_free_bytes:
         raise RuntimeError("initial resume disk free gate failed")
     # Native checkpoint + new disk-backed planes + packed output/restore.
@@ -502,16 +641,24 @@ def main(argv: list[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     document = load_manifest(args.manifest.resolve())
     if args.preserve_completed or args.preserve_completed_artifacts_only:
+        if args.execution_bundle_root is not None:
+            raise RuntimeError(
+                "replacement execution preservation must use the original full run")
         print(canonical_json(preserve_completed(
             args, document,
             artifacts_only=args.preserve_completed_artifacts_only)))
         return 0
     authenticated = authenticate_manifest(document)
+    execution = execution_context(args, document)
     preflight: dict[str, Any] = {
         "schema": SCHEMA, "status": "authenticated-read-only-preflight",
         "manifest_sha256": sha256_path(args.manifest.resolve()),
-        "generator_model_sha256": document["generator_model_sha256"],
-        "inventory_sha256": document["inventory_sha256"],
+        "generator_model_sha256": execution["model_sha256"],
+        "frontier_model_sha256": execution["frontier_model_sha256"],
+        "frontier_inventory_sha256": execution["frontier_inventory_sha256"],
+        "execution_binary_sha256": execution["binary_sha256"],
+        "execution_equivalence": execution["equivalence"],
+        "inventory_sha256": execution["inventory_sha256"],
         "record": document["record"],
         "frontier_status": authenticated["frontier_status"],
         "preserved_planes": authenticated["files"],
@@ -533,9 +680,9 @@ def main(argv: list[str] | None = None) -> int:
     source = Path(document["source_work_directory"]).resolve()
     binary = work / "binary/ultimate_tablebase"
     binary.parent.mkdir(parents=True)
-    shutil.copy2(source / document["binary"]["relative_path"], binary)
+    shutil.copy2(execution["binary"], binary)
     binary.chmod(0o555)
-    if sha256_path(binary) != document["binary_sha256"]:
+    if sha256_path(binary) != execution["binary_sha256"]:
         raise RuntimeError("copied generator binary residual")
     (work / "outputs").mkdir()
     checkpoint_stem = Path(document["record"]["filename"]).stem
@@ -566,6 +713,7 @@ def main(argv: list[str] | None = None) -> int:
         "--output", f"outputs/{output_name}",
         "--checkpoint", f"scratch/{checkpoint_stem}",
         "--checkpoint-every", str(document["states"]), "--disk-backed",
+        "--workers", str(args.workers),
     ])
     environment = dict(os.environ)
     environment["ULTIMATE_TABLEBASE_PRESERVE_SCRATCH"] = "1"
@@ -582,8 +730,11 @@ def main(argv: list[str] | None = None) -> int:
     verification = concrete.parse_uftb(output, record, log)
     result = {
         "schema": RESULT_SCHEMA,
-        "generator_model_sha256": document["generator_model_sha256"],
-        "inventory_sha256": document["inventory_sha256"],
+        "generator_model_sha256": execution["model_sha256"],
+        "frontier_model_sha256": execution["frontier_model_sha256"],
+        "frontier_inventory_sha256": execution["frontier_inventory_sha256"],
+        "execution_equivalence": execution["equivalence"],
+        "inventory_sha256": execution["inventory_sha256"],
         "record": record, "output": verification,
         "resume_manifest_sha256": preflight["manifest_sha256"],
         "resume_checkpoint": checkpoint,
@@ -610,8 +761,11 @@ def main(argv: list[str] | None = None) -> int:
         "proof/dependency-manifest.json": source / "dependencies/manifest.json",
         "binary/ultimate_tablebase": binary,
     }
+    if execution["equivalence"] is not None:
+        files["proof/execution-equivalence.json"] = Path(
+            execution["equivalence"]["path"])
     for relative in concrete.MODEL_SOURCES:
-        files[f"sources/{relative}"] = source / "bundle" / relative
+        files[f"sources/{relative}"] = execution["bundle_root"] / relative
     archive, archive_sha = preservation.content_address_archive(
         work / "archives", checkpoint_stem, files, RESULT_SCHEMA)
     restored = preservation.restore_zstd_archive(
@@ -622,7 +776,7 @@ def main(argv: list[str] | None = None) -> int:
         raise RuntimeError("local resume archive restore residual")
     selection = document.get(
         "selection", {"wave": 0, "begin": 18, "end": 19, "classes": 1})
-    key = (f"concrete/v2/model/{document['generator_model_sha256']}/"
+    key = (f"concrete/v2/model/{execution['model_sha256']}/"
            f"wave-{selection['wave']}/"
            f"sha256/{archive_sha}/{archive.name}")
     remote = preservation.upload_head_download_verify(
@@ -633,8 +787,11 @@ def main(argv: list[str] | None = None) -> int:
     certificate = {
         "schema": concrete.CERTIFICATE_SCHEMA,
         "status": "head-download-full-sha-archive-restore-verified",
-        "generator_model_sha256": document["generator_model_sha256"],
-        "inventory_sha256": document["inventory_sha256"],
+        "generator_model_sha256": execution["model_sha256"],
+        "frontier_model_sha256": execution["frontier_model_sha256"],
+        "frontier_inventory_sha256": execution["frontier_inventory_sha256"],
+        "execution_equivalence": execution["equivalence"],
+        "inventory_sha256": execution["inventory_sha256"],
         "selection": selection,
         "completed": [{
             "filename": output_name, "status": "resumed-frontier-preserved",

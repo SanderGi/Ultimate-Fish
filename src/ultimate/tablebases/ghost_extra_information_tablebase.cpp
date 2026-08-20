@@ -2574,9 +2574,9 @@ void verify_external_transition_certificate(
                     position, moves[ordinal], child, observer));
                 expected.action = intern(
                   actions, position.move_to_string(moves[ordinal]));
-                const ExternalCompiledEdge& actual =
+                const ExternalCompiledEdge& storedEdge =
                   edges[offsets[ghost] + ordinal];
-                if (std::memcmp(&actual, &expected, sizeof(actual)))
+                if (std::memcmp(&storedEdge, &expected, sizeof(storedEdge)))
                     throw std::runtime_error(
                       "external transition reload residual is nonzero");
                 ++verifiedEdges;
@@ -2746,6 +2746,13 @@ void merge_external_transition_shards(
               sizeof(ExternalCompiledEdge);
         }
         std::ifstream shardBlocks(shard.prefix + ".blocks", std::ios::binary);
+        shardBlocks.seekg(0, std::ios::end);
+        if (!shardBlocks || shardBlocks.tellg() < 0 ||
+            static_cast<std::uint64_t>(shardBlocks.tellg()) !=
+              shard.header.blockBytes)
+            throw std::runtime_error(
+              "external transition shard block extent is invalid");
+        shardBlocks.seekg(0);
         copy_external_bytes(shardBlocks, blockFile, shard.header.blockBytes);
         stratumBase += shard.header.strata;
         blockBase += shard.header.blockBytes;
@@ -3110,6 +3117,21 @@ struct ExternalGhostExtraSolveOptions {
 #endif
     ExternalRobdd::Limits bddLimits;
     std::uint32_t compactEvery = 4;
+    // A failed post-fixed-point verifier may leave a complete, exact arena and
+    // force-root set.  Resume is explicit and parity-bound: callers must clone
+    // the retained evidence first, identify the active BDD slot, and identify
+    // which physical root-array slot holds the logical current iterate.
+    bool resumeFixedPoint = false;
+    // A retained resume arena whose authenticated journal records a zero-
+    // change sweep is already a fixed-point candidate.  In that case the
+    // independent Bellman verifier below is sufficient to prove equality;
+    // running another complete mutating sweep first only adds hours to large
+    // stateful-piece classes.  This flag is deliberately valid only together
+    // with the explicit, parity-bound fixed-point resume metadata above.
+    bool resumeConverged = false;
+    bool resumeCurrentInNextSlot = false;
+    char resumeBddSlot = 'a';
+    std::uint64_t resumeIteration = 0;
     // Nonzero is a resource-measurement mode, never a proof/result mode.  It
     // runs complete deterministic Bellman sweeps and exits without verification
     // or an overlay after the requested sweep, so a representative full-domain
@@ -3484,8 +3506,15 @@ void gate_external_ghost_extra_solve(
     const std::uint64_t compactionBytes =
       std::uint64_t(options.bddLimits.maxNodes) * sizeof(std::uint32_t) +
       (std::uint64_t(options.bddLimits.maxNodes) + 7) / 8;
-    const std::uint64_t scratchBytes = transitionBytes + bddBytes * 2 +
-      compactionBytes + ownerRoots + observerRoots + visibleRoots;
+    // The transition database is an authenticated input that already exists
+    // before the solve starts.  Counting it against the solve-allocation gate
+    // rejected large, successfully merged classes even though the fixed point
+    // neither copies nor grows those files.  Gate only the additional mutable
+    // arenas that the solve can allocate; still report the complete on-disk
+    // footprint for supervision and capacity accounting.
+    const std::uint64_t scratchBytes = bddBytes * 2 + compactionBytes +
+      ownerRoots + observerRoots + visibleRoots;
+    const std::uint64_t totalFootprintBytes = transitionBytes + scratchBytes;
     if (bddBytes > Budget || scratchBytes > Budget)
         throw std::runtime_error(
           "exact external Ghost-extra solve exceeds the 97 GiB gate");
@@ -3549,6 +3578,7 @@ void gate_external_ghost_extra_solve(
               << " force_root_bytes "
               << ownerRoots + observerRoots + visibleRoots
               << " total_scratch_bytes " << scratchBytes
+              << " total_footprint_bytes " << totalFootprintBytes
               << " available_bytes " << available
               << " budget_bytes " << Budget << " admitted 1\n" << std::flush;
     std::cout << "ghost_extra_external_memory_gate physical_bytes "
@@ -3570,31 +3600,57 @@ class ExternalGhostExtraFixedPoint {
       : database_(database), lower_(lower), concrete_(concrete), domain_(domain),
         material_(material), options_(std::move(options)),
         bdd_(std::make_unique<ExternalRobdd>(
-          options_.scratch + ".bdd-a", options_.bddLimits, true)),
+          options_.scratch + ".bdd-" +
+            (options_.resumeFixedPoint
+               ? std::string(1, options_.resumeBddSlot) : "a"),
+          options_.bddLimits, !options_.resumeFixedPoint)),
+        resumedNodeCount_(bdd_->node_count()),
         lowerImport_(lower_, *bdd_),
 #ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
         promoted_(options_),
         promotedImport_(promoted_, *bdd_),
 #endif
-        ownerCurrent_(options_.scratch + ".owner-current",
-          std::uint64_t(database_.geometry_count()) * Squares, true),
-        ownerNext_(options_.scratch + ".owner-next",
-          std::uint64_t(database_.geometry_count()) * Squares, true),
-        observerCurrent_(options_.scratch + ".observer-current",
-          database_.stratum_count(), true),
-        observerNext_(options_.scratch + ".observer-next",
-          database_.stratum_count(), true),
+        ownerCurrent_(options_.scratch +
+          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
+             ? ".owner-next" : ".owner-current"),
+          std::uint64_t(database_.geometry_count()) * Squares,
+          !options_.resumeFixedPoint),
+        ownerNext_(options_.scratch +
+          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
+             ? ".owner-current" : ".owner-next"),
+          std::uint64_t(database_.geometry_count()) * Squares,
+          !options_.resumeFixedPoint),
+        observerCurrent_(options_.scratch +
+          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
+             ? ".observer-next" : ".observer-current"),
+          database_.stratum_count(), !options_.resumeFixedPoint),
+        observerNext_(options_.scratch +
+          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
+             ? ".observer-current" : ".observer-next"),
+          database_.stratum_count(), !options_.resumeFixedPoint),
         domainRoots_(options_.scratch + ".domains",
-          database_.stratum_count(), true),
-        visibleOwnerCurrent_(options_.scratch + ".visible-owner-current",
-          std::uint64_t(database_.geometry_count()) * Squares, true),
-        visibleOwnerNext_(options_.scratch + ".visible-owner-next",
-          std::uint64_t(database_.geometry_count()) * Squares, true),
+          database_.stratum_count(), !options_.resumeFixedPoint),
+        visibleOwnerCurrent_(options_.scratch +
+          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
+             ? ".visible-owner-next" : ".visible-owner-current"),
+          std::uint64_t(database_.geometry_count()) * Squares,
+          !options_.resumeFixedPoint),
+        visibleOwnerNext_(options_.scratch +
+          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
+             ? ".visible-owner-current" : ".visible-owner-next"),
+          std::uint64_t(database_.geometry_count()) * Squares,
+          !options_.resumeFixedPoint),
         visibleObserverCurrent_(
-          options_.scratch + ".visible-observer-current",
-          std::uint64_t(database_.geometry_count()) * Squares, true),
-        visibleObserverNext_(options_.scratch + ".visible-observer-next",
-          std::uint64_t(database_.geometry_count()) * Squares, true) {
+          options_.scratch +
+            (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
+               ? ".visible-observer-next" : ".visible-observer-current"),
+          std::uint64_t(database_.geometry_count()) * Squares,
+          !options_.resumeFixedPoint),
+        visibleObserverNext_(options_.scratch +
+          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
+             ? ".visible-observer-current" : ".visible-observer-next"),
+          std::uint64_t(database_.geometry_count()) * Squares,
+          !options_.resumeFixedPoint) {
         if (material_.ghostColor != Color::White)
             throw std::runtime_error(
               "external exact solver currently supports same-side Bishop+Ghost only");
@@ -3605,25 +3661,71 @@ class ExternalGhostExtraFixedPoint {
             options_.sourceSha256 != hex_digest(concrete_.sha()))
             throw std::runtime_error(
               "external exact solve requires matching source/model/observation SHA-256 values");
-        ownerCurrent_.fill(ExternalRobdd::False);
-        ownerNext_.fill(ExternalRobdd::False);
-        observerCurrent_.fill(ExternalRobdd::False);
-        observerNext_.fill(ExternalRobdd::False);
-        visibleOwnerCurrent_.fill(0);
-        visibleOwnerNext_.fill(0);
-        visibleObserverCurrent_.fill(0);
-        visibleObserverNext_.fill(0);
-        for (std::uint64_t stratum = 0;
-             stratum < database_.stratum_count(); ++stratum) {
-            const ExternalMask& mask = database_.stratum(
-              static_cast<std::uint32_t>(stratum));
-            domainRoots_[stratum] = bdd_->subset_of(mask.low, mask.high);
+        if (options_.resumeConverged && !options_.resumeFixedPoint)
+            throw std::runtime_error(
+              "external converged verification requires fixed-point resume");
+        if (options_.resumeFixedPoint) {
+            if ((options_.resumeBddSlot != 'a' &&
+                 options_.resumeBddSlot != 'b') ||
+                !options_.resumeIteration ||
+                bdd_->node_count() != resumedNodeCount_)
+                throw std::runtime_error(
+                  "external fixed-point resume metadata is invalid");
+            iteration_ = options_.resumeIteration;
+            compactToB_ = options_.resumeBddSlot == 'a';
+            const auto validateRoots = [&](const auto& roots,
+                                           const char* label) {
+                for (std::uint64_t id = 0; id < roots.size(); ++id)
+                    if (roots[id] >= bdd_->node_count())
+                        throw std::runtime_error(
+                          std::string("external fixed-point resume ") + label +
+                          " root is outside the persisted ROBDD");
+            };
+            validateRoots(ownerCurrent_, "owner");
+            validateRoots(observerCurrent_, "observer");
+            validateRoots(domainRoots_, "domain");
+            for (std::uint64_t id = 0; id < visibleOwnerCurrent_.size(); ++id)
+                if (visibleOwnerCurrent_[id] > 1 ||
+                    visibleObserverCurrent_[id] > 1)
+                    throw std::runtime_error(
+                      "external fixed-point resume visible root residual");
+            std::cout << "ghost_extra_external_resume iteration "
+                      << iteration_ << " bdd_slot "
+                      << options_.resumeBddSlot << " current_slot "
+                      << (options_.resumeCurrentInNextSlot ? "next" : "current")
+                      << " bdd_nodes " << bdd_->node_count()
+                      << " root_range_residual 0 lower_import_residual 0\n"
+                      << std::flush;
+        }
+        else {
+            ownerCurrent_.fill(ExternalRobdd::False);
+            ownerNext_.fill(ExternalRobdd::False);
+            observerCurrent_.fill(ExternalRobdd::False);
+            observerNext_.fill(ExternalRobdd::False);
+            visibleOwnerCurrent_.fill(0);
+            visibleOwnerNext_.fill(0);
+            visibleObserverCurrent_.fill(0);
+            visibleObserverNext_.fill(0);
+            for (std::uint64_t stratum = 0;
+                 stratum < database_.stratum_count(); ++stratum) {
+                const ExternalMask& mask = database_.stratum(
+                  static_cast<std::uint32_t>(stratum));
+                domainRoots_[stratum] = bdd_->subset_of(mask.low, mask.high);
+            }
         }
         inherited_lower_mask_self_test();
-        fresh_root_public_grouping_self_test(material_);
+        fresh_root_public_grouping_self_test();
     }
 
     void solve() {
+        if (options_.resumeConverged) {
+            std::cout << "ghost_extra_external_resume_converged iteration "
+                      << iteration_
+                      << " independent_bellman_verification 1\n"
+                      << std::flush;
+            verify();
+            return;
+        }
         const auto started = std::chrono::steady_clock::now();
         for (;;) {
             ++iteration_;
@@ -3645,8 +3747,7 @@ class ExternalGhostExtraFixedPoint {
                     const std::uint64_t index = owner_index(geometry, actual);
                     const ExternalRobdd::Id oldOwner = ownerCurrent_[index];
                     const ExternalRobdd::Id newOwner = ownerNext_[index];
-                    if (bdd_->logical_and(oldOwner,
-                          bdd_->logical_not(newOwner)) != ExternalRobdd::False)
+                    if (!bdd_->implies(oldOwner, newOwner))
                         throw std::runtime_error(
                           "external owner least fixed point regressed");
                     changedOwner += oldOwner != newOwner;
@@ -3667,9 +3768,7 @@ class ExternalGhostExtraFixedPoint {
                     const ExternalRobdd::Id oldObserver =
                       observerCurrent_[stratum];
                     const ExternalRobdd::Id newObserver = observerNext_[stratum];
-                    if (bdd_->logical_and(oldObserver,
-                          bdd_->logical_not(newObserver)) !=
-                        ExternalRobdd::False)
+                    if (!bdd_->implies(oldObserver, newObserver))
                         throw std::runtime_error(
                           "external observer least fixed point regressed");
                     changedObserver += oldObserver != newObserver;
@@ -3715,7 +3814,11 @@ class ExternalGhostExtraFixedPoint {
     }
 
   private:
-    static void fresh_root_public_grouping_self_test(
+    void fresh_root_public_grouping_self_test() {
+        run_fresh_root_public_grouping_self_test(material_);
+    }
+
+    static void run_fresh_root_public_grouping_self_test(
       const MaterialSpec& material) {
         const DisclosureContext observer{material.observer(), false};
         std::unordered_map<std::string, std::string> fullToCompact;
@@ -3732,11 +3835,14 @@ class ExternalGhostExtraFixedPoint {
             const FourState state = decode_index(index);
             if (!valid_world(state))
                 continue;
+            const std::uint8_t observerKing =
+              material.observer() == Color::White ? state.whiteKing
+                                                   : state.blackKing;
             const bool hiddenAdjacent = !state.visible &&
               std::abs(int(state.ghost % Position::BoardFiles) -
-                       int(state.blackKing % Position::BoardFiles)) <= 1 &&
+                       int(observerKing % Position::BoardFiles)) <= 1 &&
               std::abs(int(state.ghost / Position::BoardFiles) -
-                       int(state.blackKing / Position::BoardFiles)) <= 1;
+                       int(observerKing / Position::BoardFiles)) <= 1;
             Position raw = make_position(index, material);
             if (hiddenAdjacent || raw.has_forced_action() ||
                 !raw.ordinary_predecessor_king_safe())
@@ -4473,11 +4579,14 @@ class ExternalGhostExtraFixedPoint {
                               [concrete_.result(index)];
                 continue;
             }
+            const std::uint8_t observerKing =
+              material_.observer() == Color::White ? state.whiteKing
+                                                    : state.blackKing;
             const bool hiddenAdjacent = !state.visible &&
               std::abs(int(state.ghost % Position::BoardFiles) -
-                       int(state.blackKing % Position::BoardFiles)) <= 1 &&
+                       int(observerKing % Position::BoardFiles)) <= 1 &&
               std::abs(int(state.ghost / Position::BoardFiles) -
-                       int(state.blackKing / Position::BoardFiles)) <= 1;
+                       int(observerKing / Position::BoardFiles)) <= 1;
             const Position position = make_position(index, material_);
             const bool allowed = !hiddenAdjacent &&
               !position.has_forced_action() &&
@@ -4703,6 +4812,7 @@ class ExternalGhostExtraFixedPoint {
     MaterialSpec material_;
     ExternalGhostExtraSolveOptions options_;
     std::unique_ptr<ExternalRobdd> bdd_;
+    std::uint32_t resumedNodeCount_ = 0;
     LowerGhostRobddImport lowerImport_;
 #ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
     PromotedQueenSymbolicSidecar promoted_;

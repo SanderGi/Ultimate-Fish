@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -280,6 +282,69 @@ class FrontierResumeTests(unittest.TestCase):
         self.assertFalse(args.preserve_completed_artifacts_only)
         self.assertFalse(args.local_only)
         self.assertIsNone(args.work_directory)
+        self.assertEqual(args.workers, 1)
+        self.assertEqual(
+            RESUME.parse_args(["--workers", "7"]).workers,
+            7,
+        )
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                RESUME.parse_args(["--workers", "9"])
+
+    def test_replacement_execution_requires_complete_equivalence_binding(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            document = self.fixture(root)
+            args = RESUME.parse_args([])
+            args.execution_bundle_root = root / "replacement"
+            with self.assertRaisesRegex(RuntimeError, "requires every"):
+                RESUME.execution_context(args, document)
+
+    def test_replacement_execution_authenticates_both_models_and_binary(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            document = self.fixture(root)
+            bundle = root / "replacement"
+            bundle.mkdir()
+            binary = root / "ultimate_tablebase"
+            binary.write_bytes(b"parallel-resume-binary")
+            binary_sha = RESUME.sha256_path(binary)
+            model_sha = "c" * 64
+            inventory_sha = "d" * 64
+            certificate = root / "equivalence.json"
+            certificate.write_text(json.dumps({
+                "schema": RESUME.EXECUTION_EQUIVALENCE_SCHEMA,
+                "status": "frontier-semantics-byte-identical-verified",
+                "frontier_model_sha256": document["generator_model_sha256"],
+                "execution_model_sha256": model_sha,
+                "frontier_inventory_sha256": document["inventory_sha256"],
+                "execution_inventory_sha256": inventory_sha,
+                "execution_binary_sha256": binary_sha,
+                "output_residual": 0,
+                "bellman_residual": 0,
+            }))
+            args = RESUME.parse_args([
+                "--execution-bundle-root", str(bundle),
+                "--execution-binary", str(binary),
+                "--execution-model-sha256", model_sha,
+                "--execution-inventory-sha256", inventory_sha,
+                "--execution-binary-sha256", binary_sha,
+                "--execution-equivalence-certificate", str(certificate),
+                "--execution-equivalence-sha256",
+                RESUME.sha256_path(certificate),
+            ])
+            with mock.patch.object(
+                    RESUME.concrete, "generator_model_sha256",
+                    return_value=model_sha), mock.patch.object(
+                    RESUME.concrete, "inventory_sha256",
+                    return_value=inventory_sha):
+                execution = RESUME.execution_context(args, document)
+            self.assertEqual(model_sha, execution["model_sha256"])
+            self.assertEqual(
+                document["generator_model_sha256"],
+                execution["frontier_model_sha256"])
+            self.assertEqual(binary_sha, execution["binary_sha256"])
+            self.assertEqual(inventory_sha, execution["inventory_sha256"])
 
     def test_completed_local_resume_is_preserved_without_frontier_reread(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -393,6 +458,31 @@ class FrontierResumeTests(unittest.TestCase):
             disk_usage.return_value.free = 2 << 40
             RESUME.validate_full_gates(
                 args, Path(temporary) / "work", document)
+
+    def test_full_gate_probes_existing_ancestor_of_new_campaign_root(self) -> None:
+        args = RESUME.parse_args([
+            "--full", "--local-only", "--aws-execution-ack", "EC2",
+            "--resident-limit", str(16 << 30),
+            "--scratch-limit", str(1 << 40),
+            "--reverse-edge-bytes-limit", str(1 << 40),
+            "--minimum-free-bytes", str(1 << 30),
+            "--minimum-host-memory-available-bytes", str(24 << 30),
+        ])
+        document = {
+            "planes": {"nodes": {"bytes": 1}, "degrees": {"bytes": 1}},
+            "discarded_reverse_graph": {
+                "offsets": {"bytes": 1}, "predecessors": {"bytes": 1}},
+            "record": {"packed_bytes": 1},
+        }
+        with tempfile.TemporaryDirectory() as temporary, mock.patch.object(
+                RESUME.sys, "platform", "linux"), mock.patch.object(
+                RESUME, "host_memory_available_bytes", return_value=24 << 30), \
+                mock.patch.object(RESUME.shutil, "disk_usage") as disk_usage:
+            disk_usage.return_value.free = 2 << 40
+            root = Path(temporary)
+            RESUME.validate_full_gates(
+                args, root / "new-campaign/class", document)
+            disk_usage.assert_called_once_with(root)
 
     def test_full_gate_reserves_host_memory_beyond_resident_limit(self) -> None:
         args = RESUME.parse_args([

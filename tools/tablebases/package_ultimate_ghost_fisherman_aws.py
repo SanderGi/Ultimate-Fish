@@ -28,7 +28,7 @@ ROWS = {
         "source_sha256":
             "7a946febd462be262e1d625bf9b130ed3bc8b4404457ac7147db824a5be32b5b",
         "model_sha256":
-            "341b0efa4ca5d2555d0acae2aee5683d388fb209fc68267def9a800a8c2e7824",
+            "e6542b6e97198ba3bf28d07224eb4fec7454b7e72bb152ab91b6b97cb8d35500",
         "normalized_source_sha256":
             "0aeb85e43b2b7cdfa7c44423cf0d075c32ef164e2e16b222cf56fe21e4e777c6",
     },
@@ -37,7 +37,7 @@ ROWS = {
         "source_sha256":
             "9568af731a3b41e144defad62069ea901eb8f3ae3e1350bb978074ad3898ae3e",
         "model_sha256":
-            "436b1277bbc88bb1f47d87d4926b32424da609abd6970cb09eed86a9ce5b9ed6",
+            "b9f7e8a6ea6f2b9565f0f7c9e26bee488739aa44aeb5d4e61d9f592d821a14b5",
         "normalized_source_sha256":
             "e7d54554d8456593442e3b0f1c4e39c41f8540770a4b2f2e27c6e780c96abf8c",
     },

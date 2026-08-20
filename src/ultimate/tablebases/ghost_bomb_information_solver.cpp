@@ -1163,39 +1163,105 @@ void validate_bomb_audit(const TransitionAuditCertificate& certificate) {
         throw std::runtime_error("Bomb transition audit conservation residual");
 }
 
+constexpr std::size_t BombTransitionComponentCount = 5;
+constexpr std::array<const char*, BombTransitionComponentCount>
+  BombTransitionComponents{{".header", ".meta", ".strata", ".index",
+                            ".blocks"}};
+
+struct AuthenticatedBombMarker {
+    TransitionAuditCertificate certificate;
+    bool payloadBound = false;
+};
+
+[[nodiscard]] std::uint64_t bomb_marker_bytes(bool payloadBound) {
+    return sizeof(ExternalTransitionHeader) + 192 +
+      sizeof(TransitionAuditCertificate) +
+      (payloadBound ? 64 * (3 + BombTransitionComponentCount) : 0);
+}
+
+void add_bomb_audit(TransitionAuditCertificate& output,
+                    const TransitionAuditCertificate& input) {
+    const auto add = [](std::uint64_t& destination, std::uint64_t source) {
+        if (source >
+            std::numeric_limits<std::uint64_t>::max() - destination)
+            throw std::runtime_error("Bomb transition audit count overflow");
+        destination += source;
+    };
+    add(output.lowerBombEdges, input.lowerBombEdges);
+    add(output.lowerBombOwnerForces, input.lowerBombOwnerForces);
+    add(output.lowerBombObserverForces, input.lowerBombObserverForces);
+    add(output.lowerBombDraws, input.lowerBombDraws);
+    add(output.bombCaptureEdges, input.bombCaptureEdges);
+    add(output.bombCaptureOwnerWins, input.bombCaptureOwnerWins);
+    add(output.bombCaptureObserverWins, input.bombCaptureObserverWins);
+    add(output.bombCaptureDraws, input.bombCaptureDraws);
+    add(output.residual, input.residual);
+    validate_bomb_audit(output);
+}
+
 void write_bomb_marker(const TransitionOptions& options,
                        const TransitionAuditCertificate& certificate) {
     validate_bomb_audit(certificate);
-    std::fstream marker(options.prefix + ".verified",
-      std::ios::binary | std::ios::in | std::ios::out);
+    for (const auto& [value, label] : {
+           std::pair<const std::string*, const char*>{&options.sourceSha256,
+                                                      "source SHA"},
+           {&options.modelSha256, "model SHA"},
+           {&options.observationSha256, "observation SHA"}})
+        if (!valid_sha(*value))
+            throw std::runtime_error(
+              std::string("Bomb transition marker has invalid ") + label);
+    std::ifstream headerFile(options.prefix + ".header", std::ios::binary);
     ExternalTransitionHeader header;
-    marker.read(reinterpret_cast<char*>(&header), sizeof(header));
-    if (!marker)
+    headerFile.read(reinterpret_cast<char*>(&header), sizeof(header));
+    if (!headerFile ||
+        headerFile.peek() != std::char_traits<char>::eof())
         throw std::runtime_error("missing frozen transition marker");
-    marker.seekp(sizeof(header));
+    std::array<std::string, BombTransitionComponentCount> components;
+    for (std::size_t index = 0; index < components.size(); ++index)
+        components[index] = GhostPublicExtraExact::sha256_file(
+          options.prefix + BombTransitionComponents[index]);
+    std::ofstream marker(options.prefix + ".verified",
+      std::ios::binary | std::ios::trunc);
+    marker.write(reinterpret_cast<const char*>(&header), sizeof(header));
     for (const std::string* hash : {&options.lowerBombSha256,
                                     &options.lowerBombSourceSha256,
                                     &options.lowerBombModelSha256})
         marker.write(hash->data(), 64);
     marker.write(reinterpret_cast<const char*>(&certificate),
                  sizeof(certificate));
+    for (const std::string* hash : {&options.sourceSha256,
+                                    &options.modelSha256,
+                                    &options.observationSha256})
+        marker.write(hash->data(), 64);
+    for (const std::string& hash : components)
+        marker.write(hash.data(), 64);
     marker.close();
     struct stat status{};
     if (::stat((options.prefix + ".verified").c_str(), &status) ||
-        status.st_size != static_cast<off_t>(
-          sizeof(header) + 192 + sizeof(certificate)))
+        status.st_size != static_cast<off_t>(bomb_marker_bytes(true)))
         throw std::runtime_error("Bomb transition marker extent residual");
+    std::cout << "bomb_ghost_transition_payload_certificate components "
+              << components.size() << " payload_bound 1 residual 0\n"
+              << std::flush;
 }
 
-void authenticate_bomb_marker(const TransitionOptions& options) {
+[[nodiscard]] AuthenticatedBombMarker authenticate_bomb_marker(
+  const TransitionOptions& options) {
     std::ifstream marker(options.prefix + ".verified", std::ios::binary);
     ExternalTransitionHeader header;
     std::array<char, 192> hashes{};
-    TransitionAuditCertificate certificate;
+    AuthenticatedBombMarker result;
     marker.read(reinterpret_cast<char*>(&header), sizeof(header));
     marker.read(hashes.data(), hashes.size());
-    marker.read(reinterpret_cast<char*>(&certificate), sizeof(certificate));
-    if (!marker || marker.peek() != std::char_traits<char>::eof() ||
+    marker.read(reinterpret_cast<char*>(&result.certificate),
+                sizeof(result.certificate));
+    std::ifstream headerFile(options.prefix + ".header", std::ios::binary);
+    ExternalTransitionHeader storedHeader;
+    headerFile.read(reinterpret_cast<char*>(&storedHeader),
+                    sizeof(storedHeader));
+    if (!marker || !headerFile ||
+        headerFile.peek() != std::char_traits<char>::eof() ||
+        std::memcmp(&header, &storedHeader, sizeof(header)) ||
         std::string(hashes.data(), 64) != options.lowerBombSha256 ||
         std::string(hashes.data() + 64, 64) !=
           options.lowerBombSourceSha256 ||
@@ -1203,7 +1269,29 @@ void authenticate_bomb_marker(const TransitionOptions& options) {
           options.lowerBombModelSha256)
         throw std::runtime_error(
           "Bomb transition marker dependency residual");
-    validate_bomb_audit(certificate);
+    validate_bomb_audit(result.certificate);
+    if (marker.peek() == std::char_traits<char>::eof())
+        return result;
+    std::array<char, 64 * (3 + BombTransitionComponentCount)> payload{};
+    marker.read(payload.data(), payload.size());
+    if (!marker || marker.peek() != std::char_traits<char>::eof() ||
+        std::string(payload.data(), 64) != options.sourceSha256 ||
+        std::string(payload.data() + 64, 64) != options.modelSha256 ||
+        std::string(payload.data() + 128, 64) != options.observationSha256)
+        throw std::runtime_error(
+          "Bomb transition marker model-binding residual");
+    for (std::size_t index = 0; index < BombTransitionComponentCount;
+         ++index)
+        if (GhostPublicExtraExact::sha256_file(
+              options.prefix + BombTransitionComponents[index]) !=
+            std::string(payload.data() + 64 * (3 + index), 64))
+            throw std::runtime_error(
+              "Bomb transition marker payload residual");
+    result.payloadBound = true;
+    std::cout << "bomb_ghost_transition_payload_authentication components "
+              << BombTransitionComponentCount
+              << " payload_bound 1 residual 0\n" << std::flush;
+    return result;
 }
 
 void certify_bomb_transitions(const TransitionOptions& options,
@@ -1221,7 +1309,9 @@ void certify_bomb_transitions(const TransitionOptions& options,
     const TransitionAuditCertificate certificate = rewrite_lower_bomb_edges(
       options.prefix, material, lower, false, true);
     write_bomb_marker(options, certificate);
-    authenticate_bomb_marker(options);
+    if (!authenticate_bomb_marker(options).payloadBound)
+        throw std::runtime_error(
+          "new Bomb transition marker lacks a payload binding");
 }
 
 }  // namespace
@@ -1237,35 +1327,58 @@ void compile_transitions(const TransitionOptions& options) {
     else
         GhostPublicExtraExact::compile_reciprocal_external_transitions(
           options.prefix, options.geometryBegin, options.geometryCount);
-    rewrite_lower_bomb_edges(options.prefix,
-      normalized_material(options.orientation), lower, false, true);
-    certify_bomb_transitions(options, lower);
+    const TransitionAuditCertificate certificate = rewrite_lower_bomb_edges(
+      options.prefix, normalized_material(options.orientation), lower,
+      false, true);
+    write_bomb_marker(options, certificate);
+    if (!authenticate_bomb_marker(options).payloadBound)
+        throw std::runtime_error(
+          "compiled Bomb transition marker lacks a payload binding");
+    std::cout << "bomb_ghost_compile_certificate exhaustive_replay 1"
+                 " duplicate_replay_skipped 1 residual 0\n" << std::flush;
 }
 
 void merge_transitions(const TransitionOptions& output,
                        const std::vector<std::string>& shards,
                        std::uint32_t expectedGeometries) {
     const LowerBombTable lower = authenticate_lower_bomb(output);
+    (void) lower;
+    TransitionAuditCertificate certificate;
+    std::size_t payloadBoundShards = 0;
     for (const std::string& shard : shards) {
         TransitionOptions input = output;
         input.prefix = shard;
-        authenticate_bomb_marker(input);
+        const AuthenticatedBombMarker marker = authenticate_bomb_marker(input);
+        payloadBoundShards += marker.payloadBound;
+        add_bomb_audit(certificate, marker.certificate);
     }
     merge_external_transition_shards(output.prefix, shards,
       normalized_material(output.orientation), expectedGeometries);
-    certify_bomb_transitions(output, lower);
+    write_bomb_marker(output, certificate);
+    if (!authenticate_bomb_marker(output).payloadBound)
+        throw std::runtime_error(
+          "merged Bomb transition marker lacks a payload binding");
+    std::cout << "bomb_ghost_compositional_merge_certificate shards "
+              << shards.size() << " payload_bound_shards "
+              << payloadBoundShards << " legacy_exhaustive_shards "
+              << shards.size() - payloadBoundShards
+              << " full_replay_skipped 1 residual 0\n" << std::flush;
 }
 
 void verify_transitions(const TransitionOptions& options) {
     const LowerBombTable lower = authenticate_lower_bomb(options);
-    authenticate_bomb_marker(options);
+    if (authenticate_bomb_marker(options).payloadBound) {
+        std::cout << "bomb_ghost_transition_replay payload_bound 1"
+                     " full_replay_skipped 1 residual 0\n" << std::flush;
+        return;
+    }
     certify_bomb_transitions(options, lower);
 }
 
 TransitionAuditCertificate audit_transitions(
   const TransitionOptions& options) {
     const LowerBombTable lower = authenticate_lower_bomb(options);
-    authenticate_bomb_marker(options);
+    (void) authenticate_bomb_marker(options);
     return rewrite_lower_bomb_edges(options.prefix,
       normalized_material(options.orientation), lower, false, false);
 }
@@ -1382,6 +1495,9 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     TransitionOptions transitions;
     transitions.orientation = options.orientation;
     transitions.prefix = options.transitionPrefix;
+    transitions.sourceSha256 = options.sourceSha256;
+    transitions.modelSha256 = options.modelSha256;
+    transitions.observationSha256 = options.observationSha256;
     transitions.lowerBombTable = options.lowerBombTable;
     transitions.lowerBombSha256 = options.lowerBombFullSha256;
     transitions.lowerBombSourceSha256 = options.lowerBombSourceSha256;

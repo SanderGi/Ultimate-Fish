@@ -3,8 +3,13 @@
 
 Hosts share one authenticated source root and dependency cache.  This command
 selects exactly one inventory index, performs the runner's plan-only preflight
-remotely, starts one bounded systemd unit on one CPU, and only then changes the
-canonical ledger row from PLANNED to COMPUTING.  Completion is handled by
+remotely, starts one bounded systemd unit on one to four adjacent CPUs, and only
+then changes the canonical ledger row from PLANNED to COMPUTING.  The transient
+unit is deliberately retained after exit, and its post-launch state is checked,
+so an immediate failure remains inspectable and cannot be published as live.
+One to eight CPUs let the generator's deterministic frontier, reverse, and
+verification scans use the admitted worker count; the retrograde queue remains
+single-threaded. Completion is handled by
 ``finalize_ultimate_aws_concrete_class.py``.
 """
 
@@ -62,11 +67,14 @@ def validate(args: argparse.Namespace) -> None:
         if not value.startswith("/") or "\n" in value:
             raise ValueError(f"unsafe {label}")
     if (not SAFE_UNIT.fullmatch(args.unit) or args.cpu < 0 or
+            not 1 <= args.cpu_count <= 8 or
             min(args.scratch_limit, args.resident_limit, args.memory_max,
                 args.reverse_edge_bytes_limit, args.minimum_free_bytes) <= 0):
         raise ValueError("invalid unit, CPU, or resource gate")
     if args.memory_max < args.resident_limit:
         raise ValueError("memory max must be at least the measured resident limit")
+    if not args.s3_prefix.startswith("s3://"):
+        raise ValueError("S3 prefix must start with s3://")
 
 
 def remote_commands(args: argparse.Namespace,
@@ -80,6 +88,7 @@ def remote_commands(args: argparse.Namespace,
         "--dependency-manifest", args.dependency_manifest,
         "--wave", str(args.wave), "--range-begin", str(args.index),
         "--range-end", str(args.index + 1),
+        "--workers", str(args.cpu_count),
     ]
     plan = shlex.join(common)
     full = [
@@ -91,11 +100,14 @@ def remote_commands(args: argparse.Namespace,
         "--monitor-interval", str(args.monitor_interval),
         "--s3-prefix", args.s3_prefix,
     ]
+    cpu_end = args.cpu + args.cpu_count - 1
+    cpu_set = str(args.cpu) if args.cpu_count == 1 else f"{args.cpu}-{cpu_end}"
     unit = [
         "systemd-run", "--unit", args.unit,
-        f"--property=AllowedCPUs={args.cpu}",
+        f"--property=AllowedCPUs={cpu_set}",
         f"--property=MemoryMax={args.memory_max}",
-        "--property=CPUQuota=100%", "--property=Nice=5", "--collect",
+        f"--property=CPUQuota={args.cpu_count * 100}%",
+        "--property=Nice=5",
         *full,
     ]
     expected = str(record["filename"])
@@ -107,14 +119,38 @@ def remote_commands(args: argparse.Namespace,
         f"assert not p['missing_dependencies'];"
         f"assert p['selected'][0]['filename']=={expected!r}"
     )
+    dependency_checks = [
+        f"test -f {shlex.quote(str(Path(args.dependencies) / name))}"
+        for name in concrete.class_dependency_filenames(record)
+    ]
+    completion = str(
+        Path(args.work_directory) / "certificates/wave-certificate.json")
+    probe = (
+        "import pathlib,subprocess;"
+        f"u={args.unit!r};"
+        "r=subprocess.run(['systemctl','show',u,'--property=LoadState',"
+        "'--property=ActiveState','--property=Result',"
+        "'--property=ExecMainStatus'],check=True,text=True,"
+        "capture_output=True);"
+        "s=dict(x.split('=',1) for x in r.stdout.splitlines() if '=' in x);"
+        "assert s.get('LoadState')=='loaded',s;"
+        "a=s.get('ActiveState');"
+        f"done=pathlib.Path({completion!r}).is_file();"
+        "assert a in ('active','activating') or "
+        "(a=='inactive' and s.get('Result')=='success' and "
+        "s.get('ExecMainStatus')=='0' and done),s"
+    )
     return [
         "set -euo pipefail",
         f"test -f {shlex.quote(runner)}",
         f"test -f {shlex.quote(args.dependency_manifest)}",
+        *dependency_checks,
         f"test ! -e {shlex.quote(args.work_directory)}",
         f"{plan} >{shlex.quote(plan_path)}",
         shlex.join(["python3", "-c", check]),
         shlex.join(unit),
+        "sleep 2",
+        shlex.join(["python3", "-c", probe]),
     ]
 
 
@@ -152,7 +188,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--wave", type=int, choices=(0, 1, 2), required=True)
     parser.add_argument("--index", type=int, required=True)
     parser.add_argument("--unit", required=True)
-    parser.add_argument("--cpu", type=int, required=True)
+    parser.add_argument(
+        "--cpu", type=int, required=True,
+        help="first logical CPU in the unit's adjacent CPU set",
+    )
+    parser.add_argument(
+        "--cpu-count", type=int, choices=range(1, 9), default=1,
+        help="adjacent CPUs to allocate to the parallel graph scans",
+    )
     parser.add_argument("--source-root", required=True)
     parser.add_argument("--dependencies", required=True)
     parser.add_argument("--dependency-manifest", required=True)
@@ -188,7 +231,9 @@ def main() -> None:
         subprocess.run(["python3", str(PLOT)], cwd=ROOT, check=True)
     print(json.dumps({
         "filename": record["filename"], "instance": args.instance,
-        "unit": args.unit, "command_id": command_id, "status": "computing",
+        "unit": args.unit, "command_id": command_id,
+        "cpu_begin": args.cpu, "cpu_count": args.cpu_count,
+        "status": "computing",
     }, sort_keys=True))
 
 

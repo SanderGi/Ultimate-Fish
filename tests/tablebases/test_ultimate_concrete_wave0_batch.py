@@ -282,6 +282,12 @@ class ConcreteWave0BatchTest(unittest.TestCase):
 
     def test_config_merge_replaces_serial_placeholder(self) -> None:
         document = self.historical_document()
+        source_config = json.loads(batch.SUPERVISION_CONFIG.read_text())
+        retained_supersession = {
+            job["id"]: job.get("superseded_by")
+            for job in source_config["jobs"]
+            if job["id"].startswith("concrete-wave0-batch-v4r2-")
+        }
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             fragment = root / "jobs.json"
@@ -313,8 +319,11 @@ class ConcreteWave0BatchTest(unittest.TestCase):
         self.assertEqual(24, len(retained))
         self.assertTrue(all(job["id"].startswith(
             "concrete-wave0-batch-v4r2-") for job in retained))
-        self.assertFalse(any("superseded_by" in job
-                             for job in retained + queued))
+        self.assertTrue(all("superseded_by" not in job for job in queued))
+        self.assertEqual(
+            retained_supersession,
+            {job["id"]: job.get("superseded_by") for job in retained},
+        )
         supervisor.validate_config(merged)
 
 

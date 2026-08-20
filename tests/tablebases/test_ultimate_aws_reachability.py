@@ -32,6 +32,9 @@ finalize = load("ultimate_aws_concrete_finalize",
                 "finalize_ultimate_aws_concrete_class.py")
 launch = load("ultimate_aws_concrete_launch",
               "launch_ultimate_aws_concrete_class.py")
+preservation_resume = load(
+    "ultimate_aws_concrete_preservation_resume",
+    "resume_ultimate_concrete_preservation_aws.py")
 primary_jester = load("ultimate_primary_jester_certification",
                       "certify_ultimate_primary_jester_archive.py")
 jester_ghost_measure = load(
@@ -81,6 +84,33 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
             "output_sha256 $table_sha", command)
         self.assertIn("filename=krookbishopk.uftb", command)
         self.assertIn("output_sha256=$table_sha", command)
+        self.assertIn('--version-id "$side_version"', command)
+        self.assertIn('cat "$work/reachability-head.json"', command)
+
+    def test_single_class_finalizer_can_use_idle_audit_cpus(self):
+        args = SimpleNamespace(
+            filename="kcopycatangelk.uftb",
+            audit_binary="/mnt/auditor/ultimate_tablebase",
+            audit_workers=7,
+            reuse_reachability_sidecar=False,
+            unit=None,
+            work_directory="/mnt/work",
+            s3_prefix="results/current",
+            bucket="bucket",
+            region="us-west-2",
+        )
+        command = finalize.remote_script(
+            args, {"primary": "copycat", "secondary": "angel",
+                   "opposing": False})
+        self.assertIn(
+            "/mnt/auditor/ultimate_tablebase --piece copycat --workers 7 "
+            "--checkpoint-every 0 --piece2 angel --audit-reachability",
+            command)
+
+    def test_single_class_finalizer_uses_pinned_s3_sidecar_size(self):
+        source = (TOOLS / "finalize_ultimate_aws_concrete_class.py").read_text()
+        self.assertIn('"size": int(side_put["ContentLength"])', source)
+        self.assertNotIn('"size": len(audit_text.encode("utf-8"))', source)
 
     def test_opposing_audit_uses_exact_material_orientation(self):
         job = {
@@ -135,6 +165,25 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
         self.assertEqual("10 (1) / 18 (4) / 33",
                          finalize.render(totals[1], omitted[1]))
 
+    def test_single_class_finalizer_cross_checks_explicit_reachability_semantics(self):
+        text = (
+            "reachability side 0 unknown 0 win 2 loss 0 draw 5\n"
+            "reachability side 1 unknown 0 win 1 loss 4 draw 0\n"
+            "reachability_total side 0 unknown 0 win 10 loss 20 draw 30\n"
+            "reachability_total side 1 unknown 0 win 11 loss 22 draw 33\n"
+            "reachability_excluded side 0 unknown 0 win 2 loss 0 draw 5\n"
+            "reachability_excluded side 1 unknown 0 win 1 loss 4 draw 0\n"
+            "reachability_admitted side 0 unknown 0 win 8 loss 20 draw 25\n"
+            "reachability_admitted side 1 unknown 0 win 10 loss 18 draw 33\n")
+        totals = finalize.counts(finalize.TOTAL, text)
+        omitted = finalize.counts(finalize.AUDIT, text)
+        finalize.validate_explicit_reachability_semantics(
+            text, totals, omitted)
+        with self.assertRaisesRegex(ValueError, "admission residual"):
+            finalize.validate_explicit_reachability_semantics(
+                text.replace("win 8 loss 20", "win 9 loss 20"),
+                totals, omitted)
+
     def test_single_class_finalizer_resolves_supported_record(self):
         record = finalize.record_for("kknightkprince.uftb")
         self.assertEqual("knight", record["primary"])
@@ -167,6 +216,62 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
                     finalize.preflight(SimpleNamespace(
                         filename="kknightprincek.uftb", readme=readme))
 
+    def test_single_class_finalizer_releases_supervision_reservation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "supervision.json"
+            config.write_text(json.dumps({"jobs": [{
+                "id": "job", "unit": "unit.service",
+                "ledger_files": ["krookbishopk.uftb"],
+                "ledger_certifies": False,
+                "s3_certificates": [{
+                    "bucket": "bucket", "key": "source", "version_id": "1",
+                    "sha256": "a" * 64, "size": 1,
+                }],
+            }]}))
+            args = SimpleNamespace(
+                filename="krookbishopk.uftb", unit="unit.service",
+                supervision_config=config)
+            value = {"result_kind": "concrete", "first": "1 / 2 / 3",
+                     "second": "4 / 5 / 6", "reachability": "7; 8",
+                     "storage": "pinned"}
+            result = {
+                "bucket": "bucket",
+                "key": "results/krookbishopk/krookbishopk-result.tar.zst",
+                "version_id": "2", "sha256": "b" * 64, "size": 2}
+            finalize.update_supervision(args, value, [result, result])
+            job = json.loads(config.read_text())["jobs"][0]
+            self.assertTrue(job["ledger_certifies"])
+            self.assertTrue(job["s3_only_certified"])
+            self.assertEqual(value, job["ledger_results"][args.filename])
+            self.assertEqual(2, len(job["s3_certificates"]))
+            self.assertEqual(
+                ["results/krookbishopk/krookbishopk-result.tar.zst"],
+                job["result_certificate_keys"][args.filename])
+
+    def test_finalizer_retires_multi_result_job_only_after_every_result(self):
+        with tempfile.TemporaryDirectory() as directory:
+            config = Path(directory) / "supervision.json"
+            config.write_text(json.dumps({"jobs": [{
+                "id": "job", "unit": "unit.service",
+                "ledger_files": ["krookbishopk.uftb", "krookknightk.uftb"],
+                "ledger_certifies": False, "s3_certificates": [],
+            }]}))
+            args = SimpleNamespace(
+                filename="krookbishopk.uftb", unit="unit.service",
+                supervision_config=config)
+            value = {"result_kind": "concrete", "first": "1 / 2 / 3",
+                     "second": "4 / 5 / 6", "reachability": "7; 8",
+                     "storage": "pinned"}
+            result = {
+                "bucket": "bucket",
+                "key": "results/krookbishopk/krookbishopk-result.tar.zst",
+                "version_id": "2", "sha256": "b" * 64, "size": 2}
+            finalize.update_supervision(args, value, [result])
+            job = json.loads(config.read_text())["jobs"][0]
+            self.assertNotIn("s3_only_certified", job)
+            self.assertEqual([], job["result_certificate_keys"]
+                             ["krookknightk.uftb"])
+
     def test_hidden_dependency_preservation_is_explicit(self):
         with tempfile.TemporaryDirectory() as directory:
             readme = Path(directory) / "README.md"
@@ -191,16 +296,82 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
             scratch_limit=100, resident_limit=90, memory_max=95,
             reverse_edge_bytes_limit=80, minimum_free_bytes=70,
             monitor_interval=10, s3_prefix="s3://bucket/results",
-            unit="ultimatefish-wave0-12", cpu=3,
+            unit="ultimatefish-wave0-12", cpu=3, cpu_count=4,
             expected_model_sha256="a" * 64)
         commands = launch.remote_commands(
-            args, {"filename": "kexample.uftb"})
-        self.assertIn("--range-begin 12 --range-end 13", commands[4])
-        self.assertIn("kexample.uftb", commands[5])
-        self.assertIn("--property=AllowedCPUs=3", commands[6])
-        self.assertIn("--property=MemoryMax=95", commands[6])
-        self.assertIn("--scratch-limit 100", commands[6])
-        self.assertLess(commands.index(commands[4]), commands.index(commands[6]))
+            args, {"filename": "kexample.uftb", "primary": "rook",
+                   "secondary": "angel", "opposing": True})
+        self.assertIn("test -f /mnt/dependencies/krk.uftb", commands)
+        plan_command = next(command for command in commands
+                            if "--range-begin 12 --range-end 13" in command)
+        assertion = next(command for command in commands
+                         if "kexample.uftb" in command and "python3 -c" in command)
+        unit = next(command for command in commands
+                    if command.startswith("systemd-run "))
+        self.assertIn("kexample.uftb", assertion)
+        self.assertIn("--property=AllowedCPUs=3-6", unit)
+        self.assertIn("--property=CPUQuota=400%", unit)
+        self.assertIn("--property=MemoryMax=95", unit)
+        self.assertIn("--scratch-limit 100", unit)
+        self.assertIn("--workers 4", plan_command)
+        self.assertIn("--workers 4", unit)
+        self.assertNotIn("--collect", unit)
+        probe = next(command for command in commands
+                     if "systemctl" in command and "ActiveState" in command)
+        self.assertIn("ActiveState", probe)
+        self.assertIn("wave-certificate.json", probe)
+        self.assertLess(commands.index(plan_command), commands.index(unit))
+        self.assertLess(commands.index(unit), commands.index(probe))
+
+    def test_single_class_launcher_rejects_non_uri_s3_prefix(self):
+        args = SimpleNamespace(
+            source_root="/mnt/source", dependencies="/mnt/dependencies",
+            dependency_manifest="/mnt/dependencies/manifest.json",
+            work_directory="/mnt/work", unit="ultimatefish-wave0-12",
+            cpu=3, cpu_count=4, scratch_limit=100, resident_limit=90,
+            memory_max=95, reverse_edge_bytes_limit=80,
+            minimum_free_bytes=70, s3_prefix="results/not-an-uri")
+        with self.assertRaisesRegex(ValueError, "must start with s3://"):
+            launch.validate(args)
+
+    def test_single_class_launcher_accepts_all_eight_advertised_workers(self):
+        args = SimpleNamespace(
+            source_root="/mnt/source", dependencies="/mnt/dependencies",
+            dependency_manifest="/mnt/dependencies/manifest.json",
+            work_directory="/mnt/work", unit="ultimatefish-wave0-12",
+            cpu=3, cpu_count=8, scratch_limit=100, resident_limit=90,
+            memory_max=95, reverse_edge_bytes_limit=80,
+            minimum_free_bytes=70, s3_prefix="s3://bucket/results")
+        launch.validate(args)
+        args.cpu_count = 9
+        with self.assertRaisesRegex(ValueError, "invalid unit"):
+            launch.validate(args)
+
+    def test_fresh_angel_v5_stage_contains_remaining_dependencies(self):
+        source = (TOOLS / "ultimatefish-stage-angel-graph-v5.sh").read_text()
+        self.assertIn("kqueenkangel.uftb", source)
+        self.assertIn("kqueenangelk.uftb", source)
+        self.assertIn("kberserkerk.uftb", source)
+        self.assertIn(
+            "f41245a06eb280136c458e6337ef4a588a0d5142b606413b92f84c248487e2b1",
+            source)
+        self.assertIn("manifest-pawn-angel-v1.json", source)
+        self.assertIn("manifest-pawn-angel-same-v1.json", source)
+        self.assertIn(
+            "b7953747687e0a10d7069bc50cc469388fdefa4fb265b198adb755ff7aa40db2",
+            source)
+
+    def test_preservation_resume_uses_numbered_non_destructive_attempts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "restore-preservation"
+            first = preservation_resume.unused_attempt(root, "kbishopangelk")
+            self.assertEqual("restore-preservation-0001", first.parent.name)
+            first.mkdir(parents=True)
+            second = preservation_resume.unused_attempt(root, "kbishopangelk")
+            self.assertEqual("restore-preservation-0002", second.parent.name)
+        source = (TOOLS / "resume_ultimate_concrete_preservation_aws.py").read_text()
+        self.assertNotIn("generator.generate", source)
+        self.assertIn("preservation_only_resume", source)
 
     def test_single_class_launcher_uses_ledger_assignment_syntax(self):
         source = (TOOLS / "launch_ultimate_aws_concrete_class.py").read_text()

@@ -50,6 +50,18 @@ def plane_record(source: Path, stem: str, name: str,
     return result
 
 
+def exact_substates(record: dict[str, Any]) -> int:
+    """Match the generator's material-specific checkpoint substate count."""
+    pieces = {piece.name: piece for piece in plan.PIECES}
+    primary = pieces[str(record["primary"])]
+    secondary = pieces[str(record["secondary"])]
+    if "angel" in {primary.name, secondary.name}:
+        companion = secondary if primary.name == "angel" else primary
+        return plan.angel_pair_state_factor(
+            companion, not bool(record["opposing"]))
+    return plan.pair_state_factor(primary, secondary)
+
+
 def build(source: Path, wave: int, index: int,
           transport_source: Path | None = None) -> dict[str, Any]:
     rows = concrete.wave_inventory(wave)
@@ -79,10 +91,7 @@ def build(source: Path, wave: int, index: int,
             not resource.get("violation")):
         raise RuntimeError("retained resource certificate is not resumable")
 
-    pieces = {piece.name: piece for piece in plan.PIECES}
-    primary = pieces[record["primary"]]
-    secondary = pieces[record["secondary"]]
-    substates = plan.pair_state_factor(primary, secondary)
+    substates = exact_substates(record)
     document: dict[str, Any] = {
         "schema": resume.SCHEMA,
         "status": "resource-gated-frontier-transportable",

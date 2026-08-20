@@ -209,9 +209,54 @@ struct ExternalRobdd::Impl {
                  ++variable)
                 variables[variable] = make(variable, False, True);
         }
-        else
-            throw std::runtime_error(
-              "opening an existing external ROBDD is not implemented");
+        else {
+            // Arenas are allocated to maxNodes up front, so their file size
+            // cannot recover the logical node count.  Allocated tuples are
+            // nevertheless append-only and dense; every unused tuple is the
+            // all-zero sparse-file value, which is not a reduced ROBDD node
+            // because its two children are equal.  Discover the exact prefix
+            // sequentially and validate its structural ordering before any
+            // persisted root is admitted.
+            const auto raw = [&](Id id) {
+                const std::uint8_t* source =
+                  nodes.data() + std::uint64_t(id) * NodeBytes;
+                return Node{source[0], load_u32(source + 1),
+                            load_u32(source + 5)};
+            };
+            const Node falseNode = raw(False);
+            const Node trueNode = raw(True);
+            if (falseNode.variable != limits.variables || falseNode.low ||
+                falseNode.high || trueNode.variable != limits.variables ||
+                trueNode.low != True || trueNode.high != True)
+                throw std::runtime_error(
+                  "existing external ROBDD has invalid terminal nodes");
+            count = 2;
+            while (count < limits.maxNodes) {
+                const Node value = raw(count);
+                if (!value.variable && !value.low && !value.high)
+                    break;
+                if (value.variable >= limits.variables ||
+                    value.low >= count || value.high >= count ||
+                    value.low == value.high)
+                    throw std::runtime_error(
+                      "existing external ROBDD has an invalid dense tuple prefix");
+                ++count;
+            }
+            if (count < limits.variables + 2)
+                throw std::runtime_error(
+                  "existing external ROBDD lacks canonical variable nodes");
+            variables.resize(limits.variables);
+            for (std::uint32_t variable = 0; variable < limits.variables;
+                 ++variable) {
+                const Id id = variable + 2;
+                const Node value = raw(id);
+                if (value.variable != variable || value.low != False ||
+                    value.high != True)
+                    throw std::runtime_error(
+                      "existing external ROBDD variable-node residual");
+                variables[variable] = id;
+            }
+        }
         applyCache.reserve(std::min<std::size_t>(
           limits.applyCacheEntries, 1'000'000));
         notCache.reserve(std::min<std::size_t>(
@@ -338,6 +383,26 @@ struct ExternalRobdd::Impl {
         return result;
     }
 
+    [[nodiscard]] bool implies(Id lhs, Id rhs) {
+        if (lhs == False || rhs == True || lhs == rhs)
+            return true;
+        if (lhs == True || rhs == False)
+            return false;
+        const ApplyKey key{lhs, rhs, 2};
+        if (const auto found = applyCache.find(key);
+            found != applyCache.end())
+            return found->second == True;
+        const std::uint32_t variable = std::min(top(lhs), top(rhs));
+        const bool result =
+          implies(branch(lhs, variable, false),
+                  branch(rhs, variable, false)) &&
+          implies(branch(lhs, variable, true),
+                  branch(rhs, variable, true));
+        if (applyCache.size() < limits.applyCacheEntries)
+            applyCache.emplace(key, result ? True : False);
+        return result;
+    }
+
     [[nodiscard]] Id compose(Id root, const std::vector<Id>& image,
                              std::uint64_t relation) {
         if (root <= True)
@@ -419,6 +484,9 @@ ExternalRobdd::Id ExternalRobdd::ite(
     return logical_or(logical_and(condition, whenTrue),
                       logical_and(logical_not(condition), whenFalse));
 }
+bool ExternalRobdd::implies(Id lhs, Id rhs) {
+    return impl_->implies(lhs, rhs);
+}
 ExternalRobdd::Id ExternalRobdd::any(
   std::uint64_t low, std::uint16_t high) {
     Id result = False;
@@ -478,7 +546,7 @@ bool ExternalRobdd::is_upward_closed(
         image[variable] = True;
         const Id highRoot = compose(root, image,
           0x100000001ULL + variable * 2);
-        if (logical_and(lowRoot, logical_not(highRoot)) != False)
+        if (!implies(lowRoot, highRoot))
             return false;
     }
     return true;
@@ -500,7 +568,7 @@ bool ExternalRobdd::is_downward_closed(
         image[variable] = True;
         const Id highRoot = compose(root, image,
           0x200000001ULL + variable * 2);
-        if (logical_and(highRoot, logical_not(lowRoot)) != False)
+        if (!implies(highRoot, lowRoot))
             return false;
     }
     return true;

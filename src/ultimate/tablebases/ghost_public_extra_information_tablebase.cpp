@@ -75,6 +75,26 @@ int main(int argc, char** argv) {
                 solve.uniqueSlots = std::stoull(value());
             else if (option == "--compact-every")
                 solve.compactEvery = std::stoul(value());
+            else if (option == "--resume-fixed-point")
+                solve.resumeFixedPoint = true;
+            else if (option == "--resume-converged")
+                solve.resumeConverged = true;
+            else if (option == "--resume-iteration")
+                solve.resumeIteration = std::stoull(value());
+            else if (option == "--resume-current-slot") {
+                const std::string slot = value();
+                if (slot != "current" && slot != "next")
+                    throw std::invalid_argument(
+                      "resume current slot must be current or next");
+                solve.resumeCurrentInNextSlot = slot == "next";
+            }
+            else if (option == "--resume-bdd-slot") {
+                const std::string slot = value();
+                if (slot != "a" && slot != "b")
+                    throw std::invalid_argument(
+                      "resume BDD slot must be a or b");
+                solve.resumeBddSlot = slot.front();
+            }
             else
                 throw std::invalid_argument("unknown option " + option);
         }

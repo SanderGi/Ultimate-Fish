@@ -34,10 +34,6 @@ STATUSES = {
     "certified", "preserving", "computing", "planned", "draw", "deferred",
     "blocked",
 }
-DEFERRED = plan.DEFERRED_DYNAMIC_K2
-SEPARATORS = plan.COPYCAT_SEPARATORS
-
-
 @dataclass(frozen=True)
 class Result:
     filename: str
@@ -151,7 +147,7 @@ def display(domain: str, first: str, second: str = "") -> str:
 def record_catalog() -> dict[str, dict[str, object]]:
     """Return one canonical filename/codec record for each material cell."""
     result: dict[str, dict[str, object]] = {}
-    for record in (*plan.stateful_candidates(),
+    for record in (*plan.stateful_candidates(), *plan.angel_candidates(),
                    *plan.mirror_copycat_candidates(), *plan.inventory()):
         primary = str(record["primary"])
         secondary = str(record["secondary"])
@@ -164,11 +160,8 @@ def record_catalog() -> dict[str, dict[str, object]]:
     return result
 
 
-def _is_deferred(first: str, second: str = "") -> bool:
-    names = {first, second} - {""}
-    if names & DEFERRED:
-        return True
-    return "copycat" in names and bool(names & SEPARATORS)
+def _is_deferred(domain: str, first: str, second: str = "") -> bool:
+    return plan.deferred_material(first, second, opposing=domain == "opposed")
 
 
 def _requires_information(record: dict[str, object] | None) -> bool:
@@ -196,7 +189,7 @@ def entries(text: str) -> list[Entry]:
         record = records.get(key)
         filename = str(record["filename"]) if record else ""
         exact = results.get(filename)
-        if _is_deferred(first, second):
+        if _is_deferred(domain, first, second):
             status = "deferred"
         elif record is None:
             status = "draw"
@@ -205,7 +198,13 @@ def entries(text: str) -> list[Entry]:
         else:
             status = "planned"
         old = previous.get(key)
-        if old is not None and old.status in STATUSES:
+        # DEFERRED describes the implemented campaign boundary, not a sticky
+        # operator override.  Once a codec makes a row exact, recompute its
+        # default status instead of allowing the old generated ledger block to
+        # hide the newly supported work forever.
+        if (old is not None and old.status in STATUSES and
+                (old.status != "deferred" or
+                 _is_deferred(domain, first, second))):
             status = old.status
         states = int(record["states"]) if record else None
         hidden = _requires_information(record)

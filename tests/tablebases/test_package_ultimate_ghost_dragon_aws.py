@@ -43,6 +43,12 @@ class DragonGhostAwsBundleTests(unittest.TestCase):
         return Path(prefix).name, begin, count
 
     def test_both_manifests_are_gap_free_and_fingerprint_isolated(self):
+        self.assertIn(
+            package.information.concrete_tablebase_model_fingerprint(
+                "kdragonk.uftb"),
+            package.LOWER_DRAGON_COMPATIBLE_GENERATOR_MODELS)
+        self.assertIn(package.LOWER_DRAGON_MODEL_SHA256,
+                      package.LOWER_DRAGON_COMPATIBLE_GENERATOR_MODELS)
         for filename, orientation in (("kghostdragonk.uftb", "same"),
                                       ("kghostkdragon.uftb", "opposing")):
             with self.subTest(filename=filename):

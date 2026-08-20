@@ -5,8 +5,10 @@ The expensive class solve is never repeated.  This command accepts the host
 and work directory of one successful class runner, runs the native full-causal
 reachability audit against the retained output, uploads that text sidecar, and
 installs the exact W/L/D split plus all three versioned-S3 bindings in the
-canonical README ledger.  Hidden-information rows fail closed here: their
-concrete worlds are dependencies, not publishable public results.
+canonical README ledger and supervision record.  This atomically releases the
+finished job's scheduler reservation instead of leaving a certified output
+looking active.  Hidden-information rows fail closed here: their concrete
+worlds are dependencies, not publishable public results.
 """
 
 from __future__ import annotations
@@ -28,10 +30,15 @@ import update_ultimate_tablebase_ledger as ledger
 
 ROOT = Path(__file__).resolve().parents[2]
 README = ROOT / "tablebases/README.md"
+SUPERVISION = ROOT / "tools/tablebases/ultimate_aws_supervision.json"
 AUDIT = re.compile(
     r"reachability side ([01]) unknown (\d+) win (\d+) loss (\d+) draw (\d+)")
 TOTAL = re.compile(
     r"reachability_total side ([01]) unknown (\d+) win (\d+) loss (\d+) draw (\d+)")
+EXCLUDED = re.compile(
+    r"reachability_excluded side ([01]) unknown (\d+) win (\d+) loss (\d+) draw (\d+)")
+ADMITTED = re.compile(
+    r"reachability_admitted side ([01]) unknown (\d+) win (\d+) loss (\d+) draw (\d+)")
 
 
 def record_for(filename: str) -> Mapping[str, object]:
@@ -91,6 +98,23 @@ def render(total: list[int], unreachable: list[int]) -> str:
     return " / ".join(values)
 
 
+def validate_explicit_reachability_semantics(
+        text: str, totals: list[list[int]], omitted: list[list[int]]) -> None:
+    """Cross-check new unambiguous rows while accepting pinned legacy sidecars."""
+    has_explicit = "reachability_excluded side " in text or \
+        "reachability_admitted side " in text
+    if not has_explicit:
+        return
+    excluded = counts(EXCLUDED, text)
+    admitted = counts(ADMITTED, text)
+    if excluded != omitted:
+        raise ValueError("explicit reachability exclusion residual")
+    if any([admitted[side][outcome] + excluded[side][outcome]
+            for outcome in range(4)] != totals[side]
+           for side in range(2)):
+        raise ValueError("explicit reachability admission residual")
+
+
 def aws(*arguments: str) -> str:
     return subprocess.run(
         ["aws", *arguments], check=True, text=True, capture_output=True).stdout
@@ -127,7 +151,9 @@ def remote_script(args: argparse.Namespace, record: Mapping[str, object]) -> str
     encoded = concrete.encoded_filename(args.filename)
     audit_binary = args.audit_binary or "$work/binary/ultimate_tablebase"
     command = [audit_binary, "--piece",
-               str(record["primary"]), "--checkpoint-every", "0"]
+               str(record["primary"]), "--workers",
+               str(getattr(args, "audit_workers", 4)),
+               "--checkpoint-every", "0"]
     if record.get("secondary"):
         command += ["--piece2", str(record["secondary"])]
     if record.get("opposing"):
@@ -166,6 +192,9 @@ if aws s3api head-object --bucket {args.bucket} --key "$side_key" --region {args
 else
   aws s3api put-object --bucket {args.bucket} --key "$side_key" --body "$sidecar" --metadata sha256=$side_sha,predicate=native-full-causal-reachability,filename={args.filename},output_sha256=$table_sha --region {args.region} >"$work/reachability-put.json"
 fi
+side_version=$(python3 -c 'import json,sys; v=json.load(open(sys.argv[1])).get("VersionId"); assert v; print(v)' "$work/reachability-put.json")
+aws s3api head-object --bucket {args.bucket} --key "$side_key" --version-id "$side_version" --region {args.region} >"$work/reachability-head.json"
+python3 -c 'import json,sys; h=json.load(open(sys.argv[1])); m=h["Metadata"]; assert h["VersionId"] == sys.argv[2] and m["sha256"] == sys.argv[3] and m["filename"] == sys.argv[4] and m["output_sha256"] == sys.argv[5]' "$work/reachability-head.json" "$side_version" "$side_sha" {args.filename} "$table_sha"
 echo __ULTIMATE_CERTIFICATE__
 cat "$work/certificates/wave-certificate.json"
 echo __ULTIMATE_CERTIFICATE_HEAD__
@@ -173,7 +202,7 @@ cat "$work/certificate-head.json"
 echo __ULTIMATE_REACHABILITY__
 cat "$sidecar"
 echo __ULTIMATE_REACHABILITY_PUT__
-cat "$work/reachability-put.json"
+cat "$work/reachability-head.json"
 echo __ULTIMATE_KEYS__
 printf '%s\\n%s\\n%s\\n%s\\n%s\\n' "$cert_sha" "$cert_key" "$side_sha" "$side_key" "$table_sha"
 """
@@ -230,7 +259,7 @@ def import_result(args: argparse.Namespace, output: str,
     keys = output.split("__ULTIMATE_KEYS__\n", 1)[1].strip().splitlines()
     if len(keys) != 5:
         raise ValueError("remote finalization key binding residual")
-    cert_sha, _cert_key, side_sha, _side_key, table_sha = keys
+    cert_sha, cert_key, side_sha, side_key, table_sha = keys
     if (certificate.get("schema") != concrete.CERTIFICATE_SCHEMA or
             len(certificate.get("completed", [])) != 1):
         raise ValueError("concrete certificate schema/cardinality residual")
@@ -249,6 +278,7 @@ def import_result(args: argparse.Namespace, output: str,
 
     totals = counts(TOTAL, audit_text)
     omitted = counts(AUDIT, audit_text)
+    validate_explicit_reachability_semantics(audit_text, totals, omitted)
     states = int(record["states"])
     if any(sum(side) != states // 2 for side in totals):
         raise ValueError("native total W/L/D conservation residual")
@@ -263,6 +293,23 @@ def import_result(args: argparse.Namespace, output: str,
         "result_kind": "concrete", "first": first, "second": second,
         "reachability": ledger.reachability(first, second), "storage": storage,
     }
+    result_certificates = [
+        {
+            "bucket": str(table["bucket"]), "key": str(table["key"]),
+            "version_id": str(table["version_id"]),
+            "sha256": str(table["sha256"]), "size": int(table["bytes"]),
+        },
+        {
+            "bucket": args.bucket, "key": cert_key,
+            "version_id": str(head["VersionId"]), "sha256": cert_sha,
+            "size": int(head["ContentLength"]),
+        },
+        {
+            "bucket": args.bucket, "key": side_key,
+            "version_id": str(side_put["VersionId"]), "sha256": side_sha,
+            "size": int(side_put["ContentLength"]),
+        },
+    ]
     with readme_lock(args.readme):
         rows = {row.filename: row
                 for row in ledger.entries(args.readme.read_text())}
@@ -282,7 +329,73 @@ def import_result(args: argparse.Namespace, output: str,
             }
         ledger.update(args.readme, [], [], certified_values=[
             args.filename + "=" + json.dumps(value, separators=(",", ":"))])
+    update_supervision(args, value, result_certificates)
     return {"filename": args.filename, **value}
+
+
+def update_supervision(args: argparse.Namespace, value: Mapping[str, object],
+                       certificates: list[dict[str, object]]) -> None:
+    """Bind a public result and release its completed job reservation."""
+    path = args.supervision_config
+    lock = path.with_suffix(path.suffix + ".lock")
+    with lock.open("a", encoding="utf-8") as stream:
+        fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+        try:
+            document = json.loads(path.read_text())
+            matches = [job for job in document.get("jobs", [])
+                       if (args.unit and job.get("unit") == args.unit) or
+                       (not args.unit and args.filename in
+                        job.get("ledger_files", []) and
+                        not job.get("superseded_by"))]
+            if len(matches) != 1:
+                raise ValueError(
+                    f"{args.filename}: expected one supervision job, got "
+                    f"{len(matches)}")
+            job = matches[0]
+            if args.filename not in job.get("ledger_files", []):
+                raise ValueError("supervision job/ledger filename residual")
+            existing = {
+                (item.get("bucket"), item.get("key"), item.get("version_id"))
+                for item in job.get("s3_certificates", [])
+            }
+            target = job.setdefault("s3_certificates", [])
+            for item in certificates:
+                identity = (item["bucket"], item["key"], item["version_id"])
+                if identity not in existing:
+                    target.append(item)
+                    existing.add(identity)
+            stem = Path(args.filename).stem
+            result_keys = sorted({
+                str(item["key"]) for item in certificates
+                if str(item.get("key", "")).endswith(
+                    (".tar", ".tar.gz", ".tar.zst")) and
+                any(component == stem or component.startswith(f"{stem}-")
+                    for component in str(item.get("key", "")).split("/"))
+            })
+            if not result_keys:
+                raise ValueError(
+                    f"{args.filename}: finalization lacks its result archive")
+            result_map = job.setdefault("result_certificate_keys", {})
+            for filename in map(str, job.get("ledger_files", [])):
+                result_map.setdefault(filename, [])
+            result_map[args.filename] = result_keys
+            job["ledger_certifies"] = True
+            job.setdefault("ledger_results", {})[args.filename] = dict(value)
+            # Exact, version-pinned S3 result evidence is now authoritative.
+            # Retain the local source bindings as provenance, but retire this
+            # completed unit from bounded live host probes and reservations.
+            ledger_files = set(map(str, job.get("ledger_files", [])))
+            if (set(result_map) == ledger_files and
+                    all(result_map[filename] for filename in ledger_files)):
+                job["s3_only_certified"] = True
+            else:
+                job.pop("s3_only_certified", None)
+            temporary = path.with_suffix(path.suffix + ".tmp")
+            temporary.write_text(
+                json.dumps(document, indent=2, sort_keys=False) + "\n")
+            temporary.replace(path)
+        finally:
+            fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
 
 def parse_args() -> argparse.Namespace:
@@ -294,6 +407,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--audit-binary",
         help="remote current native binary used only for causal audit output")
+    parser.add_argument(
+        "--audit-workers", type=int, choices=range(1, 33), default=4,
+        help="native reachability-audit worker threads (default: 4)")
     parser.add_argument(
         "--preserve-information-dependency", action="store_true",
         help="preserve/audit a concrete hidden-material oracle without publishing W/L/D")
@@ -308,6 +424,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--region", default="us-west-2")
     parser.add_argument("--timeout", type=int, default=3600)
     parser.add_argument("--readme", type=Path, default=README)
+    parser.add_argument("--supervision-config", type=Path, default=SUPERVISION)
     return parser.parse_args()
 
 

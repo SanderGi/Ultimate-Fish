@@ -266,6 +266,11 @@ void print_solve(const SolveCertificate& certificate) {
       << " monotonicity_residual " << certificate.rankResidual
       << " singleton_residual " << certificate.singletonResidual
       << " belief_cap none powerset_exact 1\n"
+      << "ghost_pair_domain_cache roots " << certificate.domainRoots
+      << " hits " << certificate.domainCacheHits
+      << " misses " << certificate.domainCacheMisses
+      << " entries " << certificate.domainCacheEntries
+      << " residual 0\n"
       << "ghost_pair_artifacts transition_payload_sha256 "
       << certificate.transitionPayloadSha256
       << " transition_header_sha256 " << certificate.transitionHeaderSha256

@@ -72,11 +72,12 @@ int main(int argc, char** argv) {
             else if (option == "--output-arbitrary")
                 solve.outputArbitrary = value();
             else if (option == "--source-sha256")
-                solve.sourceSha256 = value();
+                transition.sourceSha256 = solve.sourceSha256 = value();
             else if (option == "--model-sha256")
-                solve.modelSha256 = value();
+                transition.modelSha256 = solve.modelSha256 = value();
             else if (option == "--observation-sha256")
-                solve.observationSha256 = value();
+                transition.observationSha256 =
+                  solve.observationSha256 = value();
             else if (option == "--lower-source-sha256")
                 solve.lowerGhostSourceSha256 = value();
             else if (option == "--lower-model-sha256")

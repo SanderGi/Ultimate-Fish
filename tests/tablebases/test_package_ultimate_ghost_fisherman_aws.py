@@ -54,9 +54,9 @@ class FishermanGhostAwsBundleTests(unittest.TestCase):
     def test_both_manifests_bind_inputs_and_measure_first(self):
         for filename, orientation, model in (
                 ("kghostfishermank.uftb", "same",
-                 "341b0efa4ca5d2555d0acae2aee5683d388fb209fc68267def9a800a8c2e7824"),
+                 "e6542b6e97198ba3bf28d07224eb4fec7454b7e72bb152ab91b6b97cb8d35500"),
                 ("kghostkfisherman.uftb", "opposing",
-                 "436b1277bbc88bb1f47d87d4926b32424da609abd6970cb09eed86a9ce5b9ed6")):
+                 "b9f7e8a6ea6f2b9565f0f7c9e26bee488739aa44aeb5d4e61d9f592d821a14b5")):
             manifest = package.build_manifest(filename)
             runner.validate_manifest(manifest)
             self.assertEqual(manifest["orientation"], orientation)

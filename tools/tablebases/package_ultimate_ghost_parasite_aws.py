@@ -25,18 +25,72 @@ LOWER_SHA256 = (
 LOWER_PARASITE_SHA256 = (
     "c53364f87ce4ff23372aa3565d279e9fadde706eb1aeca5695aecc1ea3e83047")
 LOWER_PARASITE_MODEL_SHA256 = (
-    "c9889fd2d77617a1f0c77ed43a7f8a054c299732194ec89456f68ed865681c25")
+    "f8d5900989428261a17714a80010270e2d3a4011eb740c21ed8f32fead808a11")
+# v6 changes only the read-only Bellman verifier's worker scheduling.  The
+# exact source diff and a byte-identical v5/v6 table are authenticated by
+# angel_graph_v6_dynamic_verifier_equivalence.json.  Keep the lower artifact's
+# original model as provenance while accepting only these proven-compatible
+# live generator models.
+LOWER_PARASITE_COMPATIBLE_GENERATOR_MODELS = frozenset((
+    LOWER_PARASITE_MODEL_SHA256,
+    "c7bb5d8338aa13cc9e4879c4b87797479d981e94e461343d74ba602c66e2fc34",
+    # The additional source branch is confined to opposed Copycat/Angel;
+    # singleton Parasite generation is unchanged.
+    "d012548c8c33ab66f4fcc6d7eb3ef1155949ef8ae90aef308fad501a985efcaa",
+    # Completed-frontier parallel reverse scanning is scheduling-only and is
+    # byte-proved by angel_parallel_resume_v7_equivalence.json.
+    "672ebe9e5beaa8ee46b141985210455970838fdb397f0c636b6d1333fff1b68b",
+    # Copycat/Angel v10 adds a disjoint linked-Copycat codec. Singleton
+    # Parasite generation and the authenticated lower payload are unchanged.
+    "ad30918c0cc50b89dfb805b923af77e46174ae623b7c21c6ed9a6baacc35c72c",
+    # The follow-up v10 change only admits the already generated v10 tags in
+    # the read-only reachability auditor. It cannot affect Parasite generation.
+    "92abde0c59071711b4e3867e0301c24812945ca38c19c4e7cd63982a50620944",
+    # Primary-Jester/Angel belief materialization and its exact observation
+    # fallback are disjoint from singleton Parasite generation.
+    "bd64d950e7d7e0d41b77e6114243194aefac76b9a3544dd3d46883c3de946ac4",
+    # Adding the directly required <sstream> include is a Linux portability
+    # fix and cannot change singleton Parasite generation semantics.
+    "67d08f838b49c24e92c6b7eb36abbb3b765838abffe700a4f504a03c5a05dd4b",
+    # The Angel/Jester next-decision observation fix is confined to the
+    # primary-Jester information solver and cannot affect singleton Parasite
+    # concrete generation.
+    "1c1cbb7965eab53074b86caf1d5ca9067bce793be3c047ef5a952bd2cb7ec7a7",
+))
 LOWER_TRACKED_GHOST_SHA256 = (
     "32dc7889506f4dd4948dbf1bed3f31c6c3ebdd4a8600c4381c7a8c710b9ec671")
 LOWER_TRACKED_GHOST_MODEL_SHA256 = (
-    "5b71141f6213872133db4877b76e4eb3e67186111624e76c62eced1e722ce10f")
+    "017912d4dd089ae14aa16b0435aa16e6000bdc2f19d2934b0b60f120a5d6eecd")
+LOWER_TRACKED_GHOST_COMPATIBLE_GENERATOR_MODELS = frozenset((
+    LOWER_TRACKED_GHOST_MODEL_SHA256,
+    "fb480f69ad325253405fc9a704dcd9d8536e4f9053376fdcff700fb4ff9f837f",
+    # Runtime color-shape validation is specific to Copycat/Angel v9.
+    "2608cfcf0a18091de44ce4d1c1265ca1e0e5e17c9385d55b5c75cc3292d4c094",
+    "6a80bb9c0dd5a34d16986675d02cf346a1705cfce52f3709bb32dafce1ae3f9c",
+    # The v10 probe change distinguishes intact mirrored Copycats from the
+    # new arbitrary linked-pair lower table; tracked singleton Ghosts never
+    # exercise either Copycat probe branch.
+    "ede2e2ce2001904cf71bc405333610328d0c31a1726621f7f9446291f0ff791c",
+    # The follow-up v10 change is confined to packed-header validation in the
+    # read-only reachability auditor; tracked-Ghost generation is unchanged.
+    "b3f399ac9c8dd34ed0d0078531d2888a512279422903495602270c38c36b5aac",
+    # Primary-Jester/Angel belief materialization and its exact observation
+    # fallback cannot affect the tracked singleton-Ghost codec.
+    "673ccfb0138c687c3417ae30f12b2a9e5eac86fbf6e85a6cb2451f747f2297e4",
+    # Adding the directly required <sstream> include is a Linux portability
+    # fix and cannot change the tracked singleton-Ghost codec.
+    "81f926554a3e54c1d2591e4120d86108fc13b715957a3ea029b6e0480a665b22",
+    # The Angel/Jester next-decision observation fix is disjoint from tracked
+    # singleton-Ghost generation and its packed codec.
+    "da0fcd0d5adef24ce90c4803459ee52e58c340700b1295497409f697e62d10c4",
+))
 ROWS = {
     "kghostparasitek.uftb": {
         "orientation": "same",
         "source_sha256":
             "d551ba980ab7fb51c63713524e2bf23a31758cad7629835c8d4bb339976b4a58",
         "model_sha256":
-            "dbf6e2777ac700693164f461be688ecedc3e58f4c65fbc967025cc3b860d4361",
+            "ecccace6048729f3e7472b060d0e0d633e424ed1305bba24d78767c0d9d0a26c",
         "normalized_source_sha256":
             "54c8d0bf2fa36254f1e1c4b9efa507c9128a5dc0030555857726fbef6551dd44",
     },
@@ -45,7 +99,7 @@ ROWS = {
         "source_sha256":
             "af888568f496353e4477d364f1652f5b2329b51820ab07a7d4b0c80bd362baf1",
         "model_sha256":
-            "66692c3d36301be90f6c5a069f2a86067b4772a5af8a04ec539afe0c60ede19f",
+            "0b8ad6e96de88c9633f3e9233eb32d095eab4471f61122fe506c2382577d5530",
         "normalized_source_sha256":
             "8abd056e7260376999ca03416d2304e66191cf4100b15418a6ebcc7a6a276229",
     },
@@ -128,12 +182,15 @@ def build_manifest(filename: str) -> dict[str, object]:
         raise RuntimeError(f"{filename}: concrete SHA-256 mismatch")
     if sha256_bytes(lower_payload) != LOWER_SHA256:
         raise RuntimeError("kghostk lower UFGM SHA-256 mismatch")
-    if sha256_bytes(lower_parasite_payload) != LOWER_PARASITE_SHA256:
+    if (sha256_bytes(lower_parasite_payload) != LOWER_PARASITE_SHA256 or
+            information.concrete_tablebase_model_fingerprint(
+                "kparasitek.uftb") not in
+            LOWER_PARASITE_COMPATIBLE_GENERATOR_MODELS):
         raise RuntimeError("kparasitek lower concrete binding mismatch")
     if (sha256_bytes(lower_tracked_ghost_payload) !=
             LOWER_TRACKED_GHOST_SHA256 or
-            information.tracked_ghost_tablebase_model_fingerprint() !=
-            LOWER_TRACKED_GHOST_MODEL_SHA256):
+            information.tracked_ghost_tablebase_model_fingerprint() not in
+            LOWER_TRACKED_GHOST_COMPATIBLE_GENERATOR_MODELS):
         raise RuntimeError("tracked-Ghost lower concrete binding mismatch")
     lower = lower_binding(lower_payload)
     observation = information.observation_model_fingerprint()

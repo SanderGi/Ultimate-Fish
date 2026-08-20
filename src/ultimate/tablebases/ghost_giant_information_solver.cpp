@@ -1679,9 +1679,7 @@ std::uint32_t lower_capture_witness_geometry(Orientation orientation) {
                   std::uint64_t(geometry) * Squares + actual;
                 const ExternalRobdd::Id oldOwner = solver.ownerCurrent_[root];
                 const ExternalRobdd::Id newOwner = solver.ownerNext_[root];
-                if (solver.bdd_->logical_and(oldOwner,
-                      solver.bdd_->logical_not(newOwner)) !=
-                    ExternalRobdd::False)
+                if (!solver.bdd_->implies(oldOwner, newOwner))
                     throw std::runtime_error(
                       "Giant owner least fixed point regressed");
                 changedOwner += oldOwner != newOwner;
@@ -1702,9 +1700,7 @@ std::uint32_t lower_capture_witness_geometry(Orientation orientation) {
                   solver.observerCurrent_[stratum];
                 const ExternalRobdd::Id newObserver =
                   solver.observerNext_[stratum];
-                if (solver.bdd_->logical_and(oldObserver,
-                      solver.bdd_->logical_not(newObserver)) !=
-                    ExternalRobdd::False)
+                if (!solver.bdd_->implies(oldObserver, newObserver))
                     throw std::runtime_error(
                       "Giant observer least fixed point regressed");
                 changedObserver += oldObserver != newObserver;

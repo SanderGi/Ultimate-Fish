@@ -26,6 +26,7 @@
 #include <memory>
 #include <mutex>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <sys/mman.h>
@@ -79,6 +80,10 @@ constexpr std::uint32_t IdenticalCompoundCopycatStateCount =
   CompoundCopycatStateCount / 2;
 constexpr std::uint64_t GiantAnchorV2Tag = 0x32474e4149474655ULL;
 constexpr std::uint64_t TrackedGhostV1Tag = 0x3154534f48474655ULL;
+constexpr std::uint64_t AngelGraphV1Tag = 0x314c45474e414655ULL;
+constexpr std::uint64_t AngelGiantGraphV1Tag = 0x314741474e414655ULL;
+constexpr std::uint64_t LinkedCopycatPairV1Tag = 0x314b4e4c43434655ULL;
+constexpr std::uint64_t AngelCopycatGraphV1Tag = 0x3152504343414655ULL;
 
 std::size_t packed_header_size(std::uint32_t version) {
     return 40 + (version >= 5 ? 8 : 0) + (version >= 6 ? 8 : 0) +
@@ -396,14 +401,19 @@ class MappedArray {
             fd_ = -1;
             throw std::runtime_error("cannot size mapped tablebase scratch file");
         }
-        void* mapping = ::mmap(nullptr, bytes_, PROT_READ | PROT_WRITE,
-                               MAP_SHARED, fd_, 0);
-        if (mapping == MAP_FAILED) {
-            ::close(fd_);
-            fd_ = -1;
-            throw std::runtime_error("cannot map tablebase scratch file");
+        // mmap(2) rejects a zero-length mapping.  A closed all-draw class can
+        // legitimately have no in-class reverse edges, so its predecessor
+        // array is empty even though the state and offset planes are not.
+        if (bytes_) {
+            void* mapping = ::mmap(nullptr, bytes_, PROT_READ | PROT_WRITE,
+                                   MAP_SHARED, fd_, 0);
+            if (mapping == MAP_FAILED) {
+                ::close(fd_);
+                fd_ = -1;
+                throw std::runtime_error("cannot map tablebase scratch file");
+            }
+            data_ = static_cast<T*>(mapping);
         }
-        data_ = static_cast<T*>(mapping);
         // The ordinary local generator keeps its historical kill-safe cleanup
         // behavior. Audited AWS preservation runs opt in to named scratch so
         // resource-limit stops and successful proofs retain every byte.
@@ -719,6 +729,7 @@ bool closed_position_only_attacker(PieceType type) {
     case PieceType::Pawn:
     case PieceType::Penguin:
     case PieceType::Copycat:
+    case PieceType::Angel:
         return true;
     default:
         return false;
@@ -754,7 +765,8 @@ bool closed_four_piece(PieceType type) {
     case PieceType::Penguin:
     case PieceType::Sniper:
     case PieceType::Prince:
-    case PieceType::Checker: return true;
+    case PieceType::Checker:
+    case PieceType::Angel: return true;
     default: return false;
     }
 }
@@ -765,7 +777,7 @@ bool closed_unsplit_copycat_secondary(PieceType type) {
     // freeze one half, Mage can swap one allied half, and Fisherman can pull
     // either half; those pairings require a larger displaced-pair codec.
     if (type == PieceType::Penguin || type == PieceType::Mage ||
-        type == PieceType::Fisherman)
+        type == PieceType::Fisherman || type == PieceType::Angel)
         return false;
     return type == PieceType::Copycat || closed_four_piece(type);
 }
@@ -783,7 +795,11 @@ std::uint32_t ordinary_substate_count(PieceType type) {
 }
 
 std::uint32_t material_substate_count(PieceType type, bool fourModels,
-                                      PieceType other) {
+                                      PieceType other, Color typeColor,
+                                      Color otherColor) {
+    if (type == PieceType::Angel)
+        return 2 + (fourModels && typeColor == otherColor
+          ? other == PieceType::Copycat ? 2 : 1 : 0);
     if (type != PieceType::Penguin)
         return ordinary_substate_count(type);
     // A Penguin remembers exactly which currently adjacent characters it
@@ -796,6 +812,43 @@ std::uint32_t material_substate_count(PieceType type, bool fourModels,
     return 8;
 }
 
+bool parallel_graph_scan_enabled(bool reverse, std::uint32_t checkpointEvery,
+                                 bool diskBacked, std::uint32_t stateCount) {
+    const bool capable = diskBacked || stateCount >= 300'000'000;
+    return capable && (reverse || !checkpointEvery);
+}
+
+constexpr bool packed_codec_matches(
+  std::uint32_t version, bool trackedGhost, bool angelGraph,
+  bool foldedGiant, bool linkedCopycatPair, bool angelCopycatGraph,
+  std::uint64_t codecTag) {
+    if (version == 10)
+        return (linkedCopycatPair && !angelGraph && !trackedGhost &&
+                codecTag == LinkedCopycatPairV1Tag) ||
+               (angelCopycatGraph && angelGraph && !trackedGhost &&
+                !foldedGiant && codecTag == AngelCopycatGraphV1Tag);
+    if (version == 9)
+        return angelGraph && !trackedGhost && !angelCopycatGraph &&
+          codecTag == (foldedGiant ? AngelGiantGraphV1Tag : AngelGraphV1Tag);
+    if (version == 8)
+        return trackedGhost && !angelGraph && !foldedGiant &&
+          codecTag == TrackedGhostV1Tag;
+    if (version == 7)
+        return !trackedGhost && !angelGraph && foldedGiant &&
+          codecTag == GiantAnchorV2Tag;
+    return version >= 4 && version <= 6 && !trackedGhost &&
+      !angelGraph && !foldedGiant;
+}
+
+static_assert(packed_codec_matches(
+  10, false, false, false, true, false, LinkedCopycatPairV1Tag));
+static_assert(packed_codec_matches(
+  10, false, true, false, false, true, AngelCopycatGraphV1Tag));
+static_assert(!packed_codec_matches(
+  10, false, true, false, false, true, AngelGraphV1Tag));
+static_assert(!packed_codec_matches(
+  9, false, true, false, false, true, AngelGraphV1Tag));
+
 }  // namespace
 
 class TablebaseGenerator {
@@ -803,26 +856,33 @@ class TablebaseGenerator {
     TablebaseGenerator(PieceType attackerType, PieceType secondaryType,
                        Color secondaryColor, std::string output,
                        std::string checkpoint, std::uint32_t checkpointEvery,
-                       bool diskBacked, bool trackedGhost) :
+                       bool diskBacked, bool trackedGhost,
+                       bool linkedCopycatPair,
+                       std::uint32_t workerThreads) :
         attackerType_(attackerType), output_(std::move(output)),
         checkpoint_(std::move(checkpoint)), checkpointEvery_(checkpointEvery),
         diskBacked_(diskBacked), trackedGhost_(trackedGhost),
+        workerThreads_(workerThreads),
+        linkedCopycatPair_(linkedCopycatPair),
         copycatOnly_(attackerType == PieceType::Copycat &&
-                     secondaryType == PieceType::Count),
+                     secondaryType == PieceType::Count && !linkedCopycatPair_),
         compoundCopycat_(attackerType == PieceType::Copycat &&
                          secondaryType != PieceType::Count),
         identicalCompoundCopycats_(compoundCopycat_ &&
           secondaryType == PieceType::Copycat && secondaryColor == Color::White),
-        secondaryType_(copycatOnly_ ? PieceType::CopycatClone : secondaryType),
+        secondaryType_((copycatOnly_ || linkedCopycatPair_)
+                         ? PieceType::CopycatClone : secondaryType),
         secondaryColor_(secondaryColor),
         fourModels_(secondaryType_ != PieceType::Count),
         identicalExtras_(secondaryType == attackerType && secondaryColor == Color::White),
         primarySubstates_(trackedGhost ? 1 : material_substate_count(
-          attackerType, fourModels_, secondaryType_)),
+          attackerType, fourModels_, secondaryType_, Color::White,
+          secondaryColor_)),
         secondarySubstates_(fourModels_ ? material_substate_count(
-          secondaryType_, true, attackerType) : 1),
+          secondaryType_, true, attackerType, secondaryColor_, Color::White) : 1),
         substates_(primarySubstates_ * secondarySubstates_),
-        stateCount_(copycatOnly_ ? PlacementStateCount
+        stateCount_(linkedCopycatPair_ ? FourPlacementStateCount
+                    : copycatOnly_ ? PlacementStateCount
                     : identicalCompoundCopycats_
                         ? IdenticalCompoundCopycatStateCount * substates_
                     : compoundCopycat_ ? CompoundCopycatStateCount * substates_
@@ -930,9 +990,96 @@ class TablebaseGenerator {
         std::cout << "penguincausalfreezemaskok partial_mask 1 action 4\n";
     }
 
+    void self_test_angel_transition_decision() const {
+        if (secondaryType_ != PieceType::Angel)
+            return;
+        constexpr std::uint32_t LegalDotWitness = 492'966;
+        const State state = decode_placement(LegalDotWitness);
+        const auto build = [&](bool swapped) {
+            Position position;
+            position.clear();
+            position.add_piece(
+              PieceType::King, Color::White,
+              swapped ? state.attacker : state.whiteKing);
+            position.add_piece(
+              PieceType::King, Color::Black, state.blackKing);
+            position.add_piece(
+              PieceType::Jester, Color::White,
+              swapped ? state.whiteKing : state.attacker);
+            position.set_side_to_move(state.side);
+            for (int id = 0; id < position.piece_count(); ++id)
+                position.piece(id).moved = true;
+            return position;
+        };
+        const Position first = build(false);
+        const Position second = build(true);
+        const DisclosureContext observer{
+          jester_observer_color(), false};
+        const Move pass{0, 0, 0, MoveKind::Pass, PieceType::Count};
+        const std::string firstPublic = transition_observation_key(
+          first, pass, first, observer);
+        const std::string secondPublic = transition_observation_key(
+          second, pass, second, observer);
+        const std::string firstObserved = primary_jester_transition_key(
+          first, pass, first);
+        const std::string secondObserved = primary_jester_transition_key(
+          second, pass, second);
+        if (state.side != observer.observer ||
+            primary_jester_view_key(first) !=
+              primary_jester_view_key(second) ||
+            primary_jester_decision_markers(first) ==
+              primary_jester_decision_markers(second) ||
+            firstPublic != secondPublic ||
+            firstObserved == secondObserved ||
+            firstObserved.find("|nextDecision=") == std::string::npos ||
+            secondObserved.find("|nextDecision=") == std::string::npos)
+            throw std::runtime_error(
+              "Angel/Jester transition lost the mover-private legal-dot split");
+        std::cout << "angeljestertransitiondecisionok index "
+                  << LegalDotWitness << " residual 0\n";
+    }
+
     void self_test() const {
         self_test_jester_overlay_color_symmetry();
         self_test_penguin_causal_codec();
+        self_test_angel_transition_decision();
+        if (!parallel_graph_scan_enabled(
+              true, stateCount_, true, stateCount_) ||
+            parallel_graph_scan_enabled(
+              false, stateCount_, true, stateCount_))
+            throw std::runtime_error(
+              "completed-frontier resume scan scheduling residual");
+        std::cout << "parallelresumereversescanok workers "
+                  << workerThreads_ << '\n';
+        if (linkedCopycatPair_) {
+            constexpr std::uint32_t samples = 20'000;
+            std::uint64_t transitions = 0;
+            for (std::uint32_t sample = 0; sample < samples; ++sample) {
+                const std::uint32_t index = static_cast<std::uint32_t>(
+                  std::uint64_t(stateCount_) * sample / samples);
+                Position position;
+                if (!make_position_at(index, position))
+                    continue;
+                if (!in_class(position) || child_index(position) != index)
+                    throw std::runtime_error(
+                      "linked Copycat pair position codec is not bijective");
+                for (const Move& move : position.legal_moves()) {
+                    Position child = position;
+                    if (!child.apply_move_unchecked(move))
+                        throw std::runtime_error(
+                          "linked Copycat pair self-test move failed");
+                    ++transitions;
+                    if (child.has_real_king(Color::White) &&
+                        child.has_real_king(Color::Black) &&
+                        child.is_checkmate_possible() && !in_class(child))
+                        throw std::runtime_error(
+                          "linked Copycat pair left its exact lower codec");
+                }
+            }
+            std::cout << "linkedcopycatpaircodecok samples " << samples
+                      << " transitions " << transitions << '\n';
+            return;
+        }
         if (copycatOnly_ &&
             (encoded_side(0) != Color::White ||
              encoded_side(stateCount_ / 2) != Color::Black))
@@ -951,6 +1098,9 @@ class TablebaseGenerator {
             }
             constexpr std::uint32_t transitionSamples = 2'000;
             std::uint64_t checkedTransitions = 0;
+            std::uint64_t checkedLinks = 0;
+            std::uint64_t splitRescues = 0;
+            std::uint64_t orphanDraws = 0;
             for (std::uint32_t sample = 0; sample < transitionSamples; ++sample) {
                 const std::uint32_t index = static_cast<std::uint32_t>(
                   std::uint64_t(stateCount_) * sample / transitionSamples);
@@ -960,17 +1110,42 @@ class TablebaseGenerator {
                 int originalMaterial = 0;
                 for (int id = 0; id < position.piece_count(); ++id)
                     originalMaterial += position.piece(id).alive &&
-                      position.piece(id).type != PieceType::King;
+                      position.piece(id).type != PieceType::King &&
+                      position.piece(id).type != PieceType::Halo;
                 for (const Move& move : position.legal_moves()) {
                     Position child = position;
                     if (!child.apply_move_unchecked(move))
                         throw std::runtime_error(
                           "compound Copycat self-test move failed");
                     ++checkedTransitions;
+                    checkedLinks += move.kind == MoveKind::Link;
                     int childMaterial = 0;
+                    int childCopycats = 0;
+                    int childAngels = 0;
+                    bool orphanAngel = false;
                     for (int id = 0; id < child.piece_count(); ++id)
-                        childMaterial += child.piece(id).alive &&
-                          child.piece(id).type != PieceType::King;
+                        if (child.piece(id).alive) {
+                            childMaterial +=
+                              child.piece(id).type != PieceType::King &&
+                              child.piece(id).type != PieceType::Halo;
+                            childCopycats +=
+                              child.piece(id).type == PieceType::Copycat ||
+                              child.piece(id).type == PieceType::CopycatClone;
+                            childAngels += child.piece(id).type == PieceType::Angel;
+                            orphanAngel = orphanAngel ||
+                              (child.piece(id).type == PieceType::Angel &&
+                               !child.piece(id).onBoard &&
+                               (child.piece(id).host < 0 ||
+                                child.piece(id).host >= child.piece_count() ||
+                                !child.piece(child.piece(id).host).alive));
+                        }
+                    if (secondaryType_ == PieceType::Angel &&
+                        secondaryColor_ == Color::White) {
+                        splitRescues += childCopycats == 2 && !childAngels &&
+                          child.is_checkmate_possible() && !in_class(child);
+                        orphanDraws += !childCopycats && childAngels == 1 &&
+                          orphanAngel && !child.is_checkmate_possible();
+                    }
                     if (child.has_real_king(Color::White) &&
                         child.has_real_king(Color::Black) &&
                         childMaterial == originalMaterial && !in_class(child))
@@ -978,9 +1153,20 @@ class TablebaseGenerator {
                           "retained-material move splits the compound Copycat domain");
                 }
             }
+            if (secondaryType_ == PieceType::Angel && !checkedLinks)
+                throw std::runtime_error(
+                  "Copycat/Angel codec found no attachment transition");
+            if (secondaryType_ == PieceType::Angel &&
+                secondaryColor_ == Color::White &&
+                (!splitRescues || !orphanDraws))
+                throw std::runtime_error(
+                  "same Copycat/Angel codec missed split-rescue or orphan-draw witness");
             std::cout << "compoundcopycatsubstatecodecok samples " << samples
                       << " transition_samples " << transitionSamples
-                      << " transitions " << checkedTransitions << '\n';
+                      << " transitions " << checkedTransitions
+                      << " links " << checkedLinks
+                      << " split_rescues " << splitRescues
+                      << " orphan_draws " << orphanDraws << '\n';
             self_test_jester_royal_codec(samples);
             return;
         }
@@ -993,8 +1179,51 @@ class TablebaseGenerator {
                 const std::uint32_t index = static_cast<std::uint32_t>(
                   std::uint64_t(stateCount_) * sample / samples);
                 Position position;
-                if (make_position_at(index, position) && child_index(position) != index)
+                if (make_position_at(index, position) &&
+                    (!in_class(position) || child_index(position) != index))
                     throw std::runtime_error("four-model substate codec is not bijective");
+            }
+            if (attackerType_ == PieceType::Angel ||
+                secondaryType_ == PieceType::Angel) {
+                constexpr std::uint32_t transitionSamples = 2'000;
+                std::uint64_t transitions = 0;
+                std::uint64_t links = 0;
+                for (std::uint32_t sample = 0; sample < transitionSamples;
+                     ++sample) {
+                    const std::uint32_t index = static_cast<std::uint32_t>(
+                      std::uint64_t(stateCount_) * sample / transitionSamples);
+                    Position position;
+                    if (!make_position_at(index, position))
+                        continue;
+                    const auto referenceMoves = position.legal_moves();
+                    std::vector<Move> foldedMoves;
+                    foldedMoves.reserve(referenceMoves.size());
+                    for_each_legal_successor(
+                      position, [&](const Move& move, const Position& child) {
+                        foldedMoves.push_back(move);
+                        ++transitions;
+                        links += move.kind == MoveKind::Link;
+                        const bool retained = child.piece_count() > 3 &&
+                          child.piece(2).alive && child.piece(3).alive &&
+                          type_matches(attackerType_, child.piece(2).type) &&
+                          type_matches(secondaryType_, child.piece(3).type);
+                        if (child.has_real_king(Color::White) &&
+                            child.has_real_king(Color::Black) && retained &&
+                            !in_class(child))
+                            throw std::runtime_error(
+                              "retained Angel material left its exact codec");
+                    });
+                    if (foldedMoves != referenceMoves)
+                        throw std::runtime_error(
+                          "folded Angel successor frontier differs from legal_moves");
+                }
+                if (!links)
+                    throw std::runtime_error(
+                      "Angel codec self-test found no attachment transition");
+                std::cout << "angelgraphcodecok samples " << samples
+                          << " transition_samples " << transitionSamples
+                          << " transitions " << transitions
+                          << " links " << links << '\n';
             }
             self_test_jester_royal_codec(samples);
             std::cout << "foursubstatecodecok samples " << samples << '\n';
@@ -1005,15 +1234,40 @@ class TablebaseGenerator {
             if (state.whiteKing == state.blackKing || state.whiteKing == state.attacker ||
                 state.blackKing == state.attacker || encode(state) != index)
                 throw std::runtime_error("tablebase state codec is not bijective");
-            if (attackerType_ == PieceType::Penguin) {
+            if (attackerType_ == PieceType::Penguin ||
+                attackerType_ == PieceType::Angel) {
                 Position position;
                 if (make_position_at(index, position) &&
-                    child_index(position) != index)
+                    (!in_class(position) || child_index(position) != index))
                     throw std::runtime_error(
-                      "Penguin causal freeze-mask codec is not bijective");
+                      "stateful causal/attachment codec is not bijective");
             }
         }
         std::cout << "codecok states " << stateCount_ << '\n';
+    }
+
+    template<typename Consumer>
+    std::uint32_t for_each_legal_successor(
+      const Position& position, Consumer&& consume) const {
+        if (position.forced_timeout_winner() ||
+            !position.has_real_king(Color::White) ||
+            !position.has_real_king(Color::Black) ||
+            !position.is_checkmate_possible())
+            return 0;
+
+        auto moves = position.pseudo_legal_moves();
+        position.annotate_captures(moves);
+        const Color mover = position.side_to_move();
+        std::uint32_t legal = 0;
+        for (const Move& move : moves) {
+            Position child = position;
+            if (!child.apply_move_unchecked(move) ||
+                !child.legal_after_unchecked_move(mover))
+                continue;
+            ++legal;
+            consume(move, child);
+        }
+        return legal;
     }
 
     void dry_run(std::uint32_t begin, std::uint32_t count) const {
@@ -1025,14 +1279,11 @@ class TablebaseGenerator {
             Position position;
             if (!make_position_at(index, position))
                 continue;
-            for (const Move& move : position.legal_moves()) {
-                Position child = position;
-                if (!child.apply_move_unchecked(move))
-                    throw std::runtime_error("legal tablebase move failed trusted application");
+            for_each_legal_successor(position, [&](const Move&, const Position& child) {
                 ++edges;
                 if (in_class(child) && child_index(child) >= stateCount_)
                     throw std::runtime_error("dry-run child index exceeds tablebase domain");
-            }
+            });
         }
         std::cout << "dryrun states " << begin << ".." << end << " edges " << edges << '\n';
     }
@@ -1081,11 +1332,14 @@ class TablebaseGenerator {
         const std::uint32_t wdlBytes = word(28);
         const bool foldedGiant = fourModels_ &&
           (primary_is_giant() || secondary_is_giant());
-        if (version < 4 || version > 8 ||
-            trackedGhost_ != (version == 8) ||
-            (!trackedGhost_ && foldedGiant != (version == 7)) ||
-            (foldedGiant && qword(56) != GiantAnchorV2Tag) ||
-            (trackedGhost_ && qword(56) != TrackedGhostV1Tag) ||
+        const bool angelGraph = attackerType_ == PieceType::Angel ||
+          secondaryType_ == PieceType::Angel;
+        const bool angelCopycatGraph = compoundCopycat_ &&
+          secondaryType_ == PieceType::Angel && secondaryColor_ == Color::White;
+        const bool codecMatches = packed_codec_matches(
+          version, trackedGhost_, angelGraph, foldedGiant, linkedCopycatPair_,
+          angelCopycatGraph, qword(56));
+        if (!codecMatches ||
             primary != static_cast<std::uint32_t>(attackerType_) ||
             count != stateCount_ || fileSubstates != substates_ || wdlBytes != (count + 3) / 4)
             throw std::runtime_error("packed tablebase does not match requested material class");
@@ -1103,8 +1357,8 @@ class TablebaseGenerator {
         using Counts = std::array<std::array<std::uint64_t, 4>, 2>;
         using Examples = std::array<std::array<std::uint32_t, 4>, 2>;
         constexpr std::uint32_t Block = 10'000;
-        const std::uint32_t workers = std::min<std::uint32_t>(
-          4, std::max(1u, std::thread::hardware_concurrency()));
+        const std::uint32_t workers = std::min(
+          workerThreads_, std::max(1u, std::thread::hardware_concurrency()));
         std::atomic<std::uint32_t> next{0};
         std::vector<Counts> local(workers);
         std::vector<Counts> localAll(workers);
@@ -1309,6 +1563,26 @@ class TablebaseGenerator {
                       << " win " << allTotals[side][1]
                       << " loss " << allTotals[side][2]
                       << " draw " << allTotals[side][3] << '\n';
+        // The original `reachability side` record predates publication and
+        // reports the states rejected by the causal predecessor predicate.
+        // Its terse name caused human importers to reverse admitted and
+        // excluded buckets. Keep that record for versioned-sidecar
+        // compatibility, but emit explicit, independently conserved aliases
+        // so new finalizers and audits can fail closed on the semantics.
+        if (full)
+            for (std::size_t side = 0; side < 2; ++side) {
+                std::cout << "reachability_excluded side " << side
+                          << " unknown " << totals[side][0]
+                          << " win " << totals[side][1]
+                          << " loss " << totals[side][2]
+                          << " draw " << totals[side][3] << '\n';
+                std::cout << "reachability_admitted side " << side
+                          << " unknown " << allTotals[side][0] - totals[side][0]
+                          << " win " << allTotals[side][1] - totals[side][1]
+                          << " loss " << allTotals[side][2] - totals[side][2]
+                          << " draw " << allTotals[side][3] - totals[side][3]
+                          << '\n';
+            }
         if (primarySubstates_ > 1)
             for (std::size_t substate = 0; substate < primarySubstates_; ++substate)
                 for (std::size_t side = 0; side < 2; ++side) {
@@ -1912,9 +2186,13 @@ class TablebaseGenerator {
         const std::uint32_t wdlBytes = word(28);
         const bool foldedGiant = fourModels_ &&
           (primary_is_giant() || secondary_is_giant());
-        if (version < 4 || version > 7 ||
-            foldedGiant != (version == 7) ||
-            (foldedGiant && qword(56) != GiantAnchorV2Tag) ||
+        const bool angelGraph = attackerType_ == PieceType::Angel ||
+          secondaryType_ == PieceType::Angel;
+        const bool angelCopycatGraph = compoundCopycat_ &&
+          secondaryType_ == PieceType::Angel && secondaryColor_ == Color::White;
+        if (!packed_codec_matches(
+              version, trackedGhost_, angelGraph, foldedGiant,
+              linkedCopycatPair_, angelCopycatGraph, qword(56)) ||
             word(12) != static_cast<std::uint32_t>(attackerType_) ||
             count != stateCount_ || word(24) != substates_ ||
             wdlBytes != (count + 3) / 4 ||
@@ -2537,10 +2815,9 @@ class TablebaseGenerator {
         const auto start = std::chrono::steady_clock::now();
         std::uint32_t begin = load_checkpoint();
         const std::uint32_t progressEvery = checkpointEvery_ ? checkpointEvery_ : 2'000'000;
-        const bool parallelScan = !checkpointEvery_ &&
-                                  (diskBacked_ || stateCount_ >= 300'000'000);
-        const auto scan = [&](const char* phase, std::uint32_t scanBegin, auto&& action) {
-            if (!parallelScan) {
+        const auto scan = [&](const char* phase, std::uint32_t scanBegin,
+                              bool parallel, auto&& action) {
+            if (!parallel) {
                 for (std::uint32_t index = scanBegin; index < stateCount_; ++index) {
                     action(index, false);
                     if ((index + 1) % progressEvery == 0)
@@ -2549,8 +2826,9 @@ class TablebaseGenerator {
                 return;
             }
             constexpr std::uint32_t Block = 10'000;
-            const std::uint32_t workers = std::min<std::uint32_t>(
-              4, std::max(1u, std::thread::hardware_concurrency()));
+            const std::uint32_t workers = std::min(
+              workerThreads_, std::max(1u, std::thread::hardware_concurrency()));
+            std::cout << phase << " workers " << workers << '\n' << std::flush;
             std::atomic<std::uint32_t> next{scanBegin};
             std::atomic<std::uint32_t> completed{scanBegin};
             std::atomic<std::uint32_t> nextReport{
@@ -2596,7 +2874,16 @@ class TablebaseGenerator {
             if (failure)
                 std::rethrow_exception(failure);
         };
-        scan("frontier", begin, [&](std::uint32_t index, bool atomic) {
+        // A checkpointed frontier remains serial so that its processed prefix
+        // is deterministic and restartable.  Reverse construction has no
+        // incremental checkpoint of its own: if interrupted it is rebuilt
+        // from the already authenticated frontier.  It can therefore use the
+        // worker pool even when checkpoint loading was required.  The former
+        // shared condition accidentally serialized every completed-frontier
+        // resume, leaving the requested workers idle for the entire replay.
+        scan("frontier", begin, parallel_graph_scan_enabled(
+               false, checkpointEvery_, diskBacked_, stateCount_),
+             [&](std::uint32_t index, bool atomic) {
             analyze_node(index, true, [&](std::uint32_t child, bool) {
                 if (atomic)
                     __atomic_fetch_add(&predecessorCounts_[child], 1u, __ATOMIC_RELAXED);
@@ -2620,7 +2907,9 @@ class TablebaseGenerator {
             constexpr Edge SameSideMask = predecessor_same_side_mask<Edge>();
             if (std::uint64_t(stateCount_) >= std::uint64_t(SameSideMask))
                 throw std::runtime_error("tablebase state index exceeds packed edge capacity");
-            scan("reverse", 0, [&](std::uint32_t index, bool atomic) {
+            scan("reverse", 0, parallel_graph_scan_enabled(
+                   true, checkpointEvery_, diskBacked_, stateCount_),
+                 [&](std::uint32_t index, bool atomic) {
                 analyze_node(index, false, [&](std::uint32_t child, bool sameSide) {
                     const Offset cursor = atomic
                       ? __atomic_fetch_add(&offsets[child], Offset{1}, __ATOMIC_RELAXED)
@@ -2755,12 +3044,26 @@ class TablebaseGenerator {
                 throw std::runtime_error(
                   "valid Jester world reflected to invalid geometry");
             Position physical, physicalAlternative;
-            if (primary_jester_alternative(alternative) != index ||
-                !make_primary_jester_world(index, false, physical) ||
-                !make_primary_jester_world(index, true, physicalAlternative) ||
-                child_index(physicalAlternative) != alternative)
-                throw std::runtime_error(
-                  "Jester royal-swap codec is not an involution");
+            const std::uint32_t roundTrip =
+              primary_jester_alternative(alternative);
+            const bool madePhysical =
+              make_primary_jester_world(index, false, physical);
+            const bool madeAlternative =
+              make_primary_jester_world(index, true, physicalAlternative);
+            const std::uint32_t encodedAlternative = madeAlternative
+              ? child_index(physicalAlternative)
+              : std::numeric_limits<std::uint32_t>::max();
+            if (roundTrip != index || !madePhysical || !madeAlternative ||
+                encodedAlternative != alternative) {
+                std::ostringstream error;
+                error << "Jester royal-swap codec is not an involution"
+                      << " index " << index
+                      << " alternative " << alternative
+                      << " roundtrip " << roundTrip
+                      << " made " << madePhysical << '/' << madeAlternative
+                      << " encoded " << encodedAlternative;
+                throw std::runtime_error(error.str());
+            }
             if (physical.side_to_move() == jester_observer_color()) {
                 const DisclosureContext observer{jester_observer_color(), false};
                 const bool compactEqual =
@@ -2801,6 +3104,12 @@ class TablebaseGenerator {
     // fixed-width public serialization.
     std::string primary_jester_view_key(const Position& position,
                                         bool* terminalOut = nullptr) const {
+        if (secondaryType_ == PieceType::Angel) {
+            if (terminalOut)
+                *terminalOut = position.game_over();
+            return view_key(
+              position, DisclosureContext{jester_observer_color(), false});
+        }
         using Record = std::array<std::int32_t, 13>;
         std::vector<Record> records;
         records.reserve(position.piece_count());
@@ -2894,6 +3203,21 @@ class TablebaseGenerator {
 
     std::string primary_jester_transition_key(
       const Position& before, const Move& move, const Position& after) const {
+        if (secondaryType_ == PieceType::Angel) {
+            const DisclosureContext observer{
+              jester_observer_color(), false};
+            std::string publicView;
+            std::string output = transition_observation_key(
+              before, move, after, observer, &publicView);
+            if (!after.game_over() &&
+                after.side_to_move() == observer.observer) {
+                const std::string decision = decision_observation_key(
+                  after, observer, &publicView);
+                output += "|nextDecision=" +
+                          std::to_string(decision.size()) + ':' + decision;
+            }
+            return output;
+        }
         std::string output;
         output.reserve(32 + 13 * 4 * 4);
         append_information_word(output, 1);  // compact transition schema
@@ -2925,6 +3249,8 @@ class TablebaseGenerator {
     }
 
     [[nodiscard]] Color encoded_side(std::uint32_t index) const {
+        if (linkedCopycatPair_)
+            return decode_four(index / substates_).side;
         if (copycatOnly_)
             return decode_placement(index / substates_).side;
         if (identicalCompoundCopycats_)
@@ -3109,6 +3435,24 @@ class TablebaseGenerator {
             combinedSubstate =
               primarySubstate * secondarySubstates_ + swappedSecondary;
         }
+        else if (secondaryType_ == PieceType::Angel &&
+                 secondaryColor_ == Color::White) {
+            const std::uint32_t primarySubstate =
+              combinedSubstate / secondarySubstates_;
+            std::uint32_t secondarySubstate =
+              combinedSubstate % secondarySubstates_;
+            // Same-team Angel substates 1 and 2 name the hidden royal
+            // identities (King-hosted and Jester-hosted). Swapping which
+            // public silhouette is the real King must swap those host tags
+            // as well, or the paired world attaches to a different visible
+            // model and the royal-assignment transform is not an involution.
+            if (secondarySubstate == 1)
+                secondarySubstate = 2;
+            else if (secondarySubstate == 2)
+                secondarySubstate = 1;
+            combinedSubstate =
+              primarySubstate * secondarySubstates_ + secondarySubstate;
+        }
         FourState state = decode_four(index / substates_);
         std::swap(state.whiteKing, state.first);
         return encode_four_material(state) * substates_ + combinedSubstate;
@@ -3140,6 +3484,13 @@ class TablebaseGenerator {
                   (secondarySubstate & 2u) |
                   (secondarySubstate & 1u ? 4u : 0u) |
                   (secondarySubstate & 4u ? 1u : 0u);
+            else if (secondaryType_ == PieceType::Angel &&
+                     secondaryColor_ == Color::White) {
+                if (secondarySubstate == 1)
+                    secondarySubstate = 2;
+                else if (secondarySubstate == 2)
+                    secondarySubstate = 1;
+            }
         }
 
         position.clear();
@@ -3158,7 +3509,13 @@ class TablebaseGenerator {
         for (const int id : {whiteKing, blackKing, jester, secondary})
             position.piece(id).moved = true;
         if (!apply_substate(position, jester, attackerType_, primarySubstate) ||
-            !apply_substate(position, secondary, secondaryType_, secondarySubstate))
+            (secondaryType_ != PieceType::Angel &&
+             !apply_substate(
+               position, secondary, secondaryType_, secondarySubstate)))
+            return false;
+        if (secondaryType_ == PieceType::Angel &&
+            !apply_angel_substate(
+              position, secondary, jester, secondarySubstate))
             return false;
         if (secondaryType_ == PieceType::Penguin &&
             !apply_penguin_substate(
@@ -3331,6 +3688,139 @@ class TablebaseGenerator {
         return true;
     }
 
+    bool apply_angel_substate(Position& position, int angel, int other,
+                              std::uint32_t substate) const {
+        if (angel < 0 || angel >= position.piece_count() || substate >= 4)
+            return false;
+        PieceState& item = position.piece(angel);
+        if (!item.alive || item.type != PieceType::Angel || !item.onBoard ||
+            item.link != Position::NoPiece || item.host != Position::NoPiece ||
+            item.attachmentOrder)
+            return false;
+        const int ownKing = item.color == Color::White ? 0 : 1;
+        if (!substate)
+            return true;
+        int host = substate == 1 ? ownKing : other;
+        if (substate == 3) {
+            if (other < 0 || other >= position.piece_count() ||
+                position.piece(other).type != PieceType::Copycat)
+                return false;
+            host = position.piece(other).link;
+        }
+        if (host < 0 || host >= position.piece_count() || host == angel ||
+            !position.piece(host).alive || !position.piece(host).onBoard ||
+            position.piece(host).type == PieceType::Halo ||
+            position.piece(host).color != item.color ||
+            (substate == 2 && (other == Position::NoPiece || host != other)))
+            return false;
+        const int haloSquare = item.square;
+        position.erase_from_board(angel);
+        item.onBoard = false;
+        const int halo = position.add_piece(PieceType::Halo, item.color,
+                                            haloSquare);
+        if (halo == Position::NoPiece)
+            return false;
+        item.link = static_cast<std::int8_t>(halo);
+        item.host = static_cast<std::int8_t>(host);
+        item.attachmentOrder = position.nextAttachmentOrder_++;
+        item.square = position.piece(host).square;
+        position.piece(halo).link = static_cast<std::int8_t>(angel);
+        return true;
+    }
+
+    std::optional<std::uint32_t> angel_substate(
+      const Position& position, int angel, int other) const {
+        if (angel < 0 || angel >= position.piece_count())
+            return std::nullopt;
+        const PieceState& item = position.piece(angel);
+        if (!item.alive || item.type != PieceType::Angel || item.action ||
+            item.cooldown || item.power || !item.visible ||
+            item.parasiteTracked)
+            return std::nullopt;
+        if (item.onBoard)
+            return item.link == Position::NoPiece &&
+                   item.host == Position::NoPiece && !item.attachmentOrder
+              ? std::optional<std::uint32_t>(0) : std::nullopt;
+        if (item.freezeCount || item.link < 0 ||
+            item.link >= position.piece_count() || item.host < 0 ||
+            item.host >= position.piece_count() || !item.attachmentOrder)
+            return std::nullopt;
+        const PieceState& halo = position.piece(item.link);
+        const PieceState& host = position.piece(item.host);
+        if (!halo.alive || !halo.onBoard || halo.type != PieceType::Halo ||
+            halo.color != item.color || halo.link != angel ||
+            halo.host != Position::NoPiece || !host.alive || !host.onBoard ||
+            host.type == PieceType::Halo || host.color != item.color ||
+            item.square != host.square)
+            return std::nullopt;
+        const int ownKing = item.color == Color::White ? 0 : 1;
+        if (item.host == ownKing)
+            return 1;
+        if (other != Position::NoPiece && item.host == other &&
+            position.piece(other).color == item.color)
+            return 2;
+        if (other != Position::NoPiece && other >= 0 &&
+            other < position.piece_count() &&
+            position.piece(other).type == PieceType::Copycat) {
+            const int clone = position.piece(other).link;
+            if (clone != Position::NoPiece && clone >= 0 &&
+                clone < position.piece_count() && item.host == clone &&
+                position.piece(clone).alive &&
+                position.piece(clone).type == PieceType::CopycatClone &&
+                position.piece(clone).color == item.color)
+                return 3;
+        }
+        return std::nullopt;
+    }
+
+    int material_board_piece(const Position& position, int id,
+                             PieceType type, int other) const {
+        if (type != PieceType::Angel)
+            return id;
+        const auto substate = angel_substate(position, id, other);
+        if (!substate)
+            return Position::NoPiece;
+        return *substate ? position.piece(id).link : id;
+    }
+
+    std::uint8_t material_square(const Position& position, int id,
+                                 PieceType type, int other) const {
+        const int boardPiece = material_board_piece(position, id, type, other);
+        if (boardPiece == Position::NoPiece)
+            throw std::runtime_error("Angel material has no board proxy");
+        return position.piece(boardPiece).square;
+    }
+
+    bool exact_angel_live_shape(const Position& position, int first,
+                                int second = Position::NoPiece) const {
+        int attached = 0;
+        int angel = Position::NoPiece;
+        int other = Position::NoPiece;
+        if (attackerType_ == PieceType::Angel) {
+            angel = first;
+            other = second;
+        }
+        else if (fourModels_ && secondaryType_ == PieceType::Angel) {
+            angel = second;
+            other = first;
+        }
+        else return true;
+        const auto substate = angel_substate(position, angel, other);
+        if (!substate)
+            return false;
+        attached = *substate != 0;
+        int live = 0;
+        int halos = 0;
+        for (int id = 0; id < position.piece_count(); ++id) {
+            if (!position.piece(id).alive)
+                continue;
+            ++live;
+            halos += position.piece(id).type == PieceType::Halo;
+        }
+        return live == (compoundCopycat_ ? 5 : fourModels_ ? 4 : 3) + attached &&
+               halos == attached;
+    }
+
     bool apply_substate(Position& position, int id, PieceType type,
                         std::uint32_t substate) const {
         switch (type) {
@@ -3381,6 +3871,13 @@ class TablebaseGenerator {
                 throw std::runtime_error("Penguin action mask is outside its exact state codec");
             return substate;
         }
+        case PieceType::Angel: {
+            const auto substate = angel_substate(position, id, other);
+            if (!substate)
+                throw std::runtime_error(
+                  "Angel attachment graph is outside its exact state codec");
+            return *substate;
+        }
         default: return 0;
         }
     }
@@ -3388,6 +3885,27 @@ class TablebaseGenerator {
     bool make_position_at(std::uint32_t index, Position& position) const {
         if (!fourModels_)
             return make_position(decode(index), position);
+        if (linkedCopycatPair_) {
+            const FourState state = decode_four(index / substates_);
+            position.clear();
+            const int whiteKing = position.add_piece_internal(
+              PieceType::King, Color::White, state.whiteKing, false);
+            const int blackKing = position.add_piece_internal(
+              PieceType::King, Color::Black, state.blackKing, false);
+            const int first = position.add_piece_internal(
+              PieceType::Copycat, Color::White, state.first, false);
+            const int second = position.add_piece_internal(
+              PieceType::CopycatClone, Color::White, state.second, false);
+            if (whiteKing == Position::NoPiece || blackKing == Position::NoPiece ||
+                first == Position::NoPiece || second == Position::NoPiece)
+                return false;
+            position.piece(first).link = static_cast<std::int8_t>(second);
+            position.piece(second).link = static_cast<std::int8_t>(first);
+            for (int id : {whiteKing, blackKing, first, second})
+                position.piece(id).moved = true;
+            position.set_side_to_move(state.side);
+            return true;
+        }
         if (copycatOnly_) {
             const State state = decode_placement(index);
             position.clear();
@@ -3444,13 +3962,30 @@ class TablebaseGenerator {
                 position.piece(secondaryClone).moved = true;
             }
         }
-        if (!apply_substate(position, first, attackerType_, primarySubstate) ||
-            !apply_substate(position, second, secondaryType_, secondarySubstate))
+        if ((attackerType_ != PieceType::Angel &&
+             !apply_substate(position, first, attackerType_, primarySubstate)) ||
+            (secondaryType_ != PieceType::Angel &&
+             !apply_substate(position, second, secondaryType_, secondarySubstate)))
+            return false;
+        if ((attackerType_ == PieceType::Angel &&
+             !apply_angel_substate(
+               position, first, second, primarySubstate)) ||
+            (secondaryType_ == PieceType::Angel &&
+             !apply_angel_substate(
+               position, second, first, secondarySubstate)))
+            return false;
+        const int firstOther = material_board_piece(
+          position, second, secondaryType_, first);
+        const int secondOther = material_board_piece(
+          position, first, attackerType_, second);
+        if (firstOther == Position::NoPiece || secondOther == Position::NoPiece)
             return false;
         if ((attackerType_ == PieceType::Penguin &&
-             !apply_penguin_substate(position, first, second, primarySubstate)) ||
+             !apply_penguin_substate(
+               position, first, firstOther, primarySubstate)) ||
             (secondaryType_ == PieceType::Penguin &&
-             !apply_penguin_substate(position, second, first, secondarySubstate)))
+             !apply_penguin_substate(
+               position, second, secondOther, secondarySubstate)))
             return false;
         position.set_side_to_move(state.side);
         return true;
@@ -3498,6 +4033,11 @@ class TablebaseGenerator {
                   position, attacker, Position::NoPiece, state.substate))
                 return false;
             break;
+        case PieceType::Angel:
+            if (!apply_angel_substate(
+                  position, attacker, Position::NoPiece, state.substate))
+                return false;
+            break;
         default: break;
         }
         position.set_side_to_move(state.side);
@@ -3505,15 +4045,48 @@ class TablebaseGenerator {
     }
 
     bool in_class(const Position& position) const {
-        const bool primary = position.has_real_king(Color::White) &&
-               position.has_real_king(Color::Black) &&
-               position.piece(2).alive && position.piece(2).onBoard &&
-               type_matches(attackerType_, position.piece(2).type) &&
-               (attackerType_ != PieceType::Ghost ||
-                (position.piece(2).parasiteTracked == trackedGhost_ &&
-                 (!trackedGhost_ || position.piece(2).visible)));
-        if (!primary || !fourModels_)
-            return primary;
+        if (!position.has_real_king(Color::White) ||
+            !position.has_real_king(Color::Black) || position.piece_count() < 3)
+            return false;
+        const auto member = [&](int id, PieceType represented, Color color,
+                                int other, bool tracked) {
+            if (id < 0 || id >= position.piece_count())
+                return false;
+            const PieceState& item = position.piece(id);
+            if (!item.alive || item.color != color ||
+                !type_matches(represented, item.type))
+                return false;
+            if (represented == PieceType::Angel)
+                return angel_substate(position, id, other).has_value();
+            return item.onBoard &&
+              (represented != PieceType::Ghost ||
+               (item.parasiteTracked == tracked &&
+                (!tracked || item.visible)));
+        };
+        if (linkedCopycatPair_) {
+            if (position.piece_count() < 4)
+                return false;
+            const PieceState& first = position.piece(2);
+            const PieceState& second = position.piece(3);
+            if (!first.alive || !first.onBoard ||
+                first.type != PieceType::Copycat ||
+                first.color != Color::White || first.link != 3 ||
+                !second.alive || !second.onBoard ||
+                second.type != PieceType::CopycatClone ||
+                second.color != Color::White || second.link != 2)
+                return false;
+            int live = 0;
+            for (int id = 0; id < position.piece_count(); ++id)
+                live += position.piece(id).alive;
+            return live == 4;
+        }
+        const int primaryOther = fourModels_ ? 3 : Position::NoPiece;
+        const bool primary = member(
+          2, attackerType_, Color::White, primaryOther, trackedGhost_);
+        if (!primary)
+            return false;
+        if (!fourModels_)
+            return exact_angel_live_shape(position, 2);
         if (compoundCopycat_) {
             const int clone = position.piece(2).link;
             const bool primaryPair =
@@ -3523,14 +4096,13 @@ class TablebaseGenerator {
                    position.piece(3).link == 2 &&
                    position.piece(3).square ==
                      horizontal_reflection(position.piece(2).square);
-            if (!primaryPair || !position.piece(4).alive ||
-                !position.piece(4).onBoard ||
-                !type_matches(secondaryType_, position.piece(4).type) ||
-                (secondaryType_ == PieceType::Ghost &&
-                 position.piece(4).parasiteTracked))
+            if (!primaryPair ||
+                !member(4, secondaryType_, secondaryColor_, 2, false))
                 return false;
             if (secondaryType_ != PieceType::Copycat)
-                return position.piece(4).link == Position::NoPiece;
+                return (secondaryType_ == PieceType::Angel ||
+                        position.piece(4).link == Position::NoPiece) &&
+                       exact_angel_live_shape(position, 2, 4);
             const int secondaryClone = position.piece(4).link;
             return secondaryClone == 5 && position.piece(5).alive &&
                    position.piece(5).onBoard &&
@@ -3540,20 +4112,25 @@ class TablebaseGenerator {
                    position.piece(5).square ==
                      horizontal_reflection(position.piece(4).square);
         }
-        return position.piece(3).alive && position.piece(3).onBoard &&
-               type_matches(secondaryType_, position.piece(3).type) &&
-               (secondaryType_ != PieceType::Ghost ||
-                !position.piece(3).parasiteTracked);
+        return member(3, secondaryType_, secondaryColor_, 2, false) &&
+               exact_angel_live_shape(position, 2, 3);
     }
 
     std::uint32_t child_index(const Position& position) const {
+        if (linkedCopycatPair_)
+            return encode_four({position.side_to_move(),
+                                position.piece(0).square,
+                                position.piece(1).square,
+                                position.piece(2).square,
+                                position.piece(3).square});
         if (copycatOnly_)
             return encode_placement({position.side_to_move(), position.piece(0).square,
                                      position.piece(1).square, position.piece(2).square});
         if (compoundCopycat_) {
             const FourState state{position.side_to_move(), position.piece(0).square,
                                   position.piece(1).square, position.piece(2).square,
-                                  position.piece(4).square};
+                                  material_square(
+                                    position, 4, secondaryType_, 2)};
             const std::uint32_t placement = identicalCompoundCopycats_
               ? encode_identical_compound_copycat(state)
               : encode_compound_copycat(state);
@@ -3562,10 +4139,20 @@ class TablebaseGenerator {
             return placement * substates_ + secondarySubstate;
         }
         if (fourModels_) {
+            const int firstOther = material_board_piece(
+              position, 3, secondaryType_, 2);
+            const int secondOther = material_board_piece(
+              position, 2, attackerType_, 3);
+            if (firstOther == Position::NoPiece ||
+                secondOther == Position::NoPiece)
+                throw std::runtime_error(
+                  "four-model material has no exact board proxy");
             std::uint32_t primarySubstate =
-              piece_substate(position, 2, attackerType_, 3);
+              piece_substate(position, 2, attackerType_,
+                attackerType_ == PieceType::Angel ? 3 : firstOther);
             std::uint32_t secondarySubstate =
-              piece_substate(position, 3, secondaryType_, 2);
+              piece_substate(position, 3, secondaryType_,
+                secondaryType_ == PieceType::Angel ? 2 : secondOther);
             if (attackerType_ == PieceType::Penguin ||
                 secondaryType_ == PieceType::Penguin) {
                 const bool exact = attackerType_ == PieceType::Penguin &&
@@ -3573,15 +4160,18 @@ class TablebaseGenerator {
                   ? penguin_freeze_state_matches(
                       position, 2, 3, primarySubstate, 3, 2, secondarySubstate)
                   : attackerType_ == PieceType::Penguin
-                  ? penguin_freeze_state_matches(position, 2, 3, primarySubstate)
-                  : penguin_freeze_state_matches(position, 3, 2, secondarySubstate);
+                  ? penguin_freeze_state_matches(
+                      position, 2, firstOther, primarySubstate)
+                  : penguin_freeze_state_matches(
+                      position, 3, secondOther, secondarySubstate);
                 if (!exact)
                     throw std::runtime_error(
                       "Penguin freeze layers are outside their exact state codec");
             }
             const FourState state{position.side_to_move(), position.piece(0).square,
-                                  position.piece(1).square, position.piece(2).square,
-                                  position.piece(3).square};
+                                  position.piece(1).square,
+                                  material_square(position, 2, attackerType_, 3),
+                                  material_square(position, 3, secondaryType_, 2)};
             std::uint32_t placement = 0;
             if (identicalExtras_) {
                 FourState canonical = canonicalize_four(state);
@@ -3619,10 +4209,16 @@ class TablebaseGenerator {
                   "Penguin freeze layers are outside their exact state codec");
             break;
         }
+        case PieceType::Angel:
+            substate = static_cast<std::uint8_t>(
+              piece_substate(position, 2, attackerType_, Position::NoPiece));
+            break;
         default: break;
         }
         return encode({position.side_to_move(), position.piece(0).square,
-                       position.piece(1).square, position.piece(2).square, substate});
+                       position.piece(1).square,
+                       material_square(position, 2, attackerType_,
+                                       Position::NoPiece), substate});
     }
 
     template<typename EdgeConsumer>
@@ -3638,20 +4234,19 @@ class TablebaseGenerator {
                 nodes_[index].wdl = Wdl::Draw;
             return;
         }
-        const auto moves = position.legal_moves();
         if (initialize) {
             Node& node = nodes_[index];
             node = {};
-            node.remaining = static_cast<std::uint16_t>(moves.size());
-            if (moves.empty()) {
-                const auto winner = position.winner();
-                node.wdl = winner && *winner != position.side_to_move() ? Wdl::Loss : Wdl::Draw;
-            }
         }
-        for (const Move& move : moves) {
-            Position child = position;
-            if (!child.apply_move_unchecked(move))
-                throw std::runtime_error("legal tablebase move failed trusted application");
+        const std::uint32_t legalMoves = for_each_legal_successor(
+          position, [&](const Move&, const Position& child) {
+            if (initialize) {
+                if (nodes_[index].remaining ==
+                    std::numeric_limits<std::uint16_t>::max())
+                    throw std::runtime_error(
+                      "tablebase node exceeds the exact move-count plane");
+                ++nodes_[index].remaining;
+            }
             if (child.forced_timeout_winner() ||
                 !child.has_real_king(Color::White) ||
                 !child.has_real_king(Color::Black) ||
@@ -3668,14 +4263,9 @@ class TablebaseGenerator {
                             --nodes_[index].remaining;
                         nodes_[index].longestWinChild = std::max<std::uint16_t>(
                           nodes_[index].longestWinChild, 0);
-                        if (!nodes_[index].remaining && nodes_[index].wdl == Wdl::Unknown) {
-                            nodes_[index].wdl = Wdl::Loss;
-                            nodes_[index].dtw = static_cast<std::uint16_t>(
-                              nodes_[index].longestWinChild + 1);
-                        }
                     }
                 }
-                continue;
+                return;
             }
             if (!in_class(child)) {
                 if (initialize) {
@@ -3697,20 +4287,27 @@ class TablebaseGenerator {
                             --nodes_[index].remaining;
                         nodes_[index].longestWinChild = std::max<std::uint16_t>(
                           nodes_[index].longestWinChild, external->dtw);
-                        if (!nodes_[index].remaining && nodes_[index].wdl == Wdl::Unknown) {
-                            nodes_[index].wdl = Wdl::Loss;
-                            nodes_[index].dtw = static_cast<std::uint16_t>(
-                              nodes_[index].longestWinChild + 1);
-                        }
                     }
                 }
-                continue;  // Captures enter K-v-K; promotions use a lower table.
+                return;  // Captures enter K-v-K; promotions use a lower table.
             }
             const std::uint32_t successor = child_index(child);
             if (successor >= stateCount_)
                 throw std::runtime_error("child index exceeds tablebase domain at parent " +
                                          std::to_string(index));
             consume(successor, child.side_to_move() == position.side_to_move());
+        });
+        if (!initialize)
+            return;
+        Node& node = nodes_[index];
+        if (!legalMoves) {
+            const auto winner = position.winner();
+            node.wdl = winner && *winner != position.side_to_move()
+              ? Wdl::Loss : Wdl::Draw;
+        }
+        else if (node.wdl == Wdl::Unknown && !node.remaining) {
+            node.wdl = Wdl::Loss;
+            node.dtw = static_cast<std::uint16_t>(node.longestWinChild + 1);
         }
     }
 
@@ -3782,7 +4379,13 @@ class TablebaseGenerator {
         // must never be interpreted by the corrected codec.
         const bool foldedGiant = fourModels_ &&
           (primary_is_giant() || secondary_is_giant());
-        const std::uint32_t version = trackedGhost_ ? 8 : foldedGiant ? 7
+        const bool angelGraph = attackerType_ == PieceType::Angel ||
+          secondaryType_ == PieceType::Angel;
+        const bool angelCopycatGraph = compoundCopycat_ &&
+          secondaryType_ == PieceType::Angel && secondaryColor_ == Color::White;
+        const std::uint32_t version = linkedCopycatPair_ || angelCopycatGraph
+          ? 10 : angelGraph ? 9 : trackedGhost_ ? 8
+          : foldedGiant ? 7
           : edges > std::numeric_limits<std::uint32_t>::max() ? 6
           : fourModels_ ? 5 : 4;
         const std::uint32_t piece = static_cast<std::uint32_t>(attackerType_);
@@ -3813,8 +4416,12 @@ class TablebaseGenerator {
         if (version >= 6)
             stream.write(reinterpret_cast<const char*>(&edges), sizeof(edges));
         if (version >= 7) {
-            const std::uint64_t codecTag = trackedGhost_
-              ? TrackedGhostV1Tag : GiantAnchorV2Tag;
+            const std::uint64_t codecTag = linkedCopycatPair_
+              ? LinkedCopycatPairV1Tag
+              : angelCopycatGraph ? AngelCopycatGraphV1Tag
+              : angelGraph
+              ? (foldedGiant ? AngelGiantGraphV1Tag : AngelGraphV1Tag)
+              : trackedGhost_ ? TrackedGhostV1Tag : GiantAnchorV2Tag;
             stream.write(reinterpret_cast<const char*>(&codecTag),
                          sizeof(GiantAnchorV2Tag));
         }
@@ -3856,16 +4463,13 @@ class TablebaseGenerator {
                     throw std::runtime_error("terminal tablebase state is misclassified");
                 continue;
             }
-            const auto moves = position.legal_moves();
             bool hasLoss = false;
             bool hasDraw = false;
-            bool allWin = !moves.empty();
+            bool allWin = true;
             std::uint16_t shortestLoss = std::numeric_limits<std::uint16_t>::max();
             std::uint16_t longestWin = 0;
-            for (const Move& move : moves) {
-                Position child = position;
-                if (!child.apply_move_unchecked(move))
-                    throw std::runtime_error("verification move failed trusted application");
+            const std::uint32_t legalMoves = for_each_legal_successor(
+              position, [&](const Move&, const Position& child) {
                 if (child.forced_timeout_winner() ||
                     !child.has_real_king(Color::White) ||
                     !child.has_real_king(Color::Black) ||
@@ -3880,7 +4484,7 @@ class TablebaseGenerator {
                         hasDraw = true;
                         allWin = false;
                     }
-                    continue;
+                    return;
                 }
                 if (!in_class(child)) {
                     const auto external = TablebaseProbe::probe(child);
@@ -3901,7 +4505,7 @@ class TablebaseGenerator {
                         hasDraw = true;
                         allWin = false;
                     }
-                    continue;
+                    return;
                 }
                 const Node successor = nodes_[child_index(child)];
                 const Wdl outcome = parent_wdl(
@@ -3919,15 +4523,16 @@ class TablebaseGenerator {
                     longestWin = std::max(longestWin, successor.dtw);
                 else
                     throw std::runtime_error("unknown state remains after retrograde");
-            }
+            });
+            allWin = legalMoves != 0 && allWin;
             bool valid = false;
             if (node.wdl == Wdl::Win)
                 valid = hasLoss && node.dtw == shortestLoss + 1;
             else if (node.wdl == Wdl::Loss)
-                valid = (moves.empty() && node.dtw == 0) ||
+                valid = (!legalMoves && node.dtw == 0) ||
                         (allWin && node.dtw == longestWin + 1);
             else if (node.wdl == Wdl::Draw)
-                valid = !hasLoss && (moves.empty() || hasDraw);
+                valid = !hasLoss && (!legalMoves || hasDraw);
             if (!valid)
                 throw std::runtime_error(
                   "retrograde Bellman verification failed at state " +
@@ -3942,18 +4547,22 @@ class TablebaseGenerator {
     }
 
     void verify_solution() const {
-        const std::uint32_t workers = std::min<std::uint32_t>(
-          4, std::max(1u, std::thread::hardware_concurrency()));
+        const std::uint32_t workers = std::min(
+          workerThreads_, std::max(1u, std::thread::hardware_concurrency()));
+        constexpr std::uint32_t Block = 4096;
+        std::atomic<std::uint32_t> next{0};
         std::vector<std::future<void>> tasks;
-        for (std::uint32_t worker = 0; worker < workers; ++worker) {
-            const std::uint32_t begin = static_cast<std::uint32_t>(
-              std::uint64_t(stateCount_) * worker / workers);
-            const std::uint32_t end = static_cast<std::uint32_t>(
-              std::uint64_t(stateCount_) * (worker + 1) / workers);
-            tasks.push_back(std::async(std::launch::async, [this, begin, end] {
-                verify_range(begin, end);
+        for (std::uint32_t worker = 0; worker < workers; ++worker)
+            tasks.push_back(std::async(std::launch::async, [this, &next] {
+                while (true) {
+                    const std::uint32_t begin = next.fetch_add(
+                      Block, std::memory_order_relaxed);
+                    if (begin >= stateCount_)
+                        break;
+                    verify_range(begin, std::min(
+                      stateCount_, static_cast<std::uint32_t>(begin + Block)));
+                }
             }));
-        }
         for (auto& task : tasks)
             task.get();
         std::cout << "verifyok states " << stateCount_ << '\n';
@@ -3973,6 +4582,8 @@ class TablebaseGenerator {
     std::uint32_t checkpointEvery_;
     bool diskBacked_;
     bool trackedGhost_;
+    std::uint32_t workerThreads_;
+    bool linkedCopycatPair_;
     bool copycatOnly_;
     bool compoundCopycat_;
     bool identicalCompoundCopycats_;
@@ -4006,6 +4617,8 @@ int main(int argc, char** argv) {
     bool fourCodecSelfTest = false;
     bool diskBacked = false;
     bool trackedGhost = false;
+    bool linkedCopycatPair = false;
+    std::uint32_t workerThreads = 4;
     std::uint32_t dryRun = 0;
     std::uint32_t dryRunBegin = 0;
     std::uint32_t inspect = std::numeric_limits<std::uint32_t>::max();
@@ -4048,6 +4661,10 @@ int main(int argc, char** argv) {
         else if (argument == "--opposing") secondaryColor = Color::Black;
         else if (argument == "--disk-backed") diskBacked = true;
         else if (argument == "--tracked-ghost") trackedGhost = true;
+        else if (argument == "--linked-copycat-pair") linkedCopycatPair = true;
+        else if (argument == "--workers")
+            workerThreads = static_cast<std::uint32_t>(
+              std::stoul(value("--workers")));
         else if (argument == "--checkpoint-every")
             checkpointEvery = static_cast<std::uint32_t>(std::stoul(value("--checkpoint-every")));
         else if (argument == "--dry-run")
@@ -4095,6 +4712,12 @@ int main(int argc, char** argv) {
             (attackerType != PieceType::Ghost || secondaryType != PieceType::Count))
             throw std::runtime_error(
               "--tracked-ghost requires the K+tracked-Ghost-v-K class");
+        if (linkedCopycatPair &&
+            (attackerType != PieceType::Copycat ||
+             secondaryType != PieceType::Count ||
+             secondaryColor != Color::White || trackedGhost))
+            throw std::runtime_error(
+              "--linked-copycat-pair requires the same-team K+linked-Copycat-v-K class");
         if (fourCodecSelfTest) {
             self_test_four_codec();
             return 0;
@@ -4104,16 +4727,24 @@ int main(int argc, char** argv) {
                 throw std::runtime_error("piece is not a closed K+K+1 tablebase class");
         }
         else {
+            if (attackerType == PieceType::Angel &&
+                secondaryType == PieceType::Angel)
+                throw std::runtime_error(
+                  "two Angels require the ordered multi-rescue codec");
             const bool closedUnsplitCopycat =
               attackerType == PieceType::Copycat &&
-              closed_unsplit_copycat_secondary(secondaryType);
+              (closed_unsplit_copycat_secondary(secondaryType) ||
+               secondaryType == PieceType::Angel);
             if ((!closed_four_piece(attackerType) ||
                  !closed_four_piece(secondaryType)) && !closedUnsplitCopycat)
                 throw std::runtime_error("K+K+2 piece requires a larger non-closed model");
         }
+        if (!workerThreads || workerThreads > 32)
+            throw std::runtime_error("tablebase workers must be between 1 and 32");
         TablebaseGenerator generator(attackerType, secondaryType, secondaryColor,
                                      output, checkpoint, checkpointEvery, diskBacked,
-                                     trackedGhost);
+                                     trackedGhost, linkedCopycatPair,
+                                     workerThreads);
         if (selfTest)
             generator.self_test();
         if (dryRun)

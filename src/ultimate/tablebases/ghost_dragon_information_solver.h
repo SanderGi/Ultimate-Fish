@@ -25,6 +25,9 @@ struct TransitionOptions {
     std::string promotedLowerDragonSha256;
     std::string promotedLowerDragonSourceSha256;
     std::string promotedLowerDragonModelSha256;
+    std::string sourceSha256;
+    std::string modelSha256;
+    std::string observationSha256;
     std::uint32_t geometryBegin = 0;
     std::uint32_t geometryCount = 0;
 };
@@ -64,6 +67,11 @@ struct SolveOptions {
     std::uint64_t uniqueSlots = std::uint64_t{1} << 30;
     std::uint32_t compactEvery = 1;
     std::uint32_t measureIterations = 0;
+    bool resumeFixedPoint = false;
+    bool resumeConverged = false;
+    bool resumeCurrentInNextSlot = false;
+    char resumeBddSlot = 'a';
+    std::uint64_t resumeIteration = 0;
 };
 
 struct ProbeBindings {

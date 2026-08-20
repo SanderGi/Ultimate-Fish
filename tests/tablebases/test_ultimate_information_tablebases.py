@@ -38,7 +38,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         (self.root / "tablebases").mkdir()
         records = info.affected_inventory(root=self.root, require_files=False)
-        self.assertEqual(len(records), 84)
+        self.assertEqual(len(records), 86)
         self.document = {
             "schema_version": info.SCHEMA_VERSION,
             "semantics": dict(info.SEMANTICS),
@@ -115,7 +115,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
 
     def test_inventory_is_exactly_all_stored_jester_or_ghost_rows(self):
         records = info.affected_inventory(require_files=False)
-        self.assertEqual(len(records), 84)
+        self.assertEqual(len(records), 86)
         self.assertEqual(tuple(record["filename"] for record in records),
                          info.AFFECTED_FILENAMES)
         for record in records:
@@ -128,7 +128,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
         supported = info.supported_solver_inventory()
         unsupported = info.unsupported_solver_inventory()
         names = [filename for filename, _ in supported] + list(unsupported)
-        self.assertEqual(len(supported), 84)
+        self.assertEqual(len(supported), 86)
         self.assertEqual(len(unsupported), 0)
         self.assertEqual(len(names), len(set(names)))
         self.assertEqual(set(names), set(info.AFFECTED_FILENAMES))
@@ -137,7 +137,7 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
             self.assertEqual(info.solver_domain(filename), domain)
             counts[domain] = counts.get(domain, 0) + 1
         self.assertEqual(counts, {
-            "primary-jester": 37,
+            "primary-jester": 39,
             "primary-jester-giant": 2,
             "ghost": 1,
             "double-jester": 1,
@@ -488,22 +488,22 @@ class InformationTablebaseSchemaTests(unittest.TestCase):
 
         self.assertEqual(
             info.solver_model_fingerprint("kbishopghostk.uftb"),
-            "a0d2030eeeaa5e4d93780eb09075cd1811b3db338399034bbe704b0928c4f433")
+            "c87108162f8588b580fe0a4612c7b48fec400056e8d033ecb4f522ea79359466")
         self.assertEqual(
             info.solver_model_fingerprint("kghostghostk.uftb"),
-            "779e91a7df7dc806a472963b1073470d484e7a1b638d71dfc9c8dbe5c839e110")
+            "4a7624f291424e7d7e752b807134ef440338c3c1126ab45561e205affb33c5b0")
         self.assertEqual(
             info.solver_model_fingerprint("kghostmagek.uftb"),
-            "eb7580a86ab4d872d9a46f30dc4dd2eac337b692c8b1019af0ec637c929fa1fc")
+            "d113aa5c9cb8db27eecd383cc134651a9d3b8bf41a3f386a02ada795d66f649b")
         self.assertEqual(
             info.solver_model_fingerprint("kghostkmage.uftb"),
-            "95d7677b074b3aa112345042f9423a3e2ce6b0cd791f2fe3194422c682eec731")
+            "ac54b76779e9867b9bae020b9591becbf3d73503880521c868659940a1d092da")
         self.assertEqual(
             info.solver_model_fingerprint("kghostparasitek.uftb"),
-            "efcc82495b9360e23fc1a4d9a0c2ec7cb6bc56ef01a2daed80eb57997af5ac6f")
+            "ecccace6048729f3e7472b060d0e0d633e424ed1305bba24d78767c0d9d0a26c")
         self.assertEqual(
             info.solver_model_fingerprint("kghostkparasite.uftb"),
-            "22dc49e7243651a7583444e5009afc69eb0f6a4e2e64df7f19b9a95f964c21ae")
+            "0b8ad6e96de88c9633f3e9233eb32d095eab4471f61122fe506c2382577d5530")
         self.assertNotEqual(
             info.double_jester_capture_model_fingerprint(),
             info.solver_model_fingerprint("kjesterjesterk.uftb"))

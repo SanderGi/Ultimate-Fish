@@ -70,23 +70,123 @@ grep -Eq '^\[{args.filename}\] information_fixed_point .* bellman_residual 0 ran
 test "$(grep -Ec '^\[{args.filename}\] information_summary side [01] .* bellman_residual 0 rank_residual 0 belief_cap none exhaustive 1$' "$root/{stem}.recovery.log")" = 2
 grep -Fqx '[{args.filename}] information_overlay {overlays}/{stem}.ufiw bytes 151831840' "$root/{stem}.recovery.log"
 """
+    if args.direct_log:
+        entry_builder = r'''solve_log="''' + args.direct_log + r'''"
+test -s "$solve_log"
+python3 - "$solve_log" "$overlay" "$root/''' + stem + r'''.entry.json" <<'PY'
+import json
+import re
+import struct
+import sys
+
+summary_re = re.compile(
+    r"^information_summary side (?P<side>[01]) "
+    r"win (?P<win>\d+) loss (?P<loss>\d+) draw (?P<draw>\d+) "
+    r"unreachable_win (?P<uwin>\d+) "
+    r"unreachable_loss (?P<uloss>\d+) "
+    r"unreachable_draw (?P<udraw>\d+) "
+    r"sets (?P<sets>\d+) concrete (?P<concrete>\d+) "
+    r"bellman_residual (?P<bellman>\d+) rank_residual (?P<rank>\d+) "
+    r"belief_cap none exhaustive 1$")
+fixed_re = re.compile(
+    r"^information_fixed_point .* bellman_residual (?P<bellman>\d+) "
+    r"rank_residual (?P<rank>\d+)$")
+
+summaries = {}
+fixed = []
+for line in open(sys.argv[1], encoding="utf-8"):
+    line = line.rstrip("\n")
+    if match := summary_re.fullmatch(line):
+        side = int(match["side"])
+        if side in summaries:
+            raise SystemExit("duplicate information summary side")
+        summaries[side] = {
+            key: int(value) for key, value in match.groupdict().items()
+            if key != "side"
+        }
+    if match := fixed_re.fullmatch(line):
+        fixed.append((int(match["bellman"]), int(match["rank"])))
+if set(summaries) != {0, 1} or not fixed or any(pair != (0, 0) for pair in fixed):
+    raise SystemExit("information proof certificate residual")
+
+with open(sys.argv[2], "rb") as stream:
+    header = stream.read(160)
+if len(header) != 160:
+    raise SystemExit("truncated UFIW2 header")
+magic, version, _primary, _secondary, _color, count, _substates = \
+    struct.unpack_from("<8s6I", header)
+if magic != b"UFIW2\0\0\0" or version != 2 or count % 2:
+    raise SystemExit("invalid UFIW2 header")
+states = count // 2
+if __import__("os").stat(sys.argv[2]).st_size != 160 + count:
+    raise SystemExit("UFIW2 extent residual")
+source = header[32:96].decode("ascii")
+model = header[96:160].decode("ascii")
+if not re.fullmatch(r"[0-9a-f]{64}", source) or \
+        not re.fullmatch(r"[0-9a-f]{64}", model):
+    raise SystemExit("UFIW2 hash binding residual")
+
+sides = {}
+for side_index, side_name in enumerate(("first", "second")):
+    summary = summaries[side_index]
+    if summary["concrete"] != states:
+        raise SystemExit("information concrete-domain residual")
+    outcomes = {
+        name: {"legal": summary[name], "unreachable": summary["u" + name]}
+        for name in ("win", "loss", "draw")
+    }
+    legal = sum(summary[name] for name in ("win", "loss", "draw"))
+    unreachable = sum(summary["u" + name] for name in ("win", "loss", "draw"))
+    if legal + unreachable != states or summary["bellman"] or summary["rank"]:
+        raise SystemExit("information W/L/D conservation residual")
+    sides[side_name] = {
+        "outcomes": outcomes,
+        "certificate": {
+            "information_sets": summary["sets"],
+            "concrete_realizations": states,
+            "legal_realizations": legal,
+            "unreachable_realizations": unreachable,
+            "unresolved_information_sets": 0,
+            "partition_residual": 0,
+            "conservation_residual": 0,
+            "bellman_residual": 0,
+            "rank_residual": 0,
+            "observation_residual": 0,
+        },
+    }
+entry = {
+    "tablebase_sha256": source,
+    "solver_model_sha256": model,
+    "states_per_side": states,
+    "sides": sides,
+}
+with open(sys.argv[3], "w", encoding="utf-8") as stream:
+    json.dump(entry, stream, sort_keys=True, indent=2)
+    stream.write("\n")
+PY'''
+        preserve_log = 'solve_log="$solve_log"'
+    else:
+        entry_builder = f'''test -s "$checkpoint"
+python3 - "$checkpoint" {args.filename} "$root/{stem}.entry.json" <<'PY'
+import json,sys
+d=json.load(open(sys.argv[1])); e=d['files'][sys.argv[2]]
+json.dump(e,open(sys.argv[3],'w'),sort_keys=True,indent=2); open(sys.argv[3],'a').write('\\n')
+PY'''
+        preserve_log = (f'journalctl -u {args.unit} --no-pager '
+                        f'>"$root/{stem}.solve.log"\n'
+                        f'solve_log="$root/{stem}.solve.log"')
     return f"""set -euo pipefail
 root={args.source_root}
 overlay="{overlays}/{stem}.ufiw"
 checkpoint="{checkpoint}"
 {service_gate}
 test -s "$overlay"
-test -s "$checkpoint"
-python3 - "$checkpoint" {args.filename} "$root/{stem}.entry.json" <<'PY'
-import json,sys
-d=json.load(open(sys.argv[1])); e=d['files'][sys.argv[2]]
-json.dump(e,open(sys.argv[3],'w'),sort_keys=True,indent=2); open(sys.argv[3],'a').write('\\n')
-PY
-journalctl -u {args.unit} --no-pager >"$root/{stem}.solve.log"
+{entry_builder}
+{preserve_log}
 stage="$root/finalize-{stem}"
 mkdir -p "$stage/overlays"
 install -m 0644 "$root/{stem}.entry.json" "$stage/{stem}.entry.json"
-install -m 0644 "$root/{stem}.solve.log" "$stage/{stem}.solve.log"
+install -m 0644 "$solve_log" "$stage/{stem}.solve.log"
 install -m 0644 "$overlay" "$stage/overlays/{stem}.ufiw"
 archive="$root/{stem}.information.tar.zst"
 tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner -C "$stage" \
@@ -207,6 +307,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--s3-prefix", required=True)
     parser.add_argument("--checkpoint",
                         help="remote checkpoint path; defaults below source root")
+    parser.add_argument("--direct-log",
+                        help="parse an exact native solver log instead of a driver checkpoint")
     parser.add_argument("--overlays",
                         help="remote overlay directory; defaults below source root")
     parser.add_argument("--expected-model-sha256",

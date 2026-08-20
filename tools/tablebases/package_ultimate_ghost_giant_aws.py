@@ -26,6 +26,17 @@ LOWER_GIANT_SHA256 = (
     "eb52f2c08cf88e1e3682d0c72dfde191d9009e79779ad7eee23ca82fdcade591")
 LOWER_GIANT_MODEL_SHA256 = (
     "89df7874ea2bb5aab359acc001db24746a84e47b4c9783965e883467c724666b")
+# The second fingerprint differs only in the byte-equivalence-certified,
+# read-only v6 verifier scheduler.  The lower artifact remains bound to its
+# original generator model below.
+LOWER_GIANT_COMPATIBLE_GENERATOR_MODELS = frozenset((
+    LOWER_GIANT_MODEL_SHA256,
+    "6da5ef2aa28a423b7e4271992ba952719baeddf54a0b9136c52c531fd1d68147",
+    # Opposed Copycat/Angel-only source expansion; Giant is unaffected.
+    "f7de219cb28f8cee34a292ffe0b2ebba76f74814f6f75b2ff4ea4a6c81280e8e",
+    # Scheduling-only completed-frontier parallel replay; byte-equivalent.
+    "2aeb7f7c23103e16d0e123e075b37c673e7b14d75463a8bfb0735c52ac02c3fa",
+))
 ROWS = {
     "kghostgiantk.uftb": {
         "orientation": "same",
@@ -125,7 +136,8 @@ def build_manifest(filename: str) -> dict[str, object]:
         raise RuntimeError("kghostk lower UFGM SHA-256 mismatch")
     if (sha256_bytes(lower_giant) != LOWER_GIANT_SHA256 or
             information.concrete_tablebase_model_fingerprint(
-                "kgiantk.uftb") != LOWER_GIANT_MODEL_SHA256):
+                "kgiantk.uftb") not in
+            LOWER_GIANT_COMPATIBLE_GENERATOR_MODELS):
         raise RuntimeError("kgiantk lower concrete binding mismatch")
     lower = lower_binding(lower_payload)
     observation = information.observation_model_fingerprint()

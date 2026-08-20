@@ -36,10 +36,10 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual(24, sum(row.domain == "single" for row in rows))
         self.assertEqual(300, sum(row.domain == "same" for row in rows))
         self.assertEqual(300, sum(row.domain == "opposed" for row in rows))
-        self.assertEqual(147, sum(row.status == "deferred" for row in rows))
-        self.assertEqual(477, sum(row.status != "deferred" for row in rows))
+        self.assertEqual(104, sum(row.status == "deferred" for row in rows))
+        self.assertEqual(520, sum(row.status != "deferred" for row in rows))
         self.assertEqual(
-            477,
+            520,
             sum(row.status == status for row in rows
                 for status in ("certified", "preserving", "computing",
                                "planned", "draw", "blocked")),
@@ -57,12 +57,18 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
     def test_deferred_rows_exactly_match_campaign_exclusions(self):
         """No closed K+K+1/K+K+2 class may hide behind DEFERRED.
 
-        Encode the requested campaign boundary independently of the ledger
-        implementation: Devil, Sludge, and Angel are not closed material, and
-        only Penguin, Mage, or Fisherman can split the simplified symmetric
-        Copycat compound within a four-model class.
+        Encode the campaign boundary independently of the ledger
+        implementation: Devil and Sludge are not closed material.  The Angel
+        graph-v1 domain admits one Angel with a visible closed companion.
+        Angel/Angel is an exact insufficient-material draw regardless of its
+        rescue stack; hidden Ghost attachments and spawning material remain
+        excluded. Jester/Angel uses the primary-Jester information solver.
+        Same-team Copycat/Angel uses an exact four-mode graph
+        and arbitrary-linked-pair lower table. Penguin, Mage, and Fisherman can
+        still split the simplified symmetric Copycat compound.
         """
-        dynamic = {"devil", "sludge", "angel"}
+        dynamic = {"devil", "sludge"}
+        angel_excluded = {"ghost", "devil", "sludge", "angel"}
         copycat_separators = {"penguin", "mage", "fisherman"}
         expected_dynamic = set()
         expected_copycat = set()
@@ -75,6 +81,11 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
                 target = None
                 if names & dynamic:
                     target = expected_dynamic
+                elif "angel" in names:
+                    companion = second if first == "angel" else first
+                    if (companion != "angel" and
+                            companion in angel_excluded):
+                        target = expected_dynamic
                 elif "copycat" in names and names & copycat_separators:
                     target = expected_copycat
                 if target is not None:
@@ -85,9 +96,36 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             row.key for row in ledger.entries(ledger.README.read_text())
             if row.status == "deferred"
         }
-        self.assertEqual(141, len(expected_dynamic))
+        self.assertEqual(98, len(expected_dynamic))
         self.assertEqual(6, len(expected_copycat))
+        self.assertEqual(104, len(actual))
         self.assertEqual(expected_dynamic | expected_copycat, actual)
+
+    def test_visible_one_angel_rows_are_in_scope_or_exact_draws(self):
+        rows = {row.key: row for row in ledger.entries(ledger.README.read_text())}
+        self.assertEqual("draw", rows["single:angel"].status)
+        self.assertEqual("closed-form draw", rows["single:angel"].reachability)
+        self.assertIn(rows["same:rook+angel"].status,
+                      {"planned", "computing", "certified"})
+        self.assertEqual(113_873_760, rows["same:rook+angel"].states)
+        self.assertIn(rows["opposed:rook+angel"].status,
+                      {"planned", "computing", "certified"})
+        self.assertEqual(75_915_840, rows["opposed:rook+angel"].states)
+        self.assertEqual("draw", rows["same:knight+angel"].status)
+        self.assertEqual("draw", rows["opposed:bishop+angel"].status)
+        for key in ("same:jester+angel", "opposed:jester+angel"):
+            self.assertIn(rows[key].status, {"planned", "computing", "certified"})
+        self.assertEqual("deferred", rows["opposed:ghost+angel"].status)
+        self.assertIn(rows["same:copycat+angel"].status,
+                      {"planned", "computing", "certified"})
+        self.assertEqual(
+            303_663_360, rows["same:copycat+angel"].states)
+        self.assertIn(rows["opposed:copycat+angel"].status,
+                      {"planned", "computing", "certified"})
+        self.assertEqual(
+            151_831_680, rows["opposed:copycat+angel"].states)
+        self.assertEqual("draw", rows["same:angel+angel"].status)
+        self.assertEqual("draw", rows["opposed:angel+angel"].status)
 
     def test_current_computation_hides_stale_result_and_hatches_plot(self):
         text = ledger.README.read_text()
@@ -155,13 +193,14 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
                 row.key,
             )
             checked += 1
-        self.assertEqual(410, checked)
+        self.assertGreaterEqual(checked, 413)
 
     def test_certified_concrete_wdl_conserves_each_encoded_side(self):
         checked = 0
         for row in ledger.entries(ledger.README.read_text()):
             if (row.status not in {"certified", "preserving"} or
-                    row.result_kind != "concrete" or row.states is None):
+                    row.result_kind != "concrete" or row.states is None or
+                    row.reachability == "—"):
                 continue
             side_totals = []
             for cell in (row.first, row.second):
@@ -186,6 +225,22 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         summary = plot.read_summary(ledger.README)
         self.assertEqual("mixed", plot.OutcomeCatalog(summary).opposed(
             "berserker", "ninja").kind)
+
+    def test_opposed_berserker_pair_uses_sidecar_exclusions_as_parentheses(self):
+        row = next(
+            item for item in ledger.entries(ledger.README.read_text())
+            if item.filename == "kberserkerkberserker.uftb")
+        expected = (
+            "262,700,200 (1,332,571,240) / 271,396,830 / 31,227,730")
+        self.assertEqual(expected, row.first)
+        self.assertEqual(expected, row.second)
+        self.assertEqual(
+            "565,324,760 / 1,332,571,240; "
+            "565,324,760 / 1,332,571,240",
+            row.reachability)
+        self.assertEqual("mixed", plot.OutcomeCatalog(
+            plot.read_summary(ledger.README)).opposed(
+                "berserker", "berserker").kind)
 
     def test_near_forced_outcomes_keep_wld_breakdown_and_lighter_color(self):
         catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))

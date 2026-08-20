@@ -41,6 +41,9 @@ Exact::TransitionOptions transition_options(Exact::Orientation orientation,
       "28d3cbeba82d02611a48bf2d0a6a527d11ff4cd3049f04bf2b4b929a05ed86c6";
     options.lowerDragonSourceSha256 = options.lowerDragonSha256;
     options.lowerDragonModelSha256 = std::string(64, 'd');
+    options.sourceSha256 = std::string(64, 'a');
+    options.modelSha256 = std::string(64, 'b');
+    options.observationSha256 = std::string(64, 'c');
     options.geometryBegin = begin;
     options.geometryCount = count;
     return options;

@@ -61,6 +61,7 @@ ULTIMATE_TABLEBASE_INCLUDE = -Iultimate -Iultimate/tablebases
 
 .PHONY: ultimatefish ultimate-test ultimate-rules-test ultimate-belief-benchmark ultimate-hidden-search-benchmark ultimate-information-test \
 	ultimate-ghost-information-probe-test ultimate-tablebase \
+	ultimate-angel-tablebase-test \
 	ultimate-nnue-reference ultimate-information-solvers \
 	ultimate-ghost-information-tablebase ultimate-double-jester-information-tablebase \
 	ultimate-ghost-extra-information-preflight \
@@ -118,6 +119,25 @@ ultimate-tablebase:
 		ultimate/tablebases/tablebase.cpp ultimate/position.cpp ultimate/tablebases/tablebase_probe.cpp \
 		ultimate/tablebases/information.cpp ultimate/tablebases/information_solver.cpp ultimate/nnue.cpp \
 		-o ultimate_tablebase
+
+ultimate-angel-tablebase-test: ultimate-tablebase
+	./ultimate_tablebase --piece copycat --piece2 angel --opposing \
+		--self-test --dry-run 20000
+	./ultimate_tablebase --piece copycat --linked-copycat-pair \
+		--self-test --dry-run 20000
+	./ultimate_tablebase --piece copycat --piece2 angel --self-test
+	./ultimate_tablebase --piece angel \
+		--output /tmp/ultimatefish-angel-codec-test.uftb \
+		--checkpoint /tmp/ultimatefish-angel-codec-test.checkpoint
+	./ultimate_tablebase --piece angel --audit-reachability \
+		/tmp/ultimatefish-angel-codec-test.uftb > /tmp/ultimatefish-angel-codec-test.reachability
+	grep -q '^reachability_excluded side 0 ' /tmp/ultimatefish-angel-codec-test.reachability
+	grep -q '^reachability_admitted side 1 ' /tmp/ultimatefish-angel-codec-test.reachability
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
+		../tests/tablebases/ultimate_angel_tablebase.cpp ultimate/position.cpp \
+		ultimate/tablebases/tablebase_probe.cpp ultimate/tablebases/information.cpp ultimate/nnue.cpp \
+		-o ultimate_angel_tablebase_test
+	./ultimate_angel_tablebase_test /tmp/ultimatefish-angel-codec-test.uftb
 
 ultimate-information-test: ultimate-ghost-information-probe-test
 	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \

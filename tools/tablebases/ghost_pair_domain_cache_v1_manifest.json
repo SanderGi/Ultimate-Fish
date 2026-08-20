@@ -1,0 +1,28 @@
+{
+  "schema": "ultimate-ghost-pair-domain-cache-source-v1",
+  "base_source_tree": "ghost-specialized-current-5bbb1395-source-v1",
+  "semantic_change": false,
+  "optimization": "exact-domain-root-interning-and-direct-robdd-conjunction",
+  "artifacts": [
+    {
+      "path": "src/ultimate/tablebases/ghost_pair_information_solver.cpp",
+      "bytes": 163474,
+      "sha256": "0e540d42589a452f08cc624bf833033dd8a6fb69cca1e7e1849e7f94741a1a0d"
+    },
+    {
+      "path": "src/ultimate/tablebases/ghost_pair_information_solver.h",
+      "bytes": 11911,
+      "sha256": "d33bfaf8040f02e74bfb9f80cddc73006764934de4e15757bd2b63d8529542a8"
+    },
+    {
+      "path": "src/ultimate/tablebases/ghost_pair_information_tablebase.cpp",
+      "bytes": 16537,
+      "sha256": "fc7d690e06ff3bd8574034aa9e3665f66acae56819865a52668316f0a757c03f"
+    },
+    {
+      "path": "src/ultimate/tablebases/information.cpp",
+      "bytes": 29739,
+      "sha256": "c1fd50f8bdbf556ce01f25376247d91e6d70afe228fca25a93fc8223e48eb5b0"
+    }
+  ]
+}

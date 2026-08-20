@@ -17,6 +17,9 @@ enum class Orientation : std::uint8_t { Same, Opposing };
 struct TransitionOptions {
     Orientation orientation = Orientation::Same;
     std::string prefix;
+    std::string sourceSha256;
+    std::string modelSha256;
+    std::string observationSha256;
     std::string lowerBombTable;
     std::string lowerBombSha256;
     std::string lowerBombSourceSha256;

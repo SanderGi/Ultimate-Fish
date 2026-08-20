@@ -39,14 +39,19 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#ifndef ULTIMATE_GHOST_EXTRA_PIECE_TOKEN
+#define ULTIMATE_GHOST_EXTRA_PIECE_TOKEN Dragon
+#define ULTIMATE_GHOST_EXTRA_PIECE_TOKEN_DEFAULTED
+#endif
+
 namespace Stockfish::Ultimate {
 
 [[nodiscard]] constexpr bool dragon_kernel_piece_type(PieceType type) {
 #ifdef ULTIMATE_GHOST_EXTRA_IS_CHECKER
-    return type == PieceType::Checker || type == PieceType::CheckerKing;
-#else
-    return type == PieceType::Dragon;
+    if (type == PieceType::CheckerKing)
+        return true;
 #endif
+    return type == PieceType::ULTIMATE_GHOST_EXTRA_PIECE_TOKEN;
 }
 
 [[nodiscard]] bool dragon_kernel_lower_child(const Position& position) {
@@ -123,7 +128,7 @@ class DragonKernelPosition : public Position {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wkeyword-macro"
 #endif
-#define Bishop Dragon
+#define Bishop ULTIMATE_GHOST_EXTRA_PIECE_TOKEN
 #define Position DragonKernelPosition
 #define private public
 #include "ghost_public_extra_information_solver.cpp"
@@ -152,7 +157,12 @@ constexpr bool SourceExtraPrimary = true;
 #else
 constexpr bool SourceExtraPrimary = false;
 #endif
-constexpr PieceType ExtraPiece = PieceType::Dragon;
+constexpr PieceType ExtraPiece =
+  PieceType::ULTIMATE_GHOST_EXTRA_PIECE_TOKEN;
+#ifdef ULTIMATE_GHOST_EXTRA_PIECE_TOKEN_DEFAULTED
+#undef ULTIMATE_GHOST_EXTRA_PIECE_TOKEN
+#undef ULTIMATE_GHOST_EXTRA_PIECE_TOKEN_DEFAULTED
+#endif
 constexpr PieceType SourcePrimary =
   SourceExtraPrimary ? ExtraPiece : PieceType::Ghost;
 constexpr PieceType SourceSecondary =
@@ -321,7 +331,7 @@ void validate_unique_node_tuples(const NodeDisk* nodes,
 
 [[nodiscard]] GhostPublicExtra::MaterialSpec adapter_material(
   Orientation orientation) {
-    return {PieceType::Dragon,
+    return {ExtraPiece,
       SourceExtraPrimary ? Color::White
         : (orientation == Orientation::Same ? Color::White : Color::Black),
       SourceExtraPrimary
@@ -340,7 +350,14 @@ void validate_unique_node_tuples(const NodeDisk* nodes,
 [[nodiscard]] GhostPublicExtra::ConcreteState normalized_to_original(
   const FourState& state, Orientation orientation) {
     GhostPublicExtra::ConcreteState result;
-    if (orientation == Orientation::Same) {
+    // Extra-primary source tables already use the legacy kernel's physical
+    // colors in both orientations: the public extra is White and an opposing
+    // Ghost is Black.  Color-swapping those sources changed side to move and
+    // the two King identities without swapping the extra/Ghost ownership,
+    // so the normalized WDL plane described a different position.  Only a
+    // Ghost-primary opposing source needs the role-color swap that puts its
+    // White Ghost into the kernel's Black-Ghost convention.
+    if (orientation == Orientation::Same || SourceExtraPrimary) {
         result.side = state.side;
         result.whiteKing = state.whiteKing;
         result.blackKing = state.blackKing;
@@ -360,7 +377,7 @@ void validate_unique_node_tuples(const NodeDisk* nodes,
 [[nodiscard]] FourState original_to_normalized(
   const GhostPublicExtra::ConcreteState& state, Orientation orientation) {
     FourState result;
-    if (orientation == Orientation::Same) {
+    if (orientation == Orientation::Same || SourceExtraPrimary) {
         result.side = state.side;
         result.whiteKing = state.whiteKing;
         result.blackKing = state.blackKing;
@@ -414,7 +431,30 @@ class OriginalTable {
         sha_ = hex_digest(hash.finish());
     }
 
-    [[nodiscard]] std::uint8_t result(std::uint32_t index) const {
+    [[nodiscard]] static std::uint32_t physical_index(
+      std::uint32_t logicalIndex) {
+        if (logicalIndex >= StateCount)
+            throw std::out_of_range(
+              "Dragon/Ghost source index is outside the concrete domain");
+        constexpr std::uint32_t CombinedSubstates = 2 * ExtraSubstates;
+        const std::uint32_t placement = logicalIndex / CombinedSubstates;
+        const std::uint32_t logicalCombined =
+          logicalIndex % CombinedSubstates;
+        const std::uint32_t extraSubstate = logicalCombined / 2;
+        const std::uint32_t ghostVisible = logicalCombined % 2;
+        // The concrete generator packs primary-substate first and secondary-
+        // substate second.  The information solver's role-normalized codec is
+        // always [extra substate][Ghost visibility].  They coincide when the
+        // public extra is primary, but a Ghost-primary source physically uses
+        // [Ghost visibility][extra substate] and must be transposed here.
+        const std::uint32_t physicalCombined = SourceExtraPrimary
+          ? logicalCombined
+          : ghostVisible * ExtraSubstates + extraSubstate;
+        return placement * CombinedSubstates + physicalCombined;
+    }
+
+    [[nodiscard]] std::uint8_t result(std::uint32_t logicalIndex) const {
+        const std::uint32_t index = physical_index(logicalIndex);
         return (bytes_.at(wdlOffset_ + index / 4) >> (2 * (index % 4))) & 3;
     }
     [[nodiscard]] const std::string& sha() const { return sha_; }
@@ -437,7 +477,7 @@ enum class DragonWdl : std::uint8_t { Win = 1, Loss = 2, Draw = 3 };
 class LowerDragonTable {
   public:
     explicit LowerDragonTable(const std::string& path,
-                              PieceType pieceType = PieceType::Dragon,
+                              PieceType pieceType = ExtraPiece,
                               std::uint32_t substates = LowerExtraSubstates)
       : pieceType_(pieceType), substates_(substates) {
 #ifdef ULTIMATE_GHOST_ORDINARY_LOWER_DRAW_ONLY
@@ -552,7 +592,7 @@ class LowerDragonTable {
 
   private:
     std::vector<std::uint8_t> bytes_;
-    PieceType pieceType_ = PieceType::Dragon;
+    PieceType pieceType_ = ExtraPiece;
     [[maybe_unused]] std::uint32_t substates_ = LowerExtraSubstates;
 };
 
@@ -618,7 +658,7 @@ void lower_dragon_probe_self_test(const MaterialSpec& material,
                     const int bk = position.add_piece(
                       PieceType::King, Color::Black, blackKing);
                     const int item = position.add_piece(
-                      PieceType::Dragon, Color::White, dragon);
+                      ExtraPiece, Color::White, dragon);
                     position.piece(wk).moved = position.piece(bk).moved =
                       position.piece(item).moved = true;
                     position.set_side_to_move(side);
@@ -817,7 +857,7 @@ NormalizedSource normalize_source(const OriginalTable& source,
         output.write(reinterpret_cast<const char*>(&value), 4);
     };
     write32(5);
-    write32(static_cast<std::uint32_t>(PieceType::Dragon));
+    write32(static_cast<std::uint32_t>(ExtraPiece));
     write32(StateCount);
     write32(0);
     write32(2 * ExtraSubstates);
@@ -1245,14 +1285,47 @@ namespace {
 }
 #endif
 
+constexpr std::size_t DragonTransitionComponentCount = 5;
+constexpr std::array<const char*, DragonTransitionComponentCount>
+  DragonTransitionComponents{{".header", ".meta", ".strata", ".index",
+                               ".blocks"}};
+
+[[nodiscard]] constexpr std::size_t dragon_lower_binding_count() {
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    return 6;
+#else
+    return 3;
+#endif
+}
+
+[[nodiscard]] std::uint64_t dragon_marker_bytes(bool payloadBound) {
+    return sizeof(ExternalTransitionHeader) +
+      64 * (dragon_lower_binding_count() +
+            (payloadBound ? 3 + DragonTransitionComponentCount : 0));
+}
+
 void write_dragon_marker(const TransitionOptions& options) {
-    std::fstream marker(options.prefix + ".verified",
-      std::ios::binary | std::ios::in | std::ios::out);
+    for (const auto& [value, label] : {
+           std::pair<const std::string*, const char*>{&options.sourceSha256,
+                                                      "source SHA"},
+           {&options.modelSha256, "model SHA"},
+           {&options.observationSha256, "observation SHA"}})
+        if (!valid_sha(*value))
+            throw std::runtime_error(
+              std::string("Dragon transition marker has invalid ") + label);
+    std::ifstream headerFile(options.prefix + ".header", std::ios::binary);
     ExternalTransitionHeader header;
-    marker.read(reinterpret_cast<char*>(&header), sizeof(header));
-    if (!marker)
-        throw std::runtime_error("missing frozen transition marker");
-    marker.seekp(sizeof(header));
+    headerFile.read(reinterpret_cast<char*>(&header), sizeof(header));
+    if (!headerFile ||
+        headerFile.peek() != std::char_traits<char>::eof())
+        throw std::runtime_error("missing frozen transition header");
+    std::array<std::string, DragonTransitionComponentCount> components;
+    for (std::size_t index = 0; index < components.size(); ++index)
+        components[index] = GhostPublicExtraExact::sha256_file(
+          options.prefix + DragonTransitionComponents[index]);
+    std::ofstream marker(options.prefix + ".verified",
+      std::ios::binary | std::ios::trunc);
+    marker.write(reinterpret_cast<const char*>(&header), sizeof(header));
     for (const std::string* hash : {&options.lowerDragonSha256,
                                     &options.lowerDragonSourceSha256,
                                     &options.lowerDragonModelSha256
@@ -1263,20 +1336,23 @@ void write_dragon_marker(const TransitionOptions& options) {
 #endif
                                     })
         marker.write(hash->data(), 64);
+    for (const std::string* hash : {&options.sourceSha256,
+                                    &options.modelSha256,
+                                    &options.observationSha256})
+        marker.write(hash->data(), 64);
+    for (const std::string& hash : components)
+        marker.write(hash.data(), 64);
     marker.close();
     struct stat status{};
     if (::stat((options.prefix + ".verified").c_str(), &status) ||
-        status.st_size != static_cast<off_t>(sizeof(header) +
-#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
-                                              384
-#else
-                                              192
-#endif
-                                              ))
+        status.st_size != static_cast<off_t>(dragon_marker_bytes(true)))
         throw std::runtime_error("Dragon transition marker extent residual");
+    std::cout << "ghost_dragon_transition_payload_certificate components "
+              << components.size() << " payload_bound 1 residual 0\n"
+              << std::flush;
 }
 
-void authenticate_dragon_marker(const TransitionOptions& options) {
+bool authenticate_dragon_marker(const TransitionOptions& options) {
     std::ifstream marker(options.prefix + ".verified", std::ios::binary);
     ExternalTransitionHeader header;
     std::array<char,
@@ -1288,7 +1364,13 @@ void authenticate_dragon_marker(const TransitionOptions& options) {
       > hashes{};
     marker.read(reinterpret_cast<char*>(&header), sizeof(header));
     marker.read(hashes.data(), hashes.size());
-    if (!marker || marker.peek() != std::char_traits<char>::eof() ||
+    std::ifstream headerFile(options.prefix + ".header", std::ios::binary);
+    ExternalTransitionHeader storedHeader;
+    headerFile.read(reinterpret_cast<char*>(&storedHeader),
+                    sizeof(storedHeader));
+    if (!marker || !headerFile ||
+        headerFile.peek() != std::char_traits<char>::eof() ||
+        std::memcmp(&header, &storedHeader, sizeof(header)) ||
         std::string(hashes.data(), 64) != options.lowerDragonSha256 ||
         std::string(hashes.data() + 64, 64) !=
           options.lowerDragonSourceSha256 ||
@@ -1305,6 +1387,27 @@ void authenticate_dragon_marker(const TransitionOptions& options) {
         )
         throw std::runtime_error(
           "Dragon transition marker dependency residual");
+    if (marker.peek() == std::char_traits<char>::eof())
+        return false;
+    std::array<char, 64 * (3 + DragonTransitionComponentCount)> payload{};
+    marker.read(payload.data(), payload.size());
+    if (!marker || marker.peek() != std::char_traits<char>::eof() ||
+        std::string(payload.data(), 64) != options.sourceSha256 ||
+        std::string(payload.data() + 64, 64) != options.modelSha256 ||
+        std::string(payload.data() + 128, 64) != options.observationSha256)
+        throw std::runtime_error(
+          "Dragon transition marker model-binding residual");
+    for (std::size_t index = 0; index < DragonTransitionComponentCount;
+         ++index)
+        if (GhostPublicExtraExact::sha256_file(
+              options.prefix + DragonTransitionComponents[index]) !=
+            std::string(payload.data() + 64 * (3 + index), 64))
+            throw std::runtime_error(
+              "Dragon transition marker payload residual");
+    std::cout << "ghost_dragon_transition_payload_authentication components "
+              << DragonTransitionComponentCount
+              << " payload_bound 1 residual 0\n" << std::flush;
+    return true;
 }
 
 void certify_dragon_transitions(const TransitionOptions& options,
@@ -1336,7 +1439,9 @@ void certify_dragon_transitions(const TransitionOptions& options,
 #endif
                                false, true);
     write_dragon_marker(options);
-    authenticate_dragon_marker(options);
+    if (!authenticate_dragon_marker(options))
+        throw std::runtime_error(
+          "new Dragon transition marker lacks a payload binding");
 }
 
 }  // namespace
@@ -1362,11 +1467,16 @@ void compile_transitions(const TransitionOptions& options) {
       promotedLower,
 #endif
       false, true);
-    certify_dragon_transitions(options, lower
-#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
-                               , promotedLower
-#endif
-                               );
+    // compile_external_transitions already performed exhaustive native+D2
+    // regeneration with structural lower placeholders.  The authenticated
+    // rewrite above changes only those certified placeholder bytes to exact
+    // lower-table outcomes, so a second full native replay is redundant.
+    write_dragon_marker(options);
+    if (!authenticate_dragon_marker(options))
+        throw std::runtime_error(
+          "compiled Dragon transition marker lacks a payload binding");
+    std::cout << "ghost_dragon_compile_certificate exhaustive_replay 1"
+                 " duplicate_replay_skipped 1 residual 0\n" << std::flush;
 }
 
 void merge_transitions(const TransitionOptions& output,
@@ -1377,18 +1487,33 @@ void merge_transitions(const TransitionOptions& output,
     const LowerDragonTable promotedLower =
       authenticate_promoted_lower_dragon(output);
 #endif
+    std::size_t payloadBoundShards = 0;
     for (const std::string& shard : shards) {
         TransitionOptions input = output;
         input.prefix = shard;
-        authenticate_dragon_marker(input);
+        payloadBoundShards += authenticate_dragon_marker(input);
     }
     merge_external_transition_shards(output.prefix, shards,
       normalized_material(output.orientation), expectedGeometries);
-    certify_dragon_transitions(output, lower
+    // Each shard marker is issued only after exhaustive native regeneration,
+    // lower-table restoration, and exact dependency authentication.  Gap-free
+    // coverage plus the merger's extent/rebase/conservation checks therefore
+    // compose into an exact full-domain certificate.  Replaying every legal
+    // move again here used to cost days for large ordinary-piece domains.
+    // Bind the deterministic merged payload cryptographically instead.
+    (void) lower;
 #ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
-                               , promotedLower
+    (void) promotedLower;
 #endif
-                               );
+    write_dragon_marker(output);
+    if (!authenticate_dragon_marker(output))
+        throw std::runtime_error(
+          "merged Dragon transition marker lacks a payload binding");
+    std::cout << "ghost_dragon_compositional_merge_certificate shards "
+              << shards.size() << " payload_bound_shards "
+              << payloadBoundShards << " legacy_exhaustive_shards "
+              << shards.size() - payloadBoundShards
+              << " full_replay_skipped 1 residual 0\n" << std::flush;
 }
 
 void verify_transitions(const TransitionOptions& options) {
@@ -1397,7 +1522,11 @@ void verify_transitions(const TransitionOptions& options) {
     const LowerDragonTable promotedLower =
       authenticate_promoted_lower_dragon(options);
 #endif
-    authenticate_dragon_marker(options);
+    if (authenticate_dragon_marker(options)) {
+        std::cout << "ghost_dragon_transition_replay payload_bound 1"
+                     " full_replay_skipped 1 residual 0\n" << std::flush;
+        return;
+    }
     certify_dragon_transitions(options, lower
 #ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
                                , promotedLower
@@ -1442,7 +1571,9 @@ void rebind_transitions(const TransitionOptions& options) {
 #endif
                                false, true);
     write_dragon_marker(options);
-    authenticate_dragon_marker(options);
+    if (!authenticate_dragon_marker(options))
+        throw std::runtime_error(
+          "rebound Dragon transition marker lacks a payload binding");
 }
 
 ResourceEstimate resource_estimate() { return {}; }
@@ -1529,6 +1660,9 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     transitions.lowerDragonSha256 = options.lowerDragonFullSha256;
     transitions.lowerDragonSourceSha256 = options.lowerDragonSourceSha256;
     transitions.lowerDragonModelSha256 = options.lowerDragonModelSha256;
+    transitions.sourceSha256 = options.sourceSha256;
+    transitions.modelSha256 = options.modelSha256;
+    transitions.observationSha256 = options.observationSha256;
 #ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
     transitions.promotedLowerDragonTable =
       options.promotedLowerDragonTable;
@@ -1572,6 +1706,11 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     legacy.bddLimits.uniqueSlots = options.uniqueSlots;
     legacy.compactEvery = options.compactEvery;
     legacy.measureIterations = options.measureIterations;
+    legacy.resumeFixedPoint = options.resumeFixedPoint;
+    legacy.resumeConverged = options.resumeConverged;
+    legacy.resumeCurrentInNextSlot = options.resumeCurrentInNextSlot;
+    legacy.resumeBddSlot = options.resumeBddSlot;
+    legacy.resumeIteration = options.resumeIteration;
     gate_external_ghost_extra_solve(options.transitionPrefix, database,
                                     legacy);
     LowerGhostSymbolicSidecar lower(options.lowerGhostSidecar,
@@ -1612,11 +1751,39 @@ void exact_self_test(const std::string& scratchPrefix) {
         throw std::runtime_error("Dragon/Ghost concrete header self-test residual");
     overlay_header_self_test();
     packed_four_header_self_test();
+    constexpr std::uint32_t CombinedSubstates = 2 * ExtraSubstates;
+    constexpr std::uint32_t SamplePlacement =
+      PlacementCount > 6'007 ? 6'007 : PlacementCount - 1;
+    std::array<bool, CombinedSubstates> seenPhysical{};
+    for (std::uint32_t logicalCombined = 0;
+         logicalCombined < CombinedSubstates; ++logicalCombined) {
+        const std::uint32_t logical =
+          SamplePlacement * CombinedSubstates + logicalCombined;
+        const std::uint32_t physical = OriginalTable::physical_index(logical);
+        const std::uint32_t extraSubstate = logicalCombined / 2;
+        const std::uint32_t ghostVisible = logicalCombined % 2;
+        const std::uint32_t expectedCombined = SourceExtraPrimary
+          ? logicalCombined
+          : ghostVisible * ExtraSubstates + extraSubstate;
+        if (physical != SamplePlacement * CombinedSubstates +
+                        expectedCombined ||
+            seenPhysical[expectedCombined])
+            throw std::runtime_error(
+              "Dragon/Ghost source substate-order self-test residual");
+        seenPhysical[expectedCombined] = true;
+    }
+    if (std::any_of(seenPhysical.begin(), seenPhysical.end(),
+                    [](bool seen) { return !seen; }))
+        throw std::runtime_error(
+          "Dragon/Ghost source substate-order bijection residual");
+    std::cout << "ghost_dragon_source_substate_order source_extra_primary "
+              << SourceExtraPrimary << " extra_substates " << ExtraSubstates
+              << " logical_physical_bijection 1 residual 0\n";
     for (const Orientation orientation : {Orientation::Same,
                                            Orientation::Opposing}) {
         const MaterialSpec normalized = normalized_material(orientation);
         external_child_substate_self_test(normalized);
-        ExternalGhostExtraFixedPoint::fresh_root_public_grouping_self_test(
+        ExternalGhostExtraFixedPoint::run_fresh_root_public_grouping_self_test(
           normalized);
         const GhostPublicExtra::MaterialSpec material =
           adapter_material(orientation);
@@ -1631,6 +1798,14 @@ void exact_self_test(const std::string& scratchPrefix) {
                   normalized_to_original(normalized, orientation), material) !=
                 index)
                 throw std::runtime_error("Dragon/Ghost role remap residual");
+            if (SourceExtraPrimary &&
+                (normalized.side != original.side ||
+                 normalized.whiteKing != original.whiteKing ||
+                 normalized.blackKing != original.blackKing ||
+                 normalized.bishop != original.first ||
+                 normalized.ghost != original.second))
+                throw std::runtime_error(
+                  "extra-primary Dragon/Ghost physical remap residual");
         }
     }
     std::cout << "ghost_dragon_exact_self_test codec_states "

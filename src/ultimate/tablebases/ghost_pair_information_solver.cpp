@@ -18,11 +18,13 @@
 #include <algorithm>
 #include <array>
 #include <cerrno>
+#include <chrono>
 #include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <functional>
 #include <iomanip>
+#include <iostream>
 #include <limits>
 #include <map>
 #include <memory>
@@ -266,6 +268,22 @@ struct ApplyHash { std::size_t operator()(const ApplyKey&key)const{return static
 struct UnaryKey { PairRobdd::Id root=0;std::uint64_t relation=0;
     friend bool operator==(const UnaryKey&a,const UnaryKey&b){return a.root==b.root&&a.relation==b.relation;}};
 struct UnaryHash { std::size_t operator()(const UnaryKey&key)const{return static_cast<std::size_t>(mix64(key.root^mix64(key.relation)));}};
+
+struct DomainKey {
+    PairMask mask;
+    std::uint32_t variableCount=0;
+    friend bool operator==(const DomainKey&lhs,const DomainKey&rhs){
+        return lhs.variableCount==rhs.variableCount&&lhs.mask==rhs.mask;}
+};
+
+struct DomainHash {
+    std::size_t operator()(const DomainKey&key)const noexcept {
+        std::uint64_t value=mix64(key.variableCount);
+        for(std::uint64_t word:key.mask.words)
+            value=mix64(value^mix64(word));
+        return static_cast<std::size_t>(value);
+    }
+};
 
 }  // namespace
 
@@ -768,6 +786,20 @@ class PairRobdd::Impl {
           compose(source.low,image,relation));
         if(unary.size()<limits.unaryCacheEntries)unary.emplace(key,result);return result;
     }
+    [[nodiscard]] Id subset_of(const PairMask&variables,unsigned variableCount){
+        if(variableCount>limits.variables)
+            throw std::out_of_range("PairRobdd domain size");
+        // Build the canonical conjunction directly from high variables to
+        // low.  The previous logical_and(logical_not(variable)) loop replayed
+        // an ever-growing prefix through Apply for every excluded variable.
+        // This emits the identical Boolean function with one unique-table
+        // lookup per required node and no throwaway Apply nodes.
+        Id result=True;
+        for(unsigned variable=limits.variables;variable-->0;)
+            if(variable>=variableCount||!variables.test(variable))
+                result=make(static_cast<std::uint16_t>(variable),result,False);
+        return result;
+    }
     [[nodiscard]] bool eval(Id root,const PairMask&assignment)const{
         while(root>True){const PairNode source=node(root);root=assignment.test(source.variable)?source.high:source.low;}
         return root==True;
@@ -795,10 +827,7 @@ PairRobdd::Id PairRobdd::any(const PairMask&variables){Id result=False;
             bits&=bits-1;}}
     return result;}
 PairRobdd::Id PairRobdd::subset_of(const PairMask&variables,unsigned count){
-    if(count>MaximumWorlds)throw std::out_of_range("PairRobdd domain size");Id result=True;
-    for(unsigned i=0;i<count;++i)if(!variables.test(i))result=logical_and(result,logical_not(variable(i)));
-    for(unsigned i=count;i<MaximumWorlds;++i)result=logical_and(result,logical_not(variable(i)));
-    return result;
+    return impl_->subset_of(variables,count);
 }
 PairRobdd::Id PairRobdd::compose(Id root,const std::vector<Id>&image,std::uint64_t relationId){return impl_->compose(root,image,relationId);}
 bool PairRobdd::evaluate(Id root,const PairMask&assignment)const{return impl_->eval(root,assignment);}
@@ -820,6 +849,38 @@ PairRobdd::NodeRecord PairRobdd::node_record(Id id)const{
     const PairNode&node=impl_->node(id);return{node.variable,node.low,node.high};
 }
 std::uint64_t PairRobdd::required_bytes(const Limits&limits){return std::uint64_t(limits.maxNodes)*sizeof(PairNode)+limits.uniqueSlots*sizeof(Id);}
+
+class DomainRootCache {
+  public:
+    explicit DomainRootCache(PairRobdd&bdd):bdd_(bdd){}
+
+    [[nodiscard]] PairRobdd::Id root(const PairMask&mask,
+                                     std::uint32_t variableCount){
+        const DomainKey key{mask,variableCount};
+        if(const auto found=roots_.find(key);found!=roots_.end()){
+            ++hits_;return found->second;
+        }
+        ++misses_;
+        const PairRobdd::Id result=bdd_.subset_of(mask,variableCount);
+        if(roots_.size()<MaximumEntries)roots_.emplace(key,result);
+        return result;
+    }
+
+    [[nodiscard]] std::uint64_t hits()const{return hits_;}
+    [[nodiscard]] std::uint64_t misses()const{return misses_;}
+    [[nodiscard]] std::uint64_t entries()const{return roots_.size();}
+
+  private:
+    // The production Ghost-pair graph currently has only three distinct
+    // (mask, variable-count) domains among 9,739,120 strata.  The bound keeps
+    // the optimization safe for future rule changes without turning an
+    // unexpectedly diverse graph into an unbudgeted multi-gigabyte cache.
+    static constexpr std::size_t MaximumEntries=1U<<16;
+    PairRobdd&bdd_;
+    std::unordered_map<DomainKey,PairRobdd::Id,DomainHash>roots_;
+    std::uint64_t hits_=0;
+    std::uint64_t misses_=0;
+};
 
 std::pair<PairRobdd,PairRobdd::CompactionCertificate>PairRobdd::compact(
   const std::string&replacementPrefix,const std::string&remapPath,
@@ -961,10 +1022,11 @@ namespace {
         checked_add(result.rootBytes,checked_add(StateCount,arbitraryBytes)))));
     const std::uint64_t cacheResident=checked_mul(checked_add(
       bdd.applyCacheEntries,bdd.unaryCacheEntries),64);
-    result.peakResidentBytes=checked_add(checked_mul(bdd.uniqueSlots,sizeof(PairRobdd::Id)),
+    result.peakResidentBytes=checked_add(64ULL<<20,checked_add(
+      checked_mul(bdd.uniqueSlots,sizeof(PairRobdd::Id)),
       checked_add(result.rootBytes,checked_add(result.rootCatalogBytes,
         checked_add(StateCount,checked_add(cacheResident,checked_add(
-          checked_mul(bdd.maxNodes,sizeof(std::uint16_t)),512ULL<<20))))));
+          checked_mul(bdd.maxNodes,sizeof(std::uint16_t)),512ULL<<20)))))));
     const bool nodeGate=(!limits.maxBddNodes||
       bdd.maxNodes<=limits.maxBddNodes)&&result.bddBytes<=bdd.budgetBytes;
     result.admitted=nodeGate&&limits.maxDiskBytes&&limits.maxResidentBytes&&
@@ -1647,13 +1709,31 @@ SolveCertificate solve_exact(const SolveOptions&options){
       database.strata(),true);
     owner.fill(PairRobdd::False);ownerNext.fill(PairRobdd::False);
     observer.fill(PairRobdd::False);observerNext.fill(PairRobdd::False);
+    DomainRootCache domainCache(bdd);
+    const auto domainStarted=std::chrono::steady_clock::now();
     for(std::uint32_t gid=0;gid<database.geometries();++gid){
         const GeometryDisk&meta=database.meta(gid);
         for(std::uint32_t local=0;local<meta.stratumCount;++local)
-            domains[meta.stratumBase+local]=bdd.subset_of(
+            domains[meta.stratumBase+local]=domainCache.root(
               database.stratum(meta.stratumBase+local),meta.variableCount);
+        if((gid+1)%50'000==0||gid+1==database.geometries()){
+            const double elapsed=std::chrono::duration<double>(
+              std::chrono::steady_clock::now()-domainStarted).count();
+            std::cout<<"ghost_pair_domain_roots geometry "<<gid+1<<'/'
+              <<database.geometries()<<" roots "
+              <<meta.stratumBase+meta.stratumCount<<'/'<<database.strata()
+              <<" cache_hits "<<domainCache.hits()
+              <<" cache_misses "<<domainCache.misses()
+              <<" cache_entries "<<domainCache.entries()
+              <<" bdd_nodes "<<bdd.node_count()<<" elapsed "<<elapsed
+              <<"s\n"<<std::flush;
+        }
     }
-    SolveCertificate certificate;certificate.transitionPayloadSha256.assign(
+    SolveCertificate certificate;certificate.domainRoots=database.strata();
+    certificate.domainCacheHits=domainCache.hits();
+    certificate.domainCacheMisses=domainCache.misses();
+    certificate.domainCacheEntries=domainCache.entries();
+    certificate.transitionPayloadSha256.assign(
       authenticated.payloadSha.data(),64);
     certificate.transitionHeaderSha256=sha256_file(
       options.transitionPrefix+".header");
@@ -2223,6 +2303,19 @@ void exact_small_domain_self_test(const std::string&scratchPrefix){
         if(bdd.evaluate(correlated,assignment)!=expected)
             throw std::runtime_error("PairRobdd exhaustive truth-table residual");}
     PairMask allowed;allowed.set(variables[0]);allowed.set(variables[1]);
+    DomainRootCache domainCache(bdd);
+    const PairRobdd::Id domain=domainCache.root(allowed,3);
+    const std::uint32_t domainNodes=bdd.node_count();
+    if(domainCache.root(allowed,3)!=domain||
+       bdd.node_count()!=domainNodes||domainCache.hits()!=1||
+       domainCache.misses()!=1||domainCache.entries()!=1)
+        throw std::runtime_error("PairRobdd domain-cache reuse residual");
+    for(unsigned bits=0;bits<16;++bits){PairMask assignment;
+        for(unsigned variable=0;variable<4;++variable)
+            if(bits&(1u<<variable))assignment.set(variable);
+        const bool expected=!(bits&(1u<<2))&&!(bits&(1u<<3));
+        if(bdd.evaluate(domain,assignment)!=expected)
+            throw std::runtime_error("PairRobdd direct domain residual");}
     const PairRobdd::Id upward=bdd.logical_and(items[0],items[1]);
     const PairRobdd::Id downward=bdd.logical_not(upward);
     if(!bdd.is_upward_closed(upward,allowed)||

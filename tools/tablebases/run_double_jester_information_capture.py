@@ -386,8 +386,13 @@ def write_zstd_archive(output: Path, files: Mapping[str, Path],
     inventory = file_inventory(files, schema)
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("xb") as destination:
+        # Certification is on the campaign's critical path because scratch is
+        # not reclaimable until the upload/download/restore proof completes.
+        # Level 19 saved little on dense WDL/BDD payloads but made multi-GiB
+        # archives spend many minutes on one CPU.  Level 5 retains deterministic
+        # single-threaded frames while substantially shortening that gate.
         process = subprocess.Popen(
-            ["zstd", "-19", "-T1", "--no-progress", "-c"],
+            ["zstd", "-5", "-T1", "--no-progress", "-c"],
             stdin=subprocess.PIPE, stdout=destination,
         )
         assert process.stdin is not None

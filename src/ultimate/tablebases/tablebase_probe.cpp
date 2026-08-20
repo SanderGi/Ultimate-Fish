@@ -32,21 +32,57 @@ constexpr std::uint32_t IdenticalCompoundCopycatStateCount =
   CompoundCopycatStateCount / 2;
 constexpr std::uint64_t GiantAnchorV2Tag = 0x32474e4149474655ULL;
 constexpr std::uint64_t TrackedGhostV1Tag = 0x3154534f48474655ULL;
+constexpr std::uint64_t AngelGraphV1Tag = 0x314c45474e414655ULL;
+constexpr std::uint64_t AngelGiantGraphV1Tag = 0x314741474e414655ULL;
+constexpr std::uint64_t LinkedCopycatPairV1Tag = 0x314b4e4c43434655ULL;
+constexpr std::uint64_t AngelCopycatGraphV1Tag = 0x3152504343414655ULL;
 
 bool compatible_codec(std::uint32_t version, PieceType primary,
                       PieceType secondary, std::uint64_t codecTag) {
-    if (version < 2 || version > 8)
+    if (version < 2 || version > 10)
+        return false;
+    const bool angel = primary == PieceType::Angel ||
+      secondary == PieceType::Angel;
+    const bool foldedGiant = secondary != PieceType::Count &&
+      (primary == PieceType::Giant || secondary == PieceType::Giant);
+    if (version == 10)
+        return (primary == PieceType::Copycat &&
+                secondary == PieceType::CopycatClone &&
+                codecTag == LinkedCopycatPairV1Tag) ||
+               (primary == PieceType::Copycat &&
+                secondary == PieceType::Angel &&
+                codecTag == AngelCopycatGraphV1Tag);
+    if (version == 9)
+        return angel && !(primary == PieceType::Angel &&
+                          secondary == PieceType::Angel) &&
+          codecTag == (foldedGiant ? AngelGiantGraphV1Tag
+                                   : AngelGraphV1Tag);
+    if (angel)
         return false;
     if (version == 8)
         return primary == PieceType::Ghost && secondary == PieceType::Count &&
                codecTag == TrackedGhostV1Tag;
-    const bool foldedGiant = secondary != PieceType::Count &&
-      (primary == PieceType::Giant || secondary == PieceType::Giant);
     // v7 is reserved for a folded four-model Giant payload whose horizontal
     // symmetry reflects the lower-left 2x2 anchor. Earlier versions cannot
     // authenticate that codec and are rejected before they are indexed.
     return version == 7 ? foldedGiant && codecTag == GiantAnchorV2Tag
                         : !foldedGiant;
+}
+
+bool compatible_secondary_color(std::uint32_t version, PieceType primary,
+                                PieceType secondary, Color secondaryColor) {
+    // AngelGraphV1 represents a Copycat compound only when the Angel is the
+    // opponent. A same-team Angel may attach to either linked half, and a hit
+    // on the other half can leave a live off-board orphan; that larger graph
+    // is deliberately not authenticated by this codec.
+    if (version == 10)
+        return primary == PieceType::Copycat &&
+          ((secondary == PieceType::CopycatClone &&
+            secondaryColor == Color::White) ||
+           (secondary == PieceType::Angel &&
+            secondaryColor == Color::White));
+    return version != 9 || primary != PieceType::Copycat ||
+           secondary != PieceType::Angel || secondaryColor == Color::Black;
 }
 
 struct PackedStorage {
@@ -86,6 +122,7 @@ struct Database {
     std::uint32_t substates = 1;
     std::uint32_t count = 0;
     bool trackedGhost = false;
+    bool linkedCopycatPair = false;
     std::vector<TablebaseResult> records;
     std::shared_ptr<PackedStorage> packed;
     std::vector<std::pair<std::uint32_t, std::uint16_t>> exceptions;
@@ -218,7 +255,9 @@ std::uint32_t encode_identical_four(Color side, std::uint8_t whiteKing,
 }
 
 std::uint32_t represented_substates(PieceType type, bool fourModels = false,
-                                    PieceType other = PieceType::Count) {
+                                    PieceType other = PieceType::Count,
+                                    Color typeColor = Color::White,
+                                    Color otherColor = Color::White) {
     switch (type) {
     case PieceType::Berserker: return 10;
     case PieceType::Ghost: return 2;
@@ -228,6 +267,9 @@ std::uint32_t represented_substates(PieceType type, bool fourModels = false,
     case PieceType::Pawn: return 2;
     case PieceType::Penguin:
         return !fourModels || other == PieceType::Penguin ? 4 : 8;
+    case PieceType::Angel:
+        return 2 + (fourModels && typeColor == otherColor
+          ? other == PieceType::Copycat ? 2 : 1 : 0);
     default: return 1;
     }
 }
@@ -361,7 +403,7 @@ std::vector<Database> load_databases() {
         std::uint32_t substates = 1;
         if (version >= 3)
             stream.read(reinterpret_cast<char*>(&substates), sizeof(substates));
-        if (!stream || magic != expected || (version < 2 || version > 8) ||
+        if (!stream || magic != expected || (version < 2 || version > 10) ||
             !substates || (version < 5 && count != StateCount * substates) ||
             piece >= static_cast<std::uint32_t>(PieceType::Count))
             continue;
@@ -380,7 +422,7 @@ std::vector<Database> load_databases() {
                 stream.read(reinterpret_cast<char*>(&secondaryColor), sizeof(secondaryColor));
                 if (secondary > static_cast<std::uint32_t>(PieceType::Count) ||
                     (secondary == static_cast<std::uint32_t>(PieceType::Count) &&
-                     version != 8) ||
+                     version != 8 && version != 9) ||
                     secondaryColor > static_cast<std::uint32_t>(Color::Black)) {
                     database.count = 0;
                     continue;
@@ -398,7 +440,7 @@ std::vector<Database> load_databases() {
                                        database.secondaryColor == Color::White;
                 const std::uint64_t placementCount =
                   database.secondary == PieceType::Count ? StateCount
-                  : copycat ? StateCount
+                  : copycat ? (version == 10 ? FourStateCount : StateCount)
                   : identicalCompoundCopycats ? IdenticalCompoundCopycatStateCount
                   : compoundCopycat ? CompoundCopycatStateCount
                   : identical ? IdenticalFourStateCount : FourStateCount;
@@ -420,8 +462,13 @@ std::vector<Database> load_databases() {
             if (version >= 7)
                 stream.read(reinterpret_cast<char*>(&codecTag), sizeof(codecTag));
             database.trackedGhost = codecTag == TrackedGhostV1Tag;
+            database.linkedCopycatPair =
+              codecTag == LinkedCopycatPairV1Tag;
             if (!compatible_codec(version, database.attacker,
-                                  database.secondary, codecTag)) {
+                                  database.secondary, codecTag) ||
+                !compatible_secondary_color(
+                  version, database.attacker, database.secondary,
+                  database.secondaryColor)) {
                 database.count = 0;
                 continue;
             }
@@ -509,13 +556,14 @@ bool TablebaseProbe::uses_compatible_codec(const std::string& path) {
     stream.read(reinterpret_cast<char*>(&count), sizeof(count));
     stream.read(reinterpret_cast<char*>(&edges), sizeof(edges));
     const std::array<char, 8> expected{{'U','F','T','B','1','\0','\0','\0'}};
-    if (!stream || magic != expected || version < 2 || version > 8 ||
+    if (!stream || magic != expected || version < 2 || version > 10 ||
         piece >= static_cast<std::uint32_t>(PieceType::Count))
         return false;
     std::uint32_t substates = 1;
     if (version >= 3)
         stream.read(reinterpret_cast<char*>(&substates), sizeof(substates));
     PieceType secondary = PieceType::Count;
+    Color secondaryColor = Color::White;
     std::uint64_t codecTag = 0;
     if (version >= 4) {
         std::uint32_t wdlBytes = 0, dtwBytes = 0, exceptionCount = 0;
@@ -523,15 +571,17 @@ bool TablebaseProbe::uses_compatible_codec(const std::string& path) {
         stream.read(reinterpret_cast<char*>(&dtwBytes), sizeof(dtwBytes));
         stream.read(reinterpret_cast<char*>(&exceptionCount), sizeof(exceptionCount));
         if (version >= 5) {
-            std::uint32_t encodedSecondary = 0, secondaryColor = 0;
+            std::uint32_t encodedSecondary = 0, encodedSecondaryColor = 0;
             stream.read(reinterpret_cast<char*>(&encodedSecondary), sizeof(encodedSecondary));
-            stream.read(reinterpret_cast<char*>(&secondaryColor), sizeof(secondaryColor));
+            stream.read(reinterpret_cast<char*>(&encodedSecondaryColor),
+                        sizeof(encodedSecondaryColor));
             if (encodedSecondary > static_cast<std::uint32_t>(PieceType::Count) ||
                 (encodedSecondary == static_cast<std::uint32_t>(PieceType::Count) &&
-                 version != 8) ||
-                secondaryColor > static_cast<std::uint32_t>(Color::Black))
+                 version != 8 && version != 9) ||
+                encodedSecondaryColor > static_cast<std::uint32_t>(Color::Black))
                 return false;
             secondary = static_cast<PieceType>(encodedSecondary);
+            secondaryColor = static_cast<Color>(encodedSecondaryColor);
         }
         if (version >= 6) {
             std::uint64_t exactEdges = 0;
@@ -547,7 +597,10 @@ bool TablebaseProbe::uses_compatible_codec(const std::string& path) {
             return false;
     }
     return stream && compatible_codec(version, static_cast<PieceType>(piece),
-                                      secondary, codecTag);
+                                      secondary, codecTag) &&
+           compatible_secondary_color(
+             version, static_cast<PieceType>(piece), secondary,
+             secondaryColor);
 }
 
 std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
@@ -559,7 +612,8 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
     std::array<int, 4> extras{Position::NoPiece, Position::NoPiece,
                               Position::NoPiece, Position::NoPiece};
     int extraCount = 0;
-    int alive = 0;
+    int liveHalos = 0;
+    int attachedAngels = 0;
     for (int id = 0; id < position.pieceCount_; ++id) {
         const PieceState& piece = position.pieces_[id];
         if (!piece.alive)
@@ -572,20 +626,68 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
         const bool promotedWithoutTurn =
           piece.type == PieceType::Queen ||
           piece.type == PieceType::CheckerKing;
-        if (!piece.onBoard || piece.host != Position::NoPiece ||
+        if ((!piece.onBoard && piece.type != PieceType::Angel) ||
+            (piece.host != Position::NoPiece &&
+             piece.type != PieceType::Angel) ||
             (!piece.moved && piece.type != PieceType::Pawn &&
-             !promotedWithoutTurn))
+             piece.type != PieceType::Halo && !promotedWithoutTurn))
             return std::nullopt;
-        ++alive;
-        if (piece.type == PieceType::King)
+        if (piece.type == PieceType::Halo) {
+            ++liveHalos;
+            continue;
+        }
+        if (piece.type == PieceType::King) {
+            if (!piece.onBoard || piece.host != Position::NoPiece)
+                return std::nullopt;
             (piece.color == Color::White ? whiteKing : blackKing) = id;
+        }
         else if (extraCount < static_cast<int>(extras.size()))
             extras[extraCount++] = id;
         else return std::nullopt;
     }
-    if ((alive < 3 || alive > 6) || whiteKing == Position::NoPiece ||
-        blackKing == Position::NoPiece || extraCount != alive - 2)
+    if (extraCount < 1 || extraCount > 4 ||
+        whiteKing == Position::NoPiece || blackKing == Position::NoPiece)
         return std::nullopt;
+    for (int slot = 0; slot < extraCount; ++slot) {
+        const int id = extras[slot];
+        const PieceState& angel = position.pieces_[id];
+        if (angel.type != PieceType::Angel)
+            continue;
+        if (angel.onBoard) {
+            if (angel.link != Position::NoPiece ||
+                angel.host != Position::NoPiece || angel.attachmentOrder)
+                return std::nullopt;
+            continue;
+        }
+        ++attachedAngels;
+        if (angel.link < 0 || angel.link >= position.pieceCount_ ||
+            angel.host < 0 || angel.host >= position.pieceCount_ ||
+            !angel.attachmentOrder || angel.freezeCount ||
+            !position.pieces_[angel.link].alive ||
+            !position.pieces_[angel.link].onBoard ||
+            position.pieces_[angel.link].type != PieceType::Halo ||
+            position.pieces_[angel.link].color != angel.color ||
+            position.pieces_[angel.link].link != id ||
+            !position.pieces_[angel.host].alive ||
+            !position.pieces_[angel.host].onBoard ||
+            position.pieces_[angel.host].type == PieceType::Halo ||
+            position.pieces_[angel.host].color != angel.color ||
+            angel.square != position.pieces_[angel.host].square)
+            return std::nullopt;
+    }
+    if (liveHalos != attachedAngels)
+        return std::nullopt;
+    for (int id = 0; id < position.pieceCount_; ++id) {
+        const PieceState& halo = position.pieces_[id];
+        if (!halo.alive || halo.type != PieceType::Halo)
+            continue;
+        if (halo.link < 0 || halo.link >= position.pieceCount_ ||
+            !position.pieces_[halo.link].alive ||
+            position.pieces_[halo.link].type != PieceType::Angel ||
+            position.pieces_[halo.link].onBoard ||
+            position.pieces_[halo.link].link != id)
+            return std::nullopt;
+    }
 
     // A native Pawn can use its first-move two-step directly onto the
     // promotion rank.  The resulting Queen temporarily remains the nominal
@@ -694,6 +796,64 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
         return represented == PieceType::Checker
           ? actual == PieceType::Checker || actual == PieceType::CheckerKing
           : represented == actual;
+    };
+    const auto angelSubstate = [&](int angel, int other)
+      -> std::optional<std::uint32_t> {
+        if (angel < 0 || angel >= position.pieceCount_)
+            return std::nullopt;
+        const PieceState& item = position.pieces_[angel];
+        if (!item.alive || item.type != PieceType::Angel || item.action ||
+            item.cooldown || item.power || !item.visible ||
+            item.parasiteTracked)
+            return std::nullopt;
+        if (item.onBoard)
+            return item.link == Position::NoPiece &&
+                   item.host == Position::NoPiece && !item.attachmentOrder
+              ? std::optional<std::uint32_t>(0) : std::nullopt;
+        if (item.link < 0 || item.link >= position.pieceCount_ ||
+            item.host < 0 || item.host >= position.pieceCount_ ||
+            !item.attachmentOrder || item.freezeCount)
+            return std::nullopt;
+        const PieceState& halo = position.pieces_[item.link];
+        const PieceState& host = position.pieces_[item.host];
+        if (!halo.alive || !halo.onBoard || halo.type != PieceType::Halo ||
+            halo.color != item.color || halo.link != angel ||
+            halo.host != Position::NoPiece || !host.alive || !host.onBoard ||
+            host.type == PieceType::Halo || host.color != item.color ||
+            item.square != host.square)
+            return std::nullopt;
+        const int ownKing = item.color == Color::White ? whiteKing : blackKing;
+        if (item.host == ownKing)
+            return 1;
+        if (other != Position::NoPiece && item.host == other &&
+            position.pieces_[other].color == item.color)
+            return 2;
+        if (other != Position::NoPiece && other >= 0 &&
+            other < position.pieceCount_ &&
+            position.pieces_[other].type == PieceType::Copycat) {
+            const int clone = position.pieces_[other].link;
+            if (clone != Position::NoPiece && clone >= 0 &&
+                clone < position.pieceCount_ && item.host == clone &&
+                position.pieces_[clone].alive &&
+                position.pieces_[clone].type == PieceType::CopycatClone &&
+                position.pieces_[clone].color == item.color)
+                return 3;
+        }
+        return std::nullopt;
+    };
+    const auto boardProxy = [&](int id, PieceType represented, int other) {
+        if (represented != PieceType::Angel)
+            return id;
+        const auto substate = angelSubstate(id, other);
+        return !substate ? Position::NoPiece
+          : *substate ? static_cast<int>(position.pieces_[id].link) : id;
+    };
+    const auto slotSquare = [&](int id, PieceType represented, int other)
+      -> std::optional<std::uint8_t> {
+        const int proxy = boardProxy(id, represented, other);
+        return proxy == Position::NoPiece
+          ? std::nullopt
+          : std::optional<std::uint8_t>(position.pieces_[proxy].square);
     };
     constexpr std::array<std::array<int, 2>, 8> penguinDirections{{
       {{1, 0}}, {{-1, 0}}, {{0, 1}}, {{0, -1}},
@@ -838,7 +998,11 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                                      int other, bool& continuationMatched)
       -> std::optional<std::uint32_t> {
         const PieceState& item = position.pieces_[id];
-        if (!typeMatches(represented, item.type) || item.link != Position::NoPiece)
+        if (!typeMatches(represented, item.type))
+            return std::nullopt;
+        if (represented == PieceType::Angel)
+            return angelSubstate(id, other);
+        if (!item.onBoard || item.link != Position::NoPiece)
             return std::nullopt;
         switch (represented) {
         case PieceType::Berserker:
@@ -977,7 +1141,8 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
         if (primary.link != clone || linked.link != copycat ||
             linked.type != PieceType::CopycatClone || linked.color != primary.color ||
             linked.square != reflect_horizontal(primary.square) ||
-            secondary.link != Position::NoPiece || primary.cooldown ||
+            (secondary.type != PieceType::Angel &&
+             secondary.link != Position::NoPiece) || primary.cooldown ||
             primary.power || primary.action || primary.freezeCount ||
             linked.cooldown || linked.power || linked.action || linked.freezeCount)
             return std::nullopt;
@@ -997,9 +1162,12 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
               position.forcedPiece_ == Position::NoPiece;
             const auto secondarySubstate = extractSubstate(
               material, database.secondary, copycat, continuationMatched);
+            const std::uint32_t exactSecondarySubstates = represented_substates(
+              database.secondary, true, database.attacker,
+              database.secondaryColor, Color::White);
             if (!secondarySubstate || !continuationMatched ||
-                *secondarySubstate >= represented_substates(database.secondary) ||
-                database.substates != represented_substates(database.secondary))
+                *secondarySubstate >= exactSecondarySubstates ||
+                database.substates != exactSecondarySubstates)
                 continue;
             if (position.enPassantVictim_ != Position::NoPiece) {
                 if (position.enPassantVictim_ != material ||
@@ -1019,10 +1187,14 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
             const Color side = swapColors ? ~position.sideToMove_ : position.sideToMove_;
             const int canonicalWhite = swapColors ? blackKing : whiteKing;
             const int canonicalBlack = swapColors ? whiteKing : blackKing;
+            const auto secondarySquare = slotSquare(
+              material, database.secondary, copycat);
+            if (!secondarySquare)
+                continue;
             const std::uint64_t index = std::uint64_t(encode_compound_copycat(
               side, position.pieces_[canonicalWhite].square,
               position.pieces_[canonicalBlack].square, primary.square,
-              secondary.square)) * database.substates + *secondarySubstate;
+              *secondarySquare)) * database.substates + *secondarySubstate;
             if (index < database.count)
                 return database.at(static_cast<std::uint32_t>(index));
         }
@@ -1046,6 +1218,13 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                   ? primary.color : ~primary.color;
                 if (secondary.color != expectedSecondary)
                     continue;
+                const int firstProxy = boardProxy(
+                  first, database.attacker, second);
+                const int secondProxy = boardProxy(
+                  second, database.secondary, first);
+                if (firstProxy == Position::NoPiece ||
+                    secondProxy == Position::NoPiece)
+                    continue;
                 const bool copycat = primary.type == PieceType::Copycat &&
                                      secondary.type == PieceType::CopycatClone;
                 const bool containsCopycat =
@@ -1062,8 +1241,13 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 if (containsCopycat && !copycat)
                     continue;
                 if (copycat ? !(primary.link == second && secondary.link == first)
-                            : !(primary.link == Position::NoPiece &&
-                                secondary.link == Position::NoPiece))
+                            : !((database.attacker == PieceType::Angel ||
+                                 primary.link == Position::NoPiece) &&
+                                (database.secondary == PieceType::Angel ||
+                                 secondary.link == Position::NoPiece)))
+                    continue;
+                if (copycat && !database.linkedCopycatPair &&
+                    secondary.square != reflect_horizontal(primary.square))
                     continue;
                 if (copycat && (primary.cooldown || primary.power ||
                                 secondary.cooldown || secondary.power))
@@ -1073,11 +1257,17 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 std::optional<std::uint32_t> primarySubstate = copycat
                   ? std::optional<std::uint32_t>(0)
                   : extractSubstate(
-                      first, database.attacker, second, continuationMatched);
+                      first, database.attacker,
+                      database.attacker == PieceType::Angel
+                        ? second : secondProxy,
+                      continuationMatched);
                 std::optional<std::uint32_t> secondarySubstate = copycat
                   ? std::optional<std::uint32_t>(0)
                   : extractSubstate(
-                      second, database.secondary, first, continuationMatched);
+                      second, database.secondary,
+                      database.secondary == PieceType::Angel
+                        ? first : firstProxy,
+                      continuationMatched);
                 if (!primarySubstate || !secondarySubstate || !continuationMatched)
                     continue;
                 if (position.enPassantVictim_ != Position::NoPiece) {
@@ -1094,7 +1284,8 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                     database.secondary == PieceType::Penguin) {
                     const int firstPenguin = database.attacker == PieceType::Penguin
                       ? first : second;
-                    const int firstOther = firstPenguin == first ? second : first;
+                    const int firstOther = firstPenguin == first
+                      ? secondProxy : firstProxy;
                     const std::uint32_t firstPenguinSubstate =
                       firstPenguin == first ? *primarySubstate : *secondarySubstate;
                     const int secondPenguin =
@@ -1119,18 +1310,31 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 const Color side = swapColors ? ~position.sideToMove_ : position.sideToMove_;
                 const int canonicalWhite = swapColors ? blackKing : whiteKing;
                 const int canonicalBlack = swapColors ? whiteKing : blackKing;
+                const auto primarySquare = slotSquare(
+                  first, database.attacker, second);
+                const auto secondarySquare = slotSquare(
+                  second, database.secondary, first);
+                if (!primarySquare || !secondarySquare)
+                    continue;
                 const bool identical = database.attacker == database.secondary &&
                                        database.secondaryColor == Color::White;
                 std::uint32_t placement = 0;
                 bool identicalSwapped = false;
                 if (copycat)
-                    placement = encode(side, position.pieces_[canonicalWhite].square,
-                                       position.pieces_[canonicalBlack].square, primary.square);
+                    placement = database.linkedCopycatPair
+                      ? encode_four(
+                          side, position.pieces_[canonicalWhite].square,
+                          position.pieces_[canonicalBlack].square,
+                          primary.square, secondary.square, false, false)
+                      : encode(side,
+                          position.pieces_[canonicalWhite].square,
+                          position.pieces_[canonicalBlack].square,
+                          primary.square);
                 else if (identical) {
                     std::uint8_t wk = position.pieces_[canonicalWhite].square;
                     std::uint8_t bk = position.pieces_[canonicalBlack].square;
-                    std::uint8_t firstSquare = primary.square;
-                    std::uint8_t secondSquare = secondary.square;
+                    std::uint8_t firstSquare = *primarySquare;
+                    std::uint8_t secondSquare = *secondarySquare;
                     if (wk % 8 >= 4) {
                         wk = reflect_horizontal(wk);
                         bk = reflect_horizontal(bk);
@@ -1149,18 +1353,20 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                     }
                     placement = encode_identical_four(
                       side, position.pieces_[canonicalWhite].square,
-                      position.pieces_[canonicalBlack].square, primary.square,
-                      secondary.square, database.attacker == PieceType::Giant);
+                      position.pieces_[canonicalBlack].square, *primarySquare,
+                      *secondarySquare, database.attacker == PieceType::Giant);
                 }
                 else placement = encode_four(
                   side, position.pieces_[canonicalWhite].square,
-                  position.pieces_[canonicalBlack].square, primary.square,
-                  secondary.square, database.attacker == PieceType::Giant,
+                  position.pieces_[canonicalBlack].square, *primarySquare,
+                  *secondarySquare, database.attacker == PieceType::Giant,
                   database.secondary == PieceType::Giant);
                 const std::uint32_t exactPrimaryFactor = represented_substates(
-                  database.attacker, true, database.secondary);
+                  database.attacker, true, database.secondary, Color::White,
+                  database.secondaryColor);
                 const std::uint32_t exactSecondaryFactor = represented_substates(
-                  database.secondary, true, database.attacker);
+                  database.secondary, true, database.attacker,
+                  database.secondaryColor, Color::White);
                 std::uint32_t primaryFactor = exactPrimaryFactor;
                 std::uint32_t secondaryFactor = exactSecondaryFactor;
                 if (database.substates != exactPrimaryFactor * exactSecondaryFactor) {
@@ -1221,7 +1427,8 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
     if (extra.type == PieceType::Copycat ||
         extra.type == PieceType::CopycatClone)
         return std::nullopt;
-    if (extra.link != Position::NoPiece)
+    if (extra.type != PieceType::Angel &&
+        extra.link != Position::NoPiece)
         return std::nullopt;
     const auto has_unrepresented_freeze = [&] {
         for (int id = 0; id < position.pieceCount_; ++id)
@@ -1293,6 +1500,14 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
             substate = *exact;
             break;
         }
+        case PieceType::Angel: {
+            const auto exact = angelSubstate(attacker, Position::NoPiece);
+            if (!exact || position.continuation_ != Continuation::None ||
+                position.forcedPiece_ != Position::NoPiece)
+                continue;
+            substate = *exact;
+            break;
+        }
         default:
             if (extra.cooldown || extra.power || has_unrepresented_freeze() ||
                 position.continuation_ != Continuation::None ||
@@ -1319,9 +1534,14 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
         const Color side = swapColors ? ~position.sideToMove_ : position.sideToMove_;
         const int canonicalWhite = swapColors ? blackKing : whiteKing;
         const int canonicalBlack = swapColors ? whiteKing : blackKing;
+        const auto attackerSquare = slotSquare(
+          attacker, extra.type, Position::NoPiece);
+        if (!attackerSquare)
+            continue;
         const std::uint32_t index = encode(
           side, position.pieces_[canonicalWhite].square,
-          position.pieces_[canonicalBlack].square, extra.square) * database.substates + substate;
+          position.pieces_[canonicalBlack].square, *attackerSquare) *
+          database.substates + substate;
         return database.at(index);
     }
     return std::nullopt;

@@ -47,9 +47,12 @@ class GhostGiantPackageTest(unittest.TestCase):
         self.assertEqual(package.LOWER_GIANT_SHA256,
                          package.sha256_bytes(
                              (ROOT / "tablebases/kgiantk.uftb").read_bytes()))
-        self.assertEqual(package.LOWER_GIANT_MODEL_SHA256,
-                         package.information.concrete_tablebase_model_fingerprint(
-                             "kgiantk.uftb"))
+        self.assertIn(
+            package.information.concrete_tablebase_model_fingerprint(
+                "kgiantk.uftb"),
+            package.LOWER_GIANT_COMPATIBLE_GENERATOR_MODELS)
+        self.assertIn(package.LOWER_GIANT_MODEL_SHA256,
+                      package.LOWER_GIANT_COMPATIBLE_GENERATOR_MODELS)
         ranges = package.shard_ranges()
         self.assertEqual(64, len(ranges))
         self.assertEqual(0, ranges[0][1])

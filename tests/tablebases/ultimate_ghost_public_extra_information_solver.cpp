@@ -112,6 +112,21 @@ int main(int argc, char** argv) {
         if (!measurementCertificate.arbitrarySha256.empty())
             throw std::runtime_error(
               "reciprocal measurement unexpectedly emitted an artifact");
+
+        // A resource stop during the next sweep must reopen the last complete
+        // parity-bound iterate rather than replaying every earlier sweep.  The
+        // first measurement swapped logical current into the physical next
+        // arrays; the resumed second sweep swaps it back into current.
+        solve.resumeFixedPoint = true;
+        solve.resumeIteration = 1;
+        solve.resumeCurrentInNextSlot = true;
+        solve.resumeBddSlot = 'a';
+        solve.measureIterations = 2;
+        (void)Exact::solve_exact(solve);
+        solve.resumeIteration = 2;
+        solve.resumeCurrentInNextSlot = false;
+        solve.measureIterations = 3;
+        (void)Exact::solve_exact(solve);
         cleanup_measurement(measurement);
         std::filesystem::remove(solve.outputOverlay);
         std::filesystem::remove(solve.outputArbitrary);

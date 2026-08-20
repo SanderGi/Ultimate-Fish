@@ -47,6 +47,11 @@ struct SolveOptions {
     std::uint64_t bddBudgetBytes = 220ULL << 30;
     std::uint32_t compactEvery = 1;
     std::uint32_t measureIterations = 0;
+    bool resumeFixedPoint = false;
+    bool resumeConverged = false;
+    bool resumeCurrentInNextSlot = false;
+    char resumeBddSlot = 'a';
+    std::uint64_t resumeIteration = 0;
 };
 
 struct ResourceEstimate {

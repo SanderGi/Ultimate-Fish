@@ -117,7 +117,7 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
             catalog.together_row("berserker_radius_1", "berserker").kind,
         )
         self.assertEqual(
-            "computing",
+            "unknown",
             catalog.opposed_row("berserker_radius_1", "berserker").kind,
         )
 

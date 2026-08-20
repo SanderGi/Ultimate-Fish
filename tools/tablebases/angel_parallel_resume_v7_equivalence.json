@@ -1,0 +1,52 @@
+{
+  "schema": "ultimate-concrete-frontier-execution-equivalence-v1",
+  "status": "frontier-semantics-byte-identical-verified",
+  "frontier_model_sha256": "ac737cb47c399bd8cabbd02f191d07c86fb028eab7bb19f5068c61942c521b68",
+  "frontier_inventory_sha256": "da4c92ae406d1fd0a4932f6b1126216242d14afadcc15d6f7b5a0db19f080261",
+  "execution_model_sha256": "af60c54fae9c55116ac9ee8a368bf4804c89d60390c5b17ff5b358f89573299d",
+  "execution_inventory_sha256": "46dbf01ff6b8e80a7bc0b7ecce66340944fdec4aae197e46d81e95d1d5fa289d",
+  "execution_binary_sha256": "2662cb223b79c8d815276f27e282bb6846c01c0016354857f09c12a185c27b5c",
+  "output_residual": 0,
+  "bellman_residual": 0,
+  "change": {
+    "scope": "completed-frontier reverse scan scheduling only",
+    "frontier_tablebase_cpp_sha256": "87b0f090ecab3918c3bcf1232051de72ea823e4549b5e9be3b1184c0464aafdd",
+    "execution_tablebase_cpp_sha256": "25cdb021fcbed13ab080b4373a20af5b4cb813d61a7fbaa9ac7d8bfd714d7faa",
+    "invariant": "checkpointed frontier remains serial; reverse replay and Bellman verification use the requested worker pool"
+  },
+  "benchmark": {
+    "piece": "rook",
+    "states": 985920,
+    "workers": 7,
+    "checkpoint_sha256": "167591cbde794efbbb89fa0128e27531721c490af8688ed131e9eae0905e0e26",
+    "checkpoint_bytes": 11831072,
+    "frontier_binary_sha256": "ff5cf6d2960ee3612ff00af1dfc68558ebe9910578cfc6de7c6c96ad1aff5d60",
+    "execution_benchmark_binary_sha256": "2961162a41f7be7cfd40a40d3b6edd08384dc985e3c19713c406b71b9fc673b4",
+    "frontier_log_sha256": "db4c0b9fe5312bf8d2a648fdcaa4f56341316e4906417140296f8a10b7de1aae",
+    "frontier_log_bytes": 214,
+    "execution_log_sha256": "8a3ddbf6c091fc6e66a7599d0b1777d049553c0cb7af485876e33d6d74fd4e9c",
+    "execution_log_bytes": 234,
+    "frontier_reverse_seconds": 2.54694,
+    "execution_reverse_seconds": 0.681959,
+    "reverse_speedup": 3.7347445,
+    "frontier_complete_seconds": 2.99822,
+    "execution_complete_seconds": 1.28328,
+    "output_sha256": "abeef6191dd9baa87918f74a379592dde9683be81675691e8d8e6550dcd1ce44",
+    "output_bytes": 1232440,
+    "edges": 11970912,
+    "win": 534768,
+    "loss": 414300,
+    "draw": 36852,
+    "byte_comparison": "identical"
+  },
+  "source_bundle": {
+    "sha256": "8f9139d08e1769e31bf435a1de4eb8c86aa7cf5713e6836bf18f7116892a166c",
+    "bytes": 771584,
+    "version_id": "IAasgQeGwjoQAWXgNE1Qas92zl451fQF"
+  },
+  "resume_runner": {
+    "sha256": "1bf7afa741c5cfc73543344cc862f70f2a89ba71f9a3d569a6f177f46f697099",
+    "bytes": 39401,
+    "version_id": "RLts0ceiz0a.xh5AIWIrXp7Qqh.JQc1v"
+  }
+}

@@ -195,6 +195,10 @@ struct SolveOptions {
 struct SolveCertificate {
     std::uint64_t iterations = 0;
     std::uint64_t bddNodes = 0;
+    std::uint64_t domainRoots = 0;
+    std::uint64_t domainCacheHits = 0;
+    std::uint64_t domainCacheMisses = 0;
+    std::uint64_t domainCacheEntries = 0;
     std::uint64_t lowerGhostMaskProbes = 0;
     std::uint64_t compactions = 0;
     std::uint64_t bellmanResidual = 0;
