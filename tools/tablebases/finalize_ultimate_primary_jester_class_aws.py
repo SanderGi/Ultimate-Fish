@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import contextmanager
+import fcntl
 import hashlib
 import json
 from pathlib import Path
@@ -20,6 +22,7 @@ import update_ultimate_tablebase_ledger as ledger
 ROOT = Path(__file__).resolve().parents[2]
 README = ROOT / "tablebases/README.md"
 PLOT = ROOT / "tools/tablebases/plot_ultimate_tablebases.py"
+SUPERVISION = ROOT / "tools/tablebases/ultimate_aws_supervision.json"
 
 
 def aws(*arguments: str) -> str:
@@ -219,6 +222,65 @@ def send(args: argparse.Namespace) -> str:
     return wait(args, command_id)
 
 
+def validate_expected_bindings(args: argparse.Namespace,
+                               entry: dict[str, object]) -> None:
+    expected_model = (args.expected_model_sha256 or
+                      information.solver_model_fingerprint(args.filename))
+    expected_source = getattr(args, "expected_source_sha256", None)
+    if (expected_source and
+            entry.get("tablebase_sha256") != expected_source):
+        raise ValueError("information concrete source binding residual")
+    if entry.get("solver_model_sha256") != expected_model:
+        raise ValueError("information solver model binding residual")
+
+
+@contextmanager
+def file_lock(path: Path):
+    lock = path.with_suffix(path.suffix + ".lock")
+    with lock.open("a", encoding="utf-8") as stream:
+        fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+
+
+def update_supervision(args: argparse.Namespace, value: dict[str, str],
+                       certificates: list[dict[str, object]]) -> None:
+    path = args.supervision_config
+    with file_lock(path):
+        document = json.loads(path.read_text())
+        matches = [
+            job for job in document.get("jobs", [])
+            if job.get("unit") == args.unit and
+               args.filename in job.get("ledger_files", [])
+        ]
+        if len(matches) != 1:
+            raise ValueError(
+                f"{args.filename}: expected one information supervision job, "
+                f"got {len(matches)}")
+        job = matches[0]
+        existing = {
+            (item.get("bucket"), item.get("key"), item.get("version_id"))
+            for item in job.get("s3_certificates", [])
+        }
+        target = job.setdefault("s3_certificates", [])
+        for item in certificates:
+            identity = (item["bucket"], item["key"], item["version_id"])
+            if identity not in existing:
+                target.append(item)
+                existing.add(identity)
+        result_key = str(certificates[0]["key"])
+        job.setdefault("result_certificate_keys", {})[args.filename] = [
+            result_key]
+        job["ledger_certifies"] = True
+        job.setdefault("ledger_results", {})[args.filename] = dict(value)
+        job["s3_only_certified"] = True
+        temporary = path.with_suffix(path.suffix + ".tmp")
+        temporary.write_text(json.dumps(document, indent=2) + "\n")
+        temporary.replace(path)
+
+
 def finalize(args: argparse.Namespace, output: str) -> dict[str, object]:
     if (args.allow_post_solve_checkpoint_failure and
             args.filename != "kjestercheckerk.uftb"):
@@ -233,10 +295,7 @@ def finalize(args: argparse.Namespace, output: str) -> dict[str, object]:
     if information.solver_domain(args.filename) not in {
             "primary-jester", "primary-jester-giant"}:
         raise ValueError("class is not a primary-Jester information stratum")
-    expected_model = (args.expected_model_sha256 or
-                      information.solver_model_fingerprint(args.filename))
-    if entry.get("solver_model_sha256") != expected_model:
-        raise ValueError("information solver model binding residual")
+    validate_expected_bindings(args, entry)
     certify.validate_entry(args.filename, entry, record,
                            {args.filename: entry["tablebase_sha256"]})
     # Validate the uploaded overlay bytes via a version-pinned fresh download.
@@ -249,6 +308,7 @@ def finalize(args: argparse.Namespace, output: str) -> dict[str, object]:
             text=True, capture_output=True)
         if hashlib.sha256(archive.read_bytes()).hexdigest() != archive_sha:
             raise ValueError("fresh information archive SHA residual")
+        archive_bytes = archive.stat().st_size
         overlay = subprocess.run(
             ["tar", "-xOf", str(archive),
              f"overlays/{Path(args.filename).stem}.ufiw"],
@@ -292,6 +352,14 @@ def finalize(args: argparse.Namespace, output: str) -> dict[str, object]:
              "storage": storage}
     ledger.update(args.readme, [], [], certified_values=[
         args.filename + "=" + json.dumps(value, separators=(",", ":"))])
+    update_supervision(args, value, [
+        {"bucket": args.bucket, "key": key,
+         "version_id": put["VersionId"], "sha256": archive_sha,
+         "size": archive_bytes},
+        {"bucket": args.bucket, "key": cert_key,
+         "version_id": cert_put["VersionId"], "sha256": digest,
+         "size": len(payload)},
+    ])
     subprocess.run(["python3", str(PLOT)], cwd=ROOT, check=True)
     return {"filename": args.filename, **value,
             "certificate_sha256": digest}
@@ -313,6 +381,8 @@ def parse_args() -> argparse.Namespace:
                         help="remote overlay directory; defaults below source root")
     parser.add_argument("--expected-model-sha256",
                         help="model hash computed inside an immutable staged source")
+    parser.add_argument("--expected-source-sha256",
+                        help="logical SHA-256 of the authenticated concrete source table")
     parser.add_argument("--source-binding", action="append", default=[],
                         help="authenticated staged-source binding recorded in the certificate")
     parser.add_argument("--command-id",
@@ -323,6 +393,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--region", default="us-west-2")
     parser.add_argument("--timeout", type=int, default=3600)
     parser.add_argument("--readme", type=Path, default=README)
+    parser.add_argument("--supervision-config", type=Path,
+                        default=SUPERVISION)
     return parser.parse_args()
 
 

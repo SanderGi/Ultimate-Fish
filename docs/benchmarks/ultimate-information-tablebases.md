@@ -189,6 +189,20 @@ hypothesis and a King in the other, but both hypotheses have already awarded
 the same win. It must not be mistaken for a continuing canonical
 `K+Jester versus K` pair.
 
+The first Jester/Angel information attempt exposed a separate projection bug
+before either orientation produced a result. Angel's relationship-aware path
+used the general public transition serializer but failed to append the next
+mover's private decision-dot observation. The opposed solve therefore reached
+an inherited lower Jester pair whose two uninformed-side flags disagreed; the
+same-side solve independently found an observation bucket whose two worlds had
+already been split into singleton roots (`pair=-1`). Both runs failed closed.
+The corrected path appends the same length-delimited `nextDecision` key used by
+the engine belief tracker. Both Angel orientations now exercise the compact
+index-492966 legal-dot witness in self-test, and their fresh runs are bound to
+information model
+`bd3a0c5fbab17f460cc90903a3374e528b86103329df0563c3c3d15767bfbb1f`;
+the failed trees remain non-certifying evidence.
+
 The completed K+K+2 primary-Jester strata are regenerated with an explicit
 lower-class cardinality split. A still-ambiguous two-world royal pair probes
 the exact K+Jester information overlay; a history-refined singleton probes the

@@ -201,13 +201,13 @@
       ]
     },
     {
-      "id": "information-jester-angel-same-v1",
+      "id": "information-jester-angel-same-v2",
       "ledger_files": [
         "kjesterangelk.uftb"
       ],
       "ledger_certifies": false,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-info-kjesterangelk-v1.service",
+      "unit": "ultimatefish-info-kjesterangelk-v2.service",
       "expected_allowed_cpus": "3",
       "resource_requirements": {
         "cpu_threads": 1,
@@ -220,20 +220,24 @@
         "concrete-jester-angel-source-v1"
       ],
       "checkpoint_paths": [
-        "/mnt/ultimatefish/jester-angel-info-v1/same/scratch/*",
-        "/mnt/ultimatefish/jester-angel-info-v1/same/solve.log"
+        "/mnt/ultimatefish/jester-angel-info-v2/same/scratch/*",
+        "/mnt/ultimatefish/jester-angel-info-v2/same/solve.log"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish/jester-angel-info-v1/same/kjesterangelk.ufiw"
+        "/mnt/ultimatefish/jester-angel-info-v2/same/kjesterangelk.ufiw"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/jester-angel-info-same-v1-5bbcf02a.sh",
-          "sha256": "5bbcf02a4cd073aef7235c3d2f79f982b131302f5acd54d1bdd6c0cb0d98f7af"
+          "path": "/mnt/ultimatefish/jester-angel-info-same-v2-bdd78e62.sh",
+          "sha256": "bdd78e62d45b556d88898d240e97c6dc3c6c7ea59c5efc1db0efe04281371bd8"
         },
         {
-          "path": "/mnt/ultimatefish/jester-angel-v1-stage-34922731/binary/ultimate_tablebase",
-          "sha256": "07534dbc67816851fa5b0a2ed6b56d2bc5a4182b986f99b6c8147624d6c0d642"
+          "path": "/mnt/ultimatefish/jester-angel-v2-stage-a76ecfa9/binary/ultimate_tablebase",
+          "sha256": "6290e46bb86d5c1d35efb1731ab9d24314325e0dab6d47b31382f59c7610e359"
+        },
+        {
+          "path": "/mnt/ultimatefish/jester-angel-v2-source-a76ecfa9/src/ultimate/tablebases/tablebase.cpp",
+          "sha256": "7b2ae39ece77eafbd927345a03305c4a2e5aedce19d647b1e259f5cdc899ca14"
         },
         {
           "path": "/mnt/ultimatefish/jester-angel-v1-dependencies-v2-900622da/kjesterk.uftb",
@@ -247,22 +251,36 @@
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish/jester-angel-info-v1/same/solve.log",
+          "path": "/mnt/ultimatefish/jester-angel-info-v2/same/solve.log",
           "max_bytes": 4096
         },
         {
           "kind": "journal",
-          "unit": "ultimatefish-info-kjesterangelk-v1.service",
+          "unit": "ultimatefish-info-kjesterangelk-v2.service",
           "max_bytes": 2048
         }
       ],
       "s3_certificates": [
         {
           "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-          "key": "sources/wrappers/sha256/5bbcf02a4cd073aef7235c3d2f79f982b131302f5acd54d1bdd6c0cb0d98f7af/ultimatefish-solve-jester-angel-same-v1-i03.sh",
-          "version_id": "IkpCq67P22.Pwex3b3TorL2L4nWtSRgH",
-          "sha256": "5bbcf02a4cd073aef7235c3d2f79f982b131302f5acd54d1bdd6c0cb0d98f7af",
-          "size": 2171
+          "key": "sources/wrappers/sha256/bdd78e62d45b556d88898d240e97c6dc3c6c7ea59c5efc1db0efe04281371bd8/ultimatefish-solve-jester-angel-same-v2-i03.sh",
+          "version_id": "fW3lUwJbTwUlEsgzh5mhLIeSRe3g52Dc",
+          "sha256": "bdd78e62d45b556d88898d240e97c6dc3c6c7ea59c5efc1db0efe04281371bd8",
+          "size": 2188
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "sources/bundles/jester-angel-v1/sha256/a76ecfa97eddfc788fa3008124d17b7f017c8e85eae0533aae728f3c9ab54814/ultimatefish-jester-angel-v1-source.tar",
+          "version_id": "8Q2gEs4aobJ7PeY7NB05YrJNJHLQzJuN",
+          "sha256": "a76ecfa97eddfc788fa3008124d17b7f017c8e85eae0533aae728f3c9ab54814",
+          "size": 768000
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "sources/tools/sha256/7a298162da3681d2e074239cae3fee1825d534bc28997eda58b68e8d7fc62f94/finalize_ultimate_primary_jester_class_aws.py",
+          "version_id": "fMIe25nmUMC7AjhmOKKR8eL9FsSuI2Wh",
+          "sha256": "7a298162da3681d2e074239cae3fee1825d534bc28997eda58b68e8d7fc62f94",
+          "size": 18604
         },
         {
           "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
@@ -274,13 +292,13 @@
       ]
     },
     {
-      "id": "information-jester-angel-opposed-v1",
+      "id": "information-jester-angel-opposed-v2",
       "ledger_files": [
         "kjesterkangel.uftb"
       ],
       "ledger_certifies": false,
       "instance_id": "i-03c81f90d2c59a2e7",
-      "unit": "ultimatefish-info-kjesterkangel-v1.service",
+      "unit": "ultimatefish-info-kjesterkangel-v2.service",
       "expected_allowed_cpus": "4",
       "resource_requirements": {
         "cpu_threads": 1,
@@ -293,20 +311,24 @@
         "concrete-jester-angel-source-v1"
       ],
       "checkpoint_paths": [
-        "/mnt/ultimatefish-penguin/jester-angel-info-v1/opposed/scratch/*",
-        "/mnt/ultimatefish-penguin/jester-angel-info-v1/opposed/solve.log"
+        "/mnt/ultimatefish-penguin/jester-angel-info-v2/opposed/scratch/*",
+        "/mnt/ultimatefish-penguin/jester-angel-info-v2/opposed/solve.log"
       ],
       "completion_paths": [
-        "/mnt/ultimatefish-penguin/jester-angel-info-v1/opposed/kjesterkangel.ufiw"
+        "/mnt/ultimatefish-penguin/jester-angel-info-v2/opposed/kjesterkangel.ufiw"
       ],
       "source_bindings": [
         {
-          "path": "/mnt/ultimatefish/jester-angel-info-opposed-v1-20b981fd.sh",
-          "sha256": "20b981fddf099561516849b69457756d1bae7793408a7fc86b70de981a67a00b"
+          "path": "/mnt/ultimatefish/jester-angel-info-opposed-v2-06487db0.sh",
+          "sha256": "06487db0d3cbb9d85b245b29186479ae690c00b43e1fda1bff48d3f4fb825915"
         },
         {
-          "path": "/mnt/ultimatefish/jester-angel-v1-stage-34922731/binary/ultimate_tablebase",
-          "sha256": "07534dbc67816851fa5b0a2ed6b56d2bc5a4182b986f99b6c8147624d6c0d642"
+          "path": "/mnt/ultimatefish/jester-angel-v2-stage-a76ecfa9/binary/ultimate_tablebase",
+          "sha256": "6290e46bb86d5c1d35efb1731ab9d24314325e0dab6d47b31382f59c7610e359"
+        },
+        {
+          "path": "/mnt/ultimatefish/jester-angel-v2-source-a76ecfa9/src/ultimate/tablebases/tablebase.cpp",
+          "sha256": "7b2ae39ece77eafbd927345a03305c4a2e5aedce19d647b1e259f5cdc899ca14"
         },
         {
           "path": "/mnt/ultimatefish/jester-angel-v1-dependencies-v2-900622da/kjesterk.uftb",
@@ -320,22 +342,36 @@
       "diagnostic_sources": [
         {
           "kind": "file",
-          "path": "/mnt/ultimatefish-penguin/jester-angel-info-v1/opposed/solve.log",
+          "path": "/mnt/ultimatefish-penguin/jester-angel-info-v2/opposed/solve.log",
           "max_bytes": 4096
         },
         {
           "kind": "journal",
-          "unit": "ultimatefish-info-kjesterkangel-v1.service",
+          "unit": "ultimatefish-info-kjesterkangel-v2.service",
           "max_bytes": 2048
         }
       ],
       "s3_certificates": [
         {
           "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
-          "key": "sources/wrappers/sha256/20b981fddf099561516849b69457756d1bae7793408a7fc86b70de981a67a00b/ultimatefish-solve-jester-angel-opposed-v1-i03.sh",
-          "version_id": "OebnWhJXJvOy5Od9fg6NlOMfn6QBSzj4",
-          "sha256": "20b981fddf099561516849b69457756d1bae7793408a7fc86b70de981a67a00b",
-          "size": 2205
+          "key": "sources/wrappers/sha256/06487db0d3cbb9d85b245b29186479ae690c00b43e1fda1bff48d3f4fb825915/ultimatefish-solve-jester-angel-opposed-v2-i03.sh",
+          "version_id": "WyvyH_6JMdDTXRBmKFPUonZAHuGzY64o",
+          "sha256": "06487db0d3cbb9d85b245b29186479ae690c00b43e1fda1bff48d3f4fb825915",
+          "size": 2222
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "sources/bundles/jester-angel-v1/sha256/a76ecfa97eddfc788fa3008124d17b7f017c8e85eae0533aae728f3c9ab54814/ultimatefish-jester-angel-v1-source.tar",
+          "version_id": "8Q2gEs4aobJ7PeY7NB05YrJNJHLQzJuN",
+          "sha256": "a76ecfa97eddfc788fa3008124d17b7f017c8e85eae0533aae728f3c9ab54814",
+          "size": 768000
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "sources/tools/sha256/7a298162da3681d2e074239cae3fee1825d534bc28997eda58b68e8d7fc62f94/finalize_ultimate_primary_jester_class_aws.py",
+          "version_id": "fMIe25nmUMC7AjhmOKKR8eL9FsSuI2Wh",
+          "sha256": "7a298162da3681d2e074239cae3fee1825d534bc28997eda58b68e8d7fc62f94",
+          "size": 18604
         },
         {
           "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
@@ -409,7 +445,44 @@
           "max_bytes": 2048
         }
       ],
-      "s3_certificates": []
+      "s3_certificates": [
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/current-concrete-edb3c620/pawn-berserker-opposed-v1/concrete/v2/model/edb3c62023be556e8b87167419db14dcfee639b63ee3fd7c25b5d36162bf9e7a/wave-1/sha256/b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989/kpawnkberserker-b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989.tar.zst",
+          "version_id": "ruHlTz0zj8eA5LaTUe249rvflj4QjPDV",
+          "sha256": "b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989",
+          "size": 45106891
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/current-concrete-edb3c620/pawn-berserker-opposed-v1/concrete/v2/certificates/sha256/5dda525419c1822177f767c030033d4e328944a236727f3acc2e55c1c8769dee/wave-certificate.json",
+          "version_id": "YNmWUtu1udIxKDP1beYKFFBBWbhxA3j1",
+          "sha256": "5dda525419c1822177f767c030033d4e328944a236727f3acc2e55c1c8769dee",
+          "size": 2746
+        },
+        {
+          "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+          "key": "results/current-concrete-edb3c620/pawn-berserker-opposed-v1/reachability/sha256/a97c5fdd24a85e01fd080208ee10147c58307290984a71bb06b3069fe6599e1d/kpawnkberserker.reachability-v2.txt",
+          "version_id": "SsMJbSxkMtHQ2_HB58Jhs.dvYUnFhdzO",
+          "sha256": "a97c5fdd24a85e01fd080208ee10147c58307290984a71bb06b3069fe6599e1d",
+          "size": 6710
+        }
+      ],
+      "result_certificate_keys": {
+        "kpawnkberserker.uftb": [
+          "results/current-concrete-edb3c620/pawn-berserker-opposed-v1/concrete/v2/model/edb3c62023be556e8b87167419db14dcfee639b63ee3fd7c25b5d36162bf9e7a/wave-1/sha256/b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989/kpawnkberserker-b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989.tar.zst"
+        ]
+      },
+      "ledger_results": {
+        "kpawnkberserker.uftb": {
+          "result_kind": "concrete",
+          "first": "22,818,110 (39,152,960) / 258,732,582 (31,847,016) / 24,163,948 (2,864,584)",
+          "second": "92,795,246 (277,726,386) / 1,514,284 / 7,543,284",
+          "reachability": "305,714,640 / 73,864,560; 101,852,814 / 277,726,386",
+          "storage": "S3 table sha256:b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989 VersionId ruHlTz0zj8eA5LaTUe249rvflj4QjPDV; certificate sha256:5dda525419c1822177f767c030033d4e328944a236727f3acc2e55c1c8769dee VersionId YNmWUtu1udIxKDP1beYKFFBBWbhxA3j1; reachability sha256:a97c5fdd24a85e01fd080208ee10147c58307290984a71bb06b3069fe6599e1d VersionId SsMJbSxkMtHQ2_HB58Jhs.dvYUnFhdzO"
+        }
+      },
+      "s3_only_certified": true
     },
     {
       "id": "angel-graph-v1-same-dragon-v1",

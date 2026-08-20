@@ -83,6 +83,58 @@ class DirectNativeLogTests(unittest.TestCase):
         self.assertEqual(1, first["certificate"]["legal_realizations"])
         self.assertEqual(1, first["certificate"]["unreachable_realizations"])
 
+    def test_expected_concrete_source_is_an_independent_binding(self):
+        source = "a" * 64
+        model = "b" * 64
+        args = SimpleNamespace(
+            filename="kjesterangelk.uftb",
+            expected_source_sha256=source,
+            expected_model_sha256=model,
+        )
+        entry = {
+            "tablebase_sha256": source,
+            "solver_model_sha256": model,
+        }
+        finalizer.validate_expected_bindings(args, entry)
+        entry["tablebase_sha256"] = "c" * 64
+        with self.assertRaisesRegex(ValueError, "concrete source binding"):
+            finalizer.validate_expected_bindings(args, entry)
+
+    def test_certified_result_retires_matching_supervision_job(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "supervision.json"
+            path.write_text(json.dumps({"jobs": [{
+                "id": "same-angel",
+                "unit": "same.service",
+                "ledger_files": ["kjesterangelk.uftb"],
+                "ledger_certifies": False,
+                "s3_certificates": [],
+            }]}))
+            args = SimpleNamespace(
+                supervision_config=path,
+                unit="same.service",
+                filename="kjesterangelk.uftb",
+            )
+            value = {
+                "result_kind": "information v2",
+                "first": "1 / 0 / 0",
+                "second": "0 / 1 / 0",
+                "reachability": "1 / 0; 1 / 0",
+                "storage": "exact",
+            }
+            certificates = [{
+                "bucket": "bucket", "key": "results/kjesterangelk.tar.zst",
+                "version_id": "version", "sha256": "d" * 64, "size": 1,
+            }]
+            finalizer.update_supervision(args, value, certificates)
+            job = json.loads(path.read_text())["jobs"][0]
+        self.assertTrue(job["ledger_certifies"])
+        self.assertTrue(job["s3_only_certified"])
+        self.assertEqual(value, job["ledger_results"]["kjesterangelk.uftb"])
+        self.assertEqual(
+            ["results/kjesterangelk.tar.zst"],
+            job["result_certificate_keys"]["kjesterangelk.uftb"])
+
 
 if __name__ == "__main__":
     unittest.main()

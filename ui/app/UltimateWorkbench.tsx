@@ -7,8 +7,14 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type MouseEvent as ReactMouseEvent,
 } from "react";
 import PieceIcon from "./PieceIcon";
+import {
+  giantFootprintSquaresAt,
+  giantPointerSquare,
+  legalTargetMoveMap,
+} from "./board-interactions.mjs";
 import {
   analysisPerspective,
   applyEditorGhostVisibility,
@@ -479,11 +485,7 @@ function footprintSquares(
   anchor = piece.square,
 ): number[] {
   if (piece.id !== "giant") return [anchor];
-  const file = anchor % 8;
-  const row = Math.floor(anchor / 8);
-  return file < 7 && row > 0
-    ? [anchor, anchor + 1, anchor - 8, anchor - 7]
-    : [];
+  return giantFootprintSquaresAt(anchor);
 }
 
 function basePiece(
@@ -1224,27 +1226,12 @@ export function UltimateWorkbench() {
   }
 
   const legalTargetMoves = useMemo(() => {
-    const targets = new Map<number, string>();
-    if (!selectedPiece) return targets;
-    const from = squareName(selectedPiece.square);
-    for (const move of legalMoves) {
-      const match = move.match(
-        /^([a-h](?:10|[1-9]))[-~@x!&]([a-h](?:10|[1-9]))$/,
-      );
-      if (match?.[1] !== from) continue;
-      const destination = squareIndex(match[2]);
-      const footprint =
-        selectedPiece.id === "giant"
-          ? footprintSquares(selectedPiece, destination)
-          : [destination];
-      footprint.forEach((square) => {
-        // A square can belong to overlapping Giant destinations. Prefer the move
-        // whose anchor was clicked; otherwise retain the first matching footprint.
-        if (!targets.has(square) || square === destination)
-          targets.set(square, move);
-      });
-    }
-    return targets;
+    if (!selectedPiece) return new Map<number, string>();
+    return legalTargetMoveMap(
+      legalMoves,
+      selectedPiece.square,
+      selectedPiece.id === "giant",
+    );
   }, [legalMoves, selectedPiece]);
   const legalTargets = useMemo(
     () => new Set(legalTargetMoves.keys()),
@@ -2669,8 +2656,31 @@ export function UltimateWorkbench() {
         return;
       }
     }
-    setSelected((current) =>
-      current === index ? null : (clicked?.square ?? index),
+    setSelected((current) => {
+      const currentPiece = current === null ? null : boardMap[current]?.piece;
+      if (clicked && currentPiece?.uid === clicked.uid) return null;
+      return current === index ? null : (clicked?.square ?? index);
+    });
+  }
+
+  function handleGiantClick(
+    event: ReactMouseEvent<HTMLButtonElement>,
+    piece: PositionPiece,
+  ) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const horizontalRatio = bounds.width
+      ? (event.clientX - bounds.left) / bounds.width
+      : 0;
+    const verticalRatio = bounds.height
+      ? (event.clientY - bounds.top) / bounds.height
+      : 0;
+    handleSquare(
+      giantPointerSquare(
+        piece.square,
+        flipped,
+        horizontalRatio,
+        verticalRatio,
+      ),
     );
   }
 
@@ -3764,7 +3774,7 @@ export function UltimateWorkbench() {
                             draftPlacedUids.includes(piece.uid)))
                       }
                       onDragStart={() => setDraggedUid(piece.uid)}
-                      onClick={() => handleSquare(piece.square)}
+                      onClick={(event) => handleGiantClick(event, piece)}
                     >
                       <PieceToken
                         piece={piece}
