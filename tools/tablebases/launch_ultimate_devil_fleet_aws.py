@@ -94,24 +94,38 @@ CONTINUATION_HOSTS = {
          (*range(13, 21), 22, 23, *range(25, 29), 30, 31), 40,
          64 * 1024**3),
     ),
+    # Four i03 slots are paused to keep the 256-GiB host below its aggregate
+    # memory gate before any of their samples completed. Continue those exact
+    # global slots on otherwise-idle i024 CPUs without overlapping coverage.
+    "highcap-100m-tail": (
+        ("i-024a2073283e4336e", tuple(range(4, 8)), 20,
+         32 * 1024**3),
+    ),
 }
 assert sum(len(host[1]) for host in CONTINUATION_HOSTS["continuation-1"]) == 37
 assert sum(len(host[1]) for host in CONTINUATION_HOSTS["continuation-2"]) == 26
 assert sum(len(host[1]) for host in CONTINUATION_HOSTS["continuation-3"]) == 12
 assert sum(len(host[1]) for host in CONTINUATION_HOSTS["highcap-100m"]) == 56
+assert sum(len(host[1]) for host in CONTINUATION_HOSTS["highcap-100m-tail"]) == 4
 
 
 def campaign_stride(campaign: str) -> int:
-    return 56 if campaign == "highcap-100m" else TOTAL_WORKERS
+    return 56 if campaign.startswith("highcap-100m") else TOTAL_WORKERS
 
 
 def campaign_state_limit(campaign: str) -> int:
-    return 100_000_000 if campaign == "highcap-100m" else STATE_LIMIT
+    return 100_000_000 if campaign.startswith("highcap-100m") else STATE_LIMIT
 
 
 def campaign_units(campaign: str) -> tuple[str, str, str]:
     if campaign == "primary":
         return PARENT, CHILD_PREFIX, "fleet-116"
+    if campaign == "highcap-100m-tail":
+        return (
+            "ultimatefish-devil-orchestrator-v5-highcap-100m-tail",
+            "ultimatefish-devil-fleet-v5-highcap-100m-tail-",
+            "fleet-116-highcap-100m",
+        )
     return (f"ultimatefish-devil-orchestrator-v5-{campaign}",
             f"ultimatefish-devil-fleet-v5-{campaign}-",
             f"fleet-116-{campaign}")
@@ -185,7 +199,10 @@ def launch_host(campaign_host: tuple[
             f"systemctl is-active --quiet {child}.service || "
             f"systemd-run --quiet --collect --unit={child} "
             f"--property=AllowedCPUs={cpu} --property=Nice=10 "
-            + ("--property=MemoryHigh=5368709120 "
+            + ("--property=MemoryHigh=7516192768 "
+               "--property=MemoryMax=8589934592 "
+               if campaign == "highcap-100m-tail" else
+               "--property=MemoryHigh=5368709120 "
                "--property=MemoryMax=7516192768 "
                if campaign == "highcap-100m" else "") +
             f"--property=OOMPolicy=stop /bin/bash -lc {shlex.quote(loop)}")
@@ -211,12 +228,16 @@ def launch_host(campaign_host: tuple[
         f"available=$(awk '/^MemAvailable:/{{print $2*1024}}' /proc/meminfo)",
         f"test \"$available\" -ge {reserve}",
         f"mkdir -p {ROOT} {logs}",
-        f"aws s3api get-object --region {REGION} --bucket {BUCKET} "
-        f"--key {SOURCE_KEY} --version-id {SOURCE_VERSION} {source} >/dev/null",
-        f"test \"$(sha256sum {source} | cut -d' ' -f1)\" = {SOURCE_SHA256}",
-        f"aws s3api get-object --region {REGION} --bucket {BUCKET} "
-        f"--key {BINARY_KEY} --version-id {BINARY_VERSION} {binary} >/dev/null",
-        f"test \"$(sha256sum {binary} | cut -d' ' -f1)\" = {BINARY_SHA256}",
+        f"if test -f {source} && test \"$(sha256sum {source} | cut -d' ' -f1)\" "
+        f"= {SOURCE_SHA256}; then :; else aws s3api get-object --region {REGION} "
+        f"--bucket {BUCKET} --key {SOURCE_KEY} --version-id {SOURCE_VERSION} "
+        f"{source}.new >/dev/null; test \"$(sha256sum {source}.new | cut -d' ' -f1)\" "
+        f"= {SOURCE_SHA256}; mv {source}.new {source}; fi",
+        f"if test -f {binary} && test \"$(sha256sum {binary} | cut -d' ' -f1)\" "
+        f"= {BINARY_SHA256}; then :; else aws s3api get-object --region {REGION} "
+        f"--bucket {BUCKET} --key {BINARY_KEY} --version-id {BINARY_VERSION} "
+        f"{binary}.new >/dev/null; test \"$(sha256sum {binary}.new | cut -d' ' -f1)\" "
+        f"= {BINARY_SHA256}; chmod 755 {binary}.new; mv {binary}.new {binary}; fi",
         f"chmod 755 {binary}",
         f"if test -s {marker}; then echo COMPLETE; "
         f"elif systemctl is-active --quiet {parent_unit}.service; then echo RUNNING; "

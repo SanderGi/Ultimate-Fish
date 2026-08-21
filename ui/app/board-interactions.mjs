@@ -1,6 +1,21 @@
 const files = "abcdefgh";
 
 /**
+ * Return every board model highlighted by selecting a piece. CopyCat halves
+ * are one symmetric character for selection purposes; other linked mechanics
+ * retain their independent board selection.
+ *
+ * @param {{uid: string, id: string, link?: string} | null} piece
+ * @returns {string[]}
+ */
+export function selectedBoardPieceUids(piece) {
+  if (!piece) return [];
+  if ((piece.id === "copycat" || piece.id === "copycatClone") && piece.link)
+    return [piece.uid, piece.link];
+  return [piece.uid];
+}
+
+/**
  * Return the four engine squares occupied by a Giant whose canonical anchor is
  * its lower-left square.
  *

@@ -119,8 +119,11 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         for key in ("same:jester+angel", "opposed:jester+angel"):
             self.assertIn(rows[key].status, {"planned", "computing", "certified"})
         for key in ("same:ghost+angel", "opposed:ghost+angel"):
-            self.assertIn(rows[key].status, {"planned", "computing", "certified"})
-            self.assertEqual("information required", rows[key].reachability)
+            self.assertIn(
+                rows[key].status,
+                {"planned", "computing", "preserving", "certified"},
+            )
+            self.assertEqual("information required", rows[key].result_kind)
         self.assertIn(rows["same:copycat+angel"].status,
                       {"planned", "computing", "certified"})
         self.assertEqual(
@@ -162,6 +165,12 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual("computing", catalog.opposed("ghost", "turtle").kind)
         # The mirrored upper triangle remains deduplicated.
         self.assertEqual("duplicate", catalog.together("rook", "ghost").kind)
+
+    def test_active_ghost_angel_rows_hatch_without_breaking_dedup(self):
+        catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))
+        self.assertEqual("computing", catalog.together("angel", "ghost").kind)
+        self.assertEqual("computing", catalog.opposed("ghost", "angel").kind)
+        self.assertEqual("duplicate", catalog.together("ghost", "angel").kind)
 
     def test_s3_only_certified_ledger_result_is_plotted(self):
         summary = plot.read_summary(ledger.README)

@@ -3,14 +3,15 @@
 
 Hosts share one authenticated source root and dependency cache.  This command
 selects exactly one inventory index, performs the runner's plan-only preflight
-remotely, starts one bounded systemd unit on one to four adjacent CPUs, and only
+remotely, starts one bounded systemd unit on adjacent CPUs, and only
 then changes the canonical ledger row from PLANNED to COMPUTING.  The transient
 unit is deliberately retained after exit, and its post-launch state is checked,
 so an immediate failure remains inspectable and cannot be published as live.
-One to eight CPUs let the generator's deterministic frontier, reverse, and
+One to sixteen CPUs let the generator's deterministic frontier, reverse, and
 verification scans use the admitted worker count; the retrograde queue remains
 single-threaded. Completion is handled by
-``finalize_ultimate_aws_concrete_class.py``.
+``finalize_ultimate_aws_concrete_class.py``. Sharing one graph lets CPU-heavy
+Angel domains avoid stranding cores behind per-process memory limits.
 """
 
 from __future__ import annotations
@@ -67,7 +68,7 @@ def validate(args: argparse.Namespace) -> None:
         if not value.startswith("/") or "\n" in value:
             raise ValueError(f"unsafe {label}")
     if (not SAFE_UNIT.fullmatch(args.unit) or args.cpu < 0 or
-            not 1 <= args.cpu_count <= 8 or
+            not 1 <= args.cpu_count <= 16 or
             min(args.scratch_limit, args.resident_limit, args.memory_max,
                 args.reverse_edge_bytes_limit, args.minimum_free_bytes) <= 0):
         raise ValueError("invalid unit, CPU, or resource gate")
@@ -193,7 +194,7 @@ def parse_args() -> argparse.Namespace:
         help="first logical CPU in the unit's adjacent CPU set",
     )
     parser.add_argument(
-        "--cpu-count", type=int, choices=range(1, 9), default=1,
+        "--cpu-count", type=int, choices=range(1, 17), default=1,
         help="adjacent CPUs to allocate to the parallel graph scans",
     )
     parser.add_argument("--source-root", required=True)

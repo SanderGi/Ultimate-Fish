@@ -5,6 +5,7 @@ import {
   giantFootprintSquaresAt,
   giantPointerSquare,
   legalTargetMoveMap,
+  selectedBoardPieceUids,
 } from "../app/board-interactions.mjs";
 
 const f6 = 37;
@@ -56,4 +57,27 @@ test("clicking any destination cell selects an anchor-based Giant move", () => {
   const map = legalTargetMoveMap([move], d4, true);
   for (const target of [f6, g6, f7, g7])
     assert.equal(map.get(target), move);
+});
+
+test("selecting either CopyCat half also highlights its partner", () => {
+  assert.deepEqual(
+    selectedBoardPieceUids({
+      uid: "copycat",
+      id: "copycat",
+      link: "clone",
+    }),
+    ["copycat", "clone"],
+  );
+  assert.deepEqual(
+    selectedBoardPieceUids({
+      uid: "clone",
+      id: "copycatClone",
+      link: "copycat",
+    }),
+    ["clone", "copycat"],
+  );
+  assert.deepEqual(
+    selectedBoardPieceUids({ uid: "angel", id: "angel", link: "halo" }),
+    ["angel"],
+  );
 });

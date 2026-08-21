@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type DragEvent as ReactDragEvent,
   type PointerEvent as ReactPointerEvent,
   type MouseEvent as ReactMouseEvent,
 } from "react";
@@ -16,7 +17,9 @@ import {
   giantFootprintSquaresAt,
   giantPointerSquare,
   legalTargetMoveMap,
+  selectedBoardPieceUids,
 } from "./board-interactions.mjs";
+import { pieceStateLabels } from "./piece-state.mjs";
 import {
   analysisPerspective,
   applyEditorGhostVisibility,
@@ -952,9 +955,11 @@ export function UltimateWorkbench() {
   const [flipped, setFlipped] = useState(false);
   const [editing, setEditing] = useState(false);
   const [tool, setTool] = useState<PieceId | "erase">("king");
+  const [lastPieceTool, setLastPieceTool] = useState<PieceId>("king");
   const [toolColor, setToolColor] = useState<Color>("white");
   const [selected, setSelected] = useState<number | null>(null);
   const [draggedUid, setDraggedUid] = useState<string | null>(null);
+  const [draggedTool, setDraggedTool] = useState<PieceId | null>(null);
   const [boardArrows, setBoardArrows] = useState<BoardArrow[]>([]);
   const [squareHighlights, setSquareHighlights] = useState<SquareHighlight[]>(
     [],
@@ -1138,6 +1143,13 @@ export function UltimateWorkbench() {
     !rawSelectedPiece.visible
       ? null
       : rawSelectedPiece;
+  const selectedPieceUids = useMemo(() => {
+    return new Set(selectedBoardPieceUids(selectedPiece));
+  }, [selectedPiece]);
+  const selectedStateLabels = useMemo(
+    () => (selectedPiece ? pieceStateLabels(selectedPiece) : []),
+    [selectedPiece],
+  );
   const filteredRoster = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     return roster.filter(
@@ -2037,7 +2049,10 @@ export function UltimateWorkbench() {
     setSelected(null);
   }
 
-  function placeTool(index: number) {
+  function placeTool(
+    index: number,
+    placementTool: PieceId | "erase" = tool,
+  ) {
     if (boardLocked) return;
     if (draftPlacementActive) {
       const rank = Number(squareName(index).slice(1));
@@ -2046,7 +2061,7 @@ export function UltimateWorkbench() {
         setDraftMessage("Place picks only inside your three-rank home zone.");
         return;
       }
-      if (tool === "erase") {
+      if (placementTool === "erase") {
         const occupant = boardMap[index]?.piece;
         if (!occupant || occupant.color !== playerSide) return;
         const hostUid =
@@ -2067,12 +2082,12 @@ export function UltimateWorkbench() {
         setDraftPlacedUids((uids) => uids.filter((uid) => uid !== host.uid));
         return;
       }
-      if (!draftPlacementPool.includes(tool)) {
+      if (!draftPlacementPool.includes(placementTool)) {
         setDraftMessage("Choose a pending pick from the palette first.");
         return;
       }
       if (
-        tool === "giant" &&
+        placementTool === "giant" &&
         (index % 8 === 7 || (playerSide === "white" ? rank > 2 : rank > 9))
       ) {
         setDraftMessage(
@@ -2081,7 +2096,7 @@ export function UltimateWorkbench() {
         return;
       }
       const occupiedSquares = footprintSquares(
-        basePiece(tool, playerSide, index, "probe"),
+        basePiece(placementTool, playerSide, index, "probe"),
       );
       if (
         !occupiedSquares.length ||
@@ -2091,7 +2106,7 @@ export function UltimateWorkbench() {
         return;
       }
       let added: PositionPiece[];
-      if (tool === "copycat") {
+      if (placementTool === "copycat") {
         const mirror = Math.floor(index / 8) * 8 + 7 - (index % 8);
         if (boardMap[mirror]) {
           setDraftMessage("CopyCat needs its mirrored clone square empty.");
@@ -2102,23 +2117,23 @@ export function UltimateWorkbench() {
         host.link = clone.uid;
         clone.link = host.uid;
         added = [host, clone];
-      } else added = [basePiece(tool, playerSide, index)];
+      } else added = [basePiece(placementTool, playerSide, index)];
       replaceDraftBoard([...pieces, ...added]);
-      setDraftPlacementPool((pool) => removeLast(pool, tool));
+      setDraftPlacementPool((pool) => removeLast(pool, placementTool));
       setDraftPlacedUids((uids) => [...uids, added[0].uid]);
       setDraftMessage(
-        `${pieceById.get(tool)?.name} placed on ${squareName(index)}.`,
+        `${pieceById.get(placementTool)?.name} placed on ${squareName(index)}.`,
       );
       resetTransient();
       return;
     }
-    if (tool === "erase") {
+    if (placementTool === "erase") {
       const occupant = boardMap[index]?.piece;
       if (occupant) setPieces((current) => removeOccupants(current, [index]));
       resetTransient();
       return;
     }
-    const probe = basePiece(tool, toolColor, index, "probe");
+    const probe = basePiece(placementTool, toolColor, index, "probe");
     const targetSquares = footprintSquares(probe);
     if (!targetSquares.length) {
       setEngineMessage("That Giant footprint leaves the board.");
@@ -2126,7 +2141,7 @@ export function UltimateWorkbench() {
     }
     setPieces((current) => {
       let next = removeOccupants(current, targetSquares);
-      if (tool === "copycat") {
+      if (placementTool === "copycat") {
         const mirror = Math.floor(index / 8) * 8 + 7 - (index % 8);
         next = removeOccupants(next, [mirror]);
         const host = basePiece("copycat", toolColor, index);
@@ -2135,10 +2150,71 @@ export function UltimateWorkbench() {
         clone.link = host.uid;
         return [...next, host, clone];
       }
-      const added = basePiece(tool, toolColor, index);
+      const added = basePiece(placementTool, toolColor, index);
       return applyEditorGhostVisibility([...next, added], added.uid);
     });
     resetTransient();
+  }
+
+  function beginPaletteDrag(
+    event: ReactDragEvent<HTMLButtonElement>,
+    piece: PieceId,
+  ) {
+    event.dataTransfer.effectAllowed = "copy";
+    event.dataTransfer.setData("text/plain", `palette:${piece}`);
+    setDraggedUid(null);
+    setDraggedTool(piece);
+  }
+
+  function beginBoardDrag(
+    event: ReactDragEvent<HTMLElement>,
+    uid: string,
+  ) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", `piece:${uid}`);
+    setDraggedTool(null);
+    setDraggedUid(uid);
+  }
+
+  function finishDrag() {
+    setDraggedUid(null);
+    setDraggedTool(null);
+  }
+
+  function dropOnBoard(index: number) {
+    if (draggedTool) {
+      placeTool(index, draggedTool);
+      finishDrag();
+      return;
+    }
+    dragPiece(index);
+    setDraggedTool(null);
+  }
+
+  function eraseDraggedPiece() {
+    if (!draggedUid || boardLocked) return;
+    const moving = pieces.find((piece) => piece.uid === draggedUid);
+    if (!moving) return;
+    placeTool(moving.square, "erase");
+    finishDrag();
+  }
+
+  function togglePlaceMode() {
+    if (editing && tool !== "erase") {
+      setEditing(false);
+      return;
+    }
+    setTool(lastPieceTool);
+    setEditing(true);
+  }
+
+  function toggleEraseMode() {
+    if (editing && tool === "erase") {
+      setEditing(false);
+      return;
+    }
+    setTool("erase");
+    setEditing(true);
   }
 
   function dragPiece(to: number) {
@@ -2790,6 +2866,7 @@ export function UltimateWorkbench() {
     setDraftPending((items) => [...items, id]);
     setDraftPlacementPool((pool) => [...pool, id]);
     setTool(id);
+    setLastPieceTool(id);
     setToolColor(playerSide);
     setEditing(true);
     setDraftMessage(
@@ -3190,6 +3267,7 @@ export function UltimateWorkbench() {
         meta: emptyMeta(),
       });
       setPositionMessage("Position loaded for editing.");
+      setTool(lastPieceTool);
       setEditing(true);
     } catch (error) {
       setPositionMessage(
@@ -3438,14 +3516,31 @@ export function UltimateWorkbench() {
               <p className="eyebrow">POSITION</p>
               <h2>Board tools</h2>
             </div>
-            <button
-              className={`icon-button ${editing ? "active" : ""}`}
-              disabled={boardLocked || view === "draft"}
-              onClick={() => setEditing(!editing)}
-              title="Toggle position editor"
-            >
-              ✎
-            </button>
+            <div className="tool-mode-buttons" aria-label="Board edit mode">
+              <button
+                className={`icon-button ${editing && tool !== "erase" ? "active" : ""}`}
+                disabled={boardLocked || view === "draft"}
+                onClick={togglePlaceMode}
+                title="Toggle piece placement mode"
+                aria-label="Toggle piece placement mode"
+                aria-pressed={editing && tool !== "erase"}
+              >
+                ✎
+              </button>
+              <button
+                className={`icon-button erase-button ${editing && tool === "erase" ? "active" : ""}`}
+                disabled={
+                  boardLocked ||
+                  (view === "draft" && !draftPlacedUids.length)
+                }
+                onClick={toggleEraseMode}
+                title="Toggle erase mode"
+                aria-label="Toggle erase mode"
+                aria-pressed={editing && tool === "erase"}
+              >
+                <span className="eraser-icon" aria-hidden="true" />
+              </button>
+            </div>
           </div>
           <span className="tool-control-label">Side to move</span>
           <div className="segmented">
@@ -3495,55 +3590,64 @@ export function UltimateWorkbench() {
               placeholder="Find a character"
             />
           </label>
-          <div className="piece-palette" aria-label="Character palette">
-            <button
-              disabled={
-                boardLocked || (view === "draft" && !draftPlacedUids.length)
+          <div
+            className={`piece-palette ${draggedUid ? "erase-drop-ready" : ""}`}
+            aria-label="Character palette"
+            onDragOver={(event) => {
+              if (draggedUid && !boardLocked) {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
               }
-              className={`palette-item erase ${tool === "erase" ? "selected" : ""}`}
-              onClick={() => {
-                setTool("erase");
-                setEditing(true);
-              }}
-            >
-              <span>×</span>
-              <small>Erase</small>
-            </button>
-            {filteredRoster.map((piece) => (
-              <button
-                key={piece.id}
-                disabled={
-                  boardLocked ||
-                  (view === "draft" && !draftPlacementPool.includes(piece.id))
-                }
-                className={`palette-item ${tool === piece.id ? "selected" : ""}`}
-                onClick={() => {
-                  setTool(piece.id);
-                  setEditing(true);
-                }}
-                title={piece.summary}
-              >
-                <span className="palette-mark">
-                  <PieceIcon id={piece.id} color={toolColor} />
-                </span>
-                <small>{piece.name}</small>
-              </button>
-            ))}
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              eraseDraggedPiece();
+            }}
+          >
+            {filteredRoster.map((piece) => {
+              const paletteDisabled =
+                boardLocked ||
+                (view === "draft" &&
+                  !draftPlacementPool.includes(piece.id));
+              return (
+                <button
+                  key={piece.id}
+                  disabled={paletteDisabled}
+                  draggable={!paletteDisabled}
+                  className={`palette-item ${editing && tool === piece.id ? "selected" : ""}`}
+                  onClick={() => {
+                    setTool(piece.id);
+                    setLastPieceTool(piece.id);
+                    setEditing(true);
+                  }}
+                  onDragStart={(event) =>
+                    beginPaletteDrag(event, piece.id)
+                  }
+                  onDragEnd={finishDrag}
+                  title={`${piece.summary} Drag onto the board to place.`}
+                >
+                  <span className="palette-mark">
+                    <PieceIcon id={piece.id} color={toolColor} />
+                  </span>
+                  <small>{piece.name}</small>
+                </button>
+              );
+            })}
           </div>
           <p className="rail-note">
             {view === "draft"
               ? draftPlacementActive
-                ? `${draftMessage || "Place this window's picks in your home zone."} ${draftPlacementPool.length} remaining.`
+                ? `${draftMessage || "Place this window's picks in your home zone."} ${draftPlacementPool.length} remaining. Click or drag a palette piece onto the board; drag a newly placed piece back here to remove it.`
                 : "The board is locked during bans and Ultimate Fish windows."
               : analysisLocked
                 ? "Setup tools are locked while analysis runs; make legal moves or use a move line instead."
                 : gameActive
                   ? "Board setup is locked while the game is active."
                   : view === "analysis"
-                    ? "Use a palette tool, or drag any placed character to a new square."
+                    ? "Click a palette piece or drag it onto the board. Drag board pieces to move them, or back to the palette to erase them."
                     : editing
-                      ? "Choose a character, then click a square."
-                      : "Drag characters, edit the setup, or start the game."}
+                      ? "Click a square to use the active tool. You can also drag palette pieces onto the board or board pieces back here to erase them."
+                      : "Drag palette pieces onto the board, move board pieces, or drag them back to the palette to erase them."}
           </p>
         </aside>
 
@@ -3699,7 +3803,7 @@ export function UltimateWorkbench() {
                     key={index}
                     role="gridcell"
                     aria-label={squareName(index)}
-                    className={`square ${dark ? "dark" : "light"} ${selected === index || (Boolean(piece) && selected !== null && boardMap[selected]?.piece.uid === piece?.uid) ? "selected" : ""} ${legalTargets.has(index) ? "legal-target" : ""} ${ghostCandidateHighlights.has(squareName(index)) ? "knowledge-candidate" : ""}`}
+                    className={`square ${dark ? "dark" : "light"} ${selected === index || (piece && selectedPieceUids.has(piece.uid)) ? "selected" : ""} ${legalTargets.has(index) ? "legal-target" : ""} ${ghostCandidateHighlights.has(squareName(index)) ? "knowledge-candidate" : ""}`}
                     onClick={() => handleSquare(index)}
                     onDragOver={(event) => {
                       if (
@@ -3710,7 +3814,10 @@ export function UltimateWorkbench() {
                       )
                         event.preventDefault();
                     }}
-                    onDrop={() => dragPiece(index)}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      dropOnBoard(index);
+                    }}
                   >
                     {col === 0 && (
                       <span className="rank-label">
@@ -3740,7 +3847,10 @@ export function UltimateWorkbench() {
                             view === "play" ||
                             draftPieceIsMovable(piece))
                         }
-                        onDragStart={() => setDraggedUid(piece.uid)}
+                        onDragStart={(event) =>
+                          beginBoardDrag(event, piece.uid)
+                        }
+                        onDragEnd={finishDrag}
                       >
                         <PieceToken
                           piece={piece}
@@ -3784,7 +3894,10 @@ export function UltimateWorkbench() {
                             piece.color === playerSide &&
                             draftPlacedUids.includes(piece.uid)))
                       }
-                      onDragStart={() => setDraggedUid(piece.uid)}
+                      onDragStart={(event) =>
+                        beginBoardDrag(event, piece.uid)
+                      }
+                      onDragEnd={finishDrag}
                       onClick={(event) => handleGiantClick(event, piece)}
                     >
                       <PieceToken
@@ -4192,20 +4305,9 @@ export function UltimateWorkbench() {
                         material pts · {pieceById.get(inspectedId!)?.summary}
                       </small>
                       <div className="state-chips">
-                        {selectedPiece.power > 0 && (
-                          <span>power {selectedPiece.power + 1}</span>
-                        )}
-                        {selectedPiece.cooldown > 0 && (
-                          <span>cooldown {selectedPiece.cooldown}</span>
-                        )}
-                        {selectedPiece.freeze > 0 && (
-                          <span>frozen ×{selectedPiece.freeze}</span>
-                        )}
-                        {selectedPiece.id === "ghost" && (
-                          <span>
-                            {selectedPiece.visible ? "revealed" : "hidden"}
-                          </span>
-                        )}
+                        {selectedStateLabels.map((label) => (
+                          <span key={label}>{label}</span>
+                        ))}
                         {showSelectedKnowledge &&
                           selectedPiece.id === "ghost" && (
                             <button

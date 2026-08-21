@@ -476,16 +476,16 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "must start with s3://"):
             launch.validate(args)
 
-    def test_single_class_launcher_accepts_all_eight_advertised_workers(self):
+    def test_single_class_launcher_accepts_all_sixteen_advertised_workers(self):
         args = SimpleNamespace(
             source_root="/mnt/source", dependencies="/mnt/dependencies",
             dependency_manifest="/mnt/dependencies/manifest.json",
             work_directory="/mnt/work", unit="ultimatefish-wave0-12",
-            cpu=3, cpu_count=8, scratch_limit=100, resident_limit=90,
+            cpu=3, cpu_count=16, scratch_limit=100, resident_limit=90,
             memory_max=95, reverse_edge_bytes_limit=80,
             minimum_free_bytes=70, s3_prefix="s3://bucket/results")
         launch.validate(args)
-        args.cpu_count = 9
+        args.cpu_count = 17
         with self.assertRaisesRegex(ValueError, "invalid unit"):
             launch.validate(args)
 

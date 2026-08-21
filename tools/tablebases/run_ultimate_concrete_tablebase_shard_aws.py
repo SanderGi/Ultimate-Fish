@@ -462,7 +462,7 @@ def deferred_dynamic_inventory() -> tuple[dict[str, object], ...]:
                     "opposing": not same_team,
                 })
     rows.sort(key=lambda row: str(row["filename"]))
-    if len(rows) != 60 or len({str(row["filename"]) for row in rows}) != 60:
+    if len(rows) != 78 or len({str(row["filename"]) for row in rows}) != 78:
         raise RuntimeError("deferred dynamic K+K+2 inventory residual")
     return tuple(rows)
 
@@ -477,7 +477,7 @@ def deferred_domain_plan() -> dict[str, object]:
     return {
         "schema": "ultimate-deferred-dynamic-k2-v3",
         "status": "explicitly-deferred-no-symbolic-work-authorized",
-        "classes": 60, "by_family_overlap": by_family,
+        "classes": 78, "by_family_overlap": by_family,
         "families": DEFERRED_DYNAMIC,
         "inventory": list(rows),
         "one_angel_source_graph_classes_in_scope": 32,
@@ -491,7 +491,7 @@ def deferred_domain_plan() -> dict[str, object]:
         "copycat_separator_classes_deferred": 6,
         "completeness": (
             "The supported inventory is intentionally incomplete for these "
-            "60 Devil/Minion and Sludge/Goop classes. Ghost/Angel concrete "
+            "78 sufficient Devil/Minion and Sludge/Goop classes. Ghost/Angel concrete "
             "source graphs are admitted, but their public results still "
             "require perfect-recall attachment overlays."
         ),
