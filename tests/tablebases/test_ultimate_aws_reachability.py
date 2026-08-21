@@ -197,11 +197,11 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
         self.assertTrue(record["opposing"])
         self.assertEqual(303_663_360, record["states"])
 
-    def test_single_class_finalizer_swaps_encoded_alias_side_rows(self):
-        record = finalize.encoded_record_for("kdragonkpenguin.uftb")
+    def test_single_class_finalizer_uses_authenticated_penguin_owner_order(self):
+        record = finalize.encoded_record_for("kpenguinkdragon.uftb")
         self.assertEqual("kpenguinkdragon.uftb", record["filename"])
-        self.assertEqual((1, 0), finalize.ledger_side_order(
-            "kdragonkpenguin.uftb"))
+        self.assertEqual((0, 1), finalize.ledger_side_order(
+            "kpenguinkdragon.uftb"))
         self.assertEqual((0, 1), finalize.ledger_side_order(
             "kpenguinksniper.uftb"))
 
@@ -378,7 +378,7 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
         self.assertIn("ledger_filename(str(record[\"filename\"]))}=computing",
                       source)
         self.assertNotIn("[(str(record[\"filename\"]), \"computing\")]", source)
-        self.assertEqual("kdragonkpenguin.uftb",
+        self.assertEqual("kpenguinkdragon.uftb",
                          launch.ledger_filename("kpenguinkdragon.uftb"))
         self.assertEqual("kexample.uftb",
                          launch.ledger_filename("kexample.uftb"))

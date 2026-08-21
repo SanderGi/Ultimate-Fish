@@ -70,6 +70,33 @@ analysis.
   <img src="engine-ui.png" alt="Ultimate Fish local workbench" style="max-height: 60vh">
 </p>
 
+### Install tablebases
+
+Certified tablebases are distributed through the gated
+[Ultimate Fish Tablebases dataset](https://huggingface.co/datasets/SanderGi/Ultimate-Fish-Tablebases).
+
+1. Sign in to Hugging Face, open the dataset, and request access. Wait until the
+   request has been approved before trying to download a tablebase.
+2. Install the Hugging Face CLI with
+   `python3 -m pip install --upgrade huggingface_hub`, then authenticate with
+   `hf auth login`. The workbench reads the resulting token from the standard
+   Hugging Face token file; it does not send that token to the browser.
+3. Start the engine bridge with `ULTIMATE_TABLEBASE_PATH` set to the directory
+   where tablebases should be stored, then use **Tablebase Manager** beneath the
+   inspector to search, download, or remove material combinations:
+
+   ```bash
+   cd ui
+   ULTIMATE_TABLEBASE_PATH=/absolute/path/to/tablebases npm run engine
+   npm run dev
+   ```
+
+The manager shows the complete storage required by each `.uftb` and its binary
+sidecars, available disk space, and the total space consumed by downloaded
+tablebases. Files are SHA-256 verified and installed atomically. On Fly.io, set
+a read-only token scoped to this dataset with `fly secrets set HF_TOKEN=hf_...`;
+local CLI credentials are used automatically when `HF_TOKEN` is not set.
+
 ## Rules and notation
 
 Rule fidelity has priority over playing strength. Recovered behavior is recorded

@@ -431,10 +431,12 @@ def inventory(budget: int = DEFAULT_BUDGET) -> list[dict[str, object]]:
             opposing=True, filename="kcopycatkbishop.uftb",
             note="linked mirrored Copycat compound; displaced/singleton states excluded"),
         class_record(
-            "KdragonvKpenguin", placement_states(2) * pair_state_factor(
-                by_name["dragon"], by_name["penguin"]),
-            "kings+2-requested", primary="dragon", secondary="penguin",
-            opposing=True, filename="kdragonkpenguin.uftb"),
+            "KpenguinvKdragon", placement_states(2) * pair_state_factor(
+                by_name["penguin"], by_name["dragon"]),
+            "kings+2-requested", primary="penguin", secondary="dragon",
+            opposing=True, filename="kpenguinkdragon.uftb",
+            note="current causal-Penguin payload supersedes the historical "
+                 "Dragon-primary kdragonkpenguin alias"),
         class_record(
             "KbishopvKpenguin", placement_states(2) * penguin_factor,
             "kings+2-requested", primary="bishop", secondary="penguin",

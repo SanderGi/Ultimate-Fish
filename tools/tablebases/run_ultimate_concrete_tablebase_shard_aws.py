@@ -48,11 +48,7 @@ SCHEMA = "ultimate-concrete-k2-aws-run-v2"
 DEPENDENCY_SCHEMA = "ultimate-concrete-k2-dependencies-v2"
 ARCHIVE_SCHEMA = "ultimate-concrete-k2-result-v2"
 CERTIFICATE_SCHEMA = "ultimate-concrete-k2-s3-certificate-v2"
-LEDGER_FILENAME_ALIASES = {
-    # This opposed pair is physically encoded with Penguin as White/primary,
-    # while the canonical ledger keeps the historical Dragon-primary name.
-    "kpenguinkdragon.uftb": "kdragonkpenguin.uftb",
-}
+LEDGER_FILENAME_ALIASES: dict[str, str] = {}
 
 
 def ledger_filename(filename: str) -> str:

@@ -354,13 +354,12 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             admitted, unreachable = ledger.parse_wdl(cell)
             self.assertEqual(row.states // 2, admitted + unreachable)
 
-    def test_dragon_penguin_columns_follow_authenticated_file_owner(self):
+    def test_penguin_dragon_columns_follow_authenticated_file_owner(self):
         row = next(
             item for item in ledger.entries(ledger.README.read_text())
-            if item.filename == "kdragonkpenguin.uftb")
-        # This filename's authenticated header orders Dragon first even though
-        # the display key is sorted as Penguin+Dragon.  Reordering these cells
-        # to match the key silently reverses both cells in the opposed plot.
+            if item.filename == "kpenguinkdragon.uftb")
+        # The authenticated payload and the ledger both order Penguin first.
+        # The obsolete Dragon-primary alias must not reverse these cells.
         self.assertEqual(
             "752,816 (1,903,140) / 965,350 (240) / "
             "20,469,414 (127,740,720)",
@@ -371,9 +370,9 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             row.second)
         catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))
         self.assertEqual(
-            "kdragonkpenguin.uftb",
+            "kpenguinkdragon.uftb",
             catalog.opposing[("penguin", "dragon")]["filename"])
-        dragon = catalog.opposed("dragon", "penguin")
+        dragon = catalog.opposed("penguin", "dragon")
         self.assertEqual((752_816, 965_350, 20_469_414),
                          (dragon.first.wins, dragon.first.losses,
                           dragon.first.draws))
@@ -443,10 +442,14 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
                 ledger.README, "kknightkghost.uftb", resume=False)
         ledger.check_launch(
             ledger.README, "kknightkghost.uftb", resume=True)
-        planned = next(
-            entry.filename for entry in ledger.entries(ledger.README.read_text())
-            if entry.filename and entry.status == "planned")
-        ledger.check_launch(ledger.README, planned, resume=False)
+        # The live ledger can legitimately have no planned rows when every
+        # non-deferred class is already running. Exercise the new-launch gate
+        # against an isolated planned copy instead of requiring stale work.
+        with tempfile.TemporaryDirectory() as directory:
+            readme = Path(directory) / "README.md"
+            readme.write_text(ledger.README.read_text())
+            ledger.update(readme, ["kknightkghost.uftb=planned"], [])
+            ledger.check_launch(readme, "kknightkghost.uftb", resume=False)
 
     def test_archive_stream_round_trip_authenticates_every_physical_file(self):
         with tempfile.TemporaryDirectory() as directory:

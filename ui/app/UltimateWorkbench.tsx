@@ -10,6 +10,8 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import PieceIcon from "./PieceIcon";
+import { TablebaseManager } from "./TablebaseManager";
+import { useSmartSticky } from "./useSmartSticky";
 import {
   giantFootprintSquaresAt,
   giantPointerSquare,
@@ -940,6 +942,8 @@ function deployLockedAdditions(
 
 export function UltimateWorkbench() {
   const initial = useMemo(() => classicPosition(), []);
+  const leftRailRef = useSmartSticky<HTMLElement>(760);
+  const rightRailRef = useSmartSticky<HTMLElement>(1120);
   const [view, setView] = useState<View>("analysis");
   const [pieces, setPieces] = useState<PositionPiece[]>(initial.pieces);
   const [turn, setTurn] = useState<Color>(initial.turn);
@@ -3426,7 +3430,8 @@ export function UltimateWorkbench() {
 
       <section className="workspace-grid">
         <aside
-          className={`left-rail panel ${boardLocked ? "tools-locked" : ""}`}
+          ref={leftRailRef}
+          className={`left-rail panel smart-sticky-sidebar ${boardLocked ? "tools-locked" : ""}`}
         >
           <div className="panel-heading">
             <div>
@@ -3822,7 +3827,10 @@ export function UltimateWorkbench() {
           </div>
         </section>
 
-        <aside className="right-rail">
+        <aside
+          ref={rightRailRef}
+          className={`right-rail smart-sticky-sidebar ${view === "analysis" ? "analysis-rail" : ""}`}
+        >
           {view === "draft" ? (
             <section className="panel draft-panel">
               <div className="panel-heading">
@@ -4250,6 +4258,7 @@ export function UltimateWorkbench() {
               </section>
             </>
           )}
+          {view === "analysis" && <TablebaseManager />}
         </aside>
       </section>
 

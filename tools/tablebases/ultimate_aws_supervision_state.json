@@ -1,10 +1,10 @@
 {
-  "event_digest": "5a35a2b63f4ca007fe8b8f2e80f93e6b42ad9ed274caccd44dbfe31964ef0727",
-  "last_observed_epoch": 1787260584.578943,
-  "last_regular_report_epoch": 1787260584.578943,
+  "event_digest": "1b739e74f2cc16b1da9923d4b14b34c12931375f2d091b914eaa326bc4d04d46",
+  "last_observed_epoch": 1787272568.367239,
+  "last_regular_report_epoch": 1787272568.367239,
   "report": {
     "errors": [],
-    "estimated_spend_usd": 1793.93,
+    "estimated_spend_usd": 1825.25,
     "fleet_burn_usd_per_hour": 9.41,
     "instances": {
       "i-024a2073283e4336e": {
@@ -25,36 +25,36 @@
           "allocation_known": true,
           "allocation_mismatches": {},
           "idle_vcpus": 28,
-          "measured_busy_vcpus": 3.997,
+          "measured_busy_vcpus": 3.998,
           "measured_fleet_capacity_percent": 12.5,
           "measured_jobs": {
             "checker-ghost-opposing-compositional-v4": {
               "allocated_utilization_percent": 99.9,
               "average_busy_vcpus": 0.999,
-              "cpu_delta_nsec": 3362622038000,
-              "cpu_usage_nsec": 66146539239000,
-              "sample_seconds": 3365.902
+              "cpu_delta_nsec": 450972288000,
+              "cpu_usage_nsec": 78126454442000,
+              "sample_seconds": 451.201
             },
             "current-opposed-ghost-pair-specialized-v1": {
               "allocated_utilization_percent": 100.0,
               "average_busy_vcpus": 1.0,
-              "cpu_delta_nsec": 3365834341000,
-              "cpu_usage_nsec": 564971484632000,
-              "sample_seconds": 3365.902
+              "cpu_delta_nsec": 450983449000,
+              "cpu_usage_nsec": 576955075746000,
+              "sample_seconds": 451.201
             },
             "current-opposed-parasite-ghost-v1": {
-              "allocated_utilization_percent": 99.8,
-              "average_busy_vcpus": 0.998,
-              "cpu_delta_nsec": 3359205785000,
-              "cpu_usage_nsec": 620907484968000,
-              "sample_seconds": 3365.902
-            },
-            "current-same-berserker-ghost-allocation-v4": {
               "allocated_utilization_percent": 100.0,
               "average_busy_vcpus": 1.0,
-              "cpu_delta_nsec": 3365717499000,
-              "cpu_usage_nsec": 64905952374000,
-              "sample_seconds": 3365.902
+              "cpu_delta_nsec": 451001626000,
+              "cpu_usage_nsec": 632862495365000,
+              "sample_seconds": 451.201
+            },
+            "current-same-berserker-ghost-allocation-v4": {
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 450961707000,
+              "cpu_usage_nsec": 76889098357000,
+              "sample_seconds": 451.201
             }
           },
           "measurement_complete": true,
@@ -71,7 +71,7 @@
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 402.42,
+        "estimated_spend_usd": 407.64,
         "instance_type": "c8gd.8xlarge",
         "launch_time": "2026-08-10T04:34:31+00:00",
         "name": "giant-ghost-opposing",
@@ -110,11 +110,11 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 779135,
-                  "sha256": "68ea65be400f7835e3913bb615c0534ae44c754692a6aa92b21db57aad0a0d09",
+                  "bytes": 897467,
+                  "sha256": "ed9f5d013307f1b420b48c981aa184b6b25bbf8f4a4085d998d529dd3e54799f",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "teration 8 geometry 1820000/3943680 bdd_nodes 138656903 peak_rss_bytes 17411567616 elapsed 65570.2s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1825000/3943680 bdd_nodes 138757596 peak_rss_bytes 17411567616 elapsed 65574.4s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1830000/3943680 bdd_nodes 138795352 peak_rss_bytes 17411567616 elapsed 65579.9s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1835000/3943680 bdd_nodes 138853931 peak_rss_bytes 17411567616 elapsed 65586.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1840000/3943680 bdd_nodes 138930932 peak_rss_bytes 17411567616 elapsed 65593.7s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1845000/3943680 bdd_nodes 139023743 peak_rss_bytes 17411567616 elapsed 65599.7s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1850000/3943680 bdd_nodes 139128301 peak_rss_bytes 17411567616 elapsed 65605.7s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1855000/3943680 bdd_nodes 139240018 peak_rss_bytes 17411567616 elapsed 65611.7s\n"
+                  "tail": "teration 9 geometry 2370000/3943680 bdd_nodes 146022943 peak_rss_bytes 17411567616 elapsed 77454.1s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2375000/3943680 bdd_nodes 146118107 peak_rss_bytes 17411567616 elapsed 77469.8s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2380000/3943680 bdd_nodes 146386066 peak_rss_bytes 17411567616 elapsed 77488.7s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2385000/3943680 bdd_nodes 146605681 peak_rss_bytes 17411567616 elapsed 77506.2s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2390000/3943680 bdd_nodes 146757432 peak_rss_bytes 17411567616 elapsed 77527.3s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2395000/3943680 bdd_nodes 146870231 peak_rss_bytes 17411567616 elapsed 77549.7s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2400000/3943680 bdd_nodes 146945313 peak_rss_bytes 17411567616 elapsed 77572.8s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2405000/3943680 bdd_nodes 146993010 peak_rss_bytes 17411567616 elapsed 77594.7s\n"
                 },
                 {
                   "bytes": 152,
@@ -130,10 +130,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "3",
-                "CPUUsageNSec": "66146539239000",
+                "CPUUsageNSec": "78126454442000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "33684008960",
+                "MemoryCurrent": "28174561280",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 02:52:43 UTC"
               }
@@ -644,11 +644,11 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 143827,
-                  "sha256": "bf99384b9246b94b9af6203d79c0416430086e26b75d27525d6c7ffcab65219d",
+                  "bytes": 155119,
+                  "sha256": "6bda18425a43a1b46f228c1265d51de387d99d623a69ae59241d96a34e6e80e4",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "st_extra_bellman iteration 2 geometry 425000/4929600 bdd_nodes 42105426 peak_rss_bytes 16429662208 elapsed 63006.4s\nreciprocal_ghost_extra_bellman iteration 2 geometry 430000/4929600 bdd_nodes 42307016 peak_rss_bytes 16429662208 elapsed 63147.8s\nreciprocal_ghost_extra_bellman iteration 2 geometry 435000/4929600 bdd_nodes 42462224 peak_rss_bytes 16429662208 elapsed 63300.3s\nreciprocal_ghost_extra_bellman iteration 2 geometry 440000/4929600 bdd_nodes 42583617 peak_rss_bytes 16429662208 elapsed 63444s\nreciprocal_ghost_extra_bellman iteration 2 geometry 445000/4929600 bdd_nodes 42681827 peak_rss_bytes 16429662208 elapsed 63580.3s\nreciprocal_ghost_extra_bellman iteration 2 geometry 450000/4929600 bdd_nodes 42758306 peak_rss_bytes 16429662208 elapsed 63715.1s\nreciprocal_ghost_extra_bellman iteration 2 geometry 455000/4929600 bdd_nodes 42818789 peak_rss_bytes 16429662208 elapsed 63859.5s\nreciprocal_ghost_extra_bellman iteration 2 geometry 460000/4929600 bdd_nodes 42874096 peak_rss_bytes 16429662208 elapsed 64015.1s\n"
+                  "tail": "_extra_bellman iteration 2 geometry 860000/4929600 bdd_nodes 75335607 peak_rss_bytes 16429662208 elapsed 75150.4s\nreciprocal_ghost_extra_bellman iteration 2 geometry 865000/4929600 bdd_nodes 75337354 peak_rss_bytes 16429662208 elapsed 75310.9s\nreciprocal_ghost_extra_bellman iteration 2 geometry 870000/4929600 bdd_nodes 75378434 peak_rss_bytes 16429662208 elapsed 75348.1s\nreciprocal_ghost_extra_bellman iteration 2 geometry 875000/4929600 bdd_nodes 76451185 peak_rss_bytes 16429662208 elapsed 75496.2s\nreciprocal_ghost_extra_bellman iteration 2 geometry 880000/4929600 bdd_nodes 76473192 peak_rss_bytes 16429662208 elapsed 75606.7s\nreciprocal_ghost_extra_bellman iteration 2 geometry 885000/4929600 bdd_nodes 77917385 peak_rss_bytes 16429662208 elapsed 75732.8s\nreciprocal_ghost_extra_bellman iteration 2 geometry 890000/4929600 bdd_nodes 79276575 peak_rss_bytes 16429662208 elapsed 75877.5s\nreciprocal_ghost_extra_bellman iteration 2 geometry 895000/4929600 bdd_nodes 79793508 peak_rss_bytes 16429662208 elapsed 75923.3s\n"
                 },
                 {
                   "bytes": 133,
@@ -664,10 +664,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "0",
-                "CPUUsageNSec": "64905952374000",
+                "CPUUsageNSec": "76889098357000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "13611380736",
+                "MemoryCurrent": "14587633664",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 03:13:23 UTC"
               }
@@ -678,10 +678,10 @@
               "diagnostics": [
                 {
                   "bytes": 4096,
-                  "sha256": "292fb52b453944b299c2784e85309655176b11c284e9631576b680bd7abd258b",
+                  "sha256": "f7ca409af62812fc890686401539de8f0666dcfa7b036e723ecfda556400b337",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "graph_seed raw_begin 60250000 raw_count 50000 admitted 50000 empty 0 unique 1256 duplicate 48744 residual 0\ncrossed_graph_checkpoint roots 60300000 empty 5133779 expanded 0 nodes 18774816 payload_bytes 2806789158 durable 1 residual 0\ncrossed_graph_resources peak_rss_bytes 6763712512 checkpoint_bytes 3047989210 free_bytes 219137146880\ncrossed_graph_seed raw_begin 60300000 raw_count 50000 admitted 50000 empty 0 unique 1256 duplicate 48744 residual 0\ncrossed_graph_checkpoint roots 60350000 empty 5133779 expanded 0 nodes 18776072 payload_bytes 2808472430 durable 1 residual 0\ncrossed_graph_resources peak_rss_bytes 6766645248 checkpoint_bytes 3049872482 free_bytes 218561060864\ncrossed_graph_seed raw_begin 60350000 raw_count 50000 admitted 50000 empty 0 unique 1256 duplicate 48744 residual 0\ncrossed_graph_checkpoint roots 60400000 empty 5133779 expanded 0 nodes 18777328 payload_bytes 2810169878 durable 1 residual 0\ncrossed_graph_resources peak_rss_bytes 6769598464 checkpoint_bytes 3051769930 free_bytes 218314375168\n"
+                  "tail": "graph_resources peak_rss_bytes 6793183232 checkpoint_bytes 3067103549 free_bytes 218317189120\ncrossed_graph_seed raw_begin 60850000 raw_count 50000 admitted 50000 empty 0 unique 1256 duplicate 48744 residual 0\ncrossed_graph_checkpoint roots 60900000 empty 5183083 expanded 0 nodes 18788789 payload_bytes 2825400945 durable 1 residual 0\ncrossed_graph_resources peak_rss_bytes 6796189696 checkpoint_bytes 3069000997 free_bytes 218053705728\ncrossed_graph_seed raw_begin 60900000 raw_count 50000 admitted 50000 empty 0 unique 1256 duplicate 48744 residual 0\ncrossed_graph_checkpoint roots 60950000 empty 5183083 expanded 0 nodes 18790045 payload_bytes 2827062953 durable 1 residual 0\ncrossed_graph_resources peak_rss_bytes 6799200256 checkpoint_bytes 3070863005 free_bytes 218019323904\ncrossed_graph_seed raw_begin 60950000 raw_count 50000 admitted 50000 empty 0 unique 1256 duplicate 48744 residual 0\ncrossed_graph_checkpoint roots 61000000 empty 5183083 expanded 0 nodes 18791301 payload_bytes 2828721417 durable 1 residual 0\n"
                 }
               ],
               "id": "current-opposed-ghost-pair-specialized-v1",
@@ -690,10 +690,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "1",
-                "CPUUsageNSec": "564971484632000",
+                "CPUUsageNSec": "576955075746000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "10334584832",
+                "MemoryCurrent": "11145453568",
                 "Result": "success",
                 "StateChangeTimestamp": "Fri 2026-08-14 08:19:51 UTC"
               }
@@ -703,11 +703,11 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 103306,
-                  "sha256": "a54183fdba6ccb64bc01755823771275bb7f2a241324b91aed8d7a76debc7644",
+                  "bytes": 103562,
+                  "sha256": "e7ea66360f5d08679a7c11fdd3110660755373df7c32f37bf12cc0bb2c7d1a5d",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "reciprocal_ghost_extra_bellman iteration 7 geometry 445000/492960 bdd_nodes 348250548 peak_rss_bytes 8674484224 elapsed 497666s\nreciprocal_ghost_extra_bellman iteration 7 geometry 450000/492960 bdd_nodes 352090879 peak_rss_bytes 8674484224 elapsed 497717s\nreciprocal_ghost_extra_bellman iteration 7 geometry 455000/492960 bdd_nodes 358600175 peak_rss_bytes 8674484224 elapsed 497783s\nreciprocal_ghost_extra_bellman iteration 7 geometry 460000/492960 bdd_nodes 362258537 peak_rss_bytes 8674484224 elapsed 497863s\nreciprocal_ghost_extra_bellman iteration 7 geometry 465000/492960 bdd_nodes 368302246 peak_rss_bytes 8674484224 elapsed 497956s\nreciprocal_ghost_extra_bellman iteration 7 geometry 470000/492960 bdd_nodes 375483949 peak_rss_bytes 8674484224 elapsed 498789s\nreciprocal_ghost_extra_bellman iteration 7 geometry 475000/492960 bdd_nodes 380071603 peak_rss_bytes 8674484224 elapsed 498857s\nreciprocal_ghost_extra_bellman iteration 7 geometry 480000/492960 bdd_nodes 391130269 peak_rss_bytes 8674484224 elapsed 501465s\n"
+                  "tail": "reciprocal_ghost_extra_bellman iteration 7 geometry 455000/492960 bdd_nodes 358600175 peak_rss_bytes 8674484224 elapsed 497783s\nreciprocal_ghost_extra_bellman iteration 7 geometry 460000/492960 bdd_nodes 362258537 peak_rss_bytes 8674484224 elapsed 497863s\nreciprocal_ghost_extra_bellman iteration 7 geometry 465000/492960 bdd_nodes 368302246 peak_rss_bytes 8674484224 elapsed 497956s\nreciprocal_ghost_extra_bellman iteration 7 geometry 470000/492960 bdd_nodes 375483949 peak_rss_bytes 8674484224 elapsed 498789s\nreciprocal_ghost_extra_bellman iteration 7 geometry 475000/492960 bdd_nodes 380071603 peak_rss_bytes 8674484224 elapsed 498857s\nreciprocal_ghost_extra_bellman iteration 7 geometry 480000/492960 bdd_nodes 391130269 peak_rss_bytes 8674484224 elapsed 501465s\nreciprocal_ghost_extra_bellman iteration 7 geometry 485000/492960 bdd_nodes 395799902 peak_rss_bytes 8674484224 elapsed 512935s\nreciprocal_ghost_extra_bellman iteration 7 geometry 490000/492960 bdd_nodes 402673398 peak_rss_bytes 8708317184 elapsed 513092s\n"
                 },
                 {
                   "bytes": 292,
@@ -723,29 +723,29 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "2",
-                "CPUUsageNSec": "620907484968000",
+                "CPUUsageNSec": "632862495365000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "7018450944",
+                "MemoryCurrent": "8084615168",
                 "Result": "success",
                 "StateChangeTimestamp": "Fri 2026-08-14 06:12:22 UTC"
               }
             }
           ],
           "memory": {
-            "MemAvailable": 51128459264,
+            "MemAvailable": 51136299008,
             "MemTotal": 66202484736,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 5421694976,
+              "free_bytes": 5423525888,
               "path": "/",
               "total_bytes": 8511270912
             },
             {
-              "free_bytes": 216840646656,
+              "free_bytes": 216368517120,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             }
@@ -766,24 +766,84 @@
       "i-03c81f90d2c59a2e7": {
         "cpu_allocation": {
           "active_cpu_sets": {
-            "information-jester-angel-opposed-v3": "1,5,6,7,8,9,11,12",
-            "information-jester-angel-same-v3": "3,4,13,15,16,17,18,20"
+            "compositional-v5-opposed-ghost-sniper": "1",
+            "concrete-berserker-penguin-opposed-v2": "10,11,12,13,15,16,17,18",
+            "penguin-ghost-opposing-fresh-v5": "2",
+            "remap-fix-opposed-knight-ghost-solve-v11": "0",
+            "remap-fix-v2-opposed-rook-ghost-source-order-solve-v6": "19",
+            "remap-fix-v2-opposed-turtle-ghost-compositional-v4": "23",
+            "source-order-opposed-queen-ghost-solve-v8": "14"
           },
           "active_jobs": {
-            "information-jester-angel-opposed-v3": 8,
-            "information-jester-angel-same-v3": 8
+            "compositional-v5-opposed-ghost-sniper": 1,
+            "concrete-berserker-penguin-opposed-v2": 8,
+            "penguin-ghost-opposing-fresh-v5": 1,
+            "remap-fix-opposed-knight-ghost-solve-v11": 1,
+            "remap-fix-v2-opposed-rook-ghost-source-order-solve-v6": 1,
+            "remap-fix-v2-opposed-turtle-ghost-compositional-v4": 1,
+            "source-order-opposed-queen-ghost-solve-v8": 1
           },
-          "allocated_vcpus": 16,
+          "allocated_vcpus": 14,
           "allocation_known": false,
           "allocation_mismatches": {},
-          "idle_vcpus": 16,
-          "measured_busy_vcpus": 0,
-          "measured_fleet_capacity_percent": 0.0,
-          "measured_jobs": {},
+          "idle_vcpus": 18,
+          "measured_busy_vcpus": 10.184,
+          "measured_fleet_capacity_percent": 31.8,
+          "measured_jobs": {
+            "compositional-v5-opposed-ghost-sniper": {
+              "allocated_utilization_percent": 97.6,
+              "average_busy_vcpus": 0.976,
+              "cpu_delta_nsec": 440583069000,
+              "cpu_usage_nsec": 148697743290000,
+              "sample_seconds": 451.201
+            },
+            "concrete-berserker-penguin-opposed-v2": {
+              "allocated_utilization_percent": 54.3,
+              "average_busy_vcpus": 4.341,
+              "cpu_delta_nsec": 1958479546000,
+              "cpu_usage_nsec": 15233063361000,
+              "sample_seconds": 451.201
+            },
+            "penguin-ghost-opposing-fresh-v5": {
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 450633443000,
+              "cpu_usage_nsec": 11183803245000,
+              "sample_seconds": 451.201
+            },
+            "remap-fix-opposed-knight-ghost-solve-v11": {
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 450536082000,
+              "cpu_usage_nsec": 10117364504000,
+              "sample_seconds": 451.201
+            },
+            "remap-fix-v2-opposed-rook-ghost-source-order-solve-v6": {
+              "allocated_utilization_percent": 99.8,
+              "average_busy_vcpus": 0.998,
+              "cpu_delta_nsec": 450323062000,
+              "cpu_usage_nsec": 10968178401000,
+              "sample_seconds": 451.201
+            },
+            "remap-fix-v2-opposed-turtle-ghost-compositional-v4": {
+              "allocated_utilization_percent": 99.8,
+              "average_busy_vcpus": 0.998,
+              "cpu_delta_nsec": 450219702000,
+              "cpu_usage_nsec": 10228089707000,
+              "sample_seconds": 451.201
+            },
+            "source-order-opposed-queen-ghost-solve-v8": {
+              "allocated_utilization_percent": 87.3,
+              "average_busy_vcpus": 0.873,
+              "cpu_delta_nsec": 393949601000,
+              "cpu_usage_nsec": 11039699189000,
+              "sample_seconds": 451.201
+            }
+          },
           "measurement_complete": false,
           "overlaps": [],
           "unconfigured_active_units": {
-            "count": 2,
+            "count": 1,
             "details": [
               {
                 "properties": {
@@ -797,34 +857,28 @@
                   "StateChangeTimestamp": "Thu 2026-08-20 21:06:35 UTC"
                 },
                 "unit": "ultimatefish-mount.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "2",
-                  "CPUUsageNSec": "22240253000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "60846080",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Thu 2026-08-20 21:16:05 UTC"
-                },
-                "unit": "ultimatefish-validate-kjester-v3-one.service"
               }
             ],
             "probe_status": 0,
             "sample": [
-              "ultimatefish-mount.service",
-              "ultimatefish-validate-kjester-v3-one.service"
+              "ultimatefish-mount.service"
             ],
-            "sha256": "dd83d2d86cf963aea1c8a122dec33558dd41709c05e51c4a5e74b49ff1005eb8"
+            "sha256": "2533bca011b7d1560c691f031ebe53040c085b866b8f28339f5d4c9613b59eab"
           },
-          "unconfigured_measured_jobs": {},
+          "unconfigured_measured_jobs": {
+            "ultimatefish-mount.service": {
+              "average_busy_vcpus": 0.0,
+              "cpu_delta_nsec": 0,
+              "cpu_usage_nsec": 5500000,
+              "memory_current_bytes": null,
+              "sample_seconds": 451.201
+            }
+          },
           "unknown_jobs": [],
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 0.39,
+        "estimated_spend_usd": 8.22,
         "instance_type": "r8gd.8xlarge",
         "launch_time": "2026-08-20T21:06:26+00:00",
         "name": "hidden-primary",
@@ -866,65 +920,32 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 5584,
-                  "sha256": "2c877b3344de746e6b54cb28ab54b23a27da5774c2bdb7f27c8e91f24f4d1c54",
+                  "bytes": 168138,
+                  "sha256": "7041cf3d79246b4048e26f352ae019a2ee28bc171b70d2c3e957fcc070423285",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
                 },
                 {
-                  "bytes": 116,
-                  "sha256": "4f17b3bdaa46c92bd3ce8f9d532c1a1bb64134db584aed48e80d22c7994efdef",
+                  "bytes": 2048,
+                  "sha256": "36bd70b0a8d19fd7441a9f206da3d4b7fd112fc5c77f8798efb176799aef0986",
                   "source_index": 1,
                   "status": "ok",
                   "tail": ""
                 }
               ],
-              "id": "information-jester-angel-same-v3",
+              "id": "concrete-berserker-penguin-opposed-v2",
               "source_binding_count": 5,
               "sources_exact": true,
               "unit": {
                 "ActiveState": "active",
-                "AllowedCPUs": "3-4 13 15-18 20",
-                "CPUUsageNSec": "1496990993000",
+                "AllowedCPUs": "10-13 15-18",
+                "CPUUsageNSec": "15233063361000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "1578979328",
+                "MemoryCurrent": "159319359488",
                 "Result": "success",
-                "StateChangeTimestamp": "Thu 2026-08-20 21:12:08 UTC"
-              }
-            },
-            {
-              "checkpoints": [],
-              "completion": [],
-              "diagnostics": [
-                {
-                  "bytes": 5737,
-                  "sha256": "de0e0e9c24d599bd3595d4b4baa08198311d5aba4585e6b187c4e5f241e5e03f",
-                  "source_index": 0,
-                  "status": "ok",
-                  "tail": ""
-                },
-                {
-                  "bytes": 119,
-                  "sha256": "ad5910478c4c45afa50b4b85f861e14430d1f2663f24c66e6b219897a180d8c7",
-                  "source_index": 1,
-                  "status": "ok",
-                  "tail": ""
-                }
-              ],
-              "id": "information-jester-angel-opposed-v3",
-              "source_binding_count": 5,
-              "sources_exact": true,
-              "unit": {
-                "ActiveState": "active",
-                "AllowedCPUs": "1 5-9 11-12",
-                "CPUUsageNSec": "1687148825000",
-                "ExecMainStatus": "0",
-                "LoadState": "loaded",
-                "MemoryCurrent": "1606619136",
-                "Result": "success",
-                "StateChangeTimestamp": "Thu 2026-08-20 21:12:08 UTC"
+                "StateChangeTimestamp": "Fri 2026-08-21 00:00:32 UTC"
               }
             },
             {
@@ -1016,46 +1037,6 @@
                 }
               ],
               "diagnostics": [],
-              "id": "build-ghost-pair-domain-cache-v1",
-              "source_binding_count": 1,
-              "sources_exact": false,
-              "unit": {
-                "ActiveState": "inactive",
-                "ExecMainStatus": "0",
-                "LoadState": "not-found",
-                "Result": "success"
-              }
-            },
-            {
-              "checkpoints": [],
-              "completion": [
-                {
-                  "exists": false
-                },
-                {
-                  "exists": false
-                }
-              ],
-              "diagnostics": [],
-              "id": "same-ghost-pair-domain-cache-v1",
-              "source_binding_count": 2,
-              "sources_exact": false,
-              "unit": {
-                "ActiveState": "inactive",
-                "ExecMainStatus": "0",
-                "LoadState": "not-found",
-                "Result": "success",
-                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
-              }
-            },
-            {
-              "checkpoints": [],
-              "completion": [
-                {
-                  "exists": false
-                }
-              ],
-              "diagnostics": [],
               "id": "preserve-stopped-ghost-pair-domain-baseline-v1",
               "source_binding_count": 1,
               "sources_exact": false,
@@ -1113,27 +1094,35 @@
             },
             {
               "checkpoints": [],
-              "completion": [
+              "completion": [],
+              "diagnostics": [
                 {
-                  "exists": false
+                  "bytes": 311083,
+                  "sha256": "798ef253c99c7a34301fa8468d10f8ee36077c02c05f31aaee472775f9e936e9",
+                  "source_index": 0,
+                  "status": "ok",
+                  "tail": ""
                 },
                 {
-                  "exists": false
-                },
-                {
-                  "exists": false
+                  "bytes": 140,
+                  "sha256": "2cd690fc6a1de025607121d60e61b94209b1a2f74da5fc792d156fac8638f122",
+                  "source_index": 1,
+                  "status": "ok",
+                  "tail": ""
                 }
               ],
-              "diagnostics": [],
               "id": "penguin-ghost-opposing-fresh-v5",
               "source_binding_count": 3,
-              "sources_exact": false,
+              "sources_exact": true,
               "unit": {
-                "ActiveState": "inactive",
+                "ActiveState": "active",
+                "AllowedCPUs": "2",
+                "CPUUsageNSec": "11183803245000",
                 "ExecMainStatus": "0",
-                "LoadState": "not-found",
+                "LoadState": "loaded",
+                "MemoryCurrent": "11344719872",
                 "Result": "success",
-                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
+                "StateChangeTimestamp": "Thu 2026-08-20 21:27:59 UTC"
               }
             },
             {
@@ -1483,118 +1472,184 @@
             },
             {
               "checkpoints": [],
-              "completion": [
+              "completion": [],
+              "diagnostics": [
                 {
-                  "exists": false
+                  "bytes": 17680,
+                  "sha256": "6379fbe3d1afcd30b208741b8892e477c926ea69c01dfb638af72aecc10a327b",
+                  "source_index": 0,
+                  "status": "ok",
+                  "tail": ""
                 },
                 {
-                  "exists": false
+                  "bytes": 135,
+                  "sha256": "6013a7e2da2ed3f76429ad73239c3ba15a426a2e6eccc700898841ad909192b2",
+                  "source_index": 1,
+                  "status": "ok",
+                  "tail": ""
                 }
               ],
-              "diagnostics": [],
               "id": "remap-fix-opposed-knight-ghost-solve-v11",
               "source_binding_count": 5,
-              "sources_exact": false,
+              "sources_exact": true,
               "unit": {
-                "ActiveState": "inactive",
+                "ActiveState": "active",
+                "AllowedCPUs": "0",
+                "CPUUsageNSec": "10117364504000",
                 "ExecMainStatus": "0",
-                "LoadState": "not-found",
+                "LoadState": "loaded",
+                "MemoryCurrent": "8876081152",
                 "Result": "success",
-                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
+                "StateChangeTimestamp": "Thu 2026-08-20 21:46:29 UTC"
               }
             },
             {
               "checkpoints": [],
-              "completion": [
+              "completion": [],
+              "diagnostics": [
                 {
-                  "exists": false
-                },
-                {
-                  "exists": false
+                  "bytes": 47144,
+                  "sha256": "4d9664e97660155a239851873d7a023902cd5a7b59f2e17cdbfc6e06618fec9f",
+                  "source_index": 0,
+                  "status": "ok",
+                  "tail": ""
                 }
               ],
-              "diagnostics": [],
               "id": "remap-fix-v2-opposed-turtle-ghost-compositional-v4",
               "source_binding_count": 5,
-              "sources_exact": false,
+              "sources_exact": true,
               "unit": {
-                "ActiveState": "inactive",
+                "ActiveState": "active",
+                "AllowedCPUs": "23",
+                "CPUUsageNSec": "10228089707000",
                 "ExecMainStatus": "0",
-                "LoadState": "not-found",
+                "LoadState": "loaded",
+                "MemoryCurrent": "7711211520",
                 "Result": "success",
-                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
+                "StateChangeTimestamp": "Thu 2026-08-20 21:43:33 UTC"
               }
             },
             {
               "checkpoints": [],
-              "completion": [
+              "completion": [],
+              "diagnostics": [
                 {
-                  "exists": false
+                  "bytes": 1227,
+                  "sha256": "48b03eca672a1315d771073be47ca6b92738d566a58e0649b653332d7d9720f0",
+                  "source_index": 0,
+                  "status": "ok",
+                  "tail": ""
                 },
                 {
-                  "exists": false
+                  "bytes": 147,
+                  "sha256": "82355c45dd5b08814be771c4190bda987f0f5c864ff5efa6f1b98a137d02c360",
+                  "source_index": 1,
+                  "status": "ok",
+                  "tail": ""
                 }
               ],
-              "diagnostics": [],
               "id": "compositional-v5-opposed-ghost-sniper",
               "source_binding_count": 4,
-              "sources_exact": false,
+              "sources_exact": true,
               "unit": {
-                "ActiveState": "inactive",
+                "ActiveState": "active",
+                "AllowedCPUs": "1",
+                "CPUUsageNSec": "148697743290000",
                 "ExecMainStatus": "0",
-                "LoadState": "not-found",
+                "LoadState": "loaded",
+                "MemoryCurrent": "52283031552",
                 "Result": "success",
-                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
+                "StateChangeTimestamp": "Thu 2026-08-20 22:05:44 UTC"
               }
             },
             {
               "checkpoints": [],
-              "completion": [
+              "completion": [],
+              "diagnostics": [
                 {
-                  "exists": false
-                },
-                {
-                  "exists": false
-                },
-                {
-                  "exists": false
+                  "bytes": 24789,
+                  "sha256": "25788687fe92569cc3c32ea063f88bd083efdfb89c45638a22f8c8af89db8ae6",
+                  "source_index": 0,
+                  "status": "ok",
+                  "tail": ""
                 }
               ],
-              "diagnostics": [],
               "id": "remap-fix-v2-opposed-rook-ghost-source-order-solve-v6",
               "source_binding_count": 4,
-              "sources_exact": false,
+              "sources_exact": true,
               "unit": {
-                "ActiveState": "inactive",
+                "ActiveState": "active",
+                "AllowedCPUs": "19",
+                "CPUUsageNSec": "10968178401000",
                 "ExecMainStatus": "0",
-                "LoadState": "not-found",
+                "LoadState": "loaded",
+                "MemoryCurrent": "8489623552",
                 "Result": "success",
-                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
+                "StateChangeTimestamp": "Thu 2026-08-20 21:31:42 UTC"
               }
             },
             {
               "checkpoints": [],
-              "completion": [
+              "completion": [],
+              "diagnostics": [
                 {
-                  "exists": false
+                  "bytes": 9959,
+                  "sha256": "36bcfcfa54e7b5d201c0a590400024eead79127d0c5f2b9d7c2cf7ce431200b8",
+                  "source_index": 0,
+                  "status": "ok",
+                  "tail": ""
                 },
                 {
-                  "exists": false
+                  "bytes": 42272,
+                  "sha256": "03ffb8d5838aa3e376a37ebd431d36aa3055b50ab984dce8498a53769f60e57c",
+                  "source_index": 1,
+                  "status": "ok",
+                  "tail": ""
                 },
                 {
-                  "exists": false
+                  "bytes": 1825,
+                  "sha256": "603d70e3d2846f6940884dad883e4cf7796a19f66d5c7bd7243bdb69376c9233",
+                  "source_index": 2,
+                  "status": "ok",
+                  "tail": ""
                 }
               ],
-              "diagnostics": [],
               "id": "source-order-opposed-queen-ghost-solve-v8",
               "source_binding_count": 4,
-              "sources_exact": false,
+              "sources_exact": true,
+              "unit": {
+                "ActiveState": "active",
+                "AllowedCPUs": "14",
+                "CPUUsageNSec": "11039699189000",
+                "ExecMainStatus": "0",
+                "LoadState": "loaded",
+                "MemoryCurrent": "7366557696",
+                "Result": "success",
+                "StateChangeTimestamp": "Thu 2026-08-20 21:29:51 UTC"
+              }
+            },
+            {
+              "checkpoints": [],
+              "completion": [],
+              "id": "information-jester-angel-same-v3",
+              "sources": [],
               "unit": {
                 "ActiveState": "inactive",
                 "ExecMainStatus": "0",
                 "LoadState": "not-found",
-                "Result": "success",
-                "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
+                "Result": "success"
+              }
+            },
+            {
+              "checkpoints": [],
+              "completion": [],
+              "id": "information-jester-angel-opposed-v3",
+              "sources": [],
+              "unit": {
+                "ActiveState": "inactive",
+                "ExecMainStatus": "0",
+                "LoadState": "not-found",
+                "Result": "success"
               }
             },
             {
@@ -1743,33 +1798,33 @@
             }
           ],
           "memory": {
-            "MemAvailable": 261349773312,
+            "MemAvailable": 255584133120,
             "MemTotal": 265470873600,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 39437357056,
+              "free_bytes": 39406321664,
               "path": "/",
               "total_bytes": 42871009280
             },
             {
-              "free_bytes": 1885093965824,
+              "free_bytes": 1556223250432,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             },
             {
-              "free_bytes": 170241019904,
+              "free_bytes": 170367459328,
               "path": "/mnt/ultimatefish-penguin",
               "total_bytes": 536608768000
             }
           ],
           "probe_compacted": true,
           "probe_compaction_level": 2,
-          "probe_encoded_bytes": 8554,
+          "probe_encoded_bytes": 9175,
           "unconfigured_active_units": {
-            "count": 2,
+            "count": 1,
             "details": [
               {
                 "properties": {
@@ -1783,27 +1838,13 @@
                   "StateChangeTimestamp": "Thu 2026-08-20 21:06:35 UTC"
                 },
                 "unit": "ultimatefish-mount.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "2",
-                  "CPUUsageNSec": "22240253000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "60846080",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Thu 2026-08-20 21:16:05 UTC"
-                },
-                "unit": "ultimatefish-validate-kjester-v3-one.service"
               }
             ],
             "probe_status": 0,
             "sample": [
-              "ultimatefish-mount.service",
-              "ultimatefish-validate-kjester-v3-one.service"
+              "ultimatefish-mount.service"
             ],
-            "sha256": "dd83d2d86cf963aea1c8a122dec33558dd41709c05e51c4a5e74b49ff1005eb8"
+            "sha256": "2533bca011b7d1560c691f031ebe53040c085b866b8f28339f5d4c9613b59eab"
           }
         },
         "resource_warnings": []
@@ -1812,32 +1853,41 @@
         "cpu_allocation": {
           "active_cpu_sets": {
             "compositional-v3-same-rook-ghost-solve": "13",
-            "memory-fix-opposed-prince-ghost-solve-2b-v7": "14"
+            "memory-fix-opposed-prince-ghost-solve-2b-v7": "14",
+            "same-ghost-pair-domain-cache-v1": "0,1,2,3,4,5,6,7,8,9,10,11,12,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31"
           },
           "active_jobs": {
             "compositional-v3-same-rook-ghost-solve": 1,
-            "memory-fix-opposed-prince-ghost-solve-2b-v7": 1
+            "memory-fix-opposed-prince-ghost-solve-2b-v7": 1,
+            "same-ghost-pair-domain-cache-v1": 30
           },
-          "allocated_vcpus": 2,
+          "allocated_vcpus": 32,
           "allocation_known": true,
           "allocation_mismatches": {},
-          "idle_vcpus": 30,
-          "measured_busy_vcpus": 1.992,
-          "measured_fleet_capacity_percent": 6.2,
+          "idle_vcpus": 0,
+          "measured_busy_vcpus": 3.0,
+          "measured_fleet_capacity_percent": 9.4,
           "measured_jobs": {
             "compositional-v3-same-rook-ghost-solve": {
-              "allocated_utilization_percent": 99.3,
-              "average_busy_vcpus": 0.993,
-              "cpu_delta_nsec": 3341866601000,
-              "cpu_usage_nsec": 59086549779000,
-              "sample_seconds": 3365.902
+              "allocated_utilization_percent": 100.0,
+              "average_busy_vcpus": 1.0,
+              "cpu_delta_nsec": 451033840000,
+              "cpu_usage_nsec": 71053665672000,
+              "sample_seconds": 451.201
             },
             "memory-fix-opposed-prince-ghost-solve-2b-v7": {
-              "allocated_utilization_percent": 99.9,
-              "average_busy_vcpus": 0.999,
-              "cpu_delta_nsec": 3363805093000,
-              "cpu_usage_nsec": 73918490144000,
-              "sample_seconds": 3365.902
+              "allocated_utilization_percent": 100.0,
+              "average_busy_vcpus": 1.0,
+              "cpu_delta_nsec": 451049062000,
+              "cpu_usage_nsec": 85844705443000,
+              "sample_seconds": 451.201
+            },
+            "same-ghost-pair-domain-cache-v1": {
+              "allocated_utilization_percent": 3.3,
+              "average_busy_vcpus": 1.0,
+              "cpu_delta_nsec": 451029424000,
+              "cpu_usage_nsec": 39229868407000,
+              "sample_seconds": 451.201
             }
           },
           "measurement_complete": true,
@@ -1854,12 +1904,45 @@
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 400.41,
+        "estimated_spend_usd": 405.63,
         "instance_type": "c8gd.8xlarge",
         "launch_time": "2026-08-10T05:51:20+00:00",
         "name": "crossed-and-jester-ghost",
         "remote": {
           "jobs": [
+            {
+              "checkpoints": [],
+              "completion": [],
+              "diagnostics": [
+                {
+                  "bytes": 32,
+                  "sha256": "2c3d91a1fba8e47ba03a990029e7fd10ea5094da6403f798b9adb4aadfa50ba1",
+                  "source_index": 0,
+                  "status": "ok",
+                  "tail": ""
+                },
+                {
+                  "bytes": 142,
+                  "sha256": "a13be70638c15ae92e6bc6fd21ff9403a6b4880f88e2907497e8cdc9a5879f10",
+                  "source_index": 1,
+                  "status": "ok",
+                  "tail": ""
+                }
+              ],
+              "id": "same-ghost-pair-domain-cache-v1",
+              "source_binding_count": 4,
+              "sources_exact": true,
+              "unit": {
+                "ActiveState": "active",
+                "AllowedCPUs": "0-12 15-31",
+                "CPUUsageNSec": "39229868407000",
+                "ExecMainStatus": "0",
+                "LoadState": "loaded",
+                "MemoryCurrent": "25871454208",
+                "Result": "success",
+                "StateChangeTimestamp": "Thu 2026-08-20 22:08:35 UTC"
+              }
+            },
             {
               "checkpoints": [],
               "completion": [
@@ -2007,8 +2090,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 194449,
-                  "sha256": "1884789f23142d9fa7fae9e9509ad223530d57e30c2b7385ab7f29631ee717d8",
+                  "bytes": 226355,
+                  "sha256": "9273c58daba608c46624d70f926c586fee72a2faddd7b98d6cda863a03befdd7",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -2027,10 +2110,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "13",
-                "CPUUsageNSec": "59086549779000",
+                "CPUUsageNSec": "71053665672000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "9379897344",
+                "MemoryCurrent": "18472022016",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 04:49:14 UTC"
               }
@@ -2040,8 +2123,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 212496,
-                  "sha256": "a943ad691fdcc3823ddc56005180e825c6b7443216e191c7642a4d617840f69b",
+                  "bytes": 227300,
+                  "sha256": "b168704a17ac5251ac6902353a941516586fca97cab5d5c16165cbdf41e5187b",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -2060,10 +2143,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "14",
-                "CPUUsageNSec": "73918490144000",
+                "CPUUsageNSec": "85844705443000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "23772188672",
+                "MemoryCurrent": "13399883776",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 00:44:15 UTC"
               }
@@ -2232,26 +2315,26 @@
             }
           ],
           "memory": {
-            "MemAvailable": 62997946368,
+            "MemAvailable": 63046451200,
             "MemTotal": 66202484736,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 5484109824,
+              "free_bytes": 5519233024,
               "path": "/",
               "total_bytes": 8511270912
             },
             {
-              "free_bytes": 888716816384,
+              "free_bytes": 816853364736,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             }
           ],
           "probe_compacted": true,
           "probe_compaction_level": 2,
-          "probe_encoded_bytes": 4058,
+          "probe_encoded_bytes": 4559,
           "unconfigured_active_units": {
             "count": 0,
             "details": [],
@@ -2278,29 +2361,29 @@
           "allocation_known": true,
           "allocation_mismatches": {},
           "idle_vcpus": 29,
-          "measured_busy_vcpus": 2.999,
+          "measured_busy_vcpus": 2.997,
           "measured_fleet_capacity_percent": 9.4,
           "measured_jobs": {
             "current-same-pawn-ghost-solve-v2": {
-              "allocated_utilization_percent": 100.0,
-              "average_busy_vcpus": 1.0,
-              "cpu_delta_nsec": 3365239195000,
-              "cpu_usage_nsec": 431980030259000,
-              "sample_seconds": 3365.902
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 450711947000,
+              "cpu_usage_nsec": 443959207257000,
+              "sample_seconds": 451.201
             },
             "remap-fix-v2-opposed-copycat-ghost-source-order-solve-v6": {
               "allocated_utilization_percent": 99.9,
               "average_busy_vcpus": 0.999,
-              "cpu_delta_nsec": 3361430647000,
-              "cpu_usage_nsec": 51744930910000,
-              "sample_seconds": 3365.902
+              "cpu_delta_nsec": 450782685000,
+              "cpu_usage_nsec": 63716266698000,
+              "sample_seconds": 451.201
             },
             "singleton-fix-same-checker-ghost-gated-solve-v11": {
-              "allocated_utilization_percent": 100.0,
-              "average_busy_vcpus": 1.0,
-              "cpu_delta_nsec": 3365685440000,
-              "cpu_usage_nsec": 111029417750000,
-              "sample_seconds": 3365.902
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 450690033000,
+              "cpu_usage_nsec": 123008513176000,
+              "sample_seconds": 451.201
             }
           },
           "measurement_complete": true,
@@ -2317,7 +2400,7 @@
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 402.42,
+        "estimated_spend_usd": 407.64,
         "instance_type": "c8gd.8xlarge",
         "launch_time": "2026-08-10T04:34:29+00:00",
         "name": "giant-ghost-same",
@@ -3335,8 +3418,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 1059442,
-                  "sha256": "201eead494fe3fc6df181c92ccbf71e55d2baa84d10439152f9ea4f545c0f6e7",
+                  "bytes": 1195534,
+                  "sha256": "3c6fd4fa407f9fc652e5a2ff805b040339ed7d435aff4cf7c94b0f9e670dc0ba",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -3355,10 +3438,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "1",
-                "CPUUsageNSec": "111029417750000",
+                "CPUUsageNSec": "123008513176000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "28938702848",
+                "MemoryCurrent": "26406387712",
                 "Result": "success",
                 "StateChangeTimestamp": "Wed 2026-08-19 14:23:15 UTC"
               }
@@ -3368,8 +3451,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 1776461,
-                  "sha256": "58128e3201a6e39daa2a980195e8fed8ab4e86cd7bbdbf179d59a8cf0a4aff1f",
+                  "bytes": 1823694,
+                  "sha256": "4d85b6fe50c2850cef8c789bb8c7a1f433eb10d3ef0171cd6aa38f2ce783d975",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -3388,10 +3471,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "0",
-                "CPUUsageNSec": "431980030259000",
+                "CPUUsageNSec": "443959207257000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "14554611712",
+                "MemoryCurrent": "17485549568",
                 "Result": "success",
                 "StateChangeTimestamp": "Sat 2026-08-15 21:11:44 UTC"
               }
@@ -3401,8 +3484,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 231490,
-                  "sha256": "b87f11ac0c4f1b4f3cceddd58d1fd41e90afd944b4014443549233950d794ce5",
+                  "bytes": 276618,
+                  "sha256": "0c65e2723d8270d1c2bd555a276306ba0db684db4c81d0918925b190242ab55c",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -3414,10 +3497,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "2",
-                "CPUUsageNSec": "51744930910000",
+                "CPUUsageNSec": "63716266698000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "20747567104",
+                "MemoryCurrent": "20209926144",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 06:50:26 UTC"
               }
@@ -3554,19 +3637,19 @@
             }
           ],
           "memory": {
-            "MemAvailable": 59367612416,
+            "MemAvailable": 59366785024,
             "MemTotal": 66202484736,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 5422272512,
+              "free_bytes": 5411762176,
               "path": "/",
               "total_bytes": 8511270912
             },
             {
-              "free_bytes": 570455465984,
+              "free_bytes": 569540087808,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             }
@@ -3588,6 +3671,7 @@
         "cpu_allocation": {
           "active_cpu_sets": {
             "bomb-ghost-opposing-strong-solve-v8": "11",
+            "concrete-pawn-berserker-same-v1": "13,14,15,16,17,18,19,20",
             "crossed-jester-ghost-current-migrated-v2": "29",
             "dragon-ghost-opposing-memory-v5": "24",
             "jester-ghost-same-lower-binding-v2": "10",
@@ -3598,6 +3682,7 @@
           },
           "active_jobs": {
             "bomb-ghost-opposing-strong-solve-v8": 1,
+            "concrete-pawn-berserker-same-v1": 8,
             "crossed-jester-ghost-current-migrated-v2": 1,
             "dragon-ghost-opposing-memory-v5": 1,
             "jester-ghost-same-lower-binding-v2": 1,
@@ -3606,68 +3691,75 @@
             "source-order-opposed-ninja-ghost-solve-v7": 1,
             "source-order-same-prince-ghost-solve-v3": 1
           },
-          "allocated_vcpus": 17,
+          "allocated_vcpus": 25,
           "allocation_known": true,
           "allocation_mismatches": {},
-          "idle_vcpus": 15,
-          "measured_busy_vcpus": 16.729,
-          "measured_fleet_capacity_percent": 52.3,
+          "idle_vcpus": 7,
+          "measured_busy_vcpus": 16.506,
+          "measured_fleet_capacity_percent": 51.6,
           "measured_jobs": {
             "bomb-ghost-opposing-strong-solve-v8": {
-              "allocated_utilization_percent": 99.9,
-              "average_busy_vcpus": 0.999,
-              "cpu_delta_nsec": 3361812089000,
-              "cpu_usage_nsec": 54866986929000,
-              "sample_seconds": 3365.902
+              "allocated_utilization_percent": 99.0,
+              "average_busy_vcpus": 0.99,
+              "cpu_delta_nsec": 446677932000,
+              "cpu_usage_nsec": 66784157061000,
+              "sample_seconds": 451.201
+            },
+            "concrete-pawn-berserker-same-v1": {
+              "allocated_utilization_percent": 0.1,
+              "average_busy_vcpus": 0.012,
+              "cpu_delta_nsec": 5382593000,
+              "cpu_usage_nsec": 10452635584000,
+              "sample_seconds": 451.201
             },
             "crossed-jester-ghost-current-migrated-v2": {
-              "allocated_utilization_percent": 99.9,
-              "average_busy_vcpus": 0.999,
-              "cpu_delta_nsec": 3361835649000,
-              "cpu_usage_nsec": 105526128894000,
-              "sample_seconds": 3365.902
+              "allocated_utilization_percent": 99.8,
+              "average_busy_vcpus": 0.998,
+              "cpu_delta_nsec": 450310865000,
+              "cpu_usage_nsec": 117490613534000,
+              "sample_seconds": 451.201
             },
             "dragon-ghost-opposing-memory-v5": {
-              "allocated_utilization_percent": 74.6,
-              "average_busy_vcpus": 0.746,
-              "cpu_delta_nsec": 2511405527000,
-              "cpu_usage_nsec": 44454762156000,
-              "sample_seconds": 3365.902
+              "allocated_utilization_percent": 53.6,
+              "average_busy_vcpus": 0.536,
+              "cpu_delta_nsec": 241894023000,
+              "cpu_usage_nsec": 51467527966000,
+              "sample_seconds": 451.201
             },
             "jester-ghost-same-lower-binding-v2": {
-              "allocated_utilization_percent": 99.9,
-              "average_busy_vcpus": 0.999,
-              "cpu_delta_nsec": 3361130634000,
-              "cpu_usage_nsec": 60807985410000,
-              "sample_seconds": 3365.902
+              "allocated_utilization_percent": 99.1,
+              "average_busy_vcpus": 0.991,
+              "cpu_delta_nsec": 447342232000,
+              "cpu_usage_nsec": 72689872111000,
+              "sample_seconds": 451.201
             },
             "memory-fix-same-sniper-ghost-solve-v2": {
-              "allocated_utilization_percent": 99.9,
-              "average_busy_vcpus": 0.999,
-              "cpu_delta_nsec": 3362489597000,
-              "cpu_usage_nsec": 55840515217000,
-              "sample_seconds": 3365.902
+              "allocated_utilization_percent": 99.8,
+              "average_busy_vcpus": 0.998,
+              "cpu_delta_nsec": 450350976000,
+              "cpu_usage_nsec": 67791980516000,
+              "sample_seconds": 451.201
             },
             "remap-fix-opposed-berserker-ghost-transitions-v5": {
               "allocated_utilization_percent": 100.0,
-              "average_busy_vcpus": 10.003,
-              "cpu_delta_nsec": 33670109913000,
-              "cpu_usage_nsec": 1030339669858000,
-              "sample_seconds": 3365.902
+              "average_busy_vcpus": 9.996,
+              "cpu_delta_nsec": 4510245784000,
+              "cpu_usage_nsec": 1150157478563000,
+              "sample_seconds": 451.201
             },
             "source-order-opposed-ninja-ghost-solve-v7": {
-              "allocated_utilization_percent": 100.0,
-              "average_busy_vcpus": 1.0,
-              "cpu_delta_nsec": 3365343210000,
-              "cpu_usage_nsec": 33759799636000,
-              "sample_seconds": 3365.902
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 450938405000,
+              "cpu_usage_nsec": 45711844116000,
+              "sample_seconds": 451.201
             },
             "source-order-same-prince-ghost-solve-v3": {
-              "allocated_utilization_percent": 98.4,
-              "average_busy_vcpus": 0.984,
-              "cpu_delta_nsec": 3313470695000,
-              "cpu_usage_nsec": 50375135657000,
-              "sample_seconds": 3365.902
+              "allocated_utilization_percent": 98.6,
+              "average_busy_vcpus": 0.986,
+              "cpu_delta_nsec": 444845155000,
+              "cpu_usage_nsec": 62187838736000,
+              "sample_seconds": 451.201
             }
           },
           "measurement_complete": true,
@@ -3684,7 +3776,7 @@
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 588.29,
+        "estimated_spend_usd": 596.12,
         "instance_type": "r8gd.8xlarge",
         "launch_time": "2026-08-10T11:04:50+00:00",
         "name": "concrete-primary",
@@ -3695,11 +3787,44 @@
               "completion": [],
               "diagnostics": [
                 {
+                  "bytes": 51939,
+                  "sha256": "4d8daecd2fce80ce47800b2a0edde6de861db460d1a0137cee10805bc622d376",
+                  "source_index": 0,
+                  "status": "ok",
+                  "tail": ""
+                },
+                {
+                  "bytes": 2048,
+                  "sha256": "36bd70b0a8d19fd7441a9f206da3d4b7fd112fc5c77f8798efb176799aef0986",
+                  "source_index": 1,
+                  "status": "ok",
+                  "tail": ""
+                }
+              ],
+              "id": "concrete-pawn-berserker-same-v1",
+              "source_binding_count": 3,
+              "sources_exact": true,
+              "unit": {
+                "ActiveState": "active",
+                "AllowedCPUs": "13-20",
+                "CPUUsageNSec": "10452635584000",
+                "ExecMainStatus": "0",
+                "LoadState": "loaded",
+                "MemoryCurrent": "85499326464",
+                "Result": "success",
+                "StateChangeTimestamp": "Thu 2026-08-20 22:53:27 UTC"
+              }
+            },
+            {
+              "checkpoints": [],
+              "completion": [],
+              "diagnostics": [
+                {
                   "bytes": 1118,
                   "sha256": "fdfb557dfcee16f3c846d71117a8dec5cd27048c18637c899a976ced1636f8f9",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "er_Ghost_high_memory_migrated_v2.\n{\n    \"AcceptRanges\": \"bytes\",\n    \"LastModified\": \"2026-08-19T15:34:45+00:00\",\n    \"ContentLength\": 34207599166,\n    \"ETag\": \"\\\"e73de9bd1412e1d8bf8cceaac869c8d5-4078\\\"\",\n    \"ChecksumCRC64NVME\": \"Te6nlytK2jc=\",\n    \"ChecksumType\": \"FULL_OBJECT\",\n    \"VersionId\": \"GCYyV19fVUJpL8RyVODsmXydHYdPbOOc\",\n    \"ContentType\": \"binary/octet-stream\",\n    \"ServerSideEncryption\": \"AES256\",\n    \"Metadata\": {\n        \"checkpoint-sha256\": \"84aa2c2b4d8416b8b8d109a8e270a9dc15c34b627971be7e74b9efc7789663a3\"\n    }\n}\n{\n    \"AcceptRanges\": \"bytes\",\n    \"LastModified\": \"2026-08-19T15:35:43+00:00\",\n    \"ContentLength\": 671664,\n    \"ETag\": \"\\\"48bec33f274f889d3f9986d122e90b13\\\"\",\n    \"ChecksumCRC64NVME\": \"yhy+xIrlpBs=\",\n    \"ChecksumType\": \"FULL_OBJECT\",\n    \"VersionId\": \"Xn2BNCXhPvTKSgyFycR2Urnv6w2Kk5ji\",\n    \"ContentType\": \"binary/octet-stream\",\n    \"ServerSideEncryption\": \"AES256\",\n    \"Metadata\": {\n        \"binary-sha256\": \"55387783bc618bd5db027685249daab5c8f4a9f591d5171eee6bd575d394301b\"\n    }\n}\n"
+                  "tail": ""
                 }
               ],
               "id": "crossed-jester-ghost-current-migrated-v2",
@@ -3708,10 +3833,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "29",
-                "CPUUsageNSec": "105526128894000",
+                "CPUUsageNSec": "117490613534000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "74410651648",
+                "MemoryCurrent": "69999820800",
                 "Result": "success",
                 "StateChangeTimestamp": "Wed 2026-08-19 15:38:46 UTC"
               }
@@ -3826,18 +3951,18 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 103209,
-                  "sha256": "699060c8a77ebf5a5fa6f07cb1feb289f1ac256ba952f579417819b736bbf4fd",
+                  "bytes": 104507,
+                  "sha256": "71463bbd23903267f3b1b71cd70d59156eaa7b27dfd51b8c5749619de5a2c44b",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "st_extra_bellman iteration 8 geometry 340000/492960 bdd_nodes 408243650 peak_rss_bytes 13596336128 elapsed 57933.6s\nreciprocal_ghost_extra_bellman iteration 8 geometry 345000/492960 bdd_nodes 421169104 peak_rss_bytes 13596336128 elapsed 58168.1s\nreciprocal_ghost_extra_bellman iteration 8 geometry 350000/492960 bdd_nodes 429498271 peak_rss_bytes 13596336128 elapsed 58277.3s\nreciprocal_ghost_extra_bellman iteration 8 geometry 355000/492960 bdd_nodes 436153122 peak_rss_bytes 13596336128 elapsed 58356.4s\nreciprocal_ghost_extra_bellman iteration 8 geometry 360000/492960 bdd_nodes 446235855 peak_rss_bytes 13596336128 elapsed 58489.6s\nreciprocal_ghost_extra_bellman iteration 8 geometry 365000/492960 bdd_nodes 456559872 peak_rss_bytes 13687336960 elapsed 58632.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 370000/492960 bdd_nodes 470655803 peak_rss_bytes 13814980608 elapsed 58954.4s\nreciprocal_ghost_extra_bellman iteration 8 geometry 375000/492960 bdd_nodes 481899691 peak_rss_bytes 13917007872 elapsed 59199s\n"
+                  "tail": ""
                 },
                 {
                   "bytes": 156,
                   "sha256": "f6e2df245b49db0ca2054cee2bbf13284a64a865429bc37b90f9e558680a11c1",
                   "source_index": 1,
                   "status": "ok",
-                  "tail": "Started ultimatefish-info-kbombkghost-strong-solve-v8.service - /mnt/ultimatefish/bomb-solve-v8-source/ultimatefish-restore-solve-kbombkghost-strong-v8.sh.\n"
+                  "tail": ""
                 }
               ],
               "id": "bomb-ghost-opposing-strong-solve-v8",
@@ -3846,10 +3971,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "11",
-                "CPUUsageNSec": "54866986929000",
+                "CPUUsageNSec": "66784157061000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "21489684480",
+                "MemoryCurrent": "14711537664",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 04:38:55 UTC"
               }
@@ -3911,14 +4036,14 @@
                   "sha256": "5a573dc6c1f2b03aa13a6ae0a50eb964972d12364cbecefefae2c331c6bbb564",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "jester_ghost_same_lower_binding_v2 binary_sha256 70b406b369ab54f37c892b9caec32dfcb815a842bada89277bfee145cbb7d68e graph_marker_sha256 18a283f663cae8360a34f9935294e0c80d5643ab5e6298dca0244ee9bd6d0bed lower_jester_model_sha256 ed1b9722003903967eef917251d5439aba9635e31f9be2cc96366044fc7b4c05 upper_nodes 1500000000 lower_nodes 500000000 prior_binding_failure_preserved work/logs/solve.log\njester_ghost_solve_input_preflight canonical 9612720 worlds 37957920 transition_bytes 28011961822 peak_disk_bytes 189558941918 peak_resident_bytes 43084447728 admitted 1 source_codec_residual 0 lower_jester_residual 0 lower_ghost_residual 0 transition_residual 0\n"
+                  "tail": ""
                 },
                 {
                   "bytes": 136,
                   "sha256": "894c00a56c0ec93393ec881dfd75bb882a52876d8e5a2a797c417da02ec5c6eb",
                   "source_index": 1,
                   "status": "ok",
-                  "tail": "Started ultimatefish-info-kjesterghostk-lower-binding-v2.service - Ultimate Fish same Jester/Ghost corrected lower binding exact solve.\n"
+                  "tail": ""
                 }
               ],
               "id": "jester-ghost-same-lower-binding-v2",
@@ -3927,10 +4052,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "10",
-                "CPUUsageNSec": "60807985410000",
+                "CPUUsageNSec": "72689872111000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "34909892608",
+                "MemoryCurrent": "33846829056",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 04:16:00 UTC"
               }
@@ -3940,18 +4065,18 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 105106,
-                  "sha256": "a4abe96c5c1253f333f47009f9d94029c4ebabc1956f6f6f88fcabe9868efa82",
+                  "bytes": 124007,
+                  "sha256": "539fe2e2a1e9e5941c0d85ded131175ffb1697fbd633929049d9c9cf3bb855aa",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "_extra_bellman iteration 7 geometry 445000/492960 bdd_nodes 485125136 peak_rss_bytes 23717629952 elapsed 51038.7s\nreciprocal_ghost_extra_bellman iteration 7 geometry 450000/492960 bdd_nodes 494378225 peak_rss_bytes 23717629952 elapsed 51139.4s\nreciprocal_ghost_extra_bellman iteration 7 geometry 455000/492960 bdd_nodes 507804463 peak_rss_bytes 23717629952 elapsed 51299.9s\nreciprocal_ghost_extra_bellman iteration 7 geometry 460000/492960 bdd_nodes 514017656 peak_rss_bytes 23717629952 elapsed 51373.7s\nreciprocal_ghost_extra_bellman iteration 7 geometry 465000/492960 bdd_nodes 526081517 peak_rss_bytes 23717629952 elapsed 51518.2s\nreciprocal_ghost_extra_bellman iteration 7 geometry 470000/492960 bdd_nodes 534945847 peak_rss_bytes 23717629952 elapsed 51622.8s\nreciprocal_ghost_extra_bellman iteration 7 geometry 475000/492960 bdd_nodes 543207458 peak_rss_bytes 23717629952 elapsed 51720.9s\nreciprocal_ghost_extra_bellman iteration 7 geometry 480000/492960 bdd_nodes 555537576 peak_rss_bytes 23717629952 elapsed 51860.1s\n"
+                  "tail": ""
                 },
                 {
                   "bytes": 139,
                   "sha256": "2c3fa30c960acda7cf520741b37030212089e40d768f5b334a643ca168907b5d",
                   "source_index": 1,
                   "status": "ok",
-                  "tail": "Started ultimatefish-info-kghostkdragon-memory-v5.service - /bin/bash /mnt/ultimatefish-jg/ultimatefish-resume-kghostkdragon-memory-v5.sh.\n"
+                  "tail": ""
                 }
               ],
               "id": "dragon-ghost-opposing-memory-v5",
@@ -3960,10 +4085,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "24",
-                "CPUUsageNSec": "44454762156000",
+                "CPUUsageNSec": "51467527966000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "29085618176",
+                "MemoryCurrent": "21490761728",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 02:39:32 UTC"
               }
@@ -4364,7 +4489,7 @@
                   "sha256": "55980492d0c4e3fbd5be891991e6491922244981acb739112d5529d831c2522f",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "Started ultimatefish-info-remap-fix-v1-kberserkerkghost-transitions-v5.service - UltimateFish corrected opposed Berserker Ghost fresh remap-fix v5.\n"
+                  "tail": ""
                 }
               ],
               "id": "remap-fix-opposed-berserker-ghost-transitions-v5",
@@ -4373,10 +4498,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "0-9",
-                "CPUUsageNSec": "1030339669858000",
+                "CPUUsageNSec": "1150157478563000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "40234147840",
+                "MemoryCurrent": "9733148672",
                 "Result": "success",
                 "StateChangeTimestamp": "Wed 2026-08-19 16:33:47 UTC"
               }
@@ -4386,18 +4511,18 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 445185,
-                  "sha256": "244eb3067105ae25a48e52da1ecad85b7e973874d8b30eafd62178a48442d852",
+                  "bytes": 536109,
+                  "sha256": "a453114efd94b20f3d7d46f5563d6c60e822a1e595486b282c9999344a6fb21d",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "_bellman iteration 5 geometry 1020000/3943680 bdd_nodes 33316478 peak_rss_bytes 13160882176 elapsed 54954s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1025000/3943680 bdd_nodes 33455045 peak_rss_bytes 13160882176 elapsed 54983.7s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1030000/3943680 bdd_nodes 33558819 peak_rss_bytes 13160882176 elapsed 55014.9s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1035000/3943680 bdd_nodes 33610938 peak_rss_bytes 13160882176 elapsed 55047.3s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1040000/3943680 bdd_nodes 33653646 peak_rss_bytes 13160882176 elapsed 55083.3s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1045000/3943680 bdd_nodes 33742438 peak_rss_bytes 13160882176 elapsed 55118.1s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1050000/3943680 bdd_nodes 33875045 peak_rss_bytes 13160882176 elapsed 55152.7s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1055000/3943680 bdd_nodes 34039925 peak_rss_bytes 13160882176 elapsed 55186.2s\n"
+                  "tail": ""
                 },
                 {
                   "bytes": 138,
                   "sha256": "8c781054dd32ad4c3964734479c29132395cc1169bb672e243d9873b636e9b4e",
                   "source_index": 1,
                   "status": "ok",
-                  "tail": "Started ultimatefish-info-kghostsniperk-compositional-v3.service - UltimateFish_same_Sniper_Ghost_compositional_merge_and_exact_solve_v3.\n"
+                  "tail": ""
                 }
               ],
               "id": "memory-fix-same-sniper-ghost-solve-v2",
@@ -4406,10 +4531,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "21",
-                "CPUUsageNSec": "55840515217000",
+                "CPUUsageNSec": "67791980516000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "22967803904",
+                "MemoryCurrent": "10244055040",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 05:40:37 UTC"
               }
@@ -4419,11 +4544,11 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 319340,
-                  "sha256": "29643f268083cbaf1217290140d9ac10f9e9fe5026f79fe166615ad2a71e2f6e",
+                  "bytes": 372614,
+                  "sha256": "5f9f9c522a43eea266f8f2617f2e5eb59cab705f2b9510eb4ba4e5eccae70721",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "ocal_ghost_extra_bellman iteration 13 geometry 250000/985920 bdd_nodes 30481098 peak_rss_bytes 7594401792 elapsed 50807.2s\nreciprocal_ghost_extra_bellman iteration 13 geometry 255000/985920 bdd_nodes 31126287 peak_rss_bytes 7594401792 elapsed 50840.9s\nreciprocal_ghost_extra_bellman iteration 13 geometry 260000/985920 bdd_nodes 31586070 peak_rss_bytes 7594401792 elapsed 50886.7s\nreciprocal_ghost_extra_bellman iteration 13 geometry 265000/985920 bdd_nodes 31832121 peak_rss_bytes 7594401792 elapsed 50932.1s\nreciprocal_ghost_extra_bellman iteration 13 geometry 270000/985920 bdd_nodes 31936567 peak_rss_bytes 7594401792 elapsed 50978.1s\nreciprocal_ghost_extra_bellman iteration 13 geometry 275000/985920 bdd_nodes 32086354 peak_rss_bytes 7594401792 elapsed 51019.2s\nreciprocal_ghost_extra_bellman iteration 13 geometry 280000/985920 bdd_nodes 32834176 peak_rss_bytes 7594401792 elapsed 51053.5s\nreciprocal_ghost_extra_bellman iteration 13 geometry 285000/985920 bdd_nodes 33429099 peak_rss_bytes 7594401792 elapsed 51100s\n"
+                  "tail": ""
                 }
               ],
               "id": "source-order-same-prince-ghost-solve-v3",
@@ -4432,10 +4557,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "22",
-                "CPUUsageNSec": "50375135657000",
+                "CPUUsageNSec": "62187838736000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "18467778560",
+                "MemoryCurrent": "7777927168",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 07:00:02 UTC"
               }
@@ -4445,25 +4570,25 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 79967,
-                  "sha256": "b2dd61851e1e8373761c8fc9ace13cc45d4ac1ce3c441f7347b4a8ece25e33e5",
+                  "bytes": 101632,
+                  "sha256": "412b8795645ed959f2a13b78b4f041eaa4e30949eff48d5b8fc35f2b0555dcab",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "_extra_bellman iteration 9 geometry 435000/492960 bdd_nodes 522639236 peak_rss_bytes 11080343552 elapsed 33150.6s\nreciprocal_ghost_extra_bellman iteration 9 geometry 440000/492960 bdd_nodes 535179001 peak_rss_bytes 11080343552 elapsed 33262.8s\nreciprocal_ghost_extra_bellman iteration 9 geometry 445000/492960 bdd_nodes 542771990 peak_rss_bytes 11080343552 elapsed 33341.5s\nreciprocal_ghost_extra_bellman iteration 9 geometry 450000/492960 bdd_nodes 550924988 peak_rss_bytes 11080343552 elapsed 33420.1s\nreciprocal_ghost_extra_bellman iteration 9 geometry 455000/492960 bdd_nodes 562603733 peak_rss_bytes 11080343552 elapsed 33513.9s\nreciprocal_ghost_extra_bellman iteration 9 geometry 460000/492960 bdd_nodes 568640491 peak_rss_bytes 11080343552 elapsed 33588.5s\nreciprocal_ghost_extra_bellman iteration 9 geometry 465000/492960 bdd_nodes 579725523 peak_rss_bytes 11080343552 elapsed 33676.6s\nreciprocal_ghost_extra_bellman iteration 9 geometry 470000/492960 bdd_nodes 588195020 peak_rss_bytes 11080343552 elapsed 33760.3s\n"
+                  "tail": ""
                 },
                 {
                   "bytes": 55890,
                   "sha256": "698b9146fcda701dd4488eeb4ed290fc39273f125ed1da16fc3dee0e7706b734",
                   "source_index": 1,
                   "status": "ok",
-                  "tail": "odes 445051444 peak_rss_bytes 9502236672 elapsed 13548.9s\nreciprocal_ghost_extra_bellman iteration 4 geometry 460000/492960 bdd_nodes 449687240 peak_rss_bytes 9546137600 elapsed 13606.9s\nreciprocal_ghost_extra_bellman iteration 4 geometry 465000/492960 bdd_nodes 459345173 peak_rss_bytes 9634680832 elapsed 13678.5s\nreciprocal_ghost_extra_bellman iteration 4 geometry 470000/492960 bdd_nodes 466264467 peak_rss_bytes 9698746368 elapsed 13740.1s\nreciprocal_ghost_extra_bellman iteration 4 geometry 475000/492960 bdd_nodes 473847804 peak_rss_bytes 9769078784 elapsed 13795.4s\nreciprocal_ghost_extra_bellman iteration 4 geometry 480000/492960 bdd_nodes 484048400 peak_rss_bytes 9862238208 elapsed 13863.3s\nreciprocal_ghost_extra_bellman iteration 4 geometry 485000/492960 bdd_nodes 488535883 peak_rss_bytes 9904381952 elapsed 13917.6s\nreciprocal_ghost_extra_bellman iteration 4 geometry 490000/492960 bdd_nodes 498261653 peak_rss_bytes 9994072064 elapsed 13981.7s\nDragon/Ghost error: external ROBDD exact node budget exhausted\n"
+                  "tail": ""
                 },
                 {
                   "bytes": 395,
                   "sha256": "e937b90ce6def6eba9d2088a1c4dc8604d5155762930105ca216955d86429765",
                   "source_index": 2,
                   "status": "ok",
-                  "tail": "Started ultimatefish-info-kninjakghost-source-order-v7.service - /bin/bash /mnt/ultimatefish/source-order-v7-ninja-7cb5a18a/ultimatefish-resume-kninjakghost-source-order-v7.sh.\nkninjakghost.bdd-b.nodes: OK\nkninjakghost.bdd-b.unique: OK\nkninjakghost.domains: OK\nkninjakghost.owner-next: OK\nkninjakghost.observer-next: OK\nkninjakghost.visible-owner-next: OK\nkninjakghost.visible-observer-next: OK\n"
+                  "tail": ""
                 }
               ],
               "id": "source-order-opposed-ninja-ghost-solve-v7",
@@ -4472,10 +4597,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "12",
-                "CPUUsageNSec": "33759799636000",
+                "CPUUsageNSec": "45711844116000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "17932648448",
+                "MemoryCurrent": "9086595072",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 11:52:44 UTC"
               }
@@ -4494,24 +4619,24 @@
             }
           ],
           "memory": {
-            "MemAvailable": 182004170752,
+            "MemAvailable": 178060861440,
             "MemTotal": 265470873600,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 5308915712,
+              "free_bytes": 5310042112,
               "path": "/",
               "total_bytes": 8511270912
             },
             {
-              "free_bytes": 462062850048,
+              "free_bytes": 462179237888,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             },
             {
-              "free_bytes": 924949426176,
+              "free_bytes": 930257096704,
               "path": "/mnt/ultimatefish-overflow",
               "total_bytes": 1098974756864
             },
@@ -4521,14 +4646,14 @@
               "total_bytes": 536608768000
             },
             {
-              "free_bytes": 583706304512,
+              "free_bytes": 402422546432,
               "path": "/mnt/ultimatefish-jg",
               "total_bytes": 643930521600
             }
           ],
           "probe_compacted": true,
           "probe_compaction_level": 1,
-          "probe_encoded_bytes": 19915,
+          "probe_encoded_bytes": 11301,
           "unconfigured_active_units": {
             "count": 0,
             "details": [],
@@ -7326,18 +7451,18 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 103209,
-            "sha256": "699060c8a77ebf5a5fa6f07cb1feb289f1ac256ba952f579417819b736bbf4fd",
+            "bytes": 104507,
+            "sha256": "71463bbd23903267f3b1b71cd70d59156eaa7b27dfd51b8c5749619de5a2c44b",
             "source_index": 0,
             "status": "ok",
-            "tail": "st_extra_bellman iteration 8 geometry 340000/492960 bdd_nodes 408243650 peak_rss_bytes 13596336128 elapsed 57933.6s\nreciprocal_ghost_extra_bellman iteration 8 geometry 345000/492960 bdd_nodes 421169104 peak_rss_bytes 13596336128 elapsed 58168.1s\nreciprocal_ghost_extra_bellman iteration 8 geometry 350000/492960 bdd_nodes 429498271 peak_rss_bytes 13596336128 elapsed 58277.3s\nreciprocal_ghost_extra_bellman iteration 8 geometry 355000/492960 bdd_nodes 436153122 peak_rss_bytes 13596336128 elapsed 58356.4s\nreciprocal_ghost_extra_bellman iteration 8 geometry 360000/492960 bdd_nodes 446235855 peak_rss_bytes 13596336128 elapsed 58489.6s\nreciprocal_ghost_extra_bellman iteration 8 geometry 365000/492960 bdd_nodes 456559872 peak_rss_bytes 13687336960 elapsed 58632.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 370000/492960 bdd_nodes 470655803 peak_rss_bytes 13814980608 elapsed 58954.4s\nreciprocal_ghost_extra_bellman iteration 8 geometry 375000/492960 bdd_nodes 481899691 peak_rss_bytes 13917007872 elapsed 59199s\n"
+            "tail": ""
           },
           {
             "bytes": 156,
             "sha256": "f6e2df245b49db0ca2054cee2bbf13284a64a865429bc37b90f9e558680a11c1",
             "source_index": 1,
             "status": "ok",
-            "tail": "Started ultimatefish-info-kbombkghost-strong-solve-v8.service - /mnt/ultimatefish/bomb-solve-v8-source/ultimatefish-restore-solve-kbombkghost-strong-v8.sh.\n"
+            "tail": ""
           }
         ],
         "ledger_certifies": true,
@@ -7351,10 +7476,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "11",
-          "CPUUsageNSec": "54866986929000",
+          "CPUUsageNSec": "66784157061000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "21489684480",
+          "MemoryCurrent": "14711537664",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 04:38:55 UTC"
         }
@@ -7400,11 +7525,7 @@
       "build-ghost-pair-domain-cache-v1": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [
-          {
-            "exists": false
-          }
-        ],
+        "completion": [],
         "dependencies": [],
         "diagnostics": [],
         "ledger_certifies": false,
@@ -7412,13 +7533,8 @@
         "ledger_results": {},
         "result_certificate_declared": true,
         "source_exact": false,
-        "status": "SOURCE_MISMATCH",
-        "unit": {
-          "ActiveState": "inactive",
-          "ExecMainStatus": "0",
-          "LoadState": "not-found",
-          "Result": "success"
-        }
+        "status": "SUPERSEDED",
+        "unit": {}
       },
       "checker-ghost-opposing-compositional-v3": {
         "certificates": [],
@@ -7443,11 +7559,11 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 779135,
-            "sha256": "68ea65be400f7835e3913bb615c0534ae44c754692a6aa92b21db57aad0a0d09",
+            "bytes": 897467,
+            "sha256": "ed9f5d013307f1b420b48c981aa184b6b25bbf8f4a4085d998d529dd3e54799f",
             "source_index": 0,
             "status": "ok",
-            "tail": "teration 8 geometry 1820000/3943680 bdd_nodes 138656903 peak_rss_bytes 17411567616 elapsed 65570.2s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1825000/3943680 bdd_nodes 138757596 peak_rss_bytes 17411567616 elapsed 65574.4s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1830000/3943680 bdd_nodes 138795352 peak_rss_bytes 17411567616 elapsed 65579.9s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1835000/3943680 bdd_nodes 138853931 peak_rss_bytes 17411567616 elapsed 65586.8s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1840000/3943680 bdd_nodes 138930932 peak_rss_bytes 17411567616 elapsed 65593.7s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1845000/3943680 bdd_nodes 139023743 peak_rss_bytes 17411567616 elapsed 65599.7s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1850000/3943680 bdd_nodes 139128301 peak_rss_bytes 17411567616 elapsed 65605.7s\nreciprocal_ghost_extra_bellman iteration 8 geometry 1855000/3943680 bdd_nodes 139240018 peak_rss_bytes 17411567616 elapsed 65611.7s\n"
+            "tail": "teration 9 geometry 2370000/3943680 bdd_nodes 146022943 peak_rss_bytes 17411567616 elapsed 77454.1s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2375000/3943680 bdd_nodes 146118107 peak_rss_bytes 17411567616 elapsed 77469.8s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2380000/3943680 bdd_nodes 146386066 peak_rss_bytes 17411567616 elapsed 77488.7s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2385000/3943680 bdd_nodes 146605681 peak_rss_bytes 17411567616 elapsed 77506.2s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2390000/3943680 bdd_nodes 146757432 peak_rss_bytes 17411567616 elapsed 77527.3s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2395000/3943680 bdd_nodes 146870231 peak_rss_bytes 17411567616 elapsed 77549.7s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2400000/3943680 bdd_nodes 146945313 peak_rss_bytes 17411567616 elapsed 77572.8s\nreciprocal_ghost_extra_bellman iteration 9 geometry 2405000/3943680 bdd_nodes 146993010 peak_rss_bytes 17411567616 elapsed 77594.7s\n"
           },
           {
             "bytes": 152,
@@ -7468,10 +7584,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "3",
-          "CPUUsageNSec": "66146539239000",
+          "CPUUsageNSec": "78126454442000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "33684008960",
+          "MemoryCurrent": "28174561280",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 02:52:43 UTC"
         }
@@ -7531,8 +7647,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 194449,
-            "sha256": "1884789f23142d9fa7fae9e9509ad223530d57e30c2b7385ab7f29631ee717d8",
+            "bytes": 226355,
+            "sha256": "9273c58daba608c46624d70f926c586fee72a2faddd7b98d6cda863a03befdd7",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -7556,10 +7672,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "13",
-          "CPUUsageNSec": "59086549779000",
+          "CPUUsageNSec": "71053665672000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "9379897344",
+          "MemoryCurrent": "18472022016",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 04:49:14 UTC"
         }
@@ -7567,30 +7683,81 @@
       "compositional-v5-opposed-ghost-sniper": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [
+        "completion": [],
+        "dependencies": [],
+        "diagnostics": [
           {
-            "exists": false
+            "bytes": 1227,
+            "sha256": "48b03eca672a1315d771073be47ca6b92738d566a58e0649b653332d7d9720f0",
+            "source_index": 0,
+            "status": "ok",
+            "tail": ""
           },
           {
-            "exists": false
+            "bytes": 147,
+            "sha256": "82355c45dd5b08814be771c4190bda987f0f5c864ff5efa6f1b98a137d02c360",
+            "source_index": 1,
+            "status": "ok",
+            "tail": ""
           }
         ],
-        "dependencies": [],
-        "diagnostics": [],
         "ledger_certifies": true,
         "ledger_files": [
           "kghostksniper.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": false,
-        "source_exact": false,
-        "status": "FAILED",
+        "source_exact": true,
+        "status": "RUNNING",
         "unit": {
-          "ActiveState": "inactive",
+          "ActiveState": "active",
+          "AllowedCPUs": "1",
+          "CPUUsageNSec": "148697743290000",
           "ExecMainStatus": "0",
-          "LoadState": "not-found",
+          "LoadState": "loaded",
+          "MemoryCurrent": "52283031552",
           "Result": "success",
-          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
+          "StateChangeTimestamp": "Thu 2026-08-20 22:05:44 UTC"
+        }
+      },
+      "concrete-berserker-penguin-opposed-v2": {
+        "certificates": [],
+        "checkpoints": [],
+        "completion": [],
+        "dependencies": [],
+        "diagnostics": [
+          {
+            "bytes": 168138,
+            "sha256": "7041cf3d79246b4048e26f352ae019a2ee28bc171b70d2c3e957fcc070423285",
+            "source_index": 0,
+            "status": "ok",
+            "tail": ""
+          },
+          {
+            "bytes": 2048,
+            "sha256": "36bd70b0a8d19fd7441a9f206da3d4b7fd112fc5c77f8798efb176799aef0986",
+            "source_index": 1,
+            "status": "ok",
+            "tail": ""
+          }
+        ],
+        "ledger_certifies": true,
+        "ledger_files": [
+          "kberserkerkpenguin.uftb"
+        ],
+        "ledger_results": {},
+        "result_certificate_declared": false,
+        "source_exact": true,
+        "status": "RUNNING",
+        "unit": {
+          "ActiveState": "active",
+          "AllowedCPUs": "10-13 15-18",
+          "CPUUsageNSec": "15233063361000",
+          "ExecMainStatus": "0",
+          "LoadState": "loaded",
+          "MemoryCurrent": "159319359488",
+          "Result": "success",
+          "StateChangeTimestamp": "Fri 2026-08-21 00:00:32 UTC"
         }
       },
       "concrete-ghost-kchecker-certified": {
@@ -7745,6 +7912,46 @@
           "ExecMainStatus": "0",
           "LoadState": "not-found",
           "Result": "success"
+        }
+      },
+      "concrete-pawn-berserker-same-v1": {
+        "certificates": [],
+        "checkpoints": [],
+        "completion": [],
+        "dependencies": [],
+        "diagnostics": [
+          {
+            "bytes": 51939,
+            "sha256": "4d8daecd2fce80ce47800b2a0edde6de861db460d1a0137cee10805bc622d376",
+            "source_index": 0,
+            "status": "ok",
+            "tail": ""
+          },
+          {
+            "bytes": 2048,
+            "sha256": "36bd70b0a8d19fd7441a9f206da3d4b7fd112fc5c77f8798efb176799aef0986",
+            "source_index": 1,
+            "status": "ok",
+            "tail": ""
+          }
+        ],
+        "ledger_certifies": true,
+        "ledger_files": [
+          "kpawnberserkerk.uftb"
+        ],
+        "ledger_results": {},
+        "result_certificate_declared": true,
+        "source_exact": true,
+        "status": "RUNNING",
+        "unit": {
+          "ActiveState": "active",
+          "AllowedCPUs": "13-20",
+          "CPUUsageNSec": "10452635584000",
+          "ExecMainStatus": "0",
+          "LoadState": "loaded",
+          "MemoryCurrent": "85499326464",
+          "Result": "success",
+          "StateChangeTimestamp": "Thu 2026-08-20 22:53:27 UTC"
         }
       },
       "concrete-wave0-001": {
@@ -10814,7 +11021,7 @@
             "sha256": "fdfb557dfcee16f3c846d71117a8dec5cd27048c18637c899a976ced1636f8f9",
             "source_index": 0,
             "status": "ok",
-            "tail": "er_Ghost_high_memory_migrated_v2.\n{\n    \"AcceptRanges\": \"bytes\",\n    \"LastModified\": \"2026-08-19T15:34:45+00:00\",\n    \"ContentLength\": 34207599166,\n    \"ETag\": \"\\\"e73de9bd1412e1d8bf8cceaac869c8d5-4078\\\"\",\n    \"ChecksumCRC64NVME\": \"Te6nlytK2jc=\",\n    \"ChecksumType\": \"FULL_OBJECT\",\n    \"VersionId\": \"GCYyV19fVUJpL8RyVODsmXydHYdPbOOc\",\n    \"ContentType\": \"binary/octet-stream\",\n    \"ServerSideEncryption\": \"AES256\",\n    \"Metadata\": {\n        \"checkpoint-sha256\": \"84aa2c2b4d8416b8b8d109a8e270a9dc15c34b627971be7e74b9efc7789663a3\"\n    }\n}\n{\n    \"AcceptRanges\": \"bytes\",\n    \"LastModified\": \"2026-08-19T15:35:43+00:00\",\n    \"ContentLength\": 671664,\n    \"ETag\": \"\\\"48bec33f274f889d3f9986d122e90b13\\\"\",\n    \"ChecksumCRC64NVME\": \"yhy+xIrlpBs=\",\n    \"ChecksumType\": \"FULL_OBJECT\",\n    \"VersionId\": \"Xn2BNCXhPvTKSgyFycR2Urnv6w2Kk5ji\",\n    \"ContentType\": \"binary/octet-stream\",\n    \"ServerSideEncryption\": \"AES256\",\n    \"Metadata\": {\n        \"binary-sha256\": \"55387783bc618bd5db027685249daab5c8f4a9f591d5171eee6bd575d394301b\"\n    }\n}\n"
+            "tail": ""
           }
         ],
         "ledger_certifies": false,
@@ -10828,10 +11035,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "29",
-          "CPUUsageNSec": "105526128894000",
+          "CPUUsageNSec": "117490613534000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "74410651648",
+          "MemoryCurrent": "69999820800",
           "Result": "success",
           "StateChangeTimestamp": "Wed 2026-08-19 15:38:46 UTC"
         }
@@ -11967,10 +12174,10 @@
         "diagnostics": [
           {
             "bytes": 4096,
-            "sha256": "292fb52b453944b299c2784e85309655176b11c284e9631576b680bd7abd258b",
+            "sha256": "f7ca409af62812fc890686401539de8f0666dcfa7b036e723ecfda556400b337",
             "source_index": 0,
             "status": "ok",
-            "tail": "graph_seed raw_begin 60250000 raw_count 50000 admitted 50000 empty 0 unique 1256 duplicate 48744 residual 0\ncrossed_graph_checkpoint roots 60300000 empty 5133779 expanded 0 nodes 18774816 payload_bytes 2806789158 durable 1 residual 0\ncrossed_graph_resources peak_rss_bytes 6763712512 checkpoint_bytes 3047989210 free_bytes 219137146880\ncrossed_graph_seed raw_begin 60300000 raw_count 50000 admitted 50000 empty 0 unique 1256 duplicate 48744 residual 0\ncrossed_graph_checkpoint roots 60350000 empty 5133779 expanded 0 nodes 18776072 payload_bytes 2808472430 durable 1 residual 0\ncrossed_graph_resources peak_rss_bytes 6766645248 checkpoint_bytes 3049872482 free_bytes 218561060864\ncrossed_graph_seed raw_begin 60350000 raw_count 50000 admitted 50000 empty 0 unique 1256 duplicate 48744 residual 0\ncrossed_graph_checkpoint roots 60400000 empty 5133779 expanded 0 nodes 18777328 payload_bytes 2810169878 durable 1 residual 0\ncrossed_graph_resources peak_rss_bytes 6769598464 checkpoint_bytes 3051769930 free_bytes 218314375168\n"
+            "tail": "graph_resources peak_rss_bytes 6793183232 checkpoint_bytes 3067103549 free_bytes 218317189120\ncrossed_graph_seed raw_begin 60850000 raw_count 50000 admitted 50000 empty 0 unique 1256 duplicate 48744 residual 0\ncrossed_graph_checkpoint roots 60900000 empty 5183083 expanded 0 nodes 18788789 payload_bytes 2825400945 durable 1 residual 0\ncrossed_graph_resources peak_rss_bytes 6796189696 checkpoint_bytes 3069000997 free_bytes 218053705728\ncrossed_graph_seed raw_begin 60900000 raw_count 50000 admitted 50000 empty 0 unique 1256 duplicate 48744 residual 0\ncrossed_graph_checkpoint roots 60950000 empty 5183083 expanded 0 nodes 18790045 payload_bytes 2827062953 durable 1 residual 0\ncrossed_graph_resources peak_rss_bytes 6799200256 checkpoint_bytes 3070863005 free_bytes 218019323904\ncrossed_graph_seed raw_begin 60950000 raw_count 50000 admitted 50000 empty 0 unique 1256 duplicate 48744 residual 0\ncrossed_graph_checkpoint roots 61000000 empty 5183083 expanded 0 nodes 18791301 payload_bytes 2828721417 durable 1 residual 0\n"
           }
         ],
         "ledger_certifies": true,
@@ -11984,10 +12191,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "1",
-          "CPUUsageNSec": "564971484632000",
+          "CPUUsageNSec": "576955075746000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "10334584832",
+          "MemoryCurrent": "11145453568",
           "Result": "success",
           "StateChangeTimestamp": "Fri 2026-08-14 08:19:51 UTC"
         }
@@ -11999,11 +12206,11 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 103306,
-            "sha256": "a54183fdba6ccb64bc01755823771275bb7f2a241324b91aed8d7a76debc7644",
+            "bytes": 103562,
+            "sha256": "e7ea66360f5d08679a7c11fdd3110660755373df7c32f37bf12cc0bb2c7d1a5d",
             "source_index": 0,
             "status": "ok",
-            "tail": "reciprocal_ghost_extra_bellman iteration 7 geometry 445000/492960 bdd_nodes 348250548 peak_rss_bytes 8674484224 elapsed 497666s\nreciprocal_ghost_extra_bellman iteration 7 geometry 450000/492960 bdd_nodes 352090879 peak_rss_bytes 8674484224 elapsed 497717s\nreciprocal_ghost_extra_bellman iteration 7 geometry 455000/492960 bdd_nodes 358600175 peak_rss_bytes 8674484224 elapsed 497783s\nreciprocal_ghost_extra_bellman iteration 7 geometry 460000/492960 bdd_nodes 362258537 peak_rss_bytes 8674484224 elapsed 497863s\nreciprocal_ghost_extra_bellman iteration 7 geometry 465000/492960 bdd_nodes 368302246 peak_rss_bytes 8674484224 elapsed 497956s\nreciprocal_ghost_extra_bellman iteration 7 geometry 470000/492960 bdd_nodes 375483949 peak_rss_bytes 8674484224 elapsed 498789s\nreciprocal_ghost_extra_bellman iteration 7 geometry 475000/492960 bdd_nodes 380071603 peak_rss_bytes 8674484224 elapsed 498857s\nreciprocal_ghost_extra_bellman iteration 7 geometry 480000/492960 bdd_nodes 391130269 peak_rss_bytes 8674484224 elapsed 501465s\n"
+            "tail": "reciprocal_ghost_extra_bellman iteration 7 geometry 455000/492960 bdd_nodes 358600175 peak_rss_bytes 8674484224 elapsed 497783s\nreciprocal_ghost_extra_bellman iteration 7 geometry 460000/492960 bdd_nodes 362258537 peak_rss_bytes 8674484224 elapsed 497863s\nreciprocal_ghost_extra_bellman iteration 7 geometry 465000/492960 bdd_nodes 368302246 peak_rss_bytes 8674484224 elapsed 497956s\nreciprocal_ghost_extra_bellman iteration 7 geometry 470000/492960 bdd_nodes 375483949 peak_rss_bytes 8674484224 elapsed 498789s\nreciprocal_ghost_extra_bellman iteration 7 geometry 475000/492960 bdd_nodes 380071603 peak_rss_bytes 8674484224 elapsed 498857s\nreciprocal_ghost_extra_bellman iteration 7 geometry 480000/492960 bdd_nodes 391130269 peak_rss_bytes 8674484224 elapsed 501465s\nreciprocal_ghost_extra_bellman iteration 7 geometry 485000/492960 bdd_nodes 395799902 peak_rss_bytes 8674484224 elapsed 512935s\nreciprocal_ghost_extra_bellman iteration 7 geometry 490000/492960 bdd_nodes 402673398 peak_rss_bytes 8708317184 elapsed 513092s\n"
           },
           {
             "bytes": 292,
@@ -12024,10 +12231,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "2",
-          "CPUUsageNSec": "620907484968000",
+          "CPUUsageNSec": "632862495365000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "7018450944",
+          "MemoryCurrent": "8084615168",
           "Result": "success",
           "StateChangeTimestamp": "Fri 2026-08-14 06:12:22 UTC"
         }
@@ -12039,11 +12246,11 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 143827,
-            "sha256": "bf99384b9246b94b9af6203d79c0416430086e26b75d27525d6c7ffcab65219d",
+            "bytes": 155119,
+            "sha256": "6bda18425a43a1b46f228c1265d51de387d99d623a69ae59241d96a34e6e80e4",
             "source_index": 0,
             "status": "ok",
-            "tail": "st_extra_bellman iteration 2 geometry 425000/4929600 bdd_nodes 42105426 peak_rss_bytes 16429662208 elapsed 63006.4s\nreciprocal_ghost_extra_bellman iteration 2 geometry 430000/4929600 bdd_nodes 42307016 peak_rss_bytes 16429662208 elapsed 63147.8s\nreciprocal_ghost_extra_bellman iteration 2 geometry 435000/4929600 bdd_nodes 42462224 peak_rss_bytes 16429662208 elapsed 63300.3s\nreciprocal_ghost_extra_bellman iteration 2 geometry 440000/4929600 bdd_nodes 42583617 peak_rss_bytes 16429662208 elapsed 63444s\nreciprocal_ghost_extra_bellman iteration 2 geometry 445000/4929600 bdd_nodes 42681827 peak_rss_bytes 16429662208 elapsed 63580.3s\nreciprocal_ghost_extra_bellman iteration 2 geometry 450000/4929600 bdd_nodes 42758306 peak_rss_bytes 16429662208 elapsed 63715.1s\nreciprocal_ghost_extra_bellman iteration 2 geometry 455000/4929600 bdd_nodes 42818789 peak_rss_bytes 16429662208 elapsed 63859.5s\nreciprocal_ghost_extra_bellman iteration 2 geometry 460000/4929600 bdd_nodes 42874096 peak_rss_bytes 16429662208 elapsed 64015.1s\n"
+            "tail": "_extra_bellman iteration 2 geometry 860000/4929600 bdd_nodes 75335607 peak_rss_bytes 16429662208 elapsed 75150.4s\nreciprocal_ghost_extra_bellman iteration 2 geometry 865000/4929600 bdd_nodes 75337354 peak_rss_bytes 16429662208 elapsed 75310.9s\nreciprocal_ghost_extra_bellman iteration 2 geometry 870000/4929600 bdd_nodes 75378434 peak_rss_bytes 16429662208 elapsed 75348.1s\nreciprocal_ghost_extra_bellman iteration 2 geometry 875000/4929600 bdd_nodes 76451185 peak_rss_bytes 16429662208 elapsed 75496.2s\nreciprocal_ghost_extra_bellman iteration 2 geometry 880000/4929600 bdd_nodes 76473192 peak_rss_bytes 16429662208 elapsed 75606.7s\nreciprocal_ghost_extra_bellman iteration 2 geometry 885000/4929600 bdd_nodes 77917385 peak_rss_bytes 16429662208 elapsed 75732.8s\nreciprocal_ghost_extra_bellman iteration 2 geometry 890000/4929600 bdd_nodes 79276575 peak_rss_bytes 16429662208 elapsed 75877.5s\nreciprocal_ghost_extra_bellman iteration 2 geometry 895000/4929600 bdd_nodes 79793508 peak_rss_bytes 16429662208 elapsed 75923.3s\n"
           },
           {
             "bytes": 133,
@@ -12064,10 +12271,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "0",
-          "CPUUsageNSec": "64905952374000",
+          "CPUUsageNSec": "76889098357000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "13611380736",
+          "MemoryCurrent": "14587633664",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 03:13:23 UTC"
         }
@@ -12127,8 +12334,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 1776461,
-            "sha256": "58128e3201a6e39daa2a980195e8fed8ab4e86cd7bbdbf179d59a8cf0a4aff1f",
+            "bytes": 1823694,
+            "sha256": "4d85b6fe50c2850cef8c789bb8c7a1f433eb10d3ef0171cd6aa38f2ce783d975",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -12152,10 +12359,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "0",
-          "CPUUsageNSec": "431980030259000",
+          "CPUUsageNSec": "443959207257000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "14554611712",
+          "MemoryCurrent": "17485549568",
           "Result": "success",
           "StateChangeTimestamp": "Sat 2026-08-15 21:11:44 UTC"
         }
@@ -12219,18 +12426,18 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 105106,
-            "sha256": "a4abe96c5c1253f333f47009f9d94029c4ebabc1956f6f6f88fcabe9868efa82",
+            "bytes": 124007,
+            "sha256": "539fe2e2a1e9e5941c0d85ded131175ffb1697fbd633929049d9c9cf3bb855aa",
             "source_index": 0,
             "status": "ok",
-            "tail": "_extra_bellman iteration 7 geometry 445000/492960 bdd_nodes 485125136 peak_rss_bytes 23717629952 elapsed 51038.7s\nreciprocal_ghost_extra_bellman iteration 7 geometry 450000/492960 bdd_nodes 494378225 peak_rss_bytes 23717629952 elapsed 51139.4s\nreciprocal_ghost_extra_bellman iteration 7 geometry 455000/492960 bdd_nodes 507804463 peak_rss_bytes 23717629952 elapsed 51299.9s\nreciprocal_ghost_extra_bellman iteration 7 geometry 460000/492960 bdd_nodes 514017656 peak_rss_bytes 23717629952 elapsed 51373.7s\nreciprocal_ghost_extra_bellman iteration 7 geometry 465000/492960 bdd_nodes 526081517 peak_rss_bytes 23717629952 elapsed 51518.2s\nreciprocal_ghost_extra_bellman iteration 7 geometry 470000/492960 bdd_nodes 534945847 peak_rss_bytes 23717629952 elapsed 51622.8s\nreciprocal_ghost_extra_bellman iteration 7 geometry 475000/492960 bdd_nodes 543207458 peak_rss_bytes 23717629952 elapsed 51720.9s\nreciprocal_ghost_extra_bellman iteration 7 geometry 480000/492960 bdd_nodes 555537576 peak_rss_bytes 23717629952 elapsed 51860.1s\n"
+            "tail": ""
           },
           {
             "bytes": 139,
             "sha256": "2c3fa30c960acda7cf520741b37030212089e40d768f5b334a643ca168907b5d",
             "source_index": 1,
             "status": "ok",
-            "tail": "Started ultimatefish-info-kghostkdragon-memory-v5.service - /bin/bash /mnt/ultimatefish-jg/ultimatefish-resume-kghostkdragon-memory-v5.sh.\n"
+            "tail": ""
           }
         ],
         "ledger_certifies": true,
@@ -12244,10 +12451,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "24",
-          "CPUUsageNSec": "44454762156000",
+          "CPUUsageNSec": "51467527966000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "29085618176",
+          "MemoryCurrent": "21490761728",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 02:39:32 UTC"
         }
@@ -12389,87 +12596,163 @@
         }
       },
       "information-jester-angel-opposed-v3": {
-        "certificates": [],
+        "certificates": [
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": true,
+            "key": "launch/ultimatefish-solve-jester-angel-opposed-v3-i03.sh",
+            "sha256": "beb743cbd70032cd3ecb96da1759a44e8f80f9d9ac0a997d4da696b720a8746d",
+            "size": 2208,
+            "version_id": "d_fxWkUkcf2HGr_TtQnAfANnlnC_MY8B"
+          },
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": false,
+            "key": "sources/bundles/jester-angel-v1/sha256/20db30fcf7fd2dbc19bbbd1a1a860c3b06765551150ef8b0736b78d15b2dfe97/ultimatefish-jester-angel-v1-source.tar",
+            "sha256": "",
+            "size": 768000,
+            "version_id": "XJuPcn2ij3cr2OWIApeI0B9ORQP.Z5WJ"
+          },
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": true,
+            "key": "sources/tools/sha256/7a298162da3681d2e074239cae3fee1825d534bc28997eda58b68e8d7fc62f94/finalize_ultimate_primary_jester_class_aws.py",
+            "sha256": "7a298162da3681d2e074239cae3fee1825d534bc28997eda58b68e8d7fc62f94",
+            "size": 18604,
+            "version_id": "fMIe25nmUMC7AjhmOKKR8eL9FsSuI2Wh"
+          },
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": true,
+            "key": "results/jester-angel-v1-source/concrete/v2/model/da174e9dd1ab0dbbcccf827eb8c440d84dabab1886fbca7428eeaad0882d6622/wave-0/sha256/6d15ba5a97271fddf1668fdb2cb5e96094d39c6c82f4348ce05bea6a35ac3c5f/kjesterkangel-6d15ba5a97271fddf1668fdb2cb5e96094d39c6c82f4348ce05bea6a35ac3c5f.tar.zst",
+            "sha256": "6d15ba5a97271fddf1668fdb2cb5e96094d39c6c82f4348ce05bea6a35ac3c5f",
+            "size": 13721837,
+            "version_id": "fDbTfFgbotfRmIl0_heZU6k0jisUidJ6"
+          },
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": true,
+            "key": "results/jester-angel-information-v3/primary-jester/sha256/d2337ca267697790ff854744a8de9877a6a733a805b5eb75d293738886c074ca/kjesterkangel.information.tar.zst",
+            "sha256": "d2337ca267697790ff854744a8de9877a6a733a805b5eb75d293738886c074ca",
+            "size": 926803,
+            "version_id": "ItTwp9vjpYEMyp7b79klFN3GiGBzpEFn"
+          },
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": true,
+            "key": "results/jester-angel-information-v3/primary-jester/certificates/sha256/83475c0d2ba81af9df246cd2b187cc06b24b564a6d6a1c47d6cfe9e15ac5107a/certificate.json",
+            "sha256": "83475c0d2ba81af9df246cd2b187cc06b24b564a6d6a1c47d6cfe9e15ac5107a",
+            "size": 3351,
+            "version_id": "M5LV10OOesWPgtJS8SQ9NnrtQNNiCPvN"
+          }
+        ],
         "checkpoints": [],
         "completion": [],
         "dependencies": [
           "concrete-jester-angel-source-v1"
         ],
-        "diagnostics": [
-          {
-            "bytes": 5737,
-            "sha256": "de0e0e9c24d599bd3595d4b4baa08198311d5aba4585e6b187c4e5f241e5e03f",
-            "source_index": 0,
-            "status": "ok",
-            "tail": ""
-          },
-          {
-            "bytes": 119,
-            "sha256": "ad5910478c4c45afa50b4b85f861e14430d1f2663f24c66e6b219897a180d8c7",
-            "source_index": 1,
-            "status": "ok",
-            "tail": ""
-          }
-        ],
-        "ledger_certifies": false,
+        "diagnostics": [],
+        "ledger_certifies": true,
         "ledger_files": [
           "kjesterkangel.uftb"
         ],
-        "ledger_results": {},
+        "ledger_results": {
+          "kjesterkangel.uftb": {
+            "first": "22,519,462 (3,093,244) / 0 / 12,345,214",
+            "reachability": "34,864,676 / 3,093,244; 37,957,920 / 0",
+            "result_kind": "information v2",
+            "second": "125,972 / 15,518,030 / 22,313,918",
+            "storage": "S3 information archive sha256:d2337ca267697790ff854744a8de9877a6a733a805b5eb75d293738886c074ca VersionId ItTwp9vjpYEMyp7b79klFN3GiGBzpEFn; certificate sha256:83475c0d2ba81af9df246cd2b187cc06b24b564a6d6a1c47d6cfe9e15ac5107a VersionId M5LV10OOesWPgtJS8SQ9NnrtQNNiCPvN"
+          }
+        },
         "result_certificate_declared": true,
-        "source_exact": true,
-        "status": "RUNNING",
+        "source_exact": false,
+        "status": "INACTIVE",
         "unit": {
-          "ActiveState": "active",
-          "AllowedCPUs": "1 5-9 11-12",
-          "CPUUsageNSec": "1687148825000",
+          "ActiveState": "inactive",
           "ExecMainStatus": "0",
-          "LoadState": "loaded",
-          "MemoryCurrent": "1606619136",
-          "Result": "success",
-          "StateChangeTimestamp": "Thu 2026-08-20 21:12:08 UTC"
+          "LoadState": "not-found",
+          "Result": "success"
         }
       },
       "information-jester-angel-same-v3": {
-        "certificates": [],
+        "certificates": [
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": true,
+            "key": "launch/ultimatefish-solve-jester-angel-same-v3-i03.sh",
+            "sha256": "ca1f7235e4ca8b2b35ac0972bc276ba52f2a790b2ed14304c45a963d7bde18fa",
+            "size": 2179,
+            "version_id": "zxfWx0XDf638MJ7wTLsPEK_WgEJUGrSq"
+          },
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": false,
+            "key": "sources/bundles/jester-angel-v1/sha256/20db30fcf7fd2dbc19bbbd1a1a860c3b06765551150ef8b0736b78d15b2dfe97/ultimatefish-jester-angel-v1-source.tar",
+            "sha256": "",
+            "size": 768000,
+            "version_id": "XJuPcn2ij3cr2OWIApeI0B9ORQP.Z5WJ"
+          },
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": true,
+            "key": "sources/tools/sha256/7a298162da3681d2e074239cae3fee1825d534bc28997eda58b68e8d7fc62f94/finalize_ultimate_primary_jester_class_aws.py",
+            "sha256": "7a298162da3681d2e074239cae3fee1825d534bc28997eda58b68e8d7fc62f94",
+            "size": 18604,
+            "version_id": "fMIe25nmUMC7AjhmOKKR8eL9FsSuI2Wh"
+          },
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": true,
+            "key": "results/jester-angel-v1-source/concrete/v2/model/da174e9dd1ab0dbbcccf827eb8c440d84dabab1886fbca7428eeaad0882d6622/wave-0/sha256/a9aab6f73aa59599bde15c2691cc92d3c8a67238b65618409b7fa8fdd78dee17/kjesterangelk-a9aab6f73aa59599bde15c2691cc92d3c8a67238b65618409b7fa8fdd78dee17.tar.zst",
+            "sha256": "a9aab6f73aa59599bde15c2691cc92d3c8a67238b65618409b7fa8fdd78dee17",
+            "size": 11037180,
+            "version_id": "xo5ZIZTTmrUkSf3hXlfnmEqMxqDfZVJ1"
+          },
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": true,
+            "key": "results/jester-angel-information-v3/primary-jester/sha256/6a9fa1cb3be32b881c1f1d3f68eba84a0ef5221a38c92020c8e2436738f7f7ac/kjesterangelk.information.tar.zst",
+            "sha256": "6a9fa1cb3be32b881c1f1d3f68eba84a0ef5221a38c92020c8e2436738f7f7ac",
+            "size": 45996,
+            "version_id": "V343loE_urhguZR1JTE12lZZAla.TS00"
+          },
+          {
+            "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",
+            "exact": true,
+            "key": "results/jester-angel-information-v3/primary-jester/certificates/sha256/e96aeab184afaca44577414eb293f48062bec8de47e6996dfa0154ddc7046513/certificate.json",
+            "sha256": "e96aeab184afaca44577414eb293f48062bec8de47e6996dfa0154ddc7046513",
+            "size": 3283,
+            "version_id": "hAWYLibnjGo1D5kswkBQ0bQfoelW987i"
+          }
+        ],
         "checkpoints": [],
         "completion": [],
         "dependencies": [
           "concrete-jester-angel-source-v1"
         ],
-        "diagnostics": [
-          {
-            "bytes": 5584,
-            "sha256": "2c877b3344de746e6b54cb28ab54b23a27da5774c2bdb7f27c8e91f24f4d1c54",
-            "source_index": 0,
-            "status": "ok",
-            "tail": ""
-          },
-          {
-            "bytes": 116,
-            "sha256": "4f17b3bdaa46c92bd3ce8f9d532c1a1bb64134db584aed48e80d22c7994efdef",
-            "source_index": 1,
-            "status": "ok",
-            "tail": ""
-          }
-        ],
-        "ledger_certifies": false,
+        "diagnostics": [],
+        "ledger_certifies": true,
         "ledger_files": [
           "kjesterangelk.uftb"
         ],
-        "ledger_results": {},
+        "ledger_results": {
+          "kjesterangelk.uftb": {
+            "first": "47,657,148 (9,279,732) / 0 / 0",
+            "reachability": "47,657,148 / 9,279,732; 56,936,880 / 0",
+            "result_kind": "information v2",
+            "second": "251,944 / 50,814,456 / 5,870,480",
+            "storage": "S3 information archive sha256:6a9fa1cb3be32b881c1f1d3f68eba84a0ef5221a38c92020c8e2436738f7f7ac VersionId V343loE_urhguZR1JTE12lZZAla.TS00; certificate sha256:e96aeab184afaca44577414eb293f48062bec8de47e6996dfa0154ddc7046513 VersionId hAWYLibnjGo1D5kswkBQ0bQfoelW987i"
+          }
+        },
         "result_certificate_declared": true,
-        "source_exact": true,
-        "status": "RUNNING",
+        "source_exact": false,
+        "status": "INACTIVE",
         "unit": {
-          "ActiveState": "active",
-          "AllowedCPUs": "3-4 13 15-18 20",
-          "CPUUsageNSec": "1496990993000",
+          "ActiveState": "inactive",
           "ExecMainStatus": "0",
-          "LoadState": "loaded",
-          "MemoryCurrent": "1578979328",
-          "Result": "success",
-          "StateChangeTimestamp": "Thu 2026-08-20 21:12:08 UTC"
+          "LoadState": "not-found",
+          "Result": "success"
         }
       },
       "jester-ghost-measure": {
@@ -12551,14 +12834,14 @@
             "sha256": "5a573dc6c1f2b03aa13a6ae0a50eb964972d12364cbecefefae2c331c6bbb564",
             "source_index": 0,
             "status": "ok",
-            "tail": "jester_ghost_same_lower_binding_v2 binary_sha256 70b406b369ab54f37c892b9caec32dfcb815a842bada89277bfee145cbb7d68e graph_marker_sha256 18a283f663cae8360a34f9935294e0c80d5643ab5e6298dca0244ee9bd6d0bed lower_jester_model_sha256 ed1b9722003903967eef917251d5439aba9635e31f9be2cc96366044fc7b4c05 upper_nodes 1500000000 lower_nodes 500000000 prior_binding_failure_preserved work/logs/solve.log\njester_ghost_solve_input_preflight canonical 9612720 worlds 37957920 transition_bytes 28011961822 peak_disk_bytes 189558941918 peak_resident_bytes 43084447728 admitted 1 source_codec_residual 0 lower_jester_residual 0 lower_ghost_residual 0 transition_residual 0\n"
+            "tail": ""
           },
           {
             "bytes": 136,
             "sha256": "894c00a56c0ec93393ec881dfd75bb882a52876d8e5a2a797c417da02ec5c6eb",
             "source_index": 1,
             "status": "ok",
-            "tail": "Started ultimatefish-info-kjesterghostk-lower-binding-v2.service - Ultimate Fish same Jester/Ghost corrected lower binding exact solve.\n"
+            "tail": ""
           }
         ],
         "ledger_certifies": true,
@@ -12572,10 +12855,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "10",
-          "CPUUsageNSec": "60807985410000",
+          "CPUUsageNSec": "72689872111000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "34909892608",
+          "MemoryCurrent": "33846829056",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 04:16:00 UTC"
         }
@@ -12734,8 +13017,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 212496,
-            "sha256": "a943ad691fdcc3823ddc56005180e825c6b7443216e191c7642a4d617840f69b",
+            "bytes": 227300,
+            "sha256": "b168704a17ac5251ac6902353a941516586fca97cab5d5c16165cbdf41e5187b",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -12759,10 +13042,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "14",
-          "CPUUsageNSec": "73918490144000",
+          "CPUUsageNSec": "85844705443000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "23772188672",
+          "MemoryCurrent": "13399883776",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 00:44:15 UTC"
         }
@@ -12806,18 +13089,18 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 445185,
-            "sha256": "244eb3067105ae25a48e52da1ecad85b7e973874d8b30eafd62178a48442d852",
+            "bytes": 536109,
+            "sha256": "a453114efd94b20f3d7d46f5563d6c60e822a1e595486b282c9999344a6fb21d",
             "source_index": 0,
             "status": "ok",
-            "tail": "_bellman iteration 5 geometry 1020000/3943680 bdd_nodes 33316478 peak_rss_bytes 13160882176 elapsed 54954s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1025000/3943680 bdd_nodes 33455045 peak_rss_bytes 13160882176 elapsed 54983.7s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1030000/3943680 bdd_nodes 33558819 peak_rss_bytes 13160882176 elapsed 55014.9s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1035000/3943680 bdd_nodes 33610938 peak_rss_bytes 13160882176 elapsed 55047.3s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1040000/3943680 bdd_nodes 33653646 peak_rss_bytes 13160882176 elapsed 55083.3s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1045000/3943680 bdd_nodes 33742438 peak_rss_bytes 13160882176 elapsed 55118.1s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1050000/3943680 bdd_nodes 33875045 peak_rss_bytes 13160882176 elapsed 55152.7s\nreciprocal_ghost_extra_bellman iteration 5 geometry 1055000/3943680 bdd_nodes 34039925 peak_rss_bytes 13160882176 elapsed 55186.2s\n"
+            "tail": ""
           },
           {
             "bytes": 138,
             "sha256": "8c781054dd32ad4c3964734479c29132395cc1169bb672e243d9873b636e9b4e",
             "source_index": 1,
             "status": "ok",
-            "tail": "Started ultimatefish-info-kghostsniperk-compositional-v3.service - UltimateFish_same_Sniper_Ghost_compositional_merge_and_exact_solve_v3.\n"
+            "tail": ""
           }
         ],
         "ledger_certifies": true,
@@ -12831,10 +13114,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "21",
-          "CPUUsageNSec": "55840515217000",
+          "CPUUsageNSec": "67791980516000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "22967803904",
+          "MemoryCurrent": "10244055040",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 05:40:37 UTC"
         }
@@ -13028,33 +13311,41 @@
       "penguin-ghost-opposing-fresh-v5": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [
+        "completion": [],
+        "dependencies": [],
+        "diagnostics": [
           {
-            "exists": false
+            "bytes": 311083,
+            "sha256": "798ef253c99c7a34301fa8468d10f8ee36077c02c05f31aaee472775f9e936e9",
+            "source_index": 0,
+            "status": "ok",
+            "tail": ""
           },
           {
-            "exists": false
-          },
-          {
-            "exists": false
+            "bytes": 140,
+            "sha256": "2cd690fc6a1de025607121d60e61b94209b1a2f74da5fc792d156fac8638f122",
+            "source_index": 1,
+            "status": "ok",
+            "tail": ""
           }
         ],
-        "dependencies": [],
-        "diagnostics": [],
         "ledger_certifies": true,
         "ledger_files": [
           "kghostkpenguin.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": false,
-        "source_exact": false,
-        "status": "FAILED",
+        "source_exact": true,
+        "status": "RUNNING",
         "unit": {
-          "ActiveState": "inactive",
+          "ActiveState": "active",
+          "AllowedCPUs": "2",
+          "CPUUsageNSec": "11183803245000",
           "ExecMainStatus": "0",
-          "LoadState": "not-found",
+          "LoadState": "loaded",
+          "MemoryCurrent": "11344719872",
           "Result": "success",
-          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
+          "StateChangeTimestamp": "Thu 2026-08-20 21:27:59 UTC"
         }
       },
       "penguin-ghost-same-compositional-resume-v3": {
@@ -13360,7 +13651,7 @@
             "sha256": "55980492d0c4e3fbd5be891991e6491922244981acb739112d5529d831c2522f",
             "source_index": 0,
             "status": "ok",
-            "tail": "Started ultimatefish-info-remap-fix-v1-kberserkerkghost-transitions-v5.service - UltimateFish corrected opposed Berserker Ghost fresh remap-fix v5.\n"
+            "tail": ""
           }
         ],
         "ledger_certifies": false,
@@ -13374,10 +13665,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "0-9",
-          "CPUUsageNSec": "1030339669858000",
+          "CPUUsageNSec": "1150157478563000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "40234147840",
+          "MemoryCurrent": "9733148672",
           "Result": "success",
           "StateChangeTimestamp": "Wed 2026-08-19 16:33:47 UTC"
         }
@@ -13385,30 +13676,41 @@
       "remap-fix-opposed-knight-ghost-solve-v11": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [
+        "completion": [],
+        "dependencies": [],
+        "diagnostics": [
           {
-            "exists": false
+            "bytes": 17680,
+            "sha256": "6379fbe3d1afcd30b208741b8892e477c926ea69c01dfb638af72aecc10a327b",
+            "source_index": 0,
+            "status": "ok",
+            "tail": ""
           },
           {
-            "exists": false
+            "bytes": 135,
+            "sha256": "6013a7e2da2ed3f76429ad73239c3ba15a426a2e6eccc700898841ad909192b2",
+            "source_index": 1,
+            "status": "ok",
+            "tail": ""
           }
         ],
-        "dependencies": [],
-        "diagnostics": [],
         "ledger_certifies": true,
         "ledger_files": [
           "kknightkghost.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": false,
-        "source_exact": false,
-        "status": "FAILED",
+        "source_exact": true,
+        "status": "RUNNING",
         "unit": {
-          "ActiveState": "inactive",
+          "ActiveState": "active",
+          "AllowedCPUs": "0",
+          "CPUUsageNSec": "10117364504000",
           "ExecMainStatus": "0",
-          "LoadState": "not-found",
+          "LoadState": "loaded",
+          "MemoryCurrent": "8876081152",
           "Result": "success",
-          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
+          "StateChangeTimestamp": "Thu 2026-08-20 21:46:29 UTC"
         }
       },
       "remap-fix-v2-opposed-copycat-ghost-source-order-solve-v6": {
@@ -13418,8 +13720,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 231490,
-            "sha256": "b87f11ac0c4f1b4f3cceddd58d1fd41e90afd944b4014443549233950d794ce5",
+            "bytes": 276618,
+            "sha256": "0c65e2723d8270d1c2bd555a276306ba0db684db4c81d0918925b190242ab55c",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -13436,10 +13738,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "2",
-          "CPUUsageNSec": "51744930910000",
+          "CPUUsageNSec": "63716266698000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "20747567104",
+          "MemoryCurrent": "20209926144",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 06:50:26 UTC"
         }
@@ -13495,33 +13797,34 @@
       "remap-fix-v2-opposed-rook-ghost-source-order-solve-v6": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [
+        "completion": [],
+        "dependencies": [],
+        "diagnostics": [
           {
-            "exists": false
-          },
-          {
-            "exists": false
-          },
-          {
-            "exists": false
+            "bytes": 24789,
+            "sha256": "25788687fe92569cc3c32ea063f88bd083efdfb89c45638a22f8c8af89db8ae6",
+            "source_index": 0,
+            "status": "ok",
+            "tail": ""
           }
         ],
-        "dependencies": [],
-        "diagnostics": [],
         "ledger_certifies": true,
         "ledger_files": [
           "krookkghost.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": false,
-        "source_exact": false,
-        "status": "FAILED",
+        "source_exact": true,
+        "status": "RUNNING",
         "unit": {
-          "ActiveState": "inactive",
+          "ActiveState": "active",
+          "AllowedCPUs": "19",
+          "CPUUsageNSec": "10968178401000",
           "ExecMainStatus": "0",
-          "LoadState": "not-found",
+          "LoadState": "loaded",
+          "MemoryCurrent": "8489623552",
           "Result": "success",
-          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
+          "StateChangeTimestamp": "Thu 2026-08-20 21:31:42 UTC"
         }
       },
       "remap-fix-v2-opposed-rook-ghost-transitions-v1": {
@@ -13543,30 +13846,34 @@
       "remap-fix-v2-opposed-turtle-ghost-compositional-v4": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [
+        "completion": [],
+        "dependencies": [],
+        "diagnostics": [
           {
-            "exists": false
-          },
-          {
-            "exists": false
+            "bytes": 47144,
+            "sha256": "4d9664e97660155a239851873d7a023902cd5a7b59f2e17cdbfc6e06618fec9f",
+            "source_index": 0,
+            "status": "ok",
+            "tail": ""
           }
         ],
-        "dependencies": [],
-        "diagnostics": [],
         "ledger_certifies": true,
         "ledger_files": [
           "kturtlekghost.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": false,
-        "source_exact": false,
-        "status": "FAILED",
+        "source_exact": true,
+        "status": "RUNNING",
         "unit": {
-          "ActiveState": "inactive",
+          "ActiveState": "active",
+          "AllowedCPUs": "23",
+          "CPUUsageNSec": "10228089707000",
           "ExecMainStatus": "0",
-          "LoadState": "not-found",
+          "LoadState": "loaded",
+          "MemoryCurrent": "7711211520",
           "Result": "success",
-          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
+          "StateChangeTimestamp": "Thu 2026-08-20 21:43:33 UTC"
         }
       },
       "remap-fix-v2-opposed-turtle-ghost-solve-v2": {
@@ -13684,32 +13991,41 @@
       "same-ghost-pair-domain-cache-v1": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [
+        "completion": [],
+        "dependencies": [],
+        "diagnostics": [
           {
-            "exists": false
+            "bytes": 32,
+            "sha256": "2c3d91a1fba8e47ba03a990029e7fd10ea5094da6403f798b9adb4aadfa50ba1",
+            "source_index": 0,
+            "status": "ok",
+            "tail": ""
           },
           {
-            "exists": false
+            "bytes": 142,
+            "sha256": "a13be70638c15ae92e6bc6fd21ff9403a6b4880f88e2907497e8cdc9a5879f10",
+            "source_index": 1,
+            "status": "ok",
+            "tail": ""
           }
         ],
-        "dependencies": [
-          "build-ghost-pair-domain-cache-v1"
-        ],
-        "diagnostics": [],
         "ledger_certifies": false,
         "ledger_files": [
           "kghostghostk.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": true,
-        "source_exact": false,
-        "status": "FAILED",
+        "source_exact": true,
+        "status": "RUNNING",
         "unit": {
-          "ActiveState": "inactive",
+          "ActiveState": "active",
+          "AllowedCPUs": "0-12 15-31",
+          "CPUUsageNSec": "39229868407000",
           "ExecMainStatus": "0",
-          "LoadState": "not-found",
+          "LoadState": "loaded",
+          "MemoryCurrent": "25871454208",
           "Result": "success",
-          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
+          "StateChangeTimestamp": "Thu 2026-08-20 22:08:35 UTC"
         }
       },
       "singleton-fix-opposed-prince-ghost-fresh-v6": {
@@ -13751,8 +14067,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 1059442,
-            "sha256": "201eead494fe3fc6df181c92ccbf71e55d2baa84d10439152f9ea4f545c0f6e7",
+            "bytes": 1195534,
+            "sha256": "3c6fd4fa407f9fc652e5a2ff805b040339ed7d435aff4cf7c94b0f9e670dc0ba",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -13776,10 +14092,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "1",
-          "CPUUsageNSec": "111029417750000",
+          "CPUUsageNSec": "123008513176000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "28938702848",
+          "MemoryCurrent": "26406387712",
           "Result": "success",
           "StateChangeTimestamp": "Wed 2026-08-19 14:23:15 UTC"
         }
@@ -13823,25 +14139,25 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 79967,
-            "sha256": "b2dd61851e1e8373761c8fc9ace13cc45d4ac1ce3c441f7347b4a8ece25e33e5",
+            "bytes": 101632,
+            "sha256": "412b8795645ed959f2a13b78b4f041eaa4e30949eff48d5b8fc35f2b0555dcab",
             "source_index": 0,
             "status": "ok",
-            "tail": "_extra_bellman iteration 9 geometry 435000/492960 bdd_nodes 522639236 peak_rss_bytes 11080343552 elapsed 33150.6s\nreciprocal_ghost_extra_bellman iteration 9 geometry 440000/492960 bdd_nodes 535179001 peak_rss_bytes 11080343552 elapsed 33262.8s\nreciprocal_ghost_extra_bellman iteration 9 geometry 445000/492960 bdd_nodes 542771990 peak_rss_bytes 11080343552 elapsed 33341.5s\nreciprocal_ghost_extra_bellman iteration 9 geometry 450000/492960 bdd_nodes 550924988 peak_rss_bytes 11080343552 elapsed 33420.1s\nreciprocal_ghost_extra_bellman iteration 9 geometry 455000/492960 bdd_nodes 562603733 peak_rss_bytes 11080343552 elapsed 33513.9s\nreciprocal_ghost_extra_bellman iteration 9 geometry 460000/492960 bdd_nodes 568640491 peak_rss_bytes 11080343552 elapsed 33588.5s\nreciprocal_ghost_extra_bellman iteration 9 geometry 465000/492960 bdd_nodes 579725523 peak_rss_bytes 11080343552 elapsed 33676.6s\nreciprocal_ghost_extra_bellman iteration 9 geometry 470000/492960 bdd_nodes 588195020 peak_rss_bytes 11080343552 elapsed 33760.3s\n"
+            "tail": ""
           },
           {
             "bytes": 55890,
             "sha256": "698b9146fcda701dd4488eeb4ed290fc39273f125ed1da16fc3dee0e7706b734",
             "source_index": 1,
             "status": "ok",
-            "tail": "odes 445051444 peak_rss_bytes 9502236672 elapsed 13548.9s\nreciprocal_ghost_extra_bellman iteration 4 geometry 460000/492960 bdd_nodes 449687240 peak_rss_bytes 9546137600 elapsed 13606.9s\nreciprocal_ghost_extra_bellman iteration 4 geometry 465000/492960 bdd_nodes 459345173 peak_rss_bytes 9634680832 elapsed 13678.5s\nreciprocal_ghost_extra_bellman iteration 4 geometry 470000/492960 bdd_nodes 466264467 peak_rss_bytes 9698746368 elapsed 13740.1s\nreciprocal_ghost_extra_bellman iteration 4 geometry 475000/492960 bdd_nodes 473847804 peak_rss_bytes 9769078784 elapsed 13795.4s\nreciprocal_ghost_extra_bellman iteration 4 geometry 480000/492960 bdd_nodes 484048400 peak_rss_bytes 9862238208 elapsed 13863.3s\nreciprocal_ghost_extra_bellman iteration 4 geometry 485000/492960 bdd_nodes 488535883 peak_rss_bytes 9904381952 elapsed 13917.6s\nreciprocal_ghost_extra_bellman iteration 4 geometry 490000/492960 bdd_nodes 498261653 peak_rss_bytes 9994072064 elapsed 13981.7s\nDragon/Ghost error: external ROBDD exact node budget exhausted\n"
+            "tail": ""
           },
           {
             "bytes": 395,
             "sha256": "e937b90ce6def6eba9d2088a1c4dc8604d5155762930105ca216955d86429765",
             "source_index": 2,
             "status": "ok",
-            "tail": "Started ultimatefish-info-kninjakghost-source-order-v7.service - /bin/bash /mnt/ultimatefish/source-order-v7-ninja-7cb5a18a/ultimatefish-resume-kninjakghost-source-order-v7.sh.\nkninjakghost.bdd-b.nodes: OK\nkninjakghost.bdd-b.unique: OK\nkninjakghost.domains: OK\nkninjakghost.owner-next: OK\nkninjakghost.observer-next: OK\nkninjakghost.visible-owner-next: OK\nkninjakghost.visible-observer-next: OK\n"
+            "tail": ""
           }
         ],
         "ledger_certifies": true,
@@ -13855,10 +14171,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "12",
-          "CPUUsageNSec": "33759799636000",
+          "CPUUsageNSec": "45711844116000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "17932648448",
+          "MemoryCurrent": "9086595072",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 11:52:44 UTC"
         }
@@ -14009,33 +14325,48 @@
       "source-order-opposed-queen-ghost-solve-v8": {
         "certificates": [],
         "checkpoints": [],
-        "completion": [
+        "completion": [],
+        "dependencies": [],
+        "diagnostics": [
           {
-            "exists": false
+            "bytes": 9959,
+            "sha256": "36bcfcfa54e7b5d201c0a590400024eead79127d0c5f2b9d7c2cf7ce431200b8",
+            "source_index": 0,
+            "status": "ok",
+            "tail": ""
           },
           {
-            "exists": false
+            "bytes": 42272,
+            "sha256": "03ffb8d5838aa3e376a37ebd431d36aa3055b50ab984dce8498a53769f60e57c",
+            "source_index": 1,
+            "status": "ok",
+            "tail": ""
           },
           {
-            "exists": false
+            "bytes": 1825,
+            "sha256": "603d70e3d2846f6940884dad883e4cf7796a19f66d5c7bd7243bdb69376c9233",
+            "source_index": 2,
+            "status": "ok",
+            "tail": ""
           }
         ],
-        "dependencies": [],
-        "diagnostics": [],
         "ledger_certifies": false,
         "ledger_files": [
           "kqueenkghost.uftb"
         ],
         "ledger_results": {},
         "result_certificate_declared": true,
-        "source_exact": false,
-        "status": "FAILED",
+        "source_exact": true,
+        "status": "RUNNING",
         "unit": {
-          "ActiveState": "inactive",
+          "ActiveState": "active",
+          "AllowedCPUs": "14",
+          "CPUUsageNSec": "11039699189000",
           "ExecMainStatus": "0",
-          "LoadState": "not-found",
+          "LoadState": "loaded",
+          "MemoryCurrent": "7366557696",
           "Result": "success",
-          "SupervisionFailure": "transient unit disappeared after RUNNING without completion"
+          "StateChangeTimestamp": "Thu 2026-08-20 21:29:51 UTC"
         }
       },
       "source-order-pawn-implication-build-v7": {
@@ -14112,11 +14443,11 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 319340,
-            "sha256": "29643f268083cbaf1217290140d9ac10f9e9fe5026f79fe166615ad2a71e2f6e",
+            "bytes": 372614,
+            "sha256": "5f9f9c522a43eea266f8f2617f2e5eb59cab705f2b9510eb4ba4e5eccae70721",
             "source_index": 0,
             "status": "ok",
-            "tail": "ocal_ghost_extra_bellman iteration 13 geometry 250000/985920 bdd_nodes 30481098 peak_rss_bytes 7594401792 elapsed 50807.2s\nreciprocal_ghost_extra_bellman iteration 13 geometry 255000/985920 bdd_nodes 31126287 peak_rss_bytes 7594401792 elapsed 50840.9s\nreciprocal_ghost_extra_bellman iteration 13 geometry 260000/985920 bdd_nodes 31586070 peak_rss_bytes 7594401792 elapsed 50886.7s\nreciprocal_ghost_extra_bellman iteration 13 geometry 265000/985920 bdd_nodes 31832121 peak_rss_bytes 7594401792 elapsed 50932.1s\nreciprocal_ghost_extra_bellman iteration 13 geometry 270000/985920 bdd_nodes 31936567 peak_rss_bytes 7594401792 elapsed 50978.1s\nreciprocal_ghost_extra_bellman iteration 13 geometry 275000/985920 bdd_nodes 32086354 peak_rss_bytes 7594401792 elapsed 51019.2s\nreciprocal_ghost_extra_bellman iteration 13 geometry 280000/985920 bdd_nodes 32834176 peak_rss_bytes 7594401792 elapsed 51053.5s\nreciprocal_ghost_extra_bellman iteration 13 geometry 285000/985920 bdd_nodes 33429099 peak_rss_bytes 7594401792 elapsed 51100s\n"
+            "tail": ""
           }
         ],
         "ledger_certifies": true,
@@ -14130,10 +14461,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "22",
-          "CPUUsageNSec": "50375135657000",
+          "CPUUsageNSec": "62187838736000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "18467778560",
+          "MemoryCurrent": "7777927168",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 07:00:02 UTC"
         }
@@ -14171,106 +14502,106 @@
         "unit": {}
       }
     },
-    "observed_at": "2026-08-20T21:16:24.578943+00:00",
+    "observed_at": "2026-08-21T00:36:08.367239+00:00",
     "scheduling": {
       "blocked": {},
       "hosts": {
         "i-024a2073283e4336e": {
           "disk_budget_bytes": {
-            "/": 3274211328,
-            "/mnt/ultimatefish": 163153555456
+            "/": 3276042240,
+            "/mnt/ultimatefish": 162681425920
           },
           "disk_reserved_bytes": {
             "/": 0,
             "/mnt/ultimatefish": 165356240896
           },
-          "measured_busy_vcpus": 3.997,
+          "measured_busy_vcpus": 3.998,
           "measurement_complete": true,
-          "memory_budget_bytes": 42538524672,
-          "memory_reserved_bytes": 68668727296,
-          "predicted_busy_vcpus": 3.997,
+          "memory_budget_bytes": 42546364416,
+          "memory_reserved_bytes": 73201922048,
+          "predicted_busy_vcpus": 3.998,
           "selected": [],
           "target_busy_vcpus": 22.4
         },
         "i-03c81f90d2c59a2e7": {
           "disk_budget_bytes": {
-            "/": 37289873408,
-            "/mnt/ultimatefish": 1831406874624,
-            "/mnt/ultimatefish-penguin": 116553928704
+            "/": 37258838016,
+            "/mnt/ultimatefish": 1502536159232,
+            "/mnt/ultimatefish-penguin": 116680368128
           },
           "disk_reserved_bytes": {
             "/": 0,
-            "/mnt/ultimatefish": 107374182400,
-            "/mnt/ultimatefish-penguin": 85899345920
+            "/mnt/ultimatefish": 1299227607040,
+            "/mnt/ultimatefish-penguin": 274877906944
           },
-          "measured_busy_vcpus": 0.0,
+          "measured_busy_vcpus": 10.184,
           "measurement_complete": false,
-          "memory_budget_bytes": 244169904128,
-          "memory_reserved_bytes": 220152700928,
+          "memory_budget_bytes": 238404263936,
+          "memory_reserved_bytes": 251701702656,
           "selected": [],
           "target_busy_vcpus": 22.4
         },
         "i-08c0f44a1776cb34a": {
           "disk_budget_bytes": {
-            "/": 3336626176,
-            "/mnt/ultimatefish": 405532995584
+            "/": 3371749376,
+            "/mnt/ultimatefish": 333669543936
           },
           "disk_reserved_bytes": {
             "/": 0,
-            "/mnt/ultimatefish": 176093659136
+            "/mnt/ultimatefish": 676093659136
           },
-          "measured_busy_vcpus": 1.992,
+          "measured_busy_vcpus": 3.0,
           "measurement_complete": true,
-          "memory_budget_bytes": 54408011776,
-          "memory_reserved_bytes": 69927129088,
-          "predicted_busy_vcpus": 1.992,
+          "memory_budget_bytes": 54456516608,
+          "memory_reserved_bytes": 96875462656,
+          "predicted_busy_vcpus": 3.0,
           "selected": [],
           "target_busy_vcpus": 22.4
         },
         "i-0986ed3d272721f02": {
           "disk_budget_bytes": {
-            "/": 3274788864,
-            "/mnt/ultimatefish": 516768374784
+            "/": 3264278528,
+            "/mnt/ultimatefish": 515852996608
           },
           "disk_reserved_bytes": {
             "/": 0,
             "/mnt/ultimatefish": 85899345920
           },
-          "measured_busy_vcpus": 2.999,
+          "measured_busy_vcpus": 2.997,
           "measurement_complete": true,
-          "memory_budget_bytes": 50777677824,
-          "memory_reserved_bytes": 22202105856,
-          "predicted_busy_vcpus": 2.999,
+          "memory_budget_bytes": 50776850432,
+          "memory_reserved_bytes": 22739746816,
+          "predicted_busy_vcpus": 2.997,
           "selected": [],
           "target_busy_vcpus": 22.4
         },
         "i-0b4523116b2f7765c": {
           "disk_budget_bytes": {
-            "/": 3161432064,
-            "/mnt/ultimatefish": 139940302848,
-            "/mnt/ultimatefish-jg": 530019213312,
-            "/mnt/ultimatefish-overflow": 639334100992,
+            "/": 3162558464,
+            "/mnt/ultimatefish": 140056690688,
+            "/mnt/ultimatefish-jg": 348735455232,
+            "/mnt/ultimatefish-overflow": 644641771520,
             "/mnt/ultimatefish-resume": 113797296128
           },
           "disk_reserved_bytes": {
             "/": 0,
             "/mnt/ultimatefish": 778462822400,
-            "/mnt/ultimatefish-jg": 107374182400,
+            "/mnt/ultimatefish-jg": 279172874240,
             "/mnt/ultimatefish-overflow": 536870912000,
             "/mnt/ultimatefish-resume": 0
           },
-          "measured_busy_vcpus": 16.729,
+          "measured_busy_vcpus": 16.506,
           "measurement_complete": true,
-          "memory_budget_bytes": 164824301568,
-          "memory_reserved_bytes": 725628727296,
-          "predicted_busy_vcpus": 16.729,
+          "memory_budget_bytes": 160880992256,
+          "memory_reserved_bytes": 795315167232,
+          "predicted_busy_vcpus": 16.506,
           "selected": [],
           "target_busy_vcpus": 22.4
         }
       },
-      "measured_busy_vcpus": 25.717,
+      "measured_busy_vcpus": 36.685,
       "measured_capacity_vcpus": 160,
-      "measured_utilization_percent": 16.1,
+      "measured_utilization_percent": 22.9,
       "measurement_complete": false,
       "selected": [],
       "stage_jobs": [],

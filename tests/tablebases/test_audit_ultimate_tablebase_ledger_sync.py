@@ -20,6 +20,60 @@ SPEC.loader.exec_module(audit)
 
 
 class LedgerSyncAuditTest(unittest.TestCase):
+    @staticmethod
+    def readme(detail_first: str, detail_digest: str) -> str:
+        return (
+            "<!-- COMPUTATION_LEDGER_START -->\n"
+            "| Key | Class | Domain | File | Status | Indexed states | "
+            "Result domain | First starts W / L / D | Second starts W / L / D | "
+            "Reachable / unreachable (first; second) | Canonical storage |\n"
+            "| --- | --- | --- | --- | --- | ---: | --- | ---: | ---: | ---: | --- |\n"
+            "| `single:rook` | King+Rook vs King | single | `krk.uftb` | "
+            "**CERTIFIED** | 2 | concrete | 1 / 0 / 0 | 0 / 1 / 0 | "
+            "1 / 0; 1 / 0 | result sha256:" + "a" * 64 + " |\n"
+            "<!-- COMPUTATION_LEDGER_END -->\n"
+            "<!-- GENERATED_TABLE_START -->\n"
+            "| File | Class | In-class edges | First material owner starts W / L / D | "
+            "Second material owner / bare King starts W / L / D | SHA-256 |\n"
+            "| --- | --- | ---: | ---: | ---: | --- |\n"
+            "| `krk.uftb` | King+Rook vs King | 1 | " + detail_first +
+            " | 0 / 1 / 0 | `" + detail_digest + "` |\n"
+            "<!-- GENERATED_TABLE_END -->\n")
+
+    def test_published_details_match_canonical_cells_and_result_sha(self) -> None:
+        result = audit.audit_published_details(self.readme("1 / 0 / 0", "a" * 64))
+        self.assertEqual({"detail_rows": 1, "result_digests": 1}, result)
+
+    def test_published_details_reject_stale_counts(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "details differ"):
+            audit.audit_published_details(self.readme("0 / 0 / 1", "a" * 64))
+
+    def test_published_details_reject_stale_digest(self) -> None:
+        with self.assertRaisesRegex(RuntimeError, "result SHA differs"):
+            audit.audit_published_details(self.readme("1 / 0 / 0", "b" * 64))
+
+    def test_concrete_certificate_rejects_reverse_orientation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "certificate.json"
+            path.write_text(json.dumps({
+                "schema": "ultimate-concrete-k2-s3-certificate-v2",
+                "completed": [{
+                    "filename": "kpenguinkdragon.uftb",
+                    "output": {"sha256": "a" * 64},
+                    "archive": {"sha256": "b" * 64},
+                    "s3": {"version_id": "version"},
+                }],
+            }))
+            binding = {
+                "filename": "kdragonkpenguin.uftb",
+                "result_sha256": "a" * 64,
+                "archive_sha256": "b" * 64,
+                "archive_version_id": "version",
+            }
+            with self.assertRaisesRegex(RuntimeError, "binding differs"):
+                audit.audit_concrete_result_certificate(path, binding)
+
+
     def test_legacy_side_rows_are_exclusions(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "sample.reachability-v2.txt"

@@ -42,6 +42,19 @@ def require_sha(path: Path, expected: str, label: str) -> None:
         raise RuntimeError(f"{label} SHA-256 mismatch: {path}")
 
 
+def validate_prebuilt_binding(executable: Path | None,
+                              executable_sha256: str,
+                              prebuilt_model_sha256: str,
+                              model_sha256: str) -> None:
+    if ((executable is None) != (not executable_sha256)):
+        raise RuntimeError(
+            "prebuilt executable and SHA-256 must be supplied together")
+    if (prebuilt_model_sha256 and
+            (executable is None or prebuilt_model_sha256 != model_sha256)):
+        raise RuntimeError(
+            "prebuilt executable model binding must equal --model-sha256")
+
+
 def run(command: list[str], root: Path, log: Path) -> None:
     log.parent.mkdir(parents=True, exist_ok=True)
     if log.exists():
@@ -155,6 +168,10 @@ def main() -> None:
                         help=("use one SHA-pinned executable for transition "
                               "generation, merge, and solve"))
     parser.add_argument("--prebuilt-executable-sha256", default="")
+    parser.add_argument(
+        "--prebuilt-model-sha256", default="",
+        help=("bind a SHA-pinned prebuilt executable to its certified model "
+              "when the compact source bundle omits inventory-only files"))
     parser.add_argument("--solve-max-nodes", type=int, default=500_000_000,
                         help="exact ROBDD node budget for solve-only retries")
     parser.add_argument("--transitions-only", action="store_true",
@@ -194,10 +211,9 @@ def main() -> None:
         path = Path(value)
         if path.is_absolute() or ".." in path.parts:
             raise RuntimeError(f"{label} must remain inside the work tree")
-    if ((args.prebuilt_executable is None) !=
-            (not args.prebuilt_executable_sha256)):
-        raise RuntimeError(
-            "prebuilt executable and SHA-256 must be supplied together")
+    validate_prebuilt_binding(
+        args.prebuilt_executable, args.prebuilt_executable_sha256,
+        args.prebuilt_model_sha256, args.model_sha256)
     if args.prebuilt_executable is not None:
         require_sha(args.prebuilt_executable,
                     args.prebuilt_executable_sha256,
@@ -227,8 +243,10 @@ def main() -> None:
             expected_names[(piece, orientation)] = name
     if args.filename != expected_names[(args.piece, args.orientation)]:
         raise RuntimeError("ordinary Ghost filename/material residual")
-    if information.solver_model_fingerprint(
-            args.filename, root=root) != args.model_sha256:
+    source_model_sha256 = information.solver_model_fingerprint(
+        args.filename, root=root)
+    if (source_model_sha256 != args.model_sha256 and
+            args.prebuilt_model_sha256 != args.model_sha256):
         raise RuntimeError("ordinary Ghost solver model mismatch")
     lower_name = f"k{args.piece}k.uftb"
     implicit_lower = args.piece in IMPLICIT_DRAWS

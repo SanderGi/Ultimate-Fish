@@ -6,6 +6,11 @@ import {
   MAX_ENGINE_SEARCH_DEPTH,
   normalizedSearchDepth,
 } from "./engine-settings.mjs";
+import {
+  configuredTablebaseDirectory,
+  createTablebaseManager,
+  resolveHuggingFaceToken,
+} from "./tablebase-manager.mjs";
 
 const uiDirectory = path.dirname(fileURLToPath(import.meta.url));
 const engineBinary = process.env.ULTIMATE_FISH_BINARY
@@ -16,6 +21,17 @@ const draftSearchScript = path.resolve(
   uiDirectory, "../tools/search_ultimate_public_draft.py",
 );
 const port = Number(process.env.ULTIMATE_FISH_PORT ?? 3001);
+const tablebaseDirectory = configuredTablebaseDirectory(
+  uiDirectory,
+  process.env.ULTIMATE_TABLEBASE_PATH,
+);
+const tablebaseManager = createTablebaseManager({
+  directory: tablebaseDirectory,
+  dataset: process.env.ULTIMATE_TABLEBASE_DATASET,
+  revision: process.env.ULTIMATE_TABLEBASE_REVISION,
+  hfOrigin: process.env.ULTIMATE_TABLEBASE_HF_ORIGIN,
+  token: resolveHuggingFaceToken(),
+});
 
 function runEngine(commands, signal, onLine) {
   return new Promise((resolve, reject) => {
@@ -839,13 +855,23 @@ function send(response, status, body) {
   response.writeHead(status, {
     "access-control-allow-origin": "*",
     "access-control-allow-headers": "content-type",
-    "access-control-allow-methods": "GET,POST,OPTIONS",
+    "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
     "content-type": "application/json; charset=utf-8",
   });
   response.end(JSON.stringify(body));
 }
 
+async function requestBody(request) {
+  let raw = "";
+  for await (const chunk of request)
+    raw += chunk;
+  if (raw.length > 5_000_000)
+    throw new Error("Request is too large");
+  return JSON.parse(raw || "{}");
+}
+
 const server = createServer(async (request, response) => {
+  const pathname = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
   const cancellation = new AbortController();
   request.on("aborted", () => cancellation.abort());
   response.on("close", () => { if (!response.writableEnded) cancellation.abort(); });
@@ -853,42 +879,51 @@ const server = createServer(async (request, response) => {
     send(response, 204, {});
     return;
   }
-  if (request.method === "GET" && request.url === "/health") {
-    send(response, 200, { ok: true, engineBinary });
-    return;
-  }
-  if (request.method !== "POST" || !["/state", "/analyze", "/analyze-stream", "/move", "/replay", "/play", "/computer", "/draft-ai", "/belief-state", "/analyze-beliefs", "/history-state", "/analyze-history", "/analyze-history-stream", "/computer-history"].includes(request.url)) {
-    send(response, 404, { error: "Not found" });
+  if (request.method === "GET" && pathname === "/health") {
+    send(response, 200, { ok: true, engineBinary, tablebaseDirectory });
     return;
   }
   try {
-    let raw = "";
-    for await (const chunk of request)
-      raw += chunk;
-    if (raw.length > 5_000_000)
-      throw new Error("Request is too large");
-    const body = JSON.parse(raw || "{}");
+    if (request.method === "GET" && pathname === "/tablebases") {
+      send(response, 200, await tablebaseManager.inventory());
+      return;
+    }
+    if (request.method === "POST" && pathname === "/tablebases/download") {
+      const body = await requestBody(request);
+      send(response, 202, await tablebaseManager.startDownload(body.filename));
+      return;
+    }
+    if (request.method === "DELETE" && pathname.startsWith("/tablebases/")) {
+      const filename = decodeURIComponent(pathname.slice("/tablebases/".length));
+      send(response, 200, await tablebaseManager.deleteTablebase(filename));
+      return;
+    }
+    if (request.method !== "POST" || !["/state", "/analyze", "/analyze-stream", "/move", "/replay", "/play", "/computer", "/draft-ai", "/belief-state", "/analyze-beliefs", "/history-state", "/analyze-history", "/analyze-history-stream", "/computer-history"].includes(pathname)) {
+      send(response, 404, { error: "Not found" });
+      return;
+    }
+    const body = await requestBody(request);
     const clientId = normalizedClientId(body.clientId);
-    if (request.url === "/draft-ai") {
+    if (pathname === "/draft-ai") {
       send(response, 200, await draftAuto(
         body.history, body.player, body.depth, body.timeLimit,
         cancellation.signal));
       return;
     }
-    if (request.url === "/belief-state") {
+    if (pathname === "/belief-state") {
       send(response, 200, await beliefState(
         body.positions, body.observer, body.enemyKingKnown,
         body.legalMarkers, cancellation.signal));
       return;
     }
-    if (request.url === "/analyze-beliefs") {
+    if (pathname === "/analyze-beliefs") {
       send(response, 200, await analyzeBeliefs(
         body.positions, body.observer, body.enemyKingKnown,
         body.legalMarkers, body.depth, body.movetime,
         cancellation.signal));
       return;
     }
-    if (request.url === "/history-state") {
+    if (pathname === "/history-state") {
       const prefetch = body.prefetch;
       const validPrefetch = prefetch &&
         (prefetch.observer === "white" || prefetch.observer === "black") &&
@@ -920,12 +955,12 @@ const server = createServer(async (request, response) => {
         )).catch(() => undefined);
       return;
     }
-    if (request.url === "/replay") {
+    if (pathname === "/replay") {
       send(response, 200, await replayPosition(
         body.initialUpn, body.moves, cancellation.signal));
       return;
     }
-    if (request.url === "/analyze-history-stream") {
+    if (pathname === "/analyze-history-stream") {
       response.writeHead(200, {
         "access-control-allow-origin": "*",
         "access-control-allow-headers": "content-type",
@@ -943,7 +978,7 @@ const server = createServer(async (request, response) => {
       response.end(`${JSON.stringify({ type: "result", analysis: result })}\n`);
       return;
     }
-    if (request.url === "/analyze-history") {
+    if (pathname === "/analyze-history") {
       send(response, 200, await analyzeHistory(
         clientId, body.initialUpn, body.moves, body.observer,
         body.enemyKingKnown,
@@ -952,7 +987,7 @@ const server = createServer(async (request, response) => {
         cancellation.signal));
       return;
     }
-    if (request.url === "/computer-history") {
+    if (pathname === "/computer-history") {
       send(response, 200, await computerHistory(
         clientId, body.initialUpn, body.moves, body.player,
         body.enemyKingKnown,
@@ -965,15 +1000,15 @@ const server = createServer(async (request, response) => {
     if (typeof body.upn !== "string" || body.upn.length > 20_000)
       throw new Error("A valid UPN string is required");
 
-    if (request.url === "/state") {
+    if (pathname === "/state") {
       send(response, 200, await state(body.upn, cancellation.signal));
       return;
     }
-    if (request.url === "/analyze") {
+    if (pathname === "/analyze") {
       send(response, 200, await analyze(body.upn, body.depth, body.movetime, cancellation.signal));
       return;
     }
-    if (request.url === "/analyze-stream") {
+    if (pathname === "/analyze-stream") {
       response.writeHead(200, {
         "access-control-allow-origin": "*",
         "access-control-allow-headers": "content-type",
@@ -985,13 +1020,13 @@ const server = createServer(async (request, response) => {
       response.end(`${JSON.stringify({ type: "result", analysis: result })}\n`);
       return;
     }
-    if (request.url === "/move") {
+    if (pathname === "/move") {
       const applied = await applyMove(body.upn, String(body.move ?? ""), cancellation.signal);
       send(response, 200, applied);
       return;
     }
 
-    if (request.url === "/computer") {
+    if (pathname === "/computer") {
       send(response, 200, await computerTurn(body.upn, body.player, body.depth, body.movetime, cancellation.signal));
       return;
     }

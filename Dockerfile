@@ -27,15 +27,15 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+RUN mkdir -p tablebases && chown node:node tablebases
 COPY --from=engine-builder /build/src/ultimatefish src/ultimatefish
 COPY tools/ tools/
-COPY tablebases/*.uftb tablebases/*.ufgm tablebases/
 
 WORKDIR /app/ui
 COPY --from=ui-builder /build/ui/.next/standalone ./
 COPY --from=ui-builder /build/ui/.next/static .next/static
 COPY --from=ui-builder /build/ui/public public
-COPY ui/engine-server.mjs ui/engine-settings.mjs ui/start-production.mjs ./
+COPY ui/engine-server.mjs ui/engine-settings.mjs ui/tablebase-manager.mjs ui/start-production.mjs ./
 
 ENV NODE_ENV=production \
     HOSTNAME=0.0.0.0 \

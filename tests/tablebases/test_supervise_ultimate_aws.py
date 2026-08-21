@@ -614,7 +614,7 @@ class SupervisionTests(unittest.TestCase):
         # bind only their small restored executables, wrappers, and markers
         # locally and authenticate their large migration archives through S3
         # instead of the bounded hash table.
-        self.assertEqual(115, len(table))
+        self.assertEqual(118, len(table))
 
     def test_cpu_allocation_reports_idle_capacity_and_overlap(self) -> None:
         definition = config()["instances"][0]

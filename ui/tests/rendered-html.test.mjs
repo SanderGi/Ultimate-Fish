@@ -59,4 +59,8 @@ test("local server renders the Ultimate Fish workbench", async () => {
   assert.match(html, /Start Ultimate Analysis/);
   assert.match(html, /Max depth/);
   assert.match(html, /<input[^>]+type="range"[^>]+max="50"[^>]+value="16"/i);
+  assert.match(html, /TABLEBASE MANAGER/);
+  assert.match(html, /Search material combinations/);
+  assert.match(html, /free/);
+  assert.match(html, /used/);
 });

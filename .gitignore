@@ -65,3 +65,7 @@ tablebases/*.ufiw
 tablebases/*.ufgm
 tablebases/*.ufgi
 tablebases/*.uficapture
+
+# Transient tablebase coordination locks
+tablebases/*.lock
+tools/tablebases/*.lock

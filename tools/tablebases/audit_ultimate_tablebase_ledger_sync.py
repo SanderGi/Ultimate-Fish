@@ -27,6 +27,8 @@ ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / "tools/tablebases/ultimate_aws_supervision.json"
 DEFAULT_README = ROOT / "tablebases/README.md"
 SIDECAR_NAME = re.compile(r"([^/]+)\.reachability-v\d+\.(?:json|txt)$")
+RESULT_DIGEST = re.compile(
+    r"\bresult(?: UFIW)? sha256:([0-9a-f]{64})\b", re.IGNORECASE)
 
 
 def sha256(path: Path) -> str:
@@ -126,17 +128,87 @@ def sidecar_filename(job: dict[str, Any], certificate: dict[str, Any]) -> str:
         f"cannot bind {certificate['key']} to ledger files {files}")
 
 
+def audit_published_details(text: str) -> dict[str, int]:
+    """Reject a stale duplicate details row beneath the canonical ledger."""
+    details = ledger.result_rows(text)
+    detail_rows = result_digests = 0
+    for row in ledger.entries(text):
+        if row.status not in {"certified", "preserving"} or not row.filename:
+            continue
+        detail = details.get(row.filename)
+        if detail is not None:
+            if detail.first != row.first or detail.second != row.second:
+                raise RuntimeError(
+                    f"README certified-result details differ for {row.filename}: "
+                    f"ledger={(row.first, row.second)!r} "
+                    f"details={(detail.first, detail.second)!r}")
+            detail_rows += 1
+        match = RESULT_DIGEST.search(row.storage)
+        if match is None:
+            continue
+        if detail is None:
+            raise RuntimeError(
+                f"README result SHA lacks details row for {row.filename}")
+        if detail.digest != match.group(1).lower():
+            raise RuntimeError(
+                f"README result SHA differs for {row.filename}: "
+                f"storage={match.group(1).lower()} details={detail.digest}")
+        result_digests += 1
+    return {"detail_rows": detail_rows, "result_digests": result_digests}
+
+
+def audit_concrete_result_certificate(
+        path: Path, binding: dict[str, Any]) -> None:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if value.get("schema") != "ultimate-concrete-k2-s3-certificate-v2":
+        raise RuntimeError(f"unexpected concrete certificate schema: {path}")
+    completed = value.get("completed")
+    if not isinstance(completed, list) or len(completed) != 1:
+        raise RuntimeError(f"concrete certificate is not single-class: {path}")
+    item = completed[0]
+    actual = {
+        "filename": str(item.get("filename", "")),
+        "result_sha256": str(item.get("output", {}).get("sha256", "")),
+        "archive_sha256": str(item.get("archive", {}).get("sha256", "")),
+        "archive_version_id": str(item.get("s3", {}).get("version_id", "")),
+    }
+    expected = {name: str(binding.get(name, "")) for name in actual}
+    if actual != expected:
+        raise RuntimeError(
+            f"concrete certificate binding differs: "
+            f"artifact={actual!r} config={expected!r}")
+
+
 def audit(config_path: Path, readme_path: Path, cache: Path,
           *, offline: bool) -> dict[str, int]:
     config = json.loads(config_path.read_text(encoding="utf-8"))
+    readme_text = readme_path.read_text(encoding="utf-8")
     readme_rows = {
         row.filename: row
-        for row in ledger.entries(readme_path.read_text(encoding="utf-8"))
+        for row in ledger.entries(readme_text)
         if row.filename
     }
     audited: set[str] = set()
     artifacts = 0
+    result_certificates = 0
     missing_results = 0
+    for binding in config.get("ledger_result_certificates", []):
+        certificate = binding["certificate"]
+        path = exact_artifact(cache, certificate, offline=offline)
+        audit_concrete_result_certificate(path, binding)
+        filename = str(binding["filename"])
+        row = readme_rows.get(filename)
+        if row is None:
+            raise RuntimeError(f"README lacks certificate-bound {filename}")
+        required = (
+            str(certificate["sha256"]), str(certificate["version_id"]),
+            str(binding["result_sha256"]), str(binding["archive_sha256"]),
+            str(binding["archive_version_id"]),
+        )
+        if any(value not in row.storage for value in required):
+            raise RuntimeError(
+                f"README storage omits certificate binding for {filename}")
+        result_certificates += 1
     for job in config["jobs"]:
         if job.get("superseded_by") or not job.get("ledger_certifies"):
             continue
@@ -185,9 +257,12 @@ def audit(config_path: Path, readme_path: Path, cache: Path,
                 sum(second) != row.states // 2):
             raise RuntimeError(f"README state conservation failed for {row.key}")
         conserved += 1
-    return {"artifacts": artifacts, "files": len(audited),
-            "missing_results": missing_results,
-            "conserved_rows": conserved}
+    result = {"artifacts": artifacts, "files": len(audited),
+              "missing_results": missing_results,
+              "conserved_rows": conserved,
+              "result_certificates": result_certificates}
+    result.update(audit_published_details(readme_text))
+    return result
 
 
 def parse_args() -> argparse.Namespace:

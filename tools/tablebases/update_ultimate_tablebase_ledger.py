@@ -155,7 +155,7 @@ def record_catalog() -> dict[str, dict[str, object]]:
             "opposed" if record["opposing"] else "same")
         key = material_key(domain, primary, secondary)
         # inventory() is last so already generated/requested filenames preserve
-        # their authenticated header-owner order (for example Dragon/Penguin).
+        # their authenticated header-owner order.
         result[key] = record
     return result
 

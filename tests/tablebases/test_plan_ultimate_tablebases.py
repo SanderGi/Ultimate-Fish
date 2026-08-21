@@ -109,7 +109,7 @@ class TablebasePlanTests(unittest.TestCase):
         requested = {record["filename"] for record in records
                      if record["phase"] == "kings+2-requested"}
         self.assertEqual(requested, {
-            "kcopycatkbishop.uftb", "kdragonkpenguin.uftb",
+            "kcopycatkbishop.uftb", "kpenguinkdragon.uftb",
             "kbishopkpenguin.uftb", "kbishoppenguink.uftb",
             "kbombkpenguin.uftb"})
 

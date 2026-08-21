@@ -20,6 +20,18 @@ SPEC.loader.exec_module(runner)
 
 
 class OrdinaryGhostManifestTests(unittest.TestCase):
+    def test_prebuilt_model_binding_is_strict_and_optional(self) -> None:
+        executable = Path("solver")
+        runner.validate_prebuilt_binding(executable, "a" * 64, "", "b" * 64)
+        runner.validate_prebuilt_binding(
+            executable, "a" * 64, "b" * 64, "b" * 64)
+        with self.assertRaisesRegex(RuntimeError, "must equal"):
+            runner.validate_prebuilt_binding(
+                executable, "a" * 64, "c" * 64, "b" * 64)
+        with self.assertRaisesRegex(RuntimeError, "must equal"):
+            runner.validate_prebuilt_binding(
+                None, "", "b" * 64, "b" * 64)
+
     def arguments(self) -> SimpleNamespace:
         return SimpleNamespace(
             filename="kknightghostk.uftb", piece="knight",

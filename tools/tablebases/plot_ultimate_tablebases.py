@@ -232,9 +232,8 @@ class OutcomeCatalog:
         self.berserker_radii = berserker_radii or {}
         # Match the canonical ledger's record precedence.  The broad stateful
         # catalog may contain a normalized duplicate for an already generated
-        # requested class (for example kpenguinkdragon versus the authenticated
-        # kdragonkpenguin header).  The exact inventory record must win so a
-        # certified result cannot be hidden or interpreted with reversed owners.
+        # requested class.  The exact inventory record must win so a certified
+        # result cannot be hidden or interpreted with reversed owners.
         records_by_filename: dict[str, dict[str, object]] = {}
         for record in (*stateful_candidates(), *angel_candidates(),
                        *mirror_copycat_candidates(), *inventory()):
