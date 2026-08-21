@@ -16,6 +16,23 @@ README = ROOT / "tablebases" / "README.md"
 PLOT_PATH = Path(__file__).with_name("plot_ultimate_tablebases.py")
 DEPENDENCIES = Path(__file__).with_name(
     "ultimate_concrete_remaining_wave0_dependencies.json")
+SUPERVISION = Path(__file__).with_name("ultimate_aws_supervision.json")
+RADIUS_SUMMARY = ROOT / "tablebases" / "berserker-radius-summary.json"
+ARTIFACTS = Path(__file__).with_name("ultimate_berserker_radius_artifacts.json")
+LEGACY_INFORMATION_ARCHIVES = {
+    "kjesterberserkerk.uftb": (
+        "results/information/fresh-maximal-public-view-v2/existing-ufiw/"
+        "sha256/c395d3786f07e2ec55588af306a79545a09fce372cfa6d8797cff4a9a4c1f558/"
+        "kjesterberserkerk.information.tar.zst",
+        "UPmRhIYEtW6PVlLTVMk15j355ZKz1fhf",
+    ),
+    "kjesterkberserker.uftb": (
+        "results/information-v2/fresh-causal-c339a675/primary-jester/"
+        "sha256/3a274b45129a509764c3fa117659d3bc08b93bd06ec9ef293ce65801aae01612/"
+        "kjesterkberserker.information.tar.zst",
+        "q4UpNUW7bJXUSl23wY4wV4ZsSyg2MQZ4",
+    ),
+}
 
 
 def load_plot():
@@ -63,6 +80,36 @@ def build(readme: Path) -> dict[str, object]:
         item["filename"]: item["sha256"]
         for item in json.loads(DEPENDENCIES.read_text(encoding="utf-8"))["files"]
     }
+    old_radius = json.loads(RADIUS_SUMMARY.read_text(encoding="utf-8"))["files"]
+    pinned_artifacts = json.loads(ARTIFACTS.read_text(encoding="utf-8"))[
+        "artifacts"
+    ]
+    supervision = json.loads(SUPERVISION.read_text(encoding="utf-8"))
+    certificates = []
+    for job in supervision["jobs"]:
+        certificates.extend(job.get("s3_certificates", []))
+    certificates.extend(supervision.get("ledger_result_certificates", []))
+
+    def exact_object_key(filename: str, version: str) -> str:
+        keys = {
+            str(record["key"])
+            for record in certificates
+            if record.get("version_id") == version and record.get("key")
+        }
+        previous = old_radius.get(filename, {})
+        if previous.get("s3_version_id") == version:
+            keys.add(str(previous["s3_key"]))
+        pinned = pinned_artifacts.get(filename)
+        if pinned and pinned.get("version_id") == version:
+            keys.add(str(pinned["key"]))
+        legacy = LEGACY_INFORMATION_ARCHIVES.get(filename)
+        if legacy and legacy[1] == version:
+            keys.add(legacy[0])
+        if len(keys) != 1:
+            raise ValueError(
+                f"expected one exact S3 key for {filename} VersionId {version}, "
+                f"found {sorted(keys)}")
+        return keys.pop()
     records: dict[str, dict[str, object]] = {}
     sources = [catalog.singles["berserker"]]
     sources.extend(record for key, record in catalog.same_team.items()
@@ -87,7 +134,10 @@ def build(readme: Path) -> dict[str, object]:
         primary = str(record["primary"])
         secondary = str(record["secondary"])
         slot = "primary" if primary == "berserker" else "secondary"
-        excluded = (primary == secondary == "berserker")
+        excluded = (
+            not bool(record["opposing"])
+            and primary == secondary == "berserker"
+        )
         records[filename] = {
             "filename": filename,
             "primary": primary,
@@ -99,6 +149,9 @@ def build(readme: Path) -> dict[str, object]:
             "expected_payload_sha256": dependency_hashes.get(filename),
             "expected_archive_sha256": hashes[0] if kind.startswith("information") else None,
             "expected_archive_version_id": version,
+            "expected_archive_key": (
+                None if excluded else exact_object_key(filename, version)
+            ),
             "aggregate": {
                 "first_starts": vars(raw.first_starts),
                 "second_starts": vars(raw.second_starts),

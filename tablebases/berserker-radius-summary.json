@@ -1,52 +1,247 @@
 {
-  "audit_binary_sha256": "e5ca8d11a0bea9c411055be29b82879cc27e1e040ee0fd84e9569556dd03e1fa",
-  "description": "Exact reachability-admitted Berserker radius slices",
+  "audit_binary_sha256": "9cc3c5b38ac072ca39ecf2401c3e54d15427c90bdfac03f48698739cface7667",
+  "description": "Exact reachability-admitted Berserker radius slices with authenticated trivial positions removed",
   "files": {
+    "kberserkerangelk.uftb": {
+      "archive_sha256": "54236276a8fbd87436bc0637998a4d9f1aef6a5633f146ac8ce328f85b55f532",
+      "audit_sha256": "ae6da50e31ee9529b9352b88ad672b24ce8602d23d0781f6614f38b310be07f6",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 47657148
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 47657148
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "admitted": {
+              "draws": 2903208,
+              "losses": 50814456,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 44459476,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2903208,
+              "losses": 6354980,
+              "wins": 0
+            }
+          }
+        },
+        "2": {
+          "first_starts": {
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 40451796
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 40451796
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "admitted": {
+              "draws": 2905056,
+              "losses": 50812608,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 45285948,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2905056,
+              "losses": 5526660,
+              "wins": 0
+            }
+          }
+        },
+        "3": {
+          "first_starts": {
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 31796688
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 31796688
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "admitted": {
+              "draws": 2906904,
+              "losses": 50810760,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 46544916,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2906904,
+              "losses": 4265844,
+              "wins": 0
+            }
+          }
+        }
+      },
+      "s3_key": "results/angel-graph-v7-parallel-resume/concrete/v2/model/af60c54fae9c55116ac9ee8a368bf4804c89d60390c5b17ff5b358f89573299d/wave-0/sha256/54236276a8fbd87436bc0637998a4d9f1aef6a5633f146ac8ce328f85b55f532/kberserkerangelk-54236276a8fbd87436bc0637998a4d9f1aef6a5633f146ac8ce328f85b55f532.tar.zst",
+      "s3_metadata_sha256": "54236276a8fbd87436bc0637998a4d9f1aef6a5633f146ac8ce328f85b55f532",
+      "s3_version_id": "oIA6f7w4yJtUTiiA9ZpIuVA941EUoSVM",
+      "source_sha256": "ffe00f661c4ebff9882af420e6ceb00893a57a30885020496455459847211c3d",
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-3/work/tables/kberserkerangelk.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
+    },
     "kberserkerberserkerk.uftb": {
       "excluded": true,
       "reason": "same-team identical Berserkers are exchange-folded and have no distinguished row piece"
     },
     "kberserkerbombk.uftb": {
       "archive_sha256": "3addd3e350e38e9234eee0800c56cefbe7e89f403c5cd0288677fe29906a82ab",
-      "audit_sha256": "a5679a556831d1e55623510a44bd1fe6186aa1d8e3aa8a92b86369e7335a5414",
+      "audit_sha256": "2527928e04d1db43281b861e0d377ff50e8844b7d3e98abd3ef027414001545c",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 13901148
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 13901148
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 13901148
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 37984,
-            "losses": 17263608,
-            "wins": 0
+            "admitted": {
+              "draws": 37984,
+              "losses": 17263608,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 16019340,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 37984,
+              "losses": 1244268,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 11813564
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 11813564
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 11813564
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 39004,
-            "losses": 17262588,
-            "wins": 0
+            "admitted": {
+              "draws": 39004,
+              "losses": 17262588,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 16018320,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 39004,
+              "losses": 1244268,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 9312466
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9312466
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9312466
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 37296,
-            "losses": 17264296,
-            "wins": 0
+            "admitted": {
+              "draws": 37296,
+              "losses": 17264296,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 16020028,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 37296,
+              "losses": 1244268,
+              "wins": 0
+            }
           }
         }
       },
@@ -54,49 +249,122 @@
       "s3_metadata_sha256": "3addd3e350e38e9234eee0800c56cefbe7e89f403c5cd0288677fe29906a82ab",
       "s3_version_id": "wB7rq2TjG0O6HGb14C9Fq8G5zrsduq6u",
       "source_sha256": "b05efd1d29f32bd1647ee78672a7b5acd3468729a0b262e4370754a74216c1f6",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerbombk.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-2/work/tables/kberserkerbombk.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkercheckerk.uftb": {
       "archive_sha256": "2fc4257245ca71d92890041f7a9839d4a9ce6fd86993a035d63688f333823d06",
-      "audit_sha256": "342529e75d726f8702492dbd250486caf86a75234b60972391180aa4c92055c9",
+      "audit_sha256": "e811091ce66bafab44cbc45f2fb4bcc6f7b44c328a0cbef3a440e4fa8014c2a4",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 30312348
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 30312348
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 29469660
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 842688
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 2623817,
-            "losses": 30379307,
-            "wins": 0
+            "admitted": {
+              "draws": 2623817,
+              "losses": 30379307,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 27974927,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2623817,
+              "losses": 2404380,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 25883537
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 25883537
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 25040849
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 842688
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 2625254,
-            "losses": 30377870,
-            "wins": 0
+            "admitted": {
+              "draws": 2625254,
+              "losses": 30377870,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 28275794,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2625254,
+              "losses": 2102076,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 20558464
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 20558464
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 19715776
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 842688
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 2626499,
-            "losses": 30376625,
-            "wins": 0
+            "admitted": {
+              "draws": 2626499,
+              "losses": 30376625,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 28762101,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2626499,
+              "losses": 1614524,
+              "wins": 0
+            }
           }
         }
       },
@@ -104,49 +372,122 @@
       "s3_metadata_sha256": "2fc4257245ca71d92890041f7a9839d4a9ce6fd86993a035d63688f333823d06",
       "s3_version_id": "YwZ858F1ByDKjxXp0UyskTOyOlAZugo7",
       "source_sha256": "b0d8711c21ffafb76758d55c36298d50336501114dfcc7ce309076e9a298ab1f",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkercheckerk.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-4-fast/work/tables/kberserkercheckerk.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerdragonk.uftb": {
       "archive_sha256": "bbbfcb3df46108d7562ff6305b85b03cc0deffe7f5192eab16574ec6cb94a899",
-      "audit_sha256": "9e059a78b7418bbd94efe86eb1586e8df7643a877b55a4678411906d3b34ec1f",
+      "audit_sha256": "a4ef538926e67d70b68b71e020c6514168ee1c1ccb3f647007dea3784d8dac2e",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 12877956
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12877956
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12877956
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 19264,
-            "losses": 17350088,
-            "wins": 0
+            "admitted": {
+              "draws": 19264,
+              "losses": 17350088,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14933302,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 19264,
+              "losses": 2416786,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 10947676
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10947676
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10947676
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 27986,
-            "losses": 17341366,
-            "wins": 0
+            "admitted": {
+              "draws": 27986,
+              "losses": 17341366,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15113140,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 27986,
+              "losses": 2228226,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 8654750
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 8654750
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 8654750
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 33676,
-            "losses": 17335676,
-            "wins": 0
+            "admitted": {
+              "draws": 33676,
+              "losses": 17335676,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15357222,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 33676,
+              "losses": 1978454,
+              "wins": 0
+            }
           }
         }
       },
@@ -154,49 +495,122 @@
       "s3_metadata_sha256": "bbbfcb3df46108d7562ff6305b85b03cc0deffe7f5192eab16574ec6cb94a899",
       "s3_version_id": "ziGJ3OQj8DQorqRiy9uVx07S5uk5Bial",
       "source_sha256": "df2ca64b8c46824d99b938ded4b9fb190f54ca590349359da758684302839c84",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerdragonk.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-3/work/tables/kberserkerdragonk.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerfishermank.uftb": {
       "archive_sha256": "2a5d58237cd156a8ecb8047c23de8f76eaed9511548b6bb38cba997d3ac816e8",
-      "audit_sha256": "b8a2151428dd8037d7adf458e5fdd93771c78707283cda24f462be0258d81351",
+      "audit_sha256": "bd1733420aedafb13cbd6ef5fd1a7b6c4ca7dae26dabb27cfff57831faaa14ab",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 15885716
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 15885716
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 15885716
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 1417108,
-            "losses": 15952244,
-            "wins": 0
+            "admitted": {
+              "draws": 1417108,
+              "losses": 15952244,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14704856,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1417108,
+              "losses": 1247388,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 13483932
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 13483932
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 13483932
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 1417724,
-            "losses": 15951628,
-            "wins": 0
+            "admitted": {
+              "draws": 1417724,
+              "losses": 15951628,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14858300,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1417724,
+              "losses": 1093328,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 10598896
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10598896
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10598896
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 1418340,
-            "losses": 15951012,
-            "wins": 0
+            "admitted": {
+              "draws": 1418340,
+              "losses": 15951012,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15107456,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1418340,
+              "losses": 843556,
+              "wins": 0
+            }
           }
         }
       },
@@ -204,49 +618,122 @@
       "s3_metadata_sha256": "2a5d58237cd156a8ecb8047c23de8f76eaed9511548b6bb38cba997d3ac816e8",
       "s3_version_id": "Hx0CMMVSIiPkz0udYDOEXXffUz92xPsb",
       "source_sha256": "eedfa90a72ae816ff0896a104811e34f5725a8091189e0efa493ed9d6874d809",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerfishermank.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-1/work/tables/kberserkerfishermank.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkergiantk.uftb": {
       "archive_sha256": "8a1b1797f8f7738d849702b63a18b5da4ecfad019042d6fc88ed519a3adf584f",
-      "audit_sha256": "6a83cbc35731e057bf9ceaea6e6aae8b7ec72aa170bc44efbc970a5243b0e169",
+      "audit_sha256": "9d6f2323a064390a1b339a1b0d6baed06dd64502cd5f53223f0241857d60d055",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 9347536
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9347536
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9347536
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 843652,
-            "losses": 11300932,
-            "wins": 0
+            "admitted": {
+              "draws": 843652,
+              "losses": 11300932,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 9766704,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 843652,
+              "losses": 1534228,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 7955374
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 7955374
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 7955374
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 844504,
-            "losses": 11300080,
-            "wins": 0
+            "admitted": {
+              "draws": 844504,
+              "losses": 11300080,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 9986644,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 844504,
+              "losses": 1313436,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 6313876
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 6313876
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 6313876
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 846152,
-            "losses": 11298432,
-            "wins": 0
+            "admitted": {
+              "draws": 846152,
+              "losses": 11298432,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 10299626,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 846152,
+              "losses": 998806,
+              "wins": 0
+            }
           }
         }
       },
@@ -254,48 +741,121 @@
       "s3_metadata_sha256": "8a1b1797f8f7738d849702b63a18b5da4ecfad019042d6fc88ed519a3adf584f",
       "s3_version_id": "EXkOI6JOaP.5gTfjFTSBYEfx9cfFBtS0",
       "source_sha256": "ffa499e631d5a245dc289e5b728c89d1fd241b642037c740bd263869ebe21235",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkergiantk.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-2/work/tables/kberserkergiantk.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerk.uftb": {
-      "audit_sha256": "d7827ae617bd37943c72a0bead0e2732578172b1d839b8164c0520819659216a",
+      "audit_sha256": "f36fb13279230bb76fcb5d76424cc9e7cdfe93a983513f148caee3181d82696f",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 412616
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 412616
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 412616
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 36808,
-            "losses": 414344,
-            "wins": 0
+            "admitted": {
+              "draws": 36808,
+              "losses": 414344,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 414344,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 36808,
+              "losses": 0,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 350232
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 350232
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 350232
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 36824,
-            "losses": 414328,
-            "wins": 0
+            "admitted": {
+              "draws": 36824,
+              "losses": 414328,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 414328,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 36824,
+              "losses": 0,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 275296
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 275296
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 275296
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 36840,
-            "losses": 414312,
-            "wins": 0
+            "admitted": {
+              "draws": 36840,
+              "losses": 414312,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 414312,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 36840,
+              "losses": 0,
+              "wins": 0
+            }
           }
         }
       },
@@ -303,49 +863,368 @@
       "source_archive_sha256": "e296deebc6d0f4ef2c53e14eab86fd1c2bbc9954a6051ffca5ce7b9623b08263",
       "source_archive_version_id": "YTpSbC_DShKsF8QwShKRSIBUVf8PH0VJ",
       "source_sha256": "f41245a06eb280136c458e6337ef4a588a0d5142b606413b92f84c248487e2b1",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerk.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-3/work/tables/kberserkerk.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
-    "kberserkerkbomb.uftb": {
-      "archive_sha256": "7ab66f110ab737afb73f8516dd9d321cfac71b002bcf9e1985bb6f809e912de0",
-      "audit_sha256": "5ee0d3ed1e4923ebcc90c047f9aafa13123b8762cc44618289780808761f42a6",
+    "kberserkerkangel.uftb": {
+      "archive_sha256": "c36ac8cfadbeb6da85de5d565c0f3cf5863f7fab3575656b187004565a5a4083",
+      "audit_sha256": "317cfe2f522989a9c4b1d8d3fa5a7ff0ebad578ae416a025692c63d3bcee6ab1",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 5956800,
-            "losses": 9714414,
-            "wins": 92422
+            "admitted": {
+              "draws": 12328550,
+              "losses": 16680,
+              "wins": 22519446
+            },
+            "display": {
+              "draws": 11970590,
+              "losses": 16648,
+              "wins": 14817942
+            },
+            "trivial": {
+              "draws": 357960,
+              "losses": 32,
+              "wins": 7701504
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 2947466,
-            "losses": 28034,
-            "wins": 12157436
+            "admitted": {
+              "draws": 19177408,
+              "losses": 15517926,
+              "wins": 43370
+            },
+            "display": {
+              "draws": 16278156,
+              "losses": 15508218,
+              "wins": 40902
+            },
+            "trivial": {
+              "draws": 2899252,
+              "losses": 9708,
+              "wins": 2468
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 3595386,
-            "losses": 2718824,
-            "wins": 7034934
+            "admitted": {
+              "draws": 4042526,
+              "losses": 13976,
+              "wins": 28406390
+            },
+            "display": {
+              "draws": 3613078,
+              "losses": 13976,
+              "wins": 15810326
+            },
+            "trivial": {
+              "draws": 429448,
+              "losses": 0,
+              "wins": 12596064
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 5174950,
-            "losses": 4454446,
-            "wins": 5503540
+            "admitted": {
+              "draws": 10036300,
+              "losses": 24665764,
+              "wins": 36640
+            },
+            "display": {
+              "draws": 7011488,
+              "losses": 23794816,
+              "wins": 35296
+            },
+            "trivial": {
+              "draws": 3024812,
+              "losses": 870948,
+              "wins": 1344
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 525926,
-            "losses": 1354828,
-            "wins": 8587430
+            "admitted": {
+              "draws": 2448234,
+              "losses": 11012,
+              "wins": 27118610
+            },
+            "display": {
+              "draws": 1849644,
+              "losses": 11012,
+              "wins": 10506820
+            },
+            "trivial": {
+              "draws": 598590,
+              "losses": 0,
+              "wins": 16611790
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 1839680,
-            "losses": 9605554,
-            "wins": 3687702
+            "admitted": {
+              "draws": 8105316,
+              "losses": 26604552,
+              "wins": 28836
+            },
+            "display": {
+              "draws": 4891598,
+              "losses": 22878884,
+              "wins": 27608
+            },
+            "trivial": {
+              "draws": 3213718,
+              "losses": 3725668,
+              "wins": 1228
+            }
+          }
+        }
+      },
+      "s3_key": "results/angel-graph-v2/concrete/v2/model/f36a5a240ccac9913d80120ca008adfa0cd10e3a8002b852569a13e153a1c33f/wave-0/sha256/c36ac8cfadbeb6da85de5d565c0f3cf5863f7fab3575656b187004565a5a4083/kberserkerkangel-c36ac8cfadbeb6da85de5d565c0f3cf5863f7fab3575656b187004565a5a4083.tar.zst",
+      "s3_metadata_sha256": "c36ac8cfadbeb6da85de5d565c0f3cf5863f7fab3575656b187004565a5a4083",
+      "s3_version_id": "aY6aIFked6U.IPLCDQlB2hcFyQQUde7q",
+      "source_sha256": "03374322d2e802e17dbee68057e273a3e4a5227bb9fed91acb373a816bc5548b",
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-0-sub-1/work/tables/kberserkerkangel.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
+    },
+    "kberserkerkberserker.uftb": {
+      "archive_sha256": "177c0e68a38e733b58998b576a1ef6040dcd664e25b3b94d9738b7c982929d15",
+      "audit_sha256": "f4b2f6da1c6ef09574f4542d2d04e16cc562bd1a4ab546fcbf4e6554148bdd68",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "admitted": {
+              "draws": 14259302,
+              "losses": 118647852,
+              "wins": 25950006
+            },
+            "display": {
+              "draws": 13656370,
+              "losses": 113900718,
+              "wins": 1116730
+            },
+            "trivial": {
+              "draws": 602932,
+              "losses": 4747134,
+              "wins": 24833276
+            }
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "admitted": {
+              "draws": 12631496,
+              "losses": 512028,
+              "wins": 43388952
+            },
+            "display": {
+              "draws": 12567132,
+              "losses": 512028,
+              "wins": 21910876
+            },
+            "trivial": {
+              "draws": 64364,
+              "losses": 0,
+              "wins": 21478076
+            }
+          }
+        },
+        "2": {
+          "first_starts": {
+            "admitted": {
+              "draws": 7830610,
+              "losses": 74764444,
+              "wins": 52244266
+            },
+            "display": {
+              "draws": 7057902,
+              "losses": 71978920,
+              "wins": 14789034
+            },
+            "trivial": {
+              "draws": 772708,
+              "losses": 2785524,
+              "wins": 37455232
+            }
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "admitted": {
+              "draws": 7182344,
+              "losses": 14380426,
+              "wins": 34969706
+            },
+            "display": {
+              "draws": 7000762,
+              "losses": 14113410,
+              "wins": 13605360
+            },
+            "trivial": {
+              "draws": 181582,
+              "losses": 267016,
+              "wins": 21364346
+            }
+          }
+        },
+        "3": {
+          "first_starts": {
+            "admitted": {
+              "draws": 4436192,
+              "losses": 42166674,
+              "wins": 59386094
+            },
+            "display": {
+              "draws": 3634212,
+              "losses": 40886276,
+              "wins": 15510096
+            },
+            "trivial": {
+              "draws": 801980,
+              "losses": 1280398,
+              "wins": 43875998
+            }
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "admitted": {
+              "draws": 4263208,
+              "losses": 23023630,
+              "wins": 29245638
+            },
+            "display": {
+              "draws": 3907454,
+              "losses": 22028534,
+              "wins": 8037092
+            },
+            "trivial": {
+              "draws": 355754,
+              "losses": 995096,
+              "wins": 21208546
+            }
+          }
+        }
+      },
+      "s3_key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/177c0e68a38e733b58998b576a1ef6040dcd664e25b3b94d9738b7c982929d15/kberserkerkberserker-177c0e68a38e733b58998b576a1ef6040dcd664e25b3b94d9738b7c982929d15.tar.zst",
+      "s3_metadata_sha256": "177c0e68a38e733b58998b576a1ef6040dcd664e25b3b94d9738b7c982929d15",
+      "s3_version_id": "vIaZ9yyi6GlqgldU_NTr0UcSma09abog",
+      "source_sha256": "d7b3fd554638042c855374f3e38f898226f9884d06e6c6d4167fbd182ad2209c",
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-opposed-berserker/work/tables/kberserkerkberserker.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
+    },
+    "kberserkerkbomb.uftb": {
+      "archive_sha256": "7ab66f110ab737afb73f8516dd9d321cfac71b002bcf9e1985bb6f809e912de0",
+      "audit_sha256": "d22f9c608f9ade8ae4a1c2eb4732f4ce39db4a1b078b562bc15c0add9131150e",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "admitted": {
+              "draws": 5956800,
+              "losses": 9714414,
+              "wins": 92422
+            },
+            "display": {
+              "draws": 4770306,
+              "losses": 9563006,
+              "wins": 92084
+            },
+            "trivial": {
+              "draws": 1186494,
+              "losses": 151408,
+              "wins": 338
+            }
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "admitted": {
+              "draws": 2947466,
+              "losses": 28034,
+              "wins": 12157436
+            },
+            "display": {
+              "draws": 2613910,
+              "losses": 28034,
+              "wins": 9587184
+            },
+            "trivial": {
+              "draws": 333556,
+              "losses": 0,
+              "wins": 2570252
+            }
+          }
+        },
+        "2": {
+          "first_starts": {
+            "admitted": {
+              "draws": 3595386,
+              "losses": 2718824,
+              "wins": 7034934
+            },
+            "display": {
+              "draws": 2536922,
+              "losses": 2600780,
+              "wins": 5459722
+            },
+            "trivial": {
+              "draws": 1058464,
+              "losses": 118044,
+              "wins": 1575212
+            }
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "admitted": {
+              "draws": 5174950,
+              "losses": 4454446,
+              "wins": 5503540
+            },
+            "display": {
+              "draws": 3861528,
+              "losses": 4303952,
+              "wins": 3878988
+            },
+            "trivial": {
+              "draws": 1313422,
+              "losses": 150494,
+              "wins": 1624552
+            }
+          }
+        },
+        "3": {
+          "first_starts": {
+            "admitted": {
+              "draws": 525926,
+              "losses": 1354828,
+              "wins": 8587430
+            },
+            "display": {
+              "draws": 151410,
+              "losses": 1261606,
+              "wins": 5461882
+            },
+            "trivial": {
+              "draws": 374516,
+              "losses": 93222,
+              "wins": 3125548
+            }
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "admitted": {
+              "draws": 1839680,
+              "losses": 9605554,
+              "wins": 3687702
+            },
+            "display": {
+              "draws": 390380,
+              "losses": 9010118,
+              "wins": 2231486
+            },
+            "trivial": {
+              "draws": 1449300,
+              "losses": 595436,
+              "wins": 1456216
+            }
           }
         }
       },
@@ -353,49 +1232,245 @@
       "s3_metadata_sha256": "7ab66f110ab737afb73f8516dd9d321cfac71b002bcf9e1985bb6f809e912de0",
       "s3_version_id": "nLWuIst1EalItDtUSqUvWv.SbkJPv5Pq",
       "source_sha256": "06fa021da62a954b756b290e714cc166a0a7293781138e34acb9791522beb570",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkbomb.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-3/work/tables/kberserkerkbomb.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
-    "kberserkerkdragon.uftb": {
-      "archive_sha256": "3b1917db24e5c05810e42e1cf0000636350bddd91eaad564d39debadfad546bc",
-      "audit_sha256": "a3f7a005862693c9fa8b988cd7d123e9805cf2f583a6005392201fd13a5e1525",
+    "kberserkerkchecker.uftb": {
+      "archive_sha256": "ebdd707c7f1d1bd999c29da99f4b9888586361f38707e4be7f11832456660868",
+      "audit_sha256": "dd3e7227581d9bb545bc4b3619ef02e358f9034928bfa42de8fe212425fc8d3f",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 6237900,
-            "losses": 7153948,
-            "wins": 2493868
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 30185340
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 25276262
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 4909078
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 2937476,
-            "losses": 5424,
-            "wins": 11142920
+            "admitted": {
+              "draws": 4047566,
+              "losses": 28917866,
+              "wins": 842688
+            },
+            "display": {
+              "draws": 0,
+              "losses": 28891783,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 4047566,
+              "losses": 26083,
+              "wins": 842688
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 989404,
-            "losses": 130710,
-            "wins": 12363818
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 25623809
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 18251298
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 7372511
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 3781126,
-            "losses": 6153480,
-            "wins": 4151214
+            "admitted": {
+              "draws": 4047573,
+              "losses": 28917859,
+              "wins": 842688
+            },
+            "display": {
+              "draws": 0,
+              "losses": 27908819,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 4047573,
+              "losses": 1009040,
+              "wins": 842688
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 169302,
-            "losses": 51272,
-            "wins": 10378322
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 20144176
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 11541830
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 8602346
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 1130874,
-            "losses": 9211882,
-            "wins": 3743064
+            "admitted": {
+              "draws": 4047564,
+              "losses": 28917868,
+              "wins": 842688
+            },
+            "display": {
+              "draws": 0,
+              "losses": 27008276,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 4047564,
+              "losses": 1909592,
+              "wins": 842688
+            }
+          }
+        }
+      },
+      "s3_key": "results/current-concrete-84592a0b/concrete/v2/model/84592a0b9b609e8f36b8b6fd828c0f5547d2591d20b0fe235067277b87777ece/wave-0/sha256/ebdd707c7f1d1bd999c29da99f4b9888586361f38707e4be7f11832456660868/kberserkerkchecker-ebdd707c7f1d1bd999c29da99f4b9888586361f38707e4be7f11832456660868.tar.zst",
+      "s3_metadata_sha256": "ebdd707c7f1d1bd999c29da99f4b9888586361f38707e4be7f11832456660868",
+      "s3_version_id": "lsmkwgnUZO5mVSOcJ_8aOiIyAWm61tnV",
+      "source_sha256": "6919e29cda2593b591baa7d9ae0332990e63c4af74a14aa03cb8eeeae84c1311",
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-3/work/tables/kberserkerkchecker.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
+    },
+    "kberserkerkdragon.uftb": {
+      "archive_sha256": "3b1917db24e5c05810e42e1cf0000636350bddd91eaad564d39debadfad546bc",
+      "audit_sha256": "b7303efeebb60e95b04db675d230a47ff1cdca667a5b8661bec8f1801164fcb7",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "admitted": {
+              "draws": 6237900,
+              "losses": 7153948,
+              "wins": 2493868
+            },
+            "display": {
+              "draws": 6096664,
+              "losses": 6864544,
+              "wins": 10472
+            },
+            "trivial": {
+              "draws": 141236,
+              "losses": 289404,
+              "wins": 2483396
+            }
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "admitted": {
+              "draws": 2937476,
+              "losses": 5424,
+              "wins": 11142920
+            },
+            "display": {
+              "draws": 2716580,
+              "losses": 4128,
+              "wins": 7720944
+            },
+            "trivial": {
+              "draws": 220896,
+              "losses": 1296,
+              "wins": 3421976
+            }
+          }
+        },
+        "2": {
+          "first_starts": {
+            "admitted": {
+              "draws": 989404,
+              "losses": 130710,
+              "wins": 12363818
+            },
+            "display": {
+              "draws": 951794,
+              "losses": 52408,
+              "wins": 8553648
+            },
+            "trivial": {
+              "draws": 37610,
+              "losses": 78302,
+              "wins": 3810170
+            }
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "admitted": {
+              "draws": 3781126,
+              "losses": 6153480,
+              "wins": 4151214
+            },
+            "display": {
+              "draws": 3531138,
+              "losses": 5943410,
+              "wins": 758518
+            },
+            "trivial": {
+              "draws": 249988,
+              "losses": 210070,
+              "wins": 3392696
+            }
+          }
+        },
+        "3": {
+          "first_starts": {
+            "admitted": {
+              "draws": 169302,
+              "losses": 51272,
+              "wins": 10378322
+            },
+            "display": {
+              "draws": 152782,
+              "losses": 15092,
+              "wins": 5918142
+            },
+            "trivial": {
+              "draws": 16520,
+              "losses": 36180,
+              "wins": 4460180
+            }
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "admitted": {
+              "draws": 1130874,
+              "losses": 9211882,
+              "wins": 3743064
+            },
+            "display": {
+              "draws": 880794,
+              "losses": 8704920,
+              "wins": 350460
+            },
+            "trivial": {
+              "draws": 250080,
+              "losses": 506962,
+              "wins": 3392604
+            }
           }
         }
       },
@@ -403,49 +1478,122 @@
       "s3_metadata_sha256": "3b1917db24e5c05810e42e1cf0000636350bddd91eaad564d39debadfad546bc",
       "s3_version_id": "A7NUg91DR6U8MyBmJ2yi2heWnDtI8w9Y",
       "source_sha256": "463cca983d48f134bf94576fc29ce2fa3b48590a2ed22579e433baa3194ce8e9",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkdragon.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-4-fast/work/tables/kberserkerkdragon.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerkfisherman.uftb": {
       "archive_sha256": "4e28c28b7fdb35c8a0984038904532058de2504e1d98eeba4b7f9a41de5a582f",
-      "audit_sha256": "5eef545a1161dcd488b5112cb86f00fc4281029d51aff0e3510b3c5c6127e4ad",
+      "audit_sha256": "78dfdf17e0e44fd6e12b8f3b9ccb5af36d2cf56814fd60e7bd11cc3143fd0612",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 13386508,
-            "losses": 0,
-            "wins": 2499208
+            "admitted": {
+              "draws": 13386508,
+              "losses": 0,
+              "wins": 2499208
+            },
+            "display": {
+              "draws": 13327886,
+              "losses": 0,
+              "wins": 14558
+            },
+            "trivial": {
+              "draws": 58622,
+              "losses": 0,
+              "wins": 2484650
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 17357684,
-            "losses": 11668,
-            "wins": 0
+            "admitted": {
+              "draws": 17357684,
+              "losses": 11668,
+              "wins": 0
+            },
+            "display": {
+              "draws": 15940284,
+              "losses": 5112,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1417400,
+              "losses": 6556,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 13483932
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 13483932
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9663324
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 3820608
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 1415876,
-            "losses": 15953476,
-            "wins": 0
+            "admitted": {
+              "draws": 1415876,
+              "losses": 15953476,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15289946,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1415876,
+              "losses": 663530,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 10598896
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10598896
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 6134676
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 4464220
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 1415876,
-            "losses": 15953476,
-            "wins": 0
+            "admitted": {
+              "draws": 1415876,
+              "losses": 15953476,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14616464,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1415876,
+              "losses": 1337012,
+              "wins": 0
+            }
           }
         }
       },
@@ -453,49 +1601,122 @@
       "s3_metadata_sha256": "4e28c28b7fdb35c8a0984038904532058de2504e1d98eeba4b7f9a41de5a582f",
       "s3_version_id": "ALz0nmRU6g9NnmsxX9Z.MF4WV2HOMY8F",
       "source_sha256": "31d4fccb2fa110188d7fd20ba5b6493ba30428e20b9dce5305121c4f4fffd560",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkfisherman.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-0-sub-1/work/tables/kberserkerkfisherman.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerkgiant.uftb": {
       "archive_sha256": "de9d945fc7a048c1d9ffe1284d88e9026264893b33c28327453ec2a8cd2c8262",
-      "audit_sha256": "32d519a8b5525b22563fb00890dde82af7b5ab70a75d7eebefe3edeafcef7bbb",
+      "audit_sha256": "74a05fad75a882973e600f64b5abf4df47be5c16be32fc3afb9eff2a9a4cc464",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 83096,
-            "losses": 22216,
-            "wins": 10988080
+            "admitted": {
+              "draws": 83096,
+              "losses": 22216,
+              "wins": 10988080
+            },
+            "display": {
+              "draws": 24122,
+              "losses": 22138,
+              "wins": 8226456
+            },
+            "trivial": {
+              "draws": 58974,
+              "losses": 78,
+              "wins": 2761624
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 2419208,
-            "losses": 7775342,
-            "wins": 40538
+            "admitted": {
+              "draws": 2419208,
+              "losses": 7775342,
+              "wins": 40538
+            },
+            "display": {
+              "draws": 115372,
+              "losses": 7773080,
+              "wins": 29022
+            },
+            "trivial": {
+              "draws": 2303836,
+              "losses": 2262,
+              "wins": 11516
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 28,
-            "losses": 15508,
-            "wins": 9418482
+            "admitted": {
+              "draws": 28,
+              "losses": 15508,
+              "wins": 9418482
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15508,
+              "wins": 5660418
+            },
+            "trivial": {
+              "draws": 28,
+              "losses": 0,
+              "wins": 3758064
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 2305356,
-            "losses": 7897400,
-            "wins": 32332
+            "admitted": {
+              "draws": 2305356,
+              "losses": 7897400,
+              "wins": 32332
+            },
+            "display": {
+              "draws": 28,
+              "losses": 7668688,
+              "wins": 22312
+            },
+            "trivial": {
+              "draws": 2305328,
+              "losses": 228712,
+              "wins": 10020
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 8,
-            "losses": 10018,
-            "wins": 7426130
+            "admitted": {
+              "draws": 8,
+              "losses": 10018,
+              "wins": 7426130
+            },
+            "display": {
+              "draws": 0,
+              "losses": 10018,
+              "wins": 3353810
+            },
+            "trivial": {
+              "draws": 8,
+              "losses": 0,
+              "wins": 4072320
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 2306512,
-            "losses": 7904740,
-            "wins": 23836
+            "admitted": {
+              "draws": 2306512,
+              "losses": 7904740,
+              "wins": 23836
+            },
+            "display": {
+              "draws": 4,
+              "losses": 7389928,
+              "wins": 14996
+            },
+            "trivial": {
+              "draws": 2306508,
+              "losses": 514812,
+              "wins": 8840
+            }
           }
         }
       },
@@ -503,49 +1724,122 @@
       "s3_metadata_sha256": "de9d945fc7a048c1d9ffe1284d88e9026264893b33c28327453ec2a8cd2c8262",
       "s3_version_id": "h4HqEbPggva7N4qCMe2fb6VcP5ap6w_x",
       "source_sha256": "bd0871671df1098f7a5a2028c08efa284fb8f8a4f7454f32cdbc67a401d9df3b",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkgiant.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-2/work/tables/kberserkerkgiant.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerkmage.uftb": {
       "archive_sha256": "3fe501362b15c1840240982a155a415f046e3fa47749678640c8b2fff23993e3",
-      "audit_sha256": "597fc2ca1b229f46092e15a9caee4e70049f080af439f82fe3b6dc371a816571",
+      "audit_sha256": "0f23c1f46a511afd44c376c88bf8be82f65a52ecc9eb207b1870361e5e996cf0",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 15885716
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 15885716
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 13342444
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 2543272
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 1416048,
-            "losses": 15953304,
-            "wins": 0
+            "admitted": {
+              "draws": 1416048,
+              "losses": 15953304,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 13514736,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1416048,
+              "losses": 2438568,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 13483932
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 13483932
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9663324
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 3820608
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 1416392,
-            "losses": 15952960,
-            "wins": 0
+            "admitted": {
+              "draws": 1416392,
+              "losses": 15952960,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 11340820,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1416392,
+              "losses": 4612140,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 10598896
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10598896
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 6134676
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 4464220
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 1417140,
-            "losses": 15952212,
-            "wins": 0
+            "admitted": {
+              "draws": 1417140,
+              "losses": 15952212,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 8928892,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1417140,
+              "losses": 7023320,
+              "wins": 0
+            }
           }
         }
       },
@@ -553,49 +1847,122 @@
       "s3_metadata_sha256": "3fe501362b15c1840240982a155a415f046e3fa47749678640c8b2fff23993e3",
       "s3_version_id": "PAJ_E9hsY2pTX0Oxm62uhqkwvvc_kuVz",
       "source_sha256": "c4c8e22e11d6576ee90761855ac241f566a740a461efcc27dcfdb1d009e74ba2",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkmage.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-3/work/tables/kberserkerkmage.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerkninja.uftb": {
       "archive_sha256": "7d0bd43fc1fc2abd30514b84932388de40d6bba34bc6ab37309606bd419fe9ec",
-      "audit_sha256": "faac32e8ec568feb386c027ba38da4df74c9bb0741e84b0071bfba388fbf060f",
+      "audit_sha256": "2495d24610394362b73b6b6fb4e58a763d0c7a286749d61d48485eaf9a42150c",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 7147320,
-            "losses": 6238816,
-            "wins": 2499580
+            "admitted": {
+              "draws": 7147320,
+              "losses": 6238816,
+              "wins": 2499580
+            },
+            "display": {
+              "draws": 7015592,
+              "losses": 6054996,
+              "wins": 16252
+            },
+            "trivial": {
+              "draws": 131728,
+              "losses": 183820,
+              "wins": 2483328
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 3847982,
-            "losses": 5680,
-            "wins": 9866198
+            "admitted": {
+              "draws": 3847982,
+              "losses": 5680,
+              "wins": 9866198
+            },
+            "display": {
+              "draws": 3684586,
+              "losses": 5680,
+              "wins": 6281366
+            },
+            "trivial": {
+              "draws": 163396,
+              "losses": 0,
+              "wins": 3584832
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 4933408,
-            "losses": 323720,
-            "wins": 8226804
+            "admitted": {
+              "draws": 4933408,
+              "losses": 323720,
+              "wins": 8226804
+            },
+            "display": {
+              "draws": 4863056,
+              "losses": 248252,
+              "wins": 4456072
+            },
+            "trivial": {
+              "draws": 70352,
+              "losses": 75468,
+              "wins": 3770732
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 6541242,
-            "losses": 2332298,
-            "wins": 4846320
+            "admitted": {
+              "draws": 6541242,
+              "losses": 2332298,
+              "wins": 4846320
+            },
+            "display": {
+              "draws": 6354586,
+              "losses": 2233698,
+              "wins": 1266676
+            },
+            "trivial": {
+              "draws": 186656,
+              "losses": 98600,
+              "wins": 3579644
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 171582,
-            "losses": 19570,
-            "wins": 10407744
+            "admitted": {
+              "draws": 171582,
+              "losses": 19570,
+              "wins": 10407744
+            },
+            "display": {
+              "draws": 166056,
+              "losses": 19570,
+              "wins": 5949050
+            },
+            "trivial": {
+              "draws": 5526,
+              "losses": 0,
+              "wins": 4458694
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 1122752,
-            "losses": 8946358,
-            "wins": 3650750
+            "admitted": {
+              "draws": 1122752,
+              "losses": 8946358,
+              "wins": 3650750
+            },
+            "display": {
+              "draws": 954004,
+              "losses": 8593128,
+              "wins": 71270
+            },
+            "trivial": {
+              "draws": 168748,
+              "losses": 353230,
+              "wins": 3579480
+            }
           }
         }
       },
@@ -603,49 +1970,122 @@
       "s3_metadata_sha256": "7d0bd43fc1fc2abd30514b84932388de40d6bba34bc6ab37309606bd419fe9ec",
       "s3_version_id": "CTTIeVnWFCVB2Ttq9nufgWmzkgiskjtj",
       "source_sha256": "b436e4a2f00c76cda8854c2262f79c3ed0daf362436e5a205770c5d1f5cb7796",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkninja.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-1/work/tables/kberserkerkninja.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerkparasite.uftb": {
       "archive_sha256": "2a78ca7e06432a55f1f76eddb0d7747a2c15099d6ba6fd42640feb606ed8b6b9",
-      "audit_sha256": "36e7f47e685886419340386b9aecf29eda5795ba8721ee4aa645d35e2682cae1",
+      "audit_sha256": "d699b123048db3a00d9ddc63ccd184278ca3eb2e11a02b5173095348652baf68",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 36572,
-            "losses": 15592716,
-            "wins": 256428
+            "admitted": {
+              "draws": 36572,
+              "losses": 15592716,
+              "wins": 256428
+            },
+            "display": {
+              "draws": 36276,
+              "losses": 14439978,
+              "wins": 255032
+            },
+            "trivial": {
+              "draws": 296,
+              "losses": 1152738,
+              "wins": 1396
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 13526,
-            "losses": 87668,
-            "wins": 15784522
+            "admitted": {
+              "draws": 13526,
+              "losses": 87668,
+              "wins": 15784522
+            },
+            "display": {
+              "draws": 13522,
+              "losses": 87668,
+              "wins": 13241254
+            },
+            "trivial": {
+              "draws": 4,
+              "losses": 0,
+              "wins": 2543268
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 1122418,
-            "losses": 2399066,
-            "wins": 9962448
+            "admitted": {
+              "draws": 1122418,
+              "losses": 2399066,
+              "wins": 9962448
+            },
+            "display": {
+              "draws": 1089308,
+              "losses": 2299328,
+              "wins": 8282038
+            },
+            "trivial": {
+              "draws": 33110,
+              "losses": 99738,
+              "wins": 1680410
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 1734700,
-            "losses": 8465652,
-            "wins": 5685364
+            "admitted": {
+              "draws": 1734700,
+              "losses": 8465652,
+              "wins": 5685364
+            },
+            "display": {
+              "draws": 1718254,
+              "losses": 8290224,
+              "wins": 3155462
+            },
+            "trivial": {
+              "draws": 16446,
+              "losses": 175428,
+              "wins": 2529902
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 384384,
-            "losses": 899958,
-            "wins": 9314554
+            "admitted": {
+              "draws": 384384,
+              "losses": 899958,
+              "wins": 9314554
+            },
+            "display": {
+              "draws": 371904,
+              "losses": 845038,
+              "wins": 7782776
+            },
+            "trivial": {
+              "draws": 12480,
+              "losses": 54920,
+              "wins": 1531778
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 438860,
-            "losses": 11576720,
-            "wins": 3870136
+            "admitted": {
+              "draws": 438860,
+              "losses": 11576720,
+              "wins": 3870136
+            },
+            "display": {
+              "draws": 404652,
+              "losses": 11264936,
+              "wins": 1361072
+            },
+            "trivial": {
+              "draws": 34208,
+              "losses": 311784,
+              "wins": 2509064
+            }
           }
         }
       },
@@ -653,99 +2093,371 @@
       "s3_metadata_sha256": "2a78ca7e06432a55f1f76eddb0d7747a2c15099d6ba6fd42640feb606ed8b6b9",
       "s3_version_id": "lHLgYW8VDAF5enXgBE7rWGQuq0MJMo7A",
       "source_sha256": "0c96be9f4a6c6390dac05cc3967ebff99732ce4e9d938af277af1d8f8188d6b0",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkparasite.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-4-fast/work/tables/kberserkerkparasite.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
-    "kberserkerkprince.uftb": {
-      "archive_sha256": "e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62",
-      "audit_sha256": "075a642901dcf63e5dfd0eab34dbf98acbaf0a8ce20296b885f5f4f0b13476ef",
+    "kberserkerkpenguin.uftb": {
+      "archive_sha256": "78675fdb4ce0007b98ddf7f87dd71823b8618fc9846b0c3552f56a7d3e22f665",
+      "audit_sha256": "5a5edc67b4731ae94bc4973e3a9df41a78e7fcf6eebe900d6ca986baf07e068c",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 1966080,
-            "losses": 11400572,
-            "wins": 2519064
+            "admitted": {
+              "draws": 16051930,
+              "losses": 1464808,
+              "wins": 3049694
+            },
+            "display": {
+              "draws": 15811018,
+              "losses": 1464808,
+              "wins": 335306
+            },
+            "trivial": {
+              "draws": 240912,
+              "losses": 0,
+              "wins": 2714388
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 2088626,
-            "losses": 29086,
-            "wins": 30016776
+            "admitted": {
+              "draws": 18357082,
+              "losses": 153836,
+              "wins": 3676662
+            },
+            "display": {
+              "draws": 16757648,
+              "losses": 153468,
+              "wins": 3621400
+            },
+            "trivial": {
+              "draws": 1599434,
+              "losses": 368,
+              "wins": 55262
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 4340676,
-            "losses": 2031918,
-            "wins": 7111338
+            "admitted": {
+              "draws": 6187876,
+              "losses": 287880,
+              "wins": 11225820
+            },
+            "display": {
+              "draws": 5960972,
+              "losses": 287880,
+              "wins": 7030700
+            },
+            "trivial": {
+              "draws": 226904,
+              "losses": 0,
+              "wins": 4195120
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 9392924,
-            "losses": 4632674,
-            "wins": 16116394
+            "admitted": {
+              "draws": 14960750,
+              "losses": 6361706,
+              "wins": 865124
+            },
+            "display": {
+              "draws": 13306042,
+              "losses": 6232168,
+              "wins": 865124
+            },
+            "trivial": {
+              "draws": 1654708,
+              "losses": 129538,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 1234158,
-            "losses": 591812,
-            "wins": 8772926
+            "admitted": {
+              "draws": 1591358,
+              "losses": 113456,
+              "wins": 12557646
+            },
+            "display": {
+              "draws": 1465802,
+              "losses": 113456,
+              "wins": 7510702
+            },
+            "trivial": {
+              "draws": 125556,
+              "losses": 0,
+              "wins": 5046944
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 5325556,
-            "losses": 10521088,
-            "wins": 11893960
+            "admitted": {
+              "draws": 7365256,
+              "losses": 14504610,
+              "wins": 317714
+            },
+            "display": {
+              "draws": 5710560,
+              "losses": 13955066,
+              "wins": 317714
+            },
+            "trivial": {
+              "draws": 1654696,
+              "losses": 549544,
+              "wins": 0
+            }
           }
         }
       },
+      "s3_key": "results/current-concrete-d64b5cdf/berserker-penguin-opposed-v3/concrete/v2/model/d64b5cdfd9caf9849ceaf8e58f617930e462351920647c332d4ebff39f8dd8ab/wave-0/sha256/78675fdb4ce0007b98ddf7f87dd71823b8618fc9846b0c3552f56a7d3e22f665/kberserkerkpenguin-78675fdb4ce0007b98ddf7f87dd71823b8618fc9846b0c3552f56a7d3e22f665.tar.zst",
+      "s3_metadata_sha256": "78675fdb4ce0007b98ddf7f87dd71823b8618fc9846b0c3552f56a7d3e22f665",
+      "s3_version_id": "8_jsHPDzlqX9nO1OoQBANO3r8JRiaEFf",
+      "source_sha256": "4dc105d3e9d7f5e72aab76d11b5911bed0633429233d783106a2444224caeed0",
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-1/work/tables/kberserkerkpenguin.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
+    },
+    "kberserkerkprince.uftb": {
+      "archive_sha256": "e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62",
+      "audit_binary_sha256": "7e6513eb68b4e6a1fef30f55d50972a8271d7156c542ca5af427267ee5a2d1f9",
+      "audit_sha256": "bcf3a7640bf219af6bc65e454df7cb3ed17f2da840510a1a0fa60475e4a0a7c9",
+      "audit_source_bundle_sha256": "4347b9593dba9b806a4cc0bbad7ab4aaf4118897ae59f40a017fd431e43016fc",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "admitted": {
+              "draws": 1966080,
+              "losses": 11400572,
+              "wins": 2519064
+            },
+            "display": {
+              "draws": 1906128,
+              "losses": 11400572,
+              "wins": 35744
+            },
+            "trivial": {
+              "draws": 59952,
+              "losses": 0,
+              "wins": 2483320
+            }
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "admitted": {
+              "draws": 805574,
+              "losses": 10700,
+              "wins": 15069442
+            },
+            "display": {
+              "draws": 804496,
+              "losses": 10700,
+              "wins": 12526552
+            },
+            "trivial": {
+              "draws": 1078,
+              "losses": 0,
+              "wins": 2542890
+            }
+          }
+        },
+        "2": {
+          "first_starts": {
+            "admitted": {
+              "draws": 4340676,
+              "losses": 2031918,
+              "wins": 7111338
+            },
+            "display": {
+              "draws": 4257920,
+              "losses": 2031918,
+              "wins": 3373486
+            },
+            "trivial": {
+              "draws": 82756,
+              "losses": 0,
+              "wins": 3737852
+            }
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "admitted": {
+              "draws": 4355148,
+              "losses": 2036724,
+              "wins": 9493844
+            },
+            "display": {
+              "draws": 4337818,
+              "losses": 2036724,
+              "wins": 6603544
+            },
+            "trivial": {
+              "draws": 17330,
+              "losses": 0,
+              "wins": 2890300
+            }
+          }
+        },
+        "3": {
+          "first_starts": {
+            "admitted": {
+              "draws": 1234158,
+              "losses": 591812,
+              "wins": 8772926
+            },
+            "display": {
+              "draws": 1174662,
+              "losses": 591812,
+              "wins": 4368202
+            },
+            "trivial": {
+              "draws": 59496,
+              "losses": 0,
+              "wins": 4404724
+            }
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "admitted": {
+              "draws": 2806196,
+              "losses": 5455380,
+              "wins": 7624140
+            },
+            "display": {
+              "draws": 2718902,
+              "losses": 5192752,
+              "wins": 4017722
+            },
+            "trivial": {
+              "draws": 87294,
+              "losses": 262628,
+              "wins": 3606418
+            }
+          }
+        }
+      },
+      "reporting_scope": "turn-boundary-continuation-none",
       "s3_key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62/kberserkerkprince-e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62.tar.zst",
       "s3_metadata_sha256": "e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62",
       "s3_version_id": "vp9jH5pdw2s8jBiiSTeI5WqtSfvHhytf",
       "source_sha256": "5cffc0d8c782f6d28801d9cfc9cd3e8da77ac2710720ddc0e37c7e7885a476a2",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkprince.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-0-sub-1/work/tables/kberserkerkprince.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerksniper.uftb": {
       "archive_sha256": "0bf91cecaa27507bba56c5bc845eeefd7c29f161f8913e63170b497856f79ec0",
-      "audit_sha256": "87142246e5f70a9dd0c1c2ffd3a540fd8f78f13df981ceeb5107acaa13a98fcb",
+      "audit_sha256": "a5cc4065c8aaca46d5ddeda95ba36ca8bcfd6140fcb5b91b79da7988515622d3",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 126251,
-            "losses": 3362,
-            "wins": 31641819
+            "admitted": {
+              "draws": 126251,
+              "losses": 3362,
+              "wins": 31641819
+            },
+            "display": {
+              "draws": 82294,
+              "losses": 3362,
+              "wins": 26555878
+            },
+            "trivial": {
+              "draws": 43957,
+              "losses": 0,
+              "wins": 5085941
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 3899187,
-            "losses": 29880316,
-            "wins": 26759
+            "admitted": {
+              "draws": 3899187,
+              "losses": 29880316,
+              "wins": 26759
+            },
+            "display": {
+              "draws": 295807,
+              "losses": 29867556,
+              "wins": 18064
+            },
+            "trivial": {
+              "draws": 3603380,
+              "losses": 12760,
+              "wins": 8695
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 41011,
-            "losses": 2359,
-            "wins": 26924494
+            "admitted": {
+              "draws": 41011,
+              "losses": 2359,
+              "wins": 26924494
+            },
+            "display": {
+              "draws": 9371,
+              "losses": 2359,
+              "wins": 19283554
+            },
+            "trivial": {
+              "draws": 31640,
+              "losses": 0,
+              "wins": 7640940
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 3713895,
-            "losses": 30071375,
-            "wins": 20992
+            "admitted": {
+              "draws": 3713895,
+              "losses": 30071375,
+              "wins": 20992
+            },
+            "display": {
+              "draws": 108659,
+              "losses": 28937879,
+              "wins": 12944
+            },
+            "trivial": {
+              "draws": 3605236,
+              "losses": 1133496,
+              "wins": 8048
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 26068,
-            "losses": 1494,
-            "wins": 21170230
+            "admitted": {
+              "draws": 26068,
+              "losses": 1494,
+              "wins": 21170230
+            },
+            "display": {
+              "draws": 5516,
+              "losses": 1494,
+              "wins": 12242066
+            },
+            "trivial": {
+              "draws": 20552,
+              "losses": 0,
+              "wins": 8928164
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 3675578,
-            "losses": 30114579,
-            "wins": 16105
+            "admitted": {
+              "draws": 3675578,
+              "losses": 30114579,
+              "wins": 16105
+            },
+            "display": {
+              "draws": 69394,
+              "losses": 28075159,
+              "wins": 8072
+            },
+            "trivial": {
+              "draws": 3606184,
+              "losses": 2039420,
+              "wins": 8033
+            }
           }
         }
       },
@@ -753,49 +2465,122 @@
       "s3_metadata_sha256": "0bf91cecaa27507bba56c5bc845eeefd7c29f161f8913e63170b497856f79ec0",
       "s3_version_id": "hQVvUvV1fU22o8DBz5NpL8sp_eqdwV7X",
       "source_sha256": "4d514728bb05af84079c2b35eeaf0fdba7c673573a414db191f4f95df876651f",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerksniper.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-4-fast/work/tables/kberserkerksniper.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerkturtle.uftb": {
       "archive_sha256": "bc27862a2ff4bf0cc3c141261a3a4f4d424e34a2fa29af655175c44fd9643c24",
-      "audit_sha256": "10c5c8ad90ad16762aeed624193966308ccdeb48791067572a12c83ec57f1653",
+      "audit_sha256": "3468fdb821d29891374ab94b09a5166d337bdd83c6948da7e7f30088d8e21a61",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 6985200,
-            "losses": 0,
-            "wins": 8900516
+            "admitted": {
+              "draws": 6985200,
+              "losses": 0,
+              "wins": 8900516
+            },
+            "display": {
+              "draws": 6926024,
+              "losses": 0,
+              "wins": 6416420
+            },
+            "trivial": {
+              "draws": 59176,
+              "losses": 0,
+              "wins": 2484096
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 11225370,
-            "losses": 5356426,
-            "wins": 0
+            "admitted": {
+              "draws": 11225370,
+              "losses": 5356426,
+              "wins": 0
+            },
+            "display": {
+              "draws": 9177120,
+              "losses": 5354374,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2048250,
+              "losses": 2052,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 13483932
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 13483932
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9663324
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 3820608
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 2047314,
-            "losses": 14534482,
-            "wins": 0
+            "admitted": {
+              "draws": 2047314,
+              "losses": 14534482,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14107466,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2047314,
+              "losses": 427016,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 10598896
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10598896
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 6134676
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 4464220
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 2047314,
-            "losses": 14534482,
-            "wins": 0
+            "admitted": {
+              "draws": 2047314,
+              "losses": 14534482,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 13654416,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2047314,
+              "losses": 880066,
+              "wins": 0
+            }
           }
         }
       },
@@ -803,49 +2588,122 @@
       "s3_metadata_sha256": "bc27862a2ff4bf0cc3c141261a3a4f4d424e34a2fa29af655175c44fd9643c24",
       "s3_version_id": "ewEfzR2SHgsWtETshq9OVYLiwhdNzvHh",
       "source_sha256": "7b38de854d35a8d8b94bb2ddae3edf69202ce5cbd8d3a58f329b3d12b5f977c1",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerkturtle.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-0-sub-1/work/tables/kberserkerkturtle.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkermagek.uftb": {
       "archive_sha256": "bf40c3c72305878a6b759cde688ee78eb0f86edee6a1c1b2bc0f45b7a9b5eb79",
-      "audit_sha256": "b080aaadd8848ba5daf9e375360198730fa5a8447c52bcbd29bec218cdbbc56c",
+      "audit_sha256": "1bac8f676ea10a27a0b92b928c43744a586de90110572bfdfacc307bb535293e",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 15885716
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 15885716
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 14870656
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 1015060
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 1417108,
-            "losses": 15952244,
-            "wins": 0
+            "admitted": {
+              "draws": 1417108,
+              "losses": 15952244,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14704856,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1417108,
+              "losses": 1247388,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 13483932
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 13483932
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12924626
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 559306
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 1417724,
-            "losses": 15951628,
-            "wins": 0
+            "admitted": {
+              "draws": 1417724,
+              "losses": 15951628,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14858300,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1417724,
+              "losses": 1093328,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 10598896
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10598896
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10427358
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 171538
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 1418340,
-            "losses": 15951012,
-            "wins": 0
+            "admitted": {
+              "draws": 1418340,
+              "losses": 15951012,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15107456,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1418340,
+              "losses": 843556,
+              "wins": 0
+            }
           }
         }
       },
@@ -853,49 +2711,122 @@
       "s3_metadata_sha256": "bf40c3c72305878a6b759cde688ee78eb0f86edee6a1c1b2bc0f45b7a9b5eb79",
       "s3_version_id": "IgTHom.i.XyOoETzBGXEPVkNLDovJjet",
       "source_sha256": "4719e4276859032c840be79e0bfbccb9eb4242144c51c0ae312ed2dc8808142d",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkermagek.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-2/work/tables/kberserkermagek.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerninjak.uftb": {
       "archive_sha256": "b11c08418b1ba4b9e49a04e10d867f70b8077f6552759daddc9c754a1a5ed212",
-      "audit_sha256": "62155317fa29036e281cf61bc0fe9f68a81dc37e36c6c4a3b7c498ed2e4e6b8c",
+      "audit_sha256": "331c0200b72c14c6cf18396aea240dd90fbff9f13e7de77d1439b2664b60b4fe",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 12548400
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12548400
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12548400
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 55616,
-            "losses": 17313736,
-            "wins": 0
+            "admitted": {
+              "draws": 55616,
+              "losses": 17313736,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14919800,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 55616,
+              "losses": 2393936,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 10683144
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10683144
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10683144
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 60740,
-            "losses": 17308612,
-            "wins": 0
+            "admitted": {
+              "draws": 60740,
+              "losses": 17308612,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15097104,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 60740,
+              "losses": 2211508,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 8451036
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 8451036
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 8451036
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 62072,
-            "losses": 17307280,
-            "wins": 0
+            "admitted": {
+              "draws": 62072,
+              "losses": 17307280,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15345544,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 62072,
+              "losses": 1961736,
+              "wins": 0
+            }
           }
         }
       },
@@ -903,49 +2834,122 @@
       "s3_metadata_sha256": "b11c08418b1ba4b9e49a04e10d867f70b8077f6552759daddc9c754a1a5ed212",
       "s3_version_id": "chMgMSI9Kx6Ovr9X_8vL_p8GhQeu0gz1",
       "source_sha256": "4f5206f33943fe2cfe891d5d2bccf23ebb0a3a1e0734da86672cc2d1fe0166c4",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerninjak.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-3/work/tables/kberserkerninjak.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerparasitek.uftb": {
       "archive_sha256": "ebc724e189304ee1879b62402d5325ae562c01988502761bef1f03eb9c87ad21",
-      "audit_sha256": "6c9772fa832f0994a15afa32980ebd9ccd453f52251881460a418ac9376debf3",
+      "audit_sha256": "c72f12f2fd45c73888caabd04ab5e023b578c3abb8e08f5ff5810e205711a7e6",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 14519136
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 14519136
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 14519136
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 4224,
-            "losses": 17365128,
-            "wins": 0
+            "admitted": {
+              "draws": 4224,
+              "losses": 17365128,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 16060892,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 4224,
+              "losses": 1304236,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 12338172
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12338172
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12338172
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 5544,
-            "losses": 17363808,
-            "wins": 0
+            "admitted": {
+              "draws": 5544,
+              "losses": 17363808,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 16059572,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 5544,
+              "losses": 1304236,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 9715656
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9715656
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9715656
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 6704,
-            "losses": 17362648,
-            "wins": 0
+            "admitted": {
+              "draws": 6704,
+              "losses": 17362648,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 16058412,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 6704,
+              "losses": 1304236,
+              "wins": 0
+            }
           }
         }
       },
@@ -953,49 +2957,122 @@
       "s3_metadata_sha256": "ebc724e189304ee1879b62402d5325ae562c01988502761bef1f03eb9c87ad21",
       "s3_version_id": "ud0Fxo9WLrUaW7etaDMuH3ZQ66NFxq6H",
       "source_sha256": "ac78cca99b7de132deb16ef09f32820c0da270c3d48bbad6d53ccb15741a83cd",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerparasitek.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-0-sub-1/work/tables/kberserkerparasitek.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerpenguink.uftb": {
       "archive_sha256": "d691626491801921a95ebcb8e977cde2cbd0f56b61b4264520deaf8c76837592",
-      "audit_sha256": "e5423a10c9771bcfcd74ceb24d109087ce2ed41c258dea4ef5abf7c342b21840",
+      "audit_sha256": "364b2cab6e56c9c11172385908ab9c6290d7078c7bc5affa5bf10ee1f85f6da4",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 152442,
-            "losses": 8220,
-            "wins": 18797106
+            "admitted": {
+              "draws": 152442,
+              "losses": 8220,
+              "wins": 18797106
+            },
+            "display": {
+              "draws": 152442,
+              "losses": 8220,
+              "wins": 18797106
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 3490622,
-            "losses": 18789824,
-            "wins": 32634
+            "admitted": {
+              "draws": 3490622,
+              "losses": 18789824,
+              "wins": 32634
+            },
+            "display": {
+              "draws": 225268,
+              "losses": 17539124,
+              "wins": 29980
+            },
+            "trivial": {
+              "draws": 3265354,
+              "losses": 1250700,
+              "wins": 2654
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 136874,
-            "losses": 7100,
-            "wins": 16188682
+            "admitted": {
+              "draws": 136874,
+              "losses": 7100,
+              "wins": 16188682
+            },
+            "display": {
+              "draws": 136874,
+              "losses": 7100,
+              "wins": 16188682
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 3235954,
-            "losses": 19049512,
-            "wins": 27614
+            "admitted": {
+              "draws": 3235954,
+              "losses": 19049512,
+              "wins": 27614
+            },
+            "display": {
+              "draws": 208624,
+              "losses": 17952564,
+              "wins": 26364
+            },
+            "trivial": {
+              "draws": 3027330,
+              "losses": 1096948,
+              "wins": 1250
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 119012,
-            "losses": 5668,
-            "wins": 13054796
+            "admitted": {
+              "draws": 119012,
+              "losses": 5668,
+              "wins": 13054796
+            },
+            "display": {
+              "draws": 119012,
+              "losses": 5668,
+              "wins": 13054796
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 2923626,
-            "losses": 19368150,
-            "wins": 21304
+            "admitted": {
+              "draws": 2923626,
+              "losses": 19368150,
+              "wins": 21304
+            },
+            "display": {
+              "draws": 181608,
+              "losses": 18520974,
+              "wins": 20054
+            },
+            "trivial": {
+              "draws": 2742018,
+              "losses": 847176,
+              "wins": 1250
+            }
           }
         }
       },
@@ -1003,99 +3080,248 @@
       "s3_metadata_sha256": "d691626491801921a95ebcb8e977cde2cbd0f56b61b4264520deaf8c76837592",
       "s3_version_id": "jslzQSNuqakvbgizwkyyMU39rBBFV0uH",
       "source_sha256": "5d17089a189b99acda411f805ae5ea0e2c90907d49ba7e3b5e7c10c38002d438",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerpenguink.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-2/work/tables/kberserkerpenguink.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerprincek.uftb": {
       "archive_sha256": "1ba9d98040c20330b77cf894c80cf5f65f3f287b8fcf803bbb45287f1cddbb1f",
-      "audit_sha256": "8b5e48497ac0874dd7e0b628e65d03c34e7f4a7faebfdba9dfd2aef3ff50810a",
+      "audit_binary_sha256": "7e6513eb68b4e6a1fef30f55d50972a8271d7156c542ca5af427267ee5a2d1f9",
+      "audit_sha256": "dc3a02b7e9277f5bc529e68fcdb1ea61776273b6dc692c8c01165222d2879be8",
+      "audit_source_bundle_sha256": "4347b9593dba9b806a4cc0bbad7ab4aaf4118897ae59f40a017fd431e43016fc",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 1136,
-            "losses": 0,
-            "wins": 32013324
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 14519136
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 14519136
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 4224,
-            "losses": 17365128,
-            "wins": 0
+            "admitted": {
+              "draws": 4224,
+              "losses": 17365128,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14813504,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 4224,
+              "losses": 2551624,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 1680,
-            "losses": 0,
-            "wins": 29831816
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12338172
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12338172
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 5544,
-            "losses": 17363808,
-            "wins": 0
+            "admitted": {
+              "draws": 5544,
+              "losses": 17363808,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14966244,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 5544,
+              "losses": 2397564,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 2240,
-            "losses": 0,
-            "wins": 27208740
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9715656
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9715656
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 6704,
-            "losses": 17362648,
-            "wins": 0
+            "admitted": {
+              "draws": 6704,
+              "losses": 17362648,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15214856,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 6704,
+              "losses": 2147792,
+              "wins": 0
+            }
           }
         }
       },
+      "reporting_scope": "turn-boundary-continuation-none",
       "s3_key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/1ba9d98040c20330b77cf894c80cf5f65f3f287b8fcf803bbb45287f1cddbb1f/kberserkerprincek-1ba9d98040c20330b77cf894c80cf5f65f3f287b8fcf803bbb45287f1cddbb1f.tar.zst",
       "s3_metadata_sha256": "1ba9d98040c20330b77cf894c80cf5f65f3f287b8fcf803bbb45287f1cddbb1f",
       "s3_version_id": "i8OWISOcxzrrNC72eLViP44_5nNtH0vp",
       "source_sha256": "a9789c4518cc959aa3cd32229b98388697dde88d421d087a6d1922b7cb962867",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerprincek.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-1/work/tables/kberserkerprincek.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkersniperk.uftb": {
       "archive_sha256": "7a7345b2d97cfd62d37ef6f7bb53297f20cdb93f07685b9157c051942dfe2713",
-      "audit_sha256": "85f6136cf6c499780f13421ff9e775cb5fb5cff3223bc6dd10d1acaf36ca37ef",
+      "audit_sha256": "d96e234fe1082d01553836e1e49f9f317c4251ecd8b6bbcb87a1083952a6f63e",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 30910078
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 30910078
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 30910078
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 2748499,
-            "losses": 31990205,
-            "wins": 0
+            "admitted": {
+              "draws": 2748499,
+              "losses": 31990205,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 29479708,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2748499,
+              "losses": 2510497,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 26232142
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 26232142
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 26232142
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 2750602,
-            "losses": 31988102,
-            "wins": 0
+            "admitted": {
+              "draws": 2750602,
+              "losses": 31988102,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 29791443,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2750602,
+              "losses": 2196659,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 20617235
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 20617235
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 20617235
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 2752583,
-            "losses": 31986121,
-            "wins": 0
+            "admitted": {
+              "draws": 2752583,
+              "losses": 31986121,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 30289006,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2752583,
+              "losses": 1697115,
+              "wins": 0
+            }
           }
         }
       },
@@ -1103,49 +3329,122 @@
       "s3_metadata_sha256": "7a7345b2d97cfd62d37ef6f7bb53297f20cdb93f07685b9157c051942dfe2713",
       "s3_version_id": "Z45tfbDwMueoc8qvxq1Opatq4C3jGCqr",
       "source_sha256": "7e852f5e1209f5a83dc7d27edb06c90ca2ad493e427b664bc2e71d8683d25fbc",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkersniperk.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-2/work/tables/kberserkersniperk.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kberserkerturtlek.uftb": {
       "archive_sha256": "050b5173679ca8fc53cd5d08c18f082b30695596a0f31bfabfc99b6dfcb597e2",
-      "audit_sha256": "7d713b7e95bba63b04a24ed46ac54597e12eb316a8682c0aadbed25dc22c69a6",
+      "audit_sha256": "7d8302fd8385dbead574310de3ee8b9762bbffece10b3e6205e43bbdd05858cc",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 15158912
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 15158912
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 15158912
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 1362522,
-            "losses": 16006830,
-            "wins": 0
+            "admitted": {
+              "draws": 1362522,
+              "losses": 16006830,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14759442,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1362522,
+              "losses": 1247388,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 12872074
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12872074
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12872074
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 1363836,
-            "losses": 16005516,
-            "wins": 0
+            "admitted": {
+              "draws": 1363836,
+              "losses": 16005516,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14912188,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1363836,
+              "losses": 1093328,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 10124152
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10124152
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10124152
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 1365010,
-            "losses": 16004342,
-            "wins": 0
+            "admitted": {
+              "draws": 1365010,
+              "losses": 16004342,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15160786,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1365010,
+              "losses": 843556,
+              "wins": 0
+            }
           }
         }
       },
@@ -1153,49 +3452,122 @@
       "s3_metadata_sha256": "050b5173679ca8fc53cd5d08c18f082b30695596a0f31bfabfc99b6dfcb597e2",
       "s3_version_id": "hJUSFXZwMPX5rfAQ2qNmOdU4dtti2Wfw",
       "source_sha256": "24034bb8a85c1e94239465a19dcb5cfcd4d7a6767dbc08768e9a129898a6b356",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kberserkerturtlek.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-1/work/tables/kberserkerturtlek.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kbishopberserkerk.uftb": {
       "archive_sha256": "37a11cbd5b420adcfac78138b7e605446a6899f0c5276476c6de85158c24a695",
-      "audit_sha256": "d904e1186e00ff65e54cee6edd9a622a820189e9b86294d8971b7db6cac1b3fc",
+      "audit_sha256": "e45fec1a111785f92c138c86e85d51d37a7308f552284e9d04e5b9f58c80667f",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 13965588
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 13965588
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 13965588
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 1255958,
-            "losses": 16113394,
-            "wins": 0
+            "admitted": {
+              "draws": 1255958,
+              "losses": 16113394,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14859986,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1255958,
+              "losses": 1253408,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 11862692
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 11862692
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 11862692
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 1261306,
-            "losses": 16108046,
-            "wins": 0
+            "admitted": {
+              "draws": 1261306,
+              "losses": 16108046,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15014718,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1261306,
+              "losses": 1093328,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 9347722
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9347722
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9347722
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 1265702,
-            "losses": 16103650,
-            "wins": 0
+            "admitted": {
+              "draws": 1265702,
+              "losses": 16103650,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15260094,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1265702,
+              "losses": 843556,
+              "wins": 0
+            }
           }
         }
       },
@@ -1203,49 +3575,122 @@
       "s3_metadata_sha256": "37a11cbd5b420adcfac78138b7e605446a6899f0c5276476c6de85158c24a695",
       "s3_version_id": "UJfZoGL.vqyp9isG_PBLEIsn5xKMmqiK",
       "source_sha256": "b88133310c00f0709c3d10a874db6238c22a1a504699151981df23ba4ca5587b",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kbishopberserkerk.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-2/work/tables/kbishopberserkerk.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kbishopkberserker.uftb": {
       "archive_sha256": "ca6d1034b539770a380fd410f28e8af44aecc35c34dc29e859f977e71ff0bed7",
-      "audit_sha256": "c0963299a9b90cd427af375434e41210208bc69f4615defc7526c1fd69d7be1c",
+      "audit_sha256": "83f005224a2b1c1071989aa1bcca39bec6a968c1577fb22a52875629b6a56aa8",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 15274486,
-            "losses": 10686,
-            "wins": 0
+            "admitted": {
+              "draws": 15274486,
+              "losses": 10686,
+              "wins": 0
+            },
+            "display": {
+              "draws": 12267010,
+              "losses": 8126,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 3007476,
+              "losses": 2560,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 13378808,
-            "losses": 0,
-            "wins": 2506908
+            "admitted": {
+              "draws": 13378808,
+              "losses": 0,
+              "wins": 2506908
+            },
+            "display": {
+              "draws": 13216454,
+              "losses": 0,
+              "wins": 22632
+            },
+            "trivial": {
+              "draws": 162354,
+              "losses": 0,
+              "wins": 2484276
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 3133224,
-            "losses": 12151948,
-            "wins": 0
+            "admitted": {
+              "draws": 3133224,
+              "losses": 12151948,
+              "wins": 0
+            },
+            "display": {
+              "draws": 126284,
+              "losses": 11800562,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 3006940,
+              "losses": 351386,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 58660,
-            "losses": 0,
-            "wins": 13425272
+            "admitted": {
+              "draws": 58660,
+              "losses": 0,
+              "wins": 13425272
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9606786
+            },
+            "trivial": {
+              "draws": 58660,
+              "losses": 0,
+              "wins": 3818486
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 3067190,
-            "losses": 12217982,
-            "wins": 0
+            "admitted": {
+              "draws": 3067190,
+              "losses": 12217982,
+              "wins": 0
+            },
+            "display": {
+              "draws": 60250,
+              "losses": 11512052,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 3006940,
+              "losses": 705930,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 28416,
-            "losses": 0,
-            "wins": 10570480
+            "admitted": {
+              "draws": 28416,
+              "losses": 0,
+              "wins": 10570480
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 6107810
+            },
+            "trivial": {
+              "draws": 28416,
+              "losses": 0,
+              "wins": 4462670
+            }
           }
         }
       },
@@ -1253,49 +3698,122 @@
       "s3_metadata_sha256": "ca6d1034b539770a380fd410f28e8af44aecc35c34dc29e859f977e71ff0bed7",
       "s3_version_id": "yCClnIFKpUMsV2mN4rWpj_d2D0E0upY1",
       "source_sha256": "13f9c6b0b2cc8c78e26b49e0de6d8ccbd044e570178023c047f9daf6151f9e6b",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kbishopkberserker.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-3/work/tables/kbishopkberserker.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kcopycatberserkerk.uftb": {
       "archive_sha256": "0434d07979d8b0c1edd30e3e2b48b4c2fc929d52d7ed1170b01937db2eac8016",
-      "audit_sha256": "23ba726179f563bcae9dce62a225b2dc1b9a707773a48a4cfb4fdd499c1068d9",
+      "audit_sha256": "f79da298786f176a9828eba1483da82c618dde09e38a2f87b333bb14b2dbdaf7",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 25893408
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 25893408
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 25893408
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 14392,
-            "losses": 33403112,
-            "wins": 0
+            "admitted": {
+              "draws": 14392,
+              "losses": 33403112,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 26645776,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 14392,
+              "losses": 6757336,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 22014136
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 22014136
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 22014136
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 18464,
-            "losses": 33399040,
-            "wins": 0
+            "admitted": {
+              "draws": 18464,
+              "losses": 33399040,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 27185976,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 18464,
+              "losses": 6213064,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 17317472
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 17317472
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 17317472
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 21696,
-            "losses": 33395808,
-            "wins": 0
+            "admitted": {
+              "draws": 21696,
+              "losses": 33395808,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 28006824,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 21696,
+              "losses": 5388984,
+              "wins": 0
+            }
           }
         }
       },
@@ -1303,49 +3821,122 @@
       "s3_metadata_sha256": "0434d07979d8b0c1edd30e3e2b48b4c2fc929d52d7ed1170b01937db2eac8016",
       "s3_version_id": "YZxTQFtPQQnCRVkbjQu4lSu6yVYH46Mv",
       "source_sha256": "857585c32b786f183d2cfdf4b34b5ea330c7a64f1de7d41ebd7ceb769699a9d9",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kcopycatberserkerk.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-2/work/tables/kcopycatberserkerk.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kcopycatkberserker.uftb": {
       "archive_sha256": "f9017fd7b869a40946cd32dac298cdbebf911e82563900b2682cdffb626c6d05",
-      "audit_sha256": "41197e09cd70c770a18560875159021b2b63cc472849f68b27086da492073651",
+      "audit_sha256": "2ba977935ff4a58c9e38ac03bc01a681794c14f7304aa947507024fa51a990e7",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 19548728,
-            "losses": 355176,
-            "wins": 8390592
+            "admitted": {
+              "draws": 19548728,
+              "losses": 355176,
+              "wins": 8390592
+            },
+            "display": {
+              "draws": 19198704,
+              "losses": 355048,
+              "wins": 2485584
+            },
+            "trivial": {
+              "draws": 350024,
+              "losses": 128,
+              "wins": 5905008
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 19900520,
-            "losses": 1399512,
-            "wins": 9261280
+            "admitted": {
+              "draws": 19900520,
+              "losses": 1399512,
+              "wins": 9261280
+            },
+            "display": {
+              "draws": 19723680,
+              "losses": 1399512,
+              "wins": 892344
+            },
+            "trivial": {
+              "draws": 176840,
+              "losses": 0,
+              "wins": 8368936
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 352704,
-            "losses": 21897848,
-            "wins": 6043944
+            "admitted": {
+              "draws": 352704,
+              "losses": 21897848,
+              "wins": 6043944
+            },
+            "display": {
+              "draws": 2592,
+              "losses": 21190616,
+              "wins": 139016
+            },
+            "trivial": {
+              "draws": 350112,
+              "losses": 707232,
+              "wins": 5904928
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 752,
-            "losses": 48928,
-            "wins": 25892464
+            "admitted": {
+              "draws": 752,
+              "losses": 48928,
+              "wins": 25892464
+            },
+            "display": {
+              "draws": 720,
+              "losses": 48928,
+              "wins": 14011808
+            },
+            "trivial": {
+              "draws": 32,
+              "losses": 0,
+              "wins": 11880656
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 350424,
-            "losses": 21988912,
-            "wins": 5955160
+            "admitted": {
+              "draws": 350424,
+              "losses": 21988912,
+              "wins": 5955160
+            },
+            "display": {
+              "draws": 320,
+              "losses": 20311456,
+              "wins": 50232
+            },
+            "trivial": {
+              "draws": 350104,
+              "losses": 1677456,
+              "wins": 5904928
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 96,
-            "losses": 19712,
-            "wins": 20370920
+            "admitted": {
+              "draws": 96,
+              "losses": 19712,
+              "wins": 20370920
+            },
+            "display": {
+              "draws": 64,
+              "losses": 19712,
+              "wins": 7721520
+            },
+            "trivial": {
+              "draws": 32,
+              "losses": 0,
+              "wins": 12649400
+            }
           }
         }
       },
@@ -1353,147 +3944,382 @@
       "s3_metadata_sha256": "f9017fd7b869a40946cd32dac298cdbebf911e82563900b2682cdffb626c6d05",
       "s3_version_id": "wQFKp6LuKIiZsCh1AzwTAcXzjrq7VMz4",
       "source_sha256": "3a3850b5ba940f648db042c67de241e497ceb0ee68a7b162861af2fde920ab82",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kcopycatkberserker.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-3/work/tables/kcopycatkberserker.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kjesterberserkerk.uftb": {
       "archive_sha256": "c395d3786f07e2ec55588af306a79545a09fce372cfa6d8797cff4a9a4c1f558",
-      "overlay": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kjesterberserkerk.ufiw",
+      "information_trivial_binary_sha256": "ce19f143c81995abcddcd05d27932eab7a2f63be254f1f35e0cf3b83c1556c57",
+      "information_trivial_receipt_s3_key": "results/information-trivial-v2/kjesterberserkerk.uftb/receipts/sha256/e5fcf3519c06a4935d2a4681d0253f4cd8abdd6c2a6cad43667eae2a428bfca0/kjesterberserkerk.receipt.json",
+      "information_trivial_receipt_s3_version_id": "ZMjGq7mUTU1BTJgfE6y.MV3yyiPZum4W",
+      "information_trivial_receipt_sha256": "e5fcf3519c06a4935d2a4681d0253f4cd8abdd6c2a6cad43667eae2a428bfca0",
+      "information_trivial_s3_key": "results/information-trivial-v2/kjesterberserkerk.uftb/sha256/7c98554c6dbf39155aee4d4145cbf26516684551243f76e3c2de703c3d4e7535/kjesterberserkerk.information-trivial-v2.txt",
+      "information_trivial_s3_version_id": "vklXLSLDm7j42XNLjVu_9SgY23QEPpjA",
+      "information_trivial_sha256": "7c98554c6dbf39155aee4d4145cbf26516684551243f76e3c2de703c3d4e7535",
+      "information_trivial_source_bundle_sha256": "bf1fb94f73ce112132e12ec10e0b8a604a679cf96b8547e7929af56988f17eeb",
+      "overlay": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-4-fast/work/tables/kjesterberserkerk.ufiw",
       "overlay_sha256": "e7cc1d1f364193bdd590a726fff1f2374028539af270d74b13dab8b2eabeeb09",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 14519136
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 14519136
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 14519136
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 1366460,
-            "losses": 17365128,
-            "wins": 247372
+            "admitted": {
+              "draws": 1366460,
+              "losses": 17365128,
+              "wins": 247372
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14813504,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1366460,
+              "losses": 2551624,
+              "wins": 247372
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 12338172
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12338172
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12338172
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 1143716,
-            "losses": 17363808,
-            "wins": 471436
+            "admitted": {
+              "draws": 1143716,
+              "losses": 17363808,
+              "wins": 471436
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14966244,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1143716,
+              "losses": 2397564,
+              "wins": 471436
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 9715656
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9715656
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9715656
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 881564,
-            "losses": 17362648,
-            "wins": 734748
+            "admitted": {
+              "draws": 881564,
+              "losses": 17362648,
+              "wins": 734748
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15214856,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 881564,
+              "losses": 2147792,
+              "wins": 734748
+            }
           }
         }
       },
       "s3_key": "results/information/fresh-maximal-public-view-v2/existing-ufiw/sha256/c395d3786f07e2ec55588af306a79545a09fce372cfa6d8797cff4a9a4c1f558/kjesterberserkerk.information.tar.zst",
       "s3_metadata_sha256": "c395d3786f07e2ec55588af306a79545a09fce372cfa6d8797cff4a9a4c1f558",
-      "s3_version_id": "UPmRhIYEtW6PVlLTVMk15j355ZKz1fhf"
+      "s3_version_id": "UPmRhIYEtW6PVlLTVMk15j355ZKz1fhf",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kjesterkberserker.uftb": {
       "archive_sha256": "3a274b45129a509764c3fa117659d3bc08b93bd06ec9ef293ce65801aae01612",
-      "overlay": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kjesterkberserker.ufiw",
+      "information_trivial_binary_sha256": "ce19f143c81995abcddcd05d27932eab7a2f63be254f1f35e0cf3b83c1556c57",
+      "information_trivial_receipt_s3_key": "results/information-trivial-v2/kjesterkberserker.uftb/receipts/sha256/bf371c8a88030c22bd08fe6cc25fe5cc66c442e9508676193b93047deefe240e/kjesterkberserker.receipt.json",
+      "information_trivial_receipt_s3_version_id": "_A.K009btd5e4Yk1RZ85_U5RmVV2LGal",
+      "information_trivial_receipt_sha256": "bf371c8a88030c22bd08fe6cc25fe5cc66c442e9508676193b93047deefe240e",
+      "information_trivial_s3_key": "results/information-trivial-v2/kjesterkberserker.uftb/sha256/76299eb33e56c9cb06139af8921e36087708c09cb68f5cb55972eb43a80adee7/kjesterkberserker.information-trivial-v2.txt",
+      "information_trivial_s3_version_id": "hC36w2hr0Sn7DdxPB73ApuKLtKOwSKIz",
+      "information_trivial_sha256": "76299eb33e56c9cb06139af8921e36087708c09cb68f5cb55972eb43a80adee7",
+      "information_trivial_source_bundle_sha256": "bf1fb94f73ce112132e12ec10e0b8a604a679cf96b8547e7929af56988f17eeb",
+      "overlay": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-0-sub-1/work/tables/kjesterkberserker.ufiw",
       "overlay_sha256": "4f0dc786ed19ad26710afe982857f9726d75fc0569511d510a678dc89077a5ce",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 12339200,
-            "losses": 0,
-            "wins": 3546516
+            "admitted": {
+              "draws": 12339200,
+              "losses": 0,
+              "wins": 3546516
+            },
+            "display": {
+              "draws": 12219648,
+              "losses": 0,
+              "wins": 1063060
+            },
+            "trivial": {
+              "draws": 119552,
+              "losses": 0,
+              "wins": 2483456
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 13020286,
-            "losses": 493966,
-            "wins": 5464708
+            "admitted": {
+              "draws": 13020286,
+              "losses": 493966,
+              "wins": 5464708
+            },
+            "display": {
+              "draws": 12848478,
+              "losses": 493966,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 171808,
+              "losses": 0,
+              "wins": 5464708
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 6919712,
-            "losses": 6446600,
-            "wins": 2519404
+            "admitted": {
+              "draws": 6919712,
+              "losses": 6446600,
+              "wins": 2519404
+            },
+            "display": {
+              "draws": 6651012,
+              "losses": 6062272,
+              "wins": 35964
+            },
+            "trivial": {
+              "draws": 268700,
+              "losses": 384328,
+              "wins": 2483440
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 4316930,
-            "losses": 10750,
-            "wins": 14651280
+            "admitted": {
+              "draws": 4316930,
+              "losses": 10750,
+              "wins": 14651280
+            },
+            "display": {
+              "draws": 3914102,
+              "losses": 10750,
+              "wins": 5738472
+            },
+            "trivial": {
+              "draws": 402828,
+              "losses": 0,
+              "wins": 8912808
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 4814618,
-            "losses": 8576344,
-            "wins": 2494754
+            "admitted": {
+              "draws": 4814618,
+              "losses": 8576344,
+              "wins": 2494754
+            },
+            "display": {
+              "draws": 3981430,
+              "losses": 6196134,
+              "wins": 11314
+            },
+            "trivial": {
+              "draws": 833188,
+              "losses": 2380210,
+              "wins": 2483440
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 2579624,
-            "losses": 4180,
-            "wins": 16395156
+            "admitted": {
+              "draws": 2579624,
+              "losses": 4180,
+              "wins": 16395156
+            },
+            "display": {
+              "draws": 1921456,
+              "losses": 4180,
+              "wins": 4209040
+            },
+            "trivial": {
+              "draws": 658168,
+              "losses": 0,
+              "wins": 12186116
+            }
           }
         }
       },
       "s3_key": "results/information-v2/fresh-causal-c339a675/primary-jester/sha256/3a274b45129a509764c3fa117659d3bc08b93bd06ec9ef293ce65801aae01612/kjesterkberserker.information.tar.zst",
       "s3_metadata_sha256": "3a274b45129a509764c3fa117659d3bc08b93bd06ec9ef293ce65801aae01612",
-      "s3_version_id": "q4UpNUW7bJXUSl23wY4wV4ZsSyg2MQZ4"
+      "s3_version_id": "q4UpNUW7bJXUSl23wY4wV4ZsSyg2MQZ4",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kknightberserkerk.uftb": {
       "archive_sha256": "224fcdf06bae1dde98e85f33826d25d44c0a208bf8c2cb4222778df9373051ff",
-      "audit_sha256": "e85faa6affc16f4c80dde63dae4cb9fa5ababb7c6c96fa2b559e8d5deaff741e",
+      "audit_sha256": "4ad2e2935b4c55b1a14ac74bf38b9b1cc92ac28dd68e523c6d2d21646428bd3f",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 14798084
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 14798084
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 14798084
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 1314280,
-            "losses": 16055072,
-            "wins": 0
+            "admitted": {
+              "draws": 1314280,
+              "losses": 16055072,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14779204,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1314280,
+              "losses": 1275868,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 12568916
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12568916
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12568916
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 1319662,
-            "losses": 16049690,
-            "wins": 0
+            "admitted": {
+              "draws": 1319662,
+              "losses": 16049690,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14956362,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1319662,
+              "losses": 1093328,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 9905924
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9905924
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9905924
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 1322896,
-            "losses": 16046456,
-            "wins": 0
+            "admitted": {
+              "draws": 1322896,
+              "losses": 16046456,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15202900,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 1322896,
+              "losses": 843556,
+              "wins": 0
+            }
           }
         }
       },
@@ -1501,49 +4327,122 @@
       "s3_metadata_sha256": "224fcdf06bae1dde98e85f33826d25d44c0a208bf8c2cb4222778df9373051ff",
       "s3_version_id": "lE64lNu6hk2.aJcOcSiKygMe7ZMur869",
       "source_sha256": "c389380f6b2606721a30d44d57c01d76182d4bf4bb08eaf01bf85116c01b5689",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kknightberserkerk.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-2/work/tables/kknightberserkerk.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kknightkberserker.uftb": {
       "archive_sha256": "f175cbafda61360a74b7569e1fec2abced06b9557e0327d58e53aaedb77c5a31",
-      "audit_sha256": "141cd11aa5626d149d68c5291f733dde2a20a3c5337bb4a9028b3d9200645652",
+      "audit_sha256": "4fa2e740aac7246eab1db0bdbac5f6e2cbc43d6e5f5f8cfe12c50bce1c97776d",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 16049076,
-            "losses": 120904,
-            "wins": 20
+            "admitted": {
+              "draws": 16049076,
+              "losses": 120904,
+              "wins": 20
+            },
+            "display": {
+              "draws": 13700196,
+              "losses": 116948,
+              "wins": 16
+            },
+            "trivial": {
+              "draws": 2348880,
+              "losses": 3956,
+              "wins": 4
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 12988392,
-            "losses": 4,
-            "wins": 2897320
+            "admitted": {
+              "draws": 12988392,
+              "losses": 4,
+              "wins": 2897320
+            },
+            "display": {
+              "draws": 12856264,
+              "losses": 4,
+              "wins": 413244
+            },
+            "trivial": {
+              "draws": 132128,
+              "losses": 0,
+              "wins": 2484076
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 2359600,
-            "losses": 13810400,
-            "wins": 0
+            "admitted": {
+              "draws": 2359600,
+              "losses": 13810400,
+              "wins": 0
+            },
+            "display": {
+              "draws": 11540,
+              "losses": 13370428,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2348060,
+              "losses": 439972,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 2236,
-            "losses": 0,
-            "wins": 13481696
+            "admitted": {
+              "draws": 2236,
+              "losses": 0,
+              "wins": 13481696
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9663324
+            },
+            "trivial": {
+              "draws": 2236,
+              "losses": 0,
+              "wins": 3818372
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 2348060,
-            "losses": 13821940,
-            "wins": 0
+            "admitted": {
+              "draws": 2348060,
+              "losses": 13821940,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 12971686,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 2348060,
+              "losses": 850254,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 10598896
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10598896
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 6134676
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 4464220
+            }
           }
         }
       },
@@ -1551,49 +4450,368 @@
       "s3_metadata_sha256": "f175cbafda61360a74b7569e1fec2abced06b9557e0327d58e53aaedb77c5a31",
       "s3_version_id": "LVJqqQ2Rtoov7I4FlwhvSbOlAGZMS7SS",
       "source_sha256": "d24d5594074f02965001f4e7d7b7fc313443d2cc422fabf64bf3074318eb62aa",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kknightkberserker.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-3/work/tables/kknightkberserker.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
-    "kqueenberserkerk.uftb": {
-      "archive_sha256": "188b85277444a880806efa7862ec58f1397e1d22249776edd2d6634d9afbaf09",
-      "audit_sha256": "31f3a2fae92ac6de2429f2600ffcdf57262281e4e33aaec81131c14902d0bb80",
+    "kpawnberserkerk.uftb": {
+      "archive_sha256": "6b30ff7bb044adfd08bc0e6aa3f76b9792db0f59121ed8f97e749f6a36c6f5a6",
+      "audit_sha256": "039d3b6c5e15ecd77593ef1f6983f0d11e7b5074ea9bc500193d92d9af2dda1b",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 10877572
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 27959472
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 23553628
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 4405844
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 61896,
-            "losses": 17307456,
-            "wins": 0
+            "admitted": {
+              "draws": 729977,
+              "losses": 30537567,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 26426957,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 729977,
+              "losses": 4110610,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 9224154
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 23745852
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 20020009
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 3725843
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 70002,
-            "losses": 17299350,
-            "wins": 0
+            "admitted": {
+              "draws": 732701,
+              "losses": 30534843,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 26166819,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 732701,
+              "losses": 4368024,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 7264668
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 18682064
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 15773176
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 2908888
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 73652,
-            "losses": 17295700,
-            "wins": 0
+            "admitted": {
+              "draws": 735069,
+              "losses": 30532475,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 26553134,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 735069,
+              "losses": 3979341,
+              "wins": 0
+            }
+          }
+        }
+      },
+      "s3_key": "results/current-concrete-d64b5cdf/pawn-berserker-same-v3/concrete/v2/model/d64b5cdfd9caf9849ceaf8e58f617930e462351920647c332d4ebff39f8dd8ab/wave-1/sha256/6b30ff7bb044adfd08bc0e6aa3f76b9792db0f59121ed8f97e749f6a36c6f5a6/kpawnberserkerk-6b30ff7bb044adfd08bc0e6aa3f76b9792db0f59121ed8f97e749f6a36c6f5a6.tar.zst",
+      "s3_metadata_sha256": "6b30ff7bb044adfd08bc0e6aa3f76b9792db0f59121ed8f97e749f6a36c6f5a6",
+      "s3_version_id": "mvSaqUcKIB61bjkrZMJBrl8TeM4ODtcX",
+      "source_sha256": "3a33f060f706fa27e8b7717dbc85608838a0481860c0109fedaf809e7713eee1",
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-4-fast/work/tables/kpawnberserkerk.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
+    },
+    "kpawnkberserker.uftb": {
+      "archive_sha256": "b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989",
+      "audit_sha256": "8ffa26e284584ce2fdd170dab0c73ff1f270e541f766477fb4fbf3d039b05552",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "admitted": {
+              "draws": 9788927,
+              "losses": 15569436,
+              "wins": 5213101
+            },
+            "display": {
+              "draws": 6602125,
+              "losses": 15370534,
+              "wins": 1161275
+            },
+            "trivial": {
+              "draws": 3186802,
+              "losses": 198902,
+              "wins": 4051826
+            }
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "admitted": {
+              "draws": 6886558,
+              "losses": 1459706,
+              "wins": 20252984
+            },
+            "display": {
+              "draws": 6852110,
+              "losses": 1458277,
+              "wins": 15555196
+            },
+            "trivial": {
+              "draws": 34448,
+              "losses": 1429,
+              "wins": 4697788
+            }
+          }
+        },
+        "2": {
+          "first_starts": {
+            "admitted": {
+              "draws": 3148876,
+              "losses": 24858678,
+              "wins": 2563910
+            },
+            "display": {
+              "draws": 452297,
+              "losses": 22332757,
+              "wins": 38178
+            },
+            "trivial": {
+              "draws": 2696579,
+              "losses": 2525921,
+              "wins": 2525732
+            }
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "admitted": {
+              "draws": 603808,
+              "losses": 52974,
+              "wins": 23622972
+            },
+            "display": {
+              "draws": 603236,
+              "losses": 52218,
+              "wins": 16518754
+            },
+            "trivial": {
+              "draws": 572,
+              "losses": 756,
+              "wins": 7104218
+            }
+          }
+        },
+        "3": {
+          "first_starts": {
+            "admitted": {
+              "draws": 1890550,
+              "losses": 26652447,
+              "wins": 2028467
+            },
+            "display": {
+              "draws": 36785,
+              "losses": 22711476,
+              "wins": 1103
+            },
+            "trivial": {
+              "draws": 1853765,
+              "losses": 3940971,
+              "wins": 2027364
+            }
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "admitted": {
+              "draws": 49700,
+              "losses": 1354,
+              "wins": 19039506
+            },
+            "display": {
+              "draws": 49189,
+              "losses": 1163,
+              "wins": 10762561
+            },
+            "trivial": {
+              "draws": 511,
+              "losses": 191,
+              "wins": 8276945
+            }
+          }
+        }
+      },
+      "s3_key": "results/current-concrete-edb3c620/pawn-berserker-opposed-v1/concrete/v2/model/edb3c62023be556e8b87167419db14dcfee639b63ee3fd7c25b5d36162bf9e7a/wave-1/sha256/b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989/kpawnkberserker-b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989.tar.zst",
+      "s3_metadata_sha256": "b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989",
+      "s3_version_id": "ruHlTz0zj8eA5LaTUe249rvflj4QjPDV",
+      "source_sha256": "f7360364636de22a30e73dbbee7d21da9ec300a9e81c9ecd585019f5356c9171",
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-0-sub-1/work/tables/kpawnkberserker.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
+    },
+    "kqueenberserkerk.uftb": {
+      "archive_sha256": "188b85277444a880806efa7862ec58f1397e1d22249776edd2d6634d9afbaf09",
+      "audit_sha256": "b373933e14c6103e192b6dde1617efe3024369f06e4e3f26808bdde0152c0ddb",
+      "radii": {
+        "1": {
+          "first_starts": {
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10877572
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10877572
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
+          },
+          "power_substate": 0,
+          "second_starts": {
+            "admitted": {
+              "draws": 61896,
+              "losses": 17307456,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15066054,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 61896,
+              "losses": 2241402,
+              "wins": 0
+            }
+          }
+        },
+        "2": {
+          "first_starts": {
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9224154
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 9224154
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
+          },
+          "power_substate": 1,
+          "second_starts": {
+            "admitted": {
+              "draws": 70002,
+              "losses": 17299350,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15240376,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 70002,
+              "losses": 2058974,
+              "wins": 0
+            }
+          }
+        },
+        "3": {
+          "first_starts": {
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 7264668
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 7264668
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
+          },
+          "power_substate": 2,
+          "second_starts": {
+            "admitted": {
+              "draws": 73652,
+              "losses": 17295700,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15486498,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 73652,
+              "losses": 1809202,
+              "wins": 0
+            }
           }
         }
       },
@@ -1601,49 +4819,122 @@
       "s3_metadata_sha256": "188b85277444a880806efa7862ec58f1397e1d22249776edd2d6634d9afbaf09",
       "s3_version_id": "7ILiSnEFFu5zGlJjntp9Ucb6brvuUTtr",
       "source_sha256": "0dcdc7fcc0f534cd8bcc8a6d8cb57117590cfa60fe984b7a5efb03e85eedcd1b",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kqueenberserkerk.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-1/work/tables/kqueenberserkerk.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "kqueenkberserker.uftb": {
       "archive_sha256": "c3f098ef1fc68325ae6d067a16f97af4492ada03c78e5bd5eeda4c8cfb2a5112",
-      "audit_sha256": "e05e749f807f719cf72fd848f59d5957264650577bab7106b5a8db843def8ad2",
+      "audit_sha256": "9473526fc18d293d8583687a126d17b79c25643fd4a60608d79fb8aa0880b232",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 2259416,
-            "losses": 2682,
-            "wins": 9681246
+            "admitted": {
+              "draws": 2259416,
+              "losses": 2682,
+              "wins": 9681246
+            },
+            "display": {
+              "draws": 1940444,
+              "losses": 2682,
+              "wins": 5398816
+            },
+            "trivial": {
+              "draws": 318972,
+              "losses": 0,
+              "wins": 4282430
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 5723354,
-            "losses": 7673186,
-            "wins": 2489176
+            "admitted": {
+              "draws": 5723354,
+              "losses": 7673186,
+              "wins": 2489176
+            },
+            "display": {
+              "draws": 5487360,
+              "losses": 6983694,
+              "wins": 5848
+            },
+            "trivial": {
+              "draws": 235994,
+              "losses": 689492,
+              "wins": 2483328
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 2741874,
-            "losses": 919962,
-            "wins": 8281508
+            "admitted": {
+              "draws": 2741874,
+              "losses": 919962,
+              "wins": 8281508
+            },
+            "display": {
+              "draws": 2398042,
+              "losses": 834690,
+              "wins": 4007188
+            },
+            "trivial": {
+              "draws": 343832,
+              "losses": 85272,
+              "wins": 4274320
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 4541534,
-            "losses": 2678044,
-            "wins": 6264354
+            "admitted": {
+              "draws": 4541534,
+              "losses": 2678044,
+              "wins": 6264354
+            },
+            "display": {
+              "draws": 4369306,
+              "losses": 2274164,
+              "wins": 2497626
+            },
+            "trivial": {
+              "draws": 172228,
+              "losses": 403880,
+              "wins": 3766728
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 2740060,
-            "losses": 2647628,
-            "wins": 6555656
+            "admitted": {
+              "draws": 2740060,
+              "losses": 2647628,
+              "wins": 6555656
+            },
+            "display": {
+              "draws": 2411998,
+              "losses": 2340920,
+              "wins": 2281624
+            },
+            "trivial": {
+              "draws": 328062,
+              "losses": 306708,
+              "wins": 4274032
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 1866944,
-            "losses": 675940,
-            "wins": 8056012
+            "admitted": {
+              "draws": 1866944,
+              "losses": 675940,
+              "wins": 8056012
+            },
+            "display": {
+              "draws": 1770146,
+              "losses": 470060,
+              "wins": 3611016
+            },
+            "trivial": {
+              "draws": 96798,
+              "losses": 205880,
+              "wins": 4444996
+            }
           }
         }
       },
@@ -1651,49 +4942,122 @@
       "s3_metadata_sha256": "c3f098ef1fc68325ae6d067a16f97af4492ada03c78e5bd5eeda4c8cfb2a5112",
       "s3_version_id": "sDIopTwfRhRosUrc4iJ8YHNbWRiur_Kd",
       "source_sha256": "87fb45d7076234f070a3c1e14a4516fbb1dffb7cf28c87736da03ea95a96e2d7",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/kqueenkberserker.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-4-fast/work/tables/kqueenkberserker.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "krookberserkerk.uftb": {
       "archive_sha256": "21ceb9c97bc044af5a1fb2424efbd6febcd355b33d8bea6684b8e18656ae28bc",
-      "audit_sha256": "d4ae49f67c1b3bb744f2aeace67537fd4ba7c225517ecd5459a05f0d567c89b9",
+      "audit_sha256": "3e91b71a1a0c1603f8fec85ef42215355130ad72cf894aba815ef8519d24f2ed",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 12797700
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12797700
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 12797700
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 8384,
-            "losses": 17360968,
-            "wins": 0
+            "admitted": {
+              "draws": 8384,
+              "losses": 17360968,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 14951336,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 8384,
+              "losses": 2409632,
+              "wins": 0
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 10845394
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10845394
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 10845394
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 12254,
-            "losses": 17357098,
-            "wins": 0
+            "admitted": {
+              "draws": 12254,
+              "losses": 17357098,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15123874,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 12254,
+              "losses": 2233224,
+              "wins": 0
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 0,
-            "losses": 0,
-            "wins": 8515842
+            "admitted": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 8515842
+            },
+            "display": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 8515842
+            },
+            "trivial": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 15672,
-            "losses": 17353680,
-            "wins": 0
+            "admitted": {
+              "draws": 15672,
+              "losses": 17353680,
+              "wins": 0
+            },
+            "display": {
+              "draws": 0,
+              "losses": 15370228,
+              "wins": 0
+            },
+            "trivial": {
+              "draws": 15672,
+              "losses": 1983452,
+              "wins": 0
+            }
           }
         }
       },
@@ -1701,49 +5065,122 @@
       "s3_metadata_sha256": "21ceb9c97bc044af5a1fb2424efbd6febcd355b33d8bea6684b8e18656ae28bc",
       "s3_version_id": "G1fkWEpdf2IGs.1SrAB8dAV5dT55X.y0",
       "source_sha256": "275588d89d53fabaece72ea4c2b3f8ea50241da0de23dd055c1f09bdb00c49c7",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/krookberserkerk.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-0-sub-0/work/tables/krookberserkerk.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     },
     "krookkberserker.uftb": {
       "archive_sha256": "f2acd468a40525a09933dd1d3c0248a19848212512c3f86727f2be79339a9536",
-      "audit_sha256": "f0a70640ec0ff8da966ea9ef84b3af081324a7fabf17c8e68eef4c8f739c037a",
+      "audit_sha256": "192d40254accca5da08dfb572459f1ea29319c669c762ba884db738d107234fd",
       "radii": {
         "1": {
           "first_starts": {
-            "draws": 8216320,
-            "losses": 4626,
-            "wins": 5806578
+            "admitted": {
+              "draws": 8216320,
+              "losses": 4626,
+              "wins": 5806578
+            },
+            "display": {
+              "draws": 7944412,
+              "losses": 3710,
+              "wins": 2282660
+            },
+            "trivial": {
+              "draws": 271908,
+              "losses": 916,
+              "wins": 3523918
+            }
           },
           "power_substate": 0,
           "second_starts": {
-            "draws": 12103130,
-            "losses": 1291354,
-            "wins": 2491232
+            "admitted": {
+              "draws": 12103130,
+              "losses": 1291354,
+              "wins": 2491232
+            },
+            "display": {
+              "draws": 11946286,
+              "losses": 1032164,
+              "wins": 7896
+            },
+            "trivial": {
+              "draws": 156844,
+              "losses": 259190,
+              "wins": 2483336
+            }
           }
         },
         "2": {
           "first_starts": {
-            "draws": 960884,
-            "losses": 9120748,
-            "wins": 3945892
+            "admitted": {
+              "draws": 960884,
+              "losses": 9120748,
+              "wins": 3945892
+            },
+            "display": {
+              "draws": 688334,
+              "losses": 8820888,
+              "wins": 423296
+            },
+            "trivial": {
+              "draws": 272550,
+              "losses": 299860,
+              "wins": 3522596
+            }
           },
           "power_substate": 1,
           "second_starts": {
-            "draws": 108658,
-            "losses": 181862,
-            "wins": 13193412
+            "admitted": {
+              "draws": 108658,
+              "losses": 181862,
+              "wins": 13193412
+            },
+            "display": {
+              "draws": 36928,
+              "losses": 21344,
+              "wins": 9375686
+            },
+            "trivial": {
+              "draws": 71730,
+              "losses": 160518,
+              "wins": 3817726
+            }
           }
         },
         "3": {
           "first_starts": {
-            "draws": 658886,
-            "losses": 9604956,
-            "wins": 3763682
+            "admitted": {
+              "draws": 658886,
+              "losses": 9604956,
+              "wins": 3763682
+            },
+            "display": {
+              "draws": 386296,
+              "losses": 9004512,
+              "wins": 241126
+            },
+            "trivial": {
+              "draws": 272590,
+              "losses": 600444,
+              "wins": 3522556
+            }
           },
           "power_substate": 2,
           "second_starts": {
-            "draws": 59198,
-            "losses": 100198,
-            "wins": 10439500
+            "admitted": {
+              "draws": 59198,
+              "losses": 100198,
+              "wins": 10439500
+            },
+            "display": {
+              "draws": 15250,
+              "losses": 9086,
+              "wins": 5977764
+            },
+            "trivial": {
+              "draws": 43948,
+              "losses": 91112,
+              "wins": 4461736
+            }
           }
         }
       },
@@ -1751,7 +5188,8 @@
       "s3_metadata_sha256": "f2acd468a40525a09933dd1d3c0248a19848212512c3f86727f2be79339a9536",
       "s3_version_id": "mpJO63EULZ2BYc.2gNxj6tZAohSMKHm_",
       "source_sha256": "993cc0cd421fbc0d161bde2dd1dc8a366358052d8ad70cb51ec4aa33f62e8e4b",
-      "table": "/mnt/ultimatefish-penguin/berserker-radius-audit-v1/tables/krookkberserker.uftb"
+      "table": "/mnt/ultimatefish/berserker-radius-audit-v2-shard-2/work/tables/krookkberserker.uftb",
+      "trivial_semantics": "authenticated-per-substate-v3"
     }
   },
   "radius_to_power_substate": {
@@ -1759,5 +5197,6 @@
     "2": 1,
     "3": 2
   },
-  "schema": 1
+  "schema": 2,
+  "semantics": "reachability-admitted-minus-trivial-v3"
 }

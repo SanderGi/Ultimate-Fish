@@ -103,16 +103,24 @@ def old_entries(text: str) -> dict[str, Entry]:
 
 
 def parse_wdl(cell: str) -> tuple[int, int]:
-    """Return admitted and unreachable counts from a rendered W/L/D cell."""
+    """Return admitted and unreachable counts from a rendered W/L/D cell.
+
+    Bracketed trivial positions are already part of the admitted count. Keep
+    them there for reachability conservation; only the plot subtracts them.
+    """
     admitted = unreachable = 0
     for component in cell.split("/"):
-        match = re.fullmatch(r"\s*([0-9][0-9,]*)(?: \(([0-9][0-9,]*)\))?\s*",
-                             component)
+        match = re.fullmatch(
+            r"\s*([0-9][0-9,]*)(?: \[([0-9][0-9,]*)\])?"
+            r"(?: \(([0-9][0-9,]*)\))?\s*", component)
         if match is None:
             raise ValueError(f"malformed W/L/D cell: {cell!r}")
         admitted += int(match.group(1).replace(",", ""))
-        if match.group(2):
-            unreachable += int(match.group(2).replace(",", ""))
+        if match.group(2) and int(match.group(2).replace(",", "")) > \
+                int(match.group(1).replace(",", "")):
+            raise ValueError(f"trivial count exceeds admitted count: {cell!r}")
+        if match.group(3):
+            unreachable += int(match.group(3).replace(",", ""))
     return admitted, unreachable
 
 

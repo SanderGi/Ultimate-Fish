@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 BERSERKER = 7
 LINE = re.compile(
-    r"reachability_(primary|secondary)_substate(_total)? substate (\d+) "
+    r"reachability_(primary|secondary)_substate(_total|_trivial)? substate (\d+) "
     r"side (\d) unknown (\d+) win (\d+) loss (\d+) draw (\d+)")
 
 
@@ -86,7 +86,9 @@ def fetch_record(record: dict[str, object], objects: list[dict[str, object]],
             "source_archive_version_id": record["expected_archive_version_id"],
         }
 
-    candidates = archive_candidates(objects, filename)
+    exact_key = record.get("expected_archive_key")
+    candidates = ([str(exact_key)] if exact_key
+                  else archive_candidates(objects, filename))
     if not candidates:
         raise RuntimeError(f"no S3 archive candidate for {filename}")
     expected_table = record.get("expected_sha256")
@@ -172,37 +174,85 @@ def fetch_record(record: dict[str, object], objects: list[dict[str, object]],
     raise RuntimeError(f"no exact certified artifact matched {filename}")
 
 
-def concrete_command(binary: Path, record: dict[str, object], table: Path) -> list[str]:
+def concrete_command(
+    binary: Path,
+    record: dict[str, object],
+    table: Path,
+    workers: int,
+) -> list[str]:
     command = [str(binary), "--piece", str(record["primary"]),
-               "--checkpoint-every", "0"]
+               "--checkpoint-every", "0", "--workers", str(workers)]
     if record["secondary"]:
         command += ["--piece2", str(record["secondary"])]
     if record["opposing"]:
         command.append("--opposing")
-    return command + ["--audit-reachability", str(table)]
+    audit_option = (
+        "--audit-turn-boundary-reachability"
+        if requires_turn_boundary(record)
+        else "--audit-reachability"
+    )
+    return command + [audit_option, str(table)]
 
 
-def parse_concrete(log: Path, slot: str) -> dict[int, tuple[list[int], list[int]]]:
+def requires_turn_boundary(record: dict[str, object]) -> bool:
+    return "prince" in {
+        str(record["primary"]), str(record.get("secondary") or "")
+    }
+
+
+def reusable_audit(text: str, record: dict[str, object]) -> bool:
+    if "reachability_" not in text:
+        return False
+    boundary_scopes = text.count("reachability_scope turn_boundary\n")
+    return boundary_scopes == 1 if requires_turn_boundary(record) else True
+
+
+def parse_concrete(
+    log: Path, slot: str,
+) -> dict[int, dict[str, tuple[list[int], list[int]]]]:
     rows: dict[tuple[int, int], dict[str, list[int]]] = {}
     for match in LINE.finditer(log.read_text(encoding="utf-8")):
         if match.group(1) != slot:
             continue
         substate, side = int(match.group(3)), int(match.group(4))
         counts = [int(match.group(index)) for index in range(5, 9)]
-        rows.setdefault((substate, side), {})[
-            "total" if match.group(2) else "unreachable"] = counts
-    output: dict[int, tuple[list[int], list[int]]] = {}
+        kind = {None: "unreachable", "_total": "total",
+                "_trivial": "trivial"}[match.group(2)]
+        rows.setdefault((substate, side), {})[kind] = counts
+    output: dict[int, dict[str, tuple[list[int], list[int]]]] = {}
     for substate in sorted({substate for substate, _side in rows}):
-        sides = []
+        admitted_sides = []
+        trivial_sides = []
+        display_sides = []
         for side in range(2):
             row = rows[(substate, side)]
-            sides.append([total - unreachable for total, unreachable in
-                          zip(row["total"], row["unreachable"])])
-        output[substate] = (sides[0], sides[1])
+            if set(row) != {"total", "unreachable", "trivial"}:
+                raise RuntimeError(
+                    f"incomplete radius audit for substate {substate} side {side}")
+            admitted = [total - unreachable for total, unreachable in
+                        zip(row["total"], row["unreachable"])]
+            trivial = row["trivial"]
+            if any(value > admitted[index]
+                   for index, value in enumerate(trivial)):
+                raise RuntimeError(
+                    f"trivial radius count exceeds admitted count for "
+                    f"substate {substate} side {side}")
+            display = [value - trivial[index]
+                       for index, value in enumerate(admitted)]
+            admitted_sides.append(admitted)
+            trivial_sides.append(trivial)
+            display_sides.append(display)
+        output[substate] = {
+            "admitted": (admitted_sides[0], admitted_sides[1]),
+            "trivial": (trivial_sides[0], trivial_sides[1]),
+            "display": (display_sides[0], display_sides[1]),
+        }
     return output
 
 
-def parse_information(path: Path, slot: str) -> dict[int, tuple[list[int], list[int]]]:
+def parse_information(
+    path: Path, slot: str,
+) -> dict[int, dict[str, tuple[list[int], list[int]]]]:
     data = path.read_bytes()
     magic = data[:8]
     if magic not in (b"UFIW1\0\0\0", b"UFIW2\0\0\0"):
@@ -237,17 +287,101 @@ def parse_information(path: Path, slot: str) -> dict[int, tuple[list[int], list[
             lane = translated[combined::substates]
             for result in range(1, 4):
                 output[substate][side][result] += lane.count(result)
-    return output
+    wrapped = {}
+    for substate, admitted in output.items():
+        zero = ([0, 0, 0, 0], [0, 0, 0, 0])
+        wrapped[substate] = {
+            "admitted": admitted,
+            "trivial": zero,
+            "display": admitted,
+        }
+    return wrapped
+
+
+def apply_information_trivial_receipt(
+    rows: dict[int, dict[str, tuple[list[int], list[int]]]],
+    receipt_path: Path,
+    sidecar_path: Path,
+    filename: str,
+    binding: dict[str, object],
+) -> tuple[dict[int, dict[str, tuple[list[int], list[int]]]], dict[str, object]]:
+    receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+    if (receipt.get("schema") != "ultimate-information-trivial-receipt-v2" or
+            receipt.get("filename") != filename or
+            receipt.get("source_sha256") != binding.get("source_sha256") or
+            receipt.get("overlay_sha256") != binding.get("overlay_sha256") or
+            receipt.get("substates") != 10):
+        raise RuntimeError(f"information trivial receipt binding residual: {filename}")
+    if (not sidecar_path.is_file() or
+            sha256(sidecar_path) != receipt.get("sidecar_sha256")):
+        raise RuntimeError(f"information trivial sidecar SHA residual: {filename}")
+    sidecar = sidecar_path.read_text(encoding="utf-8")
+    required = (
+        f"information_reachability_binding source_sha256 "
+        f"{receipt['source_sha256']} model_sha256 {receipt['model_sha256']}",
+        f"information_trivial_overlay_sha256 {receipt['overlay_sha256']}",
+        f"information_trivial_binary_sha256 {receipt['binary_sha256']}",
+        f"information_trivial_source_bundle_sha256 "
+        f"{receipt['source_bundle_sha256']}",
+    )
+    if any(value not in sidecar for value in required):
+        raise RuntimeError(f"information trivial sidecar binding residual: {filename}")
+    detail = receipt.get("substate_counts")
+    if not isinstance(detail, dict) or set(detail) != {
+            str(value) for value in range(10)}:
+        raise RuntimeError(f"information trivial substate coverage residual: {filename}")
+    updated = {}
+    for substate in range(10):
+        admitted_sides = []
+        trivial_sides = []
+        display_sides = []
+        for side in range(2):
+            buckets = detail[str(substate)][str(side)]
+            admitted = [buckets["admitted"][name]
+                        for name in ("unknown", "win", "loss", "draw")]
+            trivial = [buckets["trivial"][name]
+                       for name in ("unknown", "win", "loss", "draw")]
+            if admitted != rows[substate]["admitted"][side]:
+                raise RuntimeError(
+                    f"information radius admitted residual: {filename} "
+                    f"substate {substate} side {side}")
+            if any(value > admitted[index]
+                   for index, value in enumerate(trivial)):
+                raise RuntimeError(
+                    f"information radius trivial subset residual: {filename} "
+                    f"substate {substate} side {side}")
+            admitted_sides.append(admitted)
+            trivial_sides.append(trivial)
+            display_sides.append([
+                value - trivial[index] for index, value in enumerate(admitted)
+            ])
+        updated[substate] = {
+            "admitted": (admitted_sides[0], admitted_sides[1]),
+            "trivial": (trivial_sides[0], trivial_sides[1]),
+            "display": (display_sides[0], display_sides[1]),
+        }
+    evidence = {
+        "information_trivial_sha256": receipt["sidecar_sha256"],
+        "information_trivial_s3_key": receipt["s3_key"],
+        "information_trivial_s3_version_id": receipt["s3_version_id"],
+        "information_trivial_binary_sha256": receipt["binary_sha256"],
+        "information_trivial_source_bundle_sha256":
+            receipt["source_bundle_sha256"],
+    }
+    return updated, evidence
 
 
 def wdl(counts: list[int]) -> dict[str, int]:
     return {"wins": counts[1], "losses": counts[2], "draws": counts[3]}
 
 
-def validate_aggregate(filename: str, rows: dict[int, tuple[list[int], list[int]]],
-                       expected: dict[str, dict[str, int]]) -> None:
+def validate_aggregate(
+    filename: str,
+    rows: dict[int, dict[str, tuple[list[int], list[int]]]],
+    expected: dict[str, dict[str, int]],
+) -> None:
     for side, key in enumerate(("first_starts", "second_starts")):
-        actual = [sum(row[side][result] for row in rows.values())
+        actual = [sum(row["display"][side][result] for row in rows.values())
                   for result in range(4)]
         wanted = expected[key]
         if wdl(actual) != wanted:
@@ -263,6 +397,8 @@ def main() -> None:
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--single-table", type=Path, required=True)
     parser.add_argument("--jobs", type=int, default=6)
+    parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--information-trivial-dir", type=Path)
     args = parser.parse_args()
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     root = args.root
@@ -285,9 +421,16 @@ def main() -> None:
             if record.get("excluded") or record["result_kind"].startswith("information"):
                 continue
             log = root / "audits" / f"{Path(filename).stem}.radius.txt"
-            if log.exists() and "reachability_" in log.read_text(encoding="utf-8"):
+            if log.exists() and reusable_audit(
+                log.read_text(encoding="utf-8"), record
+            ):
                 continue
-            command = concrete_command(args.binary, record, Path(bindings[filename]["table"]))
+            command = concrete_command(
+                args.binary,
+                record,
+                Path(bindings[filename]["table"]),
+                args.workers,
+            )
             futures[executor.submit(subprocess.run, command, check=True,
                                     capture_output=True, text=True)] = (filename, log)
         for future in as_completed(futures):
@@ -297,8 +440,11 @@ def main() -> None:
             print(f"audited {filename}", flush=True)
 
     output: dict[str, object] = {
-        "schema": 1,
-        "description": "Exact reachability-admitted Berserker radius slices",
+        "schema": 2,
+        "description": (
+            "Exact reachability-admitted Berserker radius slices with "
+            "authenticated trivial positions removed"),
+        "semantics": "reachability-admitted-minus-trivial-v3",
         "radius_to_power_substate": {"1": 0, "2": 1, "3": 2},
         "audit_binary_sha256": sha256(args.binary),
         "files": {},
@@ -310,20 +456,49 @@ def main() -> None:
             continue
         if record["result_kind"].startswith("information"):
             rows = parse_information(Path(binding["overlay"]), record["berserker_slot"])
+            if args.information_trivial_dir is None:
+                raise RuntimeError(
+                    f"authenticated per-substate trivial receipt required: {filename}")
+            stem = Path(filename).stem
+            receipt = args.information_trivial_dir / f"{stem}.receipt.json"
+            sidecar = (args.information_trivial_dir /
+                       f"{stem}.information-trivial-v2.txt")
+            rows, evidence = apply_information_trivial_receipt(
+                rows, receipt, sidecar, filename, binding)
+            binding.update(evidence)
         else:
             log = root / "audits" / f"{Path(filename).stem}.radius.txt"
+            native = log.read_text(encoding="utf-8")
+            if not reusable_audit(native, record):
+                raise RuntimeError(
+                    f"invalid reporting scope in radius audit for {filename}"
+                )
             rows = parse_concrete(log, record["berserker_slot"])
             binding["audit_sha256"] = sha256(log)
+            if requires_turn_boundary(record):
+                binding["reporting_scope"] = (
+                    "turn-boundary-continuation-none"
+                )
         validate_aggregate(filename, rows, record["aggregate"])
         radius_rows = {}
         for radius, substate in manifest["radii"].items():
-            first, second = rows[substate]
+            row = rows[substate]
+            def side_record(side: int) -> dict[str, object]:
+                return {
+                    "admitted": wdl(row["admitted"][side]),
+                    "trivial": wdl(row["trivial"][side]),
+                    "display": wdl(row["display"][side]),
+                }
             radius_rows[radius] = {
                 "power_substate": substate,
-                "first_starts": wdl(first),
-                "second_starts": wdl(second),
+                "first_starts": side_record(0),
+                "second_starts": side_record(1),
             }
-        output["files"][filename] = {**binding, "radii": radius_rows}
+        output["files"][filename] = {
+            **binding,
+            "trivial_semantics": "authenticated-per-substate-v3",
+            "radii": radius_rows,
+        }
     result = root / "berserker-radius-summary.json"
     result.write_text(json.dumps(output, indent=2, sort_keys=True) + "\n",
                       encoding="utf-8")

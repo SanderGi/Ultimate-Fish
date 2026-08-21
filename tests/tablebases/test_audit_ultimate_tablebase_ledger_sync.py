@@ -83,7 +83,8 @@ class LedgerSyncAuditTest(unittest.TestCase):
                 "reachability_total side 0 unknown 0 win 10 loss 20 draw 30\n"
                 "reachability_total side 1 unknown 0 win 11 loss 22 draw 33\n")
             self.assertEqual(
-                ("8 (2) / 20 / 25 (5)", "10 (1) / 18 (4) / 33",
+                ("8 [0] (2) / 20 [0] / 25 [0] (5)",
+                 "10 [0] (1) / 18 [0] (4) / 33 [0]",
                  "53 / 7; 61 / 5"),
                 audit.rendered(path, "krookbishopk.uftb"))
 
@@ -95,7 +96,22 @@ class LedgerSyncAuditTest(unittest.TestCase):
                 "unreachable": [[0, 2, 0, 5], [0, 1, 4, 0]],
             }))
             self.assertEqual(
-                ("8 (2) / 20 / 25 (5)", "10 (1) / 18 (4) / 33",
+                ("8 [0] (2) / 20 [0] / 25 [0] (5)",
+                 "10 [0] (1) / 18 [0] (4) / 33 [0]",
+                 "53 / 7; 61 / 5"),
+                audit.rendered(path, "krookbishopk.uftb"))
+
+    def test_json_sidecar_brackets_trivial_admitted_positions(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "sample.reachability-v3.json"
+            path.write_text(json.dumps({
+                "totals": [[0, 10, 20, 30], [0, 11, 22, 33]],
+                "unreachable": [[0, 2, 0, 5], [0, 1, 4, 0]],
+                "trivial": [[0, 3, 4, 7], [0, 2, 5, 8]],
+            }))
+            self.assertEqual(
+                ("8 [3] (2) / 20 [4] / 25 [7] (5)",
+                 "10 [2] (1) / 18 [5] (4) / 33 [8]",
                  "53 / 7; 61 / 5"),
                 audit.rendered(path, "krookbishopk.uftb"))
 
@@ -113,6 +129,30 @@ class LedgerSyncAuditTest(unittest.TestCase):
                 "reachability_admitted side 1 unknown 0 win 10 loss 18 draw 33\n")
             with self.assertRaisesRegex(ValueError, "admission residual"):
                 audit.rendered(path, "krookbishopk.uftb")
+
+    def test_information_prince_sidecar_uses_boundary_counts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "kjesterprincek.information-trivial-v1.txt"
+            path.write_text(
+                "information_reachability_admitted side 0 unknown 0 "
+                "win 14519136 loss 0 draw 0\n"
+                "information_reachability_excluded side 0 unknown 0 "
+                "win 4459824 loss 0 draw 0\n"
+                "information_reachability_trivial side 0 unknown 0 "
+                "win 0 loss 0 draw 0\n"
+                "information_reachability_admitted side 1 unknown 0 "
+                "win 247372 loss 17365128 draw 1366460\n"
+                "information_reachability_excluded side 1 unknown 0 "
+                "win 0 loss 0 draw 0\n"
+                "information_reachability_trivial side 1 unknown 0 "
+                "win 247372 loss 2551624 draw 1366460\n"
+                "information_reachability_scope turn_boundary\n")
+            self.assertEqual(
+                ("14,519,136 [0] (4,459,824) / 0 [0] / 0 [0]",
+                 "247,372 [247,372] / 17,365,128 [2,551,624] / "
+                 "1,366,460 [1,366,460]",
+                 "14,519,136 / 4,459,824; 18,978,960 / 0"),
+                audit.rendered(path, "kjesterprincek.uftb"))
 
 
 if __name__ == "__main__":

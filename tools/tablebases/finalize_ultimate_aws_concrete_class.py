@@ -39,6 +39,14 @@ EXCLUDED = re.compile(
     r"reachability_excluded side ([01]) unknown (\d+) win (\d+) loss (\d+) draw (\d+)")
 ADMITTED = re.compile(
     r"reachability_admitted side ([01]) unknown (\d+) win (\d+) loss (\d+) draw (\d+)")
+TRIVIAL = re.compile(
+    r"reachability_trivial side ([01]) unknown (\d+) win (\d+) loss (\d+) draw (\d+)")
+SUBSTATE = re.compile(
+    r"reachability_(primary|secondary|combined)_substate(_total|_trivial)? "
+    r"substate (\d+) side ([01]) unknown (\d+) win (\d+) loss (\d+) draw (\d+)")
+INFORMATION = re.compile(
+    r"information_reachability_(admitted|excluded|trivial) side ([01]) "
+    r"unknown (\d+) win (\d+) loss (\d+) draw (\d+)")
 
 
 def record_for(filename: str) -> Mapping[str, object]:
@@ -88,13 +96,166 @@ def counts(pattern: re.Pattern[str], text: str) -> list[list[int]]:
     return result
 
 
-def render(total: list[int], unreachable: list[int]) -> str:
+def substate_counts(text: str, axis: str, kind: str,
+                    substate: int = 0) -> list[list[int]]:
+    """Return one exact native reachability substate slice.
+
+    ``kind`` is ``excluded``, ``total``, or ``trivial``.  The native audit's
+    unsuffixed substate row retains the legacy meaning "excluded".
+    """
+    suffix = {"excluded": "", "total": "_total",
+              "trivial": "_trivial"}[kind]
+    result = [[0, 0, 0, 0] for _ in range(2)]
+    matches = [match for match in SUBSTATE.findall(text)
+               if match[0] == axis and match[1] == suffix and
+               int(match[2]) == substate]
+    if len(matches) != 2:
+        raise ValueError(
+            f"native reachability output lacks {axis} substate {substate} "
+            f"{kind} rows")
+    for _, _, _, side, unknown, win, loss, draw in matches:
+        result[int(side)] = list(map(int, (unknown, win, loss, draw)))
+    if any(side[0] for side in result):
+        raise ValueError("native reachability substate output contains unknown states")
+    return result
+
+
+def reporting_counts(filename: str, text: str
+                     ) -> tuple[list[list[int]], list[list[int]], list[list[int]]]:
+    """Return W/L/D inputs for exact ordinary turn boundaries.
+
+    Prince continuation states remain in the tablebase, but are not starting
+    positions and therefore must not enter the README or plot aggregates.
+    Existing native audits expose either Prince's marginal substate slice.  A
+    two-Prince class requires the joint combined-substate slice so both pieces
+    are ordinary simultaneously.
+    """
+    totals = counts(TOTAL, text)
+    excluded = counts(EXCLUDED if "reachability_excluded side " in text
+                      else AUDIT, text)
+    validate_explicit_reachability_semantics(text, totals, excluded)
+    trivial = (counts(TRIVIAL, text)
+               if "reachability_trivial side " in text
+               else [[0, 0, 0, 0] for _ in range(2)])
+    record = encoded_record_for(filename)
+    materials = (str(record["primary"]), str(record.get("secondary") or ""))
+    prince_count = materials.count("prince")
+    boundary_scopes = text.count("reachability_scope turn_boundary\n")
+    if boundary_scopes:
+        if boundary_scopes != 1 or not prince_count:
+            raise ValueError("invalid turn-boundary reachability scope")
+        return totals, excluded, trivial
+    if not prince_count:
+        return totals, excluded, trivial
+    if prince_count == 2:
+        try:
+            boundary_totals = substate_counts(text, "combined", "total")
+            boundary_excluded = substate_counts(
+                text, "combined", "excluded")
+            boundary_trivial = substate_counts(text, "combined", "trivial")
+        except ValueError as error:
+            if "lacks combined substate" not in str(error):
+                raise
+            # V3 receipts made before the joint slice was added still contain
+            # both exact marginals.  The (1,1) Prince state is impossible
+            # because Position has one global forced continuation; the dense
+            # codec consequently stores that entire quadrant as unreachable
+            # draw sentinels.  Inclusion/exclusion therefore recovers (0,0)
+            # exactly, without touching or recomputing the tablebase.
+            primary = [substate_counts(text, "primary", kind)
+                       for kind in ("total", "excluded", "trivial")]
+            secondary = [substate_counts(text, "secondary", kind)
+                         for kind in ("total", "excluded", "trivial")]
+            invalid_per_side = int(record["states"]) // 8
+            invalid = [0, 0, 0, invalid_per_side]
+            boundary = []
+            for bucket, aggregate in enumerate((totals, excluded, trivial)):
+                correction = invalid if bucket < 2 else [0, 0, 0, 0]
+                boundary.append([
+                    [primary[bucket][side][outcome] +
+                     secondary[bucket][side][outcome] -
+                     aggregate[side][outcome] + correction[outcome]
+                     for outcome in range(4)]
+                    for side in range(2)])
+            boundary_totals, boundary_excluded, boundary_trivial = boundary
+    else:
+        axis = "primary" if materials[0] == "prince" else "secondary"
+        boundary_totals = substate_counts(text, axis, "total")
+        boundary_excluded = substate_counts(text, axis, "excluded")
+        boundary_trivial = substate_counts(text, axis, "trivial")
+    for side in range(2):
+        for outcome in range(4):
+            whole = boundary_totals[side][outcome]
+            omitted = boundary_excluded[side][outcome]
+            immediate = boundary_trivial[side][outcome]
+            if not 0 <= omitted <= whole:
+                raise ValueError("turn-boundary unreachable count exceeds total")
+            if not 0 <= immediate <= whole - omitted:
+                raise ValueError("turn-boundary trivial count exceeds admitted bucket")
+    return boundary_totals, boundary_excluded, boundary_trivial
+
+
+def information_reporting_counts(
+        filename: str, text: str
+        ) -> tuple[list[list[int]], list[list[int]], list[list[int]]]:
+    """Return information W/L/D at exact ordinary turn boundaries."""
+    buckets = {
+        name: [[0, 0, 0, 0] for _ in range(2)]
+        for name in ("admitted", "excluded", "trivial")
+    }
+    matches = INFORMATION.findall(text)
+    if len(matches) != 6:
+        raise ValueError("information reachability output lacks six side rows")
+    seen: set[tuple[str, int]] = set()
+    for name, side_text, unknown, win, loss, draw in matches:
+        side = int(side_text)
+        if (name, side) in seen:
+            raise ValueError("duplicate information reachability detail row")
+        seen.add((name, side))
+        buckets[name][side] = list(map(int, (unknown, win, loss, draw)))
+    if any(side[0] for bucket in buckets.values() for side in bucket):
+        raise ValueError("information reachability output contains unknown states")
+    record = encoded_record_for(filename)
+    prince_count = sum(
+        name == "prince" for name in
+        (str(record["primary"]), str(record.get("secondary") or "")))
+    scopes = text.count("information_reachability_scope turn_boundary\n")
+    if prince_count and scopes != 1:
+        raise ValueError("Prince information reachability lacks turn-boundary scope")
+    if not prince_count and scopes:
+        raise ValueError("non-Prince information reachability has boundary scope")
+    admitted, excluded, trivial = (
+        buckets[name] for name in ("admitted", "excluded", "trivial"))
+    totals = [
+        [admitted[side][outcome] + excluded[side][outcome]
+         for outcome in range(4)]
+        for side in range(2)
+    ]
+    expected = int(record["states"]) // (2 * (2 ** prince_count))
+    if any(sum(side) != expected for side in totals):
+        raise ValueError("information turn-boundary conservation residual")
+    for side in range(2):
+        for outcome in range(4):
+            if trivial[side][outcome] > admitted[side][outcome]:
+                raise ValueError("information trivial subset exceeds admitted bucket")
+    return totals, excluded, trivial
+
+
+def render(total: list[int], unreachable: list[int],
+           trivial: list[int] | None = None) -> str:
+    has_trivial = trivial is not None
+    trivial = trivial or [0, 0, 0, 0]
     values: list[str] = []
-    for whole, omitted in zip(total[1:], unreachable[1:]):
+    for whole, omitted, immediate in zip(
+            total[1:], unreachable[1:], trivial[1:]):
         if not 0 <= omitted <= whole:
             raise ValueError("unreachable W/L/D exceeds encoded total")
         legal = whole - omitted
-        values.append(f"{legal:,}" + (f" ({omitted:,})" if omitted else ""))
+        if not 0 <= immediate <= legal:
+            raise ValueError("trivial W/L/D exceeds admitted total")
+        values.append(
+            f"{legal:,}" + (f" [{immediate:,}]" if has_trivial else "") +
+            (f" ({omitted:,})" if omitted else ""))
     return " / ".join(values)
 
 
@@ -113,6 +274,12 @@ def validate_explicit_reachability_semantics(
             for outcome in range(4)] != totals[side]
            for side in range(2)):
         raise ValueError("explicit reachability admission residual")
+    if "reachability_trivial side " in text:
+        trivial = counts(TRIVIAL, text)
+        for side in range(2):
+            for outcome in range(4):
+                if trivial[side][outcome] > admitted[side][outcome]:
+                    raise ValueError("trivial reachability exceeds admitted bucket")
 
 
 def aws(*arguments: str) -> str:
@@ -276,13 +443,14 @@ def import_result(args: argparse.Namespace, output: str,
            (head.get("VersionId"), side_put.get("VersionId"), cert_sha, side_sha)):
         raise ValueError("certificate/sidecar S3 version binding residual")
 
-    totals = counts(TOTAL, audit_text)
-    omitted = counts(AUDIT, audit_text)
-    validate_explicit_reachability_semantics(audit_text, totals, omitted)
+    totals, omitted, trivial = reporting_counts(args.filename, audit_text)
     states = int(record["states"])
-    if any(sum(side) != states // 2 for side in totals):
+    prince_factor = 2 ** sum(
+        name == "prince" for name in
+        (str(record["primary"]), str(record.get("secondary") or "")))
+    if any(sum(side) != states // (2 * prince_factor) for side in totals):
         raise ValueError("native total W/L/D conservation residual")
-    first, second = (render(totals[side], omitted[side])
+    first, second = (render(totals[side], omitted[side], trivial[side])
                      for side in ledger_side_order(args.filename))
     preserve = getattr(args, "preserve_information_dependency", False)
     storage = (

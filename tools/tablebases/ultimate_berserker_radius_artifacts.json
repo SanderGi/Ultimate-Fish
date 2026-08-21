@@ -1,0 +1,173 @@
+{
+  "artifacts": {
+    "kberserkerangelk.uftb": {
+      "key": "results/angel-graph-v7-parallel-resume/concrete/v2/model/af60c54fae9c55116ac9ee8a368bf4804c89d60390c5b17ff5b358f89573299d/wave-0/sha256/54236276a8fbd87436bc0637998a4d9f1aef6a5633f146ac8ce328f85b55f532/kberserkerangelk-54236276a8fbd87436bc0637998a4d9f1aef6a5633f146ac8ce328f85b55f532.tar.zst",
+      "version_id": "oIA6f7w4yJtUTiiA9ZpIuVA941EUoSVM"
+    },
+    "kberserkerbombk.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/3addd3e350e38e9234eee0800c56cefbe7e89f403c5cd0288677fe29906a82ab/kberserkerbombk-3addd3e350e38e9234eee0800c56cefbe7e89f403c5cd0288677fe29906a82ab.tar.zst",
+      "version_id": "wB7rq2TjG0O6HGb14C9Fq8G5zrsduq6u"
+    },
+    "kberserkercheckerk.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/84592a0b9b609e8f36b8b6fd828c0f5547d2591d20b0fe235067277b87777ece/wave-0/sha256/2fc4257245ca71d92890041f7a9839d4a9ce6fd86993a035d63688f333823d06/kberserkercheckerk-2fc4257245ca71d92890041f7a9839d4a9ce6fd86993a035d63688f333823d06.tar.zst",
+      "version_id": "YwZ858F1ByDKjxXp0UyskTOyOlAZugo7"
+    },
+    "kberserkerdragonk.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/bbbfcb3df46108d7562ff6305b85b03cc0deffe7f5192eab16574ec6cb94a899/kberserkerdragonk-bbbfcb3df46108d7562ff6305b85b03cc0deffe7f5192eab16574ec6cb94a899.tar.zst",
+      "version_id": "ziGJ3OQj8DQorqRiy9uVx07S5uk5Bial"
+    },
+    "kberserkerfishermank.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/2a5d58237cd156a8ecb8047c23de8f76eaed9511548b6bb38cba997d3ac816e8/kberserkerfishermank-2a5d58237cd156a8ecb8047c23de8f76eaed9511548b6bb38cba997d3ac816e8.tar.zst",
+      "version_id": "Hx0CMMVSIiPkz0udYDOEXXffUz92xPsb"
+    },
+    "kberserkergiantk.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/8a1b1797f8f7738d849702b63a18b5da4ecfad019042d6fc88ed519a3adf584f/kberserkergiantk-8a1b1797f8f7738d849702b63a18b5da4ecfad019042d6fc88ed519a3adf584f.tar.zst",
+      "version_id": "EXkOI6JOaP.5gTfjFTSBYEfx9cfFBtS0"
+    },
+    "kberserkerk.uftb": {
+      "key": "legacy-local-tablebases/v1/snapshots/sha256/e296deebc6d0f4ef2c53e14eab86fd1c2bbc9954a6051ffca5ce7b9623b08263/local-tablebases-e296deebc6d0f4ef2c53e14eab86fd1c2bbc9954a6051ffca5ce7b9623b08263.tar.zst",
+      "version_id": "YTpSbC_DShKsF8QwShKRSIBUVf8PH0VJ"
+    },
+    "kberserkerkangel.uftb": {
+      "key": "results/angel-graph-v2/concrete/v2/model/f36a5a240ccac9913d80120ca008adfa0cd10e3a8002b852569a13e153a1c33f/wave-0/sha256/c36ac8cfadbeb6da85de5d565c0f3cf5863f7fab3575656b187004565a5a4083/kberserkerkangel-c36ac8cfadbeb6da85de5d565c0f3cf5863f7fab3575656b187004565a5a4083.tar.zst",
+      "version_id": "aY6aIFked6U.IPLCDQlB2hcFyQQUde7q"
+    },
+    "kberserkerkberserker.uftb": {
+      "key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/177c0e68a38e733b58998b576a1ef6040dcd664e25b3b94d9738b7c982929d15/kberserkerkberserker-177c0e68a38e733b58998b576a1ef6040dcd664e25b3b94d9738b7c982929d15.tar.zst",
+      "version_id": "vIaZ9yyi6GlqgldU_NTr0UcSma09abog"
+    },
+    "kberserkerkbomb.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/7ab66f110ab737afb73f8516dd9d321cfac71b002bcf9e1985bb6f809e912de0/kberserkerkbomb-7ab66f110ab737afb73f8516dd9d321cfac71b002bcf9e1985bb6f809e912de0.tar.zst",
+      "version_id": "nLWuIst1EalItDtUSqUvWv.SbkJPv5Pq"
+    },
+    "kberserkerkchecker.uftb": {
+      "key": "results/current-concrete-84592a0b/concrete/v2/model/84592a0b9b609e8f36b8b6fd828c0f5547d2591d20b0fe235067277b87777ece/wave-0/sha256/ebdd707c7f1d1bd999c29da99f4b9888586361f38707e4be7f11832456660868/kberserkerkchecker-ebdd707c7f1d1bd999c29da99f4b9888586361f38707e4be7f11832456660868.tar.zst",
+      "version_id": "lsmkwgnUZO5mVSOcJ_8aOiIyAWm61tnV"
+    },
+    "kberserkerkdragon.uftb": {
+      "key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/3b1917db24e5c05810e42e1cf0000636350bddd91eaad564d39debadfad546bc/kberserkerkdragon-3b1917db24e5c05810e42e1cf0000636350bddd91eaad564d39debadfad546bc.tar.zst",
+      "version_id": "A7NUg91DR6U8MyBmJ2yi2heWnDtI8w9Y"
+    },
+    "kberserkerkfisherman.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/4e28c28b7fdb35c8a0984038904532058de2504e1d98eeba4b7f9a41de5a582f/kberserkerkfisherman-4e28c28b7fdb35c8a0984038904532058de2504e1d98eeba4b7f9a41de5a582f.tar.zst",
+      "version_id": "ALz0nmRU6g9NnmsxX9Z.MF4WV2HOMY8F"
+    },
+    "kberserkerkgiant.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/de9d945fc7a048c1d9ffe1284d88e9026264893b33c28327453ec2a8cd2c8262/kberserkerkgiant-de9d945fc7a048c1d9ffe1284d88e9026264893b33c28327453ec2a8cd2c8262.tar.zst",
+      "version_id": "h4HqEbPggva7N4qCMe2fb6VcP5ap6w_x"
+    },
+    "kberserkerkmage.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/3fe501362b15c1840240982a155a415f046e3fa47749678640c8b2fff23993e3/kberserkerkmage-3fe501362b15c1840240982a155a415f046e3fa47749678640c8b2fff23993e3.tar.zst",
+      "version_id": "PAJ_E9hsY2pTX0Oxm62uhqkwvvc_kuVz"
+    },
+    "kberserkerkninja.uftb": {
+      "key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/7d0bd43fc1fc2abd30514b84932388de40d6bba34bc6ab37309606bd419fe9ec/kberserkerkninja-7d0bd43fc1fc2abd30514b84932388de40d6bba34bc6ab37309606bd419fe9ec.tar.zst",
+      "version_id": "CTTIeVnWFCVB2Ttq9nufgWmzkgiskjtj"
+    },
+    "kberserkerkparasite.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/2a78ca7e06432a55f1f76eddb0d7747a2c15099d6ba6fd42640feb606ed8b6b9/kberserkerkparasite-2a78ca7e06432a55f1f76eddb0d7747a2c15099d6ba6fd42640feb606ed8b6b9.tar.zst",
+      "version_id": "lHLgYW8VDAF5enXgBE7rWGQuq0MJMo7A"
+    },
+    "kberserkerkpenguin.uftb": {
+      "key": "results/current-concrete-d64b5cdf/berserker-penguin-opposed-v3/concrete/v2/model/d64b5cdfd9caf9849ceaf8e58f617930e462351920647c332d4ebff39f8dd8ab/wave-0/sha256/78675fdb4ce0007b98ddf7f87dd71823b8618fc9846b0c3552f56a7d3e22f665/kberserkerkpenguin-78675fdb4ce0007b98ddf7f87dd71823b8618fc9846b0c3552f56a7d3e22f665.tar.zst",
+      "version_id": "8_jsHPDzlqX9nO1OoQBANO3r8JRiaEFf"
+    },
+    "kberserkerkprince.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62/kberserkerkprince-e4bbd8bbf9d160d521192ee44979397c388de85d58e7712e6b0e02594e939e62.tar.zst",
+      "version_id": "vp9jH5pdw2s8jBiiSTeI5WqtSfvHhytf"
+    },
+    "kberserkerksniper.uftb": {
+      "key": "results/current-concrete/concrete/v2/model/84592a0b9b609e8f36b8b6fd828c0f5547d2591d20b0fe235067277b87777ece/wave-0/sha256/0bf91cecaa27507bba56c5bc845eeefd7c29f161f8913e63170b497856f79ec0/kberserkerksniper-0bf91cecaa27507bba56c5bc845eeefd7c29f161f8913e63170b497856f79ec0.tar.zst",
+      "version_id": "hQVvUvV1fU22o8DBz5NpL8sp_eqdwV7X"
+    },
+    "kberserkerkturtle.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/bc27862a2ff4bf0cc3c141261a3a4f4d424e34a2fa29af655175c44fd9643c24/kberserkerkturtle-bc27862a2ff4bf0cc3c141261a3a4f4d424e34a2fa29af655175c44fd9643c24.tar.zst",
+      "version_id": "ewEfzR2SHgsWtETshq9OVYLiwhdNzvHh"
+    },
+    "kberserkermagek.uftb": {
+      "key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/bf40c3c72305878a6b759cde688ee78eb0f86edee6a1c1b2bc0f45b7a9b5eb79/kberserkermagek-bf40c3c72305878a6b759cde688ee78eb0f86edee6a1c1b2bc0f45b7a9b5eb79.tar.zst",
+      "version_id": "IgTHom.i.XyOoETzBGXEPVkNLDovJjet"
+    },
+    "kberserkerninjak.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/b11c08418b1ba4b9e49a04e10d867f70b8077f6552759daddc9c754a1a5ed212/kberserkerninjak-b11c08418b1ba4b9e49a04e10d867f70b8077f6552759daddc9c754a1a5ed212.tar.zst",
+      "version_id": "chMgMSI9Kx6Ovr9X_8vL_p8GhQeu0gz1"
+    },
+    "kberserkerparasitek.uftb": {
+      "key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/ebc724e189304ee1879b62402d5325ae562c01988502761bef1f03eb9c87ad21/kberserkerparasitek-ebc724e189304ee1879b62402d5325ae562c01988502761bef1f03eb9c87ad21.tar.zst",
+      "version_id": "ud0Fxo9WLrUaW7etaDMuH3ZQ66NFxq6H"
+    },
+    "kberserkerpenguink.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/80825629ab3d80a747b6a141398d4b4d4c16220a0aa95f076ca8647da7232f48/wave-0/sha256/d691626491801921a95ebcb8e977cde2cbd0f56b61b4264520deaf8c76837592/kberserkerpenguink-d691626491801921a95ebcb8e977cde2cbd0f56b61b4264520deaf8c76837592.tar.zst",
+      "version_id": "jslzQSNuqakvbgizwkyyMU39rBBFV0uH"
+    },
+    "kberserkerprincek.uftb": {
+      "key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/1ba9d98040c20330b77cf894c80cf5f65f3f287b8fcf803bbb45287f1cddbb1f/kberserkerprincek-1ba9d98040c20330b77cf894c80cf5f65f3f287b8fcf803bbb45287f1cddbb1f.tar.zst",
+      "version_id": "i8OWISOcxzrrNC72eLViP44_5nNtH0vp"
+    },
+    "kberserkersniperk.uftb": {
+      "key": "results/current-concrete-7088db91/concrete/v2/artifacts-only/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/7a7345b2d97cfd62d37ef6f7bb53297f20cdb93f07685b9157c051942dfe2713/kberserkersniperk-7a7345b2d97cfd62d37ef6f7bb53297f20cdb93f07685b9157c051942dfe2713.tar.zst",
+      "version_id": "Z45tfbDwMueoc8qvxq1Opatq4C3jGCqr"
+    },
+    "kberserkerturtlek.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/050b5173679ca8fc53cd5d08c18f082b30695596a0f31bfabfc99b6dfcb597e2/kberserkerturtlek-050b5173679ca8fc53cd5d08c18f082b30695596a0f31bfabfc99b6dfcb597e2.tar.zst",
+      "version_id": "hJUSFXZwMPX5rfAQ2qNmOdU4dtti2Wfw"
+    },
+    "kbishopberserkerk.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/37a11cbd5b420adcfac78138b7e605446a6899f0c5276476c6de85158c24a695/kbishopberserkerk-37a11cbd5b420adcfac78138b7e605446a6899f0c5276476c6de85158c24a695.tar.zst",
+      "version_id": "UJfZoGL.vqyp9isG_PBLEIsn5xKMmqiK"
+    },
+    "kbishopkberserker.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/ca6d1034b539770a380fd410f28e8af44aecc35c34dc29e859f977e71ff0bed7/kbishopkberserker-ca6d1034b539770a380fd410f28e8af44aecc35c34dc29e859f977e71ff0bed7.tar.zst",
+      "version_id": "yCClnIFKpUMsV2mN4rWpj_d2D0E0upY1"
+    },
+    "kcopycatberserkerk.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/0434d07979d8b0c1edd30e3e2b48b4c2fc929d52d7ed1170b01937db2eac8016/kcopycatberserkerk-0434d07979d8b0c1edd30e3e2b48b4c2fc929d52d7ed1170b01937db2eac8016.tar.zst",
+      "version_id": "YZxTQFtPQQnCRVkbjQu4lSu6yVYH46Mv"
+    },
+    "kcopycatkberserker.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/f9017fd7b869a40946cd32dac298cdbebf911e82563900b2682cdffb626c6d05/kcopycatkberserker-f9017fd7b869a40946cd32dac298cdbebf911e82563900b2682cdffb626c6d05.tar.zst",
+      "version_id": "wQFKp6LuKIiZsCh1AzwTAcXzjrq7VMz4"
+    },
+    "kjesterberserkerk.uftb": {
+      "key": "results/information/fresh-maximal-public-view-v2/existing-ufiw/sha256/c395d3786f07e2ec55588af306a79545a09fce372cfa6d8797cff4a9a4c1f558/kjesterberserkerk.information.tar.zst",
+      "version_id": "UPmRhIYEtW6PVlLTVMk15j355ZKz1fhf"
+    },
+    "kjesterkberserker.uftb": {
+      "key": "results/information-v2/fresh-causal-c339a675/primary-jester/sha256/3a274b45129a509764c3fa117659d3bc08b93bd06ec9ef293ce65801aae01612/kjesterkberserker.information.tar.zst",
+      "version_id": "q4UpNUW7bJXUSl23wY4wV4ZsSyg2MQZ4"
+    },
+    "kknightberserkerk.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/224fcdf06bae1dde98e85f33826d25d44c0a208bf8c2cb4222778df9373051ff/kknightberserkerk-224fcdf06bae1dde98e85f33826d25d44c0a208bf8c2cb4222778df9373051ff.tar.zst",
+      "version_id": "lE64lNu6hk2.aJcOcSiKygMe7ZMur869"
+    },
+    "kknightkberserker.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/f175cbafda61360a74b7569e1fec2abced06b9557e0327d58e53aaedb77c5a31/kknightkberserker-f175cbafda61360a74b7569e1fec2abced06b9557e0327d58e53aaedb77c5a31.tar.zst",
+      "version_id": "LVJqqQ2Rtoov7I4FlwhvSbOlAGZMS7SS"
+    },
+    "kpawnberserkerk.uftb": {
+      "key": "results/current-concrete-d64b5cdf/pawn-berserker-same-v3/concrete/v2/model/d64b5cdfd9caf9849ceaf8e58f617930e462351920647c332d4ebff39f8dd8ab/wave-1/sha256/6b30ff7bb044adfd08bc0e6aa3f76b9792db0f59121ed8f97e749f6a36c6f5a6/kpawnberserkerk-6b30ff7bb044adfd08bc0e6aa3f76b9792db0f59121ed8f97e749f6a36c6f5a6.tar.zst",
+      "version_id": "mvSaqUcKIB61bjkrZMJBrl8TeM4ODtcX"
+    },
+    "kpawnkberserker.uftb": {
+      "key": "results/current-concrete-edb3c620/pawn-berserker-opposed-v1/concrete/v2/model/edb3c62023be556e8b87167419db14dcfee639b63ee3fd7c25b5d36162bf9e7a/wave-1/sha256/b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989/kpawnkberserker-b08c7324423452d1af0b442d77207e8a2789301e45f4cfcc0848533a6ec54989.tar.zst",
+      "version_id": "ruHlTz0zj8eA5LaTUe249rvflj4QjPDV"
+    },
+    "kqueenberserkerk.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/188b85277444a880806efa7862ec58f1397e1d22249776edd2d6634d9afbaf09/kqueenberserkerk-188b85277444a880806efa7862ec58f1397e1d22249776edd2d6634d9afbaf09.tar.zst",
+      "version_id": "7ILiSnEFFu5zGlJjntp9Ucb6brvuUTtr"
+    },
+    "kqueenkberserker.uftb": {
+      "key": "results/current-concrete-7088db91/concrete/v2/model/7088db91a25033a15b22097deff883a83f4f120ef62c71ab426856748bcf0658/wave-0/sha256/c3f098ef1fc68325ae6d067a16f97af4492ada03c78e5bd5eeda4c8cfb2a5112/kqueenkberserker-c3f098ef1fc68325ae6d067a16f97af4492ada03c78e5bd5eeda4c8cfb2a5112.tar.zst",
+      "version_id": "sDIopTwfRhRosUrc4iJ8YHNbWRiur_Kd"
+    },
+    "krookberserkerk.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/21ceb9c97bc044af5a1fb2424efbd6febcd355b33d8bea6684b8e18656ae28bc/krookberserkerk-21ceb9c97bc044af5a1fb2424efbd6febcd355b33d8bea6684b8e18656ae28bc.tar.zst",
+      "version_id": "G1fkWEpdf2IGs.1SrAB8dAV5dT55X.y0"
+    },
+    "krookkberserker.uftb": {
+      "key": "results/concrete/penguin-causal-1083b6f8/concrete/v2/model/ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6/wave-0/sha256/f2acd468a40525a09933dd1d3c0248a19848212512c3f86727f2be79339a9536/krookkberserker-f2acd468a40525a09933dd1d3c0248a19848212512c3f86727f2be79339a9536.tar.zst",
+      "version_id": "mpJO63EULZ2BYc.2gNxj6tZAohSMKHm_"
+    }
+  },
+  "schema": 1
+}

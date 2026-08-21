@@ -256,9 +256,9 @@ def mirror_copycat_inventory() -> tuple[dict[str, object], ...]:
 
 def angel_inventory() -> tuple[dict[str, object], ...]:
     rows = tuple(plan.angel_candidates())
-    if (len(rows) != 30 or len({str(row["filename"]) for row in rows}) != 30 or
-            sum(int(row["packed_bytes"]) for row in rows) != 9_347_137_800):
-        raise RuntimeError("visible one-Angel K+K+2 inventory residual")
+    if (len(rows) != 32 or len({str(row["filename"]) for row in rows}) != 32 or
+            sum(int(row["packed_bytes"]) for row in rows) != 9_821_611_800):
+        raise RuntimeError("one-Angel K+K+2 source-graph inventory residual")
     return rows
 
 
@@ -269,8 +269,8 @@ def supported_inventory() -> tuple[dict[str, object], ...]:
     legacy = tuple(sorted((*closed_inventory(), *mirror_copycat_inventory()),
                           key=lambda row: str(row["filename"])))
     rows = (*legacy, *angel_inventory())
-    if (len(rows) != 298 or len({str(row["filename"]) for row in rows}) != 298 or
-            sum(int(row["packed_bytes"]) for row in rows) != 104_004_700_800):
+    if (len(rows) != 300 or len({str(row["filename"]) for row in rows}) != 300 or
+            sum(int(row["packed_bytes"]) for row in rows) != 104_479_174_800):
         raise RuntimeError("supported K+K+2 inventory residual")
     return rows
 
@@ -480,12 +480,9 @@ def deferred_domain_plan() -> dict[str, object]:
         "classes": 60, "by_family_overlap": by_family,
         "families": DEFERRED_DYNAMIC,
         "inventory": list(rows),
-        "visible_one_angel_classes_in_scope": 30,
+        "one_angel_source_graph_classes_in_scope": 32,
         "one_angel_graph_semantics": "deployed-attached-host-halo-copycat-v2",
-        "angel_graph_classes_deferred": 2,
-        "angel_graph_deferred_reason": (
-            "Ghost requires perfect-recall attachment beliefs"
-        ),
+        "angel_ghost_information_overlays_required": 2,
         "copycat_mirror_classes_in_scope": 36,
         "copycat_mirror_semantics": COPYCAT_MIRROR_SEMANTICS,
         "copycat_native_separation_classes": 1,
@@ -494,8 +491,9 @@ def deferred_domain_plan() -> dict[str, object]:
         "copycat_separator_classes_deferred": 6,
         "completeness": (
             "The supported inventory is intentionally incomplete for these "
-            "60 Devil/Minion and Sludge/Goop classes plus the two sufficient "
-            "Ghost/Angel graph classes."
+            "60 Devil/Minion and Sludge/Goop classes. Ghost/Angel concrete "
+            "source graphs are admitted, but their public results still "
+            "require perfect-recall attachment overlays."
         ),
     }
 def load_dependency_manifest(path: Path) -> dict[str, dict[str, object]]:
@@ -1074,10 +1072,10 @@ def main(argv: list[str] | None = None) -> int:
         "closed_classes": 232, "closed_packed_bytes": 87_872_584_800,
         "copycat_mirror_classes": 36,
         "copycat_mirror_packed_bytes": 6_784_978_200,
-        "angel_graph_classes": 30,
-        "angel_graph_packed_bytes": 9_347_137_800,
-        "supported_classes": 298,
-        "supported_packed_bytes": 104_004_700_800,
+        "angel_graph_classes": 32,
+        "angel_graph_packed_bytes": 9_821_611_800,
+        "supported_classes": 300,
+        "supported_packed_bytes": 104_479_174_800,
         "stateless_classes_complete": 160,
         "deferred_dynamic": deferred_domain_plan(),
         "wave_costs": costs,

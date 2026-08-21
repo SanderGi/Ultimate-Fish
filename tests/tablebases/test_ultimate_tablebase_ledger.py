@@ -36,10 +36,10 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual(24, sum(row.domain == "single" for row in rows))
         self.assertEqual(300, sum(row.domain == "same" for row in rows))
         self.assertEqual(300, sum(row.domain == "opposed" for row in rows))
-        self.assertEqual(104, sum(row.status == "deferred" for row in rows))
-        self.assertEqual(520, sum(row.status != "deferred" for row in rows))
+        self.assertEqual(101, sum(row.status == "deferred" for row in rows))
+        self.assertEqual(523, sum(row.status != "deferred" for row in rows))
         self.assertEqual(
-            520,
+            523,
             sum(row.status == status for row in rows
                 for status in ("certified", "preserving", "computing",
                                "planned", "draw", "blocked")),
@@ -58,23 +58,26 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         """No closed K+K+1/K+K+2 class may hide behind DEFERRED.
 
         Encode the campaign boundary independently of the ledger
-        implementation: Devil and Sludge are not closed material.  The Angel
+        implementation: decisive Devil and Sludge pairings are not closed
+        material. The Devil is sufficient because it can spawn Minions; the
+        Angel
         graph-v1 domain admits one Angel with a visible closed companion.
         Angel/Angel is an exact insufficient-material draw regardless of its
-        rescue stack; hidden Ghost attachments and spawning material remain
-        excluded. Jester/Angel uses the primary-Jester information solver.
+        rescue stack; Ghost/Angel source graphs are admitted while their
+        hidden-attachment results remain information-required, and spawning
+        material remains excluded. Jester/Angel uses the primary-Jester information solver.
         Same-team Copycat/Angel uses an exact four-mode graph
         and arbitrary-linked-pair lower table. Penguin, Mage, and Fisherman can
         still split the simplified symmetric Copycat compound.
         """
         dynamic = {"devil", "sludge"}
-        angel_excluded = {"ghost", "devil", "sludge", "angel"}
+        angel_excluded = {"devil", "sludge", "angel"}
         copycat_separators = {"penguin", "mage", "fisherman"}
         expected_dynamic = set()
         expected_copycat = set()
         pieces = [piece.name for piece in ledger.plan.PIECES]
         for first_index, first in enumerate(pieces):
-            if first in dynamic:
+            if first in dynamic and first != "devil":
                 expected_dynamic.add(f"single:{first}")
             for second in pieces[first_index:]:
                 names = {first, second}
@@ -96,9 +99,9 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             row.key for row in ledger.entries(ledger.README.read_text())
             if row.status == "deferred"
         }
-        self.assertEqual(98, len(expected_dynamic))
+        self.assertEqual(95, len(expected_dynamic))
         self.assertEqual(6, len(expected_copycat))
-        self.assertEqual(104, len(actual))
+        self.assertEqual(101, len(actual))
         self.assertEqual(expected_dynamic | expected_copycat, actual)
 
     def test_visible_one_angel_rows_are_in_scope_or_exact_draws(self):
@@ -115,7 +118,9 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual("draw", rows["opposed:bishop+angel"].status)
         for key in ("same:jester+angel", "opposed:jester+angel"):
             self.assertIn(rows[key].status, {"planned", "computing", "certified"})
-        self.assertEqual("deferred", rows["opposed:ghost+angel"].status)
+        for key in ("same:ghost+angel", "opposed:ghost+angel"):
+            self.assertIn(rows[key].status, {"planned", "computing", "certified"})
+            self.assertEqual("information required", rows[key].reachability)
         self.assertIn(rows["same:copycat+angel"].status,
                       {"planned", "computing", "certified"})
         self.assertEqual(
@@ -128,16 +133,19 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual("draw", rows["opposed:angel+angel"].status)
 
     def test_current_computation_hides_stale_result_and_hatches_plot(self):
-        text = ledger.README.read_text()
-        rows = ledger.apply_overrides(
-            ledger.entries(text), {"kknightkghost.uftb": "computing"}, {})
-        row = next(row for row in rows if row.filename == "kknightkghost.uftb")
-        self.assertEqual("computing", row.status)
-        self.assertEqual("—", row.first)
-        self.assertEqual("—", row.reachability)
-        summary = plot.read_summary(ledger.README)
-        catalog = plot.OutcomeCatalog(summary)
-        self.assertEqual("computing", catalog.opposed("ghost", "knight").kind)
+        with tempfile.TemporaryDirectory() as directory:
+            readme = Path(directory) / "README.md"
+            readme.write_text(ledger.README.read_text())
+            ledger.update(readme, ["kknightkghost.uftb=computing"], [])
+            row = next(row for row in ledger.entries(readme.read_text())
+                       if row.filename == "kknightkghost.uftb")
+            self.assertEqual("computing", row.status)
+            self.assertEqual("—", row.first)
+            self.assertEqual("—", row.reachability)
+            summary = plot.read_summary(readme)
+            catalog = plot.OutcomeCatalog(summary)
+            self.assertEqual(
+                "computing", catalog.opposed("ghost", "knight").kind)
 
     def test_sleeping_wrappers_are_not_marked_computing(self):
         for row in ledger.entries(ledger.README.read_text()):
@@ -146,15 +154,43 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
                     "computing", row.status,
                     f"{row.key} hatches the plot for a sleeping wrapper")
 
+    def test_preserving_ghost_rows_remain_hatched_until_imported(self):
+        catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))
+        self.assertEqual("computing", catalog.together("ghost", "rook").kind)
+        self.assertEqual("computing", catalog.together("prince", "ghost").kind)
+        self.assertEqual("computing", catalog.opposed("ghost", "pawn").kind)
+        self.assertEqual("computing", catalog.opposed("ghost", "turtle").kind)
+        # The mirrored upper triangle remains deduplicated.
+        self.assertEqual("duplicate", catalog.together("rook", "ghost").kind)
+
     def test_s3_only_certified_ledger_result_is_plotted(self):
         summary = plot.read_summary(ledger.README)
         result = summary["kjesterjesterk.uftb"]
         self.assertEqual("certified", result.status)
         self.assertEqual(7_259_568, result.first_starts.wins)
-        self.assertEqual(8_682_564, result.second_starts.losses)
+        self.assertEqual(7_406_752, result.second_starts.losses)
         catalog = plot.OutcomeCatalog(summary)
         self.assertNotEqual(
             "unknown", catalog.together("jester", "jester").kind)
+
+    def test_forced_colors_use_trivial_subtracted_display_counts(self):
+        forced_win = plot.classify(
+            plot.parse_wdl("100 [10] / 0 [0] / 0 [0]"),
+            plot.parse_wdl("50 [5] / 0 [0] / 0 [0]"),
+            allow_loss=True,
+        )
+        self.assertEqual("win", forced_win.kind)
+        self.assertEqual("Win", plot.cell_text(forced_win))
+        self.assertEqual("#5FAF32", plot.COLORS[forced_win.kind])
+
+        forced_loss = plot.classify(
+            plot.parse_wdl("0 [0] / 100 [10] / 0 [0]"),
+            plot.parse_wdl("0 [0] / 50 [5] / 0 [0]"),
+            allow_loss=True,
+        )
+        self.assertEqual("loss", forced_loss.kind)
+        self.assertEqual("Loss", plot.cell_text(forced_loss))
+        self.assertEqual("#D15B3B", plot.COLORS[forced_loss.kind])
 
     def test_hidden_material_is_never_certified_from_concrete_wdl(self):
         for row in ledger.entries(ledger.README.read_text()):
@@ -180,6 +216,13 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "malformed W/L/D"):
             ledger.reachability("not a result", "0 / 0 / 1")
+
+    def test_trivial_counts_remain_admitted_but_are_removed_from_plot(self):
+        cell = "100 [7] (11) / 50 [3] / 25 [25] (5)"
+        self.assertEqual((175, 16), ledger.parse_wdl(cell))
+        self.assertEqual(plot.WDL(93, 47, 0), plot.parse_wdl(cell))
+        with self.assertRaisesRegex(ValueError, "trivial"):
+            plot.parse_wdl("2 [3] / 0 / 0")
 
     def test_published_reachability_matches_parenthesized_wdl_buckets(self):
         checked = 0
@@ -207,7 +250,10 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
                 admitted, unreachable = ledger.parse_wdl(cell)
                 side_totals.append(admitted + unreachable)
             self.assertEqual(side_totals[0], side_totals[1], row.key)
-            self.assertEqual(row.states // 2, side_totals[0], row.key)
+            pieces = row.key.split(":", 1)[1].split("+")
+            prince_factor = 2 ** pieces.count("prince")
+            self.assertEqual(
+                row.states // (2 * prince_factor), side_totals[0], row.key)
             checked += 1
         self.assertGreater(checked, 300)
 
@@ -216,12 +262,14 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             item for item in ledger.entries(ledger.README.read_text())
             if item.filename == "kberserkerkninja.uftb")
         self.assertEqual(
-            "37,634,442 (133,257,124) / 6,593,328 / 12,304,706",
+            "37,634,442 [21,426,156] (133,257,124) / "
+            "6,593,328 [259,288] / 12,304,706 [208,544]",
             row.first)
         self.assertEqual(
-            "43,467,936 (52,591,000) / 80,669,688 / 13,060,976",
+            "43,467,936 [35,800,204] (52,591,000) / "
+            "80,669,688 [3,051,264] / 13,060,976 [1,700,148]",
             row.second)
-        self.assertIn("reachability sha256:", row.storage)
+        self.assertIn("reachability v3 sha256:", row.storage)
         summary = plot.read_summary(ledger.README)
         self.assertEqual("mixed", plot.OutcomeCatalog(summary).opposed(
             "berserker", "ninja").kind)
@@ -231,7 +279,8 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             item for item in ledger.entries(ledger.README.read_text())
             if item.filename == "kberserkerkberserker.uftb")
         expected = (
-            "262,700,200 (1,332,571,240) / 271,396,830 / 31,227,730")
+            "262,700,200 [211,530,242] (1,332,571,240) / "
+            "271,396,830 [9,450,088] / 31,227,730 [3,996,402]")
         self.assertEqual(expected, row.first)
         self.assertEqual(expected, row.second)
         self.assertEqual(
@@ -251,7 +300,7 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual(0, prince.second.losses)
         self.assertGreaterEqual(
             prince.first.wins * 1000, prince.first.total * 985)
-        self.assertTrue(plot.cell_text(prince).startswith("W 99–79%\nL 0–0%"))
+        self.assertTrue(plot.cell_text(prince).startswith("W >99–99%\nL 0–0%"))
 
         bishop = catalog.opposed("bishop", "prince")
         self.assertEqual("loss_mostly", bishop.kind)
@@ -259,7 +308,7 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual(0, bishop.second.wins)
         self.assertGreaterEqual(
             bishop.second.losses * 1000, bishop.second.total * 985)
-        self.assertTrue(plot.cell_text(bishop).startswith("W 0–0%\nL 79–99%"))
+        self.assertTrue(plot.cell_text(bishop).startswith("W 0–0%\nL 99–>99%"))
 
         self.assertEqual("#B8DA86", plot.COLORS["win_mostly"])
         self.assertEqual("#F5BE98", plot.COLORS["loss_mostly"])
@@ -315,29 +364,31 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             item for item in ledger.entries(ledger.README.read_text())
             if item.filename == "kberserkerksniper.uftb")
         self.assertEqual(
-            "112,834,132 (645,862,628) / 8,413 (479) / "
-            "222,407 (230,341)",
+            "112,834,132 [43,082,802] (645,862,628) / 8,413 [0] (479) / "
+            "222,407 [119,288] (230,341)",
             row.first)
         self.assertEqual(
-            "126,266 (73,752,811) / 301,329,375 (318,640,610) / "
-            "36,606,979 (28,702,359)",
+            "126,266 [80,882] (73,752,811) / "
+            "301,329,375 [12,310,654] (318,640,610) / "
+            "36,606,979 [36,051,389] (28,702,359)",
             row.second)
         self.assertIn(
-            "reachability sha256:590ebdc7051d453605f5153024986c02718f5af22973ab99fccd22373c04167c",
+            "reachability v3 sha256:3eb5719205688ab9c980db29ef18f6f3b4773e5d8aef153674bc9eb39fe2153c",
             row.storage)
 
     def test_legacy_receipt_corrections_remain_canonical(self):
         rows = {row.filename: row
                 for row in ledger.entries(ledger.README.read_text())}
         self.assertEqual(
-            "372,224 (108,184) / 0 / 72 (12,480)",
+            "372,224 [0] (108,184) / 0 [0] / 72 [0] (12,480)",
             rows["kcopycatk.uftb"].first)
         self.assertEqual(
-            "0 (40,776) / 374,136 / 65,568 (12,480)",
+            "0 [0] (40,776) / 374,136 [0] / 65,568 [65,352] (12,480)",
             rows["kcopycatk.uftb"].second)
         self.assertEqual(
-            "30,670 (3,121,728) / 7,645,846 (43,188) / "
-            "2,444,212 (5,693,316)",
+            "30,656 [4,482] (3,121,728) / "
+            "8,037,238 [229,674] (43,188) / "
+            "2,052,834 [1,392,516] (5,693,316)",
             rows["kbombkgiant.uftb"].second)
 
     def test_stateful_penguin_sidecar_covers_every_power_substate(self):
@@ -345,10 +396,11 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             item for item in ledger.entries(ledger.README.read_text())
             if item.filename == "kpenguink.uftb")
         self.assertEqual(
-            "1,264 (52,024) / 192 / 491,504 (1,426,856)",
+            "1,264 [0] (52,024) / 192 [0] / 491,504 [0] (1,426,856)",
             row.first)
         self.assertEqual(
-            "796 (45,080) / 3,272 / 530,700 (1,391,992)",
+            "796 [0] (45,080) / 3,272 [0] / "
+            "530,700 [78,584] (1,391,992)",
             row.second)
         for cell in (row.first, row.second):
             admitted, unreachable = ledger.parse_wdl(cell)
@@ -361,22 +413,22 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         # The authenticated payload and the ledger both order Penguin first.
         # The obsolete Dragon-primary alias must not reverse these cells.
         self.assertEqual(
-            "752,816 (1,903,140) / 965,350 (240) / "
-            "20,469,414 (127,740,720)",
+            "752,816 [34,664] (1,903,140) / 965,350 [287,284] (240) / "
+            "20,469,414 [1,652,154] (127,740,720)",
             row.first)
         self.assertEqual(
-            "6,345,962 (5,766,916) / 206,072 / "
-            "11,875,666 (127,637,064)",
+            "6,345,962 [3,952,822] (5,766,916) / 206,072 [0] / "
+            "11,875,666 [369,722] (127,637,064)",
             row.second)
         catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))
         self.assertEqual(
             "kpenguinkdragon.uftb",
             catalog.opposing[("penguin", "dragon")]["filename"])
         dragon = catalog.opposed("penguin", "dragon")
-        self.assertEqual((752_816, 965_350, 20_469_414),
+        self.assertEqual((718_152, 678_066, 18_817_260),
                          (dragon.first.wins, dragon.first.losses,
                           dragon.first.draws))
-        self.assertEqual((206_072, 6_345_962, 11_875_666),
+        self.assertEqual((206_072, 2_393_140, 11_505_944),
                          (dragon.second.wins, dragon.second.losses,
                           dragon.second.draws))
 
@@ -437,19 +489,26 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
     def test_launch_gate_refuses_certified_and_untracked_recomputation(self):
         with self.assertRaisesRegex(RuntimeError, "status certified"):
             ledger.check_launch(ledger.README, "krk.uftb", resume=False)
-        with self.assertRaisesRegex(RuntimeError, "status computing"):
+        with self.assertRaisesRegex(RuntimeError, "status certified"):
             ledger.check_launch(
                 ledger.README, "kknightkghost.uftb", resume=False)
-        ledger.check_launch(
-            ledger.README, "kknightkghost.uftb", resume=True)
+        with self.assertRaisesRegex(RuntimeError, "status certified"):
+            ledger.check_launch(
+                ledger.README, "kknightkghost.uftb", resume=True)
         # The live ledger can legitimately have no planned rows when every
         # non-deferred class is already running. Exercise the new-launch gate
-        # against an isolated planned copy instead of requiring stale work.
+        # and the resume gate against isolated copies instead of requiring
+        # stale work in the canonical ledger.
         with tempfile.TemporaryDirectory() as directory:
             readme = Path(directory) / "README.md"
             readme.write_text(ledger.README.read_text())
             ledger.update(readme, ["kknightkghost.uftb=planned"], [])
             ledger.check_launch(readme, "kknightkghost.uftb", resume=False)
+            ledger.update(readme, ["kknightkghost.uftb=computing"], [])
+            with self.assertRaisesRegex(RuntimeError, "status computing"):
+                ledger.check_launch(
+                    readme, "kknightkghost.uftb", resume=False)
+            ledger.check_launch(readme, "kknightkghost.uftb", resume=True)
 
     def test_archive_stream_round_trip_authenticates_every_physical_file(self):
         with tempfile.TemporaryDirectory() as directory:

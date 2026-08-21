@@ -3479,6 +3479,13 @@ void test_native_insufficient_material() {
     support.add_piece(PieceType::Checker, Color::White, Position::square_from_name("c2"));
     expect(support.is_checkmate_possible(),
            "mage plus a checker satisfies the native support/color-bound rule");
+
+    Position devil = bare;
+    devil.add_piece(PieceType::Devil, Color::White,
+                    Position::square_from_name("b2"));
+    expect(devil.team_has_sufficient_material(Color::White) &&
+             devil.is_checkmate_possible() && !devil.game_over(),
+           "Devil is sufficient because it can spawn mating Minions");
 }
 
 void test_pawn_en_passant_lifetime() {

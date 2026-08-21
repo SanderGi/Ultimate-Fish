@@ -59,7 +59,7 @@ class TablebasePlanTests(unittest.TestCase):
 
     def test_all_decisive_single_material_is_planned(self):
         planned = {record["class"] for record in tb.inventory()
-                   if record["phase"] == "kings+1"}
+                   if not record["secondary"]}
         expected = {f"K{piece.name}vK" for piece in tb.PIECES if piece.decisive}
         self.assertEqual(planned, expected)
         self.assertNotIn("KbishopvK", planned)
@@ -140,8 +140,8 @@ class TablebasePlanTests(unittest.TestCase):
 
     def test_visible_angel_inventory_has_exact_topology_factors(self):
         records = tb.angel_candidates()
-        self.assertEqual(30, len(records))
-        self.assertEqual(30, len({record["filename"] for record in records}))
+        self.assertEqual(32, len(records))
+        self.assertEqual(32, len({record["filename"] for record in records}))
         self.assertTrue(all(record["phase"] in {
             "kings+2-angel-graph-v1", "kings+2-angel-copycat-graph-v1"}
                             for record in records))
@@ -168,7 +168,10 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertEqual(37_957_920, tb.linked_copycat_pair_states())
         self.assertNotIn("kangelangelk.uftb", by_name)
         self.assertNotIn("kangelkangel.uftb", by_name)
-        self.assertNotIn("kghostangelk.uftb", by_name)
+        self.assertEqual(
+            227_747_520, by_name["kghostangelk.uftb"]["states"])
+        self.assertEqual(
+            151_831_680, by_name["kghostkangel.uftb"]["states"])
         self.assertIn("kjesterangelk.uftb", by_name)
         self.assertIn("kjesterkangel.uftb", by_name)
         self.assertEqual(113_873_760,
@@ -179,6 +182,11 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertFalse(tb.deferred_material("copycat", "angel"))
         self.assertFalse(tb.deferred_material(
             "copycat", "angel", opposing=True))
+        self.assertFalse(tb.deferred_material("devil"))
+        self.assertTrue(tb.deferred_material("knight", "devil"))
+        self.assertTrue(tb.deferred_material(
+            "bishop", "devil", opposing=True))
+        self.assertTrue(tb.deferred_material("queen", "devil"))
 
     def test_one_angel_insufficient_material_is_closed_form(self):
         pieces = {piece.name: piece for piece in tb.PIECES}

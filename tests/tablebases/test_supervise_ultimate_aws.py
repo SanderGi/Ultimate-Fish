@@ -610,11 +610,12 @@ class SupervisionTests(unittest.TestCase):
         # version-pinned ledger results and retained evidence remain
         # authoritative.  Only the current high-memory jobs contribute live
         # i0b bindings after the fleet reconciliation.  The current opposed
-        # Checker recovery now runs on i024, while the Bomb and Ninja solves
-        # bind only their small restored executables, wrappers, and markers
-        # locally and authenticate their large migration archives through S3
-        # instead of the bounded hash table.
-        self.assertEqual(118, len(table))
+        # Checker recovery now runs on i024, while retired superseded concrete
+        # jobs no longer contribute their source bindings to the live request.
+        # Bomb and Ninja bind only their small restored executables, wrappers,
+        # and markers locally and authenticate their large migration archives
+        # through S3 instead of the bounded hash table.
+        self.assertEqual(108, len(table))
 
     def test_cpu_allocation_reports_idle_capacity_and_overlap(self) -> None:
         definition = config()["instances"][0]
@@ -702,6 +703,58 @@ class SupervisionTests(unittest.TestCase):
         self.assertEqual(6.2, allocation["measured_fleet_capacity_percent"])
         self.assertFalse(allocation["allocation_known"])
         self.assertFalse(allocation["measurement_complete"])
+
+    def test_accounted_active_unit_utilization_is_complete(self) -> None:
+        definition = config()["instances"][0]
+        definition["accounted_active_unit_prefixes"] = [
+            "ultimatefish-devil-fleet-v5-worker-"]
+        before = remote(first="inactive", complete=True)
+        after = remote(first="inactive", complete=True)
+        for document, cpu in ((before, "10000000000"),
+                              (after, "130000000000")):
+            document["accounted_active_units"] = {
+                "count": 1, "sha256": SHA_A,
+                "sample": ["ultimatefish-devil-fleet-v5-worker-7.service"],
+                "probe_status": 0,
+                "details": [{
+                    "unit": "ultimatefish-devil-fleet-v5-worker-7.service",
+                    "properties": {
+                        "ActiveState": "active",
+                        "AllowedCPUs": "0-3",
+                        "CPUUsageNSec": cpu,
+                        "MemoryCurrent": "8192",
+                        "StateChangeTimestamp": "same activation",
+                    },
+                }],
+            }
+        allocation = SUPERVISOR.cpu_allocation(
+            definition, after, previous_remote=before, sample_seconds=60)
+        name = "accounted:ultimatefish-devil-fleet-v5-worker-7.service"
+        sample = allocation["measured_jobs"][name]
+        self.assertEqual(2.0, sample["average_busy_vcpus"])
+        self.assertEqual(50.0, sample["allocated_utilization_percent"])
+        self.assertEqual(8192, sample["memory_current_bytes"])
+        self.assertEqual(4, allocation["allocated_vcpus"])
+        self.assertTrue(allocation["allocation_known"])
+        self.assertTrue(allocation["measurement_complete"])
+
+    def test_dynamic_unit_accounting_configuration_is_fail_closed(self) -> None:
+        document = config()
+        document["instances"][0]["accounted_active_unit_prefixes"] = [
+            "ultimatefish-devil-fleet-v5-worker-"]
+        SUPERVISOR.validate_config(document)
+
+        invalid_prefix = config()
+        invalid_prefix["instances"][0]["accounted_active_unit_prefixes"] = [
+            "ultimatefish-worker-*"]
+        with self.assertRaisesRegex(RuntimeError, "accounted_active_unit_prefixes"):
+            SUPERVISOR.validate_config(invalid_prefix)
+
+        ignored_configured = config()
+        ignored_configured["instances"][0]["ignored_active_units"] = [
+            "ultimatefish-first.service"]
+        with self.assertRaisesRegex(RuntimeError, "ignores configured unit"):
+            SUPERVISOR.validate_config(ignored_configured)
 
     def test_expected_cpu_partition_is_validated_and_monitored(self) -> None:
         document = config()

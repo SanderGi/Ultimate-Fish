@@ -2797,6 +2797,7 @@ bool Position::team_has_sufficient_material(Color color) const {
       types[index(PieceType::Ghost)] |
       types[index(PieceType::Penguin)] |
       types[index(PieceType::Parasite)] |
+      types[index(PieceType::Devil)] |
       types[index(PieceType::Sniper)] |
       types[index(PieceType::Prince)] |
       types[index(PieceType::Giant)] |

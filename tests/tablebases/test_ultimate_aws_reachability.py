@@ -165,6 +165,16 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
         self.assertEqual("10 (1) / 18 (4) / 33",
                          finalize.render(totals[1], omitted[1]))
 
+    def test_single_class_finalizer_brackets_trivial_admitted_subset(self):
+        totals = [0, 10, 20, 30]
+        omitted = [0, 2, 0, 5]
+        trivial = [0, 3, 4, 7]
+        self.assertEqual(
+            "8 [3] (2) / 20 [4] / 25 [7] (5)",
+            finalize.render(totals, omitted, trivial))
+        with self.assertRaisesRegex(ValueError, "trivial"):
+            finalize.render(totals, omitted, [0, 9, 0, 0])
+
     def test_single_class_finalizer_cross_checks_explicit_reachability_semantics(self):
         text = (
             "reachability side 0 unknown 0 win 2 loss 0 draw 5\n"
@@ -174,7 +184,9 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
             "reachability_excluded side 0 unknown 0 win 2 loss 0 draw 5\n"
             "reachability_excluded side 1 unknown 0 win 1 loss 4 draw 0\n"
             "reachability_admitted side 0 unknown 0 win 8 loss 20 draw 25\n"
-            "reachability_admitted side 1 unknown 0 win 10 loss 18 draw 33\n")
+            "reachability_admitted side 1 unknown 0 win 10 loss 18 draw 33\n"
+            "reachability_trivial side 0 unknown 0 win 3 loss 4 draw 7\n"
+            "reachability_trivial side 1 unknown 0 win 2 loss 5 draw 8\n")
         totals = finalize.counts(finalize.TOTAL, text)
         omitted = finalize.counts(finalize.AUDIT, text)
         finalize.validate_explicit_reachability_semantics(
@@ -183,6 +195,136 @@ class UltimateAwsReachabilityTests(unittest.TestCase):
             finalize.validate_explicit_reachability_semantics(
                 text.replace("win 8 loss 20", "win 9 loss 20"),
                 totals, omitted)
+        with self.assertRaisesRegex(ValueError, "trivial"):
+            finalize.validate_explicit_reachability_semantics(
+                text.replace("win 3 loss 4 draw 7", "win 9 loss 4 draw 7"),
+                totals, omitted)
+
+    @staticmethod
+    def _aggregate_reachability_rows():
+        return (
+            "reachability side 0 unknown 0 win 2 loss 3 draw 5\n"
+            "reachability side 1 unknown 0 win 7 loss 11 draw 13\n"
+            "reachability_total side 0 unknown 0 win 20 loss 30 draw 50\n"
+            "reachability_total side 1 unknown 0 win 70 loss 110 draw 130\n"
+            "reachability_trivial side 0 unknown 0 win 3 loss 4 draw 7\n"
+            "reachability_trivial side 1 unknown 0 win 2 loss 5 draw 8\n")
+
+    def test_prince_reporting_uses_only_ordinary_secondary_substate(self):
+        text = self._aggregate_reachability_rows() + (
+            "reachability_secondary_substate substate 0 side 0 unknown 0 win 1 loss 2 draw 3\n"
+            "reachability_secondary_substate_total substate 0 side 0 unknown 0 win 11 loss 22 draw 33\n"
+            "reachability_secondary_substate_trivial substate 0 side 0 unknown 0 win 4 loss 5 draw 6\n"
+            "reachability_secondary_substate substate 0 side 1 unknown 0 win 7 loss 8 draw 9\n"
+            "reachability_secondary_substate_total substate 0 side 1 unknown 0 win 17 loss 28 draw 39\n"
+            "reachability_secondary_substate_trivial substate 0 side 1 unknown 0 win 2 loss 3 draw 4\n")
+        record = {"primary": "bishop", "secondary": "prince"}
+        with mock.patch.object(finalize, "encoded_record_for", return_value=record):
+            totals, excluded, trivial = finalize.reporting_counts(
+                "kbishopprincek.uftb", text)
+        self.assertEqual([[0, 11, 22, 33], [0, 17, 28, 39]], totals)
+        self.assertEqual([[0, 1, 2, 3], [0, 7, 8, 9]], excluded)
+        self.assertEqual([[0, 4, 5, 6], [0, 2, 3, 4]], trivial)
+
+    def test_prince_reporting_accepts_explicit_turn_boundary_scope(self):
+        text = "reachability_scope turn_boundary\n" + (
+            "reachability side 0 unknown 0 win 1 loss 2 draw 3\n"
+            "reachability side 1 unknown 0 win 4 loss 5 draw 6\n"
+            "reachability_total side 0 unknown 0 win 11 loss 22 draw 33\n"
+            "reachability_total side 1 unknown 0 win 44 loss 55 draw 66\n"
+            "reachability_trivial side 0 unknown 0 win 7 loss 8 draw 9\n"
+            "reachability_trivial side 1 unknown 0 win 10 loss 11 draw 12\n")
+        record = {"primary": "bishop", "secondary": "prince"}
+        with mock.patch.object(finalize, "encoded_record_for", return_value=record):
+            totals, excluded, trivial = finalize.reporting_counts(
+                "kbishopprincek.uftb", text)
+        self.assertEqual([0, 11, 22, 33], totals[0])
+        self.assertEqual([0, 4, 5, 6], excluded[1])
+        self.assertEqual([0, 7, 8, 9], trivial[0])
+
+    def test_turn_boundary_scope_rejects_non_prince_material(self):
+        text = "reachability_scope turn_boundary\n" + self._aggregate_reachability_rows()
+        record = {"primary": "bishop", "secondary": "rook"}
+        with mock.patch.object(finalize, "encoded_record_for", return_value=record):
+            with self.assertRaisesRegex(ValueError, "turn-boundary"):
+                finalize.reporting_counts("kbishoprookk.uftb", text)
+
+    def test_prince_information_reporting_uses_scoped_admitted_buckets(self):
+        text = "".join(
+            f"information_reachability_admitted side {side} unknown 0 "
+            f"win 10 loss 20 draw 30\n"
+            f"information_reachability_excluded side {side} unknown 0 "
+            f"win 1 loss 2 draw 3\n"
+            f"information_reachability_trivial side {side} unknown 0 "
+            f"win 4 loss 5 draw 6\n"
+            for side in range(2)) + \
+            "information_reachability_scope turn_boundary\n"
+        record = {"primary": "jester", "secondary": "prince",
+                  "states": 264}
+        with mock.patch.object(finalize, "encoded_record_for", return_value=record):
+            totals, excluded, trivial = finalize.information_reporting_counts(
+                "kjesterprincek.uftb", text)
+        self.assertEqual([0, 11, 22, 33], totals[0])
+        self.assertEqual([0, 1, 2, 3], excluded[1])
+        self.assertEqual([0, 4, 5, 6], trivial[0])
+
+    def test_prince_information_reporting_requires_boundary_scope(self):
+        text = "".join(
+            f"information_reachability_{bucket} side {side} unknown 0 "
+            "win 0 loss 0 draw 0\n"
+            for side in range(2)
+            for bucket in ("admitted", "excluded", "trivial"))
+        record = {"primary": "jester", "secondary": "prince", "states": 0}
+        with mock.patch.object(finalize, "encoded_record_for", return_value=record):
+            with self.assertRaisesRegex(ValueError, "turn-boundary"):
+                finalize.information_reporting_counts(
+                    "kjesterprincek.uftb", text)
+
+    def test_double_prince_reporting_requires_joint_ordinary_substate(self):
+        text = self._aggregate_reachability_rows() + (
+            "reachability_combined_substate substate 0 side 0 unknown 0 win 1 loss 2 draw 3\n"
+            "reachability_combined_substate_total substate 0 side 0 unknown 0 win 11 loss 22 draw 33\n"
+            "reachability_combined_substate_trivial substate 0 side 0 unknown 0 win 4 loss 5 draw 6\n"
+            "reachability_combined_substate substate 0 side 1 unknown 0 win 7 loss 8 draw 9\n"
+            "reachability_combined_substate_total substate 0 side 1 unknown 0 win 17 loss 28 draw 39\n"
+            "reachability_combined_substate_trivial substate 0 side 1 unknown 0 win 2 loss 3 draw 4\n")
+        record = {"primary": "prince", "secondary": "prince", "states": 800}
+        with mock.patch.object(finalize, "encoded_record_for", return_value=record):
+            totals, excluded, trivial = finalize.reporting_counts(
+                "kprinceprincek.uftb", text)
+        self.assertEqual([0, 11, 22, 33], totals[0])
+        self.assertEqual([0, 7, 8, 9], excluded[1])
+        self.assertEqual([0, 4, 5, 6], trivial[0])
+
+    def test_double_prince_reporting_recovers_joint_from_v3_marginals(self):
+        aggregate = "".join(
+            f"reachability side {side} unknown 0 win 10 loss 20 draw 120\n"
+            f"reachability_total side {side} unknown 0 win 100 loss 100 draw 200\n"
+            f"reachability_trivial side {side} unknown 0 win 5 loss 6 draw 7\n"
+            for side in range(2))
+        marginals = "".join(
+            f"reachability_primary_substate substate 0 side {side} unknown 0 win 5 loss 10 draw 15\n"
+            f"reachability_primary_substate_total substate 0 side {side} unknown 0 win 50 loss 60 draw 90\n"
+            f"reachability_primary_substate_trivial substate 0 side {side} unknown 0 win 2 loss 3 draw 4\n"
+            f"reachability_secondary_substate substate 0 side {side} unknown 0 win 7 loss 13 draw 10\n"
+            f"reachability_secondary_substate_total substate 0 side {side} unknown 0 win 70 loss 70 draw 60\n"
+            f"reachability_secondary_substate_trivial substate 0 side {side} unknown 0 win 4 loss 5 draw 6\n"
+            for side in range(2))
+        text = aggregate + marginals
+        record = {"primary": "prince", "secondary": "prince", "states": 800}
+        with mock.patch.object(finalize, "encoded_record_for", return_value=record):
+            totals, excluded, trivial = finalize.reporting_counts(
+                "kprinceprincek.uftb", text)
+        self.assertEqual([0, 20, 30, 50], totals[0])
+        self.assertEqual([0, 2, 3, 5], excluded[0])
+        self.assertEqual([0, 1, 2, 3], trivial[0])
+
+    def test_double_prince_reporting_rejects_receipt_without_joint_or_marginals(self):
+        record = {"primary": "prince", "secondary": "prince", "states": 800}
+        with mock.patch.object(finalize, "encoded_record_for", return_value=record):
+            with self.assertRaisesRegex(ValueError, "primary substate"):
+                finalize.reporting_counts(
+                    "kprinceprincek.uftb", self._aggregate_reachability_rows())
 
     def test_single_class_finalizer_resolves_supported_record(self):
         record = finalize.record_for("kknightkprince.uftb")

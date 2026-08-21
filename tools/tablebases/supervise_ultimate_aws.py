@@ -268,6 +268,23 @@ def validate_config(config: dict[str, Any]) -> None:
         capacities[identifier] = int(instance["vcpus"])
         if instance.get("transport", "ssm") not in {"ssm", "local"}:
             raise RuntimeError(f"{identifier} has unsupported transport")
+        ignored_units = instance.get("ignored_active_units", [])
+        if (not isinstance(ignored_units, list) or len(ignored_units) > 32 or
+                any(not isinstance(unit, str) or not UNIT.fullmatch(unit)
+                    for unit in ignored_units) or
+                len(set(ignored_units)) != len(ignored_units)):
+            raise RuntimeError(
+                f"{identifier} ignored_active_units must be unique explicit services")
+        accounted_prefixes = instance.get("accounted_active_unit_prefixes", [])
+        if (not isinstance(accounted_prefixes, list) or
+                len(accounted_prefixes) > 16 or
+                any(not isinstance(prefix, str) or not prefix or
+                    len(prefix) > 96 or
+                    not re.fullmatch(r"[A-Za-z0-9_.@-]+", prefix)
+                    for prefix in accounted_prefixes) or
+                len(set(accounted_prefixes)) != len(accounted_prefixes)):
+            raise RuntimeError(
+                f"{identifier} accounted_active_unit_prefixes are invalid")
     job_ids: set[str] = set()
     for job in jobs:
         if not isinstance(job, dict):
@@ -387,6 +404,13 @@ def validate_config(config: dict[str, Any]) -> None:
                 raise RuntimeError(
                     f"{job['id']} depends on superseded {dependency}; "
                     f"use current replacement {replacement}")
+    configured_units = {str(job["unit"]) for job in jobs}
+    for instance in instances:
+        overlap = configured_units & set(instance.get("ignored_active_units", []))
+        if overlap:
+            raise RuntimeError(
+                f"{instance['instance_id']} ignores configured unit "
+                f"{sorted(overlap)[0]}")
 
 
 def glob_magic(path: str) -> bool:
@@ -471,6 +495,9 @@ def remote_script(instance: dict[str, Any], jobs: list[dict[str, Any]]) -> str:
     bindings, compact_jobs = compact_source_bindings(jobs)
     payload = {
         "mounts": instance.get("mounts", ["/"]),
+        "ignored_active_units": instance.get("ignored_active_units", []),
+        "accounted_active_unit_prefixes": instance.get(
+            "accounted_active_unit_prefixes", []),
         "bindings": bindings,
         "jobs": compact_jobs,
     }
@@ -608,6 +635,8 @@ for job in payload['jobs']:
               'x':sources_exact(job.get('binding_refs',[])),
               'd':diagnostics(job.get('diagnostic_sources',[]))})
 known_units={job['unit'] for job in payload['jobs']}
+ignored_units=set(payload.get('ignored_active_units',[]))
+accounted_prefixes=tuple(payload.get('accounted_active_unit_prefixes',[]))
 try:
  rc,out,err=command(['systemctl','list-units','ultimatefish-*.service',
                      '--type=service','--state=active,activating,reloading',
@@ -617,12 +646,19 @@ except OSError:
 active_units=sorted({line.split()[0] for line in out.splitlines()
                      if line.split() and line.split()[0].endswith('.service')}) \
              if rc == 0 else []
-unknown_units=[unit for unit in active_units if unit not in known_units]
+accounted_units=[unit for unit in active_units if unit not in known_units and
+                 any(unit.startswith(prefix) for prefix in accounted_prefixes)]
+unknown_units=[unit for unit in active_units if unit not in known_units and
+               unit not in ignored_units and unit not in accounted_units]
 unknown_text='\n'.join(unknown_units).encode()
 unknown_details=[[unit,props(unit)] for unit in unknown_units[:32]]
 unknown=[len(unknown_units),hashlib.sha256(unknown_text).hexdigest(),
          unknown_units[:8],rc,unknown_details]
-document={'memory':memory,'mounts':mounts,'jobs':jobs,'u':unknown}
+accounted_text='\n'.join(accounted_units).encode()
+accounted_details=[[unit,props(unit)] for unit in accounted_units[:64]]
+accounted=[len(accounted_units),hashlib.sha256(accounted_text).hexdigest(),
+           accounted_units[:8],rc,accounted_details]
+document={'memory':memory,'mounts':mounts,'jobs':jobs,'u':unknown,'a':accounted}
 encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
 document['b']=len(encoded.encode())
 encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
@@ -780,22 +816,28 @@ def normalize_remote(remote: dict[str, Any]) -> dict[str, Any]:
         level = remote.pop("q")
         remote["probe_compacted"] = level in {1, 2}
         remote["probe_compaction_level"] = level
-    unknown = remote.pop("u", None)
-    if (isinstance(unknown, list) and len(unknown) in {4, 5} and
-            isinstance(unknown[0], int) and isinstance(unknown[2], list)):
-        remote["unconfigured_active_units"] = {
-            "count": unknown[0], "sha256": unknown[1],
-            "sample": unknown[2], "probe_status": unknown[3],
+    def expand_active_units(wire_key: str, output_key: str) -> None:
+        records = remote.pop(wire_key, None)
+        if not (isinstance(records, list) and len(records) in {4, 5} and
+                isinstance(records[0], int) and
+                isinstance(records[2], list)):
+            return
+        remote[output_key] = {
+            "count": records[0], "sha256": records[1],
+            "sample": records[2], "probe_status": records[3],
         }
-        if len(unknown) == 5 and isinstance(unknown[4], list):
+        if len(records) == 5 and isinstance(records[4], list):
             details: list[dict[str, Any]] = []
-            for record in unknown[4]:
+            for record in records[4]:
                 if (isinstance(record, list) and len(record) == 2 and
                         isinstance(record[0], str) and
                         isinstance(record[1], dict)):
                     details.append({"unit": record[0],
                                     "properties": record[1]})
-            remote["unconfigured_active_units"]["details"] = details
+            remote[output_key]["details"] = details
+
+    expand_active_units("u", "unconfigured_active_units")
+    expand_active_units("a", "accounted_active_units")
 
     def aggregate(records: object) -> list[dict[str, Any]]:
         if not isinstance(records, list):
@@ -1049,6 +1091,58 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
                 "allocated_utilization_percent": round(
                     100 * busy / len(cpus), 1),
             }
+    accounted = remote.get("accounted_active_units", {})
+    accounted_count = int(accounted.get("count", 0) or 0)
+    accounted_probe_ok = accounted.get("probe_status", 0) == 0
+    accounted_details = accounted.get("details", [])
+    previous_accounted = {
+        str(item.get("unit")): item.get("properties", {})
+        for item in (previous_remote or {}).get(
+            "accounted_active_units", {}).get("details", [])
+        if isinstance(item, dict)
+    }
+    for item in accounted_details:
+        if not isinstance(item, dict):
+            continue
+        unit_name = str(item.get("unit", ""))
+        properties = item.get("properties", {})
+        if not unit_name or not isinstance(properties, dict):
+            continue
+        name = f"accounted:{unit_name}"
+        try:
+            cpus = parse_cpu_set(properties.get("AllowedCPUs"), capacity)
+        except ValueError:
+            cpus = set()
+        if cpus:
+            active_sets[name] = cpus
+        else:
+            unknown.append(name)
+            continue
+        current_cpu = integer_property(properties, "CPUUsageNSec")
+        previous_properties = previous_accounted.get(unit_name, {})
+        previous_cpu = integer_property(previous_properties, "CPUUsageNSec")
+        same_activation = (
+            properties.get("StateChangeTimestamp") and
+            properties.get("StateChangeTimestamp") ==
+            previous_properties.get("StateChangeTimestamp"))
+        if (current_cpu is not None and previous_cpu is not None and
+                current_cpu >= previous_cpu and same_activation and
+                sample_seconds is not None and sample_seconds > 0):
+            delta = current_cpu - previous_cpu
+            busy = delta / (sample_seconds * 1_000_000_000)
+            utilization[name] = {
+                "cpu_usage_nsec": current_cpu,
+                "cpu_delta_nsec": delta,
+                "sample_seconds": round(sample_seconds, 3),
+                "average_busy_vcpus": round(busy, 3),
+                "allocated_utilization_percent": round(
+                    100 * busy / len(cpus), 1),
+                "memory_current_bytes": integer_property(
+                    properties, "MemoryCurrent"),
+            }
+    if accounted_count != len(accounted_details):
+        unknown.append("accounted-active-unit-detail-truncation")
+
     allocated = set().union(*active_sets.values()) if active_sets else set()
     overlaps: list[str] = []
     names = sorted(active_sets)
@@ -1116,9 +1210,10 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
         "allocated_vcpus": len(allocated),
         "idle_vcpus": capacity - len(allocated),
         "allocation_known": not unknown and not unconfigured_count and
-        unconfigured_probe_ok,
+        unconfigured_probe_ok and accounted_probe_ok,
         "unknown_jobs": unknown,
         "unconfigured_active_units": unconfigured,
+        "accounted_active_units": accounted,
         "overlaps": overlaps,
         "active_jobs": {name: len(cpus) for name, cpus in active_sets.items()},
         "active_cpu_sets": {
@@ -1134,7 +1229,7 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
         # Treating it as unknown prevented the scheduler from backfilling the
         # most obviously idle machines.
         "measurement_complete": not unknown and not unconfigured_count and
-        unconfigured_probe_ok and
+        unconfigured_probe_ok and accounted_probe_ok and
         set(utilization) == set(active_sets),
         "allocation_mismatches": mismatches,
     }

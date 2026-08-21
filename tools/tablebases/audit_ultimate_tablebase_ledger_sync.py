@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import itertools
 import json
 from pathlib import Path
 import re
@@ -26,7 +27,8 @@ import update_ultimate_tablebase_ledger as ledger
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / "tools/tablebases/ultimate_aws_supervision.json"
 DEFAULT_README = ROOT / "tablebases/README.md"
-SIDECAR_NAME = re.compile(r"([^/]+)\.reachability-v\d+\.(?:json|txt)$")
+SIDECAR_NAME = re.compile(
+    r"([^/]+)\.reachability(?:-trivial)?-v\d+\.(?:json|txt)$")
 RESULT_DIGEST = re.compile(
     r"\bresult(?: UFIW)? sha256:([0-9a-f]{64})\b", re.IGNORECASE)
 
@@ -71,7 +73,7 @@ def exact_artifact(cache: Path, certificate: dict[str, Any],
     return target
 
 
-def json_counts(path: Path) -> tuple[list[list[int]], list[list[int]]]:
+def json_counts(path: Path) -> tuple[list[list[int]], list[list[int]], list[list[int]]]:
     value = json.loads(path.read_text(encoding="utf-8"))
     totals = value.get("totals")
     excluded = value.get("unreachable")
@@ -81,31 +83,114 @@ def json_counts(path: Path) -> tuple[list[list[int]], list[list[int]]]:
         raise ValueError(f"malformed JSON reachability sidecar: {path}")
     totals = [[int(item) for item in row] for row in totals]
     excluded = [[int(item) for item in row] for row in excluded]
+    raw_trivial = value.get("trivial", [[0, 0, 0, 0] for _ in range(2)])
+    if (not isinstance(raw_trivial, list) or len(raw_trivial) != 2 or
+            any(not isinstance(row, list) or len(row) != 4
+                for row in raw_trivial)):
+        raise ValueError(f"malformed JSON trivial sidecar: {path}")
+    trivial = [[int(item) for item in row] for row in raw_trivial]
     if any(row[0] for row in totals + excluded):
         raise ValueError(f"unknown reachability states in {path}")
-    return totals, excluded
+    if any(trivial[side][outcome] > totals[side][outcome] - excluded[side][outcome]
+           for side in range(2) for outcome in range(4)):
+        raise ValueError(f"trivial count exceeds admitted bucket in {path}")
+    return totals, excluded, trivial
 
 
-def text_counts(path: Path) -> tuple[list[list[int]], list[list[int]]]:
+def text_counts(path: Path, filename: str
+               ) -> tuple[list[list[int]], list[list[int]], list[list[int]]]:
     text = path.read_text(encoding="utf-8")
-    totals = finalizer.counts(finalizer.TOTAL, text)
-    # Native legacy `reachability side` rows are excluded states.  New output
-    # spells this out and provides a separately checked admitted bucket.
-    explicit = "reachability_excluded side " in text
-    excluded = finalizer.counts(
-        finalizer.EXCLUDED if explicit else finalizer.AUDIT, text)
-    if explicit:
-        finalizer.validate_explicit_reachability_semantics(
-            text, totals, excluded)
-    return totals, excluded
+    if "information_reachability_admitted side " in text:
+        return finalizer.information_reporting_counts(filename, text)
+    return finalizer.reporting_counts(filename, text)
 
 
 def rendered(path: Path, filename: str) -> tuple[str, str, str]:
-    totals, excluded = (json_counts(path) if path.suffix == ".json"
-                        else text_counts(path))
+    if path.suffix == ".json":
+        record = finalizer.encoded_record_for(filename)
+        if "prince" in {record["primary"], record.get("secondary")}:
+            raise ValueError(
+                f"Prince reachability sidecar lacks turn-boundary slices: {path}")
+        totals, excluded, trivial = json_counts(path)
+    else:
+        totals, excluded, trivial = text_counts(path, filename)
     order = finalizer.ledger_side_order(filename)
-    cells = tuple(finalizer.render(totals[side], excluded[side])
+    cells = tuple(finalizer.render(totals[side], excluded[side], trivial[side])
                   for side in order)
+    return cells[0], cells[1], ledger.reachability(*cells)
+
+
+def information_cell_buckets(cell: str) -> tuple[list[int], list[int]]:
+    """Return admitted and excluded W/L/D buckets from an information cell."""
+    admitted = [0]
+    excluded = [0]
+    for component in cell.split("/"):
+        match = re.fullmatch(
+            r"\s*([0-9][0-9,]*)(?: \[[0-9][0-9,]*\])?"
+            r"(?: \(([0-9][0-9,]*)\))?\s*", component)
+        if match is None:
+            raise ValueError(f"malformed information W/L/D cell: {cell!r}")
+        admitted.append(int(match.group(1).replace(",", "")))
+        excluded.append(int((match.group(2) or "0").replace(",", "")))
+    if len(admitted) != 4:
+        raise ValueError(f"malformed information W/L/D cell: {cell!r}")
+    return admitted, excluded
+
+
+def align_information_trivial(
+        admitted: list[int], trivial: list[int], expected: list[int],
+        filename: str, side: int) -> list[int]:
+    """Align raw force buckets to certified public-information W/L/D.
+
+    UFIW2 force-bit order is solver-specific (notably for Ghost owner versus
+    observer views).  Accept an orientation only when a permutation exactly
+    reproduces all three certified admitted buckets.  Ambiguous permutations
+    are safe only when they produce the same trivial subset.
+    """
+    candidates = {
+        tuple([0] + [trivial[index] for index in permutation])
+        for permutation in itertools.permutations((1, 2, 3))
+        if [0] + [admitted[index] for index in permutation] == expected
+    }
+    if len(candidates) != 1:
+        raise ValueError(
+            f"{filename}: information force-bucket orientation residual "
+            f"for side {side}: candidates={len(candidates)}")
+    return list(candidates.pop())
+
+
+def rendered_information(path: Path, filename: str, first: str, second: str
+                         ) -> tuple[str, str, str]:
+    """Render information trivial subsets while preserving certified excludes.
+
+    Excluded UFIW2 records carry no public-information outcome.  The native
+    audit reports their concrete-UFTB WDL solely for conservation, so only the
+    total excluded cardinality can be compared to the ledger's already
+    certified public-information parentheses.
+    """
+    totals, raw_excluded, raw_trivial = text_counts(path, filename)
+    order = finalizer.ledger_side_order(filename)
+    rendered_cells: list[str] = []
+    for position, side in enumerate(order):
+        expected_admitted, expected_excluded = information_cell_buckets(
+            (first, second)[position])
+        raw_admitted = [
+            totals[side][outcome] - raw_excluded[side][outcome]
+            for outcome in range(4)
+        ]
+        mapped_trivial = align_information_trivial(
+            raw_admitted, raw_trivial[side], expected_admitted,
+            filename, side)
+        if sum(raw_excluded[side]) != sum(expected_excluded):
+            raise ValueError(
+                f"{filename}: information excluded-total residual for side {side}")
+        expected_totals = [
+            expected_admitted[outcome] + expected_excluded[outcome]
+            for outcome in range(4)
+        ]
+        rendered_cells.append(finalizer.render(
+            expected_totals, expected_excluded, mapped_trivial))
+    cells = tuple(rendered_cells)
     return cells[0], cells[1], ledger.reachability(*cells)
 
 
@@ -209,6 +294,72 @@ def audit(config_path: Path, readme_path: Path, cache: Path,
             raise RuntimeError(
                 f"README storage omits certificate binding for {filename}")
         result_certificates += 1
+    for certificate in config.get("ledger_reachability_sidecars", []):
+        filename = str(certificate["filename"])
+        path = exact_artifact(cache, certificate, offline=offline)
+        first, second, reachability = rendered(path, filename)
+        row = readme_rows.get(filename)
+        if row is None:
+            raise RuntimeError(f"README lacks sidecar-bound {filename}")
+        actual = {"first": first, "second": second,
+                  "reachability": reachability}
+        published = {"first": row.first, "second": row.second,
+                     "reachability": row.reachability}
+        if published != actual:
+            raise RuntimeError(
+                f"ledger sidecar differs for {filename}: "
+                f"artifact={actual!r} readme={published!r}")
+        detail = ledger.result_rows(readme_text).get(filename)
+        output_sha = str(certificate.get("output_sha256", ""))
+        ledger_certificate = any(
+            item.get("filename") == filename and
+            item.get("result_sha256") == output_sha
+            for item in config.get("ledger_result_certificates", []))
+        if not ledger_certificate and (
+                detail is None or detail.digest != output_sha):
+            raise RuntimeError(f"ledger sidecar output binding differs for {filename}")
+        if any(str(certificate[name]) not in row.storage
+               for name in ("sha256", "version_id")):
+            raise RuntimeError(f"README storage omits sidecar binding for {filename}")
+        audited.add(filename)
+        artifacts += 1
+    for certificate in config.get("ledger_information_reachability_sidecars", []):
+        filename = str(certificate["filename"])
+        path = exact_artifact(cache, certificate, offline=offline)
+        text = path.read_text(encoding="utf-8")
+        required = (
+            f"information_reachability_binding source_sha256 "
+            f"{certificate['output_sha256']} model_sha256 "
+            f"{certificate['model_sha256']}",
+            f"information_trivial_overlay_sha256 "
+            f"{certificate['overlay_sha256']}",
+            f"information_trivial_binary_sha256 "
+            f"{certificate['binary_sha256']}",
+            f"information_trivial_source_bundle_sha256 "
+            f"{certificate['source_bundle_sha256']}",
+        )
+        if any(value not in text for value in required):
+            raise RuntimeError(
+                f"information reachability binding differs for {filename}")
+        row = readme_rows.get(filename)
+        if row is None or row.result_kind != "information v2":
+            raise RuntimeError(f"README lacks information row {filename}")
+        first, second, reachability = rendered_information(
+            path, filename, row.first, row.second)
+        actual = {"first": first, "second": second,
+                  "reachability": reachability}
+        published = {"first": row.first, "second": row.second,
+                     "reachability": row.reachability}
+        if published != actual:
+            raise RuntimeError(
+                f"information sidecar differs for {filename}: "
+                f"artifact={actual!r} readme={published!r}")
+        if any(str(certificate[name]) not in row.storage
+               for name in ("sha256", "version_id")):
+            raise RuntimeError(
+                f"README storage omits information sidecar binding for {filename}")
+        audited.add(filename)
+        artifacts += 1
     for job in config["jobs"]:
         if job.get("superseded_by") or not job.get("ledger_certifies"):
             continue
@@ -253,8 +404,10 @@ def audit(config_path: Path, readme_path: Path, cache: Path,
             continue
         first = ledger.parse_wdl(row.first)
         second = ledger.parse_wdl(row.second)
-        if (sum(first) != row.states // 2 or
-                sum(second) != row.states // 2):
+        pieces = row.key.split(":", 1)[1].split("+")
+        prince_factor = 2 ** pieces.count("prince")
+        expected = row.states // (2 * prince_factor)
+        if sum(first) != expected or sum(second) != expected:
             raise RuntimeError(f"README state conservation failed for {row.key}")
         conserved += 1
     result = {"artifacts": artifacts, "files": len(audited),

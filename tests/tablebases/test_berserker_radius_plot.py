@@ -30,9 +30,125 @@ prepare = load(
     "ultimate_berserker_radius_prepare",
     TOOLS / "prepare_berserker_radius_audit.py",
 )
+merge_audits = load(
+    "ultimate_berserker_radius_merge",
+    TOOLS / "merge_ultimate_berserker_radius_audits.py",
+)
+import_radius_trivial = load(
+    "ultimate_berserker_radius_information_trivial_import",
+    TOOLS / "import_ultimate_berserker_radius_information_trivial.py",
+)
 
 
 class BerserkerRadiusPlotTests(unittest.TestCase):
+    def test_shard_merge_requires_exact_disjoint_coverage(self):
+        common = {
+            "schema": 2,
+            "description": "radius",
+            "semantics": "reachability-admitted-minus-trivial-v3",
+            "radius_to_power_substate": {"1": 0, "2": 1, "3": 2},
+            "audit_binary_sha256": "a" * 64,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = root / "manifest.json"
+            first = root / "first.json"
+            second = root / "second.json"
+            manifest.write_text(
+                json.dumps({"files": {"a.uftb": {}, "b.uftb": {}}}),
+                encoding="utf-8",
+            )
+            first.write_text(
+                json.dumps(common | {"files": {"a.uftb": {"radii": {}}}}),
+                encoding="utf-8",
+            )
+            second.write_text(
+                json.dumps(common | {"files": {"b.uftb": {"radii": {}}}}),
+                encoding="utf-8",
+            )
+            merged = merge_audits.merge(manifest, [first, second])
+            self.assertEqual({"a.uftb", "b.uftb"}, set(merged["files"]))
+
+            second.write_text(
+                json.dumps(common | {"files": {"a.uftb": {"radii": {}}}}),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "duplicate radius record"):
+                merge_audits.merge(manifest, [first, second])
+
+            first.write_text(
+                json.dumps(
+                    common
+                    | {"files": {"a.uftb": {"excluded": True}}}
+                ),
+                encoding="utf-8",
+            )
+            second.write_text(
+                json.dumps(common | {"files": {"b.uftb": {"radii": {}}}}),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                ValueError, "exclusion-orientation mismatch"
+            ):
+                merge_audits.merge(manifest, [first, second])
+
+    def test_universal_forced_outcomes_have_distinct_cell_kinds(self):
+        win = plot.classify(
+            plot.parse_wdl("100 / 4 [4] / 0"),
+            plot.parse_wdl("80 / 9 [9] / 0"),
+            allow_loss=True,
+        )
+        self.assertEqual("win", win.kind)
+        self.assertEqual("Win", plot.cell_text(win))
+        self.assertEqual("#5FAF32", plot.COLORS[win.kind])
+
+        loss = plot.classify(
+            plot.parse_wdl("0 / 100 / 3 [3]"),
+            plot.parse_wdl("0 / 80 / 7 [7]"),
+            allow_loss=True,
+        )
+        self.assertEqual("loss", loss.kind)
+        self.assertEqual("Loss", plot.cell_text(loss))
+        self.assertEqual("#D15B3B", plot.COLORS[loss.kind])
+
+        self.assertEqual(
+            "win_star",
+            plot.classify(plot.WDL(10, 0, 0), plot.WDL(9, 0, 1), True).kind,
+        )
+        self.assertEqual(
+            "loss_star",
+            plot.classify(plot.WDL(0, 9, 1), plot.WDL(0, 10, 0), True).kind,
+        )
+
+    def test_trivial_subtraction_drives_cell_kind_and_display(self):
+        # Raw counts would be mixed because both starts contain a loss.  Once
+        # the bracketed trivial losses are removed, the same row is a forced
+        # win tier.  This guards both the printed percentages and, crucially,
+        # the color selected from Cell.kind.
+        first = plot.parse_wdl("990 / 10 [10] / 0")
+        second = plot.parse_wdl("900 / 10 [10] / 90")
+        cell = plot.classify(first, second, allow_loss=False)
+        self.assertEqual(plot.WDL(990, 0, 0), first)
+        self.assertEqual(plot.WDL(900, 0, 90), second)
+        self.assertEqual("win_star", cell.kind)
+        self.assertEqual("Win*", plot.cell_text(cell))
+        self.assertEqual("#91C655", plot.COLORS[cell.kind])
+
+    def test_cell_text_collapses_identical_display_percentages(self):
+        cell = plot.Cell(
+            "mixed",
+            plot.WDL(99, 0, 1),
+            plot.WDL(990, 0, 10),
+        )
+        self.assertEqual("W 99%\nL 0%\nD 1%", plot.cell_text(cell))
+
+        different = plot.Cell(
+            "mixed",
+            plot.WDL(99, 0, 1),
+            plot.WDL(980, 0, 20),
+        )
+        self.assertEqual("W 99–98%\nL 0–0%\nD 1–2%", plot.cell_text(different))
+
     def test_radius_rows_extend_berserker_without_renaming_existing_labels(self):
         self.assertEqual("Berserker", plot.PIECE_LABELS["berserker"])
         self.assertEqual(
@@ -43,20 +159,27 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
 
     def test_radius_summary_preserves_exact_start_order_and_row_view(self):
         document = {
-            "schema": 1,
+            "schema": 2,
+            "semantics": "reachability-admitted-minus-trivial-v3",
             "files": {
                 "kberserkerkninja.uftb": {
                     "radii": {
                         "1": {
                             "first_starts": {
-                                "wins": 2_499_580,
-                                "losses": 6_238_816,
-                                "draws": 7_147_320,
+                                "admitted": {"wins": 2_500_000, "losses": 6_240_000,
+                                             "draws": 7_150_000},
+                                "trivial": {"wins": 420, "losses": 1_184,
+                                            "draws": 2_680},
+                                "display": {"wins": 2_499_580, "losses": 6_238_816,
+                                            "draws": 7_147_320},
                             },
                             "second_starts": {
-                                "wins": 9_866_198,
-                                "losses": 5_680,
-                                "draws": 3_847_982,
+                                "admitted": {"wins": 9_870_000, "losses": 6_000,
+                                             "draws": 3_850_000},
+                                "trivial": {"wins": 3_802, "losses": 320,
+                                            "draws": 2_018},
+                                "display": {"wins": 9_866_198, "losses": 5_680,
+                                            "draws": 3_847_982},
                             },
                         }
                     }
@@ -83,8 +206,8 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
         document = json.loads(path.read_text(encoding="utf-8"))
         radii = plot.read_berserker_radii(path)
 
-        self.assertEqual(36, len(document["files"]))
-        self.assertEqual(105, len(radii))
+        self.assertEqual(43, len(document["files"]))
+        self.assertEqual(126, len(radii))
         self.assertEqual(
             {
                 "excluded": True,
@@ -100,22 +223,88 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
                 continue
             self.assertEqual({"1", "2", "3"}, set(record["radii"]))
 
+        self.assertIn(("kberserkerangelk.uftb", 1), radii)
+        self.assertIn(("kberserkerkberserker.uftb", 3), radii)
+        for record in document["files"].values():
+            for radius in record.get("radii", {}).values():
+                for key in ("first_starts", "second_starts"):
+                    side = radius[key]
+                    for field in ("wins", "losses", "draws"):
+                        self.assertEqual(
+                            side["display"][field],
+                            side["admitted"][field] - side["trivial"][field],
+                        )
+
+    def test_prince_radius_cells_use_only_exact_turn_boundaries(self):
+        path = ROOT / "tablebases" / "berserker-radius-summary.json"
+        document = json.loads(path.read_text(encoding="utf-8"))
+        same = document["files"]["kberserkerprincek.uftb"]
+        opposed = document["files"]["kberserkerkprince.uftb"]
         self.assertEqual(
-            plot.WDL(10_407_744, 19_570, 171_582),
-            radii[("kberserkerkninja.uftb", 3)].first_starts,
+            "turn-boundary-continuation-none", same["reporting_scope"]
         )
         self.assertEqual(
-            plot.WDL(3_650_750, 8_946_358, 1_122_752),
-            radii[("kberserkerkninja.uftb", 3)].second_starts,
+            "turn-boundary-continuation-none", opposed["reporting_scope"]
+        )
+        self.assertEqual(
+            [14_519_136, 12_338_172, 9_715_656],
+            [same["radii"][str(radius)]["first_starts"]["display"]["wins"]
+             for radius in (1, 2, 3)],
+        )
+        self.assertEqual(
+            [12_526_552, 6_603_544, 4_017_722],
+            [opposed["radii"][str(radius)]["second_starts"]["display"]["wins"]
+             for radius in (1, 2, 3)],
         )
 
-    def test_identical_berserker_intersections_keep_domain_semantics(self):
+        catalog = plot.OutcomeCatalog(
+            plot.read_summary(ROOT / "tablebases" / "README.md"),
+            plot.read_berserker_radii(path),
+        )
+        for radius in (1, 2, 3):
+            self.assertEqual(
+                "win",
+                catalog.together_row(
+                    f"berserker_radius_{radius}", "prince"
+                ).kind,
+            )
+
+    def test_prince_radius_audit_requests_turn_boundary_scope(self):
+        record = {
+            "primary": "berserker",
+            "secondary": "prince",
+            "opposing": False,
+        }
+        command = audit.concrete_command(
+            Path("/audit"),
+            record,
+            Path("table.uftb"),
+            4,
+        )
+        self.assertIn("--audit-turn-boundary-reachability", command)
+        self.assertNotIn("--audit-reachability", command)
+        self.assertFalse(audit.reusable_audit(
+            "reachability_primary_substate substate 0 side 0 unknown 0 "
+            "win 1 loss 0 draw 0\n",
+            record,
+        ))
+        self.assertTrue(audit.reusable_audit(
+            "reachability_scope turn_boundary\n"
+            "reachability_primary_substate substate 0 side 0 unknown 0 "
+            "win 1 loss 0 draw 0\n",
+            record,
+        ))
+
+    def test_identical_berserker_intersections_repeat_same_team_outcome(self):
         catalog = plot.OutcomeCatalog(
             plot.read_summary(ROOT / "tablebases" / "README.md"), {})
-        self.assertEqual(
-            "unknown",
-            catalog.together_row("berserker_radius_1", "berserker").kind,
-        )
+        for radius in (1, 2, 3):
+            self.assertEqual(
+                "win",
+                catalog.together_row(
+                    f"berserker_radius_{radius}", "berserker"
+                ).kind,
+            )
         self.assertEqual(
             "unknown",
             catalog.opposed_row("berserker_radius_1", "berserker").kind,
@@ -125,14 +314,21 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
         text = "\n".join((
             "reachability_primary_substate substate 0 side 0 unknown 0 win 3 loss 5 draw 7",
             "reachability_primary_substate_total substate 0 side 0 unknown 0 win 13 loss 25 draw 37",
+            "reachability_primary_substate_trivial substate 0 side 0 unknown 0 win 2 loss 3 draw 5",
             "reachability_primary_substate substate 0 side 1 unknown 0 win 11 loss 13 draw 17",
             "reachability_primary_substate_total substate 0 side 1 unknown 0 win 31 loss 43 draw 57",
+            "reachability_primary_substate_trivial substate 0 side 1 unknown 0 win 3 loss 4 draw 7",
         ))
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "audit.txt"
             path.write_text(text, encoding="utf-8")
             rows = audit.parse_concrete(path, "primary")
-        self.assertEqual(([0, 10, 20, 30], [0, 20, 30, 40]), rows[0])
+        self.assertEqual(
+            {"admitted": ([0, 10, 20, 30], [0, 20, 30, 40]),
+             "trivial": ([0, 2, 3, 5], [0, 3, 4, 7]),
+             "display": ([0, 8, 17, 25], [0, 17, 26, 33])},
+            rows[0],
+        )
 
     def test_archive_manifest_entry_authenticates_uncompressed_payload(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -158,7 +354,8 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
         )
 
     def test_single_berserker_binds_archive_and_extracted_payload(self):
-        record = prepare.build(ROOT / "tablebases" / "README.md")["files"][
+        manifest = prepare.build(ROOT / "tablebases" / "README.md")
+        record = manifest["files"][
             "kberserkerk.uftb"]
         self.assertEqual(
             "e296deebc6d0f4ef2c53e14eab86fd1c2bbc9954a6051ffca5ce7b9623b08263",
@@ -167,6 +364,12 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
         self.assertEqual(
             "f41245a06eb280136c458e6337ef4a588a0d5142b606413b92f84c248487e2b1",
             record["expected_payload_sha256"],
+        )
+        self.assertTrue(
+            manifest["files"]["kberserkerberserkerk.uftb"]["excluded"]
+        )
+        self.assertFalse(
+            manifest["files"]["kberserkerkberserker.uftb"]["excluded"]
         )
 
     def test_information_parser_vectorizes_flags_without_changing_semantics(self):
@@ -183,8 +386,92 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
             path = Path(directory) / "sample.ufiw"
             path.write_bytes(payload)
             rows = audit.parse_information(path, "secondary")
-        self.assertEqual(([0, 1, 0, 1], [0, 1, 0, 1]), rows[0])
-        self.assertEqual(([0, 0, 1, 0], [0, 0, 1, 0]), rows[1])
+        self.assertEqual(([0, 1, 0, 1], [0, 1, 0, 1]),
+                         rows[0]["display"])
+        self.assertEqual(([0, 0, 1, 0], [0, 0, 1, 0]),
+                         rows[1]["display"])
+
+    def test_information_trivial_import_subtracts_authenticated_substates(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            summary_path = root / "summary.json"
+            receipt_path = root / "sample.receipt.json"
+            sidecar_path = root / "sample.information-trivial-v2.txt"
+            summary_path.write_text(json.dumps({
+                "files": {"sample.uftb": {
+                    "overlay_sha256": "b" * 64,
+                    "trivial_semantics": "not-audited-information-overlay",
+                    "radii": {str(radius): {
+                        "power_substate": radius - 1,
+                        "first_starts": {
+                            "admitted": {"wins": 10, "losses": 2, "draws": 3},
+                            "trivial": {"wins": 0, "losses": 0, "draws": 0},
+                            "display": {"wins": 10, "losses": 2, "draws": 3},
+                        },
+                        "second_starts": {
+                            "admitted": {"wins": 4, "losses": 8, "draws": 3},
+                            "trivial": {"wins": 0, "losses": 0, "draws": 0},
+                            "display": {"wins": 4, "losses": 8, "draws": 3},
+                        },
+                    } for radius in (1, 2, 3)},
+                }},
+            }), encoding="utf-8")
+            sidecar_path.write_text(
+                "information_reachability_binding source_sha256 " + "a" * 64 +
+                " model_sha256 " + "c" * 64 + "\n" +
+                "information_trivial_overlay_sha256 " + "b" * 64 + "\n" +
+                "information_trivial_binary_sha256 " + "d" * 64 + "\n" +
+                "information_trivial_source_bundle_sha256 " + "e" * 64 + "\n",
+                encoding="utf-8")
+            detail = {}
+            totals = {str(side): {
+                bucket: {kind: 0 for kind in import_radius_trivial.KINDS}
+                for bucket in ("admitted", "excluded", "trivial")}
+                for side in range(2)}
+            for substate in range(10):
+                detail[str(substate)] = {}
+                for side in range(2):
+                    admitted = ({"unknown": 0, "win": 10, "loss": 2, "draw": 3}
+                                if side == 0 else
+                                {"unknown": 0, "win": 4, "loss": 8, "draw": 3})
+                    trivial = {"unknown": 0, "win": 0, "loss": 2, "draw": 3}
+                    values = {
+                        "admitted": admitted,
+                        "excluded": {kind: 0 for kind in import_radius_trivial.KINDS},
+                        "trivial": trivial,
+                    }
+                    detail[str(substate)][str(side)] = values
+                    for bucket, counts in values.items():
+                        for kind, count in counts.items():
+                            totals[str(side)][bucket][kind] += count
+            receipt_path.write_text(json.dumps({
+                "schema": "ultimate-information-trivial-receipt-v2",
+                "filename": "sample.uftb",
+                "substates": 10,
+                "source_sha256": "a" * 64,
+                "overlay_sha256": "b" * 64,
+                "model_sha256": "c" * 64,
+                "binary_sha256": "d" * 64,
+                "source_bundle_sha256": "e" * 64,
+                "sidecar_sha256": import_radius_trivial.sha256(sidecar_path),
+                "s3_key": "sidecar-key",
+                "s3_version_id": "sidecar-version",
+                "counts": totals,
+                "substate_counts": detail,
+            }), encoding="utf-8")
+            import_radius_trivial.import_receipt(
+                summary_path, receipt_path, sidecar_path,
+                "receipt-key", "receipt-version")
+            record = json.loads(summary_path.read_text())["files"]["sample.uftb"]
+            self.assertEqual("authenticated-per-substate-v3",
+                             record["trivial_semantics"])
+            for radius in record["radii"].values():
+                self.assertEqual(
+                    {"wins": 10, "losses": 0, "draws": 0},
+                    radius["first_starts"]["display"])
+                self.assertEqual(
+                    {"wins": 4, "losses": 6, "draws": 0},
+                    radius["second_starts"]["display"])
 
 
 if __name__ == "__main__":

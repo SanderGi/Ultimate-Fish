@@ -36,8 +36,18 @@ from plan_ultimate_tablebases import (  # noqa: E402
 )
 
 Kind = Literal[
-    "win_star", "win_mostly", "no_forced_loss", "draw", "mixed",
-    "no_forced_win", "loss_mostly", "loss_star", "computing", "unknown",
+    "win",
+    "win_star",
+    "win_mostly",
+    "no_forced_loss",
+    "draw",
+    "mixed",
+    "no_forced_win",
+    "loss_mostly",
+    "loss_star",
+    "loss",
+    "computing",
+    "unknown",
     "duplicate",
 ]
 
@@ -74,6 +84,7 @@ COLORS = {
     "header": "#173B5E",
     "row_header": "#E5EEF6",
     "grid": "#AAB8C5",
+    "win": "#5FAF32",
     "win_star": "#91C655",
     "win_mostly": "#B8DA86",
     "no_forced_loss": "#E0EFC4",
@@ -82,6 +93,7 @@ COLORS = {
     "no_forced_win": "#FCE2CE",
     "loss_mostly": "#F5BE98",
     "loss_star": "#E98B58",
+    "loss": "#D15B3B",
     "computing": "#C9D8E6",
     "unknown": "#FFFFFF",
     "duplicate": "#FFFFFF",
@@ -90,22 +102,35 @@ COLORS = {
 PIECE_LABELS = {piece.name: piece.name.title() for piece in PIECES}
 PIECE_BY_NAME = {piece.name: piece for piece in PIECES}
 PIECE_INDEX = {piece.name: index for index, piece in enumerate(PIECES)}
-BERSERKER_RADIUS_ROWS = tuple(
-    f"berserker_radius_{radius}" for radius in range(1, 4))
-PIECE_LABELS.update({
-    row: f"Berserker (radius {radius})"
-    for radius, row in enumerate(BERSERKER_RADIUS_ROWS, 1)
-})
+BERSERKER_RADIUS_ROWS = tuple(f"berserker_radius_{radius}" for radius in range(1, 4))
+PIECE_LABELS.update(
+    {
+        row: f"Berserker (radius {radius})"
+        for radius, row in enumerate(BERSERKER_RADIUS_ROWS, 1)
+    }
+)
 
 
 def parse_wdl(text: str) -> WDL:
-    """Parse legal W/L/D counts, deliberately ignoring `(illegal)` counts."""
+    """Parse plotted W/L/D after subtracting `[trivial]` positions.
+
+    Parenthesized unreachable counts are outside the admitted count and remain
+    excluded as before. Square-bracketed counts are an authenticated subset of
+    the admitted count and are deliberately removed from the visualization.
+    """
     values: list[int] = []
     for component in text.split("/"):
-        match = re.match(r"\s*([0-9][0-9,]*)", component)
+        match = re.fullmatch(
+            r"\s*([0-9][0-9,]*)(?: \[([0-9][0-9,]*)\])?" r"(?: \(([0-9][0-9,]*)\))?\s*",
+            component,
+        )
         if not match:
             raise ValueError(f"invalid W/L/D value: {text!r}")
-        values.append(int(match.group(1).replace(",", "")))
+        admitted = int(match.group(1).replace(",", ""))
+        trivial = int(match.group(2).replace(",", "")) if match.group(2) else 0
+        if trivial > admitted:
+            raise ValueError(f"trivial W/L/D exceeds admitted count: {text!r}")
+        values.append(admitted - trivial)
     if len(values) != 3:
         raise ValueError(f"expected three W/L/D values: {text!r}")
     return WDL(*values)
@@ -141,20 +166,28 @@ def read_summary(path: Path) -> dict[str, ReadmeResult]:
                 continue
             filename = fields[3].strip("`")
             status = fields[4].strip("*").lower()
+            if (
+                status == "certified"
+                and fields[6] in {"concrete", "information v2"}
+                and ("[" not in fields[7] or "[" not in fields[8])
+            ):
+                raise ValueError(
+                    f"certified row lacks trivial counts: {filename}"
+                )
             # The computation ledger is canonical.  In particular, certified
             # S3-only payloads no longer have to appear in the legacy generated
             # local-file summary, but their exact W/L/D values still belong in
             # the plot.
             if fields[7] != "—" and fields[8] != "—":
-                raw = ReadmeResult(
-                    parse_wdl(fields[7]), parse_wdl(fields[8]), status)
+                raw = ReadmeResult(parse_wdl(fields[7]), parse_wdl(fields[8]), status)
             else:
                 previous = results.get(filename)
                 if previous is None:
                     raw = ReadmeResult(WDL(0, 0, 0), WDL(0, 0, 0), status)
                 else:
                     raw = ReadmeResult(
-                        previous.first_starts, previous.second_starts, status)
+                        previous.first_starts, previous.second_starts, status
+                    )
             results[filename] = raw
     return results
 
@@ -162,7 +195,10 @@ def read_summary(path: Path) -> dict[str, ReadmeResult]:
 def read_berserker_radii(path: Path) -> dict[tuple[str, int], ReadmeResult]:
     """Read exact, reachability-filtered Berserker power slices."""
     document = json.loads(path.read_text(encoding="utf-8"))
-    if document.get("schema") != 1:
+    if (
+        document.get("schema") != 2
+        or document.get("semantics") != "reachability-admitted-minus-trivial-v3"
+    ):
         raise ValueError(f"unsupported Berserker radius summary schema: {path}")
     results: dict[tuple[str, int], ReadmeResult] = {}
     for filename, record in document.get("files", {}).items():
@@ -170,11 +206,25 @@ def read_berserker_radii(path: Path) -> dict[tuple[str, int], ReadmeResult]:
             radius = int(radius_text)
             if radius not in (1, 2, 3):
                 continue
-            first = raw["first_starts"]
-            second = raw["second_starts"]
+            sides = []
+            for key in ("first_starts", "second_starts"):
+                side = raw[key]
+                admitted = side["admitted"]
+                trivial = side["trivial"]
+                display = side["display"]
+                for field in ("wins", "losses", "draws"):
+                    if (
+                        trivial[field] > admitted[field]
+                        or display[field] != admitted[field] - trivial[field]
+                    ):
+                        raise ValueError(
+                            f"invalid Berserker radius conservation for "
+                            f"{filename} radius {radius} {key} {field}"
+                        )
+                sides.append(WDL(display["wins"], display["losses"], display["draws"]))
             results[(filename, radius)] = ReadmeResult(
-                WDL(first["wins"], first["losses"], first["draws"]),
-                WDL(second["wins"], second["losses"], second["draws"]),
+                sides[0],
+                sides[1],
             )
     return results
 
@@ -195,20 +245,31 @@ def row_side_result(raw: ReadmeResult, row_is_primary: bool = True) -> tuple[WDL
 def classify(first: WDL, second: WDL, allow_loss: bool) -> Cell:
     if first.total == 0 or second.total == 0:
         return Cell("unknown")
+    if first.wins == first.total and second.wins == second.total:
+        return Cell("win", first, second)
     if first.wins == first.total and second.wins != second.total:
         return Cell("win_star", first, second)
     if first.draws == first.total and second.draws == second.total:
         return Cell("draw", first, second)
+    if allow_loss and first.losses == first.total and second.losses == second.total:
+        return Cell("loss", first, second)
     if allow_loss and first.losses != first.total and second.losses == second.total:
         return Cell("loss_star", first, second)
     # Keep the exact Win*/Loss* tiers visually distinct while highlighting
     # near-forced outcomes that never cross into the opposite result.  Compare
     # integer products so the 98.5% boundary is deterministic for large tables.
-    if (first.wins * 1000 >= first.total * 985 and
-            first.losses == 0 and second.losses == 0):
+    if (
+        first.wins * 1000 >= first.total * 985
+        and first.losses == 0
+        and second.losses == 0
+    ):
         return Cell("win_mostly", first, second)
-    if (allow_loss and second.losses * 1000 >= second.total * 985 and
-            first.wins == 0 and second.wins == 0):
+    if (
+        allow_loss
+        and second.losses * 1000 >= second.total * 985
+        and first.wins == 0
+        and second.wins == 0
+    ):
         return Cell("loss_mostly", first, second)
     if first.losses == 0 and second.losses == 0:
         return Cell("no_forced_loss", first, second)
@@ -235,28 +296,36 @@ class OutcomeCatalog:
         # requested class.  The exact inventory record must win so a certified
         # result cannot be hidden or interpreted with reversed owners.
         records_by_filename: dict[str, dict[str, object]] = {}
-        for record in (*stateful_candidates(), *angel_candidates(),
-                       *mirror_copycat_candidates(), *inventory()):
+        for record in (
+            *stateful_candidates(),
+            *angel_candidates(),
+            *mirror_copycat_candidates(),
+            *inventory(),
+        ):
             records_by_filename[str(record["filename"])] = record
         records = list(records_by_filename.values())
         self.singles = {
             str(record["primary"]): record
             for record in records
-            if record["phase"] == "kings+1"
+            if record["phase"] in {"kings+1", "devil-spawned-closure-v3"}
         }
         self.same_team = {
-            tuple(sorted(
-                (str(record["primary"]), str(record["secondary"])),
-                key=PIECE_INDEX.__getitem__,
-            )): record
+            tuple(
+                sorted(
+                    (str(record["primary"]), str(record["secondary"])),
+                    key=PIECE_INDEX.__getitem__,
+                )
+            ): record
             for record in records
             if record["secondary"] and not record["opposing"]
         }
         self.opposing = {
-            tuple(sorted(
-                (str(record["primary"]), str(record["secondary"])),
-                key=PIECE_INDEX.__getitem__,
-            )): record
+            tuple(
+                sorted(
+                    (str(record["primary"]), str(record["secondary"])),
+                    key=PIECE_INDEX.__getitem__,
+                )
+            ): record
             for record in records
             if record["secondary"] and record["opposing"]
         }
@@ -272,7 +341,11 @@ class OutcomeCatalog:
         raw = self.summary.get(str(record["filename"]))
         if raw is None:
             return Cell("unknown")
-        if raw.status == "computing":
+        # PRESERVING is still an active, non-final pipeline state.  Its exact
+        # result exists, but the authenticated import (and therefore the W/L/D
+        # displayed here) is incomplete.  Render it with the same in-progress
+        # hatch as COMPUTING instead of leaving a misleading blank cell.
+        if raw.status in {"computing", "preserving"}:
             return Cell("computing")
         if raw.status not in {"certified", "preserving", "draw"}:
             return Cell("unknown")
@@ -280,7 +353,7 @@ class OutcomeCatalog:
         return classify(first, second, allow_loss)
 
     def single(self, name: str) -> Cell:
-        if name in DEFERRED_DYNAMIC_K2:
+        if name in DEFERRED_DYNAMIC_K2 and name != "devil":
             return Cell("unknown")
         if not PIECE_BY_NAME[name].decisive:
             return known_draw()
@@ -303,7 +376,9 @@ class OutcomeCatalog:
             return Cell("unknown")
         filename = str(record["filename"])
         aggregate = self.summary.get(filename)
-        if aggregate is not None and aggregate.status == "computing":
+        if aggregate is not None and aggregate.status in {
+            "computing", "preserving"
+        }:
             return Cell("computing")
         raw = self.berserker_radii.get((filename, radius))
         if raw is None:
@@ -322,17 +397,16 @@ class OutcomeCatalog:
         if radius is None:
             return self.together(row, column)
         if column == "berserker":
-            # Two same-team Berserkers are exchange-folded; there is no
-            # distinguished row Berserker whose radius can be sliced.
-            return Cell("unknown")
+            # Two same-team Berserkers are exchange-folded, so there is no
+            # distinguished row Berserker to slice.  Repeat the certified
+            # aggregate outcome across the three radius rows instead.
+            return self.together("berserker", "berserker")
         if deferred_material("berserker", column):
             return Cell("unknown")
-        first, second = sorted(("berserker", column),
-                               key=PIECE_INDEX.__getitem__)
+        first, second = sorted(("berserker", column), key=PIECE_INDEX.__getitem__)
         if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
             return known_draw()
-        return self._radius_cell_for_record(
-            self.same_team.get((first, second)), radius)
+        return self._radius_cell_for_record(self.same_team.get((first, second)), radius)
 
     def opposed_row(self, row: str, column: str) -> Cell:
         radius = self._radius(row)
@@ -346,16 +420,16 @@ class OutcomeCatalog:
             )
         if deferred_material("berserker", column, opposing=True):
             return Cell("unknown")
-        first, second = sorted(("berserker", column),
-                               key=PIECE_INDEX.__getitem__)
+        first, second = sorted(("berserker", column), key=PIECE_INDEX.__getitem__)
         if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], False):
             return known_draw()
         record = self.opposing.get((first, second))
         return self._radius_cell_for_record(
             record,
             radius,
-            row_is_primary=(record is not None and
-                            str(record["primary"]) == "berserker"),
+            row_is_primary=(
+                record is not None and str(record["primary"]) == "berserker"
+            ),
             allow_loss=True,
         )
 
@@ -437,33 +511,44 @@ def legend_positions(
 def cell_text(cell: Cell) -> str:
     if cell.kind in {"unknown", "duplicate", "computing"}:
         return ""
+    if cell.kind == "win":
+        return "Win"
     if cell.kind == "win_star":
         return "Win*"
     if cell.kind == "draw":
         return "Draw"
     if cell.kind == "loss_star":
         return "Loss*"
+    if cell.kind == "loss":
+        return "Loss"
     assert cell.first is not None and cell.second is not None
-    lines = []
+    displayed: list[tuple[str, str, str]] = []
     for label, field in (("W", "wins"), ("L", "losses"), ("D", "draws")):
         first_value = getattr(cell.first, field)
         second_value = getattr(cell.second, field)
-        lines.append(
-            f"{label} {percentage(first_value, cell.first.total)}–"
-            f"{percentage(second_value, cell.second.total)}%"
+        displayed.append(
+            (
+                label,
+                percentage(first_value, cell.first.total),
+                percentage(second_value, cell.second.total),
+            )
         )
+    if all(first == second for _, first, second in displayed):
+        return "\n".join(f"{label} {first}%" for label, first, _ in displayed)
+    lines = [f"{label} {first}–{second}%" for label, first, second in displayed]
     return "\n".join(lines)
 
 
-def diagonal_hatch(width: int, height: int, spacing: int,
-                   line_width: int) -> "Image.Image":
+def diagonal_hatch(
+    width: int, height: int, spacing: int, line_width: int
+) -> "Image.Image":
     """Return a clipped overlay of parallel down-right hatch segments."""
     hatch = Image.new("RGBA", (width, height), (0, 0, 0, 0))
     hatch_draw = ImageDraw.Draw(hatch)
     for offset in range(-height, width + height, spacing):
         hatch_draw.line(
-            (offset, 0, offset + height, height),
-            fill="#6E8FA9", width=line_width)
+            (offset, 0, offset + height, height), fill="#6E8FA9", width=line_width
+        )
     return hatch
 
 
@@ -570,16 +655,21 @@ def draw_grid(
                 # end points or leak into neighbouring cells.  Every segment
                 # has the same +1 slope in local coordinates.
                 hatch = diagonal_hatch(
-                    cell_width, cell_height, spacing, max(1, spacing // 5))
+                    cell_width, cell_height, spacing, max(1, spacing // 5)
+                )
                 image.alpha_composite(hatch, (left, top))
             text = cell_text(cell)
             if not text:
                 continue
             selected_font = (
                 value_font
-                if cell.kind in {
-                    "mixed", "win_mostly", "no_forced_loss",
-                    "no_forced_win", "loss_mostly",
+                if cell.kind
+                in {
+                    "mixed",
+                    "win_mostly",
+                    "no_forced_loss",
+                    "no_forced_win",
+                    "loss_mostly",
                 }
                 else terminal_font
             )
@@ -635,7 +725,7 @@ def render(readme: Path, radii: Path, output: Path, scale: int) -> None:
     )
     draw.text(
         (width // 2, 151 * scale),
-        "Includes only positions reachable from another position · Each Copycat cell represents one symmetric linked mirrored pair · Positions that immediately simplify to less material are included",
+        "Reachable positions only · Immediate stalemates and forced one-ply/tactical material simplifications are excluded · Prince: cont=0 starting boundaries only · Copycat: one linked mirrored pair · Devil: own spawned Minions only; no pre-existing Minions; starts on ranks 1-3",
         fill=COLORS["muted"],
         font=font(20 * scale),
         anchor="ma",
@@ -682,41 +772,44 @@ def render(readme: Path, radii: Path, output: Path, scale: int) -> None:
         header_height,
     )
 
-    legend_y = height - 126 * scale
     legend_items = (
-        ("win_star", "Forced win when row starts"),
-        ("win_mostly", "No forced loss, mostly forced win when row starts"),
+        ("win", "Forced win"),
+        ("win_star", "Win when row starts"),
+        ("win_mostly", "Mostly win / no forced loss"),
         ("no_forced_loss", "No forced loss"),
         ("draw", "Forced draw"),
-        ("mixed", "Outcome depends on state"),
+        ("mixed", "State-dependent"),
         ("no_forced_win", "No forced win"),
-        ("loss_mostly", "No forced win, mostly forced loss when column starts"),
-        ("loss_star", "Forced loss when column starts"),
-        ("computing", "Computing now"),
-        ("unknown", "Not computed / duplicate"),
+        ("loss_mostly", "Mostly loss / no forced win"),
+        ("loss_star", "Loss when column starts"),
+        ("loss", "Forced loss"),
+        ("computing", "Computing"),
+        ("unknown", "Not computed/duplicate"),
     )
-    legend_font = font(21 * scale)
+    legend_y = height - 126 * scale
+    legend_font = font(22 * scale)
     item_widths = []
     for _, label in legend_items:
         bounds = draw.textbbox((0, 0), label, font=legend_font)
-        item_widths.append(60 * scale + bounds[2] - bounds[0])
+        item_widths.append(52 * scale + bounds[2] - bounds[0])
     positions, legend_width = legend_positions(
         item_widths,
-        normal_gap=44 * scale,
-        group_gap=105 * scale,
+        normal_gap=18 * scale,
+        group_gap=62 * scale,
+        group_starts=frozenset({4, 6, 10}),
     )
     legend_x = (width - legend_width) // 2
     for index, (kind, label) in enumerate(legend_items):
         left = legend_x + positions[index]
         draw.rounded_rectangle(
-            (left, legend_y, left + 46 * scale, legend_y + 32 * scale),
+            (left, legend_y, left + 42 * scale, legend_y + 30 * scale),
             radius=6 * scale,
             fill=COLORS[kind],
             outline=COLORS["grid"],
             width=1,
         )
         draw.text(
-            (left + 60 * scale, legend_y + 16 * scale),
+            (left + 52 * scale, legend_y + 15 * scale),
             label,
             fill=COLORS["ink"],
             font=legend_font,
