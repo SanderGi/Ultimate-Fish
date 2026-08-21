@@ -95,11 +95,14 @@ void print_belief_search_info(const Position* representative,
                   << "bestmove (none)\n";
         return;
     }
+    const std::vector<std::string> safePv =
+      beliefs.observation_safe_prefix(result.principalVariation,
+                                      representative);
     std::vector<std::string> display;
     std::vector<std::string> publicDisplay;
     if (representative) {
         Position line = *representative;
-        for (const std::string& notation : result.principalVariation) {
+        for (const std::string& notation : safePv) {
             const auto move = line.move_from_string(notation);
             if (!move)
                 break;
@@ -131,14 +134,15 @@ void print_belief_search_info(const Position* representative,
               << " decisionpartitions " << beliefs.decision_partitions()
               << " beliefworst " << result.worstScore
               << " beliefmean " << result.meanScore << " pv";
-    for (const std::string& move : result.principalVariation)
+    for (const std::string& move : safePv)
         std::cout << ' ' << move;
     std::cout << '\n';
     // Keep the original fixed belief-analysis line backward compatible with
     // local bridge clients. Extensible diagnostics use separate info-string
     // records so older parsers can continue matching the metadata contract.
     std::cout << "info string searchpath " << result.searchPath << '\n';
-    std::cout << "bestmove " << (result.bestMove ? *result.bestMove : "(none)") << '\n';
+    std::cout << "bestmove "
+              << (safePv.empty() ? "(none)" : safePv.front()) << '\n';
 }
 
 void print_piece_knowledge(const Position& representative,

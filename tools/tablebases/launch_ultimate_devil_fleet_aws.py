@@ -101,12 +101,26 @@ CONTINUATION_HOSTS = {
         ("i-024a2073283e4336e", tuple(range(4, 8)), 20,
          32 * 1024**3),
     ),
+    # Slots 32/33 on i08 and 38/39 on i098 completed no samples and spent
+    # effectively all wall time in MemoryHigh reclaim. Their source units are
+    # retained stopped. Restart the exact global slots from zero on i03's
+    # measured-free CPUs, where the 256-GiB host has ample physical headroom.
+    "highcap-100m-relocated-i08": (
+        ("i-03c81f90d2c59a2e7", (23, 24), 32, 16 * 1024**3),
+    ),
+    "highcap-100m-relocated-i098": (
+        ("i-03c81f90d2c59a2e7", (25, 26), 38, 16 * 1024**3),
+    ),
 }
 assert sum(len(host[1]) for host in CONTINUATION_HOSTS["continuation-1"]) == 37
 assert sum(len(host[1]) for host in CONTINUATION_HOSTS["continuation-2"]) == 26
 assert sum(len(host[1]) for host in CONTINUATION_HOSTS["continuation-3"]) == 12
 assert sum(len(host[1]) for host in CONTINUATION_HOSTS["highcap-100m"]) == 56
 assert sum(len(host[1]) for host in CONTINUATION_HOSTS["highcap-100m-tail"]) == 4
+assert sum(len(host[1]) for host in
+           CONTINUATION_HOSTS["highcap-100m-relocated-i08"]) == 2
+assert sum(len(host[1]) for host in
+           CONTINUATION_HOSTS["highcap-100m-relocated-i098"]) == 2
 
 
 def campaign_stride(campaign: str) -> int:
@@ -199,7 +213,10 @@ def launch_host(campaign_host: tuple[
             f"systemctl is-active --quiet {child}.service || "
             f"systemd-run --quiet --collect --unit={child} "
             f"--property=AllowedCPUs={cpu} --property=Nice=10 "
-            + ("--property=MemoryHigh=7516192768 "
+            + ("--property=MemoryHigh=8589934592 "
+               "--property=MemoryMax=9663676416 "
+               if campaign.startswith("highcap-100m-relocated") else
+               "--property=MemoryHigh=7516192768 "
                "--property=MemoryMax=8589934592 "
                if campaign == "highcap-100m-tail" else
                "--property=MemoryHigh=5368709120 "

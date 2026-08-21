@@ -2535,6 +2535,21 @@ void test_exact_tablebase_probing() {
     expect(princeResult && princeResult->wdl == TablebaseWdl::Win &&
              princeResult->dtw == 2,
            "Prince e1-d1 followed by forced d1xc1 is an exact two-action win");
+    Search princeSearch(1);
+    SearchLimits princeLimits;
+    princeLimits.depth = 4;
+    const SearchResult princeAnalysis =
+      princeSearch.think(princeMate, princeLimits);
+    expect(princeAnalysis.principalVariation.size() == 2,
+           "tablebase PV follows a same-side continuation through terminal knockout");
+    Position princeLine = princeMate;
+    for (const Move& move : princeAnalysis.principalVariation) {
+        Undo undo;
+        expect(princeLine.make_move(move, undo),
+               "every reconstructed tablebase action is legal");
+    }
+    expect(princeLine.game_over() && princeLine.winner() == Color::White,
+           "reconstructed tablebase PV stops at its terminal result");
 
     Position copycat;
     moved(copycat, PieceType::King, Color::White, "a1");
@@ -2653,6 +2668,8 @@ void test_exact_tablebase_probing() {
            "analysis preserves a long tablebase DTW as an exact action count");
     expect(longDragonAnalysis.completedDepth == 1,
            "an exact root tablebase result stops after selecting its optimal action");
+    expect(longDragonAnalysis.principalVariation.size() == 16,
+           "a long exact tablebase PV is reconstructed to the requested depth limit");
 
     queen.piece(1).moved = false;
     const auto displacedPromotion = TablebaseProbe::probe(queen);
@@ -2936,6 +2953,37 @@ void test_public_belief_state_core() {
     }
     expect(everyMoveIsCommon,
            "ordinary apparent moves remain legal in every hidden-enemy-Ghost world");
+    const std::vector<std::string> safePrefix =
+      reverse.observation_safe_prefix({"c1-d1", "h10-g10", "d1-e1"});
+    expect(safePrefix ==
+             std::vector<std::string>({"c1-d1", "h10-g10", "d1-e1"}),
+           "belief PV follows an observable opponent reply after conditioning incompatible worlds");
+    expect(reverse.observation_safe_prefix({"h10-g10"}).empty(),
+           "belief PV never exposes a root action that is not common to every world");
+
+    Position blockedOpponent = hiddenGhostWorld(
+      Position::square_from_name("a7"));
+    Position openOpponent = hiddenGhostWorld(
+      Position::square_from_name("f8"));
+    for (Position* world : {&blockedOpponent, &openOpponent}) {
+        world->add_piece(PieceType::Pawn, Color::Black,
+                         Position::square_from_name("a9"));
+        world->set_side_to_move(Color::Black);
+    }
+    PublicBeliefState opponentLine({Color::White, false});
+    expect(opponentLine.add(blockedOpponent, &error) &&
+             opponentLine.add(openOpponent, &error),
+           "opponent-line worlds retain one public hidden-Ghost view: " + error);
+    expect(opponentLine.observation_safe_prefix({"a9-a7"}) ==
+             std::vector<std::string>{"a9-a7"},
+           "a visible opponent action may condition worlds where its destination was blocked");
+    expect(opponentLine.observation_safe_prefix({"f8-g8"}).empty(),
+           "an opponent PV never exposes a hidden Ghost source coordinate");
+    const std::vector<std::string> projectedGhost =
+      opponentLine.observation_safe_prefix({"a7-a6"}, &openOpponent);
+    expect(projectedGhost.size() == 1 &&
+             projectedGhost.front().rfind("f8-", 0) == 0,
+           "a hidden opponent action projects onto an observation-equivalent move in the actual world");
 
     const std::size_t retained = forward.size();
     const BeliefTransitionResult applied = forward.apply_known("c1-d1", &error);

@@ -85,11 +85,12 @@ async function streamAnalysis(body, onEvent) {
   return readAnalysisStream(response, onEvent);
 }
 
-async function streamHistoryAnalysis(body, onEvent) {
+async function streamHistoryAnalysis(body, onEvent, signal) {
   const response = await fetch(`${base}/analyze-history-stream`, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
+    signal,
   });
   return readAnalysisStream(response, onEvent);
 }
@@ -114,6 +115,9 @@ test("bridge exposes state, mate scores, results, and continuations", async () =
   assert.equal(longTablebase.scoreType, "mate");
   assert.equal(longTablebase.score, -143);
   assert.equal(longTablebase.depth, 1);
+  assert.equal(longTablebase.pv.length, 16);
+  assert.equal(longTablebase.pvNotation.length, 16);
+  assert.equal(longTablebase.publicPvNotation.length, 16);
 
   const captured = await post("/move", { upn: mateUpn, move: "b2-b4" });
   assert.equal(captured.result, "white");
@@ -387,6 +391,72 @@ test("bridge keeps raw actions while exposing chess-style public notation", asyn
   assert.equal(analysis.pvNotation.length, analysis.pv.length);
   assert.equal(analysis.publicPvNotation.length, analysis.pv.length);
   assert.ok(analysis.pvNotation.every((move) => !/[-~@!&]/.test(move)));
+
+  const singletonBelief = await post("/analyze-beliefs", {
+    positions: [captureUpn], observer: "white", enemyKingKnown: true,
+    depth: 3,
+  });
+  assert.ok(singletonBelief.pv.length > 1);
+  assert.equal(singletonBelief.pvNotation.length, singletonBelief.pv.length);
+  assert.equal(
+    singletonBelief.publicPvNotation.length,
+    singletonBelief.pv.length,
+  );
+});
+
+test("opponent PV conditions hidden-Ghost worlds without exposing its location", async () => {
+  const files = [..."abcdefgh"];
+  const backRank = [
+    "rook", "knight", "bishop", "queen",
+    "king", "bishop", "knight", "rook",
+  ];
+  const pieces = [];
+  for (const [index, file] of files.entries()) {
+    pieces.push(
+      `${backRank[index]},b,${file}10`,
+      `pawn,b,${file}9`,
+      `pawn,w,${file}2`,
+      `${backRank[index]},w,${file}1`,
+    );
+  }
+  pieces.push(
+    "ghost,w,b3,0,0,0,0,0,0,-1,1,-1,0",
+    "ghost,b,f8,0,0,0,0,0,0,-1,1,-1,0",
+  );
+  const initialUpn =
+    `w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;${pieces.join(";")}`;
+  const analysis = await post("/analyze-history", {
+    clientId: "opponent-pv-hidden-ghost",
+    initialUpn,
+    moves: ["a2-a4"],
+    observer: "white",
+    enemyKingKnown: false,
+    initialDeploymentKnown: false,
+    depth: 2,
+  });
+  assert.equal(analysis.beliefs, 46);
+  assert.deepEqual(analysis.pv, ["a9-a7", "b2-b4"]);
+  assert.deepEqual(analysis.publicPvNotation, ["a7", "b4"]);
+  assert.ok(analysis.pv.every((move) => !move.startsWith("f8-")));
+
+  const hiddenGhostAnalysis = await post("/analyze-history", {
+    clientId: "opponent-pv-hidden-ghost-later",
+    initialUpn,
+    moves: [
+      "a2-a4", "a9-a7", "b2-b4", "b9-b7",
+      "c2-c4", "c9-c7", "g2-g4",
+    ],
+    observer: "white",
+    enemyKingKnown: false,
+    initialDeploymentKnown: false,
+    depth: 2,
+  });
+  assert.ok(
+    hiddenGhostAnalysis.pv[0]?.startsWith("f8-"),
+    JSON.stringify(hiddenGhostAnalysis),
+  );
+  assert.match(hiddenGhostAnalysis.pvNotation[0], /^GH[a-h](?:10|[1-9])$/);
+  assert.equal(hiddenGhostAnalysis.publicPvNotation[0], "GH");
 });
 
 test("aborting auto-analysis leaves the bridge responsive", async () => {
@@ -409,6 +479,33 @@ test("aborting auto-analysis leaves the bridge responsive", async () => {
   await assert.rejects(pending, { name: "AbortError" });
   const health = await fetch(`${base}/health`).then((response) => response.json());
   assert.equal(health.ok, true);
+});
+
+test("restarting history analysis cannot consume stale engine output", async () => {
+  const initialUpn =
+    "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,e1;queen,w,d1;pawn,w,a2;king,b,e10;queen,b,d10;pawn,b,a9;ghost,b,f8,0,0,0,0,0,0,-1,1,-1,0";
+  const body = {
+    clientId: "restart-race",
+    initialUpn,
+    moves: ["a2-a4"],
+    observer: "white",
+    enemyKingKnown: false,
+    depth: 50,
+    movetime: 600,
+  };
+  const controller = new AbortController();
+  const interrupted = streamHistoryAnalysis(body, undefined, controller.signal);
+  setTimeout(() => controller.abort(), 20);
+  await assert.rejects(interrupted, { name: "AbortError" });
+
+  const restarted = await streamHistoryAnalysis({
+    ...body,
+    depth: 2,
+    movetime: 0,
+  });
+  assert.equal(restarted.at(-1)?.type, "result");
+  assert.equal(restarted.at(-1)?.analysis.depth, 2);
+  assert.equal(bridge?.exitCode ?? null, null);
 });
 
 test("same-position tabs search on independent engine sessions", async () => {

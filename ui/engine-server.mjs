@@ -63,7 +63,13 @@ function runEngine(commands, signal, onLine) {
       for (const line of complete) {
         if (!line) continue;
         lines.push(line);
-        onLine?.(line, lines);
+        try {
+          onLine?.(line, lines);
+        } catch (error) {
+          child.kill("SIGTERM");
+          finish(reject, error);
+          return;
+        }
       }
     });
     child.stderr.on("data", (chunk) => { stderr += chunk; });
@@ -71,7 +77,12 @@ function runEngine(commands, signal, onLine) {
     child.on("close", (code) => {
       if (pending) {
         lines.push(pending);
-        onLine?.(pending, lines);
+        try {
+          onLine?.(pending, lines);
+        } catch (error) {
+          finish(reject, error);
+          return;
+        }
       }
       if (code !== 0) {
         finish(reject, new Error(stderr.trim() || `engine exited with status ${code}`));
@@ -303,14 +314,12 @@ function parseBeliefAnalysis(lines, observer, enemyKingKnown) {
     decisionPartitions: Number(match[13]),
     worstScore: Number(match[14]),
     meanScore: Number(match[15]),
-    // Later plies can name one representative action from an opponent's
-    // indistinguishable observation bucket. Only the observer's robust root
-    // action is safe to expose as a concrete clickable line.
-    pv: match[16]?.split(" ").filter(Boolean).slice(0, 1) ?? [],
-    pvNotation: display?.slice(9).trim().split(/\s+/).filter(Boolean)
-      .slice(0, 1) ?? [],
+    // The native protocol has already reduced a multi-world strategy to its
+    // common observation-safe prefix, so every returned ply is clickable.
+    pv: match[16]?.split(" ").filter(Boolean) ?? [],
+    pvNotation: display?.slice(9).trim().split(/\s+/).filter(Boolean) ?? [],
     publicPvNotation: publicDisplay?.slice(8).trim().split(/\s+/)
-      .filter(Boolean).slice(0, 1) ?? [],
+      .filter(Boolean) ?? [],
     observer,
     enemyKingKnown,
   };
@@ -454,6 +463,7 @@ class IncrementalHistorySession {
     child.stdout.setEncoding("utf8");
     child.stderr.setEncoding("utf8");
     child.stdout.on("data", (chunk) => {
+      if (child !== this.child) return;
       this.pending += chunk;
       const complete = this.pending.split(/\r?\n/);
       this.pending = complete.pop() ?? "";
@@ -464,7 +474,12 @@ class IncrementalHistorySession {
           active?.resolve(active.lines);
         } else if (line) {
           this.active?.lines.push(line);
-          this.active?.onLine?.(line, this.active.lines);
+          try {
+            this.active?.onLine?.(line, this.active.lines);
+          } catch (error) {
+            this.stop(error instanceof Error ? error : new Error(String(error)));
+            return;
+          }
         }
       }
     });
@@ -681,11 +696,13 @@ async function analyzeHistory(clientId, initialUpn, moves, observer,
     enemyKingCandidates,
   );
   const lines = await session.search(moves, go, signal, (line, currentLines) => {
-    if (line.startsWith("bestmove "))
-      onIteration?.({
-        ...parseBeliefAnalysis(currentLines, observer, enemyKingKnown),
-        ...state,
-      });
+    if (!line.startsWith("bestmove ") ||
+        !currentLines.some((current) => current.startsWith("info depth ")))
+      return;
+    onIteration?.({
+      ...parseBeliefAnalysis(currentLines, observer, enemyKingKnown),
+      ...state,
+    });
   });
   const error = historyError(lines);
   if (error) throw new Error(error);

@@ -206,6 +206,18 @@ class PublicBeliefState {
     BeliefTransitionResult apply_known(std::string_view move,
                                        std::string* error = nullptr);
 
+    // Reduce one representative strategy line to its longest observation-safe
+    // concrete prefix. Observer actions must remain legal in every retained
+    // world. A publicly identifiable opponent action may itself condition the
+    // belief by ruling out worlds where it was unavailable; hidden actions
+    // whose source is not known are projected onto an equivalent action in an
+    // optional actual representative position. Include the final action when
+    // it produces distinguishable observations, then stop because later
+    // strategy choices depend on which observation occurred.
+    [[nodiscard]] std::vector<std::string> observation_safe_prefix(
+      const std::vector<std::string>& candidate,
+      const Position* representative = nullptr) const;
+
    private:
     friend class Search;
     friend class PublicHistoryState;

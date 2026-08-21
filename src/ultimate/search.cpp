@@ -350,6 +350,96 @@ std::set<std::string> unambiguous_notated_moves(const Position& position) {
     return result;
 }
 
+TablebaseWdl tablebase_from_previous_mover(TablebaseWdl child,
+                                           bool sameSide) {
+    if (sameSide || child == TablebaseWdl::Draw)
+        return child;
+    return child == TablebaseWdl::Win
+         ? TablebaseWdl::Loss : TablebaseWdl::Win;
+}
+
+bool terminal_matches_tablebase(const Position& terminal, Color previousMover,
+                                const TablebaseResult& result) {
+    const std::optional<Color> winner = terminal.winner();
+    if (result.wdl == TablebaseWdl::Draw)
+        return !winner;
+    if (result.dtw != 1 || !winner)
+        return false;
+    return result.wdl == TablebaseWdl::Win
+         ? *winner == previousMover : *winner != previousMover;
+}
+
+void reconstruct_tablebase_pv(const Position& root,
+                              const TablebaseResult& rootResult,
+                              int maximumActions,
+                              const std::optional<Move>& preferredRoot,
+                              std::vector<Move>& pv) {
+    Position position = root;
+    TablebaseResult current = rootResult;
+    std::set<std::uint64_t> visited{position.key()};
+    pv.clear();
+
+    for (int action = 0; action < maximumActions && !position.game_over();
+         ++action) {
+        std::vector<Move> moves = position.legal_moves();
+        std::sort(moves.begin(), moves.end(), [&](const Move& lhs,
+                                                  const Move& rhs) {
+            return position.move_to_string(lhs) < position.move_to_string(rhs);
+        });
+        if (action == 0 && preferredRoot) {
+            const auto preferred = std::find(moves.begin(), moves.end(),
+                                             *preferredRoot);
+            if (preferred != moves.end())
+                std::rotate(moves.begin(), preferred, preferred + 1);
+        }
+
+        std::optional<Move> selected;
+        std::optional<Position> selectedPosition;
+        std::optional<TablebaseResult> selectedResult;
+        for (const Move& move : moves) {
+            const Color mover = position.side_to_move();
+            Position child = position;
+            Undo undo;
+            if (!child.make_move(move, undo))
+                continue;
+            if (child.game_over()) {
+                if (!terminal_matches_tablebase(child, mover, current))
+                    continue;
+                selected = move;
+                selectedPosition = std::move(child);
+                break;
+            }
+
+            const auto childResult = TablebaseProbe::probe(child);
+            if (!childResult)
+                continue;
+            const TablebaseWdl outcome = tablebase_from_previous_mover(
+              childResult->wdl, child.side_to_move() == mover);
+            const bool optimal = outcome == current.wdl &&
+              (current.wdl == TablebaseWdl::Draw ||
+               (current.dtw > 0 && childResult->dtw + 1 == current.dtw));
+            if (!optimal)
+                continue;
+            selected = move;
+            selectedPosition = std::move(child);
+            selectedResult = childResult;
+            break;
+        }
+
+        if (!selected || !selectedPosition)
+            break;
+        pv.push_back(*selected);
+        position = std::move(*selectedPosition);
+        if (position.game_over())
+            break;
+        if (!visited.insert(position.key()).second)
+            break;
+        if (!selectedResult)
+            break;
+        current = *selectedResult;
+    }
+}
+
 }  // namespace
 
 PublicBeliefState::PublicBeliefState(DisclosureContext disclosure) :
@@ -1034,6 +1124,178 @@ BeliefTransitionResult PublicBeliefState::apply_known(
     result.after = size();
     result.applied = true;
     return result;
+}
+
+std::vector<std::string> PublicBeliefState::observation_safe_prefix(
+  const std::vector<std::string>& candidate,
+  const Position* representative) const {
+    PublicBeliefState state = *this;
+    std::optional<Position> representativeLine;
+    if (representative)
+        representativeLine = *representative;
+    std::vector<std::string> safe;
+    safe.reserve(candidate.size());
+    for (const std::string& action : candidate) {
+        const bool observerMoves = state.side_to_move() &&
+          *state.side_to_move() == state.disclosure_.observer;
+
+        // At an opponent node, the strategy PV names one representative
+        // concrete action from the selected observation bucket. Project that
+        // bucket onto this analysis's actual position. Thus an invisible
+        // a3-a2 Ghost action can become the equivalent legal f8-g8 action in
+        // the representative world: Analysis can preview it, while Play still
+        // renders only the public `GH` notation.
+        if (!observerMoves && representativeLine) {
+            BeliefSuccessorPartitions adversarial =
+              state.adversarial_successor_partitions(true);
+            std::vector<Move> actualMoves = representativeLine->legal_moves();
+            std::sort(actualMoves.begin(), actualMoves.end(),
+              [&](const Move& lhs, const Move& rhs) {
+                  const std::string left =
+                    representativeLine->move_to_string(lhs);
+                  const std::string right =
+                    representativeLine->move_to_string(rhs);
+                  if (left == action)
+                      return right != action;
+                  if (right == action)
+                      return false;
+                  return left < right;
+              });
+            bool projected = false;
+            for (BeliefSuccessorBucket& bucket : adversarial.buckets) {
+                if (std::find(bucket.actions.begin(), bucket.actions.end(),
+                              action) == bucket.actions.end())
+                    continue;
+                for (const Move& actualMove : actualMoves) {
+                    const std::string actualAction =
+                      representativeLine->move_to_string(actualMove);
+                    if (std::find(bucket.actions.begin(), bucket.actions.end(),
+                                  actualAction) == bucket.actions.end())
+                        continue;
+                    Position after = *representativeLine;
+                    Undo undo;
+                    if (!after.make_move(actualMove, undo))
+                        continue;
+                    const std::string afterUpn = after.upn();
+                    if (std::find(bucket.worldKeys.begin(),
+                                  bucket.worldKeys.end(), afterUpn) ==
+                        bucket.worldKeys.end())
+                        continue;
+                    safe.push_back(actualAction);
+                    *representativeLine = std::move(after);
+                    state.replace_with_successor(std::move(bucket));
+                    projected = true;
+                    break;
+                }
+                if (projected)
+                    break;
+            }
+            if (projected)
+                continue;
+
+            // The globally worst observation need not be reachable from the
+            // actual retained world. We still know which *public action
+            // class* and stable piece identity the opponent policy selected
+            // (for example an unseen Ghost step). Project that onto a legal
+            // actual action and stop: the first move is a valid arm of the
+            // contingent policy, but the raw child PV belongs to a different
+            // observation and must not be spliced onto it.
+            std::optional<std::string> publicAction;
+            int policyPiece = Position::NoPiece;
+            bool consistentPublicAction = true;
+            bool consistentPolicyPiece = true;
+            for (const auto& [upn, world] : state.worlds_) {
+                (void)upn;
+                const std::optional<Move> move =
+                  unique_notated_move(world, action);
+                if (!move)
+                    continue;
+                const int piece = world.piece_on(move->from);
+                if (policyPiece == Position::NoPiece)
+                    policyPiece = piece;
+                else if (policyPiece != piece)
+                    consistentPolicyPiece = false;
+                const std::string notation =
+                  world.move_to_display_string(*move, true);
+                if (!publicAction)
+                    publicAction = notation;
+                else if (*publicAction != notation) {
+                    consistentPublicAction = false;
+                    break;
+                }
+            }
+            if (consistentPublicAction && publicAction) {
+                for (const Move& actualMove : actualMoves) {
+                    if (representativeLine->move_to_display_string(
+                          actualMove, true) != *publicAction)
+                        continue;
+                    safe.push_back(
+                      representativeLine->move_to_string(actualMove));
+                    return safe;
+                }
+            }
+            if (consistentPolicyPiece && policyPiece != Position::NoPiece) {
+                for (const Move& actualMove : actualMoves) {
+                    if (representativeLine->piece_on(actualMove.from) !=
+                        policyPiece)
+                        continue;
+                    safe.push_back(
+                      representativeLine->move_to_string(actualMove));
+                    return safe;
+                }
+            }
+        }
+
+        BeliefSuccessorPartitions successors =
+          state.successor_partitions(action);
+        if (successors.buckets.empty())
+            break;
+        if (successors.incompatible) {
+            if (observerMoves)
+                break;
+
+            // An opponent's visible move is allowed to condition the line:
+            // observing a9-a7, for example, proves that a hidden Ghost was not
+            // occupying a7. Do not do this for a hidden Ghost step. Its raw
+            // protocol source would disclose a coordinate the observer does
+            // not know, even though its public notation is only `GH`.
+            int movingPiece = Position::NoPiece;
+            bool consistentPiece = true;
+            for (const auto& [upn, world] : state.worlds_) {
+                (void)upn;
+                const std::optional<Move> move =
+                  unique_notated_move(world, action);
+                if (!move)
+                    continue;
+                const int piece = world.piece_on(move->from);
+                if (piece == Position::NoPiece) {
+                    consistentPiece = false;
+                    break;
+                }
+                if (movingPiece == Position::NoPiece)
+                    movingPiece = piece;
+                else if (movingPiece != piece) {
+                    consistentPiece = false;
+                    break;
+                }
+            }
+            if (!consistentPiece || movingPiece == Position::NoPiece ||
+                !state.piece_location_known(movingPiece))
+                break;
+        }
+        if (representativeLine) {
+            const std::optional<Move> move =
+              representativeLine->move_from_string(action);
+            Undo undo;
+            if (!move || !representativeLine->make_move(*move, undo))
+                break;
+        }
+        safe.push_back(action);
+        if (successors.buckets.size() != 1)
+            break;
+        state.replace_with_successor(std::move(successors.buckets.front()));
+    }
+    return safe;
 }
 
 void PublicBeliefState::replace_with_successor(BeliefSuccessorBucket bucket) {
@@ -1884,6 +2146,15 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
             const int distance = static_cast<int>(rootTablebase->dtw);
             result.mateActions = rootTablebase->wdl == TablebaseWdl::Win
                                ? distance : -distance;
+        }
+        if (rootTablebase) {
+            reconstruct_tablebase_pv(
+              position, *rootTablebase, maxDepth, result.bestMove,
+              result.principalVariation);
+            result.bestMove = result.principalVariation.empty()
+                            ? std::nullopt
+                            : std::optional<Move>(
+                                result.principalVariation.front());
         }
         result.nodes = nodes_;
         result.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(

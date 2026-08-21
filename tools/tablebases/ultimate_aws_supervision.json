@@ -89,7 +89,9 @@
         "ultimatefish-devil-fleet-v5.service",
         "ultimatefish-devil-orchestrator-v5-continuation-1.service",
         "ultimatefish-devil-orchestrator-v5-continuation-2.service",
-        "ultimatefish-devil-orchestrator-v5-highcap-100m.service"
+        "ultimatefish-devil-orchestrator-v5-highcap-100m.service",
+        "ultimatefish-devil-orchestrator-v5-highcap-100m-relocated-i08.service",
+        "ultimatefish-devil-orchestrator-v5-highcap-100m-relocated-i098.service"
       ],
       "accounted_active_unit_prefixes": [
         "ultimatefish-devil-fleet-v5-",
