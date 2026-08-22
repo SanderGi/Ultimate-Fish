@@ -111,6 +111,15 @@ CONTINUATION_HOSTS = {
     "highcap-100m-relocated-i098": (
         ("i-03c81f90d2c59a2e7", (25, 26), 38, 16 * 1024**3),
     ),
+    # Original slot 19 completed four authenticated samples before yielding
+    # CPU 19 to Rook/Ghost. Its fourteen untouched shards are independent, so
+    # fan them out one per newly idle i0b CPU instead of serially replaying the
+    # remainder. campaign_global_slot() maps each CPU to 19+(4+n)*56.
+    "highcap-100m-slot19-fanout": (
+        ("i-0b4523116b2f7765c",
+         (*range(13, 21), 22, 23, *range(25, 29)), 19,
+         96 * 1024**3),
+    ),
 }
 assert sum(len(host[1]) for host in CONTINUATION_HOSTS["continuation-1"]) == 37
 assert sum(len(host[1]) for host in CONTINUATION_HOSTS["continuation-2"]) == 26
@@ -121,10 +130,20 @@ assert sum(len(host[1]) for host in
            CONTINUATION_HOSTS["highcap-100m-relocated-i08"]) == 2
 assert sum(len(host[1]) for host in
            CONTINUATION_HOSTS["highcap-100m-relocated-i098"]) == 2
+assert sum(len(host[1]) for host in
+           CONTINUATION_HOSTS["highcap-100m-slot19-fanout"]) == 14
 
 
 def campaign_stride(campaign: str) -> int:
+    if campaign == "highcap-100m-slot19-fanout":
+        return SHARDS
     return 56 if campaign.startswith("highcap-100m") else TOTAL_WORKERS
+
+
+def campaign_global_slot(campaign: str, base: int, slot: int) -> int:
+    if campaign == "highcap-100m-slot19-fanout":
+        return base + (4 + slot) * 56
+    return base + slot
 
 
 def campaign_state_limit(campaign: str) -> int:
@@ -192,7 +211,7 @@ def launch_host(campaign_host: tuple[
     stride = campaign_stride(campaign)
     state_limit = campaign_state_limit(campaign)
     for slot, cpu in enumerate(cpus):
-        global_slot = base + slot
+        global_slot = campaign_global_slot(campaign, base, slot)
         expected += (SHARDS - 1 - global_slot) // stride + 1
         child = f"{child_prefix}{global_slot:02d}"
         log = f"{logs}/slot-{global_slot:02d}.log"
@@ -215,7 +234,8 @@ def launch_host(campaign_host: tuple[
             f"--property=AllowedCPUs={cpu} --property=Nice=10 "
             + ("--property=MemoryHigh=8589934592 "
                "--property=MemoryMax=9663676416 "
-               if campaign.startswith("highcap-100m-relocated") else
+               if (campaign.startswith("highcap-100m-relocated") or
+                   campaign == "highcap-100m-slot19-fanout") else
                "--property=MemoryHigh=7516192768 "
                "--property=MemoryMax=8589934592 "
                if campaign == "highcap-100m-tail" else
@@ -275,11 +295,12 @@ def status_host(campaign_host: tuple[
     parent_unit, child_prefix, log_name = campaign_units(campaign)
     logs = f"{ROOT}/{log_name}"
     stride = campaign_stride(campaign)
-    expected = sum((SHARDS - 1 - (base + slot)) // stride + 1
-                   for slot in range(len(cpus)))
+    expected = sum(
+        (SHARDS - 1 - campaign_global_slot(campaign, base, slot)) //
+        stride + 1 for slot in range(len(cpus)))
     mismatch_checks = []
     for slot in range(len(cpus)):
-        global_slot = base + slot
+        global_slot = campaign_global_slot(campaign, base, slot)
         slot_expected = (SHARDS - 1 - global_slot) // stride + 1
         log = f"{logs}/slot-{global_slot:02d}.log"
         mismatch_checks.append(

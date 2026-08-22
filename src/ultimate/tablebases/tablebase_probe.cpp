@@ -261,6 +261,7 @@ std::uint32_t represented_substates(PieceType type, bool fourModels = false,
     switch (type) {
     case PieceType::Berserker: return 10;
     case PieceType::Ghost: return 2;
+    case PieceType::Devil: return 4;
     case PieceType::Sniper: return 4;
     case PieceType::Prince: return 2;
     case PieceType::Checker: return 4;
@@ -607,6 +608,25 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
     if (position.forcedTimeoutWinner_ >= 0)
         return std::nullopt;
 
+    // Generated tables represent the closed no-castling state class. Most
+    // pieces record whether they have moved even though that bit changes no
+    // rule. It is relevant only to a Pawn's double step and to the joint
+    // King/Jester + Rook castling privilege. Castling can use either team's
+    // Rook, so fail closed whenever both unmoved halves coexist; otherwise an
+    // unmoved non-Pawn bit is semantically inert and maps to the stored class.
+    bool hasUnmovedRoyal = false;
+    bool hasUnmovedRook = false;
+    for (int id = 0; id < position.pieceCount_; ++id) {
+        const PieceState& piece = position.pieces_[id];
+        if (!piece.alive || !piece.onBoard || piece.moved)
+            continue;
+        hasUnmovedRoyal = hasUnmovedRoyal ||
+          piece.type == PieceType::King || piece.type == PieceType::Jester;
+        hasUnmovedRook = hasUnmovedRook || piece.type == PieceType::Rook;
+    }
+    if (hasUnmovedRoyal && hasUnmovedRook)
+        return std::nullopt;
+
     int whiteKing = Position::NoPiece;
     int blackKing = Position::NoPiece;
     std::array<int, 4> extras{Position::NoPiece, Position::NoPiece,
@@ -618,19 +638,10 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
         const PieceState& piece = position.pieces_[id];
         if (!piece.alive)
             continue;
-        // Forced Mage/Fisherman relocation can promote an unmoved Pawn or
-        // Checker without marking the displaced model as having taken a
-        // turn.  The promoted Queen/CheckerKing has no first-move privilege,
-        // so its moved bit is outcome-irrelevant and maps exactly to the
-        // ordinary lower-material table.
-        const bool promotedWithoutTurn =
-          piece.type == PieceType::Queen ||
-          piece.type == PieceType::CheckerKing;
         if ((!piece.onBoard && piece.type != PieceType::Angel) ||
             (piece.host != Position::NoPiece &&
              piece.type != PieceType::Angel) ||
-            (!piece.moved && piece.type != PieceType::Pawn &&
-             piece.type != PieceType::Halo && !promotedWithoutTurn))
+            (!piece.visible && piece.type != PieceType::Ghost))
             return std::nullopt;
         if (piece.type == PieceType::Halo) {
             ++liveHalos;
@@ -1013,6 +1024,10 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 item.parasiteTracked)
                 return std::nullopt;
             return item.visible ? 1u : 0u;
+        case PieceType::Devil:
+            if (item.cooldown > 3 || item.power || item.action)
+                return std::nullopt;
+            return item.cooldown;
         case PieceType::Sniper:
             if (item.cooldown > 3 || item.power || item.action) return std::nullopt;
             return item.cooldown;
@@ -1440,15 +1455,18 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
     for (const Database& database : databases()) {
         if (database.secondary != PieceType::Count)
             continue;
-        if (database.attacker != extra.type)
+        // A promoted Checker King is represented by the corresponding
+        // Checker's promoted substates, just as it is in compound tables.
+        const PieceType represented = database.attacker;
+        if (!typeMatches(represented, extra.type))
             continue;
-        if (extra.type == PieceType::Ghost &&
+        if (represented == PieceType::Ghost &&
             database.trackedGhost != extra.parasiteTracked)
             continue;
-        if (extra.type != PieceType::Penguin && has_unrepresented_freeze())
+        if (represented != PieceType::Penguin && has_unrepresented_freeze())
             continue;
         std::uint32_t substate = 0;
-        switch (extra.type) {
+        switch (represented) {
         case PieceType::Berserker:
             if (extra.cooldown)
                 continue;
@@ -1459,6 +1477,11 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                 (extra.parasiteTracked && !database.trackedGhost))
                 continue;
             substate = database.trackedGhost ? 0 : extra.visible ? 1 : 0;
+            break;
+        case PieceType::Devil:
+            if (extra.cooldown > 3 || extra.power)
+                continue;
+            substate = extra.cooldown;
             break;
         case PieceType::Sniper:
             if (extra.cooldown > 3 || extra.power)
@@ -1475,6 +1498,18 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
                      position.forcedPiece_ != Position::NoPiece)
                 continue;
             break;
+        case PieceType::Checker: {
+            if (extra.cooldown || extra.power)
+                continue;
+            const bool forced = position.continuation_ == Continuation::CheckerJump &&
+              position.forcedPiece_ == attacker;
+            if (!forced && (position.continuation_ != Continuation::None ||
+                            position.forcedPiece_ != Position::NoPiece))
+                continue;
+            substate = (extra.type == PieceType::CheckerKing ? 2u : 0u) +
+              (forced ? 1u : 0u);
+            break;
+        }
         case PieceType::Pawn:
             if (extra.cooldown || extra.power ||
                 position.continuation_ != Continuation::None ||
@@ -1516,9 +1551,9 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
             break;
         }
         const std::uint32_t exactSubstates = database.trackedGhost
-          ? 1 : represented_substates(extra.type);
+          ? 1 : represented_substates(represented);
         if (database.substates != exactSubstates) {
-            if (extra.type != PieceType::Penguin || database.substates != 2)
+            if (represented != PieceType::Penguin || database.substates != 2)
                 continue;
             if (substate) {
                 const std::uint32_t full = fullPenguinSubstate(
@@ -1535,7 +1570,7 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
         const int canonicalWhite = swapColors ? blackKing : whiteKing;
         const int canonicalBlack = swapColors ? whiteKing : blackKing;
         const auto attackerSquare = slotSquare(
-          attacker, extra.type, Position::NoPiece);
+          attacker, represented, Position::NoPiece);
         if (!attackerSquare)
             continue;
         const std::uint32_t index = encode(

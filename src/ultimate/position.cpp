@@ -33,6 +33,10 @@ bool Position::apply_tablebase_substate(int id, PieceType logicalType,
         pieces_[id].visible = substate != 0;
         pieces_[id].parasiteTracked = false;
         return true;
+    case PieceType::Devil:
+        if (substate >= 4) return false;
+        pieces_[id].cooldown = static_cast<std::uint8_t>(substate);
+        return true;
     case PieceType::Sniper:
         if (substate >= 4) return false;
         pieces_[id].cooldown = static_cast<std::uint8_t>(substate);
@@ -114,6 +118,10 @@ std::optional<std::uint32_t> Position::tablebase_substate(
         return pieces_[id].parasiteTracked
              ? std::nullopt
              : std::optional<std::uint32_t>(pieces_[id].visible ? 1u : 0u);
+    case PieceType::Devil:
+        return pieces_[id].cooldown < 4
+             ? std::optional<std::uint32_t>(pieces_[id].cooldown)
+             : std::nullopt;
     case PieceType::Sniper:
         return pieces_[id].cooldown < 4
              ? std::optional<std::uint32_t>(pieces_[id].cooldown)

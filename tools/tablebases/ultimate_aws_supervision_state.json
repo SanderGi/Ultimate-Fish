@@ -1,10 +1,10 @@
 {
-  "event_digest": "7a20d11697857e3ad839e9624d50c5c72fbae8d7b3c681c10426ff38345706dc",
-  "last_observed_epoch": 1787353558.250447,
-  "last_regular_report_epoch": 1787353558.250447,
+  "event_digest": "2b2ec5a9448f63e152f13f937030b956d2ee2fe4f02c621996d13066ce31d71f",
+  "last_observed_epoch": 1787356536.130399,
+  "last_regular_report_epoch": 1787356536.130399,
   "report": {
     "errors": [],
-    "estimated_spend_usd": 2036.86,
+    "estimated_spend_usd": 2044.63,
     "fleet_burn_usd_per_hour": 9.41,
     "instances": {
       "i-024a2073283e4336e": {
@@ -16,10 +16,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "4",
-                  "CPUUsageNSec": "1387515321000",
+                  "CPUUsageNSec": "4364408814000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3594063872",
+                  "MemoryCurrent": "2538110976",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:42:52 UTC"
                 },
@@ -29,10 +29,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "5",
-                  "CPUUsageNSec": "1387475444000",
+                  "CPUUsageNSec": "4364450968000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3241734144",
+                  "MemoryCurrent": "1377460224",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:42:52 UTC"
                 },
@@ -42,10 +42,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "6",
-                  "CPUUsageNSec": "1387463123000",
+                  "CPUUsageNSec": "4364247129000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3173830656",
+                  "MemoryCurrent": "1344438272",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:42:52 UTC"
                 },
@@ -55,10 +55,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "7",
-                  "CPUUsageNSec": "1387434461000",
+                  "CPUUsageNSec": "4364311592000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2951233536",
+                  "MemoryCurrent": "95617024",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:42:52 UTC"
                 },
@@ -98,68 +98,68 @@
           "allocation_known": true,
           "allocation_mismatches": {},
           "idle_vcpus": 24,
-          "measured_busy_vcpus": 7.959,
+          "measured_busy_vcpus": 7.969,
           "measured_fleet_capacity_percent": 24.9,
           "measured_jobs": {
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-tail-20.service": {
               "allocated_utilization_percent": 99.5,
               "average_busy_vcpus": 0.995,
-              "cpu_delta_nsec": 18997255000,
-              "cpu_usage_nsec": 1387515321000,
-              "memory_current_bytes": 3594063872,
-              "sample_seconds": 19.094
+              "cpu_delta_nsec": 19509093000,
+              "cpu_usage_nsec": 4364408814000,
+              "memory_current_bytes": 2538110976,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-tail-21.service": {
               "allocated_utilization_percent": 99.5,
               "average_busy_vcpus": 0.995,
-              "cpu_delta_nsec": 18993925000,
-              "cpu_usage_nsec": 1387475444000,
-              "memory_current_bytes": 3241734144,
-              "sample_seconds": 19.094
+              "cpu_delta_nsec": 19518193000,
+              "cpu_usage_nsec": 4364450968000,
+              "memory_current_bytes": 1377460224,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-tail-22.service": {
               "allocated_utilization_percent": 99.5,
               "average_busy_vcpus": 0.995,
-              "cpu_delta_nsec": 18993201000,
-              "cpu_usage_nsec": 1387463123000,
-              "memory_current_bytes": 3173830656,
-              "sample_seconds": 19.094
+              "cpu_delta_nsec": 19509310000,
+              "cpu_usage_nsec": 4364247129000,
+              "memory_current_bytes": 1344438272,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-tail-23.service": {
               "allocated_utilization_percent": 99.5,
               "average_busy_vcpus": 0.995,
-              "cpu_delta_nsec": 18992361000,
-              "cpu_usage_nsec": 1387434461000,
-              "memory_current_bytes": 2951233536,
-              "sample_seconds": 19.094
+              "cpu_delta_nsec": 19507588000,
+              "cpu_usage_nsec": 4364311592000,
+              "memory_current_bytes": 95617024,
+              "sample_seconds": 19.614
             },
             "checker-ghost-opposing-compositional-v4": {
-              "allocated_utilization_percent": 99.5,
-              "average_busy_vcpus": 0.995,
-              "cpu_delta_nsec": 18997232000,
-              "cpu_usage_nsec": 158913654609000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 19585627000,
+              "cpu_usage_nsec": 161888669790000,
+              "sample_seconds": 19.614
             },
             "current-opposed-ghost-pair-specialized-v1": {
-              "allocated_utilization_percent": 99.5,
-              "average_busy_vcpus": 0.995,
-              "cpu_delta_nsec": 18990248000,
-              "cpu_usage_nsec": 19351837115000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19550221000,
+              "cpu_usage_nsec": 22329568835000,
+              "sample_seconds": 19.614
             },
             "current-opposed-parasite-ghost-v1": {
-              "allocated_utilization_percent": 99.5,
-              "average_busy_vcpus": 0.995,
-              "cpu_delta_nsec": 18990505000,
-              "cpu_usage_nsec": 713840104059000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.6,
+              "average_busy_vcpus": 0.996,
+              "cpu_delta_nsec": 19530515000,
+              "cpu_usage_nsec": 716817980191000,
+              "sample_seconds": 19.614
             },
             "current-same-berserker-ghost-allocation-v5": {
-              "allocated_utilization_percent": 99.4,
-              "average_busy_vcpus": 0.994,
-              "cpu_delta_nsec": 18987587000,
-              "cpu_usage_nsec": 19052319657000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19556904000,
+              "cpu_usage_nsec": 22029812560000,
+              "sample_seconds": 19.614
             }
           },
           "measurement_complete": true,
@@ -176,7 +176,7 @@
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 442.91,
+        "estimated_spend_usd": 444.2,
         "instance_type": "c8gd.8xlarge",
         "launch_time": "2026-08-10T04:34:31+00:00",
         "name": "giant-ghost-opposing",
@@ -188,10 +188,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "4",
-                  "CPUUsageNSec": "1387515321000",
+                  "CPUUsageNSec": "4364408814000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3594063872",
+                  "MemoryCurrent": "2538110976",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:42:52 UTC"
                 },
@@ -201,10 +201,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "5",
-                  "CPUUsageNSec": "1387475444000",
+                  "CPUUsageNSec": "4364450968000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3241734144",
+                  "MemoryCurrent": "1377460224",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:42:52 UTC"
                 },
@@ -214,10 +214,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "6",
-                  "CPUUsageNSec": "1387463123000",
+                  "CPUUsageNSec": "4364247129000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3173830656",
+                  "MemoryCurrent": "1344438272",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:42:52 UTC"
                 },
@@ -227,10 +227,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "7",
-                  "CPUUsageNSec": "1387434461000",
+                  "CPUUsageNSec": "4364311592000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2951233536",
+                  "MemoryCurrent": "95617024",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:42:52 UTC"
                 },
@@ -280,11 +280,11 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 1648432,
-                  "sha256": "f8bde94b156bf3d11521eed728c513ffe280e1332db1f1cd48cbb775edc27c8b",
+                  "bytes": 1670689,
+                  "sha256": "e6169931f083dd36cdcd3e25ec7f1bf66df5104b9e38045246cba9ca2f5c8b8b",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "teration 16 geometry 3205000/3943680 bdd_nodes 165570736 peak_rss_bytes 17411567616 elapsed 158451s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3210000/3943680 bdd_nodes 165600322 peak_rss_bytes 17411567616 elapsed 158468s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3215000/3943680 bdd_nodes 165662263 peak_rss_bytes 17411567616 elapsed 158486s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3220000/3943680 bdd_nodes 165750103 peak_rss_bytes 17411567616 elapsed 158504s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3225000/3943680 bdd_nodes 165855590 peak_rss_bytes 17411567616 elapsed 158524s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3230000/3943680 bdd_nodes 165969525 peak_rss_bytes 17411567616 elapsed 158541s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3235000/3943680 bdd_nodes 166088865 peak_rss_bytes 17411567616 elapsed 158555s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3240000/3943680 bdd_nodes 166298645 peak_rss_bytes 17411567616 elapsed 158570s\n"
+                  "tail": "t_extra_bellman iteration 17 geometry 95000/3943680 bdd_nodes 17704910 peak_rss_bytes 17411567616 elapsed 161512s\nreciprocal_ghost_extra_bellman iteration 17 geometry 100000/3943680 bdd_nodes 17764765 peak_rss_bytes 17411567616 elapsed 161517s\nreciprocal_ghost_extra_bellman iteration 17 geometry 105000/3943680 bdd_nodes 17984011 peak_rss_bytes 17411567616 elapsed 161522s\nreciprocal_ghost_extra_bellman iteration 17 geometry 110000/3943680 bdd_nodes 18285078 peak_rss_bytes 17411567616 elapsed 161529s\nreciprocal_ghost_extra_bellman iteration 17 geometry 115000/3943680 bdd_nodes 18614516 peak_rss_bytes 17411567616 elapsed 161538s\nreciprocal_ghost_extra_bellman iteration 17 geometry 120000/3943680 bdd_nodes 18912258 peak_rss_bytes 17411567616 elapsed 161546s\nreciprocal_ghost_extra_bellman iteration 17 geometry 125000/3943680 bdd_nodes 19143220 peak_rss_bytes 17411567616 elapsed 161553s\nreciprocal_ghost_extra_bellman iteration 17 geometry 130000/3943680 bdd_nodes 19316988 peak_rss_bytes 17411567616 elapsed 161561s\n"
                 },
                 {
                   "bytes": 152,
@@ -300,10 +300,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "3",
-                "CPUUsageNSec": "158913654609000",
+                "CPUUsageNSec": "161888669790000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "17882492928",
+                "MemoryCurrent": "26636222464",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 02:52:43 UTC"
               }
@@ -814,11 +814,11 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 19129,
-                  "sha256": "06398aa54f9b7535901042cbbabe122b840b4b3af9214a09766617d264306a62",
+                  "bytes": 21743,
+                  "sha256": "4b8deab186352d4960ba273d18420f490d132d6d7fdae9f08e62ab04cba223c3",
                   "source_index": 0,
                   "status": "ok",
-                  "tail": "ellman iteration 3 geometry 615000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17377.8s\nreciprocal_ghost_extra_bellman iteration 3 geometry 620000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17428.3s\nreciprocal_ghost_extra_bellman iteration 3 geometry 625000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17566.6s\nreciprocal_ghost_extra_bellman iteration 3 geometry 630000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17687.7s\nreciprocal_ghost_extra_bellman iteration 3 geometry 635000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17789.4s\nreciprocal_ghost_extra_bellman iteration 3 geometry 640000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17940.2s\nreciprocal_ghost_extra_bellman iteration 3 geometry 645000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17969.7s\nreciprocal_ghost_extra_bellman iteration 3 geometry 650000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 18116.7s\n"
+                  "tail": "ellman iteration 3 geometry 715000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 20117.2s\nreciprocal_ghost_extra_bellman iteration 3 geometry 720000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 20271.4s\nreciprocal_ghost_extra_bellman iteration 3 geometry 725000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 20428.7s\nreciprocal_ghost_extra_bellman iteration 3 geometry 730000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 20590.9s\nreciprocal_ghost_extra_bellman iteration 3 geometry 735000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 20745.4s\nreciprocal_ghost_extra_bellman iteration 3 geometry 740000/4929600 bdd_nodes 295607617 peak_rss_bytes 13108178944 elapsed 20909.1s\nreciprocal_ghost_extra_bellman iteration 3 geometry 745000/4929600 bdd_nodes 295607617 peak_rss_bytes 13108178944 elapsed 20954.2s\nreciprocal_ghost_extra_bellman iteration 3 geometry 750000/4929600 bdd_nodes 295607617 peak_rss_bytes 13108178944 elapsed 21098.4s\n"
                 },
                 {
                   "bytes": 162,
@@ -834,10 +834,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "0",
-                "CPUUsageNSec": "19052319657000",
+                "CPUUsageNSec": "22029812560000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "13179817984",
+                "MemoryCurrent": "10553507840",
                 "Result": "success",
                 "StateChangeTimestamp": "Fri 2026-08-21 17:46:40 UTC"
               }
@@ -860,10 +860,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "1",
-                "CPUUsageNSec": "19351837115000",
+                "CPUUsageNSec": "22329568835000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "9498361856",
+                "MemoryCurrent": "8320942080",
                 "Result": "success",
                 "StateChangeTimestamp": "Fri 2026-08-21 17:43:28 UTC"
               }
@@ -893,36 +893,36 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "2",
-                "CPUUsageNSec": "713840104059000",
+                "CPUUsageNSec": "716817980191000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "818528256",
+                "MemoryCurrent": "818225152",
                 "Result": "success",
                 "StateChangeTimestamp": "Fri 2026-08-14 06:12:22 UTC"
               }
             }
           ],
           "memory": {
-            "MemAvailable": 38100774912,
+            "MemAvailable": 45714219008,
             "MemTotal": 66202484736,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 5390426112,
+              "free_bytes": 5376143360,
               "path": "/",
               "total_bytes": 8511270912
             },
             {
-              "free_bytes": 159390593024,
+              "free_bytes": 160683614208,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             }
           ],
           "probe_compacted": true,
           "probe_compaction_level": 1,
-          "probe_encoded_bytes": 18284,
+          "probe_encoded_bytes": 18282,
           "unconfigured_active_units": {
             "count": 0,
             "details": [],
@@ -936,29 +936,16 @@
       "i-03c81f90d2c59a2e7": {
         "cpu_allocation": {
           "accounted_active_units": {
-            "count": 27,
+            "count": 15,
             "details": [
               {
                 "properties": {
                   "ActiveState": "active",
-                  "AllowedCPUs": "0",
-                  "CPUUsageNSec": "2052041133000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4840050688",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-00.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
                   "AllowedCPUs": "3",
-                  "CPUUsageNSec": "1688495217000",
+                  "CPUUsageNSec": "4665554505000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2991812608",
+                  "MemoryCurrent": "4107096064",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -968,10 +955,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "4",
-                  "CPUUsageNSec": "1688492978000",
+                  "CPUUsageNSec": "4665478623000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2930163712",
+                  "MemoryCurrent": "4073340928",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -981,10 +968,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "5",
-                  "CPUUsageNSec": "1688509569000",
+                  "CPUUsageNSec": "4662744633000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2737377280",
+                  "MemoryCurrent": "3789668352",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -994,10 +981,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "6",
-                  "CPUUsageNSec": "1688505412000",
+                  "CPUUsageNSec": "4664872793000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3370364928",
+                  "MemoryCurrent": "4700569600",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1007,10 +994,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "7",
-                  "CPUUsageNSec": "1688393460000",
+                  "CPUUsageNSec": "4665522144000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2948132864",
+                  "MemoryCurrent": "4066160640",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1020,10 +1007,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "8",
-                  "CPUUsageNSec": "1688495795000",
+                  "CPUUsageNSec": "4665546408000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2707357696",
+                  "MemoryCurrent": "3788443648",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1033,10 +1020,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "9",
-                  "CPUUsageNSec": "1688481813000",
+                  "CPUUsageNSec": "4663691212000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2448711680",
+                  "MemoryCurrent": "3004551168",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1046,10 +1033,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "10",
-                  "CPUUsageNSec": "1688428028000",
+                  "CPUUsageNSec": "4665553872000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3258109952",
+                  "MemoryCurrent": "4437364736",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1058,102 +1045,11 @@
               {
                 "properties": {
                   "ActiveState": "active",
-                  "AllowedCPUs": "11",
-                  "CPUUsageNSec": "2055256771000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4505346048",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-09.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "12",
-                  "CPUUsageNSec": "2054791212000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4474028032",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-10.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "13",
-                  "CPUUsageNSec": "2057484560000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4288708608",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-11.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "15",
-                  "CPUUsageNSec": "2052809681000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4636160000",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-12.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "16",
-                  "CPUUsageNSec": "2047659766000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "3804966912",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-13.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "17",
-                  "CPUUsageNSec": "2054142118000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4437417984",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-14.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "18",
-                  "CPUUsageNSec": "2055938359000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4193374208",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-15.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
                   "AllowedCPUs": "20",
-                  "CPUUsageNSec": "1687685809000",
+                  "CPUUsageNSec": "4664090110000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3089444864",
+                  "MemoryCurrent": "3903307776",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1163,10 +1059,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "21",
-                  "CPUUsageNSec": "1687642472000",
+                  "CPUUsageNSec": "4663947658000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2446995456",
+                  "MemoryCurrent": "3103170560",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1176,10 +1072,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "22",
-                  "CPUUsageNSec": "1687665178000",
+                  "CPUUsageNSec": "4664029905000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2415808512",
+                  "MemoryCurrent": "3038490624",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1188,63 +1084,11 @@
               {
                 "properties": {
                   "ActiveState": "active",
-                  "AllowedCPUs": "28",
-                  "CPUUsageNSec": "2054831630000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4599255040",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-24.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "29",
-                  "CPUUsageNSec": "2057536262000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4145991680",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-25.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "30",
-                  "CPUUsageNSec": "2057109721000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4130893824",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-26.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "31",
-                  "CPUUsageNSec": "2057855468000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "3902894080",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-27.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
                   "AllowedCPUs": "23",
-                  "CPUUsageNSec": "109099844000",
+                  "CPUUsageNSec": "3083045326000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3237625856",
+                  "MemoryCurrent": "3997093888",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 23:04:11 UTC"
                 },
@@ -1254,10 +1098,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "24",
-                  "CPUUsageNSec": "109090699000",
+                  "CPUUsageNSec": "3082836684000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2956271616",
+                  "MemoryCurrent": "4154339328",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 23:04:11 UTC"
                 },
@@ -1267,10 +1111,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "25",
-                  "CPUUsageNSec": "99712463000",
+                  "CPUUsageNSec": "3073356347000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2700685312",
+                  "MemoryCurrent": "3221909504",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 23:04:21 UTC"
                 },
@@ -1280,10 +1124,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "26",
-                  "CPUUsageNSec": "99698628000",
+                  "CPUUsageNSec": "3073406111000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2692161536",
+                  "MemoryCurrent": "2385661952",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 23:04:21 UTC"
                 },
@@ -1292,19 +1136,18 @@
             ],
             "probe_status": 0,
             "sample": [
-              "ultimatefish-devil-fleet-v5-highcap-100m-00.service",
               "ultimatefish-devil-fleet-v5-highcap-100m-01.service",
               "ultimatefish-devil-fleet-v5-highcap-100m-02.service",
               "ultimatefish-devil-fleet-v5-highcap-100m-03.service",
               "ultimatefish-devil-fleet-v5-highcap-100m-04.service",
               "ultimatefish-devil-fleet-v5-highcap-100m-05.service",
               "ultimatefish-devil-fleet-v5-highcap-100m-06.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-07.service"
+              "ultimatefish-devil-fleet-v5-highcap-100m-07.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-08.service"
             ],
-            "sha256": "2d602a2175b5469a888a17b23044db662b00bdd82bb703c3fa6d69e715de4c89"
+            "sha256": "cf78fb1d0afcd9f7d6dfa270642bdd8a0090ef966205431fed9d61c364c48790"
           },
           "active_cpu_sets": {
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-00.service": "0",
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-01.service": "3",
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-02.service": "4",
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-03.service": "5",
@@ -1313,20 +1156,9 @@
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-06.service": "8",
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-07.service": "9",
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-08.service": "10",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-09.service": "11",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-10.service": "12",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-11.service": "13",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-12.service": "15",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-13.service": "16",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-14.service": "17",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-15.service": "18",
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-16.service": "20",
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-17.service": "21",
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-18.service": "22",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-24.service": "28",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-25.service": "29",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-26.service": "30",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-27.service": "31",
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-relocated-i08-32.service": "23",
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-relocated-i08-33.service": "24",
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-relocated-i098-38.service": "25",
@@ -1337,7 +1169,6 @@
             "source-order-opposed-queen-ghost-solve-v8": "14"
           },
           "active_jobs": {
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-00.service": 1,
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-01.service": 1,
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-02.service": 1,
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-03.service": 1,
@@ -1346,20 +1177,9 @@
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-06.service": 1,
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-07.service": 1,
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-08.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-09.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-10.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-11.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-12.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-13.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-14.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-15.service": 1,
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-16.service": 1,
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-17.service": 1,
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-18.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-24.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-25.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-26.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-27.service": 1,
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-relocated-i08-32.service": 1,
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-relocated-i08-33.service": 1,
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-relocated-i098-38.service": 1,
@@ -1369,256 +1189,160 @@
             "remap-fix-v2-opposed-rook-ghost-converged-v8": 1,
             "source-order-opposed-queen-ghost-solve-v8": 1
           },
-          "allocated_vcpus": 31,
+          "allocated_vcpus": 19,
           "allocation_known": true,
           "allocation_mismatches": {},
-          "idle_vcpus": 1,
-          "measured_busy_vcpus": 30.338,
-          "measured_fleet_capacity_percent": 94.8,
+          "idle_vcpus": 13,
+          "measured_busy_vcpus": 18.948,
+          "measured_fleet_capacity_percent": 59.2,
           "measured_jobs": {
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-00.service": {
-              "allocated_utilization_percent": 98.1,
-              "average_busy_vcpus": 0.981,
-              "cpu_delta_nsec": 18739040000,
-              "cpu_usage_nsec": 2052041133000,
-              "memory_current_bytes": 4840050688,
-              "sample_seconds": 19.094
-            },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-01.service": {
-              "allocated_utilization_percent": 98.1,
-              "average_busy_vcpus": 0.981,
-              "cpu_delta_nsec": 18739976000,
-              "cpu_usage_nsec": 1688495217000,
-              "memory_current_bytes": 2991812608,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19564998000,
+              "cpu_usage_nsec": 4665554505000,
+              "memory_current_bytes": 4107096064,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-02.service": {
-              "allocated_utilization_percent": 98.1,
-              "average_busy_vcpus": 0.981,
-              "cpu_delta_nsec": 18729889000,
-              "cpu_usage_nsec": 1688492978000,
-              "memory_current_bytes": 2930163712,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19554928000,
+              "cpu_usage_nsec": 4665478623000,
+              "memory_current_bytes": 4073340928,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-03.service": {
-              "allocated_utilization_percent": 98.1,
-              "average_busy_vcpus": 0.981,
-              "cpu_delta_nsec": 18730263000,
-              "cpu_usage_nsec": 1688509569000,
-              "memory_current_bytes": 2737377280,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19553961000,
+              "cpu_usage_nsec": 4662744633000,
+              "memory_current_bytes": 3789668352,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-04.service": {
-              "allocated_utilization_percent": 98.1,
-              "average_busy_vcpus": 0.981,
-              "cpu_delta_nsec": 18730074000,
-              "cpu_usage_nsec": 1688505412000,
-              "memory_current_bytes": 3370364928,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19553844000,
+              "cpu_usage_nsec": 4664872793000,
+              "memory_current_bytes": 4700569600,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-05.service": {
-              "allocated_utilization_percent": 98.0,
-              "average_busy_vcpus": 0.98,
-              "cpu_delta_nsec": 18720199000,
-              "cpu_usage_nsec": 1688393460000,
-              "memory_current_bytes": 2948132864,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19551754000,
+              "cpu_usage_nsec": 4665522144000,
+              "memory_current_bytes": 4066160640,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-06.service": {
-              "allocated_utilization_percent": 98.0,
-              "average_busy_vcpus": 0.98,
-              "cpu_delta_nsec": 18720093000,
-              "cpu_usage_nsec": 1688495795000,
-              "memory_current_bytes": 2707357696,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19556229000,
+              "cpu_usage_nsec": 4665546408000,
+              "memory_current_bytes": 3788443648,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-07.service": {
-              "allocated_utilization_percent": 98.0,
-              "average_busy_vcpus": 0.98,
-              "cpu_delta_nsec": 18720247000,
-              "cpu_usage_nsec": 1688481813000,
-              "memory_current_bytes": 2448711680,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19554142000,
+              "cpu_usage_nsec": 4663691212000,
+              "memory_current_bytes": 3004551168,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-08.service": {
-              "allocated_utilization_percent": 98.0,
-              "average_busy_vcpus": 0.98,
-              "cpu_delta_nsec": 18710318000,
-              "cpu_usage_nsec": 1688428028000,
-              "memory_current_bytes": 3258109952,
-              "sample_seconds": 19.094
-            },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-09.service": {
-              "allocated_utilization_percent": 98.0,
-              "average_busy_vcpus": 0.98,
-              "cpu_delta_nsec": 18710245000,
-              "cpu_usage_nsec": 2055256771000,
-              "memory_current_bytes": 4505346048,
-              "sample_seconds": 19.094
-            },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-10.service": {
-              "allocated_utilization_percent": 98.0,
-              "average_busy_vcpus": 0.98,
-              "cpu_delta_nsec": 18710299000,
-              "cpu_usage_nsec": 2054791212000,
-              "memory_current_bytes": 4474028032,
-              "sample_seconds": 19.094
-            },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-11.service": {
-              "allocated_utilization_percent": 97.9,
-              "average_busy_vcpus": 0.979,
-              "cpu_delta_nsec": 18700212000,
-              "cpu_usage_nsec": 2057484560000,
-              "memory_current_bytes": 4288708608,
-              "sample_seconds": 19.094
-            },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-12.service": {
-              "allocated_utilization_percent": 97.9,
-              "average_busy_vcpus": 0.979,
-              "cpu_delta_nsec": 18700237000,
-              "cpu_usage_nsec": 2052809681000,
-              "memory_current_bytes": 4636160000,
-              "sample_seconds": 19.094
-            },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-13.service": {
-              "allocated_utilization_percent": 97.9,
-              "average_busy_vcpus": 0.979,
-              "cpu_delta_nsec": 18697890000,
-              "cpu_usage_nsec": 2047659766000,
-              "memory_current_bytes": 3804966912,
-              "sample_seconds": 19.094
-            },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-14.service": {
-              "allocated_utilization_percent": 97.9,
-              "average_busy_vcpus": 0.979,
-              "cpu_delta_nsec": 18687332000,
-              "cpu_usage_nsec": 2054142118000,
-              "memory_current_bytes": 4437417984,
-              "sample_seconds": 19.094
-            },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-15.service": {
-              "allocated_utilization_percent": 97.9,
-              "average_busy_vcpus": 0.979,
-              "cpu_delta_nsec": 18688203000,
-              "cpu_usage_nsec": 2055938359000,
-              "memory_current_bytes": 4193374208,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19554784000,
+              "cpu_usage_nsec": 4665553872000,
+              "memory_current_bytes": 4437364736,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-16.service": {
-              "allocated_utilization_percent": 97.9,
-              "average_busy_vcpus": 0.979,
-              "cpu_delta_nsec": 18688083000,
-              "cpu_usage_nsec": 1687685809000,
-              "memory_current_bytes": 3089444864,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.8,
+              "average_busy_vcpus": 0.998,
+              "cpu_delta_nsec": 19580306000,
+              "cpu_usage_nsec": 4664090110000,
+              "memory_current_bytes": 3903307776,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-17.service": {
-              "allocated_utilization_percent": 97.8,
-              "average_busy_vcpus": 0.978,
-              "cpu_delta_nsec": 18682614000,
-              "cpu_usage_nsec": 1687642472000,
-              "memory_current_bytes": 2446995456,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.8,
+              "average_busy_vcpus": 0.998,
+              "cpu_delta_nsec": 19570316000,
+              "cpu_usage_nsec": 4663947658000,
+              "memory_current_bytes": 3103170560,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-18.service": {
-              "allocated_utilization_percent": 97.9,
-              "average_busy_vcpus": 0.979,
-              "cpu_delta_nsec": 18687741000,
-              "cpu_usage_nsec": 1687665178000,
-              "memory_current_bytes": 2415808512,
-              "sample_seconds": 19.094
-            },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-24.service": {
-              "allocated_utilization_percent": 97.8,
-              "average_busy_vcpus": 0.978,
-              "cpu_delta_nsec": 18678198000,
-              "cpu_usage_nsec": 2054831630000,
-              "memory_current_bytes": 4599255040,
-              "sample_seconds": 19.094
-            },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-25.service": {
-              "allocated_utilization_percent": 97.8,
-              "average_busy_vcpus": 0.978,
-              "cpu_delta_nsec": 18678166000,
-              "cpu_usage_nsec": 2057536262000,
-              "memory_current_bytes": 4145991680,
-              "sample_seconds": 19.094
-            },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-26.service": {
-              "allocated_utilization_percent": 97.8,
-              "average_busy_vcpus": 0.978,
-              "cpu_delta_nsec": 18678050000,
-              "cpu_usage_nsec": 2057109721000,
-              "memory_current_bytes": 4130893824,
-              "sample_seconds": 19.094
-            },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-27.service": {
-              "allocated_utilization_percent": 97.8,
-              "average_busy_vcpus": 0.978,
-              "cpu_delta_nsec": 18667867000,
-              "cpu_usage_nsec": 2057855468000,
-              "memory_current_bytes": 3902894080,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.8,
+              "average_busy_vcpus": 0.998,
+              "cpu_delta_nsec": 19580304000,
+              "cpu_usage_nsec": 4664029905000,
+              "memory_current_bytes": 3038490624,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-relocated-i08-32.service": {
-              "allocated_utilization_percent": 97.7,
-              "average_busy_vcpus": 0.977,
-              "cpu_delta_nsec": 18662061000,
-              "cpu_usage_nsec": 109099844000,
-              "memory_current_bytes": 3237625856,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.8,
+              "average_busy_vcpus": 0.998,
+              "cpu_delta_nsec": 19566515000,
+              "cpu_usage_nsec": 3083045326000,
+              "memory_current_bytes": 3997093888,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-relocated-i08-33.service": {
-              "allocated_utilization_percent": 97.6,
-              "average_busy_vcpus": 0.976,
-              "cpu_delta_nsec": 18639928000,
-              "cpu_usage_nsec": 109090699000,
-              "memory_current_bytes": 2956271616,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19547896000,
+              "cpu_usage_nsec": 3082836684000,
+              "memory_current_bytes": 4154339328,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-relocated-i098-38.service": {
-              "allocated_utilization_percent": 97.7,
-              "average_busy_vcpus": 0.977,
-              "cpu_delta_nsec": 18646734000,
-              "cpu_usage_nsec": 99712463000,
-              "memory_current_bytes": 2700685312,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19561233000,
+              "cpu_usage_nsec": 3073356347000,
+              "memory_current_bytes": 3221909504,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-relocated-i098-39.service": {
-              "allocated_utilization_percent": 97.6,
-              "average_busy_vcpus": 0.976,
-              "cpu_delta_nsec": 18644064000,
-              "cpu_usage_nsec": 99698628000,
-              "memory_current_bytes": 2692161536,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19563113000,
+              "cpu_usage_nsec": 3073406111000,
+              "memory_current_bytes": 2385661952,
+              "sample_seconds": 19.614
             },
             "compositional-v5-opposed-ghost-sniper": {
-              "allocated_utilization_percent": 95.8,
-              "average_busy_vcpus": 0.958,
-              "cpu_delta_nsec": 18295768000,
-              "cpu_usage_nsec": 229611971805000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19563213000,
+              "cpu_usage_nsec": 232533257794000,
+              "sample_seconds": 19.614
             },
             "penguin-ghost-opposing-fresh-v5": {
-              "allocated_utilization_percent": 98.2,
-              "average_busy_vcpus": 0.982,
-              "cpu_delta_nsec": 18747435000,
-              "cpu_usage_nsec": 91689033876000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19553727000,
+              "cpu_usage_nsec": 94659141913000,
+              "sample_seconds": 19.614
             },
             "remap-fix-v2-opposed-rook-ghost-converged-v8": {
-              "allocated_utilization_percent": 98.2,
-              "average_busy_vcpus": 0.982,
-              "cpu_delta_nsec": 18757508000,
-              "cpu_usage_nsec": 384943448000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.8,
+              "average_busy_vcpus": 0.998,
+              "cpu_delta_nsec": 19570270000,
+              "cpu_usage_nsec": 3360348054000,
+              "sample_seconds": 19.614
             },
             "source-order-opposed-queen-ghost-solve-v8": {
-              "allocated_utilization_percent": 98.2,
-              "average_busy_vcpus": 0.982,
-              "cpu_delta_nsec": 18755223000,
-              "cpu_usage_nsec": 91924265422000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.7,
+              "average_busy_vcpus": 0.997,
+              "cpu_delta_nsec": 19557106000,
+              "cpu_usage_nsec": 94901468453000,
+              "sample_seconds": 19.614
             }
           },
           "measurement_complete": true,
@@ -1635,35 +1359,22 @@
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 61.12,
+        "estimated_spend_usd": 63.06,
         "instance_type": "r8gd.8xlarge",
         "launch_time": "2026-08-20T21:06:26+00:00",
         "name": "hidden-primary",
         "remote": {
           "accounted_active_units": {
-            "count": 27,
+            "count": 15,
             "details": [
               {
                 "properties": {
                   "ActiveState": "active",
-                  "AllowedCPUs": "0",
-                  "CPUUsageNSec": "2052041133000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4840050688",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-00.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
                   "AllowedCPUs": "3",
-                  "CPUUsageNSec": "1688495217000",
+                  "CPUUsageNSec": "4665554505000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2991812608",
+                  "MemoryCurrent": "4107096064",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1673,10 +1384,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "4",
-                  "CPUUsageNSec": "1688492978000",
+                  "CPUUsageNSec": "4665478623000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2930163712",
+                  "MemoryCurrent": "4073340928",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1686,10 +1397,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "5",
-                  "CPUUsageNSec": "1688509569000",
+                  "CPUUsageNSec": "4662744633000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2737377280",
+                  "MemoryCurrent": "3789668352",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1699,10 +1410,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "6",
-                  "CPUUsageNSec": "1688505412000",
+                  "CPUUsageNSec": "4664872793000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3370364928",
+                  "MemoryCurrent": "4700569600",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1712,10 +1423,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "7",
-                  "CPUUsageNSec": "1688393460000",
+                  "CPUUsageNSec": "4665522144000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2948132864",
+                  "MemoryCurrent": "4066160640",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1725,10 +1436,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "8",
-                  "CPUUsageNSec": "1688495795000",
+                  "CPUUsageNSec": "4665546408000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2707357696",
+                  "MemoryCurrent": "3788443648",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1738,10 +1449,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "9",
-                  "CPUUsageNSec": "1688481813000",
+                  "CPUUsageNSec": "4663691212000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2448711680",
+                  "MemoryCurrent": "3004551168",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1751,10 +1462,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "10",
-                  "CPUUsageNSec": "1688428028000",
+                  "CPUUsageNSec": "4665553872000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3258109952",
+                  "MemoryCurrent": "4437364736",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1763,102 +1474,11 @@
               {
                 "properties": {
                   "ActiveState": "active",
-                  "AllowedCPUs": "11",
-                  "CPUUsageNSec": "2055256771000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4505346048",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-09.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "12",
-                  "CPUUsageNSec": "2054791212000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4474028032",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-10.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "13",
-                  "CPUUsageNSec": "2057484560000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4288708608",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-11.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "15",
-                  "CPUUsageNSec": "2052809681000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4636160000",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-12.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "16",
-                  "CPUUsageNSec": "2047659766000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "3804966912",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-13.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "17",
-                  "CPUUsageNSec": "2054142118000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4437417984",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-14.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "18",
-                  "CPUUsageNSec": "2055938359000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4193374208",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-15.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
                   "AllowedCPUs": "20",
-                  "CPUUsageNSec": "1687685809000",
+                  "CPUUsageNSec": "4664090110000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3089444864",
+                  "MemoryCurrent": "3903307776",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1868,10 +1488,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "21",
-                  "CPUUsageNSec": "1687642472000",
+                  "CPUUsageNSec": "4663947658000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2446995456",
+                  "MemoryCurrent": "3103170560",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1881,10 +1501,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "22",
-                  "CPUUsageNSec": "1687665178000",
+                  "CPUUsageNSec": "4664029905000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2415808512",
+                  "MemoryCurrent": "3038490624",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:37:52 UTC"
                 },
@@ -1893,63 +1513,11 @@
               {
                 "properties": {
                   "ActiveState": "active",
-                  "AllowedCPUs": "28",
-                  "CPUUsageNSec": "2054831630000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4599255040",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-24.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "29",
-                  "CPUUsageNSec": "2057536262000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4145991680",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-25.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "30",
-                  "CPUUsageNSec": "2057109721000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4130893824",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-26.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "31",
-                  "CPUUsageNSec": "2057855468000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "3902894080",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-27.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
                   "AllowedCPUs": "23",
-                  "CPUUsageNSec": "109099844000",
+                  "CPUUsageNSec": "3083045326000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "3237625856",
+                  "MemoryCurrent": "3997093888",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 23:04:11 UTC"
                 },
@@ -1959,10 +1527,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "24",
-                  "CPUUsageNSec": "109090699000",
+                  "CPUUsageNSec": "3082836684000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2956271616",
+                  "MemoryCurrent": "4154339328",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 23:04:11 UTC"
                 },
@@ -1972,10 +1540,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "25",
-                  "CPUUsageNSec": "99712463000",
+                  "CPUUsageNSec": "3073356347000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2700685312",
+                  "MemoryCurrent": "3221909504",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 23:04:21 UTC"
                 },
@@ -1985,10 +1553,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "26",
-                  "CPUUsageNSec": "99698628000",
+                  "CPUUsageNSec": "3073406111000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "2692161536",
+                  "MemoryCurrent": "2385661952",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 23:04:21 UTC"
                 },
@@ -1997,16 +1565,16 @@
             ],
             "probe_status": 0,
             "sample": [
-              "ultimatefish-devil-fleet-v5-highcap-100m-00.service",
               "ultimatefish-devil-fleet-v5-highcap-100m-01.service",
               "ultimatefish-devil-fleet-v5-highcap-100m-02.service",
               "ultimatefish-devil-fleet-v5-highcap-100m-03.service",
               "ultimatefish-devil-fleet-v5-highcap-100m-04.service",
               "ultimatefish-devil-fleet-v5-highcap-100m-05.service",
               "ultimatefish-devil-fleet-v5-highcap-100m-06.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-07.service"
+              "ultimatefish-devil-fleet-v5-highcap-100m-07.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-08.service"
             ],
-            "sha256": "2d602a2175b5469a888a17b23044db662b00bdd82bb703c3fa6d69e715de4c89"
+            "sha256": "cf78fb1d0afcd9f7d6dfa270642bdd8a0090ef966205431fed9d61c364c48790"
           },
           "jobs": [
             {
@@ -2189,8 +1757,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 2502348,
-                  "sha256": "e6abe2a912d6f89325327ab32a8399c3c0081a874ebe9122b51fa3f721f9dba9",
+                  "bytes": 2586221,
+                  "sha256": "6a5bf421ab80088d1f1272363d0175db94ba7c9c0534da789c4cb7ad69ee58b4",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -2209,10 +1777,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "2",
-                "CPUUsageNSec": "91689033876000",
+                "CPUUsageNSec": "94659141913000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "26333806592",
+                "MemoryCurrent": "28807282688",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 21:27:59 UTC"
               }
@@ -2618,10 +2186,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "1",
-                "CPUUsageNSec": "229611971805000",
+                "CPUUsageNSec": "232533257794000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "40711892992",
+                "MemoryCurrent": "46853545984",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 22:05:44 UTC"
               }
@@ -2644,10 +2212,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "19",
-                "CPUUsageNSec": "384943448000",
+                "CPUUsageNSec": "3360348054000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "2400976896",
+                "MemoryCurrent": "2401230848",
                 "Result": "success",
                 "StateChangeTimestamp": "Fri 2026-08-21 22:59:31 UTC"
               }
@@ -2684,10 +2252,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "14",
-                "CPUUsageNSec": "91924265422000",
+                "CPUUsageNSec": "94901468453000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "1059373056",
+                "MemoryCurrent": "1054396416",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 21:29:51 UTC"
               }
@@ -2917,31 +2485,31 @@
             }
           ],
           "memory": {
-            "MemAvailable": 160691798016,
+            "MemAvailable": 199544102912,
             "MemTotal": 265470873600,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 39387226112,
+              "free_bytes": 39398236160,
               "path": "/",
               "total_bytes": 42871009280
             },
             {
-              "free_bytes": 1439374442496,
+              "free_bytes": 1439049543680,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             },
             {
-              "free_bytes": 157349060608,
+              "free_bytes": 158081728512,
               "path": "/mnt/ultimatefish-penguin",
               "total_bytes": 536608768000
             }
           ],
           "probe_compacted": true,
           "probe_compaction_level": 2,
-          "probe_encoded_bytes": 16210,
+          "probe_encoded_bytes": 12930,
           "unconfigured_active_units": {
             "count": 0,
             "details": [],
@@ -2961,10 +2529,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "0",
-                  "CPUUsageNSec": "1567993824000",
+                  "CPUUsageNSec": "4545701092000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "1011744768",
+                  "MemoryCurrent": "3361976320",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -2974,10 +2542,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "1",
-                  "CPUUsageNSec": "1570675363000",
+                  "CPUUsageNSec": "4548489753000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "275935232",
+                  "MemoryCurrent": "2627256320",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -2987,10 +2555,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "2",
-                  "CPUUsageNSec": "1571041816000",
+                  "CPUUsageNSec": "4548868531000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "264654848",
+                  "MemoryCurrent": "2608611328",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -3000,10 +2568,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "3",
-                  "CPUUsageNSec": "1573296966000",
+                  "CPUUsageNSec": "4551105237000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "8798208",
+                  "MemoryCurrent": "2162094080",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -3037,47 +2605,47 @@
           "allocation_known": true,
           "allocation_mismatches": {},
           "idle_vcpus": 27,
-          "measured_busy_vcpus": 4.98,
-          "measured_fleet_capacity_percent": 15.6,
+          "measured_busy_vcpus": 5.016,
+          "measured_fleet_capacity_percent": 15.7,
           "measured_jobs": {
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-28.service": {
-              "allocated_utilization_percent": 99.6,
-              "average_busy_vcpus": 0.996,
-              "cpu_delta_nsec": 19009264000,
-              "cpu_usage_nsec": 1567993824000,
-              "memory_current_bytes": 1011744768,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 100.3,
+              "average_busy_vcpus": 1.003,
+              "cpu_delta_nsec": 19679370000,
+              "cpu_usage_nsec": 4545701092000,
+              "memory_current_bytes": 3361976320,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-29.service": {
-              "allocated_utilization_percent": 99.6,
-              "average_busy_vcpus": 0.996,
-              "cpu_delta_nsec": 19020259000,
-              "cpu_usage_nsec": 1570675363000,
-              "memory_current_bytes": 275935232,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 100.3,
+              "average_busy_vcpus": 1.003,
+              "cpu_delta_nsec": 19680237000,
+              "cpu_usage_nsec": 4548489753000,
+              "memory_current_bytes": 2627256320,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-30.service": {
-              "allocated_utilization_percent": 99.6,
-              "average_busy_vcpus": 0.996,
-              "cpu_delta_nsec": 19010238000,
-              "cpu_usage_nsec": 1571041816000,
-              "memory_current_bytes": 264654848,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 100.4,
+              "average_busy_vcpus": 1.004,
+              "cpu_delta_nsec": 19690217000,
+              "cpu_usage_nsec": 4548868531000,
+              "memory_current_bytes": 2608611328,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-31.service": {
-              "allocated_utilization_percent": 99.6,
-              "average_busy_vcpus": 0.996,
-              "cpu_delta_nsec": 19011220000,
-              "cpu_usage_nsec": 1573296966000,
-              "memory_current_bytes": 8798208,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 100.3,
+              "average_busy_vcpus": 1.003,
+              "cpu_delta_nsec": 19680242000,
+              "cpu_usage_nsec": 4551105237000,
+              "memory_current_bytes": 2162094080,
+              "sample_seconds": 19.614
             },
             "memory-fix-opposed-prince-ghost-solve-2b-v7": {
-              "allocated_utilization_percent": 99.6,
-              "average_busy_vcpus": 0.996,
-              "cpu_delta_nsec": 19010249000,
-              "cpu_usage_nsec": 166699771058000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 100.3,
+              "average_busy_vcpus": 1.003,
+              "cpu_delta_nsec": 19680158000,
+              "cpu_usage_nsec": 169677586045000,
+              "sample_seconds": 19.614
             }
           },
           "measurement_complete": true,
@@ -3094,7 +2662,7 @@
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 440.9,
+        "estimated_spend_usd": 442.2,
         "instance_type": "c8gd.8xlarge",
         "launch_time": "2026-08-10T05:51:20+00:00",
         "name": "crossed-and-jester-ghost",
@@ -3106,10 +2674,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "0",
-                  "CPUUsageNSec": "1567993824000",
+                  "CPUUsageNSec": "4545701092000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "1011744768",
+                  "MemoryCurrent": "3361976320",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -3119,10 +2687,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "1",
-                  "CPUUsageNSec": "1570675363000",
+                  "CPUUsageNSec": "4548489753000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "275935232",
+                  "MemoryCurrent": "2627256320",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -3132,10 +2700,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "2",
-                  "CPUUsageNSec": "1571041816000",
+                  "CPUUsageNSec": "4548868531000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "264654848",
+                  "MemoryCurrent": "2608611328",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -3145,10 +2713,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "3",
-                  "CPUUsageNSec": "1573296966000",
+                  "CPUUsageNSec": "4551105237000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "8798208",
+                  "MemoryCurrent": "2162094080",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -3355,10 +2923,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "14",
-                "CPUUsageNSec": "166699771058000",
+                "CPUUsageNSec": "169677586045000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "14965014528",
+                "MemoryCurrent": "14966120448",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 00:44:15 UTC"
               }
@@ -3566,26 +3134,26 @@
             }
           ],
           "memory": {
-            "MemAvailable": 61921722368,
+            "MemAvailable": 53295906816,
             "MemTotal": 66202484736,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 5435711488,
+              "free_bytes": 5416493056,
               "path": "/",
               "total_bytes": 8511270912
             },
             {
-              "free_bytes": 766797987840,
+              "free_bytes": 766797336576,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             }
           ],
           "probe_compacted": true,
           "probe_compaction_level": 2,
-          "probe_encoded_bytes": 5715,
+          "probe_encoded_bytes": 5720,
           "unconfigured_active_units": {
             "count": 0,
             "details": [],
@@ -3605,10 +3173,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "3",
-                  "CPUUsageNSec": "1564879653000",
+                  "CPUUsageNSec": "4542611809000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "4981452800",
+                  "MemoryCurrent": "1553276928",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -3618,10 +3186,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "4",
-                  "CPUUsageNSec": "1567220039000",
+                  "CPUUsageNSec": "4544957470000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "4458012672",
+                  "MemoryCurrent": "266317824",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -3631,10 +3199,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "5",
-                  "CPUUsageNSec": "1562614015000",
+                  "CPUUsageNSec": "4540345096000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5582446592",
+                  "MemoryCurrent": "2635165696",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -3644,10 +3212,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "6",
-                  "CPUUsageNSec": "1564977541000",
+                  "CPUUsageNSec": "4542709903000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "4958277632",
+                  "MemoryCurrent": "1374687232",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -3685,61 +3253,61 @@
           "allocation_known": true,
           "allocation_mismatches": {},
           "idle_vcpus": 25,
-          "measured_busy_vcpus": 6.944,
-          "measured_fleet_capacity_percent": 21.7,
+          "measured_busy_vcpus": 6.993,
+          "measured_fleet_capacity_percent": 21.9,
           "measured_jobs": {
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-34.service": {
-              "allocated_utilization_percent": 99.2,
-              "average_busy_vcpus": 0.992,
-              "cpu_delta_nsec": 18950234000,
-              "cpu_usage_nsec": 1564879653000,
-              "memory_current_bytes": 4981452800,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 19600107000,
+              "cpu_usage_nsec": 4542611809000,
+              "memory_current_bytes": 1553276928,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-35.service": {
-              "allocated_utilization_percent": 99.2,
-              "average_busy_vcpus": 0.992,
-              "cpu_delta_nsec": 18940219000,
-              "cpu_usage_nsec": 1567220039000,
-              "memory_current_bytes": 4458012672,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 19600223000,
+              "cpu_usage_nsec": 4544957470000,
+              "memory_current_bytes": 266317824,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-36.service": {
-              "allocated_utilization_percent": 99.2,
-              "average_busy_vcpus": 0.992,
-              "cpu_delta_nsec": 18940207000,
-              "cpu_usage_nsec": 1562614015000,
-              "memory_current_bytes": 5582446592,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 19590196000,
+              "cpu_usage_nsec": 4540345096000,
+              "memory_current_bytes": 2635165696,
+              "sample_seconds": 19.614
             },
             "accounted:ultimatefish-devil-fleet-v5-highcap-100m-37.service": {
-              "allocated_utilization_percent": 99.2,
-              "average_busy_vcpus": 0.992,
-              "cpu_delta_nsec": 18950232000,
-              "cpu_usage_nsec": 1564977541000,
-              "memory_current_bytes": 4958277632,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 19600169000,
+              "cpu_usage_nsec": 4542709903000,
+              "memory_current_bytes": 1374687232,
+              "sample_seconds": 19.614
             },
             "current-same-pawn-ghost-solve-v2": {
-              "allocated_utilization_percent": 99.2,
-              "average_busy_vcpus": 0.992,
-              "cpu_delta_nsec": 18944535000,
-              "cpu_usage_nsec": 524720084340000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 19595809000,
+              "cpu_usage_nsec": 527697256793000,
+              "sample_seconds": 19.614
             },
             "remap-fix-v2-opposed-copycat-ghost-source-order-solve-v6": {
-              "allocated_utilization_percent": 99.2,
-              "average_busy_vcpus": 0.992,
-              "cpu_delta_nsec": 18950174000,
-              "cpu_usage_nsec": 144491283760000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 19589527000,
+              "cpu_usage_nsec": 147468789556000,
+              "sample_seconds": 19.614
             },
             "singleton-fix-same-checker-ghost-gated-solve-v13": {
-              "allocated_utilization_percent": 99.2,
-              "average_busy_vcpus": 0.992,
-              "cpu_delta_nsec": 18950106000,
-              "cpu_usage_nsec": 18773651992000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 19590084000,
+              "cpu_usage_nsec": 21751367457000,
+              "sample_seconds": 19.614
             }
           },
           "measurement_complete": true,
@@ -3756,7 +3324,7 @@
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 442.91,
+        "estimated_spend_usd": 444.21,
         "instance_type": "c8gd.8xlarge",
         "launch_time": "2026-08-10T04:34:29+00:00",
         "name": "giant-ghost-same",
@@ -3768,10 +3336,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "3",
-                  "CPUUsageNSec": "1564879653000",
+                  "CPUUsageNSec": "4542611809000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "4981452800",
+                  "MemoryCurrent": "1553276928",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -3781,10 +3349,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "4",
-                  "CPUUsageNSec": "1567220039000",
+                  "CPUUsageNSec": "4544957470000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "4458012672",
+                  "MemoryCurrent": "266317824",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -3794,10 +3362,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "5",
-                  "CPUUsageNSec": "1562614015000",
+                  "CPUUsageNSec": "4540345096000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5582446592",
+                  "MemoryCurrent": "2635165696",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -3807,10 +3375,10 @@
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "6",
-                  "CPUUsageNSec": "1564977541000",
+                  "CPUUsageNSec": "4542709903000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "4958277632",
+                  "MemoryCurrent": "1374687232",
                   "Result": "success",
                   "StateChangeTimestamp": "Fri 2026-08-21 22:06:55 UTC"
                 },
@@ -4839,8 +4407,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 34063,
-                  "sha256": "5edc6337a30fc742ee292dcbf42e4fb04ca0a1064f019b0578b3346f5cd4f0f7",
+                  "bytes": 40407,
+                  "sha256": "2abf228340009e6468921f845dcc581f959620b0bf4f6b37c4e0d7961c4ffe6e",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -4859,10 +4427,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "1",
-                "CPUUsageNSec": "18773651992000",
+                "CPUUsageNSec": "21751367457000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "4027580416",
+                "MemoryCurrent": "6539444224",
                 "Result": "success",
                 "StateChangeTimestamp": "Fri 2026-08-21 17:53:06 UTC"
               }
@@ -4872,8 +4440,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 2124397,
-                  "sha256": "c5960e88f097813c7676fd8cb2b1658382ed5731784db965b1edf93452ee6892",
+                  "bytes": 2131272,
+                  "sha256": "73d4da5dc38a0f905218f51976ea9b52897035d4ff5b87c31d3bbea387b0df11",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -4892,10 +4460,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "0",
-                "CPUUsageNSec": "524720084340000",
+                "CPUUsageNSec": "527697256793000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "13821399040",
+                "MemoryCurrent": "18487402496",
                 "Result": "success",
                 "StateChangeTimestamp": "Sat 2026-08-15 21:11:44 UTC"
               }
@@ -4905,8 +4473,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 528507,
-                  "sha256": "eb58da729e0fb99a185932a824583713e85342140d7133db36e18d90c9cb2961",
+                  "bytes": 536348,
+                  "sha256": "75bac1af82cea830bf15e25a898a5619b2b3587f494cd99823c9a4dc01174ea5",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -4918,10 +4486,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "2",
-                "CPUUsageNSec": "144491283760000",
+                "CPUUsageNSec": "147468789556000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "11457024000",
+                "MemoryCurrent": "16513789952",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 06:50:26 UTC"
               }
@@ -5058,26 +4626,26 @@
             }
           ],
           "memory": {
-            "MemAvailable": 40061112320,
+            "MemAvailable": 54141632512,
             "MemTotal": 66202484736,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 5380620288,
+              "free_bytes": 5376524288,
               "path": "/",
               "total_bytes": 8511270912
             },
             {
-              "free_bytes": 489128984576,
+              "free_bytes": 487981285376,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             }
           ],
           "probe_compacted": true,
           "probe_compaction_level": 2,
-          "probe_encoded_bytes": 15855,
+          "probe_encoded_bytes": 15854,
           "unconfigured_active_units": {
             "count": 0,
             "details": [],
@@ -5091,247 +4659,219 @@
       "i-0b4523116b2f7765c": {
         "cpu_allocation": {
           "accounted_active_units": {
-            "count": 16,
+            "count": 14,
             "details": [
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "13",
-                  "CPUUsageNSec": "1747779005000",
+                  "CPUUsageNSec": "53949936000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5623619584",
+                  "MemoryCurrent": "2004094976",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-40.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-243.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "14",
-                  "CPUUsageNSec": "1751603750000",
+                  "CPUUsageNSec": "53939794000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5795164160",
+                  "MemoryCurrent": "1999020032",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-41.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-299.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "15",
-                  "CPUUsageNSec": "1750713566000",
+                  "CPUUsageNSec": "53939814000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5762699264",
+                  "MemoryCurrent": "1997488128",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-42.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-355.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "16",
-                  "CPUUsageNSec": "1752788398000",
+                  "CPUUsageNSec": "53997192000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5024624640",
+                  "MemoryCurrent": "1999269888",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-43.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-411.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "17",
-                  "CPUUsageNSec": "1746970930000",
+                  "CPUUsageNSec": "53983892000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "6224830464",
+                  "MemoryCurrent": "2000510976",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-44.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-467.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "18",
-                  "CPUUsageNSec": "1739568752000",
+                  "CPUUsageNSec": "53977923000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "4933779456",
+                  "MemoryCurrent": "1996644352",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-45.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-523.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "19",
-                  "CPUUsageNSec": "1730503820000",
+                  "CPUUsageNSec": "53904851000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "4388569088",
+                  "MemoryCurrent": "1996734464",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-46.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-579.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "20",
-                  "CPUUsageNSec": "1755724023000",
+                  "CPUUsageNSec": "53972526000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5146132480",
+                  "MemoryCurrent": "1999572992",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-47.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-635.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "22",
-                  "CPUUsageNSec": "1748374469000",
+                  "CPUUsageNSec": "53973305000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "6049656832",
+                  "MemoryCurrent": "1998487552",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-48.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-691.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "23",
-                  "CPUUsageNSec": "1752011463000",
+                  "CPUUsageNSec": "53953727000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5763895296",
+                  "MemoryCurrent": "1999847424",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-49.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-747.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "25",
-                  "CPUUsageNSec": "1752955585000",
+                  "CPUUsageNSec": "53948518000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5697355776",
+                  "MemoryCurrent": "1989918720",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-50.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-803.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "26",
-                  "CPUUsageNSec": "1755415245000",
+                  "CPUUsageNSec": "53955721000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5259145216",
+                  "MemoryCurrent": "1999740928",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-51.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-859.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "27",
-                  "CPUUsageNSec": "1747059535000",
+                  "CPUUsageNSec": "53948338000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "6184869888",
+                  "MemoryCurrent": "2000670720",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-52.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-915.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "28",
-                  "CPUUsageNSec": "1751942841000",
+                  "CPUUsageNSec": "53936615000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5269397504",
+                  "MemoryCurrent": "1993777152",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-53.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "30",
-                  "CPUUsageNSec": "1752773183000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "5320814592",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-54.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "31",
-                  "CPUUsageNSec": "1754381984000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4988735488",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-55.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-971.service"
               }
             ],
             "probe_status": 0,
             "sample": [
-              "ultimatefish-devil-fleet-v5-highcap-100m-40.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-41.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-42.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-43.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-44.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-45.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-46.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-47.service"
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-243.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-299.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-355.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-411.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-467.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-523.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-579.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-635.service"
             ],
-            "sha256": "6c170ffcc12ee9a2ff6adc21772867627be953959a9599151ca973239953c32e"
+            "sha256": "c07dfdd49770a47caf00c343e6dfcdbbcf3de5e3677f48e942be77ef7be1ee1a"
           },
           "active_cpu_sets": {
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-40.service": "13",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-41.service": "14",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-42.service": "15",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-43.service": "16",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-44.service": "17",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-45.service": "18",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-46.service": "19",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-47.service": "20",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-48.service": "22",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-49.service": "23",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-50.service": "25",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-51.service": "26",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-52.service": "27",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-53.service": "28",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-54.service": "30",
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-55.service": "31",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-243.service": "13",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-299.service": "14",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-355.service": "15",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-411.service": "16",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-467.service": "17",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-523.service": "18",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-579.service": "19",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-635.service": "20",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-691.service": "22",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-747.service": "23",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-803.service": "25",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-859.service": "26",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-915.service": "27",
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-971.service": "28",
             "bomb-ghost-opposing-strong-solve-v8": "11",
             "crossed-jester-ghost-current-migrated-v2": "29",
             "dragon-ghost-opposing-memory-v5": "24",
@@ -5341,22 +4881,20 @@
             "source-order-opposed-ninja-ghost-solve-v8": "12"
           },
           "active_jobs": {
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-40.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-41.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-42.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-43.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-44.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-45.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-46.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-47.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-48.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-49.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-50.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-51.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-52.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-53.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-54.service": 1,
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-55.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-243.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-299.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-355.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-411.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-467.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-523.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-579.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-635.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-691.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-747.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-803.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-859.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-915.service": 1,
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-971.service": 1,
             "bomb-ghost-opposing-strong-solve-v8": 1,
             "crossed-jester-ghost-current-migrated-v2": 1,
             "dragon-ghost-opposing-memory-v5": 1,
@@ -5365,189 +4903,173 @@
             "remap-fix-opposed-berserker-ghost-transitions-v5": 10,
             "source-order-opposed-ninja-ghost-solve-v8": 1
           },
-          "allocated_vcpus": 32,
+          "allocated_vcpus": 30,
           "allocation_known": true,
           "allocation_mismatches": {},
-          "idle_vcpus": 0,
-          "measured_busy_vcpus": 31.511,
-          "measured_fleet_capacity_percent": 98.5,
+          "idle_vcpus": 2,
+          "measured_busy_vcpus": 27.912,
+          "measured_fleet_capacity_percent": 87.2,
           "measured_jobs": {
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-40.service": {
-              "allocated_utilization_percent": 99.2,
-              "average_busy_vcpus": 0.992,
-              "cpu_delta_nsec": 18941501000,
-              "cpu_usage_nsec": 1747779005000,
-              "memory_current_bytes": 5623619584,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-243.service": {
+              "allocated_utilization_percent": 100.1,
+              "average_busy_vcpus": 1.001,
+              "cpu_delta_nsec": 19635543000,
+              "cpu_usage_nsec": 53949936000,
+              "memory_current_bytes": 2004094976,
+              "sample_seconds": 19.614
             },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-41.service": {
-              "allocated_utilization_percent": 99.0,
-              "average_busy_vcpus": 0.99,
-              "cpu_delta_nsec": 18909379000,
-              "cpu_usage_nsec": 1751603750000,
-              "memory_current_bytes": 5795164160,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-299.service": {
+              "allocated_utilization_percent": 100.1,
+              "average_busy_vcpus": 1.001,
+              "cpu_delta_nsec": 19625853000,
+              "cpu_usage_nsec": 53939794000,
+              "memory_current_bytes": 1999020032,
+              "sample_seconds": 19.614
             },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-42.service": {
-              "allocated_utilization_percent": 98.7,
-              "average_busy_vcpus": 0.987,
-              "cpu_delta_nsec": 18851486000,
-              "cpu_usage_nsec": 1750713566000,
-              "memory_current_bytes": 5762699264,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-355.service": {
+              "allocated_utilization_percent": 100.1,
+              "average_busy_vcpus": 1.001,
+              "cpu_delta_nsec": 19635049000,
+              "cpu_usage_nsec": 53939814000,
+              "memory_current_bytes": 1997488128,
+              "sample_seconds": 19.614
             },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-43.service": {
-              "allocated_utilization_percent": 98.5,
-              "average_busy_vcpus": 0.985,
-              "cpu_delta_nsec": 18813061000,
-              "cpu_usage_nsec": 1752788398000,
-              "memory_current_bytes": 5024624640,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-411.service": {
+              "allocated_utilization_percent": 100.2,
+              "average_busy_vcpus": 1.002,
+              "cpu_delta_nsec": 19657639000,
+              "cpu_usage_nsec": 53997192000,
+              "memory_current_bytes": 1999269888,
+              "sample_seconds": 19.614
             },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-44.service": {
-              "allocated_utilization_percent": 98.7,
-              "average_busy_vcpus": 0.987,
-              "cpu_delta_nsec": 18838504000,
-              "cpu_usage_nsec": 1746970930000,
-              "memory_current_bytes": 6224830464,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-467.service": {
+              "allocated_utilization_percent": 100.2,
+              "average_busy_vcpus": 1.002,
+              "cpu_delta_nsec": 19650396000,
+              "cpu_usage_nsec": 53983892000,
+              "memory_current_bytes": 2000510976,
+              "sample_seconds": 19.614
             },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-45.service": {
-              "allocated_utilization_percent": 98.6,
-              "average_busy_vcpus": 0.986,
-              "cpu_delta_nsec": 18819911000,
-              "cpu_usage_nsec": 1739568752000,
-              "memory_current_bytes": 4933779456,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-523.service": {
+              "allocated_utilization_percent": 100.2,
+              "average_busy_vcpus": 1.002,
+              "cpu_delta_nsec": 19654639000,
+              "cpu_usage_nsec": 53977923000,
+              "memory_current_bytes": 1996644352,
+              "sample_seconds": 19.614
             },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-46.service": {
-              "allocated_utilization_percent": 98.4,
-              "average_busy_vcpus": 0.984,
-              "cpu_delta_nsec": 18789000000,
-              "cpu_usage_nsec": 1730503820000,
-              "memory_current_bytes": 4388569088,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-579.service": {
+              "allocated_utilization_percent": 99.9,
+              "average_busy_vcpus": 0.999,
+              "cpu_delta_nsec": 19585026000,
+              "cpu_usage_nsec": 53904851000,
+              "memory_current_bytes": 1996734464,
+              "sample_seconds": 19.614
             },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-47.service": {
-              "allocated_utilization_percent": 98.3,
-              "average_busy_vcpus": 0.983,
-              "cpu_delta_nsec": 18770580000,
-              "cpu_usage_nsec": 1755724023000,
-              "memory_current_bytes": 5146132480,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-635.service": {
+              "allocated_utilization_percent": 100.2,
+              "average_busy_vcpus": 1.002,
+              "cpu_delta_nsec": 19646183000,
+              "cpu_usage_nsec": 53972526000,
+              "memory_current_bytes": 1999572992,
+              "sample_seconds": 19.614
             },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-48.service": {
-              "allocated_utilization_percent": 98.2,
-              "average_busy_vcpus": 0.982,
-              "cpu_delta_nsec": 18754850000,
-              "cpu_usage_nsec": 1748374469000,
-              "memory_current_bytes": 6049656832,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-691.service": {
+              "allocated_utilization_percent": 100.2,
+              "average_busy_vcpus": 1.002,
+              "cpu_delta_nsec": 19657056000,
+              "cpu_usage_nsec": 53973305000,
+              "memory_current_bytes": 1998487552,
+              "sample_seconds": 19.614
             },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-49.service": {
-              "allocated_utilization_percent": 98.1,
-              "average_busy_vcpus": 0.981,
-              "cpu_delta_nsec": 18728014000,
-              "cpu_usage_nsec": 1752011463000,
-              "memory_current_bytes": 5763895296,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-747.service": {
+              "allocated_utilization_percent": 100.1,
+              "average_busy_vcpus": 1.001,
+              "cpu_delta_nsec": 19640301000,
+              "cpu_usage_nsec": 53953727000,
+              "memory_current_bytes": 1999847424,
+              "sample_seconds": 19.614
             },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-50.service": {
-              "allocated_utilization_percent": 97.9,
-              "average_busy_vcpus": 0.979,
-              "cpu_delta_nsec": 18686088000,
-              "cpu_usage_nsec": 1752955585000,
-              "memory_current_bytes": 5697355776,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-803.service": {
+              "allocated_utilization_percent": 100.2,
+              "average_busy_vcpus": 1.002,
+              "cpu_delta_nsec": 19656334000,
+              "cpu_usage_nsec": 53948518000,
+              "memory_current_bytes": 1989918720,
+              "sample_seconds": 19.614
             },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-51.service": {
-              "allocated_utilization_percent": 97.8,
-              "average_busy_vcpus": 0.978,
-              "cpu_delta_nsec": 18670096000,
-              "cpu_usage_nsec": 1755415245000,
-              "memory_current_bytes": 5259145216,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-859.service": {
+              "allocated_utilization_percent": 100.2,
+              "average_busy_vcpus": 1.002,
+              "cpu_delta_nsec": 19656900000,
+              "cpu_usage_nsec": 53955721000,
+              "memory_current_bytes": 1999740928,
+              "sample_seconds": 19.614
             },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-52.service": {
-              "allocated_utilization_percent": 97.8,
-              "average_busy_vcpus": 0.978,
-              "cpu_delta_nsec": 18679305000,
-              "cpu_usage_nsec": 1747059535000,
-              "memory_current_bytes": 6184869888,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-915.service": {
+              "allocated_utilization_percent": 100.2,
+              "average_busy_vcpus": 1.002,
+              "cpu_delta_nsec": 19648409000,
+              "cpu_usage_nsec": 53948338000,
+              "memory_current_bytes": 2000670720,
+              "sample_seconds": 19.614
             },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-53.service": {
-              "allocated_utilization_percent": 97.7,
-              "average_busy_vcpus": 0.977,
-              "cpu_delta_nsec": 18659707000,
-              "cpu_usage_nsec": 1751942841000,
-              "memory_current_bytes": 5269397504,
-              "sample_seconds": 19.094
-            },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-54.service": {
-              "allocated_utilization_percent": 97.6,
-              "average_busy_vcpus": 0.976,
-              "cpu_delta_nsec": 18636218000,
-              "cpu_usage_nsec": 1752773183000,
-              "memory_current_bytes": 5320814592,
-              "sample_seconds": 19.094
-            },
-            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-55.service": {
-              "allocated_utilization_percent": 97.6,
-              "average_busy_vcpus": 0.976,
-              "cpu_delta_nsec": 18644551000,
-              "cpu_usage_nsec": 1754381984000,
-              "memory_current_bytes": 4988735488,
-              "sample_seconds": 19.094
+            "accounted:ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-971.service": {
+              "allocated_utilization_percent": 100.2,
+              "average_busy_vcpus": 1.002,
+              "cpu_delta_nsec": 19656287000,
+              "cpu_usage_nsec": 53936615000,
+              "memory_current_bytes": 1993777152,
+              "sample_seconds": 19.614
             },
             "bomb-ghost-opposing-strong-solve-v8": {
-              "allocated_utilization_percent": 98.6,
-              "average_busy_vcpus": 0.986,
-              "cpu_delta_nsec": 18831392000,
-              "cpu_usage_nsec": 147080334696000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 98.3,
+              "average_busy_vcpus": 0.983,
+              "cpu_delta_nsec": 19272966000,
+              "cpu_usage_nsec": 149986411101000,
+              "sample_seconds": 19.614
             },
             "crossed-jester-ghost-current-migrated-v2": {
-              "allocated_utilization_percent": 98.6,
-              "average_busy_vcpus": 0.986,
-              "cpu_delta_nsec": 18819595000,
-              "cpu_usage_nsec": 198356273879000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 100.2,
+              "average_busy_vcpus": 1.002,
+              "cpu_delta_nsec": 19656820000,
+              "cpu_usage_nsec": 201327848544000,
+              "sample_seconds": 19.614
             },
             "dragon-ghost-opposing-memory-v5": {
-              "allocated_utilization_percent": 93.9,
-              "average_busy_vcpus": 0.939,
-              "cpu_delta_nsec": 17938426000,
-              "cpu_usage_nsec": 115935730977000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 93.0,
+              "average_busy_vcpus": 0.93,
+              "cpu_delta_nsec": 18243570000,
+              "cpu_usage_nsec": 118409905366000,
+              "sample_seconds": 19.614
             },
             "jester-ghost-same-lower-binding-v2": {
-              "allocated_utilization_percent": 96.4,
-              "average_busy_vcpus": 0.964,
-              "cpu_delta_nsec": 18414344000,
-              "cpu_usage_nsec": 153258301450000,
-              "sample_seconds": 19.094
-            },
-            "memory-fix-same-sniper-ghost-solve-v2": {
               "allocated_utilization_percent": 98.7,
               "average_busy_vcpus": 0.987,
-              "cpu_delta_nsec": 18840140000,
-              "cpu_usage_nsec": 148370071382000,
-              "sample_seconds": 19.094
+              "cpu_delta_nsec": 19362165000,
+              "cpu_usage_nsec": 156122303624000,
+              "sample_seconds": 19.614
+            },
+            "memory-fix-same-sniper-ghost-solve-v2": {
+              "allocated_utilization_percent": 100.2,
+              "average_busy_vcpus": 1.002,
+              "cpu_delta_nsec": 19653495000,
+              "cpu_usage_nsec": 151298528512000,
+              "sample_seconds": 19.614
             },
             "remap-fix-opposed-berserker-ghost-transitions-v5": {
-              "allocated_utilization_percent": 99.3,
-              "average_busy_vcpus": 9.935,
-              "cpu_delta_nsec": 189696300000,
-              "cpu_usage_nsec": 1959672590677000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 80.1,
+              "average_busy_vcpus": 8.008,
+              "cpu_delta_nsec": 157074661000,
+              "cpu_usage_nsec": 1987645657235000,
+              "sample_seconds": 19.614
             },
             "source-order-opposed-ninja-ghost-solve-v8": {
-              "allocated_utilization_percent": 99.3,
-              "average_busy_vcpus": 0.993,
-              "cpu_delta_nsec": 18951311000,
-              "cpu_usage_nsec": 59327260897000,
-              "sample_seconds": 19.094
+              "allocated_utilization_percent": 97.9,
+              "average_busy_vcpus": 0.979,
+              "cpu_delta_nsec": 19210439000,
+              "cpu_usage_nsec": 62267428351000,
+              "sample_seconds": 19.614
             }
           },
           "measurement_complete": true,
@@ -5564,235 +5086,209 @@
           "vcpus": 32
         },
         "ec2_state": "running",
-        "estimated_spend_usd": 649.02,
+        "estimated_spend_usd": 650.96,
         "instance_type": "r8gd.8xlarge",
         "launch_time": "2026-08-10T11:04:50+00:00",
         "name": "concrete-primary",
         "remote": {
           "accounted_active_units": {
-            "count": 16,
+            "count": 14,
             "details": [
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "13",
-                  "CPUUsageNSec": "1747779005000",
+                  "CPUUsageNSec": "53949936000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5623619584",
+                  "MemoryCurrent": "2004094976",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-40.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-243.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "14",
-                  "CPUUsageNSec": "1751603750000",
+                  "CPUUsageNSec": "53939794000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5795164160",
+                  "MemoryCurrent": "1999020032",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-41.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-299.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "15",
-                  "CPUUsageNSec": "1750713566000",
+                  "CPUUsageNSec": "53939814000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5762699264",
+                  "MemoryCurrent": "1997488128",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-42.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-355.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "16",
-                  "CPUUsageNSec": "1752788398000",
+                  "CPUUsageNSec": "53997192000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5024624640",
+                  "MemoryCurrent": "1999269888",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-43.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-411.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "17",
-                  "CPUUsageNSec": "1746970930000",
+                  "CPUUsageNSec": "53983892000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "6224830464",
+                  "MemoryCurrent": "2000510976",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-44.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-467.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "18",
-                  "CPUUsageNSec": "1739568752000",
+                  "CPUUsageNSec": "53977923000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "4933779456",
+                  "MemoryCurrent": "1996644352",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-45.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-523.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "19",
-                  "CPUUsageNSec": "1730503820000",
+                  "CPUUsageNSec": "53904851000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "4388569088",
+                  "MemoryCurrent": "1996734464",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-46.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-579.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "20",
-                  "CPUUsageNSec": "1755724023000",
+                  "CPUUsageNSec": "53972526000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5146132480",
+                  "MemoryCurrent": "1999572992",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-47.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-635.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "22",
-                  "CPUUsageNSec": "1748374469000",
+                  "CPUUsageNSec": "53973305000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "6049656832",
+                  "MemoryCurrent": "1998487552",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-48.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-691.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "23",
-                  "CPUUsageNSec": "1752011463000",
+                  "CPUUsageNSec": "53953727000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5763895296",
+                  "MemoryCurrent": "1999847424",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-49.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-747.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "25",
-                  "CPUUsageNSec": "1752955585000",
+                  "CPUUsageNSec": "53948518000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5697355776",
+                  "MemoryCurrent": "1989918720",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-50.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-803.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "26",
-                  "CPUUsageNSec": "1755415245000",
+                  "CPUUsageNSec": "53955721000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5259145216",
+                  "MemoryCurrent": "1999740928",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-51.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-859.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "27",
-                  "CPUUsageNSec": "1747059535000",
+                  "CPUUsageNSec": "53948338000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "6184869888",
+                  "MemoryCurrent": "2000670720",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-52.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-915.service"
               },
               {
                 "properties": {
                   "ActiveState": "active",
                   "AllowedCPUs": "28",
-                  "CPUUsageNSec": "1751942841000",
+                  "CPUUsageNSec": "53936615000",
                   "ExecMainStatus": "0",
                   "LoadState": "loaded",
-                  "MemoryCurrent": "5269397504",
+                  "MemoryCurrent": "1993777152",
                   "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
+                  "StateChangeTimestamp": "Fri 2026-08-21 23:54:46 UTC"
                 },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-53.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "30",
-                  "CPUUsageNSec": "1752773183000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "5320814592",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-54.service"
-              },
-              {
-                "properties": {
-                  "ActiveState": "active",
-                  "AllowedCPUs": "31",
-                  "CPUUsageNSec": "1754381984000",
-                  "ExecMainStatus": "0",
-                  "LoadState": "loaded",
-                  "MemoryCurrent": "4988735488",
-                  "Result": "success",
-                  "StateChangeTimestamp": "Fri 2026-08-21 22:06:59 UTC"
-                },
-                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-55.service"
+                "unit": "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-971.service"
               }
             ],
             "probe_status": 0,
             "sample": [
-              "ultimatefish-devil-fleet-v5-highcap-100m-40.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-41.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-42.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-43.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-44.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-45.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-46.service",
-              "ultimatefish-devil-fleet-v5-highcap-100m-47.service"
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-243.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-299.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-355.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-411.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-467.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-523.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-579.service",
+              "ultimatefish-devil-fleet-v5-highcap-100m-slot19-fanout-635.service"
             ],
-            "sha256": "6c170ffcc12ee9a2ff6adc21772867627be953959a9599151ca973239953c32e"
+            "sha256": "c07dfdd49770a47caf00c343e6dfcdbbcf3de5e3677f48e942be77ef7be1ee1a"
           },
           "jobs": [
             {
@@ -5813,10 +5309,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "29",
-                "CPUUsageNSec": "198356273879000",
+                "CPUUsageNSec": "201327848544000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "75747663872",
+                "MemoryCurrent": "81315414016",
                 "Result": "success",
                 "StateChangeTimestamp": "Wed 2026-08-19 15:38:46 UTC"
               }
@@ -5939,10 +5435,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "11",
-                "CPUUsageNSec": "147080334696000",
+                "CPUUsageNSec": "149986411101000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "11029221376",
+                "MemoryCurrent": "15066693632",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 04:38:55 UTC"
               }
@@ -6003,10 +5499,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "10",
-                "CPUUsageNSec": "153258301450000",
+                "CPUUsageNSec": "156122303624000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "33710616576",
+                "MemoryCurrent": "34308231168",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 04:16:00 UTC"
               }
@@ -6016,8 +5512,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 261155,
-                  "sha256": "6ba29aba7e45240499303b9373e66e67a0d6d9ca66aafd432750ca7cb5e17dee",
+                  "bytes": 268419,
+                  "sha256": "ebb560375ad1e6046e63da3313c6ca248dd6333d8ab278e56e82ed06fd18d1de",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -6036,10 +5532,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "24",
-                "CPUUsageNSec": "115935730977000",
+                "CPUUsageNSec": "118409905366000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "23168802816",
+                "MemoryCurrent": "30942781440",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 02:39:32 UTC"
               }
@@ -6341,10 +5837,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "0-9",
-                "CPUUsageNSec": "1959672590677000",
+                "CPUUsageNSec": "1987645657235000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "5364047872",
+                "MemoryCurrent": "6814818304",
                 "Result": "success",
                 "StateChangeTimestamp": "Wed 2026-08-19 16:33:47 UTC"
               }
@@ -6354,8 +5850,8 @@
               "completion": [],
               "diagnostics": [
                 {
-                  "bytes": 1074432,
-                  "sha256": "8247567981ed2629b01ad981baade5417e3d3151e4171c08e1b8c10d1421cc4a",
+                  "bytes": 1085960,
+                  "sha256": "a5b4d9f37cb0075cc9546204cfcc36f60a6d6907dfac64a9911a5f56cba06f41",
                   "source_index": 0,
                   "status": "ok",
                   "tail": ""
@@ -6374,10 +5870,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "21",
-                "CPUUsageNSec": "148370071382000",
+                "CPUUsageNSec": "151298528512000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "9098739712",
+                "MemoryCurrent": "11450167296",
                 "Result": "success",
                 "StateChangeTimestamp": "Thu 2026-08-20 05:40:37 UTC"
               }
@@ -6407,10 +5903,10 @@
               "unit": {
                 "ActiveState": "active",
                 "AllowedCPUs": "12",
-                "CPUUsageNSec": "59327260897000",
+                "CPUUsageNSec": "62267428351000",
                 "ExecMainStatus": "0",
                 "LoadState": "loaded",
-                "MemoryCurrent": "13552054272",
+                "MemoryCurrent": "13586026496",
                 "Result": "success",
                 "StateChangeTimestamp": "Fri 2026-08-21 06:32:40 UTC"
               }
@@ -6511,24 +6007,24 @@
             }
           ],
           "memory": {
-            "MemAvailable": 90430140416,
+            "MemAvailable": 150037245952,
             "MemTotal": 265470873600,
             "SwapFree": 0,
             "SwapTotal": 0
           },
           "mounts": [
             {
-              "free_bytes": 5269880832,
+              "free_bytes": 5266599936,
               "path": "/",
               "total_bytes": 8511270912
             },
             {
-              "free_bytes": 433174827008,
+              "free_bytes": 433031159808,
               "path": "/mnt/ultimatefish",
               "total_bytes": 1899072188416
             },
             {
-              "free_bytes": 854538887168,
+              "free_bytes": 830427275264,
               "path": "/mnt/ultimatefish-overflow",
               "total_bytes": 1098974756864
             },
@@ -6538,14 +6034,14 @@
               "total_bytes": 536608768000
             },
             {
-              "free_bytes": 370279092224,
+              "free_bytes": 373049065472,
               "path": "/mnt/ultimatefish-jg",
               "total_bytes": 643930521600
             }
           ],
           "probe_compacted": true,
           "probe_compaction_level": 2,
-          "probe_encoded_bytes": 14618,
+          "probe_encoded_bytes": 14374,
           "unconfigured_active_units": {
             "count": 0,
             "details": [],
@@ -9368,10 +8864,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "11",
-          "CPUUsageNSec": "147080334696000",
+          "CPUUsageNSec": "149986411101000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "11029221376",
+          "MemoryCurrent": "15066693632",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 04:38:55 UTC"
         }
@@ -9451,11 +8947,11 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 1648432,
-            "sha256": "f8bde94b156bf3d11521eed728c513ffe280e1332db1f1cd48cbb775edc27c8b",
+            "bytes": 1670689,
+            "sha256": "e6169931f083dd36cdcd3e25ec7f1bf66df5104b9e38045246cba9ca2f5c8b8b",
             "source_index": 0,
             "status": "ok",
-            "tail": "teration 16 geometry 3205000/3943680 bdd_nodes 165570736 peak_rss_bytes 17411567616 elapsed 158451s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3210000/3943680 bdd_nodes 165600322 peak_rss_bytes 17411567616 elapsed 158468s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3215000/3943680 bdd_nodes 165662263 peak_rss_bytes 17411567616 elapsed 158486s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3220000/3943680 bdd_nodes 165750103 peak_rss_bytes 17411567616 elapsed 158504s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3225000/3943680 bdd_nodes 165855590 peak_rss_bytes 17411567616 elapsed 158524s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3230000/3943680 bdd_nodes 165969525 peak_rss_bytes 17411567616 elapsed 158541s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3235000/3943680 bdd_nodes 166088865 peak_rss_bytes 17411567616 elapsed 158555s\nreciprocal_ghost_extra_bellman iteration 16 geometry 3240000/3943680 bdd_nodes 166298645 peak_rss_bytes 17411567616 elapsed 158570s\n"
+            "tail": "t_extra_bellman iteration 17 geometry 95000/3943680 bdd_nodes 17704910 peak_rss_bytes 17411567616 elapsed 161512s\nreciprocal_ghost_extra_bellman iteration 17 geometry 100000/3943680 bdd_nodes 17764765 peak_rss_bytes 17411567616 elapsed 161517s\nreciprocal_ghost_extra_bellman iteration 17 geometry 105000/3943680 bdd_nodes 17984011 peak_rss_bytes 17411567616 elapsed 161522s\nreciprocal_ghost_extra_bellman iteration 17 geometry 110000/3943680 bdd_nodes 18285078 peak_rss_bytes 17411567616 elapsed 161529s\nreciprocal_ghost_extra_bellman iteration 17 geometry 115000/3943680 bdd_nodes 18614516 peak_rss_bytes 17411567616 elapsed 161538s\nreciprocal_ghost_extra_bellman iteration 17 geometry 120000/3943680 bdd_nodes 18912258 peak_rss_bytes 17411567616 elapsed 161546s\nreciprocal_ghost_extra_bellman iteration 17 geometry 125000/3943680 bdd_nodes 19143220 peak_rss_bytes 17411567616 elapsed 161553s\nreciprocal_ghost_extra_bellman iteration 17 geometry 130000/3943680 bdd_nodes 19316988 peak_rss_bytes 17411567616 elapsed 161561s\n"
           },
           {
             "bytes": 152,
@@ -9476,10 +8972,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "3",
-          "CPUUsageNSec": "158913654609000",
+          "CPUUsageNSec": "161888669790000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "17882492928",
+          "MemoryCurrent": "26636222464",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 02:52:43 UTC"
         }
@@ -9580,10 +9076,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "1",
-          "CPUUsageNSec": "229611971805000",
+          "CPUUsageNSec": "232533257794000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "40711892992",
+          "MemoryCurrent": "46853545984",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 22:05:44 UTC"
         }
@@ -12775,10 +12271,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "29",
-          "CPUUsageNSec": "198356273879000",
+          "CPUUsageNSec": "201327848544000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "75747663872",
+          "MemoryCurrent": "81315414016",
           "Result": "success",
           "StateChangeTimestamp": "Wed 2026-08-19 15:38:46 UTC"
         }
@@ -13931,10 +13427,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "1",
-          "CPUUsageNSec": "19351837115000",
+          "CPUUsageNSec": "22329568835000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "9498361856",
+          "MemoryCurrent": "8320942080",
           "Result": "success",
           "StateChangeTimestamp": "Fri 2026-08-21 17:43:28 UTC"
         }
@@ -13971,10 +13467,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "2",
-          "CPUUsageNSec": "713840104059000",
+          "CPUUsageNSec": "716817980191000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "818528256",
+          "MemoryCurrent": "818225152",
           "Result": "success",
           "StateChangeTimestamp": "Fri 2026-08-14 06:12:22 UTC"
         }
@@ -14002,11 +13498,11 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 19129,
-            "sha256": "06398aa54f9b7535901042cbbabe122b840b4b3af9214a09766617d264306a62",
+            "bytes": 21743,
+            "sha256": "4b8deab186352d4960ba273d18420f490d132d6d7fdae9f08e62ab04cba223c3",
             "source_index": 0,
             "status": "ok",
-            "tail": "ellman iteration 3 geometry 615000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17377.8s\nreciprocal_ghost_extra_bellman iteration 3 geometry 620000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17428.3s\nreciprocal_ghost_extra_bellman iteration 3 geometry 625000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17566.6s\nreciprocal_ghost_extra_bellman iteration 3 geometry 630000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17687.7s\nreciprocal_ghost_extra_bellman iteration 3 geometry 635000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17789.4s\nreciprocal_ghost_extra_bellman iteration 3 geometry 640000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17940.2s\nreciprocal_ghost_extra_bellman iteration 3 geometry 645000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 17969.7s\nreciprocal_ghost_extra_bellman iteration 3 geometry 650000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 18116.7s\n"
+            "tail": "ellman iteration 3 geometry 715000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 20117.2s\nreciprocal_ghost_extra_bellman iteration 3 geometry 720000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 20271.4s\nreciprocal_ghost_extra_bellman iteration 3 geometry 725000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 20428.7s\nreciprocal_ghost_extra_bellman iteration 3 geometry 730000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 20590.9s\nreciprocal_ghost_extra_bellman iteration 3 geometry 735000/4929600 bdd_nodes 295607604 peak_rss_bytes 13108178944 elapsed 20745.4s\nreciprocal_ghost_extra_bellman iteration 3 geometry 740000/4929600 bdd_nodes 295607617 peak_rss_bytes 13108178944 elapsed 20909.1s\nreciprocal_ghost_extra_bellman iteration 3 geometry 745000/4929600 bdd_nodes 295607617 peak_rss_bytes 13108178944 elapsed 20954.2s\nreciprocal_ghost_extra_bellman iteration 3 geometry 750000/4929600 bdd_nodes 295607617 peak_rss_bytes 13108178944 elapsed 21098.4s\n"
           },
           {
             "bytes": 162,
@@ -14027,10 +13523,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "0",
-          "CPUUsageNSec": "19052319657000",
+          "CPUUsageNSec": "22029812560000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "13179817984",
+          "MemoryCurrent": "10553507840",
           "Result": "success",
           "StateChangeTimestamp": "Fri 2026-08-21 17:46:40 UTC"
         }
@@ -14090,8 +13586,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 2124397,
-            "sha256": "c5960e88f097813c7676fd8cb2b1658382ed5731784db965b1edf93452ee6892",
+            "bytes": 2131272,
+            "sha256": "73d4da5dc38a0f905218f51976ea9b52897035d4ff5b87c31d3bbea387b0df11",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -14115,10 +13611,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "0",
-          "CPUUsageNSec": "524720084340000",
+          "CPUUsageNSec": "527697256793000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "13821399040",
+          "MemoryCurrent": "18487402496",
           "Result": "success",
           "StateChangeTimestamp": "Sat 2026-08-15 21:11:44 UTC"
         }
@@ -14182,8 +13678,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 261155,
-            "sha256": "6ba29aba7e45240499303b9373e66e67a0d6d9ca66aafd432750ca7cb5e17dee",
+            "bytes": 268419,
+            "sha256": "ebb560375ad1e6046e63da3313c6ca248dd6333d8ab278e56e82ed06fd18d1de",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -14207,10 +13703,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "24",
-          "CPUUsageNSec": "115935730977000",
+          "CPUUsageNSec": "118409905366000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "23168802816",
+          "MemoryCurrent": "30942781440",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 02:39:32 UTC"
         }
@@ -14611,10 +14107,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "10",
-          "CPUUsageNSec": "153258301450000",
+          "CPUUsageNSec": "156122303624000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "33710616576",
+          "MemoryCurrent": "34308231168",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 04:16:00 UTC"
         }
@@ -14798,10 +14294,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "14",
-          "CPUUsageNSec": "166699771058000",
+          "CPUUsageNSec": "169677586045000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "14965014528",
+          "MemoryCurrent": "14966120448",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 00:44:15 UTC"
         }
@@ -14845,8 +14341,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 1074432,
-            "sha256": "8247567981ed2629b01ad981baade5417e3d3151e4171c08e1b8c10d1421cc4a",
+            "bytes": 1085960,
+            "sha256": "a5b4d9f37cb0075cc9546204cfcc36f60a6d6907dfac64a9911a5f56cba06f41",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -14870,10 +14366,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "21",
-          "CPUUsageNSec": "148370071382000",
+          "CPUUsageNSec": "151298528512000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "9098739712",
+          "MemoryCurrent": "11450167296",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 05:40:37 UTC"
         }
@@ -15071,8 +14567,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 2502348,
-            "sha256": "e6abe2a912d6f89325327ab32a8399c3c0081a874ebe9122b51fa3f721f9dba9",
+            "bytes": 2586221,
+            "sha256": "6a5bf421ab80088d1f1272363d0175db94ba7c9c0534da789c4cb7ad69ee58b4",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -15096,10 +14592,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "2",
-          "CPUUsageNSec": "91689033876000",
+          "CPUUsageNSec": "94659141913000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "26333806592",
+          "MemoryCurrent": "28807282688",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 21:27:59 UTC"
         }
@@ -15741,10 +15237,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "0-9",
-          "CPUUsageNSec": "1959672590677000",
+          "CPUUsageNSec": "1987645657235000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "5364047872",
+          "MemoryCurrent": "6814818304",
           "Result": "success",
           "StateChangeTimestamp": "Wed 2026-08-19 16:33:47 UTC"
         }
@@ -15780,8 +15276,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 528507,
-            "sha256": "eb58da729e0fb99a185932a824583713e85342140d7133db36e18d90c9cb2961",
+            "bytes": 536348,
+            "sha256": "75bac1af82cea830bf15e25a898a5619b2b3587f494cd99823c9a4dc01174ea5",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -15798,10 +15294,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "2",
-          "CPUUsageNSec": "144491283760000",
+          "CPUUsageNSec": "147468789556000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "11457024000",
+          "MemoryCurrent": "16513789952",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 06:50:26 UTC"
         }
@@ -15879,10 +15375,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "19",
-          "CPUUsageNSec": "384943448000",
+          "CPUUsageNSec": "3360348054000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "2400976896",
+          "MemoryCurrent": "2401230848",
           "Result": "success",
           "StateChangeTimestamp": "Fri 2026-08-21 22:59:31 UTC"
         }
@@ -16149,8 +15645,8 @@
         "dependencies": [],
         "diagnostics": [
           {
-            "bytes": 34063,
-            "sha256": "5edc6337a30fc742ee292dcbf42e4fb04ca0a1064f019b0578b3346f5cd4f0f7",
+            "bytes": 40407,
+            "sha256": "2abf228340009e6468921f845dcc581f959620b0bf4f6b37c4e0d7961c4ffe6e",
             "source_index": 0,
             "status": "ok",
             "tail": ""
@@ -16174,10 +15670,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "1",
-          "CPUUsageNSec": "18773651992000",
+          "CPUUsageNSec": "21751367457000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "4027580416",
+          "MemoryCurrent": "6539444224",
           "Result": "success",
           "StateChangeTimestamp": "Fri 2026-08-21 17:53:06 UTC"
         }
@@ -16262,10 +15758,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "12",
-          "CPUUsageNSec": "59327260897000",
+          "CPUUsageNSec": "62267428351000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "13552054272",
+          "MemoryCurrent": "13586026496",
           "Result": "success",
           "StateChangeTimestamp": "Fri 2026-08-21 06:32:40 UTC"
         }
@@ -16452,10 +15948,10 @@
         "unit": {
           "ActiveState": "active",
           "AllowedCPUs": "14",
-          "CPUUsageNSec": "91924265422000",
+          "CPUUsageNSec": "94901468453000",
           "ExecMainStatus": "0",
           "LoadState": "loaded",
-          "MemoryCurrent": "1059373056",
+          "MemoryCurrent": "1054396416",
           "Result": "success",
           "StateChangeTimestamp": "Thu 2026-08-20 21:29:51 UTC"
         }
@@ -16736,86 +16232,86 @@
         }
       }
     },
-    "observed_at": "2026-08-21T23:05:58.250447+00:00",
+    "observed_at": "2026-08-21T23:55:36.130399+00:00",
     "scheduling": {
       "blocked": {},
       "hosts": {
         "i-024a2073283e4336e": {
           "disk_budget_bytes": {
-            "/": 3242942464,
-            "/mnt/ultimatefish": 105703501824
+            "/": 3228659712,
+            "/mnt/ultimatefish": 106996523008
           },
           "disk_reserved_bytes": {
             "/": 0,
             "/mnt/ultimatefish": 165356240896
           },
-          "measured_busy_vcpus": 7.959,
+          "measured_busy_vcpus": 7.969,
           "measurement_complete": true,
-          "memory_budget_bytes": 29510840320,
-          "memory_reserved_bytes": 84901806080,
-          "predicted_busy_vcpus": 7.959,
+          "memory_budget_bytes": 37124284416,
+          "memory_reserved_bytes": 78774386688,
+          "predicted_busy_vcpus": 7.969,
           "selected": [],
           "target_busy_vcpus": 28.8
         },
         "i-03c81f90d2c59a2e7": {
           "disk_budget_bytes": {
-            "/": 37239742464,
-            "/mnt/ultimatefish": 1385687351296,
-            "/mnt/ultimatefish-penguin": 103661969408
+            "/": 37250752512,
+            "/mnt/ultimatefish": 1385362452480,
+            "/mnt/ultimatefish-penguin": 104394637312
           },
           "disk_reserved_bytes": {
             "/": 0,
             "/mnt/ultimatefish": 96636764160,
             "/mnt/ultimatefish-penguin": 210453397504
           },
-          "measured_busy_vcpus": 30.338,
+          "measured_busy_vcpus": 18.948,
           "measurement_complete": true,
-          "memory_budget_bytes": 143511928832,
-          "memory_reserved_bytes": 204371857408,
-          "predicted_busy_vcpus": 30.338,
+          "memory_budget_bytes": 182364233728,
+          "memory_reserved_bytes": 195761451008,
+          "predicted_busy_vcpus": 18.948,
           "selected": [],
           "target_busy_vcpus": 28.8
         },
         "i-08c0f44a1776cb34a": {
           "disk_budget_bytes": {
-            "/": 3288227840,
-            "/mnt/ultimatefish": 283614167040
+            "/": 3269009408,
+            "/mnt/ultimatefish": 283613515776
           },
           "disk_reserved_bytes": {
             "/": 0,
             "/mnt/ultimatefish": 68719476736
           },
-          "measured_busy_vcpus": 4.98,
+          "measured_busy_vcpus": 5.016,
           "measurement_complete": true,
-          "memory_budget_bytes": 53331787776,
-          "memory_reserved_bytes": 19394723840,
-          "predicted_busy_vcpus": 4.98,
+          "memory_budget_bytes": 44705972224,
+          "memory_reserved_bytes": 19393617920,
+          "predicted_busy_vcpus": 5.016,
           "selected": [],
           "target_busy_vcpus": 28.8
         },
         "i-0986ed3d272721f02": {
           "disk_budget_bytes": {
-            "/": 3233136640,
-            "/mnt/ultimatefish": 435441893376
+            "/": 3229040640,
+            "/mnt/ultimatefish": 434294194176
           },
           "disk_reserved_bytes": {
             "/": 0,
             "/mnt/ultimatefish": 139586437120
           },
-          "measured_busy_vcpus": 6.944,
+          "measured_busy_vcpus": 6.993,
           "measurement_complete": true,
-          "memory_budget_bytes": 31471177728,
-          "memory_reserved_bytes": 61824806912,
-          "predicted_busy_vcpus": 6.944,
+          "memory_budget_bytes": 45551697920,
+          "memory_reserved_bytes": 54256177152,
+          "predicted_busy_vcpus": 6.993,
           "selected": [],
           "target_busy_vcpus": 28.8
         },
         "i-0b4523116b2f7765c": {
           "disk_budget_bytes": {
-            "/": 3122397184,
-            "/mnt/ultimatefish": 111052279808,
-            "/mnt/ultimatefish-jg": 316592001024,
-            "/mnt/ultimatefish-overflow": 568923561984,
+            "/": 3119116288,
+            "/mnt/ultimatefish": 110908612608,
+            "/mnt/ultimatefish-jg": 319361974272,
+            "/mnt/ultimatefish-overflow": 544811950080,
             "/mnt/ultimatefish-resume": 113796460544
           },
           "disk_reserved_bytes": {
@@ -16825,18 +16321,18 @@
             "/mnt/ultimatefish-overflow": 536870912000,
             "/mnt/ultimatefish-resume": 0
           },
-          "measured_busy_vcpus": 31.511,
+          "measured_busy_vcpus": 27.912,
           "measurement_complete": true,
-          "memory_budget_bytes": 73250271232,
-          "memory_reserved_bytes": 692686360576,
-          "predicted_busy_vcpus": 31.511,
+          "memory_budget_bytes": 132857376768,
+          "memory_reserved_bytes": 672324145152,
+          "predicted_busy_vcpus": 27.912,
           "selected": [],
           "target_busy_vcpus": 28.8
         }
       },
-      "measured_busy_vcpus": 81.732,
+      "measured_busy_vcpus": 66.838,
       "measured_capacity_vcpus": 160,
-      "measured_utilization_percent": 51.1,
+      "measured_utilization_percent": 41.8,
       "measurement_complete": true,
       "selected": [],
       "stage_jobs": [],

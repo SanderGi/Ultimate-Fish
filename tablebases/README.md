@@ -355,19 +355,20 @@ generated exclusively from the canonical ledger below by
 > CPUs are chiefly serial Ghost Bellman/verification tails rather than missing
 > parallel workers.
 >
-> **Current AWS fleet audit (2026-08-21 16:05 PDT / 23:05 UTC):** the exact
-> complete supervisor sample measured 81.732/160 busy vCPUs (51.1%): 30.338 on
-> i03, 31.511 on i0b, 7.959 on i024, 4.980 on i08, and 6.944 on i098. Four
-> Devil slots on the 64-GiB hosts had completed zero samples and were making
-> only about 0.1% CPU progress under sustained memory reclaim. Their source
-> units are retained stopped; the exact non-overlapping global slots 32, 33,
-> 38, and 39 now run near one full CPU each on i03 CPUs 23-26 under bounded
-> 8/9-GiB gates. No current supervised job is failed, no CPU sets overlap, and
-> all probes completed without runtime errors. Remaining idle c8gd cores are
-> chiefly constrained by the retained serial Ghost solves and the independent
-> Devil visited-set memory footprint; replacing a host would destroy live
-> instance-store checkpoints. Supervisor severity remains `error` only because
-> historical scheduler reservations exceed conservative resource budgets.
+> **Current AWS fleet audit (2026-08-21 16:55 PDT / 23:55 UTC):** the exact
+> complete supervisor sample measured 66.838/160 busy vCPUs (41.8%): 18.948 on
+> i03, 27.912 on i0b, 7.969 on i024, 5.016 on i08, and 6.993 on i098. The lower
+> total reflects successful Devil progress: all 272 original i0b high-cap
+> samples and several i03 slots completed. Original i03 slot 19 had four
+> authenticated completions before yielding CPU 19 to Rook/Ghost; its fourteen
+> untouched, disjoint shards now run one per newly idle i0b CPU under bounded
+> 8/9-GiB gates. The earlier zero-completion slots 32, 33, 38, and 39 continue
+> on i03 CPUs 23-26. No current supervised job is failed, no CPU sets overlap,
+> and every probe completed without runtime errors. Remaining idle cores are
+> chiefly a short Devil-census tail plus retained serial Ghost solves;
+> replacing a host would destroy live instance-store checkpoints. Supervisor
+> severity remains `error` only because historical scheduler reservations
+> exceed conservative resource budgets.
 >
 > Both Jester/Angel classes are now **CERTIFIED**. Opposed archive
 > sha256:d2337ca267697790ff854744a8de9877a6a733a805b5eb75d293738886c074ca

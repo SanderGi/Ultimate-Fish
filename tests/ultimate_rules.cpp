@@ -2480,6 +2480,66 @@ void test_exact_tablebase_probing() {
     expect(white && black && black->wdl == white->wdl && black->dtw == white->dtw,
            "tablebase color canonicalization preserves exact WDL and DTW");
 
+    Position unmovedBishopDragon;
+    std::string unmovedBishopDragonError;
+    expect(unmovedBishopDragon.set_upn(
+      "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+      "king,w,d1,0,0,0,0,0,1,-1,1,-1,0;"
+      "king,b,d10,0,0,0,0,0,1,-1,1,-1,0;"
+      "dragon,w,d3,0,0,0,0,0,1,-1,1,-1,0;"
+      "bishop,b,f9,0,0,0,0,0,1,-1,1,-1,0",
+      &unmovedBishopDragonError),
+      "unmoved Bishop/Dragon regression parses: " +
+        unmovedBishopDragonError);
+    const auto unmovedBishopDragonResult =
+      TablebaseProbe::probe(unmovedBishopDragon);
+    expect(unmovedBishopDragonResult &&
+             unmovedBishopDragonResult->wdl == TablebaseWdl::Win &&
+             unmovedBishopDragonResult->dtw == 129,
+           "inert unmoved flags reuse the exact Bishop/Dragon tablebase");
+    Position movedBishopDragon = unmovedBishopDragon;
+    for (int id = 0; id < movedBishopDragon.piece_count(); ++id)
+        movedBishopDragon.piece(id).moved = true;
+    const auto movedBishopDragonResult =
+      TablebaseProbe::probe(movedBishopDragon);
+    expect(unmovedBishopDragonResult && movedBishopDragonResult &&
+             unmovedBishopDragonResult->wdl == movedBishopDragonResult->wdl &&
+             unmovedBishopDragonResult->dtw == movedBishopDragonResult->dtw,
+           "Bishop, Dragon, and no-Rook King moved bits are outcome-inert");
+
+    Position rookState;
+    const int whiteRookKing = moved(
+      rookState, PieceType::King, Color::White, "d1");
+    const int whiteRook = moved(
+      rookState, PieceType::Rook, Color::White, "h1");
+    moved(rookState, PieceType::King, Color::Black, "d10");
+    const auto movedRookResult = TablebaseProbe::probe(rookState);
+    expect(movedRookResult.has_value(),
+           "bundled moved-state KRK tablebase is probeable");
+    Position inertUnmovedRook = rookState;
+    inertUnmovedRook.piece(whiteRook).moved = false;
+    const auto inertUnmovedRookResult = TablebaseProbe::probe(inertUnmovedRook);
+    expect(movedRookResult && inertUnmovedRookResult &&
+             movedRookResult->wdl == inertUnmovedRookResult->wdl &&
+             movedRookResult->dtw == inertUnmovedRookResult->dtw,
+           "an unmoved Rook is inert when every royal has moved");
+    Position inertUnmovedKing = rookState;
+    inertUnmovedKing.piece(whiteRookKing).moved = false;
+    const auto inertUnmovedKingResult = TablebaseProbe::probe(inertUnmovedKing);
+    expect(movedRookResult && inertUnmovedKingResult &&
+             movedRookResult->wdl == inertUnmovedKingResult->wdl &&
+             movedRookResult->dtw == inertUnmovedKingResult->dtw,
+           "an unmoved royal is inert when every Rook has moved");
+    Position liveCastle = rookState;
+    liveCastle.piece(whiteRookKing).moved = false;
+    liveCastle.piece(whiteRook).moved = false;
+    const std::vector<Move> liveCastleMoves = liveCastle.legal_moves();
+    const bool advertisesCastle = std::any_of(
+      liveCastleMoves.begin(), liveCastleMoves.end(),
+      [](const Move& move) { return move.kind == MoveKind::Castle; });
+    expect(advertisesCastle && !TablebaseProbe::probe(liveCastle),
+           "a live King/Rook castling privilege stays outside the no-castling table");
+
     for (const auto [type, square] : {
            std::pair{PieceType::Jester, "b1"},
            std::pair{PieceType::Bomb, "b1"},
@@ -2496,8 +2556,8 @@ void test_exact_tablebase_probing() {
     }
 
     for (const PieceType type : {PieceType::Pawn, PieceType::Ghost,
-                                 PieceType::Sniper, PieceType::Prince,
-                                 PieceType::Penguin}) {
+                                 PieceType::Devil, PieceType::Sniper,
+                                 PieceType::Prince, PieceType::Penguin}) {
         Position stateful;
         moved(stateful, PieceType::King, Color::White, "a1");
         const int extra = moved(stateful, type, Color::White, "c3");
@@ -2506,7 +2566,7 @@ void test_exact_tablebase_probing() {
             stateful.piece(extra).moved = false;
         else if (type == PieceType::Ghost)
             stateful.piece(extra).visible = false;
-        else if (type == PieceType::Sniper)
+        else if (type == PieceType::Devil || type == PieceType::Sniper)
             stateful.piece(extra).cooldown = 3;
         expect(TablebaseProbe::probe(stateful).has_value(),
                std::string("stateful K+") + std::string(Position::type_name(type)) +

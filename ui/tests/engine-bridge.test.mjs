@@ -119,6 +119,15 @@ test("bridge exposes state, mate scores, results, and continuations", async () =
   assert.equal(longTablebase.pvNotation.length, 16);
   assert.equal(longTablebase.publicPvNotation.length, 16);
 
+  const inertMovedFlagsUpn = "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,d1,0,0,0,0,0,1,-1,1,-1,0;king,b,d10,0,0,0,0,0,1,-1,1,-1,0;dragon,w,d3,0,0,0,0,0,1,-1,1,-1,0;bishop,b,f9,0,0,0,0,0,1,-1,1,-1,0";
+  const inertMovedFlags = await post("/analyze", {
+    upn: inertMovedFlagsUpn, depth: 4,
+  });
+  assert.equal(inertMovedFlags.scoreType, "mate");
+  assert.equal(inertMovedFlags.score, 129);
+  assert.equal(inertMovedFlags.bestmove, "d1-d2");
+  assert.equal(inertMovedFlags.pv.length, 4);
+
   const captured = await post("/move", { upn: mateUpn, move: "b2-b4" });
   assert.equal(captured.result, "white");
   assert.equal(captured.resultReason, "king-captured");

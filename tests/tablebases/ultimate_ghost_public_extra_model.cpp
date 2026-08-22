@@ -78,6 +78,7 @@ void stateful_substate_smoke_test() {
 
     (void)fixture(PieceType::Pawn, PieceType::Pawn, 1);
     (void)fixture(PieceType::Berserker, PieceType::Berserker, 9);
+    (void)fixture(PieceType::Devil, PieceType::Devil, 3);
     (void)fixture(PieceType::Sniper, PieceType::Sniper, 3);
     const Position prince = fixture(PieceType::Prince, PieceType::Prince, 1);
     expect(prince.continuation() == Continuation::PrinceSecondMove,

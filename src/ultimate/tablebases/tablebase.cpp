@@ -4923,6 +4923,14 @@ class TablebaseGenerator {
                 position.forcedPiece_ = attacker;
             }
             break;
+        case PieceType::Checker:
+            if (state.substate & 1u) {
+                position.continuation_ = Continuation::CheckerJump;
+                position.forcedPiece_ = attacker;
+            }
+            if (state.substate & 2u)
+                position.piece(attacker).type = PieceType::CheckerKing;
+            break;
         case PieceType::Pawn:
             position.piece(attacker).moved = state.substate != 0;
             break;
@@ -5093,9 +5101,14 @@ class TablebaseGenerator {
         case PieceType::Ghost:
             substate = trackedGhost_ ? 0 : position.piece(2).visible ? 1 : 0;
             break;
+        case PieceType::Devil: substate = position.piece(2).cooldown; break;
         case PieceType::Sniper: substate = position.piece(2).cooldown; break;
         case PieceType::Prince:
             substate = position.continuation_ == Continuation::PrinceSecondMove ? 1 : 0;
+            break;
+        case PieceType::Checker:
+            substate = (position.piece(2).type == PieceType::CheckerKing ? 2u : 0u) +
+              (position.continuation_ == Continuation::CheckerJump ? 1u : 0u);
             break;
         case PieceType::Pawn: substate = position.piece(2).moved ? 1 : 0; break;
         case PieceType::Penguin: {
