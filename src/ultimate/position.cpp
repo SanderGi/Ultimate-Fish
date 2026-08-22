@@ -2842,12 +2842,25 @@ bool Position::is_checkmate_possible() const {
            team_has_sufficient_material(Color::Black);
 }
 
+TerminalReason Position::terminal_reason() const {
+    if (forcedTimeoutWinner_ >= 0)
+        return TerminalReason::ForcedTimeout;
+    const bool white = has_real_king(Color::White);
+    const bool black = has_real_king(Color::Black);
+    if (!white && !black)
+        return TerminalReason::SimultaneousKingCapture;
+    if (white != black)
+        return TerminalReason::KingCaptured;
+    if (!is_checkmate_possible())
+        return TerminalReason::InsufficientMaterial;
+    if (has_legal_move())
+        return TerminalReason::Ongoing;
+    return real_king_threatened(sideToMove_)
+      ? TerminalReason::Checkmate : TerminalReason::Stalemate;
+}
+
 bool Position::game_over() const {
-    if (forcedTimeoutWinner_ >= 0 ||
-        !has_real_king(Color::White) || !has_real_king(Color::Black) ||
-        !is_checkmate_possible())
-        return true;
-    return legal_moves().empty();
+    return terminal_reason() != TerminalReason::Ongoing;
 }
 
 std::optional<Color> Position::winner() const {

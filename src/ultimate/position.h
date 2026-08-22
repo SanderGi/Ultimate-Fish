@@ -25,6 +25,16 @@ using Bitboard = unsigned __int128;
 
 enum class Color : std::uint8_t { White, Black };
 
+enum class TerminalReason : std::uint8_t {
+    Ongoing,
+    KingCaptured,
+    Checkmate,
+    Stalemate,
+    InsufficientMaterial,
+    SimultaneousKingCapture,
+    ForcedTimeout,
+};
+
 constexpr Color operator~(Color color) {
     return color == Color::White ? Color::Black : Color::White;
 }
@@ -222,6 +232,7 @@ class Position {
     [[nodiscard]] bool ordinary_predecessor_king_safe() const;
     [[nodiscard]] bool team_has_sufficient_material(Color color) const;
     [[nodiscard]] bool is_checkmate_possible() const;
+    [[nodiscard]] TerminalReason terminal_reason() const;
     [[nodiscard]] bool game_over() const;
     [[nodiscard]] std::optional<Color> winner() const;
     [[nodiscard]] std::optional<Color> forced_timeout_winner() const {

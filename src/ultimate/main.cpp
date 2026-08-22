@@ -23,6 +23,20 @@ bool parse_int(const std::string& text, int& value) {
     return error == std::errc{} && end == text.data() + text.size();
 }
 
+const char* terminal_reason_name(TerminalReason reason) {
+    switch (reason) {
+    case TerminalReason::KingCaptured: return "king-captured";
+    case TerminalReason::Checkmate: return "checkmate";
+    case TerminalReason::Stalemate: return "stalemate";
+    case TerminalReason::InsufficientMaterial: return "insufficient-material";
+    case TerminalReason::SimultaneousKingCapture:
+        return "simultaneous-king-capture";
+    case TerminalReason::ForcedTimeout: return "forced-timeout";
+    case TerminalReason::Ongoing: return "ongoing";
+    }
+    return "game-complete";
+}
+
 void print_position(const Position& position) {
     std::cout << "upn " << position.upn() << '\n';
     std::cout << "moves";
@@ -31,18 +45,15 @@ void print_position(const Position& position) {
     std::cout << '\n';
     std::cout << "material white " << position.material_points(Color::White)
               << " black " << position.material_points(Color::Black) << '\n';
-    if (!position.game_over())
+    const TerminalReason reason = position.terminal_reason();
+    if (reason == TerminalReason::Ongoing)
         std::cout << "result ongoing\n";
     else if (const auto winner = position.winner()) {
-        const bool kingCaptured = !position.has_real_king(Color::White) ||
-                                  !position.has_real_king(Color::Black);
         std::cout << "result " << (*winner == Color::White ? "white" : "black")
-                  << (kingCaptured ? " king-captured\n" : " checkmate\n");
+                  << ' ' << terminal_reason_name(reason) << '\n';
     }
-    else if (position.has_real_king(Color::White) && position.has_real_king(Color::Black))
-        std::cout << "result draw insufficient-material\n";
     else
-        std::cout << "result draw simultaneous-king-capture\n";
+        std::cout << "result draw " << terminal_reason_name(reason) << '\n';
 }
 
 void print_score(int score, const std::optional<int>& exactMateActions = std::nullopt) {

@@ -99,6 +99,18 @@ test("bridge exposes state, mate scores, results, and continuations", async () =
   const health = await fetch(`${base}/health`).then((response) => response.json());
   assert.equal(health.ok, true);
 
+  const stalemateUpn = "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,h8,0,0,0,0,1,1,-1,1,-1,0;king,b,g10,0,0,0,0,0,1,-1,1,-1,0;dragon,w,g8,0,0,0,0,0,1,-1,1,-1,0";
+  const stalemate = await post("/state", { upn: stalemateUpn });
+  assert.equal(stalemate.result, "draw");
+  assert.equal(stalemate.resultReason, "stalemate");
+  assert.deepEqual(stalemate.moves, []);
+
+  const insufficient = await post("/state", {
+    upn: "w;king,w,a1;king,b,h10",
+  });
+  assert.equal(insufficient.result, "draw");
+  assert.equal(insufficient.resultReason, "insufficient-material");
+
   const mateUpn = "w;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;king,w,a1;rook,w,b2;king,b,b4";
   const state = await post("/state", { upn: mateUpn });
   assert.equal(state.result, "ongoing");

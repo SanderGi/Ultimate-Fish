@@ -646,6 +646,7 @@ void test_native_castling() {
     Undo foreignUndo;
     expect(enemyRook.make_move(*foreignCastle, foreignUndo) &&
            enemyRook.game_over() && enemyRook.winner() == Color::White &&
+           enemyRook.terminal_reason() == TerminalReason::ForcedTimeout &&
            enemyRook.legal_moves().empty(),
            "enemy-Rook castle is a terminal forced-timeout win for its mover");
     Position serializedForeign;
@@ -3569,7 +3570,8 @@ void test_native_insufficient_material() {
     Position bare;
     bare.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
     bare.add_piece(PieceType::King, Color::Black, Position::square_from_name("h8"));
-    expect(!bare.is_checkmate_possible() && bare.game_over() && !bare.winner(),
+    expect(!bare.is_checkmate_possible() && bare.game_over() && !bare.winner() &&
+             bare.terminal_reason() == TerminalReason::InsufficientMaterial,
            "bare real kings are an insufficient-material draw");
 
     Position oneMinor = bare;
@@ -3594,6 +3596,47 @@ void test_native_insufficient_material() {
     expect(devil.team_has_sufficient_material(Color::White) &&
              devil.is_checkmate_possible() && !devil.game_over(),
            "Devil is sufficient because it can spawn mating Minions");
+}
+
+void test_native_terminal_reasons() {
+    Position stalemate;
+    std::string stalemateError;
+    expect(stalemate.set_upn(
+      "b;hm=0;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+      "king,w,h8,0,0,0,0,1,1,-1,1,-1,0;"
+      "king,b,g10,0,0,0,0,0,1,-1,1,-1,0;"
+      "dragon,w,g8,0,0,0,0,0,1,-1,1,-1,0",
+      &stalemateError),
+      "stalemate reason regression parses: " + stalemateError);
+    expect(stalemate.game_over() && !stalemate.winner() &&
+             stalemate.terminal_reason() == TerminalReason::Stalemate,
+           "a safe royal with no legal action is classified as stalemate");
+
+    Position checkmate;
+    checkmate.add_piece(PieceType::King, Color::White,
+                        Position::square_from_name("c8"));
+    checkmate.add_piece(PieceType::Queen, Color::White,
+                        Position::square_from_name("b9"));
+    checkmate.add_piece(PieceType::King, Color::Black,
+                        Position::square_from_name("a10"));
+    checkmate.set_side_to_move(Color::Black);
+    expect(checkmate.game_over() && checkmate.winner() == Color::White &&
+             checkmate.terminal_reason() == TerminalReason::Checkmate,
+           "a threatened royal with no legal action is classified as checkmate");
+
+    Position captured;
+    captured.add_piece(PieceType::King, Color::White,
+                       Position::square_from_name("a1"));
+    expect(captured.game_over() && captured.winner() == Color::White &&
+             captured.terminal_reason() == TerminalReason::KingCaptured,
+           "one surviving real King is classified as a King capture");
+
+    Position simultaneous;
+    simultaneous.clear();
+    expect(simultaneous.game_over() && !simultaneous.winner() &&
+             simultaneous.terminal_reason() ==
+               TerminalReason::SimultaneousKingCapture,
+           "two absent real Kings are classified as simultaneous capture");
 }
 
 void test_pawn_en_passant_lifetime() {
@@ -4742,6 +4785,7 @@ int main(int argc, char** argv) {
     test_public_belief_state_core();
     test_public_history_reconstruction();
     test_belief_terminal_and_observer_scoring();
+    test_native_terminal_reasons();
     test_native_insufficient_material();
     test_pawn_en_passant_lifetime();
     test_cooldowns_minions_and_freeze_stacking();
