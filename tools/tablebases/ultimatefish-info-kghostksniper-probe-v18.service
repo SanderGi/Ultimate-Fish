@@ -1,0 +1,14 @@
+[Unit]
+Description=Ultimate Fish opposed Sniper/Ghost corrected-probe certification v18
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/mnt/ultimatefish/opposed-sniper-v12/ultimatefish-certify-kghostksniper-probe-v18.sh
+AllowedCPUs=32-63
+CPUQuota=3200%
+MemoryMax=343597383680
+ReadWritePaths=/mnt/ultimatefish/opposed-sniper-v12 /mnt/ultimatefish/sniper-concrete-probe-v18
+StandardOutput=journal
+StandardError=journal

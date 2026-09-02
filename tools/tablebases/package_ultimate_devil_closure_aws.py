@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a deterministic 16-source Devil/Minion closure bundle."""
+"""Build the deterministic 16-source Devil/Minion closure v6 bundle."""
 
 from __future__ import annotations
 
@@ -17,10 +17,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import run_ultimate_concrete_tablebase_shard_aws as concrete  # noqa: E402
 
 
-SCHEMA = "ultimate-devil-minion-closure-source-v5"
+SCHEMA = "ultimate-devil-minion-closure-source-v6"
 SEMANTICS = (
     "no-preexisting-minions-devil-first-three-ranks-cooldown-"
-    "exact-bitboard-codec-v5"
+    "exact-bitboard-codec-flat-visited-set-v6"
 )
 
 

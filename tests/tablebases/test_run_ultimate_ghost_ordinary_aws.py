@@ -20,6 +20,70 @@ SPEC.loader.exec_module(runner)
 
 
 class OrdinaryGhostManifestTests(unittest.TestCase):
+    def test_copyfile_allow_same_accepts_retained_dependency(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            retained = Path(temporary) / "retained.uftb"
+            retained.write_bytes(b"authenticated retained dependency")
+            runner.copyfile_allow_same(retained, retained)
+            self.assertEqual(
+                retained.read_bytes(), b"authenticated retained dependency")
+
+    def test_prebuilt_install_replaces_stale_solve_existing_binary(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "prebuilt"
+            destination = root / "work-binary"
+            source.write_bytes(b"parallel-current")
+            destination.write_bytes(b"stale-serial")
+            expected = runner.sha256_path(source)
+
+            runner.install_prebuilt_executable(
+                source, destination, expected)
+
+            self.assertEqual(source.read_bytes(), destination.read_bytes())
+            self.assertEqual(0o755, destination.stat().st_mode & 0o777)
+
+    def test_legacy_single_worker_omits_unsupported_flag(self) -> None:
+        self.assertEqual(runner.solve_worker_arguments(1), [])
+        self.assertEqual(
+            runner.solve_worker_arguments(10), ["--workers", "10"])
+
+    def test_retained_roots_require_explicit_resume_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            scratch = Path(directory) / "retained"
+            Path(str(scratch) + ".owner-current").write_bytes(b"root")
+            with self.assertRaisesRegex(RuntimeError, "explicit resume"):
+                runner.fixed_point_resume_arguments(
+                    scratch, solve_existing=True, enabled=False, iteration=0,
+                    current_slot="current", bdd_slot="a")
+
+    def test_complete_resume_metadata_is_forwarded_exactly(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            scratch = Path(directory) / "retained"
+            for suffix in runner.FIXED_POINT_ROOT_SUFFIXES:
+                Path(str(scratch) + suffix).write_bytes(b"root")
+            for suffix in ("nodes", "unique"):
+                Path(str(scratch) + f".bdd-b.{suffix}").write_bytes(b"bdd")
+            self.assertEqual(
+                runner.fixed_point_resume_arguments(
+                    scratch, solve_existing=True, enabled=True, iteration=31,
+                    current_slot="next", bdd_slot="b"),
+                ["--resume-fixed-point", "--resume-iteration", "31",
+                 "--resume-current-slot", "next", "--resume-bdd-slot", "b"],
+            )
+
+    def test_resume_requires_solve_existing_and_complete_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            scratch = Path(directory) / "retained"
+            with self.assertRaisesRegex(RuntimeError, "metadata is invalid"):
+                runner.fixed_point_resume_arguments(
+                    scratch, solve_existing=False, enabled=True, iteration=1,
+                    current_slot="current", bdd_slot="a")
+            with self.assertRaisesRegex(RuntimeError, "file is missing"):
+                runner.fixed_point_resume_arguments(
+                    scratch, solve_existing=True, enabled=True, iteration=1,
+                    current_slot="current", bdd_slot="a")
+
     def test_prebuilt_model_binding_is_strict_and_optional(self) -> None:
         executable = Path("solver")
         runner.validate_prebuilt_binding(executable, "a" * 64, "", "b" * 64)
@@ -93,6 +157,13 @@ class OrdinaryGhostGeometryTests(unittest.TestCase):
     def test_substate_only_geometry_count(self) -> None:
         self.assertEqual(runner.geometry_count("berserker"), 4_929_600)
         self.assertEqual(runner.geometry_count("penguin"), 3_943_680)
+
+    def test_angel_geometry_count_is_orientation_bound(self) -> None:
+        self.assertEqual(runner.geometry_count("angel", "same"), 1_478_880)
+        self.assertEqual(
+            runner.geometry_count("angel", "opposing"), 985_920)
+        with self.assertRaisesRegex(ValueError, "requires an orientation"):
+            runner.geometry_count("angel")
 
     def test_ranges_cover_checker_domain_exactly(self) -> None:
         geometries = runner.geometry_count("checker")

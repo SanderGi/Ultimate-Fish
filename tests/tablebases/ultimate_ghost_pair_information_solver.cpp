@@ -19,6 +19,8 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <thread>
+#include <vector>
 
 #include <unistd.h>
 
@@ -52,6 +54,35 @@ int main(){
         const std::string prefix="/tmp/ultimate-ghost-pair-solver-"+
           std::to_string(static_cast<long long>(::getpid()));
         Solver::exact_small_domain_self_test(prefix+".bdd-selftest");
+
+        // Shared canonical construction must remain collision-checked when
+        // independent geometry workers encounter the same Boolean function
+        // through different operation orders.
+        Solver::PairRobdd parallel(prefix+".parallel-bdd",tiny_bdd(),true);
+        constexpr unsigned ParallelWorkers=8;
+        std::array<Solver::PairRobdd::Id,ParallelWorkers>parallelRoots{};
+        std::vector<std::thread>parallelThreads;
+        for(unsigned worker=0;worker<ParallelWorkers;++worker)
+            parallelThreads.emplace_back([&,worker]{
+                Solver::PairRobdd::Id root=Solver::PairRobdd::False;
+                for(unsigned step=0;step<12;++step){
+                    const unsigned variable=(step+worker)%12;
+                    const Solver::PairRobdd::Id term=parallel.logical_and(
+                      parallel.variable(variable),parallel.logical_not(
+                        parallel.variable(variable+16)));
+                    root=parallel.logical_or(root,term);
+                }
+                parallelRoots[worker]=root;
+            });
+        for(std::thread&thread:parallelThreads)thread.join();
+        for(unsigned worker=1;worker<ParallelWorkers;++worker)
+            require(parallelRoots[worker]==parallelRoots[0],
+                    "parallel PairRobdd canonical-root residual");
+        Solver::PairMask accepted;accepted.set(5);
+        Solver::PairMask rejected;rejected.set(5);rejected.set(21);
+        require(parallel.evaluate(parallelRoots[0],accepted)&&
+                !parallel.evaluate(parallelRoots[0],rejected),
+                "parallel PairRobdd semantic residual");
 
         Solver::TransitionCompileOptions hidden;
         hidden.prefix=prefix+".hidden";

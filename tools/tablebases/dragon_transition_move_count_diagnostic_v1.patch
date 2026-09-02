@@ -1,0 +1,25 @@
+diff --git a/src/ultimate/tablebases/ghost_dragon_information_solver.cpp b/src/ultimate/tablebases/ghost_dragon_information_solver.cpp
+--- a/src/ultimate/tablebases/ghost_dragon_information_solver.cpp
++++ b/src/ultimate/tablebases/ghost_dragon_information_solver.cpp
+@@ -760,9 +760,18 @@ DragonPatchCertificate rewrite_lower_dragon_edges(
+             if (position.game_over())
+                 continue;
+             const std::vector<Move> moves = position.legal_moves();
+-            if (moves.size() != offsets[ghost + 1] - offsets[ghost])
+-                throw std::runtime_error(
+-                  "Dragon transition patch move-count residual");
++            if (moves.size() != offsets[ghost + 1] - offsets[ghost]) {
++                std::ostringstream detail;
++                detail << "Dragon transition patch move-count residual"
++                       << " geometry=" << geometryId
++                       << " local=" << local
++                       << " ghost=" << unsigned(ghost)
++                       << " generated=" << moves.size()
++                       << " stored="
++                       << (offsets[ghost + 1] - offsets[ghost])
++                       << " upn=" << position.upn();
++                throw std::runtime_error(detail.str());
++            }
+             for (std::size_t ordinal = 0; ordinal < moves.size(); ++ordinal) {
+                 Position child = position;
+                 Undo undo;

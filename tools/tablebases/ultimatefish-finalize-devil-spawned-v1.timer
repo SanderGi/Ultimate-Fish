@@ -1,0 +1,11 @@
+[Unit]
+Description=Watch for a certifying lone-Devil C1 fragment
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+AccuracySec=10s
+Unit=ultimatefish-finalize-devil-spawned-v1.service
+
+[Install]
+WantedBy=timers.target

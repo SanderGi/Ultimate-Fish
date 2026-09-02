@@ -1,0 +1,17 @@
+[Unit]
+Description=Ultimate Fish lone-Devil C1 sequential reverse-merge v29
+After=mnt-ultimatefish.mount network-online.target
+
+[Service]
+Type=simple
+Environment=ULTIMATE_TABLEBASE_PRESERVE_SCRATCH=1
+Environment=ULTIMATE_DEVIL_REVERSE_ADOPT_BUCKETS=3,5,6,7,8,9,10,11,12,13,14,15,16
+ExecStart=/usr/local/bin/ultimatefish-resume-devil-spawned-v29-c1.sh
+AllowedCPUs=8-31
+MemoryHigh=244813135872
+MemoryMax=244813135872
+Nice=5
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

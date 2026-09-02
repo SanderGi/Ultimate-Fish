@@ -75,6 +75,8 @@ int main(int argc, char** argv) {
                 solve.uniqueSlots = std::stoull(value());
             else if (option == "--compact-every")
                 solve.compactEvery = std::stoul(value());
+            else if (option == "--workers")
+                solve.workers = std::stoul(value());
             else if (option == "--resume-fixed-point")
                 solve.resumeFixedPoint = true;
             else if (option == "--resume-converged")

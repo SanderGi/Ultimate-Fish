@@ -52,6 +52,10 @@ REMOTE_REQUEST_BUDGET = 97_000
 # is returned.  Keep the aggregate per-job cap below the SSM output margin.
 DIAGNOSTIC_SOURCE_MAX_BYTES = 4_096
 DIAGNOSTIC_JOB_MAX_BYTES = 8_192
+# Exact retained graphs and normalized tablebase inputs can legitimately exceed
+# 1 GiB.  The per-binding value is still an explicit fail-closed opt-in, so a
+# larger ceiling does not make the default 16 MiB probe unbounded.
+SOURCE_BINDING_MAX_BYTES = 4 * 1024 * 1024 * 1024
 # A crowded host may need to compact active diagnostics below their configured
 # collection limit to fit SSM's response cap.  Keep enough recent text to show
 # the current phase/progress marker while retaining the full sample hash.
@@ -304,9 +308,19 @@ def validate_config(config: dict[str, Any]) -> None:
             if glob_magic(str(source.get("path", ""))):
                 raise RuntimeError(
                     f"{identifier} source binding must be one explicit path")
+            max_bytes = source.get("max_bytes", 16 * 1024 * 1024)
+            if (isinstance(max_bytes, bool) or not isinstance(max_bytes, int) or
+                    max_bytes <= 0 or max_bytes > SOURCE_BINDING_MAX_BYTES):
+                raise RuntimeError(
+                    f"{identifier} source binding max_bytes is invalid")
         if job.get("advanceable") and not job.get("source_bindings"):
             raise RuntimeError(
                 f"{identifier} is advanceable but has no source binding")
+        if "paused" in job and not isinstance(job["paused"], bool):
+            raise RuntimeError(f"{identifier} paused must be boolean")
+        if job.get("paused") and job.get("advanceable"):
+            raise RuntimeError(
+                f"{identifier} is paused but remains advanceable")
         if job.get("superseded_by") and job.get("advanceable"):
             raise RuntimeError(
                 f"{identifier} is superseded but remains advanceable")
@@ -325,8 +339,12 @@ def validate_config(config: dict[str, Any]) -> None:
                 raise RuntimeError(
                     f"{identifier} S3-only certification is archival only")
         ledger_files = job.get("ledger_files", [])
+        allowed_class_certificates = {
+            "ultimate-devil-stateful-class-certificate.json",
+        }
         if (not isinstance(ledger_files, list) or
-                any(not re.fullmatch(r"[a-z0-9]+\.uftb", str(item))
+                any(not re.fullmatch(r"[a-z0-9]+\.uftb", str(item)) and
+                    str(item) not in allowed_class_certificates
                     for item in ledger_files)):
             raise RuntimeError(f"{identifier} has invalid ledger_files")
         ledger_results = job.get("ledger_results", {})
@@ -390,11 +408,51 @@ def validate_config(config: dict[str, Any]) -> None:
         if job.get("advanceable") and expected_cpus is None:
             raise RuntimeError(
                 f"{identifier} advanceable job lacks expected_allowed_cpus")
+        scheduling_priority = job.get("scheduling_priority", 0)
+        if (isinstance(scheduling_priority, bool) or
+                not isinstance(scheduling_priority, int) or
+                scheduling_priority < 0):
+            raise RuntimeError(
+                f"{identifier} scheduling_priority must be a nonnegative integer")
     for job in jobs:
         for dependency in job.get("dependencies", []):
             if dependency not in job_ids or dependency == job["id"]:
                 raise RuntimeError(f"{job['id']} has an invalid dependency")
     jobs_by_id = {str(job["id"]): job for job in jobs}
+    for job in jobs:
+        replacement_id = job.get("superseded_by")
+        if replacement_id is None:
+            continue
+        replacement = jobs_by_id.get(str(replacement_id))
+        if replacement is None:
+            # Historical tombstones may outlive a pruned replacement record.
+            continue
+        if replacement is job:
+            raise RuntimeError(
+                f"{job['id']} has an invalid superseded_by target")
+        old_material = set(map(str, job.get("ledger_files", [])))
+        new_material = set(map(str, replacement.get("ledger_files", [])))
+        # A one-row solver generation may only retire into another generation
+        # of that exact material.  Cross-material supersession hides unfinished
+        # work from live probes and previously conflated lone Devil C1 with the
+        # much larger Bishop+Devil C1 checkpoint.
+        if (len(old_material) == 1 and len(new_material) == 1 and
+                old_material != new_material):
+            raise RuntimeError(
+                f"{job['id']} cannot supersede ledger material "
+                f"{sorted(old_material)} with {sorted(new_material)}")
+    for job in jobs:
+        continuation = job.get("continuation_job")
+        if continuation is None:
+            continue
+        target = jobs_by_id.get(str(continuation))
+        if (target is None or target is job or job.get("ledger_certifies") or
+                not target.get("ledger_certifies") or
+                job.get("superseded_by") != continuation or
+                set(map(str, job.get("ledger_files", []))) !=
+                set(map(str, target.get("ledger_files", [])))):
+            raise RuntimeError(
+                f"{job['id']} has an invalid mandatory continuation")
     for job in jobs:
         if job.get("superseded_by") or not job.get("queue_stage"):
             continue
@@ -442,7 +500,7 @@ def parse_cpu_set(value: object, capacity: int) -> set[int]:
 
 
 def compact_source_bindings(
-        jobs: list[dict[str, Any]]) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
+        jobs: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Build one exact host binding table and per-job references.
 
     The same source files are authenticated by many jobs on a host.  Sending
@@ -453,8 +511,8 @@ def compact_source_bindings(
     expected digests intentionally gets two entries; the remote checker then
     hashes that path once and compares both expectations fail-closed.
     """
-    table: list[dict[str, str]] = []
-    indices: dict[tuple[str, str], int] = {}
+    table: list[dict[str, Any]] = []
+    indices: dict[tuple[str, str, int], int] = {}
     compact_jobs: list[dict[str, Any]] = []
     for job in jobs:
         references: list[int] = []
@@ -465,12 +523,14 @@ def compact_source_bindings(
             digest = validate_sha(
                 binding.get("sha256"),
                 f"{job.get('id', '<job>')} source binding")
-            key = (path, digest)
+            max_bytes = int(binding.get("max_bytes", 16 * 1024 * 1024))
+            key = (path, digest, max_bytes)
             index = indices.get(key)
             if index is None:
                 index = len(table)
                 indices[key] = index
-                table.append({"path": path, "sha256": digest})
+                table.append({"path": path, "sha256": digest,
+                              "max_bytes": max_bytes})
             references.append(index)
         compact_jobs.append({
             "id": job["id"],
@@ -511,7 +571,7 @@ def command(argv):
 def props(unit):
  names=['LoadState','ActiveState','Result',
         'ExecMainStatus','MemoryCurrent','StateChangeTimestamp',
-        'AllowedCPUs','CPUUsageNSec']
+        'AllowedCPUs','CPUAffinity','CPUUsageNSec']
  try:
   rc,out,err=command(['systemctl','show',unit,*sum((['-p',n] for n in names),[])])
  except OSError as error:
@@ -540,6 +600,22 @@ def aggregate(patterns):
    digest.update(len(record).to_bytes(8,'big')); digest.update(record)
   result.append([1,len(matches),total,allocated,newest,digest.hexdigest()])
  return result
+def summarize_aggregates(records):
+ # Active jobs can have many checkpoint patterns even though supervision only
+ # needs their combined recovery footprint.  Preserve count, logical and
+ # allocated bytes, newest write, and a hash binding the original aggregates
+ # instead of dropping checkpoint evidence to fit SSM's response cap.
+ present=[record for record in records
+          if isinstance(record,list) and len(record)==6 and record[0] in {1,2}]
+ if not present: return [[0]]
+ digest=hashlib.sha256()
+ for record in records:
+  encoded=json.dumps(record,separators=(',',':')).encode()
+  digest.update(len(encoded).to_bytes(8,'big')); digest.update(encoded)
+ return [[2,sum(record[1] for record in present),
+          sum(record[2] for record in present),
+          sum(record[3] for record in present),
+          max(record[4] for record in present),digest.hexdigest()]]
 def checked_bindings(bindings):
  # Hash each physical path at most once, while retaining one result for each
  # exact path/digest table entry.  This accepts duplicate identical entries
@@ -548,21 +624,23 @@ def checked_bindings(bindings):
  for binding in bindings:
   if not isinstance(binding,dict): result.append(False); continue
   path=binding.get('path'); expected=binding.get('sha256')
-  if not isinstance(path,str) or not isinstance(expected,str):
+  max_bytes=binding.get('max_bytes',16*1024*1024)
+  if (not isinstance(path,str) or not isinstance(expected,str) or
+      isinstance(max_bytes,bool) or not isinstance(max_bytes,int) or
+      max_bytes<=0):
    result.append(False); continue
   if path in by_path:
-   actual=by_path[path]
+   size,actual=by_path[path]
   elif not os.path.isfile(path):
-   actual=None; by_path[path]=actual
+   size,actual=None,None; by_path[path]=(size,actual)
   else:
    stat=os.stat(path)
-   if stat.st_size>16*1024*1024:
-    actual=None; by_path[path]=actual
-   else:
+   size,actual=stat.st_size,None; by_path[path]=(size,actual)
+  if size is not None and actual is None and size<=max_bytes:
     digest=hashlib.sha256()
     with open(path,'rb') as stream:
      for block in iter(lambda:stream.read(1024*1024),b''): digest.update(block)
-    actual=digest.hexdigest(); by_path[path]=actual
+    actual=digest.hexdigest(); by_path[path]=(size,actual)
   result.append(actual==expected)
  return result
 
@@ -663,17 +741,10 @@ encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
 document['b']=len(encoded.encode())
 encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
 if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
- # Live checkpoint and diagnostic details are useful for progress, but unit
- # state and authenticated source bindings are sufficient to classify a live
- # job.  If a busy host exceeds the response budget, discard bulky filesystem
- # aggregates from active records first, but retain bounded diagnostic tails;
- # otherwise long-running stalls become invisible precisely on busy hosts.
- # Inactive records retain complete artifact evidence so completion can never
- # be certified from a compacted observation.  The next probe will see a newly
- # inactive job in full.
- for record in jobs:
-  if record.get('u',{}).get('ActiveState') in {'active','activating','reloading'}:
-   record['k']=[]; record['c']=[]
+ # Diagnostic text dominates busy-host responses.  Compact it before recovery
+ # metadata: checkpoint growth is required both for safe resource accounting
+ # and for a restart decision, while a bounded diagnostic hash still proves
+ # forward activity.
  document['q']=1
  document.pop('b',None)
  encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
@@ -705,6 +776,16 @@ if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
   document['b']=len(encoded.encode())
   encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
  if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
+  # Completion files cannot certify an active unit, so omit those first and
+  # collapse its per-pattern checkpoint aggregates into one recovery summary.
+  for record in jobs:
+   if record.get('u',{}).get('ActiveState') in {'active','activating','reloading'}:
+    record['k']=summarize_aggregates(record.get('k',[])); record['c']=[]
+  document.pop('b',None)
+  encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+  document['b']=len(encoded.encode())
+  encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
+ if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
   # A host with substantial stopped-job history can still exceed the cap.
   # Completion aggregates are the only filesystem evidence used to promote
   # an inactive unit; retain all of them and remove its checkpoint/diagnostic
@@ -712,9 +793,10 @@ if len(encoded.encode())>__REMOTE_OUTPUT_BUDGET__:
   # way to fit the transport cap.  This remains fail-closed because an absent
   # or malformed completion aggregate cannot certify a job.
   for record in jobs:
-   record['k']=[]
-   if record.get('u',{}).get('ActiveState') not in {'active','activating','reloading'}:
-    record['d']=[]
+   if record.get('u',{}).get('ActiveState') in {'active','activating','reloading'}:
+    record['k']=summarize_aggregates(record.get('k',[]))
+   else:
+    record['k']=[]; record['d']=[]
   document['q']=2
   document.pop('b',None)
   encoded=json.dumps(document,sort_keys=True,separators=(',',':'))
@@ -848,12 +930,13 @@ def normalize_remote(remote: dict[str, Any]) -> dict[str, Any]:
                 result.append({"exists": False})
             elif record[0] == 0:
                 result.append({"exists": False})
-            elif len(record) == 6 and record[0] == 1:
+            elif len(record) == 6 and record[0] in {1, 2}:
                 result.append({
                     "exists": True, "match_count": record[1],
                     "total_size": record[2], "allocated_bytes": record[3],
                     "newest_mtime_ns": record[4],
                     "metadata_sha256": record[5],
+                    "compacted": record[0] == 2,
                 })
             else:
                 result.append({"exists": False})
@@ -912,6 +995,26 @@ def parse_time(value: str) -> dt.datetime:
     return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def compute_billing_end(ec2: dict[str, Any], now: dt.datetime) -> dt.datetime:
+    """Clamp the simple launch-time cost estimate at the final EC2 transition.
+
+    ``LaunchTime`` plus the configured hourly rate is intentionally only an
+    estimate, but it must not keep growing after a host has stopped or been
+    terminated.  EC2 exposes the transition timestamp in the stable
+    ``StateTransitionReason`` string for those states.
+    """
+    if ec2.get("State", {}).get("Name") in {"pending", "running"}:
+        return now
+    reason = str(ec2.get("StateTransitionReason", ""))
+    match = re.search(r"\((\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) GMT\)$", reason)
+    if not match:
+        # Preserve the historical conservative estimate when EC2 omits the
+        # transition timestamp.  Current burn is still zero for this host.
+        return now
+    return dt.datetime.strptime(
+        match.group(1), "%Y-%m-%d %H:%M:%S").replace(tzinfo=dt.timezone.utc)
+
+
 def head_certificate(region: str, certificate: dict[str, Any]) -> dict[str, Any]:
     argv = [
         "aws", "s3api", "head-object", "--region", region,
@@ -955,7 +1058,9 @@ def has_result_certificate(definition: dict[str, Any]) -> bool:
     Non-ledger build/staging jobs retain the legacy behavior because their
     immutable output can itself be a source artifact.
     """
-    if not definition.get("ledger_certifies") or not definition.get("ledger_files"):
+    if ((not definition.get("ledger_certifies") or
+         not definition.get("ledger_files")) and
+            not definition.get("requires_result_certificate")):
         return True
     result_keys = []
     for certificate in definition.get("s3_certificates", []):
@@ -1043,6 +1148,17 @@ def integer_property(unit: dict[str, Any], name: str) -> int | None:
     return result if result >= 0 else None
 
 
+def unit_cpu_set(unit: dict[str, Any], capacity: int) -> set[int]:
+    """Return the resource-control mask, falling back to CPUAffinity.
+
+    Older checked-in units constrain their processes with CPUAffinity rather
+    than AllowedCPUs.  systemd exposes those as separate properties even
+    though either one gives the supervisor an exact allocation boundary.
+    """
+    value = unit.get("AllowedCPUs") or unit.get("CPUAffinity")
+    return parse_cpu_set(value, capacity)
+
+
 def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
                    job_definitions: list[dict[str, Any]] | None = None,
                    previous_remote: dict[str, Any] | None = None,
@@ -1064,7 +1180,7 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
         if unit.get("ActiveState") not in {"active", "activating", "reloading"}:
             continue
         try:
-            cpus = parse_cpu_set(unit.get("AllowedCPUs"), capacity)
+            cpus = unit_cpu_set(unit, capacity)
         except ValueError:
             cpus = set()
         if cpus:
@@ -1110,7 +1226,7 @@ def cpu_allocation(instance: dict[str, Any], remote: dict[str, Any],
             continue
         name = f"accounted:{unit_name}"
         try:
-            cpus = parse_cpu_set(properties.get("AllowedCPUs"), capacity)
+            cpus = unit_cpu_set(properties, capacity)
         except ValueError:
             cpus = set()
         if cpus:
@@ -1266,9 +1382,13 @@ def schedule_backfill(config: dict[str, Any], report: dict[str, Any]
         definition for definition in config["jobs"]
         if jobs.get(str(definition["id"]), {}).get("status") == "READY"
     ]
-    # Smallest peak memory first backfills more independent solves; stable ids
-    # make the decision deterministic and auditable.
+    # Explicit campaign priority wins first.  Within one priority band, the
+    # smallest peak memory backfills more independent solves; stable ids make
+    # the decision deterministic and auditable.  This prevents a large
+    # companion-material experiment from displacing a nearly complete base
+    # material class merely because the companion requests less RAM.
     candidates.sort(key=lambda item: (
+        -int(item.get("scheduling_priority", 0)),
         int(_job_resources(item)["memory_peak_bytes"]), str(item["id"])))
     selected: list[str] = []
     blocked: dict[str, str] = {}
@@ -1368,7 +1488,8 @@ def probe_instance(config: dict[str, Any], definition: dict[str, Any],
                    sample_seconds: float | None
                    ) -> tuple[dict[str, Any], str | None]:
     launch = parse_time(ec2["LaunchTime"])
-    hours = max(0.0, (now - launch).total_seconds() / 3600)
+    billing_end = compute_billing_end(ec2, now)
+    hours = max(0.0, (billing_end - launch).total_seconds() / 3600)
     spend = hours * float(definition["hourly_usd"])
     state = ec2.get("State", {}).get("Name", "unknown")
     remote: dict[str, Any] = {}
@@ -1424,6 +1545,7 @@ def probe_instance(config: dict[str, Any], definition: dict[str, Any],
         "name": definition.get("name", definition["instance_id"]),
         "ec2_state": state, "instance_type": ec2.get("InstanceType", ""),
         "launch_time": ec2.get("LaunchTime", ""),
+        "billing_end_time": billing_end.isoformat(),
         "estimated_spend_usd": round(spend, 2),
         "resource_warnings": warnings, "cpu_allocation": allocation,
         "remote": remote,
@@ -1491,7 +1613,9 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                        host.get("remote", {}).get("jobs", [])}
         remote = remote_jobs.get(identifier, {})
         superseded = bool(definition.get("superseded_by"))
+        paused = bool(definition.get("paused"))
         status = ("SUPERSEDED" if superseded else
+                  "PAUSED" if paused else
                   unit_status(remote.get("unit", {})) if remote else "UNKNOWN")
         # Queue-stage records are deliberately omitted from the host probe
         # until their service and source bindings are installed.  The
@@ -1499,7 +1623,8 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         # source hash vector by design; do not turn that staging boundary into
         # a live SOURCE_MISMATCH failure.
         source_matches = source_exact(definition, remote) if remote else False
-        if (not superseded and not definition.get("queue_stage") and
+        if (not superseded and not paused and
+                not definition.get("queue_stage") and
                 not definition.get("s3_only_certified") and remote
                 and not source_matches):
             status = "SOURCE_MISMATCH"
@@ -1512,7 +1637,8 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         # RUNNING job may therefore look like a clean inactive exit even though
         # its journal records failure.  Completion evidence may still certify
         # it below; without that evidence, fail closed and delegate diagnosis.
-        if (not superseded and not definition.get("queue_stage") and
+        if (not superseded and not paused and
+                not definition.get("queue_stage") and
                 not definition.get("s3_only_certified") and
                 remote.get("unit", {}).get("LoadState") == "not-found" and
                 previous_status == "RUNNING" and not completion):
@@ -1542,7 +1668,7 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                 result_certificate):
             status = "CERTIFIED"
         elif (not superseded and completion and
-              status in {"INACTIVE", "SOURCE_MISMATCH"}):
+              status in {"INACTIVE", "PAUSED", "SOURCE_MISMATCH"}):
             # Successful completion evidence is more durable than a staging
             # tree.  Source files may be reclaimed after a run while its
             # result still awaits the version-pinned S3 certification gate.
@@ -1597,8 +1723,11 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
     report = {
         "schema": SCHEMA, "observed_at": now.isoformat(),
         "estimated_spend_usd": round(total_spend, 2),
-        "fleet_burn_usd_per_hour": round(sum(float(instance["hourly_usd"])
-                                              for instance in config["instances"]), 2),
+        "fleet_burn_usd_per_hour": round(sum(
+            float(definition["hourly_usd"])
+            for definition in config["instances"]
+            if instance_results.get(definition["instance_id"], {}).get(
+                "ec2_state") in {"pending", "running"}), 2),
         "instances": instance_results, "jobs": jobs, "errors": errors,
     }
     scheduling = schedule_backfill(config, report)
@@ -1615,12 +1744,25 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
                         for value in measured_instances)
     utilization_fraction = (measured_busy / measured_capacity
                             if measured_capacity else 0.0)
+    # A partial probe must not suppress an obvious fleet-wide utilization
+    # failure.  Bound every incompletely measured running host at 100% busy;
+    # when even that conservative upper bound is below the threshold, the
+    # conclusion is exact despite the missing per-process sample.
+    conservative_busy = sum(
+        (float(value["cpu_allocation"]["measured_busy_vcpus"])
+         if value["cpu_allocation"].get("measurement_complete")
+         else float(value["cpu_allocation"]["vcpus"]))
+        for value in measured_instances)
+    conservative_fraction = (conservative_busy / measured_capacity
+                             if measured_capacity else 0.0)
     stage_jobs = [identifier for identifier, value in jobs.items()
                   if value["status"] == "AWAITING_STAGE"]
     runnable = sorted(set(scheduling["selected"]) | set(stage_jobs))
-    below = (measurement_complete and bool(runnable) and
-             utilization_fraction < float(config.get(
-                 "underutilized_fraction", DEFAULT_UNDERUTILIZED_FRACTION)))
+    active_work = any(value["status"] == "RUNNING" for value in jobs.values())
+    underutilized_fraction = float(config.get(
+        "underutilized_fraction", DEFAULT_UNDERUTILIZED_FRACTION))
+    below = ((bool(runnable) or active_work) and measured_capacity > 0 and
+             conservative_fraction < underutilized_fraction)
     underutilized_limit = int(config.get(
         "underutilized_samples", DEFAULT_UNDERUTILIZED_SAMPLES))
     underutilized_samples = (min(
@@ -1628,10 +1770,16 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         int(previous.get("underutilized_samples", 0)) + 1) if below else 0)
     underutilized = underutilized_samples >= underutilized_limit
     if underutilized:
+        qualifier = (f"measured fleet utilization {utilization_fraction:.3f}"
+                     if measurement_complete else
+                     f"fleet utilization upper bound "
+                     f"{conservative_fraction:.3f}")
         errors.append({
             "fleet": "UNDERUTILIZED",
-            "error": (f"measured fleet utilization {utilization_fraction:.3f} "
-                      f"below threshold with {len(runnable)} runnable jobs for "
+            "error": (f"{qualifier} below threshold with "
+                      f"{len(runnable)} runnable and "
+                      f"{sum(value['status'] == 'RUNNING' for value in jobs.values())} "
+                      f"running jobs for "
                       f"{underutilized_samples} samples"),
         })
     scheduling.update({
@@ -1639,6 +1787,8 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         "measured_busy_vcpus": round(measured_busy, 3),
         "measured_capacity_vcpus": measured_capacity,
         "measured_utilization_percent": round(100 * utilization_fraction, 1),
+        "utilization_upper_bound_percent": round(
+            100 * conservative_fraction, 1),
         "underutilized_samples": underutilized_samples,
         "underutilized": underutilized,
         "stage_jobs": stage_jobs,
@@ -1674,7 +1824,6 @@ def supervise(config: dict[str, Any], previous: dict[str, Any],
         "scheduling": {
             "selected": scheduling["selected"],
             "stage_jobs": stage_jobs,
-            "underutilized_samples": underutilized_samples,
             "underutilized": underutilized,
         },
     }

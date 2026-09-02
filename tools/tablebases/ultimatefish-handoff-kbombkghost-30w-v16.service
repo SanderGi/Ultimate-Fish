@@ -1,0 +1,9 @@
+[Unit]
+Description=Ultimate Fish Bomb/Ghost checkpoint-13 CPU handoff v16
+After=ultimatefish-info-kbombkghost-resume-v9.service
+
+[Service]
+Type=oneshot
+ExecStart=/mnt/ultimatefish/bomb-solve-v16-source/ultimatefish-handoff-kbombkghost-30w-v16.sh
+TimeoutStartSec=infinity
+

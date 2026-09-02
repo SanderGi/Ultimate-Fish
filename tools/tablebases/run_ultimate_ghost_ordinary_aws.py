@@ -19,13 +19,14 @@ PIECES = {"knight": "Knight", "ninja": "Ninja", "queen": "Queen",
           "rook": "Rook", "turtle": "Turtle", "pawn": "Pawn",
           "berserker": "Berserker", "sniper": "Sniper",
           "prince": "Prince", "checker": "Checker", "penguin": "Penguin",
-          "copycat": "Copycat", "dragon": "Dragon"}
+          "copycat": "Copycat", "dragon": "Dragon", "angel": "Angel"}
 EXTRA_SUBSTATES = {"pawn": 2, "berserker": 10, "sniper": 4,
-                   "prince": 2, "checker": 4, "penguin": 8}
+                   "prince": 2, "checker": 4, "penguin": 8,
+                   "angel": 3}
 LOWER_SUBSTATES = {"penguin": 4}
 EXTRA_PRIMARY = {"knight", "ninja", "queen", "rook", "turtle", "pawn",
                  "berserker", "copycat"}
-IMPLICIT_DRAWS = {"knight", "turtle", "checker"}
+IMPLICIT_DRAWS = {"knight", "turtle", "checker", "angel"}
 HORIZONTAL_ONLY = {"pawn", "sniper", "checker"}
 
 
@@ -40,6 +41,64 @@ def sha256_path(path: Path) -> str:
 def require_sha(path: Path, expected: str, label: str) -> None:
     if not path.is_file() or sha256_path(path) != expected:
         raise RuntimeError(f"{label} SHA-256 mismatch: {path}")
+
+
+def copyfile_allow_same(source: Path, destination: Path) -> None:
+    """Copy one dependency, accepting its authenticated retained location."""
+    if destination.exists() and source.samefile(destination):
+        return
+    shutil.copyfile(source, destination)
+
+
+def install_prebuilt_executable(source: Path, destination: Path,
+                                expected_sha256: str) -> None:
+    """Install the authenticated binary even for solve-only continuations."""
+    copyfile_allow_same(source, destination)
+    destination.chmod(0o755)
+    require_sha(destination, expected_sha256, "copied prebuilt executable")
+
+
+def solve_worker_arguments(workers: int) -> list[str]:
+    """Keep exact legacy executables usable while opting newer ones into MT."""
+    return [] if workers == 1 else ["--workers", str(workers)]
+
+
+FIXED_POINT_ROOT_SUFFIXES = (
+    ".owner-current", ".owner-next", ".observer-current", ".observer-next",
+    ".domains", ".visible-owner-current", ".visible-owner-next",
+    ".visible-observer-current", ".visible-observer-next",
+)
+
+
+def fixed_point_resume_arguments(
+        scratch: Path, *, solve_existing: bool, enabled: bool,
+        iteration: int, current_slot: str, bdd_slot: str) -> list[str]:
+    """Bind retained roots explicitly and refuse accidental O_TRUNC restarts."""
+    retained = [Path(str(scratch) + suffix)
+                for suffix in FIXED_POINT_ROOT_SUFFIXES]
+    retained += [Path(str(scratch) + f".bdd-{slot}.{suffix}")
+                 for slot in ("a", "b") for suffix in ("nodes", "unique")]
+    if not enabled:
+        if any(path.exists() for path in retained):
+            raise RuntimeError(
+                "solve-existing retained fixed-point roots require explicit "
+                "resume metadata")
+        return []
+    if (not solve_existing or iteration < 1 or
+            current_slot not in {"current", "next"} or
+            bdd_slot not in {"a", "b"}):
+        raise RuntimeError("fixed-point resume metadata is invalid")
+    required = [Path(str(scratch) + suffix)
+                for suffix in FIXED_POINT_ROOT_SUFFIXES]
+    required += [Path(str(scratch) + f".bdd-{bdd_slot}.{suffix}")
+                 for suffix in ("nodes", "unique")]
+    missing = [path for path in required if not path.is_file()]
+    if missing:
+        raise RuntimeError(
+            f"fixed-point resume file is missing: {missing[0]}")
+    return ["--resume-fixed-point", "--resume-iteration", str(iteration),
+            "--resume-current-slot", current_slot,
+            "--resume-bdd-slot", bdd_slot]
 
 
 def validate_prebuilt_binding(executable: Path | None,
@@ -126,11 +185,15 @@ def ranges(geometries: int) -> list[tuple[int, int]]:
     return result
 
 
-def geometry_count(piece: str) -> int:
+def geometry_count(piece: str, orientation: str | None = None) -> int:
     """Return the complete public geometry domain for an ordinary piece."""
     if piece not in PIECES:
         raise ValueError(f"unknown ordinary Ghost piece: {piece}")
-    return (BASE_GEOMETRIES * EXTRA_SUBSTATES.get(piece, 1) *
+    if piece == "angel" and orientation not in {"same", "opposing"}:
+        raise ValueError("Angel geometry count requires an orientation")
+    substates = (2 if piece == "angel" and orientation == "opposing"
+                 else EXTRA_SUBSTATES.get(piece, 1))
+    return (BASE_GEOMETRIES * substates *
             (2 if piece in HORIZONTAL_ONLY else 1))
 
 
@@ -164,6 +227,8 @@ def main() -> None:
     parser.add_argument("--lower-ghost-model-sha256", required=True)
     parser.add_argument("--lower-ghost-observation-sha256", required=True)
     parser.add_argument("--parallelism", type=int, default=20)
+    parser.add_argument("--solve-workers", type=int, default=1,
+                        choices=range(1, 33))
     parser.add_argument("--prebuilt-executable", type=Path,
                         help=("use one SHA-pinned executable for transition "
                               "generation, merge, and solve"))
@@ -182,6 +247,13 @@ def main() -> None:
                               "with the current compiler before reuse"))
     parser.add_argument("--solve-existing", action="store_true",
                         help="solve an authenticated transitions-only work tree")
+    parser.add_argument("--resume-fixed-point", action="store_true",
+                        help=("resume retained fixed-point roots; requires "
+                              "explicit iteration and slot metadata"))
+    parser.add_argument("--resume-iteration", type=int, default=0)
+    parser.add_argument("--resume-current-slot", choices=("current", "next"),
+                        default="current")
+    parser.add_argument("--resume-bdd-slot", choices=("a", "b"), default="a")
     parser.add_argument(
         "--existing-transition-prefix", default="",
         help=("solve-existing transition prefix relative to the work tree; "
@@ -303,8 +375,8 @@ def main() -> None:
                     "model_sha256": args.model_sha256}
         if any(certificate.get(key) != value for key, value in expected.items()):
             raise RuntimeError("solve-existing transition binding mismatch")
-        shutil.copyfile(args.lower_ghost_sidecar,
-                        work / "tablebases/kghostk.ufgm")
+        copyfile_allow_same(args.lower_ghost_sidecar,
+                            work / "tablebases/kghostk.ufgm")
         require_sha(work / "tablebases/kghostk.ufgm",
                     args.lower_ghost_sha256, "copied lower Ghost")
     else:
@@ -318,7 +390,7 @@ def main() -> None:
     if args.piece == "pawn":
         copies.append((args.promoted_lower_table, "kqueenk.uftb"))
     for source, name in copies:
-        shutil.copyfile(source, work / "tablebases" / name)
+        copyfile_allow_same(source, work / "tablebases" / name)
     copied = [(work / "tablebases" / args.filename,
                args.source_sha256, "copied source")]
     if not args.transitions_only:
@@ -363,14 +435,19 @@ def main() -> None:
     if args.piece in EXTRA_PRIMARY:
         definitions.append("-DULTIMATE_GHOST_ORDINARY_EXTRA_PRIMARY")
     if args.piece in EXTRA_SUBSTATES:
+        extra_substates = (2 if args.piece == "angel" and
+                           args.orientation == "opposing"
+                           else EXTRA_SUBSTATES[args.piece])
         definitions.append(
-            f"-DULTIMATE_GHOST_EXTRA_SUBSTATES={EXTRA_SUBSTATES[args.piece]}")
+            f"-DULTIMATE_GHOST_EXTRA_SUBSTATES={extra_substates}")
     if args.piece in LOWER_SUBSTATES:
         definitions.append(
             "-DULTIMATE_GHOST_ORDINARY_LOWER_SUBSTATES="
             f"{LOWER_SUBSTATES[args.piece]}")
     if args.piece == "checker":
         definitions.append("-DULTIMATE_GHOST_EXTRA_IS_CHECKER")
+    if args.piece == "angel":
+        definitions.append("-DULTIMATE_GHOST_EXTRA_IS_ANGEL")
     if args.piece == "copycat":
         definitions.append("-DULTIMATE_GHOST_EXTRA_IS_COPYCAT")
     if args.piece == "pawn":
@@ -381,14 +458,15 @@ def main() -> None:
     if implicit_lower:
         definitions.append("-DULTIMATE_GHOST_ORDINARY_LOWER_DRAW_ONLY")
     build[-len(sources)-2:-len(sources)-2] = definitions
-    if not args.solve_existing:
-        if args.prebuilt_executable is None:
-            run(build, root, work / "work/logs/build.log")
-        else:
-            shutil.copyfile(args.prebuilt_executable, executable)
-            executable.chmod(0o755)
-            require_sha(executable, args.prebuilt_executable_sha256,
-                        "copied prebuilt executable")
+    if args.prebuilt_executable is not None:
+        install_prebuilt_executable(
+            args.prebuilt_executable, executable,
+            args.prebuilt_executable_sha256)
+    elif not args.solve_existing:
+        run(build, root, work / "work/logs/build.log")
+    elif not executable.is_file():
+        raise RuntimeError(
+            "solve-existing requires an existing or prebuilt executable")
     binding = [
         "--orientation", args.orientation,
         "--lower-dragon-table", ("implicit-draw" if implicit_lower
@@ -410,7 +488,7 @@ def main() -> None:
             "--promoted-lower-dragon-model-sha256",
             args.promoted_lower_model_sha256,
         ]
-    geometries = geometry_count(args.piece)
+    geometries = geometry_count(args.piece, args.orientation)
     if not args.solve_existing:
         run([str(executable), "--self-test", "--orientation", args.orientation,
              "--scratch", f"work/self-test/{Path(args.filename).stem}",
@@ -472,7 +550,11 @@ def main() -> None:
       "--lower-observation-sha256", args.lower_ghost_observation_sha256,
       "--max-nodes", str(args.solve_max_nodes),
       "--unique-slots", str(1 << 30),
-      "--compact-every", "1"]
+      "--compact-every", "1", *solve_worker_arguments(args.solve_workers)]
+    solve += fixed_point_resume_arguments(
+        work / f"work/solve/{stem}", solve_existing=args.solve_existing,
+        enabled=args.resume_fixed_point, iteration=args.resume_iteration,
+        current_slot=args.resume_current_slot, bdd_slot=args.resume_bdd_slot)
     if args.piece == "pawn":
         solve += [
           "--promoted-sidecar", "tablebases/promoted-queen-ghost.ufgd",

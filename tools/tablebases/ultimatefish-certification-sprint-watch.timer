@@ -1,0 +1,13 @@
+[Unit]
+Description=Check Ultimate Fish certification-sprint results every two minutes
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=2min
+AccuracySec=5s
+Persistent=true
+Unit=ultimatefish-certification-sprint-watch.service
+
+[Install]
+WantedBy=timers.target
+

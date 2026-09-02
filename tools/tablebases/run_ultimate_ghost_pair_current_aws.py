@@ -30,6 +30,17 @@ def require_sha(path: Path, expected: str, label: str) -> None:
         raise RuntimeError(f"{label} SHA-256 mismatch: {path}")
 
 
+def install_prebuilt(executable: Path, replacement: Path,
+                     expected: str) -> None:
+    require_sha(replacement, expected, "replacement prebuilt executable")
+    staged = executable.with_name(executable.name + ".staged")
+    shutil.copyfile(replacement, staged)
+    staged.chmod(0o755)
+    require_sha(staged, expected, "staged replacement executable")
+    staged.replace(executable)
+    require_sha(executable, expected, "installed replacement executable")
+
+
 def validate_prebuilt_binding(executable: Path | None,
                               executable_sha256: str,
                               prebuilt_model_sha256: str,
@@ -194,9 +205,12 @@ def main() -> None:
         "src/ultimate/tablebases/information.cpp", "src/ultimate/position.cpp",
         "src/ultimate/nnue.cpp",
     ]
-    if args.solve_existing:
+    if args.solve_existing and args.prebuilt_executable is None:
         require_sha(executable, args.prebuilt_executable_sha256,
                     "retained prebuilt executable")
+    elif args.solve_existing:
+        install_prebuilt(executable, args.prebuilt_executable,
+                         args.prebuilt_executable_sha256)
     elif args.prebuilt_executable is None:
         run(["clang++", "-std=c++17", "-O3", "-DNDEBUG", "-Wall",
              "-Wextra", "-Wpedantic", "-Werror", "-Isrc/ultimate",
@@ -249,6 +263,7 @@ def main() -> None:
       "--max-disk-bytes", str(args.max_disk_bytes),
       "--max-resident-bytes", str(args.max_resident_bytes),
       "--min-free-disk-bytes", str(args.min_free_disk_bytes),
+      "--workers", str(args.parallelism),
       "--compact-every", "1"]
     run(solve, work, work / "work/logs/solve.log")
     write_manifest(work, args)

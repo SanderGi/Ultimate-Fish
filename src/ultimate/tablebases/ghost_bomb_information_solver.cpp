@@ -1517,8 +1517,14 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     legacy.observationSha256 = options.observationSha256;
     legacy.bddLimits.maxNodes = options.maxNodes;
     legacy.bddLimits.uniqueSlots = options.uniqueSlots;
+    legacy.workers = options.workers;
     legacy.compactEvery = options.compactEvery;
     legacy.measureIterations = options.measureIterations;
+    legacy.resumeFixedPoint = options.resumeFixedPoint;
+    legacy.resumeConverged = options.resumeConverged;
+    legacy.resumeCurrentInNextSlot = options.resumeCurrentInNextSlot;
+    legacy.resumeBddSlot = options.resumeBddSlot;
+    legacy.resumeIteration = options.resumeIteration;
     gate_external_ghost_extra_solve(options.transitionPrefix, database,
                                     legacy);
     LowerGhostSymbolicSidecar lower(options.lowerGhostSidecar,

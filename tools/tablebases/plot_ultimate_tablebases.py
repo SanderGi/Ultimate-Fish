@@ -28,6 +28,7 @@ from plan_ultimate_tablebases import (  # noqa: E402
     DEFERRED_DYNAMIC_K2,
     PIECES,
     angel_candidates,
+    devil_candidates,
     deferred_material,
     inventory,
     mirror_copycat_candidates,
@@ -165,15 +166,14 @@ def read_summary(path: Path) -> dict[str, ReadmeResult]:
             if len(fields) != 11 or fields[3] == "—":
                 continue
             filename = fields[3].strip("`")
+            key = fields[0].strip("`")
             status = fields[4].strip("*").lower()
             if (
                 status == "certified"
                 and fields[6] in {"concrete", "information v2"}
                 and ("[" not in fields[7] or "[" not in fields[8])
             ):
-                raise ValueError(
-                    f"certified row lacks trivial counts: {filename}"
-                )
+                raise ValueError(f"certified row lacks trivial counts: {filename}")
             # The computation ledger is canonical.  In particular, certified
             # S3-only payloads no longer have to appear in the legacy generated
             # local-file summary, but their exact W/L/D values still belong in
@@ -189,6 +189,14 @@ def read_summary(path: Path) -> dict[str, ReadmeResult]:
                         previous.first_starts, previous.second_starts, status
                     )
             results[filename] = raw
+            # The complete stateful Devil runtime is twelve canonical UFDS
+            # partitions bound by a class certificate.  Its logical planner
+            # record retains the historical kdevilk.uftb name, which denotes
+            # only an excluded minion-free entry slice.  Alias the certified
+            # class result solely for catalog lookup; never read the entry
+            # slice's old outcome cells.
+            if key == "single:devil":
+                results["kdevilk.uftb"] = raw
     return results
 
 
@@ -300,6 +308,7 @@ class OutcomeCatalog:
             *stateful_candidates(),
             *angel_candidates(),
             *mirror_copycat_candidates(),
+            *devil_candidates(),
             *inventory(),
         ):
             records_by_filename[str(record["filename"])] = record
@@ -376,9 +385,7 @@ class OutcomeCatalog:
             return Cell("unknown")
         filename = str(record["filename"])
         aggregate = self.summary.get(filename)
-        if aggregate is not None and aggregate.status in {
-            "computing", "preserving"
-        }:
+        if aggregate is not None and aggregate.status in {"computing", "preserving"}:
             return Cell("computing")
         raw = self.berserker_radii.get((filename, radius))
         if raw is None:
@@ -725,7 +732,7 @@ def render(readme: Path, radii: Path, output: Path, scale: int) -> None:
     )
     draw.text(
         (width // 2, 151 * scale),
-        "Reachable positions only · Immediate stalemates and forced one-ply/tactical material simplifications are excluded · Prince: cont=0 starting boundaries only · Copycat: one linked mirrored pair · Devil: own spawned Minions only; no pre-existing Minions; starts on ranks 1-3",
+        "Reachable positions only · Immediate stalemates and forced one-ply/tactical material simplifications are excluded · Prince: cont=0 starting boundaries only · Copycat: one linked mirrored pair · Devil: own spawned Minions only; starts on ranks 1-3",
         fill=COLORS["muted"],
         font=font(20 * scale),
         anchor="ma",

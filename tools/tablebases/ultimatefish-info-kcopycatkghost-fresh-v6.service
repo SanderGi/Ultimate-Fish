@@ -1,0 +1,12 @@
+[Unit]
+Description=Ultimate Fish opposed Copycat Ghost fresh corrected fixed point v6
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ultimatefish-resume-kcopycatkghost-fresh-v6.sh
+TimeoutStartSec=infinity
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

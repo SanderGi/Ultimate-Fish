@@ -1,0 +1,7 @@
+[Unit]
+Description=Start authenticated Berserker/Ghost v22 rebind after v21 restoration
+
+[Service]
+Type=oneshot
+ExecStart=/mnt/ultimatefish/berserker-ghost-opposed-restore-v12/ultimatefish-handoff-opposed-berserker-v22.sh
+

@@ -1,0 +1,8 @@
+[Unit]
+Description=Ultimate Fish opposed Berserker/Ghost certifying solve after authenticated rebind v17
+After=local-fs.target
+
+[Service]
+Type=oneshot
+AllowedCPUs=16-31,46-48,51-61
+ExecStart=/mnt/ultimatefish/berserker-ghost-opposed-restore-v12/solve_ultimate_opposed_berserker_after_rebind_v17.sh

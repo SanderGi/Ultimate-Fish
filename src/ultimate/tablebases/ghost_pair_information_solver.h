@@ -188,6 +188,7 @@ struct SolveOptions {
     std::string lowerGhostSidecarSha256;
     PairRobdd::Limits bdd;
     ResourceLimits resources;
+    std::uint32_t workers = 1;
     std::uint32_t compactEvery = 4;
     std::uint32_t measureIterations = 0;
 };

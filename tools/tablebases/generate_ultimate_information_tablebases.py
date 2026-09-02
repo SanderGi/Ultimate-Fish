@@ -70,7 +70,8 @@ PIECE_TYPE_IDS = {
 
 
 def _records() -> dict[str, Mapping[str, object]]:
-    records = (*plan.inventory(1 << 60), *plan.mirror_copycat_candidates())
+    records = (*plan.inventory(1 << 60), *plan.mirror_copycat_candidates(),
+               *plan.angel_candidates())
     return {str(record["filename"]): record for record in records}
 
 

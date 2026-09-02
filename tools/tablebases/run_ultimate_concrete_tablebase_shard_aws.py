@@ -66,6 +66,8 @@ ANGEL_TAG = 0x314C45474E414655
 ANGEL_GIANT_TAG = 0x314741474E414655
 LINKED_COPYCAT_TAG = 0x314B4E4C43434655
 ANGEL_COPYCAT_TAG = 0x3152504343414655
+SPAWNED_DEVIL_ROOT_V1_TAG = 0x315256444E505355
+SPAWNED_DEVIL_ROOT_DENSE_STATES = 3_943_680
 LINKED_COPYCAT_LOWER = "kcopycatlinkedk.uftb"
 PIECE_TYPES = (
     "king", "jester", "knight", "pawn", "queen", "rook", "bishop",
@@ -177,7 +179,7 @@ def uftb_extent(path: Path) -> dict[str, int | str]:
             raise RuntimeError("truncated UFTB header")
         (magic, version, primary, states, legacy_edges, substates,
          wdl_bytes, dtw_bytes, exceptions) = base.unpack(header)
-        if magic != b"UFTB1\0\0\0" or version not in (4, 5, 6, 7, 8, 9, 10):
+        if magic != b"UFTB1\0\0\0" or version not in (4, 5, 6, 7, 8, 9, 10, 11):
             raise RuntimeError("invalid UFTB magic/version")
         header_bytes = base.size
         secondary = -1
@@ -624,7 +626,7 @@ def parse_uftb(path: Path, record: Mapping[str, object],
             raise RuntimeError("truncated generated UFTB header")
         (magic, version, primary, states, legacy_edges, substates,
          wdl_bytes, dtw_bytes, exceptions) = base.unpack(header)
-        if magic != b"UFTB1\0\0\0" or version not in (4, 5, 6, 7, 8, 9, 10):
+        if magic != b"UFTB1\0\0\0" or version not in (4, 5, 6, 7, 8, 9, 10, 11):
             raise RuntimeError("generated UFTB magic/version residual")
         secondary = -1
         secondary_color = 0
@@ -651,12 +653,15 @@ def parse_uftb(path: Path, record: Mapping[str, object],
                            dtw_bytes + exceptions * 6)
         if path.stat().st_size != expected_extent:
             raise RuntimeError("generated UFTB extent residual")
-        expected_states = int(record["states"])
         primary_piece = PIECE_INDEX[str(record["primary"])]
         primary_spec = next(
             piece for piece in plan.PIECES
             if piece.name == record["primary"])
         linked_copycat = bool(record.get("linked_copycat_pair"))
+        spawned_devil = (record["primary"] == "devil" and
+                         not record["secondary"])
+        expected_states = (SPAWNED_DEVIL_ROOT_DENSE_STATES
+                           if spawned_devil else int(record["states"]))
         if linked_copycat:
             expected_substates = 1
             material_residual = (
@@ -681,7 +686,7 @@ def parse_uftb(path: Path, record: Mapping[str, object],
                                  secondary_color != int(bool(record["opposing"])))
         else:
             expected_substates = plan.material_state_factor(primary_spec)
-            material_residual = version != 4
+            material_residual = version != (11 if spawned_devil else 4)
         material = {record["primary"], record["secondary"]}
         giant = "giant" in material
         angel = "angel" in material
@@ -689,14 +694,16 @@ def parse_uftb(path: Path, record: Mapping[str, object],
                          record["secondary"] == "angel" and
                          not bool(record["opposing"]))
         codec_residual = (
-            (linked_copycat and
+            (spawned_devil and
+             codec_tag != SPAWNED_DEVIL_ROOT_V1_TAG) or
+            (not spawned_devil and linked_copycat and
              (version != 10 or codec_tag != LINKED_COPYCAT_TAG)) or
-            (angel_copycat and
+            (not spawned_devil and angel_copycat and
              (version != 10 or codec_tag != ANGEL_COPYCAT_TAG)) or
-            (angel and not angel_copycat and
+            (not spawned_devil and angel and not angel_copycat and
              (version != 9 or codec_tag !=
               (ANGEL_GIANT_TAG if giant else ANGEL_TAG))) or
-            (not angel and not linked_copycat and
+            (not spawned_devil and not angel and not linked_copycat and
              ((version == 7) != giant or version in (8, 9, 10) or
                             (giant and codec_tag != GIANT_TAG)))
         )

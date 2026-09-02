@@ -1,0 +1,18 @@
+[Unit]
+Description=Ultimate Fish solve-only opposed Ghost/Penguin v29 certification
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/ultimatefish-penguin-worker-options-v29/ultimatefish-resume-kghostkpenguin-worker-options-v29.sh
+WorkingDirectory=/mnt/ultimatefish/penguin-opposed-parallel-v24-work
+AllowedCPUs=16-63
+MemoryMax=429496729600
+OOMPolicy=stop
+Restart=no
+TimeoutStartSec=infinity
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=5
+LimitNOFILE=1048576

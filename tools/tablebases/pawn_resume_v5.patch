@@ -1,0 +1,184 @@
+diff --git a/src/ultimate/tablebases/ghost_dragon_information_solver.h b/src/ultimate/tablebases/ghost_dragon_information_solver.h
+--- a/src/ultimate/tablebases/ghost_dragon_information_solver.h
++++ b/src/ultimate/tablebases/ghost_dragon_information_solver.h
+@@ -64,4 +64,8 @@ struct SolveOptions {
+     std::uint64_t uniqueSlots = std::uint64_t{1} << 30;
+     std::uint32_t compactEvery = 1;
+     std::uint32_t measureIterations = 0;
++    bool resumeFixedPoint = false;
++    bool resumeCurrentInNextSlot = false;
++    char resumeBddSlot = 'a';
++    std::uint64_t resumeIteration = 0;
+ };
+diff --git a/src/ultimate/tablebases/ghost_dragon_information_tablebase.cpp b/src/ultimate/tablebases/ghost_dragon_information_tablebase.cpp
+--- a/src/ultimate/tablebases/ghost_dragon_information_tablebase.cpp
++++ b/src/ultimate/tablebases/ghost_dragon_information_tablebase.cpp
+@@ -129,6 +129,24 @@ int main(int argc, char** argv) {
+                 solve.uniqueSlots = std::stoull(value());
+             else if (option == "--compact-every")
+                 solve.compactEvery = std::stoul(value());
++            else if (option == "--resume-fixed-point")
++                solve.resumeFixedPoint = true;
++            else if (option == "--resume-iteration")
++                solve.resumeIteration = std::stoull(value());
++            else if (option == "--resume-current-slot") {
++                const std::string slot = value();
++                if (slot != "current" && slot != "next")
++                    throw std::invalid_argument(
++                      "resume current slot must be current or next");
++                solve.resumeCurrentInNextSlot = slot == "next";
++            }
++            else if (option == "--resume-bdd-slot") {
++                const std::string slot = value();
++                if (slot != "a" && slot != "b")
++                    throw std::invalid_argument(
++                      "resume BDD slot must be a or b");
++                solve.resumeBddSlot = slot.front();
++            }
+             else
+                 throw std::invalid_argument("unknown option " + option);
+         }
+diff --git a/src/ultimate/tablebases/ghost_dragon_information_solver.cpp b/src/ultimate/tablebases/ghost_dragon_information_solver.cpp
+--- a/src/ultimate/tablebases/ghost_dragon_information_solver.cpp
++++ b/src/ultimate/tablebases/ghost_dragon_information_solver.cpp
+@@ -1566,5 +1566,9 @@ SolveCertificate solve_exact(const SolveOptions& options) {
+     legacy.bddLimits.uniqueSlots = options.uniqueSlots;
+     legacy.compactEvery = options.compactEvery;
+     legacy.measureIterations = options.measureIterations;
++    legacy.resumeFixedPoint = options.resumeFixedPoint;
++    legacy.resumeCurrentInNextSlot = options.resumeCurrentInNextSlot;
++    legacy.resumeBddSlot = options.resumeBddSlot;
++    legacy.resumeIteration = options.resumeIteration;
+     gate_external_ghost_extra_solve(options.transitionPrefix, database,
+                                     legacy);
+diff --git a/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp b/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp
+--- a/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp
++++ b/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp
+@@ -3062,4 +3062,8 @@ struct ExternalGhostExtraSolveOptions {
+ #endif
+     ExternalRobdd::Limits bddLimits;
+     std::uint32_t compactEvery = 4;
++    bool resumeFixedPoint = false;
++    bool resumeCurrentInNextSlot = false;
++    char resumeBddSlot = 'a';
++    std::uint64_t resumeIteration = 0;
+     // Nonzero is a resource-measurement mode, never a proof/result mode.  It
+@@ -3487,4 +3491,8 @@ class ExternalGhostExtraFixedPoint {
+         material_(material), options_(std::move(options)),
+         bdd_(std::make_unique<ExternalRobdd>(
+-          options_.scratch + ".bdd-a", options_.bddLimits, true)),
++          options_.scratch + ".bdd-" +
++            (options_.resumeFixedPoint
++               ? std::string(1, options_.resumeBddSlot) : "a"),
++          options_.bddLimits, !options_.resumeFixedPoint)),
++        resumedNodeCount_(bdd_->node_count()),
+         lowerImport_(lower_, *bdd_),
+@@ -3494,10 +3502,20 @@ class ExternalGhostExtraFixedPoint {
+ #endif
+-        ownerCurrent_(options_.scratch + ".owner-current",
+-          std::uint64_t(database_.geometry_count()) * Squares, true),
+-        ownerNext_(options_.scratch + ".owner-next",
+-          std::uint64_t(database_.geometry_count()) * Squares, true),
+-        observerCurrent_(options_.scratch + ".observer-current",
+-          database_.stratum_count(), true),
+-        observerNext_(options_.scratch + ".observer-next",
+-          database_.stratum_count(), true),
++        ownerCurrent_(options_.scratch +
++          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
++             ? ".owner-next" : ".owner-current"),
++          std::uint64_t(database_.geometry_count()) * Squares,
++          !options_.resumeFixedPoint),
++        ownerNext_(options_.scratch +
++          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
++             ? ".owner-current" : ".owner-next"),
++          std::uint64_t(database_.geometry_count()) * Squares,
++          !options_.resumeFixedPoint),
++        observerCurrent_(options_.scratch +
++          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
++             ? ".observer-next" : ".observer-current"),
++          database_.stratum_count(), !options_.resumeFixedPoint),
++        observerNext_(options_.scratch +
++          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
++             ? ".observer-current" : ".observer-next"),
++          database_.stratum_count(), !options_.resumeFixedPoint),
+         domainRoots_(options_.scratch + ".domains",
+@@ -3504,11 +3522,22 @@ class ExternalGhostExtraFixedPoint {
+-          database_.stratum_count(), true),
+-        visibleOwnerCurrent_(options_.scratch + ".visible-owner-current",
+-          std::uint64_t(database_.geometry_count()) * Squares, true),
+-        visibleOwnerNext_(options_.scratch + ".visible-owner-next",
+-          std::uint64_t(database_.geometry_count()) * Squares, true),
+-        visibleObserverCurrent_(
+-          options_.scratch + ".visible-observer-current",
+-          std::uint64_t(database_.geometry_count()) * Squares, true),
+-        visibleObserverNext_(options_.scratch + ".visible-observer-next",
+-          std::uint64_t(database_.geometry_count()) * Squares, true) {
++          database_.stratum_count(), !options_.resumeFixedPoint),
++        visibleOwnerCurrent_(options_.scratch +
++          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
++             ? ".visible-owner-next" : ".visible-owner-current"),
++          std::uint64_t(database_.geometry_count()) * Squares,
++          !options_.resumeFixedPoint),
++        visibleOwnerNext_(options_.scratch +
++          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
++             ? ".visible-owner-current" : ".visible-owner-next"),
++          std::uint64_t(database_.geometry_count()) * Squares,
++          !options_.resumeFixedPoint),
++        visibleObserverCurrent_(options_.scratch +
++          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
++             ? ".visible-observer-next" : ".visible-observer-current"),
++          std::uint64_t(database_.geometry_count()) * Squares,
++          !options_.resumeFixedPoint),
++        visibleObserverNext_(options_.scratch +
++          (options_.resumeFixedPoint && options_.resumeCurrentInNextSlot
++             ? ".visible-observer-current" : ".visible-observer-next"),
++          std::uint64_t(database_.geometry_count()) * Squares,
++          !options_.resumeFixedPoint) {
+         if (material_.ghostColor != Color::White)
+@@ -3521,4 +3550,40 @@ class ExternalGhostExtraFixedPoint {
+             options_.sourceSha256 != hex_digest(concrete_.sha()))
+             throw std::runtime_error(
+               "external exact solve requires matching source/model/observation SHA-256 values");
++        if (options_.resumeFixedPoint) {
++            if ((options_.resumeBddSlot != 'a' &&
++                 options_.resumeBddSlot != 'b') ||
++                !options_.resumeIteration ||
++                bdd_->node_count() != resumedNodeCount_)
++                throw std::runtime_error(
++                  "external fixed-point resume metadata is invalid");
++            iteration_ = options_.resumeIteration;
++            compactToB_ = options_.resumeBddSlot == 'a';
++            const auto validateRoots = [&](const auto& roots,
++                                           const char* label) {
++                for (std::uint64_t id = 0; id < roots.size(); ++id)
++                    if (roots[id] >= bdd_->node_count())
++                        throw std::runtime_error(
++                          std::string("external fixed-point resume ") + label +
++                          " root is outside the persisted ROBDD");
++            };
++            validateRoots(ownerCurrent_, "owner");
++            validateRoots(observerCurrent_, "observer");
++            validateRoots(domainRoots_, "domain");
++            for (std::uint64_t id = 0; id < visibleOwnerCurrent_.size(); ++id)
++                if (visibleOwnerCurrent_[id] > 1 ||
++                    visibleObserverCurrent_[id] > 1)
++                    throw std::runtime_error(
++                      "external fixed-point resume visible root residual");
++            std::cout << "ghost_extra_external_resume iteration "
++                      << iteration_ << " bdd_slot " << options_.resumeBddSlot
++                      << " current_slot "
++                      << (options_.resumeCurrentInNextSlot ? "next" : "current")
++                      << " bdd_nodes " << bdd_->node_count()
++                      << " root_range_residual 0 lower_import_residual 0\n"
++                      << std::flush;
++            inherited_lower_mask_self_test();
++            fresh_root_public_grouping_self_test();
++            return;
++        }
+         ownerCurrent_.fill(ExternalRobdd::False);
+@@ -4561,4 +4626,5 @@ class ExternalGhostExtraFixedPoint {
+     MaterialSpec material_;
+     ExternalGhostExtraSolveOptions options_;
+     std::unique_ptr<ExternalRobdd> bdd_;
++    std::uint32_t resumedNodeCount_ = 0;
+     LowerGhostRobddImport lowerImport_;

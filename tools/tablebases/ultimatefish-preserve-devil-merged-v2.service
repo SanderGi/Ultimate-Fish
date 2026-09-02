@@ -1,0 +1,13 @@
+[Unit]
+Description=Ultimate Fish preserve and restore-authenticate merged lone-Devil tablebase v2
+After=network-online.target ultimatefish-finalize-devil-spawned-v1.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/mnt/ultimatefish/devil-preservation-v2/ultimatefish-preserve-devil-merged-v2.sh
+AllowedCPUs=0
+MemoryMax=8G
+LimitNOFILE=1048576
+TimeoutStartSec=infinity
+

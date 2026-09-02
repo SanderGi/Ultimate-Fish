@@ -1,0 +1,13 @@
+[Unit]
+Description=Ultimate Fish Pawn/Ghost information-trivial v2 audit
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+AllowedCPUs=0-30
+ExecStart=/usr/local/bin/ultimatefish-audit-kpawnghostk-information-trivial-v2.sh
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

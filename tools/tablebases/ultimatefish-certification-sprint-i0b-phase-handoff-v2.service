@@ -1,0 +1,9 @@
+[Unit]
+Description=Ultimate Fish certification sprint i0b phase CPU handoff v2
+After=ultimatefish-info-kghostkdragon-parallel-v27.service ultimatefish-info-kninjakghost-action-conditioned-v20.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/ultimatefish-certification-sprint/i0b-phase-handoff-v2.sh
+TimeoutStartSec=infinity
+

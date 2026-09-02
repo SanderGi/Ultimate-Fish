@@ -1,0 +1,21 @@
+diff --git a/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp b/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp
+--- a/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp
++++ b/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp
+@@ -1050,6 +1050,17 @@ struct PublicExtraGeometry {
+ 
+ [[nodiscard]] bool valid_geometry_world(
+   const PublicExtraGeometry& geometry, std::uint8_t ghost) {
++    // The packed concrete source retains dense padding with adjacent real
++    // Kings.  No legal turn boundary can reach those placements, and letting
++    // them enter the public-information graph makes their arbitrary concrete
++    // move lists violate the otherwise exact D2 certificate.  Exclude them at
++    // the shared world-domain gate so fresh compilation and replay verification
++    // agree, rather than filtering only the final singleton comparison.
++    if (std::abs(int(geometry.whiteKing % Position::BoardFiles) -
++                 int(geometry.blackKing % Position::BoardFiles)) <= 1 &&
++        std::abs(int(geometry.whiteKing / Position::BoardFiles) -
++                 int(geometry.blackKing / Position::BoardFiles)) <= 1)
++        return false;
+     if (ghost == geometry.whiteKing || ghost == geometry.blackKing ||
+         ghost == geometry.bishop)
+         return false;

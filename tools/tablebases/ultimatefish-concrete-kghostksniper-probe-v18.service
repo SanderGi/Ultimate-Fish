@@ -1,0 +1,14 @@
+[Unit]
+Description=Ultimate Fish corrected opposed Sniper/Ghost concrete oracle v18
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/mnt/ultimatefish/sniper-concrete-probe-v18
+ExecStart=/mnt/ultimatefish/sniper-concrete-probe-v18/ultimatefish-generate-kghostksniper-probe-v18.sh
+CPUAffinity=32-63
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

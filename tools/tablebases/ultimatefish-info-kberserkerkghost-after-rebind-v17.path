@@ -1,0 +1,9 @@
+[Unit]
+Description=Start opposed Berserker/Ghost solve when the authenticated rebind manifest appears
+
+[Path]
+PathExists=/mnt/ultimatefish/berserker-ghost-opposed-restore-v12/info-remap-fix-v1/kberserkerkghost-fresh-v5/work/transitions/kberserkerkghost.rebind-v13.sha256
+Unit=ultimatefish-info-kberserkerkghost-after-rebind-v17.service
+
+[Install]
+WantedBy=multi-user.target

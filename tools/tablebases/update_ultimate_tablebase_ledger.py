@@ -156,7 +156,8 @@ def record_catalog() -> dict[str, dict[str, object]]:
     """Return one canonical filename/codec record for each material cell."""
     result: dict[str, dict[str, object]] = {}
     for record in (*plan.stateful_candidates(), *plan.angel_candidates(),
-                   *plan.mirror_copycat_candidates(), *plan.inventory()):
+                   *plan.mirror_copycat_candidates(), *plan.devil_candidates(),
+                   *plan.inventory()):
         primary = str(record["primary"])
         secondary = str(record["secondary"])
         domain = "single" if not secondary else (
@@ -195,7 +196,10 @@ def entries(text: str) -> list[Entry]:
     def add(domain: str, first: str, second: str = "") -> None:
         key = material_key(domain, first, second)
         record = records.get(key)
-        filename = str(record["filename"]) if record else ""
+        stateful_devil = key == "single:devil"
+        filename = ("ultimate-devil-stateful-class-certificate.json"
+                    if stateful_devil else
+                    str(record["filename"]) if record else "")
         exact = results.get(filename)
         if _is_deferred(domain, first, second):
             status = "deferred"
@@ -214,7 +218,8 @@ def entries(text: str) -> list[Entry]:
                 (old.status != "deferred" or
                  _is_deferred(domain, first, second))):
             status = old.status
-        states = int(record["states"]) if record else None
+        states = (34_981_631_519 if stateful_devil else
+                  int(record["states"]) if record else None)
         hidden = _requires_information(record)
         if (old is not None and old.status in {"certified", "preserving"} and
                 old.first != "—" and old.second != "—" and
@@ -244,8 +249,10 @@ def entries(text: str) -> list[Entry]:
             "S3 preservation pending" if exact is not None else "—")
         if status == "certified" and storage == "S3 preservation pending":
             status = "preserving"
+        material = ("King+Devil+causally-spawned-Minions vs King"
+                    if stateful_devil else display(domain, first, second))
         result.append(Entry(
-            key, display(domain, first, second), domain, filename, status,
+            key, material, domain, filename, status,
             states, kind, first_cell, second_cell, audited, storage, digest,
         ))
 
@@ -378,10 +385,21 @@ def parse_assignments(values: list[str], *, statuses: bool) -> dict[str, str]:
 
 def update(path: Path, status_values: list[str], storage_values: list[str],
            result_storage: str | None = None,
-           certified_values: list[str] | None = None) -> None:
+           certified_values: list[str] | None = None,
+           decommission_active: bool = False) -> None:
     text = path.read_text(encoding="utf-8")
+    rows = entries(text)
+    if decommission_active:
+        rows = [replace(
+                    row, status="planned", first="—", second="—",
+                    reachability="—",
+                    storage=(
+                        "Fleet decommissioned; the unfinished progress below is "
+                        "historical only and is not a certified result. " + row.storage))
+                if row.status in {"computing", "preserving"} else row
+                for row in rows]
     rows = apply_overrides(
-        entries(text), parse_assignments(status_values, statuses=True),
+        rows, parse_assignments(status_values, statuses=True),
         parse_assignments(storage_values, statuses=False))
     rows = apply_certified(rows, parse_certified(certified_values or []))
     if result_storage is not None:
@@ -431,17 +449,19 @@ def main() -> None:
                         help="fail closed unless a new computation is PLANNED")
     parser.add_argument("--resume", action="store_true",
                         help="with --check-launch, require COMPUTING instead")
+    parser.add_argument("--decommission-active", action="store_true",
+                        help="reclassify all non-final COMPUTING/PRESERVING rows as PLANNED")
     args = parser.parse_args()
     if args.check_launch:
         if (args.set_status or args.set_storage or args.result_storage or
-                args.set_certified):
+                args.set_certified or args.decommission_active):
             parser.error("--check-launch cannot be combined with ledger edits")
         check_launch(args.readme, args.check_launch, args.resume)
         return
     if args.resume:
         parser.error("--resume requires --check-launch")
     update(args.readme, args.set_status, args.set_storage, args.result_storage,
-           args.set_certified)
+           args.set_certified, args.decommission_active)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,9 @@
+[Unit]
+Description=Preserve completed Ultimate Fish certification-sprint information results
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/ultimatefish-certification-sprint/watch.sh /opt/ultimatefish-certification-sprint/preserve.sh ultimatefish-info-20260808-a4e679c6-831688117652 /opt/ultimatefish-certification-sprint/manifest
+

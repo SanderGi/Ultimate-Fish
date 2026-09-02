@@ -97,7 +97,8 @@ class ExternalRobdd {
                             CompactionCertificate>
     compact(const std::string& replacementPrefix,
             const std::string& remapPath,
-            std::vector<Id>& roots);
+            std::vector<Id>& roots,
+            std::uint32_t workers = 1);
 
     [[nodiscard]] static std::uint64_t required_bytes(const Limits& limits);
 

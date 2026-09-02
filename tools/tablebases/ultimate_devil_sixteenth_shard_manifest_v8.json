@@ -1,0 +1,15 @@
+{
+  "schema": "ultimate-devil-sixteenth-shard-v8",
+  "instance_id": "i-0b4523116b2f7765c",
+  "base_plan_sha256": "227190f236360e8d0e43e3f8a1362502267de447ae0deb4a167a5ba8bbe172f1",
+  "binary_sha256": "90e33f98201f43a2ba1f78d836395e7cb22d11ca72264dc385099c85bb5052e7",
+  "runner_sha256": "22a459a6363c8a022c56a810f87919d28d6990b5137c8fab5635a5452188757e",
+  "source_worker_modulus": 133,
+  "campaign_modulus": 2,
+  "shard_modulus": 16,
+  "receipt_prefix": "runs/devil-closure-v6/repartition-sixteenth-shard-v8",
+  "lanes": [
+    {"source_worker": 38, "campaign_lane": 1, "parent_residue": 1, "prior_hashes": ["b2807c813edf78018aac58e319d9a314f8f360a7e39a13a96313aaff4dfde392", "200dcd72fe963dd3b555c1c5e78d30c87f7a79f417841f7488bea43d27cd298e", "fd224849f7c0230003909abb877c6aeeb6179f8e8efd75f18340d9c960c67488", "92f9cd0965d475410251506f5180a4e0aab2789ea5d3a7627779f6a8a23c1635", "92f9cd0965d475410251506f5180a4e0aab2789ea5d3a7627779f6a8a23c1635"], "residue_cpus": {"1": 17, "9": 3}},
+    {"source_worker": 38, "campaign_lane": 1, "parent_residue": 5, "prior_hashes": ["b2807c813edf78018aac58e319d9a314f8f360a7e39a13a96313aaff4dfde392", "200dcd72fe963dd3b555c1c5e78d30c87f7a79f417841f7488bea43d27cd298e", "fd224849f7c0230003909abb877c6aeeb6179f8e8efd75f18340d9c960c67488", "92f9cd0965d475410251506f5180a4e0aab2789ea5d3a7627779f6a8a23c1635", "51bbc37eff783a24d3dd2fd1ec28479f2bdccd1638aebc95a7578173425bc38e"], "residue_cpus": {"5": 16, "13": 0}}
+  ]
+}

@@ -9,11 +9,15 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cerrno>
 #include <cstring>
 #include <fcntl.h>
+#include <iostream>
 #include <limits>
+#include <mutex>
 #include <stdexcept>
+#include <thread>
 #include <tuple>
 #include <unordered_map>
 #include <utility>
@@ -196,11 +200,11 @@ struct ExternalRobdd::Impl {
     Impl(const std::string& prefix, const Limits& requested, bool create)
       : limits(validated(requested)), nodes(prefix + ".nodes",
           std::uint64_t(limits.maxNodes) * NodeBytes, create, false),
-        unique(prefix + ".unique",
-          limits.uniqueSlots * sizeof(UniqueSlot), create, true),
         prefix(prefix) {
-        slots = reinterpret_cast<UniqueSlot*>(unique.data());
         if (create) {
+            unique = Mapping(prefix + ".unique",
+              limits.uniqueSlots * sizeof(UniqueSlot), true, true);
+            slots = reinterpret_cast<UniqueSlot*>(unique.data());
             count = 0;
             append_raw({static_cast<std::uint8_t>(limits.variables), 0, 0});
             append_raw({static_cast<std::uint8_t>(limits.variables), 1, 1});
@@ -230,21 +234,140 @@ struct ExternalRobdd::Impl {
                 trueNode.low != True || trueNode.high != True)
                 throw std::runtime_error(
                   "existing external ROBDD has invalid terminal nodes");
-            count = 2;
-            while (count < limits.maxNodes) {
-                const Node value = raw(count);
+            std::uint32_t reopenedCount = 2;
+            while (reopenedCount < limits.maxNodes) {
+                const Node value = raw(reopenedCount);
                 if (!value.variable && !value.low && !value.high)
                     break;
                 if (value.variable >= limits.variables ||
-                    value.low >= count || value.high >= count ||
+                    value.low >= reopenedCount || value.high >= reopenedCount ||
                     value.low == value.high)
                     throw std::runtime_error(
                       "existing external ROBDD has an invalid dense tuple prefix");
-                ++count;
+                ++reopenedCount;
             }
-            if (count < limits.variables + 2)
+            count.store(reopenedCount, std::memory_order_relaxed);
+            if (reopenedCount < limits.variables + 2)
                 throw std::runtime_error(
                   "existing external ROBDD lacks canonical variable nodes");
+
+            // The dense node arena is authoritative; the open-addressed
+            // unique table is a disposable acceleration index.  Long Ghost
+            // fixed points used to become effectively serial when that index
+            // approached 100% occupancy, yet increasing --unique-slots made
+            // an otherwise valid checkpoint impossible to reopen because the
+            // old index file had a different size.  Rebuild a larger index
+            // beside the original and publish it with one atomic rename.  A
+            // crash therefore leaves the old checkpoint untouched.  Until a
+            // compaction writes a native index at the new size, reopen rebuilds
+            // this disposable side index from the authoritative dense arena;
+            // it never trusts a cache left by a different arena generation.
+            const std::uint64_t requestedUniqueBytes =
+              limits.uniqueSlots * sizeof(UniqueSlot);
+            const std::string originalUniquePath = prefix + ".unique";
+            struct stat uniqueStatus{};
+            if (::stat(originalUniquePath.c_str(), &uniqueStatus) != 0)
+                system_error("cannot stat", originalUniquePath);
+            const std::uint64_t originalUniqueBytes =
+              static_cast<std::uint64_t>(uniqueStatus.st_size);
+            if (originalUniqueBytes == requestedUniqueBytes) {
+                unique = Mapping(originalUniquePath, requestedUniqueBytes,
+                                 false, false);
+            }
+            else {
+                if (reopenedCount >= limits.uniqueSlots)
+                    throw std::runtime_error(
+                      "expanded external ROBDD unique table is still too small");
+                const std::string expandedUniquePath = originalUniquePath +
+                  ".slots-" + std::to_string(limits.uniqueSlots);
+                const std::string temporary = expandedUniquePath +
+                  ".tmp-" + std::to_string(static_cast<long long>(::getpid()));
+                Mapping rebuilt(temporary, requestedUniqueBytes, true, true);
+                auto* rebuiltSlots =
+                  reinterpret_cast<UniqueSlot*>(rebuilt.data());
+                const std::uint32_t rehashWorkers = std::max(1u,
+                  std::min(32u, std::thread::hardware_concurrency()));
+                std::atomic<Id> nextRehash{2};
+                std::atomic<std::uint64_t> rehashed{0};
+                std::atomic<bool> rehashFailed{false};
+                std::exception_ptr rehashException;
+                std::mutex rehashExceptionMutex;
+                std::mutex rehashOutputMutex;
+                constexpr Id RehashChunk = 4096;
+                const auto rehash = [&] {
+                    try {
+                        while (!rehashFailed.load(std::memory_order_relaxed)) {
+                            const Id begin = nextRehash.fetch_add(
+                              RehashChunk, std::memory_order_relaxed);
+                            if (begin >= reopenedCount)
+                                break;
+                            const Id end = std::min<Id>(
+                              reopenedCount, begin + RehashChunk);
+                            for (Id id = begin; id < end; ++id) {
+                                const Node value = raw(id);
+                                std::uint64_t slot = node_hash(
+                                  value.variable, value.low, value.high) &
+                                  (limits.uniqueSlots - 1);
+                                for (;;) {
+                                    std::lock_guard<std::mutex> lock(
+                                      uniqueMutexes[slot &
+                                        (UniqueMutexStripes - 1)]);
+                                    UniqueSlot& entry = rebuiltSlots[slot];
+                                    if (!entry) {
+                                        entry = id;
+                                        break;
+                                    }
+                                    const Node existing = raw(entry);
+                                    if (existing.variable == value.variable &&
+                                        existing.low == value.low &&
+                                        existing.high == value.high)
+                                        throw std::runtime_error(
+                                          "external ROBDD dense arena contains duplicate nodes");
+                                    slot = (slot + 1) &
+                                      (limits.uniqueSlots - 1);
+                                }
+                            }
+                            const std::uint64_t done = rehashed.fetch_add(
+                              end - begin, std::memory_order_relaxed) +
+                              (end - begin);
+                            if (done / 10'000'000 !=
+                                (done - (end - begin)) / 10'000'000) {
+                                std::lock_guard<std::mutex> lock(
+                                  rehashOutputMutex);
+                                std::cout << "external_robdd_unique_rehash nodes "
+                                          << done << '/' << reopenedCount
+                                          << " workers " << rehashWorkers
+                                          << '\n' << std::flush;
+                            }
+                        }
+                    }
+                    catch (...) {
+                        rehashFailed.store(true, std::memory_order_relaxed);
+                        std::lock_guard<std::mutex> lock(rehashExceptionMutex);
+                        if (!rehashException)
+                            rehashException = std::current_exception();
+                    }
+                };
+                std::vector<std::thread> rehashThreads;
+                rehashThreads.reserve(rehashWorkers);
+                for (std::uint32_t worker = 0; worker < rehashWorkers; ++worker)
+                    rehashThreads.emplace_back(rehash);
+                for (std::thread& worker : rehashThreads)
+                    worker.join();
+                if (rehashException)
+                    std::rethrow_exception(rehashException);
+                rebuilt.flush();
+                if (::rename(temporary.c_str(),
+                             expandedUniquePath.c_str()) != 0)
+                    system_error("cannot publish", expandedUniquePath);
+                unique = std::move(rebuilt);
+                std::cout << "external_robdd_unique_rehash_complete nodes "
+                          << reopenedCount << " old_slots "
+                          << originalUniqueBytes / sizeof(UniqueSlot)
+                          << " new_slots " << limits.uniqueSlots << '\n'
+                          << std::flush;
+            }
+            slots = reinterpret_cast<UniqueSlot*>(unique.data());
             variables.resize(limits.variables);
             for (std::uint32_t variable = 0; variable < limits.variables;
                  ++variable) {
@@ -257,12 +380,37 @@ struct ExternalRobdd::Impl {
                 variables[variable] = id;
             }
         }
-        applyCache.reserve(std::min<std::size_t>(
-          limits.applyCacheEntries, 1'000'000));
-        notCache.reserve(std::min<std::size_t>(
-          limits.unaryCacheEntries, 500'000));
-        composeCache.reserve(std::min<std::size_t>(
-          limits.composeCacheEntries, 500'000));
+    }
+
+    struct ComputedCaches {
+        std::uint64_t generation = 0;
+        std::unordered_map<ApplyKey, Id, ApplyHash> apply;
+        std::unordered_map<Id, Id> negate;
+        std::unordered_map<ComposeKey, Id, ComposeHash> compose;
+    };
+
+    [[nodiscard]] ComputedCaches& caches() const {
+        static thread_local ComputedCaches result;
+        if (result.generation != generation) {
+            result.apply.clear();
+            result.negate.clear();
+            result.compose.clear();
+            result.apply.reserve(std::min<std::size_t>(
+              limits.applyCacheEntries, 1'000'000));
+            result.negate.reserve(std::min<std::size_t>(
+              limits.unaryCacheEntries, 500'000));
+            result.compose.reserve(std::min<std::size_t>(
+              limits.composeCacheEntries, 500'000));
+            result.generation = generation;
+        }
+        return result;
+    }
+
+    void clear_computed_caches() const {
+        ComputedCaches& value = caches();
+        value.apply.clear();
+        value.negate.clear();
+        value.compose.clear();
     }
 
     [[nodiscard]] static std::uint64_t required_bytes(const Limits& value) {
@@ -276,21 +424,27 @@ struct ExternalRobdd::Impl {
     }
 
     [[nodiscard]] Node get(Id id) const {
-        if (id >= count)
+        if (id >= count.load(std::memory_order_acquire))
             throw std::runtime_error("external ROBDD node ID is out of range");
         const std::uint8_t* source = nodes.data() + std::uint64_t(id) * NodeBytes;
         return {source[0], load_u32(source + 1), load_u32(source + 5)};
     }
 
-    void append_raw(Node value) {
-        if (count >= limits.maxNodes)
-            throw std::runtime_error(
-              "external ROBDD exhausted its exact node allocation");
-        std::uint8_t* target = nodes.data() + std::uint64_t(count) * NodeBytes;
+    Id append_raw(Node value) {
+        std::uint32_t id = count.load(std::memory_order_relaxed);
+        for (;;) {
+            if (id >= limits.maxNodes)
+                throw std::runtime_error(
+                  "external ROBDD exhausted its exact node allocation");
+            if (count.compare_exchange_weak(id, id + 1,
+                  std::memory_order_acq_rel, std::memory_order_relaxed))
+                break;
+        }
+        std::uint8_t* target = nodes.data() + std::uint64_t(id) * NodeBytes;
         target[0] = value.variable;
         store_u32(target + 1, value.low);
         store_u32(target + 5, value.high);
-        ++count;
+        return id;
     }
 
     [[nodiscard]] std::uint64_t node_hash(std::uint32_t variable, Id low,
@@ -302,7 +456,9 @@ struct ExternalRobdd::Impl {
     [[nodiscard]] Id make(std::uint32_t variable, Id low, Id high) {
         if (low == high)
             return low;
-        if (variable >= limits.variables || low >= count || high >= count)
+        if (variable >= limits.variables ||
+            low >= count.load(std::memory_order_acquire) ||
+            high >= count.load(std::memory_order_acquire))
             throw std::runtime_error("invalid external ROBDD node tuple");
         const auto child_variable = [&](Id child) {
             return child <= True ? limits.variables : get(child).variable;
@@ -312,15 +468,18 @@ struct ExternalRobdd::Impl {
         std::uint64_t slot = node_hash(variable, low, high) &
                              (limits.uniqueSlots - 1);
         for (std::uint64_t probes = 0; probes < limits.uniqueSlots; ++probes) {
+            // Every slot read/write is protected by its stripe. A newly
+            // reserved node tuple is fully written before its slot is
+            // published and the stripe is released, preserving collision-
+            // checked canonicity without serializing unrelated hashes.
+            std::lock_guard<std::mutex> lock(
+              uniqueMutexes[slot & (UniqueMutexStripes - 1)]);
             UniqueSlot& entry = slots[slot];
             if (!entry) {
-                if (count >= limits.maxNodes)
-                    throw std::runtime_error(
-                      "external ROBDD exact node budget exhausted");
-                const Id id = count;
-                append_raw({static_cast<std::uint8_t>(variable), low, high});
+                const Id id = append_raw(
+                  {static_cast<std::uint8_t>(variable), low, high});
                 entry = id;
-                return id;
+                return entry;
             }
             const Node existing = get(entry);
             if (existing.variable == variable && existing.low == low &&
@@ -357,7 +516,9 @@ struct ExternalRobdd::Impl {
             if (lhs == rhs) return lhs;
         }
         const ApplyKey key{lhs, rhs, operation};
-        if (const auto found = applyCache.find(key); found != applyCache.end())
+        ComputedCaches& cache = caches();
+        if (const auto found = cache.apply.find(key);
+            found != cache.apply.end())
             return found->second;
         const std::uint32_t variable = std::min(top(lhs), top(rhs));
         const Id result = make(variable,
@@ -365,21 +526,23 @@ struct ExternalRobdd::Impl {
                            branch(rhs, variable, false)),
           apply(operation, branch(lhs, variable, true),
                            branch(rhs, variable, true)));
-        if (applyCache.size() < limits.applyCacheEntries)
-            applyCache.emplace(key, result);
+        if (cache.apply.size() < limits.applyCacheEntries)
+            cache.apply.emplace(key, result);
         return result;
     }
 
     [[nodiscard]] Id negate(Id root) {
         if (root == False) return True;
         if (root == True) return False;
-        if (const auto found = notCache.find(root); found != notCache.end())
+        ComputedCaches& cache = caches();
+        if (const auto found = cache.negate.find(root);
+            found != cache.negate.end())
             return found->second;
         const Node value = get(root);
         const Id result = make(value.variable, negate(value.low),
                                negate(value.high));
-        if (notCache.size() < limits.unaryCacheEntries)
-            notCache.emplace(root, result);
+        if (cache.negate.size() < limits.unaryCacheEntries)
+            cache.negate.emplace(root, result);
         return result;
     }
 
@@ -389,8 +552,9 @@ struct ExternalRobdd::Impl {
         if (lhs == True || rhs == False)
             return false;
         const ApplyKey key{lhs, rhs, 2};
-        if (const auto found = applyCache.find(key);
-            found != applyCache.end())
+        ComputedCaches& cache = caches();
+        if (const auto found = cache.apply.find(key);
+            found != cache.apply.end())
             return found->second == True;
         const std::uint32_t variable = std::min(top(lhs), top(rhs));
         const bool result =
@@ -398,8 +562,8 @@ struct ExternalRobdd::Impl {
                   branch(rhs, variable, false)) &&
           implies(branch(lhs, variable, true),
                   branch(rhs, variable, true));
-        if (applyCache.size() < limits.applyCacheEntries)
-            applyCache.emplace(key, result ? True : False);
+        if (cache.apply.size() < limits.applyCacheEntries)
+            cache.apply.emplace(key, result ? True : False);
         return result;
     }
 
@@ -408,8 +572,9 @@ struct ExternalRobdd::Impl {
         if (root <= True)
             return root;
         const ComposeKey key{relation, root};
-        if (const auto found = composeCache.find(key);
-            found != composeCache.end())
+        ComputedCaches& cache = caches();
+        if (const auto found = cache.compose.find(key);
+            found != cache.compose.end())
             return found->second;
         const Node value = get(root);
         const Id low = compose(value.low, image, relation);
@@ -417,8 +582,8 @@ struct ExternalRobdd::Impl {
         const Id condition = image.at(value.variable);
         const Id result = apply(1, apply(0, condition, high),
           apply(0, negate(condition), low));
-        if (composeCache.size() < limits.composeCacheEntries)
-            composeCache.emplace(key, result);
+        if (cache.compose.size() < limits.composeCacheEntries)
+            cache.compose.emplace(key, result);
         return result;
     }
 
@@ -427,16 +592,16 @@ struct ExternalRobdd::Impl {
     Mapping unique;
     UniqueSlot* slots = nullptr;
     std::string prefix;
-    std::uint32_t count = 0;
+    std::atomic<std::uint32_t> count{0};
     std::vector<Id> variables;
-    std::unordered_map<ApplyKey, Id, ApplyHash> applyCache;
-    std::unordered_map<Id, Id> notCache;
-    std::unordered_map<ComposeKey, Id, ComposeHash> composeCache;
+    static constexpr std::size_t UniqueMutexStripes = 4096;
+    std::array<std::mutex, UniqueMutexStripes> uniqueMutexes;
+    const std::uint64_t generation =
+      nextGeneration.fetch_add(1, std::memory_order_relaxed);
+    inline static std::atomic<std::uint64_t> nextGeneration{1};
 
     void seal_for_streaming_compaction() {
-        applyCache.clear();
-        notCache.clear();
-        composeCache.clear();
+        clear_computed_caches();
         nodes.flush();
         // The source unique index is never consulted while copying an already
         // reduced arena.  Unmapping it before the replacement arena is opened
@@ -460,7 +625,9 @@ ExternalRobdd::Node ExternalRobdd::node(Id id) const { return impl_->get(id); }
 std::uint32_t ExternalRobdd::variable_count() const {
     return impl_->limits.variables;
 }
-std::uint32_t ExternalRobdd::node_count() const { return impl_->count; }
+std::uint32_t ExternalRobdd::node_count() const {
+    return impl_->count.load(std::memory_order_acquire);
+}
 const ExternalRobdd::Limits& ExternalRobdd::limits() const {
     return impl_->limits;
 }
@@ -575,9 +742,7 @@ bool ExternalRobdd::is_downward_closed(
 }
 
 void ExternalRobdd::clear_computed_caches() {
-    impl_->applyCache.clear();
-    impl_->notCache.clear();
-    impl_->composeCache.clear();
+    impl_->clear_computed_caches();
 }
 void ExternalRobdd::flush() {
     impl_->nodes.flush();
@@ -587,73 +752,269 @@ void ExternalRobdd::flush() {
 std::pair<std::unique_ptr<ExternalRobdd>, ExternalRobdd::CompactionCertificate>
 ExternalRobdd::compact(const std::string& replacementPrefix,
                        const std::string& remapPath,
-                       std::vector<Id>& roots) {
+                       std::vector<Id>& roots,
+                       std::uint32_t workers) {
     CompactionCertificate certificate;
     certificate.roots = roots.size();
     impl_->seal_for_streaming_compaction();
-    const std::uint64_t remapBytes = std::uint64_t(impl_->count) * sizeof(Id);
+    const std::uint32_t sourceCount =
+      impl_->count.load(std::memory_order_acquire);
+    const std::uint64_t remapBytes = std::uint64_t(sourceCount) * sizeof(Id);
     Mapping remap(remapPath, remapBytes, true, true);
     auto* mapped = reinterpret_cast<Id*>(remap.data());
-    const std::uint64_t markBytes = (std::uint64_t(impl_->count) + 7) / 8;
+    const std::uint64_t markWords = (std::uint64_t(sourceCount) + 63) / 64;
+    const std::uint64_t markBytes = markWords * sizeof(std::uint64_t);
     Mapping marks(remapPath + ".marks", markBytes, true, true);
+    auto* markData = reinterpret_cast<std::uint64_t*>(marks.data());
     const auto marked = [&](Id id) {
-        return (marks.data()[id / 8] >> (id % 8)) & 1u;
+        return (__atomic_load_n(&markData[id / 64], __ATOMIC_RELAXED) >>
+                (id % 64)) & 1ULL;
     };
-    const auto set_mark = [&](Id id) {
-        marks.data()[id / 8] |= static_cast<std::uint8_t>(1u << (id % 8));
+    const auto claim_mark = [&](Id id) {
+        const std::uint64_t mask = std::uint64_t{1} << (id % 64);
+        return (__atomic_fetch_or(&markData[id / 64], mask,
+                                  __ATOMIC_RELAXED) & mask) == 0;
     };
-    std::vector<Id> stack;
-    for (const Id root : roots) {
-        if (root >= impl_->count)
+    for (const Id root : roots)
+        if (root >= sourceCount)
             throw std::runtime_error("compaction root is out of range");
-        stack.push_back(root);
-        while (!stack.empty()) {
-            const Id current = stack.back();
-            stack.pop_back();
-            if (marked(current))
-                continue;
-            set_mark(current);
-            ++certificate.markedNodes;
-            if (current > True) {
-                const Node value = impl_->get(current);
-                stack.push_back(value.low);
-                stack.push_back(value.high);
+    const std::uint32_t workerCount = std::max<std::uint32_t>(
+      1, std::min<std::uint64_t>(workers, sourceCount));
+    const auto parallel_chunks = [&](std::uint64_t items,
+                                     std::uint64_t chunk, auto&& action) {
+        std::atomic<std::uint64_t> next{0};
+        std::atomic<bool> failed{false};
+        std::exception_ptr failure;
+        std::mutex failureMutex;
+        const auto run = [&](std::uint32_t worker) {
+            try {
+                while (!failed.load(std::memory_order_relaxed)) {
+                    const std::uint64_t begin = next.fetch_add(
+                      chunk, std::memory_order_relaxed);
+                    if (begin >= items)
+                        break;
+                    action(worker, begin, std::min(items, begin + chunk));
+                }
             }
+            catch (...) {
+                failed.store(true, std::memory_order_relaxed);
+                std::lock_guard<std::mutex> lock(failureMutex);
+                if (!failure)
+                    failure = std::current_exception();
+            }
+        };
+        if (workerCount == 1)
+            run(0);
+        else {
+            std::vector<std::thread> tasks;
+            tasks.reserve(workerCount);
+            for (std::uint32_t worker = 0; worker < workerCount; ++worker)
+                tasks.emplace_back(run, worker);
+            for (auto& task : tasks)
+                task.join();
         }
+        if (failure)
+            std::rethrow_exception(failure);
+    };
+
+    // A recursive mark rooted at millions of heavily overlapping BDDs becomes
+    // badly load-imbalanced: one or two workers can inherit the last giant
+    // subgraphs while every other assigned CPU goes idle.  Ordered BDD edges
+    // always point from a lower variable to a higher one.  Bucket the existing
+    // dense IDs by variable in the remap scratch, then propagate marks one
+    // variable level at a time.  Each level is independent, exact, and fully
+    // parallel; the scratch is reused for the final old-to-new ID map.
+    std::vector<std::atomic<std::uint64_t>> levelCounts(
+      impl_->limits.variables);
+    for (auto& count : levelCounts)
+        count.store(0, std::memory_order_relaxed);
+    parallel_chunks(sourceCount > 2 ? sourceCount - 2 : 0, 1ULL << 20,
+      [&](std::uint32_t, std::uint64_t begin, std::uint64_t end) {
+          for (std::uint64_t offset = begin; offset < end; ++offset) {
+              const Node value = impl_->get(static_cast<Id>(offset + 2));
+              levelCounts[value.variable].fetch_add(
+                1, std::memory_order_relaxed);
+          }
+      });
+    std::vector<std::uint64_t> levelBegin(impl_->limits.variables + 1, 0);
+    for (std::uint32_t variable = 0; variable < impl_->limits.variables;
+         ++variable)
+        levelBegin[variable + 1] = levelBegin[variable] +
+          levelCounts[variable].load(std::memory_order_relaxed);
+    if (levelBegin.back() != sourceCount - 2)
+        throw std::runtime_error("compaction variable census residual");
+    std::vector<std::atomic<std::uint64_t>> levelCursor(
+      impl_->limits.variables);
+    for (std::uint32_t variable = 0; variable < impl_->limits.variables;
+         ++variable)
+        levelCursor[variable].store(levelBegin[variable],
+                                    std::memory_order_relaxed);
+    parallel_chunks(sourceCount > 2 ? sourceCount - 2 : 0, 1ULL << 20,
+      [&](std::uint32_t, std::uint64_t begin, std::uint64_t end) {
+          for (std::uint64_t offset = begin; offset < end; ++offset) {
+              const Id id = static_cast<Id>(offset + 2);
+              const Node value = impl_->get(id);
+              mapped[levelCursor[value.variable].fetch_add(
+                1, std::memory_order_relaxed)] = id;
+          }
+      });
+
+    std::atomic<std::uint64_t> markedNodes{0};
+    parallel_chunks(roots.size(), 1ULL << 16,
+      [&](std::uint32_t, std::uint64_t begin, std::uint64_t end) {
+          for (std::uint64_t index = begin; index < end; ++index)
+              if (claim_mark(roots[index]))
+                  markedNodes.fetch_add(1, std::memory_order_relaxed);
+      });
+    for (std::uint32_t variable = 0; variable < impl_->limits.variables;
+         ++variable) {
+        const std::uint64_t count = levelBegin[variable + 1] -
+                                    levelBegin[variable];
+        parallel_chunks(count, 1ULL << 16,
+          [&](std::uint32_t, std::uint64_t begin, std::uint64_t end) {
+              for (std::uint64_t offset = begin; offset < end; ++offset) {
+                  const Id id = mapped[levelBegin[variable] + offset];
+                  if (!marked(id))
+                      continue;
+                  const Node value = impl_->get(id);
+                  if (claim_mark(value.low))
+                      markedNodes.fetch_add(1, std::memory_order_relaxed);
+                  if (claim_mark(value.high))
+                      markedNodes.fetch_add(1, std::memory_order_relaxed);
+              }
+          });
     }
+    certificate.markedNodes = markedNodes.load(std::memory_order_relaxed);
 
     // Marking intentionally tolerates random source-node reads.  Drop those
     // clean pages before the ordered copy so the copy has a bounded streaming
     // source working set rather than retaining the full old arena.
-    impl_->nodes.discard(0, std::uint64_t(impl_->count) * NodeBytes);
+    impl_->nodes.discard(0, std::uint64_t(sourceCount) * NodeBytes);
+
+    mapped[False] = False;
+    mapped[True] = True;
+    const Id fixedNodes = impl_->limits.variables + 2;
+    for (Id id = 2; id < fixedNodes; ++id)
+        mapped[id] = id;
+    constexpr std::uint64_t IdChunk = 1ULL << 20;
+    const std::uint64_t compactable = sourceCount > fixedNodes
+                                    ? sourceCount - fixedNodes : 0;
+    const std::uint64_t chunkCount =
+      (compactable + IdChunk - 1) / IdChunk;
+    std::vector<std::uint64_t> chunkOffsets(chunkCount + 1, fixedNodes);
+    parallel_chunks(chunkCount, 1,
+      [&](std::uint32_t, std::uint64_t begin, std::uint64_t end) {
+          for (std::uint64_t chunkIndex = begin; chunkIndex < end;
+               ++chunkIndex) {
+              const std::uint64_t first = fixedNodes + chunkIndex * IdChunk;
+              const std::uint64_t last = std::min<std::uint64_t>(
+                sourceCount, first + IdChunk);
+              std::uint64_t count = 0;
+              for (std::uint64_t id = first; id < last; ++id)
+                  count += marked(static_cast<Id>(id));
+              chunkOffsets[chunkIndex + 1] = count;
+          }
+      });
+    for (std::uint64_t chunkIndex = 0; chunkIndex < chunkCount; ++chunkIndex)
+        chunkOffsets[chunkIndex + 1] += chunkOffsets[chunkIndex];
+    const std::uint64_t finalCount = chunkOffsets.back();
+    if (finalCount > impl_->limits.maxNodes)
+        throw std::runtime_error("compaction dense node count overflow");
+    parallel_chunks(chunkCount, 1,
+      [&](std::uint32_t, std::uint64_t begin, std::uint64_t end) {
+          for (std::uint64_t chunkIndex = begin; chunkIndex < end;
+               ++chunkIndex) {
+              const std::uint64_t first = fixedNodes + chunkIndex * IdChunk;
+              const std::uint64_t last = std::min<std::uint64_t>(
+                sourceCount, first + IdChunk);
+              Id output = static_cast<Id>(chunkOffsets[chunkIndex]);
+              for (std::uint64_t id = first; id < last; ++id)
+                  if (marked(static_cast<Id>(id)))
+                      mapped[id] = output++;
+              if (output != chunkOffsets[chunkIndex + 1])
+                  throw std::runtime_error("compaction ID prefix residual");
+          }
+      });
 
     auto replacement = std::make_unique<ExternalRobdd>(
       replacementPrefix, impl_->limits, true);
-    mapped[False] = False;
-    mapped[True] = True;
-    constexpr std::uint64_t DiscardChunkBytes = 64ULL << 20;
-    std::uint64_t discardCursor = 0;
-    for (Id id = 2; id < impl_->count; ++id) {
-        if (!marked(id))
-            continue;
-        const Node old = impl_->get(id);
-        const Id copied = replacement->make(
-          old.variable, mapped[old.low], mapped[old.high]);
-        mapped[id] = copied;
-        const Node fresh = replacement->node(copied);
-        certificate.structuralResidual +=
-          fresh.variable != old.variable || fresh.low != mapped[old.low] ||
-          fresh.high != mapped[old.high];
-        ++certificate.copiedNodes;
-        const std::uint64_t consumed = std::uint64_t(id + 1) * NodeBytes;
-        if (consumed - discardCursor >= DiscardChunkBytes) {
-            impl_->nodes.discard(discardCursor, consumed - discardCursor);
-            discardCursor = consumed;
-        }
-    }
-    if (discardCursor < std::uint64_t(impl_->count) * NodeBytes)
-        impl_->nodes.discard(discardCursor,
-          std::uint64_t(impl_->count) * NodeBytes - discardCursor);
+    std::atomic<std::uint64_t> structuralResidual{0};
+    parallel_chunks(compactable, IdChunk,
+      [&](std::uint32_t, std::uint64_t begin, std::uint64_t end) {
+          for (std::uint64_t offset = begin; offset < end; ++offset) {
+              const Id oldId = static_cast<Id>(fixedNodes + offset);
+              if (!marked(oldId))
+                  continue;
+              const Node old = impl_->get(oldId);
+              if ((old.low > True && !mapped[old.low]) ||
+                  (old.high > True && !mapped[old.high]))
+                  throw std::runtime_error(
+                    "compaction reachable child lacks a dense ID");
+              const Id copied = mapped[oldId];
+              std::uint8_t* target = replacement->impl_->nodes.data() +
+                std::uint64_t(copied) * NodeBytes;
+              target[0] = old.variable;
+              store_u32(target + 1, mapped[old.low]);
+              store_u32(target + 5, mapped[old.high]);
+              structuralResidual.fetch_add(
+                copied < fixedNodes || mapped[old.low] >= copied ||
+                mapped[old.high] >= copied ||
+                mapped[old.low] == mapped[old.high],
+                std::memory_order_relaxed);
+          }
+      });
+    replacement->impl_->count.store(static_cast<Id>(finalCount),
+                                     std::memory_order_release);
+
+    // The replacement constructor already bound the canonical variable
+    // nodes. Bind the copied exact tuples in parallel without invoking make(),
+    // whose append dependency forced the former serial copy. Since remapping
+    // is order-preserving and injective, any duplicate tuple is a residual.
+    std::atomic<std::uint64_t> duplicateResidual{0};
+    parallel_chunks(finalCount - fixedNodes, IdChunk,
+      [&](std::uint32_t, std::uint64_t begin, std::uint64_t end) {
+          for (std::uint64_t offset = begin; offset < end; ++offset) {
+              const Id id = static_cast<Id>(fixedNodes + offset);
+              const Node value = replacement->impl_->get(id);
+              std::uint64_t slot = replacement->impl_->node_hash(
+                value.variable, value.low, value.high) &
+                (replacement->impl_->limits.uniqueSlots - 1);
+              bool bound = false;
+              for (std::uint64_t probes = 0;
+                   probes < replacement->impl_->limits.uniqueSlots;
+                   ++probes) {
+                  std::lock_guard<std::mutex> lock(
+                    replacement->impl_->uniqueMutexes[
+                      slot & (Impl::UniqueMutexStripes - 1)]);
+                  Impl::UniqueSlot& entry = replacement->impl_->slots[slot];
+                  if (!entry) {
+                      entry = id;
+                      bound = true;
+                      break;
+                  }
+                  const Node existing = replacement->impl_->get(entry);
+                  if (existing.variable == value.variable &&
+                      existing.low == value.low &&
+                      existing.high == value.high) {
+                      duplicateResidual.fetch_add(1,
+                        std::memory_order_relaxed);
+                      bound = true;
+                      break;
+                  }
+                  slot = (slot + 1) &
+                    (replacement->impl_->limits.uniqueSlots - 1);
+              }
+              if (!bound)
+                  throw std::runtime_error(
+                    "compaction replacement unique table is full");
+          }
+      });
+    certificate.structuralResidual =
+      structuralResidual.load(std::memory_order_relaxed) +
+      duplicateResidual.load(std::memory_order_relaxed);
+    certificate.copiedNodes = certificate.markedNodes -
+      marked(False) - marked(True);
+    impl_->nodes.discard(0, std::uint64_t(sourceCount) * NodeBytes);
     for (Id& root : roots) {
         const Id old = root;
         root = mapped[old];

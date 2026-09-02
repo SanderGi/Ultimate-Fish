@@ -1,0 +1,10 @@
+[Unit]
+Description=Ultimate Fish opposed Copycat Ghost symbolic certificate diagnostic v4
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ultimatefish-resume-kcopycatkghost-certificate-diagnostic-v4.sh
+TimeoutStartSec=infinity
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6

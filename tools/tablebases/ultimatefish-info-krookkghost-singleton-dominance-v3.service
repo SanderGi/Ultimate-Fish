@@ -1,0 +1,12 @@
+[Unit]
+Description=Ultimate Fish opposed Rook Ghost singleton-dominance verification v3
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ultimatefish-continue-krookkghost-singleton-dominance-v3c.sh
+TimeoutStartSec=infinity
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

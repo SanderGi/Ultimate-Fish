@@ -17,20 +17,25 @@
 #include "position.h"
 
 #include <algorithm>
+#include <atomic>
 #include <array>
 #include <cctype>
 #include <cstdint>
 #include <cstring>
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <limits>
 #include <map>
+#include <mutex>
+#include <numeric>
 #include <optional>
 #include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <tuple>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -347,6 +352,37 @@ void validate_unique_node_tuples(const NodeDisk* nodes,
     return {orientation == Orientation::Same ? Color::White : Color::Black};
 }
 
+[[nodiscard]] std::uint8_t color_swap_extra_substate(
+  std::uint8_t substate) {
+    // Penguin's compact substate is a three-bit public freeze inventory:
+    // bit 0 freezes the physical White king, bit 1 the physical Black king,
+    // and bit 2 the other model.  Opposed Ghost-primary source tables are
+    // color-swapped into the legacy kernel's White-extra/Black-Ghost frame,
+    // so their king bits must be swapped with the king coordinates.  Leaving
+    // these bits untouched produced an algebraically converged graph bound to
+    // the wrong concrete WDL plane for substates 1/2 and 5/6.
+    if constexpr (ExtraPiece == PieceType::Penguin)
+        return static_cast<std::uint8_t>(
+          (substate & ~3u) | ((substate & 1u) << 1) |
+          ((substate & 2u) >> 1));
+    return substate;
+}
+
+[[nodiscard]] constexpr std::uint8_t color_swap_square(
+  std::uint8_t square) {
+    // Swapping physical colors must also reverse the rank axis.  Leaving the
+    // geometry untouched happens to preserve color-symmetric pieces such as a
+    // Rook or Bishop, but changes the game for directional pieces (Sniper,
+    // Pawn, Penguin, ...).  In particular, a normalized White Sniper capture
+    // then mapped to a Black Sniper moving in the opposite physical direction,
+    // which made the concrete singleton oracle contradict a legal lower-table
+    // draw.  Files stay fixed so the dense horizontal canonical fold remains
+    // unchanged.
+    return static_cast<std::uint8_t>(
+      (Position::BoardRanks - 1 - square / Position::BoardFiles) *
+        Position::BoardFiles + square % Position::BoardFiles);
+}
+
 [[nodiscard]] GhostPublicExtra::ConcreteState normalized_to_original(
   const FourState& state, Orientation orientation) {
     GhostPublicExtra::ConcreteState result;
@@ -364,12 +400,19 @@ void validate_unique_node_tuples(const NodeDisk* nodes,
     }
     else {
         result.side = ~state.side;
-        result.whiteKing = state.blackKing;
-        result.blackKing = state.whiteKing;
+        result.whiteKing = color_swap_square(state.blackKing);
+        result.blackKing = color_swap_square(state.whiteKing);
     }
-    result.first = SourceExtraPrimary ? state.bishop : state.ghost;
-    result.second = SourceExtraPrimary ? state.ghost : state.bishop;
-    result.extraSubstate = state.extraSubstate;
+    result.first = SourceExtraPrimary ? state.bishop
+      : orientation == Orientation::Opposing
+        ? color_swap_square(state.ghost) : state.ghost;
+    result.second = SourceExtraPrimary ? state.ghost
+      : orientation == Orientation::Opposing
+        ? color_swap_square(state.bishop) : state.bishop;
+    result.extraSubstate =
+      orientation == Orientation::Opposing && !SourceExtraPrimary
+        ? color_swap_extra_substate(state.extraSubstate)
+        : state.extraSubstate;
     result.ghostVisible = state.visible;
     return result;
 }
@@ -384,12 +427,19 @@ void validate_unique_node_tuples(const NodeDisk* nodes,
     }
     else {
         result.side = ~state.side;
-        result.whiteKing = state.blackKing;
-        result.blackKing = state.whiteKing;
+        result.whiteKing = color_swap_square(state.blackKing);
+        result.blackKing = color_swap_square(state.whiteKing);
     }
-    result.bishop = SourceExtraPrimary ? state.first : state.second;
-    result.ghost = SourceExtraPrimary ? state.second : state.first;
-    result.extraSubstate = state.extraSubstate;
+    result.bishop = SourceExtraPrimary ? state.first
+      : orientation == Orientation::Opposing
+        ? color_swap_square(state.second) : state.second;
+    result.ghost = SourceExtraPrimary ? state.second
+      : orientation == Orientation::Opposing
+        ? color_swap_square(state.first) : state.first;
+    result.extraSubstate =
+      orientation == Orientation::Opposing && !SourceExtraPrimary
+        ? color_swap_extra_substate(state.extraSubstate)
+        : state.extraSubstate;
     result.visible = state.ghostVisible;
     return result;
 }
@@ -413,7 +463,7 @@ class OriginalTable {
         wdlOffset_ = concrete_header_bytes(version);
         if (bytes_.size() < wdlOffset_ ||
             std::memcmp(bytes_.data(), "UFTB1\0\0\0", 8) ||
-            version < 5 || version > 8 ||
+            version < 5 || version > 9 ||
             word(12) != static_cast<std::uint32_t>(SourcePrimary) ||
             word(16) != StateCount ||
             word(24) != 2 * ExtraSubstates ||
@@ -717,13 +767,51 @@ DragonPatchCertificate rewrite_lower_dragon_edges(
         throw std::runtime_error("Dragon transition patch header mismatch");
     const auto indices = read_external_vector<std::uint64_t>(
       prefix + ".index", std::uint64_t(header.geometryCount) + 1);
-    std::fstream blocks(prefix + ".blocks",
-      std::ios::binary | std::ios::in | std::ios::out);
-    if (!blocks)
+    const int blocks = ::open((prefix + ".blocks").c_str(), O_RDWR);
+    if (blocks < 0)
         throw std::runtime_error("cannot patch Dragon transition blocks");
     const ExtraGeometryDomain domain;
-    DragonPatchCertificate certificate;
-    for (std::uint32_t local = 0; local < header.geometryCount; ++local) {
+    std::uint32_t workerCount = 1;
+    if (const char* configured = std::getenv(
+          "ULTIMATE_GHOST_TRANSITION_WORKERS")) {
+        const unsigned long parsed = std::stoul(configured);
+        if (!parsed || parsed > 32) {
+            ::close(blocks);
+            throw std::runtime_error(
+              "ULTIMATE_GHOST_TRANSITION_WORKERS must be in [1,32]");
+        }
+        workerCount = static_cast<std::uint32_t>(parsed);
+    }
+    workerCount = std::min(workerCount, header.geometryCount);
+    std::atomic<std::uint32_t> nextGeometry{0};
+    std::atomic<std::uint32_t> completed{0};
+    std::atomic<bool> stopped{false};
+    std::mutex exceptionMutex;
+    std::mutex outputMutex;
+    std::exception_ptr firstException;
+    std::vector<DragonPatchCertificate> partial(workerCount);
+
+    const auto exactIo = [&](bool write, void* data, std::uint64_t bytes,
+                             std::uint64_t offset) {
+        std::uint8_t* cursor = static_cast<std::uint8_t*>(data);
+        while (bytes) {
+            const ssize_t count = write
+              ? ::pwrite(blocks, cursor, static_cast<std::size_t>(bytes),
+                         static_cast<off_t>(offset))
+              : ::pread(blocks, cursor, static_cast<std::size_t>(bytes),
+                        static_cast<off_t>(offset));
+            if (count <= 0)
+                throw std::runtime_error(
+                  write ? "Dragon transition block write residual"
+                        : "Dragon transition block read residual");
+            cursor += count;
+            offset += static_cast<std::uint64_t>(count);
+            bytes -= static_cast<std::uint64_t>(count);
+        }
+    };
+
+    const auto patchGeometry = [&](std::uint32_t local,
+                                   DragonPatchCertificate& certificate) {
         const std::uint32_t geometryId = header.reserved + local;
         const std::uint64_t bytes = indices[local + 1] - indices[local];
         if (bytes < sizeof(std::array<std::uint32_t, Squares + 1>) ||
@@ -733,14 +821,20 @@ DragonPatchCertificate rewrite_lower_dragon_edges(
         std::array<std::uint32_t, Squares + 1> offsets{};
         std::vector<ExternalCompiledEdge> edges(
           (bytes - sizeof(offsets)) / sizeof(ExternalCompiledEdge));
-        blocks.seekg(static_cast<std::streamoff>(indices[local]));
-        blocks.read(reinterpret_cast<char*>(offsets.data()), sizeof(offsets));
-        blocks.read(reinterpret_cast<char*>(edges.data()),
-                    static_cast<std::streamsize>(edges.size() *
-                                                 sizeof(edges.front())));
-        if (!blocks || offsets.front() || offsets.back() != edges.size())
+        exactIo(false, offsets.data(), sizeof(offsets), indices[local]);
+        exactIo(false, edges.data(), edges.size() * sizeof(edges.front()),
+                indices[local] + sizeof(offsets));
+        if (offsets.front() || offsets.back() != edges.size())
             throw std::runtime_error("Dragon transition block read residual");
         const PublicExtraGeometry& geometry = domain[geometryId];
+        const int kingFileDistance = std::abs(
+          int(geometry.whiteKing % Position::BoardFiles) -
+          int(geometry.blackKing % Position::BoardFiles));
+        const int kingRankDistance = std::abs(
+          int(geometry.whiteKing / Position::BoardFiles) -
+          int(geometry.blackKing / Position::BoardFiles));
+        if (kingFileDistance <= 1 && kingRankDistance <= 1)
+            return;
         for (std::uint8_t ghost = 0; ghost < Squares; ++ghost) {
             if (!valid_geometry_world(geometry, ghost))
                 continue;
@@ -780,17 +874,30 @@ DragonPatchCertificate rewrite_lower_dragon_edges(
 #endif
                   : lower;
                 ExternalCompiledEdge& edge = edges[offsets[ghost] + ordinal];
-                if (edge.domain != ExternalChildDomain::Exact ||
-                    (!acceptAnyExact && !acceptPlaceholders && edge.exact !=
-                       lower_dragon_force_flags(
-                         child, material, selected, promoted)) ||
-                    (!acceptAnyExact && acceptPlaceholders && edge.exact != 0 &&
-                     edge.exact != lower_dragon_force_flags(
-                       child, material, selected, promoted)))
-                    throw std::runtime_error(
-                      "Dragon lower-table transition residual");
                 const std::uint8_t expected = lower_dragon_force_flags(
                   child, material, selected, promoted);
+                const bool exactResidual = !acceptAnyExact &&
+                  ((!acceptPlaceholders && edge.exact != expected) ||
+                   (acceptPlaceholders && edge.exact != 0 &&
+                    edge.exact != expected));
+                if (edge.domain != ExternalChildDomain::Exact || exactResidual) {
+                    std::ostringstream detail;
+                    detail << "Dragon lower-table transition residual"
+                           << " geometry=" << geometryId
+                           << " ghost=" << unsigned(ghost)
+                           << " ordinal=" << ordinal
+                           << " domain=" << unsigned(edge.domain)
+                           << " stored=" << unsigned(edge.exact)
+                           << " expected=" << unsigned(expected)
+                           << " placeholders=" << unsigned(placeholders)
+                           << " accept_placeholders="
+                           << unsigned(acceptPlaceholders)
+                           << " accept_any_exact=" << unsigned(acceptAnyExact)
+                           << " promoted=" << unsigned(promoted)
+                           << " parent_upn=" << position.upn()
+                           << " child_upn=" << child.upn();
+                    throw std::runtime_error(detail.str());
+                }
                 edge.exact = placeholders ? 0 : expected;
                 ++certificate.lowerEdges;
                 certificate.ownerForces += expected == 1;
@@ -798,17 +905,62 @@ DragonPatchCertificate rewrite_lower_dragon_edges(
                 certificate.draws += expected == 0;
             }
         }
-        blocks.clear();
-        blocks.seekp(static_cast<std::streamoff>(indices[local]));
-        blocks.write(reinterpret_cast<const char*>(offsets.data()),
-                     sizeof(offsets));
-        blocks.write(reinterpret_cast<const char*>(edges.data()),
-                     static_cast<std::streamsize>(edges.size() *
-                                                  sizeof(edges.front())));
-        if (!blocks)
-            throw std::runtime_error("Dragon transition patch write residual");
+        exactIo(true, offsets.data(), sizeof(offsets), indices[local]);
+        exactIo(true, edges.data(), edges.size() * sizeof(edges.front()),
+                indices[local] + sizeof(offsets));
+    };
+
+    const auto run = [&](std::uint32_t worker) {
+        try {
+            for (;;) {
+                const std::uint32_t local = nextGeometry.fetch_add(
+                  1, std::memory_order_relaxed);
+                if (local >= header.geometryCount ||
+                    stopped.load(std::memory_order_relaxed))
+                    break;
+                patchGeometry(local, partial[worker]);
+                const std::uint32_t done = completed.fetch_add(
+                  1, std::memory_order_relaxed) + 1;
+                if (done % 25'000 == 0 || done == header.geometryCount) {
+                    std::lock_guard<std::mutex> lock(outputMutex);
+                    std::cout << "ghost_dragon_lower_rewrite geometries "
+                              << done << '/' << header.geometryCount
+                              << " workers " << workerCount << '\n'
+                              << std::flush;
+                }
+            }
+        }
+        catch (...) {
+            stopped.store(true, std::memory_order_relaxed);
+            std::lock_guard<std::mutex> lock(exceptionMutex);
+            if (!firstException)
+                firstException = std::current_exception();
+        }
+    };
+    if (workerCount == 1)
+        run(0);
+    else {
+        std::vector<std::thread> workers;
+        workers.reserve(workerCount);
+        for (std::uint32_t worker = 0; worker < workerCount; ++worker)
+            workers.emplace_back(run, worker);
+        for (std::thread& worker : workers)
+            worker.join();
     }
-    blocks.flush();
+    if (::fsync(blocks) != 0) {
+        ::close(blocks);
+        throw std::runtime_error("Dragon transition block fsync residual");
+    }
+    ::close(blocks);
+    if (firstException)
+        std::rethrow_exception(firstException);
+    DragonPatchCertificate certificate;
+    for (const DragonPatchCertificate& value : partial) {
+        certificate.lowerEdges += value.lowerEdges;
+        certificate.ownerForces += value.ownerForces;
+        certificate.observerForces += value.observerForces;
+        certificate.draws += value.draws;
+    }
     std::cout << "ghost_dragon_lower_probe_certificate edges "
               << certificate.lowerEdges << " owner_forces "
               << certificate.ownerForces << " observer_forces "
@@ -840,6 +992,36 @@ NormalizedSource normalize_source(const OriginalTable& source,
           GhostPublicExtra::decode_index(originalIndex, adapter), orientation);
         residual += encode_index(restored) != index;
         const std::uint8_t value = source.result(originalIndex);
+        if constexpr (ExtraPiece == PieceType::Penguin) {
+            // Keep one opposed Ghost-primary normalization witness visible in
+            // proof logs.  This catches a role/color/substate remap selecting
+            // a different concrete WDL byte even when the remap remains a
+            // bijection and therefore passes the aggregate hash/count gates.
+            constexpr std::uint32_t PenguinNormalizationWitness = 98'308;
+            if (index == PenguinNormalizationWitness)
+                std::cout
+                  << "ghost_penguin_source_normalization_witness normalized_index "
+                  << index << " normalized_side " << unsigned(normalized.side)
+                  << " normalized_white_king " << unsigned(normalized.whiteKing)
+                  << " normalized_black_king " << unsigned(normalized.blackKing)
+                  << " normalized_extra " << unsigned(normalized.bishop)
+                  << " normalized_ghost " << unsigned(normalized.ghost)
+                  << " normalized_substate "
+                  << unsigned(normalized.extraSubstate)
+                  << " normalized_visible " << normalized.visible
+                  << " original_index " << originalIndex
+                  << " original_physical_index "
+                  << OriginalTable::physical_index(originalIndex)
+                  << " original_side " << unsigned(original.side)
+                  << " original_white_king " << unsigned(original.whiteKing)
+                  << " original_black_king " << unsigned(original.blackKing)
+                  << " original_first " << unsigned(original.first)
+                  << " original_second " << unsigned(original.second)
+                  << " original_substate "
+                  << unsigned(original.extraSubstate)
+                  << " original_visible " << original.ghostVisible
+                  << " value " << unsigned(value) << '\n' << std::flush;
+        }
         if (value < 1 || value > 3)
             throw std::runtime_error("Dragon/Ghost source has invalid WDL");
         wdl[index / 4] |= static_cast<std::uint8_t>(
@@ -876,6 +1058,61 @@ NormalizedSource normalize_source(const OriginalTable& source,
               << " remap_residual 0 count_residual 0 normalized_sha256 "
               << sha << '\n';
     return {path, sha, residual};
+}
+
+template<typename Expected, typename Actual>
+[[nodiscard]] std::uint64_t verify_normalized_values(
+  std::uint32_t count, std::uint32_t requestedWorkers,
+  Expected&& expected, Actual&& actual) {
+    const std::uint32_t workers = std::max(
+      1u, std::min(requestedWorkers, count));
+    constexpr std::uint32_t Chunk = 16'384;
+    std::atomic<std::uint32_t> next{0};
+    std::vector<std::uint64_t> partial(workers, 0);
+    const auto run = [&](std::uint32_t worker) {
+        for (;;) {
+            const std::uint32_t begin = next.fetch_add(
+              Chunk, std::memory_order_relaxed);
+            if (begin >= count)
+                break;
+            const std::uint32_t end = std::min(count, begin + Chunk);
+            for (std::uint32_t index = begin; index < end; ++index)
+                partial[worker] += expected(index) != actual(index);
+        }
+    };
+    if (workers == 1)
+        run(0);
+    else {
+        std::vector<std::thread> threads;
+        threads.reserve(workers);
+        for (std::uint32_t worker = 0; worker < workers; ++worker)
+            threads.emplace_back(run, worker);
+        for (std::thread& thread : threads)
+            thread.join();
+    }
+    return std::accumulate(partial.begin(), partial.end(), std::uint64_t{0});
+}
+
+void authenticate_reused_normalized_source(
+  const OriginalTable& source, const PackedFourTable& normalized,
+  Orientation orientation, std::uint32_t workers) {
+    const std::uint64_t residual = verify_normalized_values(
+      StateCount, workers,
+      [&](std::uint32_t index) {
+          const FourState state = decode_index(index);
+          const GhostPublicExtra::ConcreteState original =
+            normalized_to_original(state, orientation);
+          return source.result(
+            GhostPublicExtra::encode_index(original,
+                                            adapter_material(orientation)));
+      },
+      [&](std::uint32_t index) { return normalized.result(index); });
+    std::cout << "ghost_dragon_reused_normalized_source states "
+              << StateCount << " workers " << workers
+              << " value_residual " << residual << '\n' << std::flush;
+    if (residual)
+        throw std::runtime_error(
+          "reused normalized Dragon source is not the exact current remap");
 }
 
 struct FreshSummary {
@@ -1534,6 +1771,23 @@ void verify_transitions(const TransitionOptions& options) {
                                );
 }
 
+void restore_transitions(const TransitionOptions& options) {
+    const LowerDragonTable lower = authenticate_lower_dragon(options);
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+    const LowerDragonTable promotedLower =
+      authenticate_promoted_lower_dragon(options);
+#endif
+    authenticate_dragon_marker(options);
+    rewrite_lower_dragon_edges(options.prefix,
+      normalized_material(options.orientation), lower,
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+      promotedLower,
+#endif
+      false, true);
+    write_dragon_marker(options);
+    authenticate_dragon_marker(options);
+}
+
 void rebind_transitions(const TransitionOptions& options) {
     const LowerDragonTable lower = authenticate_lower_dragon(options);
 #ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
@@ -1555,7 +1809,8 @@ void rebind_transitions(const TransitionOptions& options) {
 #endif
                                true, false, true);
     try {
-        verify_external_transition_certificate(options.prefix, material);
+        verify_external_transition_certificate(options.prefix, material,
+                                               true);
     }
     catch (...) {
         rewrite_lower_dragon_edges(options.prefix, material, lower,
@@ -1673,12 +1928,26 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     transitions.promotedLowerDragonModelSha256 =
       options.promotedLowerDragonModelSha256;
 #endif
-    verify_transitions(transitions);
+    if (options.resumeFixedPoint) {
+        (void)authenticate_lower_dragon(transitions);
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+        (void)authenticate_promoted_lower_dragon(transitions);
+#endif
+        authenticate_dragon_marker(transitions);
+        std::cout << "ghost_dragon_resume_transition_certificate_reused 1"
+                  << " extent_check_deferred_to_database_open 1\n"
+                  << std::flush;
+    }
+    else
+        verify_transitions(transitions);
 
     const MaterialSpec material = normalized_material(options.orientation);
     PackedFourTable concrete(normalized.path, material);
     if (hex_digest(concrete.sha()) != normalized.sha)
         throw std::runtime_error("normalized Dragon source SHA mismatch");
+    if (!options.normalizedSourceTable.empty())
+        authenticate_reused_normalized_source(
+          original, concrete, options.orientation, options.workers);
     ExternalTransitionDatabase database(options.transitionPrefix, material);
     ExternalGhostExtraSolveOptions legacy;
     legacy.scratch = options.scratchPrefix;
@@ -1705,6 +1974,7 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     legacy.bddLimits.maxNodes = options.maxNodes;
     legacy.bddLimits.uniqueSlots = options.uniqueSlots;
     legacy.compactEvery = options.compactEvery;
+    legacy.workers = options.workers;
     legacy.measureIterations = options.measureIterations;
     legacy.resumeFixedPoint = options.resumeFixedPoint;
     legacy.resumeConverged = options.resumeConverged;
@@ -1743,6 +2013,22 @@ SolveCertificate solve_exact(const SolveOptions& options) {
 }
 
 void exact_self_test(const std::string& scratchPrefix) {
+    const std::array<std::uint8_t, 8> normalizedExpected{
+      1, 2, 3, 1, 2, 3, 1, 2};
+    std::array<std::uint8_t, 8> normalizedActual = normalizedExpected;
+    if (verify_normalized_values(
+          static_cast<std::uint32_t>(normalizedExpected.size()), 3,
+          [&](std::uint32_t index) { return normalizedExpected[index]; },
+          [&](std::uint32_t index) { return normalizedActual[index]; }))
+        throw std::runtime_error(
+          "normalized source authentication equality residual");
+    normalizedActual[5] = 2;
+    if (verify_normalized_values(
+          static_cast<std::uint32_t>(normalizedExpected.size()), 3,
+          [&](std::uint32_t index) { return normalizedExpected[index]; },
+          [&](std::uint32_t index) { return normalizedActual[index]; }) != 1)
+        throw std::runtime_error(
+          "normalized source authentication mismatch residual");
     (void)scratchPrefix;
     if (concrete_header_bytes(5) != 48 ||
         concrete_header_bytes(6) != 56 ||
@@ -1781,32 +2067,109 @@ void exact_self_test(const std::string& scratchPrefix) {
               << " logical_physical_bijection 1 residual 0\n";
     for (const Orientation orientation : {Orientation::Same,
                                            Orientation::Opposing}) {
+        if (!SourceExtraPrimary && orientation == Orientation::Opposing) {
+            FourState directional{};
+            directional.side = Color::White;
+            directional.whiteKing = 0;
+            directional.blackKing = 2;
+            directional.bishop = 3;
+            directional.ghost = 67;
+            directional.visible = true;
+            const auto physical = normalized_to_original(
+              directional, orientation);
+            if (physical.side != Color::Black ||
+                physical.whiteKing != 74 || physical.blackKing != 72 ||
+                physical.first != 11 || physical.second != 75 ||
+                original_to_normalized(physical, orientation).side !=
+                  directional.side ||
+                original_to_normalized(physical, orientation).whiteKing !=
+                  directional.whiteKing ||
+                original_to_normalized(physical, orientation).blackKing !=
+                  directional.blackKing ||
+                original_to_normalized(physical, orientation).bishop !=
+                  directional.bishop ||
+                original_to_normalized(physical, orientation).ghost !=
+                  directional.ghost)
+                throw std::runtime_error(
+                  "Dragon/Ghost directional color-remap residual");
+        }
         const MaterialSpec normalized = normalized_material(orientation);
         external_child_substate_self_test(normalized);
         ExternalGhostExtraFixedPoint::run_fresh_root_public_grouping_self_test(
           normalized);
         const GhostPublicExtra::MaterialSpec material =
           adapter_material(orientation);
-        for (std::uint32_t index = 0; index < StateCount; ++index) {
-            const auto original = GhostPublicExtra::decode_index(index,
-                                                                  material);
-            if (GhostPublicExtra::encode_index(original, material) != index)
-                throw std::runtime_error("Dragon/Ghost source codec residual");
-            const FourState normalized = original_to_normalized(
-              original, orientation);
-            if (GhostPublicExtra::encode_index(
-                  normalized_to_original(normalized, orientation), material) !=
-                index)
-                throw std::runtime_error("Dragon/Ghost role remap residual");
-            if (SourceExtraPrimary &&
-                (normalized.side != original.side ||
-                 normalized.whiteKing != original.whiteKing ||
-                 normalized.blackKing != original.blackKing ||
-                 normalized.bishop != original.first ||
-                 normalized.ghost != original.second))
+        unsigned workers = 1;
+        if (const char* value = std::getenv(
+              "ULTIMATE_GHOST_SELF_TEST_THREADS")) {
+            const unsigned parsed = static_cast<unsigned>(std::stoul(value));
+            if (!parsed || parsed > 64)
                 throw std::runtime_error(
-                  "extra-primary Dragon/Ghost physical remap residual");
+                  "Dragon/Ghost self-test thread count is invalid");
+            workers = parsed;
         }
+        std::atomic<std::uint32_t> next{0};
+        std::atomic<bool> failed{false};
+        std::exception_ptr error;
+        std::mutex errorMutex;
+        const auto verify = [&] {
+            try {
+                constexpr std::uint32_t Batch = 65'536;
+                while (!failed.load(std::memory_order_relaxed)) {
+                    const std::uint32_t begin = next.fetch_add(
+                      Batch, std::memory_order_relaxed);
+                    if (begin >= StateCount)
+                        return;
+                    const std::uint32_t end = std::min<std::uint32_t>(
+                      StateCount, begin + Batch);
+                    for (std::uint32_t index = begin; index < end; ++index) {
+                        const auto original = GhostPublicExtra::decode_index(
+                          index, material);
+                        if (GhostPublicExtra::encode_index(
+                              original, material) != index)
+                            throw std::runtime_error(
+                              "Dragon/Ghost source codec residual");
+                        const FourState normalized = original_to_normalized(
+                          original, orientation);
+                        if (GhostPublicExtra::encode_index(
+                              normalized_to_original(normalized, orientation),
+                              material) != index)
+                            throw std::runtime_error(
+                              "Dragon/Ghost role remap residual");
+                        if constexpr (ExtraPiece == PieceType::Penguin)
+                            if (!SourceExtraPrimary &&
+                                orientation == Orientation::Opposing &&
+                                normalized.extraSubstate !=
+                                  color_swap_extra_substate(
+                                    original.extraSubstate))
+                                throw std::runtime_error(
+                                  "Penguin/Ghost color-swapped freeze-substate residual");
+                        if (SourceExtraPrimary &&
+                            (normalized.side != original.side ||
+                             normalized.whiteKing != original.whiteKing ||
+                             normalized.blackKing != original.blackKing ||
+                             normalized.bishop != original.first ||
+                             normalized.ghost != original.second))
+                            throw std::runtime_error(
+                              "extra-primary Dragon/Ghost physical remap residual");
+                    }
+                }
+            }
+            catch (...) {
+                failed.store(true, std::memory_order_relaxed);
+                std::lock_guard<std::mutex> lock(errorMutex);
+                if (!error)
+                    error = std::current_exception();
+            }
+        };
+        std::vector<std::thread> threads;
+        threads.reserve(workers);
+        for (unsigned worker = 0; worker < workers; ++worker)
+            threads.emplace_back(verify);
+        for (std::thread& thread : threads)
+            thread.join();
+        if (error)
+            std::rethrow_exception(error);
     }
     std::cout << "ghost_dragon_exact_self_test codec_states "
               << std::uint64_t(StateCount) * 2

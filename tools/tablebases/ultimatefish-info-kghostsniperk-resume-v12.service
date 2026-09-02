@@ -1,0 +1,15 @@
+[Unit]
+Description=Ultimate Fish same-side Sniper/Ghost 30-worker checkpoint-41 solve v12
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/mnt/ultimatefish/sniper-ghost-same-restore-v11/ultimatefish-resume-kghostsniperk-30w-v12.sh
+AllowedCPUs=16-31,46-59
+MemoryMax=180G
+LimitNOFILE=1048576
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

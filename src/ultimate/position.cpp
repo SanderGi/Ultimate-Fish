@@ -18,12 +18,100 @@
 
 namespace Stockfish::Ultimate {
 
+bool Position::apply_tablebase_angel_substate(
+  int angel, int other, std::uint32_t substate) {
+    if (angel < 0 || angel >= piece_count() || substate >= 3)
+        return false;
+    PieceState& item = pieces_[angel];
+    if (!item.alive || item.type != PieceType::Angel || !item.onBoard ||
+        item.link != NoPiece || item.host != NoPiece || item.attachmentOrder)
+        return false;
+    if (!substate)
+        return true;
+    int host = NoPiece;
+    if (substate == 1) {
+        for (int id = 0; id < piece_count(); ++id)
+            if (pieces_[id].alive && pieces_[id].onBoard &&
+                pieces_[id].type == PieceType::King &&
+                pieces_[id].color == item.color) {
+                host = id;
+                break;
+            }
+    }
+    else
+        host = other;
+    if (host < 0 || host >= piece_count() || host == angel ||
+        !pieces_[host].alive || !pieces_[host].onBoard ||
+        pieces_[host].type == PieceType::Halo ||
+        pieces_[host].color != item.color)
+        return false;
+    const int haloSquare = item.square;
+    erase_from_board(angel);
+    item.onBoard = false;
+    const int halo = add_piece(PieceType::Halo, item.color, haloSquare);
+    if (halo == NoPiece)
+        return false;
+    item.link = static_cast<std::int8_t>(halo);
+    item.host = static_cast<std::int8_t>(host);
+    item.attachmentOrder = nextAttachmentOrder_++;
+    item.square = pieces_[host].square;
+    pieces_[halo].link = static_cast<std::int8_t>(angel);
+    return true;
+}
+
+std::optional<std::uint32_t> Position::tablebase_angel_substate(
+  int angel, int other) const {
+    if (angel < 0 || angel >= piece_count())
+        return std::nullopt;
+    const PieceState& item = pieces_[angel];
+    if (!item.alive || item.type != PieceType::Angel || item.action ||
+        item.cooldown || item.power || !item.visible || item.parasiteTracked)
+        return std::nullopt;
+    if (item.onBoard)
+        return item.link == NoPiece && item.host == NoPiece &&
+               !item.attachmentOrder
+          ? std::optional<std::uint32_t>(0) : std::nullopt;
+    if (item.freezeCount || item.link < 0 || item.link >= piece_count() ||
+        item.host < 0 || item.host >= piece_count() || !item.attachmentOrder)
+        return std::nullopt;
+    const PieceState& halo = pieces_[item.link];
+    const PieceState& host = pieces_[item.host];
+    if (!halo.alive || !halo.onBoard || halo.type != PieceType::Halo ||
+        halo.color != item.color || halo.link != angel ||
+        halo.host != NoPiece || !host.alive || !host.onBoard ||
+        host.type == PieceType::Halo || host.color != item.color ||
+        item.square != host.square)
+        return std::nullopt;
+    if (host.type == PieceType::King)
+        return 1;
+    if (other >= 0 && other < piece_count() && item.host == other &&
+        pieces_[other].color == item.color)
+        return 2;
+    return std::nullopt;
+}
+
 bool Position::apply_tablebase_substate(int id, PieceType logicalType,
                                         std::uint32_t substate) {
     if (id < 0 || id >= piece_count() || !pieces_[id].alive ||
-        !pieces_[id].onBoard)
+        (logicalType != PieceType::Angel && !pieces_[id].onBoard))
         return false;
     switch (logicalType) {
+    case PieceType::Angel: {
+        int other = NoPiece;
+        for (int candidate = 0; candidate < piece_count(); ++candidate) {
+            const PieceState& piece = pieces_[candidate];
+            if (candidate == id || !piece.alive || !piece.onBoard ||
+                piece.color != pieces_[id].color ||
+                piece.type == PieceType::King || piece.type == PieceType::Halo)
+                continue;
+            if (other != NoPiece) {
+                other = NoPiece;
+                break;
+            }
+            other = candidate;
+        }
+        return apply_tablebase_angel_substate(id, other, substate);
+    }
     case PieceType::Berserker:
         if (substate >= 10) return false;
         pieces_[id].power = static_cast<std::uint8_t>(substate);
@@ -109,9 +197,25 @@ bool Position::apply_tablebase_substate(int id, PieceType logicalType,
 std::optional<std::uint32_t> Position::tablebase_substate(
   int id, PieceType logicalType) const {
     if (id < 0 || id >= piece_count() || !pieces_[id].alive ||
-        !pieces_[id].onBoard)
+        (logicalType != PieceType::Angel && !pieces_[id].onBoard))
         return std::nullopt;
     switch (logicalType) {
+    case PieceType::Angel: {
+        int other = NoPiece;
+        for (int candidate = 0; candidate < piece_count(); ++candidate) {
+            const PieceState& piece = pieces_[candidate];
+            if (candidate == id || !piece.alive || !piece.onBoard ||
+                piece.color != pieces_[id].color ||
+                piece.type == PieceType::King || piece.type == PieceType::Halo)
+                continue;
+            if (other != NoPiece) {
+                other = NoPiece;
+                break;
+            }
+            other = candidate;
+        }
+        return tablebase_angel_substate(id, other);
+    }
     case PieceType::Berserker:
         return std::min<std::uint32_t>(pieces_[id].power, 9);
     case PieceType::Ghost:
@@ -2806,6 +2910,12 @@ bool Position::team_has_sufficient_material(Color color) const {
       types[index(PieceType::Penguin)] |
       types[index(PieceType::Parasite)] |
       types[index(PieceType::Devil)] |
+      // Spawned Minions continue their automatic advance after their Devil
+      // is captured and can still capture the opposing King.  Treating that
+      // position as immediate insufficient material truncated the exact
+      // spawned-only Devil closure at precisely the states the sparse solver
+      // must retain.
+      types[index(PieceType::Minion)] |
       types[index(PieceType::Sniper)] |
       types[index(PieceType::Prince)] |
       types[index(PieceType::Giant)] |

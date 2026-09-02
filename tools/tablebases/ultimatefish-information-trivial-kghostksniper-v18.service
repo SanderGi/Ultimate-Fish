@@ -1,0 +1,13 @@
+[Unit]
+Description=Authenticated opposed Sniper/Ghost information-trivial audit v18
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ultimatefish-audit-kghostksniper-information-trivial-v2.sh
+AllowedCPUs=0-31
+CPUQuota=3200%
+MemoryMax=17179869184
+ReadWritePaths=/mnt/ultimatefish
+StandardOutput=journal
+StandardError=journal

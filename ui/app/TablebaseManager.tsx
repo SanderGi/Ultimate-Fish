@@ -15,6 +15,7 @@ type TablebaseEntry = {
   sizeBytes: number;
   tablebaseBytes: number;
   sidecarCount: number;
+  partitionCount: number;
   downloadedBytes: number;
   installed: boolean;
   available: boolean;
@@ -109,7 +110,7 @@ export function TablebaseManager() {
   };
 
   const remove = async (entry: TablebaseEntry) => {
-    if (!window.confirm(`Delete ${entry.displayName} and its sidecars?`)) return;
+    if (!window.confirm(`Delete ${entry.displayName} and all of its tablebase files?`)) return;
     setAction(entry.filename);
     setMessage(null);
     try {
@@ -183,6 +184,9 @@ export function TablebaseManager() {
                     {formatBytes(entry.sizeBytes)}
                     {entry.sidecarCount > 0
                       ? ` · ${entry.sidecarCount} sidecar${entry.sidecarCount === 1 ? "" : "s"}`
+                      : ""}
+                    {entry.partitionCount > 0
+                      ? ` · ${entry.partitionCount} partition${entry.partitionCount === 1 ? "" : "s"}`
                       : ""}
                   </small>
                 </div>

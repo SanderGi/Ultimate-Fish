@@ -1,0 +1,13 @@
+[Unit]
+Description=Ultimate Fish opposed Ghost/Dragon i03 certification race v1
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/ultimatefish-certification-sprint/run-kghostkdragon-i03-race-v1.sh
+AllowedCPUs=2-15
+MemoryMax=140G
+LimitNOFILE=1048576
+Restart=no
+

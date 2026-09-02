@@ -49,8 +49,14 @@ struct SolveOptions {
     std::string lowerBombModelSha256;
     std::uint32_t maxNodes = 500'000'000;
     std::uint64_t uniqueSlots = std::uint64_t{1} << 30;
+    std::uint32_t workers = 1;
     std::uint32_t compactEvery = 1;
     std::uint32_t measureIterations = 0;
+    bool resumeFixedPoint = false;
+    bool resumeConverged = false;
+    bool resumeCurrentInNextSlot = false;
+    char resumeBddSlot = 'a';
+    std::uint64_t resumeIteration = 0;
 };
 
 struct ProbeBindings {

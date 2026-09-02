@@ -61,7 +61,8 @@ ULTIMATE_TABLEBASE_INCLUDE = -Iultimate -Iultimate/tablebases
 
 .PHONY: ultimatefish ultimate-test ultimate-rules-test ultimate-belief-benchmark ultimate-hidden-search-benchmark ultimate-information-test \
 	ultimate-ghost-information-probe-test ultimate-tablebase \
-	ultimate-angel-tablebase-test \
+	ultimate-angel-tablebase-test ultimate-devil-reverse-test \
+	ultimate-devil-checkpoint-migration-test \
 	ultimate-nnue-reference ultimate-information-solvers \
 	ultimate-ghost-information-tablebase ultimate-double-jester-information-tablebase \
 	ultimate-ghost-extra-information-preflight \
@@ -119,6 +120,26 @@ ultimate-tablebase:
 		ultimate/tablebases/tablebase.cpp ultimate/position.cpp ultimate/tablebases/tablebase_probe.cpp \
 		ultimate/tablebases/information.cpp ultimate/tablebases/information_solver.cpp ultimate/nnue.cpp \
 		-o ultimate_tablebase
+
+ultimate-devil-reverse-test: ultimate-tablebase
+	work=$$(mktemp -d /tmp/ultimatefish-devil-reverse-test.XXXXXX); \
+		./ultimate_tablebase --devil-reverse-self-test "$$work"
+
+ultimate-devil-checkpoint-migration-test: ultimate-tablebase
+	work=$$(mktemp -d /tmp/ultimatefish-devil-migration-test.XXXXXX); \
+		./ultimate_tablebase --devil-checkpoint-migration-self-test "$$work"
+
+ultimate-devil-stateful-sidecar-exporter:
+	$(CXX) -std=c++17 -O3 -DNDEBUG -pthread -Wall -Wextra -Wpedantic -Werror \
+		../tools/tablebases/export_ultimate_devil_stateful_sidecar.cpp \
+		-o ultimate_devil_stateful_sidecar_exporter
+
+ultimate-devil-stateful-sidecar-test:
+	$(CXX) $(ULTIMATE_TABLEBASE_INCLUDE) -std=c++17 -O2 -Wall -Wextra -Wpedantic -Werror \
+		../tests/tablebases/ultimate_devil_stateful_sidecar.cpp ultimate/position.cpp \
+		ultimate/tablebases/tablebase_probe.cpp ultimate/tablebases/information.cpp ultimate/nnue.cpp \
+		-o ultimate_devil_stateful_sidecar_test
+	./ultimate_devil_stateful_sidecar_test
 
 ultimate-angel-tablebase-test: ultimate-tablebase
 	./ultimate_tablebase --piece copycat --piece2 angel --opposing \

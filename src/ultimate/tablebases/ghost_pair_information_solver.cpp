@@ -17,22 +17,26 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cerrno>
 #include <chrono>
 #include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <functional>
+#include <exception>
 #include <iomanip>
 #include <iostream>
 #include <limits>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <set>
 #include <sstream>
 #include <stdexcept>
 #include <tuple>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 
@@ -731,19 +735,45 @@ class PairRobdd::Impl {
             throw std::invalid_argument("invalid PairRobdd limits");
         if(required_bytes(limits)>limits.budgetBytes)
             throw std::runtime_error("PairRobdd byte gate exceeded");
-        unique.fill(Invalid);count=2;
+        unique.fill(Invalid);count.store(2,std::memory_order_release);
         nodes[False]={static_cast<std::uint16_t>(limits.variables),False,False};
         nodes[True]={static_cast<std::uint16_t>(limits.variables),True,True};
-        apply.reserve(static_cast<std::size_t>(std::min<std::uint64_t>(
-          limits.applyCacheEntries,1'000'000)));
-        unary.reserve(static_cast<std::size_t>(std::min<std::uint64_t>(
-          limits.unaryCacheEntries,1'000'000)));
+    }
+    struct ComputedCaches{
+        std::uint64_t generation=0;
+        std::unordered_map<ApplyKey,Id,ApplyHash>apply;
+        std::unordered_map<UnaryKey,Id,UnaryHash>unary;
+    };
+    [[nodiscard]] ComputedCaches&caches()const{
+        static thread_local ComputedCaches result;
+        if(result.generation!=generation){
+            result.apply.clear();result.unary.clear();
+            result.apply.reserve(static_cast<std::size_t>(
+              std::min<std::uint64_t>(limits.applyCacheEntries,1'000'000)));
+            result.unary.reserve(static_cast<std::size_t>(
+              std::min<std::uint64_t>(limits.unaryCacheEntries,1'000'000)));
+            result.generation=generation;
+        }
+        return result;
     }
     [[nodiscard]] const PairNode&node(Id id)const{
-        if(id>=count)throw std::runtime_error("invalid PairRobdd node");return nodes[id];}
+        if(id>=count.load(std::memory_order_acquire))
+            throw std::runtime_error("invalid PairRobdd node");
+        return nodes[id];}
     [[nodiscard]] std::uint16_t top(Id id)const{return id<=True?limits.variables:node(id).variable;}
+    [[nodiscard]] Id append(PairNode value){
+        Id id=count.load(std::memory_order_relaxed);
+        for(;;){
+            if(id>=limits.maxNodes)
+                throw std::runtime_error("PairRobdd node gate exceeded");
+            if(count.compare_exchange_weak(id,id+1,std::memory_order_acq_rel,
+                 std::memory_order_relaxed))break;
+        }
+        nodes[id]=value;return id;
+    }
     [[nodiscard]] Id make(std::uint16_t variable,Id low,Id high){
-        if(variable>=limits.variables||low>=count||high>=count)
+        const Id published=count.load(std::memory_order_acquire);
+        if(variable>=limits.variables||low>=published||high>=published)
             throw std::out_of_range("invalid PairRobdd tuple");
         if(low==high)return low;
         if((low>True&&node(low).variable<=variable)||(high>True&&node(high).variable<=variable))
@@ -751,9 +781,12 @@ class PairRobdd::Impl {
         const std::uint64_t hash=mix64(variable^mix64(low)^(mix64(high)<<1));
         const std::uint64_t mask=limits.uniqueSlots-1;
         for(std::uint64_t probe=0;probe<limits.uniqueSlots;++probe){
-            Id&slot=unique[(hash+probe)&mask];
-            if(slot==Invalid){if(count>=limits.maxNodes)throw std::runtime_error("PairRobdd node gate exceeded");
-                nodes[count]={variable,low,high};slot=count;return count++;}
+            const std::uint64_t index=(hash+probe)&mask;
+            std::lock_guard<std::mutex>lock(
+              uniqueMutexes[index&(UniqueMutexStripes-1)]);
+            Id&slot=unique[index];
+            if(slot==Invalid){
+                const Id id=append({variable,low,high});slot=id;return id;}
             const PairNode&existing=node(slot);
             if(existing.variable==variable&&existing.low==low&&existing.high==high)return slot;
         }
@@ -763,28 +796,37 @@ class PairRobdd::Impl {
         if(op==0){if(lhs==False||rhs==False)return False;if(lhs==True)return rhs;if(rhs==True)return lhs;}
         else{if(lhs==True||rhs==True)return True;if(lhs==False)return rhs;if(rhs==False)return lhs;}
         if(lhs==rhs)return lhs;if(lhs>rhs)std::swap(lhs,rhs);
-        const ApplyKey key{op,lhs,rhs};if(const auto it=apply.find(key);it!=apply.end())return it->second;
+        const ApplyKey key{op,lhs,rhs};ComputedCaches&cache=caches();
+        if(const auto it=cache.apply.find(key);it!=cache.apply.end())return it->second;
         const std::uint16_t variable=std::min(top(lhs),top(rhs));
         const auto split=[&](Id root,bool high){return top(root)==variable?(high?node(root).high:node(root).low):root;};
         const Id result=make(variable,binary(op,split(lhs,false),split(rhs,false)),
           binary(op,split(lhs,true),split(rhs,true)));
-        if(apply.size()<limits.applyCacheEntries)apply.emplace(key,result);return result;
+        if(cache.apply.size()<limits.applyCacheEntries)
+            cache.apply.emplace(key,result);
+        return result;
     }
     [[nodiscard]] Id negate(Id root){
         if(root==False)return True;if(root==True)return False;
-        const UnaryKey key{root,0};if(const auto it=unary.find(key);it!=unary.end())return it->second;
+        const UnaryKey key{root,0};ComputedCaches&cache=caches();
+        if(const auto it=cache.unary.find(key);it!=cache.unary.end())return it->second;
         const PairNode source=node(root);const Id result=make(source.variable,negate(source.low),negate(source.high));
-        if(unary.size()<limits.unaryCacheEntries)unary.emplace(key,result);return result;
+        if(cache.unary.size()<limits.unaryCacheEntries)
+            cache.unary.emplace(key,result);
+        return result;
     }
     [[nodiscard]] Id ternary(Id condition,Id yes,Id no){
         return binary(1,binary(0,condition,yes),binary(0,negate(condition),no));}
     [[nodiscard]] Id compose(Id root,const std::vector<Id>&image,std::uint64_t relation){
         if(root<=True)return root;const UnaryKey key{root,relation+1};
-        if(const auto it=unary.find(key);it!=unary.end())return it->second;
+        ComputedCaches&cache=caches();
+        if(const auto it=cache.unary.find(key);it!=cache.unary.end())return it->second;
         const PairNode source=node(root);if(source.variable>=image.size())throw std::runtime_error("PairRobdd compose image too short");
         const Id result=ternary(image[source.variable],compose(source.high,image,relation),
           compose(source.low,image,relation));
-        if(unary.size()<limits.unaryCacheEntries)unary.emplace(key,result);return result;
+        if(cache.unary.size()<limits.unaryCacheEntries)
+            cache.unary.emplace(key,result);
+        return result;
     }
     [[nodiscard]] Id subset_of(const PairMask&variables,unsigned variableCount){
         if(variableCount>limits.variables)
@@ -805,8 +847,12 @@ class PairRobdd::Impl {
         return root==True;
     }
     std::string prefix;Limits limits;MmapFile<PairNode>nodes;MmapFile<Id>unique;
-    Id count=0;std::unordered_map<ApplyKey,Id,ApplyHash>apply;
-    std::unordered_map<UnaryKey,Id,UnaryHash>unary;
+    std::atomic<Id>count{0};
+    static constexpr std::size_t UniqueMutexStripes=4096;
+    std::array<std::mutex,UniqueMutexStripes>uniqueMutexes;
+    const std::uint64_t generation=
+      nextGeneration.fetch_add(1,std::memory_order_relaxed);
+    inline static std::atomic<std::uint64_t>nextGeneration{1};
 };
 
 PairRobdd::PairRobdd(const std::string&prefix,Limits limits,bool create)
@@ -844,7 +890,7 @@ bool PairRobdd::is_downward_closed(Id root){
         const PairNode node=impl_->node(current);const bool result=check(node.low)&&check(node.high)&&
           logical_and(node.high,logical_not(node.low))==False;memo.emplace(current,result);return result;};return check(root);
 }
-std::uint32_t PairRobdd::node_count()const{return impl_->count;}
+std::uint32_t PairRobdd::node_count()const{return impl_->count.load(std::memory_order_acquire);}
 PairRobdd::NodeRecord PairRobdd::node_record(Id id)const{
     const PairNode&node=impl_->node(id);return{node.variable,node.low,node.high};
 }
@@ -886,13 +932,16 @@ std::pair<PairRobdd,PairRobdd::CompactionCertificate>PairRobdd::compact(
   const std::string&replacementPrefix,const std::string&remapPath,
   std::vector<Id>&roots){
     PairRobdd target(replacementPrefix,impl_->limits,true);
-    MmapFile<Id>remap(remapPath,std::max<std::uint32_t>(2,impl_->count),true);
+    const Id sourceCount=impl_->count.load(std::memory_order_acquire);
+    MmapFile<Id>remap(remapPath,std::max<std::uint32_t>(2,sourceCount),true);
     remap.fill(Invalid);remap[False]=False;remap[True]=True;std::uint64_t residual=0;
     std::function<Id(Id)>copy=[&](Id source){if(remap[source]!=Invalid)return remap[source];
         const PairNode node=impl_->node(source);const Id result=target.impl_->make(node.variable,copy(node.low),copy(node.high));
         remap[source]=result;const PairNode check=target.impl_->node(result);residual+=check.variable!=node.variable||check.low!=remap[node.low]||check.high!=remap[node.high];return result;};
     for(Id&root:roots)root=copy(root);remap.flush();CompactionCertificate cert;
-    cert.oldNodes=impl_->count;cert.newNodes=target.impl_->count;cert.roots=roots.size();
+    cert.oldNodes=sourceCount;
+    cert.newNodes=target.impl_->count.load(std::memory_order_acquire);
+    cert.roots=roots.size();
     cert.structuralResidual=residual;if(residual)throw std::runtime_error("PairRobdd compaction residual");
     return {std::move(target),cert};
 }
@@ -1247,7 +1296,7 @@ class TransitionDatabase {
         if(!header_.complete||header_.rawBegin||header_.rawCount!=RawGeometryCount)throw std::runtime_error("solver needs complete Ghost-pair transitions");
         meta_.open(prefix+".meta",header_.geometries,false,true);strata_.open(prefix+".strata",header_.strata,false,true);
         actual_.open(prefix+".actual",header_.actuals,false,true);index_.open(prefix+".index",header_.geometries+1,false,true);
-        blocks_.open(prefix+".blocks",std::ios::binary);if(!blocks_)throw std::runtime_error("cannot open Ghost-pair transition blocks");
+        blocks_.open(prefix+".blocks",header_.blockBytes,false,true);
     }
     [[nodiscard]] std::uint64_t geometries()const{return header_.geometries;}
     [[nodiscard]] std::uint64_t strata()const{return header_.strata;}
@@ -1262,20 +1311,29 @@ class TransitionDatabase {
         while(low<high){const std::uint64_t middle=(low+high)/2;if(meta_[middle].raw<raw)low=middle+1;else high=middle;}
         if(low>=header_.geometries||meta_[low].raw!=raw)throw std::runtime_error("same-class Ghost-pair child absent");return static_cast<std::uint32_t>(low);}
     struct Block{BlockHeaderDisk header;std::vector<std::uint32_t>offsets;std::vector<ActionDisk>actions;std::vector<EdgeDisk>edges;};
-    [[nodiscard]] Block block(std::uint32_t id){const std::uint64_t begin=index_[id],end=index_[id+1];blocks_.clear();blocks_.seekg(begin);
-        Block result;result.header=read_value<BlockHeaderDisk>(blocks_);result.offsets.resize(result.header.variableCount+1);
+    [[nodiscard]] Block block(std::uint32_t id)const{
+        const std::uint64_t begin=index_[id],end=index_[id+1];
+        if(begin>end||end>blocks_.size()||end-begin<sizeof(BlockHeaderDisk))
+            throw std::runtime_error("malformed Ghost-pair transition block extent");
+        std::uint64_t cursor=begin;
+        const auto read=[&](void*destination,std::uint64_t bytes){
+            if(bytes>end-cursor)
+                throw std::runtime_error("malformed Ghost-pair transition block");
+            std::memcpy(destination,&blocks_[cursor],static_cast<std::size_t>(bytes));
+            cursor+=bytes;
+        };
+        Block result;read(&result.header,sizeof(result.header));result.offsets.resize(result.header.variableCount+1);
         result.actions.resize(result.header.actionCount);result.edges.resize(result.header.edgeCount);
-        blocks_.read(reinterpret_cast<char*>(result.offsets.data()),result.offsets.size()*sizeof(std::uint32_t));
-        blocks_.read(reinterpret_cast<char*>(result.actions.data()),result.actions.size()*sizeof(ActionDisk));
-        blocks_.read(reinterpret_cast<char*>(result.edges.data()),result.edges.size()*sizeof(EdgeDisk));
-        if(!blocks_||result.offsets.empty()||result.offsets.front()||result.offsets.back()!=result.edges.size()||
-           static_cast<std::uint64_t>(blocks_.tellg())!=end)
+        read(result.offsets.data(),result.offsets.size()*sizeof(std::uint32_t));
+        read(result.actions.data(),result.actions.size()*sizeof(ActionDisk));
+        read(result.edges.data(),result.edges.size()*sizeof(EdgeDisk));
+        if(result.offsets.empty()||result.offsets.front()||result.offsets.back()!=result.edges.size()||cursor!=end)
             throw std::runtime_error("malformed Ghost-pair transition block");
         return result;}
     [[nodiscard]] const TransitionHeaderDisk&header()const{return header_;}
   private:
     TransitionHeaderDisk header_{};MmapFile<GeometryDisk>meta_;MmapFile<PairMask>strata_;MmapFile<std::uint32_t>actual_;
-    MmapFile<std::uint64_t>index_;std::ifstream blocks_;
+    MmapFile<std::uint64_t>index_;MmapFile<std::byte>blocks_;
 };
 
 [[nodiscard]] std::uint64_t owner_root_index(const GeometryDisk&meta,unsigned actual){
@@ -1394,7 +1452,7 @@ class ExactKernel {
     [[nodiscard]] PairRobdd::Id lower_formula(
       const RuntimeRelation&relation,Color target,
       const CompiledEdge*actual){
-        if(certificate_)++certificate_->lowerGhostMaskProbes;
+        lowerGhostMaskProbes_.fetch_add(1,std::memory_order_relaxed);
         if(relation.childTerminal){const PairMask&bad=target==Color::White?
             relation.badWhiteSources:relation.badBlackSources;
             if(actual)return bdd_.logical_not(bdd_.any(mask_and(
@@ -1440,9 +1498,10 @@ class ExactKernel {
     }
 
     void sweep(MmapFile<PairRobdd::Id>&ownerOut,
-               MmapFile<PairRobdd::Id>&observerOut){
+               MmapFile<PairRobdd::Id>&observerOut,
+               std::uint32_t requestedWorkers){
         ownerOut.fill(PairRobdd::False);observerOut.fill(PairRobdd::False);
-        for(std::uint32_t gid=0;gid<database_.geometries();++gid){
+        const auto process=[&](std::uint32_t gid){
             const GeometryDisk&meta=database_.meta(gid);
             const Color mover=decode_geometry(meta.raw).side;
             const RuntimeBlock block=runtime_block(gid,database_,lower_);
@@ -1520,12 +1579,63 @@ class ExactKernel {
                 }
                 observerOut[stratum]=bdd_.logical_and(domains_[stratum],value);
             }
+        };
+        const std::uint32_t workers=std::max<std::uint32_t>(1,
+          std::min<std::uint32_t>(requestedWorkers,database_.geometries()));
+        if(workers==1){
+            for(std::uint32_t gid=0;gid<database_.geometries();++gid)
+                process(gid);
+        }else{
+            constexpr std::uint32_t Chunk=16;
+            std::atomic<std::uint32_t>next{0},completed{0};
+            std::atomic<bool>failed{false};
+            std::exception_ptr failure;
+            std::mutex failureMutex,outputMutex;
+            const auto started=std::chrono::steady_clock::now();
+            const auto worker=[&]{
+                try{
+                    for(;;){
+                        if(failed.load(std::memory_order_relaxed))return;
+                        const std::uint32_t begin=next.fetch_add(
+                          Chunk,std::memory_order_relaxed);
+                        if(begin>=database_.geometries())return;
+                        const std::uint32_t end=std::min<std::uint32_t>(
+                          database_.geometries(),begin+Chunk);
+                        for(std::uint32_t gid=begin;gid<end;++gid)process(gid);
+                        const std::uint32_t previous=completed.fetch_add(
+                          end-begin,std::memory_order_relaxed);
+                        const std::uint32_t done=previous+(end-begin);
+                        if(done/50'000!=previous/50'000||
+                           done==database_.geometries()){
+                            const double elapsed=std::chrono::duration<double>(
+                              std::chrono::steady_clock::now()-started).count();
+                            std::lock_guard<std::mutex>lock(outputMutex);
+                            std::cout<<"ghost_pair_bellman geometries "<<done
+                              <<'/'<<database_.geometries()<<" workers "
+                              <<workers<<" bdd_nodes "<<bdd_.node_count()
+                              <<" elapsed "<<elapsed<<"s\n"<<std::flush;
+                        }
+                    }
+                }catch(...){
+                    failed.store(true,std::memory_order_relaxed);
+                    std::lock_guard<std::mutex>lock(failureMutex);
+                    if(!failure)failure=std::current_exception();
+                }
+            };
+            std::vector<std::thread>threads;threads.reserve(workers);
+            for(std::uint32_t index=0;index<workers;++index)
+                threads.emplace_back(worker);
+            for(std::thread&thread:threads)thread.join();
+            if(failure)std::rethrow_exception(failure);
         }
+        if(certificate_)certificate_->lowerGhostMaskProbes+=
+          lowerGhostMaskProbes_.exchange(0,std::memory_order_relaxed);
     }
   private:
     TransitionDatabase&database_;const LowerGhostSidecar&lower_;PairRobdd&bdd_;
     MmapFile<PairRobdd::Id>&owner_;MmapFile<PairRobdd::Id>&observer_;
     MmapFile<PairRobdd::Id>&domains_;SolveCertificate*certificate_;
+    std::atomic<std::uint64_t>lowerGhostMaskProbes_{0};
 };
 
 [[nodiscard]] bool same_arrays(const MmapFile<PairRobdd::Id>&first,
@@ -1742,7 +1852,8 @@ SolveCertificate solve_exact(const SolveOptions&options){
     certificate.lowerGhostSidecarSha256=options.lowerGhostSidecarSha256;
     for(;;){ExactKernel kernel(database,lower,bdd,owner,observer,domains,
                                &certificate);
-        kernel.sweep(ownerNext,observerNext);++certificate.iterations;
+        kernel.sweep(ownerNext,observerNext,options.workers);
+        ++certificate.iterations;
         const bool stable=same_arrays(owner,ownerNext)&&
                           same_arrays(observer,observerNext);
         if(options.measureIterations&&
@@ -1777,7 +1888,7 @@ SolveCertificate solve_exact(const SolveOptions&options){
         }
     }
     ExactKernel verifier(database,lower,bdd,owner,observer,domains,&certificate);
-    verifier.sweep(ownerNext,observerNext);
+    verifier.sweep(ownerNext,observerNext,options.workers);
     for(std::uint64_t index=0;index<owner.size();++index)
         certificate.bellmanResidual+=owner[index]!=ownerNext[index];
     for(std::uint64_t index=0;index<observer.size();++index)

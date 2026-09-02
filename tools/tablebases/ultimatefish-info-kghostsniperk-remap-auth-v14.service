@@ -1,0 +1,15 @@
+[Unit]
+Description=Ultimate Fish same-side Sniper/Ghost corrected remap certification v14
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/mnt/ultimatefish/sniper-ghost-same-restore-v11/ultimatefish-resume-kghostsniperk-remap-auth-v14.sh
+AllowedCPUs=16-31,46-48,51-61
+MemoryMax=180G
+LimitNOFILE=1048576
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

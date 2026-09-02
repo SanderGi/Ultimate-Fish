@@ -1,0 +1,15 @@
+[Unit]
+Description=Ultimate Fish same-side Sniper/Ghost retained-checkpoint solve v11
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/mnt/ultimatefish/sniper-ghost-same-restore-v11/resume_ultimate_sniper_checkpoint_v11.sh
+AllowedCPUs=16-31
+MemoryMax=180G
+LimitNOFILE=1048576
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

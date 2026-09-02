@@ -32,6 +32,30 @@ TRANSPOSED_SUBSTATE_OVERLAYS = {
         "e937f73d83338e2671e96be562fea208ce9740877b94dfd101c4dec058d8e9b4",
         "3b9fdf33ca878d18e2a3bea7c3c6a591aaf9c6a453a9e649b0f87784085cbc8b",
     ),
+    # The opposed Penguin concrete oracle has the same historical physical
+    # layout, [Ghost visibility][Penguin substate], while its corrected UFIW2
+    # overlay is indexed in logical [Penguin substate][visibility] order.
+    # Bind this exception to the exact source/model pair so a future codec
+    # cannot silently inherit the transpose.
+    (
+        "kghostkpenguin",
+        "06dc64a6ae06df68df65c9819de7a8abec06c124b59ea5cd5010a60769b84b64",
+        "c073b92a1243ad3027b85bf539528f115b64a1b9fc9a72cc3c9dd8d2ed2cf0b9",
+    ),
+    # Checker was solved from the color-equivalent Checker-primary table and
+    # exhaustively canonicalized onto this exact Ghost-primary source/model.
+    # Its logical UFIW2 order remains [Checker substate][visibility], whereas
+    # the concrete Ghost-primary file packs [visibility][Checker substate].
+    (
+        "kghostkchecker",
+        "231d2f45d8d1db2a6e47aa413485444d93599fc68ae0d069afabd5e60369ee10",
+        "bb4e8b3b44571b7ed5caad19dc17d26db9afe976393175f399f5e546ea490316",
+    ),
+}
+TRANSPOSED_SUBSTATE_MATERIALS = {
+    "kghostpenguink": ("penguin", 16),
+    "kghostkpenguin": ("penguin", 16),
+    "kghostkchecker": ("checker", 8),
 }
 
 
@@ -75,7 +99,10 @@ def source_header(path: Path) -> dict[str, object]:
         raise ValueError(f"invalid UFTB header: {path}")
     version, primary, states = struct.unpack_from("<3I", header, 8)
     substates = struct.unpack_from("<I", header, 24)[0]
-    if version < 1 or version > 7 or primary >= len(PIECES):
+    # Concrete storage now includes the packed v8/v9 codecs and the v11
+    # stationary-Devil codec.  The material/state fields used by this auditor
+    # retain the same offsets; reject every unassigned version explicitly.
+    if version not in {*range(1, 10), 11} or primary >= len(PIECES):
         raise ValueError(f"unsupported UFTB codec: {path}")
     secondary, color = ((len(PIECES) - 1, 0) if version < 5 else
                         struct.unpack_from("<2I", header, 40))
@@ -193,8 +220,9 @@ def audit(args: argparse.Namespace, overlay: Path) -> dict[str, object]:
     transpose_key = (overlay.stem, source_sha, str(header["model_sha256"]))
     if transpose_key in TRANSPOSED_SUBSTATE_OVERLAYS:
         if (material["primary"], material["secondary"],
-                material["substates"]) != ("ghost", "penguin", 16):
-            raise ValueError("Ghost/Penguin transpose material residual")
+                material["substates"]) != (
+                    "ghost", *TRANSPOSED_SUBSTATE_MATERIALS[overlay.stem]):
+            raise ValueError("Ghost/extra transpose material residual")
         command.append("--information-transpose-substates")
     completed = subprocess.run(command, check=True, text=True,
                                capture_output=True)

@@ -114,6 +114,7 @@ struct LiveMaterial {
     std::uint8_t extraSubstate = 0;
     Color extraColor = Color::White;
     int ghost = Position::NoSquare;
+    int ghostId = Position::NoPiece;
     Color ghostColor = Color::White;
     bool visible = false;
     int live = 0;
@@ -125,7 +126,18 @@ struct LiveMaterial {
     LiveMaterial result;
     for (int id = 0; id < position.piece_count(); ++id) {
         const PieceState& piece = position.piece(id);
-        if (!piece.alive || !piece.onBoard)
+        if (!piece.alive)
+            continue;
+        if (material.extraType == PieceType::Angel &&
+            piece.type == PieceType::Halo) {
+            if (piece.link < 0 || piece.link >= position.piece_count() ||
+                position.piece(piece.link).type != PieceType::Angel)
+                result.unexpected = true;
+            continue;
+        }
+        if (!piece.onBoard &&
+            !(material.extraType == PieceType::Angel &&
+              piece.type == PieceType::Angel))
             continue;
 #ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
         if (piece.type == PieceType::CopycatClone &&
@@ -147,6 +159,15 @@ struct LiveMaterial {
             result.extra = piece.square;
             result.extraId = id;
             result.extraColor = piece.color;
+            if (material.extraType == PieceType::Angel && !piece.onBoard) {
+                if (piece.link < 0 || piece.link >= position.piece_count() ||
+                    !position.piece(piece.link).alive ||
+                    !position.piece(piece.link).onBoard ||
+                    position.piece(piece.link).type != PieceType::Halo)
+                    result.unexpected = true;
+                else
+                    result.extra = position.piece(piece.link).square;
+            }
         }
         else if (piece.type == PieceType::Ghost &&
                  result.ghost == Position::NoSquare) {
@@ -155,6 +176,7 @@ struct LiveMaterial {
                 continue;
             }
             result.ghost = piece.square;
+            result.ghostId = id;
             result.ghostColor = piece.color;
             result.visible = piece.visible;
         }
@@ -162,8 +184,9 @@ struct LiveMaterial {
             result.unexpected = true;
     }
     if (result.extraId != Position::NoPiece) {
-        const auto substate = position.tablebase_substate(
-          result.extraId, material.extraType);
+        const auto substate = material.extraType == PieceType::Angel
+          ? position.tablebase_angel_substate(result.extraId, result.ghostId)
+          : position.tablebase_substate(result.extraId, material.extraType);
         if (!substate || *substate >= ExtraSubstateCount)
             result.unexpected = true;
         else
@@ -413,8 +436,12 @@ Position make_position(const ConcreteState& state,
     }
 #endif
     position.piece(ghost).visible = state.ghostVisible;
-    if (!position.apply_tablebase_substate(
-          extra, material.extraType, state.extraSubstate))
+    const bool applied = material.extraType == PieceType::Angel
+      ? position.apply_tablebase_angel_substate(
+          extra, ghost, state.extraSubstate)
+      : position.apply_tablebase_substate(
+          extra, material.extraType, state.extraSubstate);
+    if (!applied)
         throw std::runtime_error("cannot apply public-extra substate");
     position.set_side_to_move(state.side);
     return position;
@@ -423,6 +450,10 @@ Position make_position(const ConcreteState& state,
 bool valid_concrete_world(const ConcreteState& state,
                           const MaterialSpec& material) {
     if (!occupied_squares_distinct(state))
+        return false;
+    if (material.extraType == PieceType::Angel &&
+        state.extraSubstate == 2 &&
+        material.extraColor != material.ghostColor)
         return false;
 #ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
     if (material.extraType == PieceType::Copycat) {

@@ -173,6 +173,14 @@ ORDINARY_GHOST_SOLVER_SOURCES = (
     TABLEBASE_SOURCES / "ghost_ordinary_information_solver.cpp",
     TABLEBASE_SOURCES / "ghost_ordinary_information_tablebase.cpp",
 )
+# The ordinary adapter textually includes the Dragon entry point. Historical
+# ordinary fingerprints omitted that translation unit, so adding Angel to the
+# frozen domain would silently inherit an incomplete source binding. Keep the
+# new material in a complete, separately versioned domain.
+ANGEL_GHOST_SOLVER_SOURCES = (
+    *ORDINARY_GHOST_SOLVER_SOURCES,
+    TABLEBASE_SOURCES / "ghost_dragon_information_tablebase.cpp",
+)
 CROSSED_JESTER_GHOST_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "position.h",
     ROOT / "src" / "ultimate" / "position.cpp",
@@ -403,6 +411,7 @@ AFFECTED_FILENAMES = (
     "kjesterksniper.uftb", "kjestersniperk.uftb",
     "kpawnghostk.uftb", "kpawnkghost.uftb",
     "kghostcheckerk.uftb", "kghostkchecker.uftb",
+    "kghostangelk.uftb", "kghostkangel.uftb",
     "kghostksniper.uftb", "kghostsniperk.uftb",
     "kjesterkpenguin.uftb", "kjesterpenguink.uftb",
     "kjesterberserkerk.uftb", "kjesterkberserker.uftb",
@@ -507,6 +516,7 @@ SOLVER_DOMAIN_FILENAMES = {
         "kghostpenguink.uftb", "kghostkpenguin.uftb",
         "kcopycatghostk.uftb", "kcopycatkghost.uftb",
     ),
+    "angel-ghost": ("kghostangelk.uftb", "kghostkangel.uftb"),
 }
 SOLVER_DOMAIN_SOURCES = {
     "primary-jester": PRIMARY_JESTER_SOLVER_SOURCES,
@@ -533,6 +543,7 @@ SOLVER_DOMAIN_SOURCES = {
     "jester-ghost": JESTER_GHOST_SOLVER_SOURCES,
     "crossed-jester-ghost": CROSSED_JESTER_GHOST_SOLVER_SOURCES,
     "ordinary-ghost": ORDINARY_GHOST_SOLVER_SOURCES,
+    "angel-ghost": ANGEL_GHOST_SOLVER_SOURCES,
 }
 SOLVER_SIDECAR_DEPENDENCIES = {
     "reciprocal-bishop-ghost": ("kghostk.ufgm",),
@@ -553,6 +564,7 @@ SOLVER_SIDECAR_DEPENDENCIES = {
     "jester-ghost": ("kghostk.ufgm",),
     "crossed-jester-ghost": ("kjesterk.ufiw", "kghostk.ufgm"),
     "ordinary-ghost": ("kghostk.ufgm",),
+    "angel-ghost": ("kghostk.ufgm",),
 }
 _ROUTED_FILENAMES = tuple(
     filename for filenames in SOLVER_DOMAIN_FILENAMES.values()
@@ -626,12 +638,15 @@ def affected_inventory(*, root: Path = ROOT,
             if ({str(record["primary"]), str(record["secondary"])}
                 & {"jester", "ghost"})
         )
-        if logical != AFFECTED_FILENAMES:
+        if (len(logical) != len(AFFECTED_FILENAMES) or
+                set(logical) != set(AFFECTED_FILENAMES)):
             raise SummaryValidationError(
                 f"planner public-information inventory drift (missing={missing}, "
                 f"extra={extra})")
-        selected = tuple(dict(record) for record in planned
-                         if str(record["filename"]) in AFFECTED_FILENAMES)
+        by_filename = {str(record["filename"]): dict(record)
+                       for record in planned}
+        selected = tuple(by_filename[filename]
+                         for filename in AFFECTED_FILENAMES)
     return selected
 
 
@@ -735,7 +750,7 @@ def solver_model_fingerprint(filename: str, *, root: Path = ROOT) -> str:
     """
     domain = solver_domain(filename)
     fingerprint_domain = (f"solver-model:{domain}:{filename}"
-                          if domain == "ordinary-ghost"
+                          if domain in {"ordinary-ghost", "angel-ghost"}
                           else f"solver-model:{domain}")
     return _source_fingerprint(
         SOLVER_DOMAIN_SOURCES[domain], domain=fingerprint_domain,
@@ -750,12 +765,14 @@ def solver_concrete_dependencies(filename: str) -> tuple[str, ...]:
     the first lower-material probe.
     """
     domain = solver_domain(filename)
-    if domain == "ordinary-ghost":
+    if domain in {"ordinary-ghost", "angel-ghost"}:
         for piece in ("knight", "ninja", "queen", "rook", "turtle",
                       "pawn", "berserker", "sniper", "prince", "checker",
-                      "penguin", "copycat"):
+                      "penguin", "copycat", "angel"):
             if piece in filename:
-                return (f"k{piece}k.uftb",)
+                return (() if piece in {"knight", "turtle", "checker",
+                                        "angel"}
+                        else (f"k{piece}k.uftb",))
         raise SummaryValidationError(
             f"{filename}: ordinary Ghost material is not classified")
     if domain == "crossed-jester-ghost":
@@ -803,7 +820,8 @@ def concrete_tablebase_model_fingerprint(filename: str,
                         "kberserkerk.uftb", "kpenguink.uftb",
                         "ksniperk.uftb", "kprincek.uftb",
                         "kknightk.uftb", "kninjak.uftb", "kqueenk.uftb",
-                        "krookk.uftb", "kturtlek.uftb", "kcopycatk.uftb"}:
+                        "krookk.uftb", "kturtlek.uftb", "kcopycatk.uftb",
+                        "kangelk.uftb"}:
         raise SummaryValidationError(
             f"unsupported concrete dependency model {filename}")
     sources = (

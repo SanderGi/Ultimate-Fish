@@ -88,7 +88,7 @@ PIECES = (
     Piece("dragon", decisive=True),
 )
 
-DEFERRED_DYNAMIC_K2 = frozenset({"devil", "sludge"})
+DEFERRED_DYNAMIC_K2 = frozenset({"sludge"})
 COPYCAT_SEPARATORS = frozenset({"penguin", "mage", "fisherman"})
 # The v9/v10 Angel graph codecs cover one-Angel public-information domains.
 # Angel/Angel has no attacking material and is an exact closed-form draw, so
@@ -99,7 +99,7 @@ COPYCAT_SEPARATORS = frozenset({"penguin", "mage", "fisherman"})
 # Copycat/Angel uses the v10
 # four-host-mode graph plus an exact arbitrary-linked-pair lower table.
 ANGEL_DEFERRED_COMPANIONS = frozenset({
-    "devil", "sludge", "angel",
+    "sludge", "angel",
 })
 
 
@@ -107,6 +107,12 @@ def deferred_material(first: str, second: str = "", *,
                       opposing: bool = False) -> bool:
     """Return whether this material lies outside the exact campaign codecs."""
     names = {first, second} - {""}
+    # The approved Devil campaign is a closed spawned-material simplification:
+    # every indexed Devil starts on ranks 1-3, and only Minions spawned by an
+    # indexed Devil may enter the closure.  It applies to every Devil pairing,
+    # including Devil/Sludge; arbitrary pre-existing Minions remain excluded.
+    if "devil" in names:
+        return False
     if first == "devil" and not second:
         return False
     if names & DEFERRED_DYNAMIC_K2:
@@ -301,6 +307,7 @@ def angel_candidates() -> list[dict[str, object]]:
     result: list[dict[str, object]] = []
     for companion in PIECES:
         if (companion.name in ANGEL_DEFERRED_COMPANIONS or
+                companion.name == "devil" or
                 companion.name == "copycat"):
             continue
         first, second = sorted((companion, angel),
@@ -341,6 +348,83 @@ def angel_candidates() -> list[dict[str, object]]:
     return sorted(result, key=lambda record: str(record["filename"]))
 
 
+def devil_pair_starting_geometries(*, identical_same_team: bool) -> int:
+    """Exact indexed K+K+2 Devil starting geometries.
+
+    The Ivory King is horizontally canonicalized, while both Kings remain
+    ordinary board models.  Every Devil is immobile and therefore starts on
+    ranks 1-3.  This is the exact starting frontier only; spawned Minion states
+    belong to the sparse closure and are deliberately not estimated as a dense
+    Cartesian product.
+    """
+    result = 0
+    devil_squares = set(range(FILES * 3))
+    for ivory in range(SQUARES):
+        if ivory % FILES >= FILES // 2:
+            continue
+        for onyx in range(SQUARES):
+            if onyx == ivory:
+                continue
+            available = len(devil_squares - {ivory, onyx})
+            if identical_same_team:
+                result += available * (available - 1) // 2
+            else:
+                # One Devil plus a labelled companion.  For Devil/Devil with
+                # opposing owners, the companion is also restricted below.
+                result += available * (SQUARES - 3)
+    return 2 * result
+
+
+def devil_candidates() -> list[dict[str, object]]:
+    """Return every approved spawned-only Devil K+K+2 planning domain."""
+    order = {piece.name: index for index, piece in enumerate(PIECES)}
+    devil = next(piece for piece in PIECES if piece.name == "devil")
+    result: list[dict[str, object]] = []
+    for companion in PIECES:
+        first, second = sorted((companion, devil),
+                               key=lambda piece: order[piece.name])
+        for opposing in (False, True):
+            if companion.name == "devil":
+                if opposing:
+                    # Both owner-labelled Devils are restricted to ranks 1-3.
+                    geometry = 0
+                    devil_squares = set(range(FILES * 3))
+                    for ivory in range(SQUARES):
+                        if ivory % FILES >= FILES // 2:
+                            continue
+                        for onyx in range(SQUARES):
+                            if onyx == ivory:
+                                continue
+                            available = len(devil_squares - {ivory, onyx})
+                            geometry += available * (available - 1)
+                    geometry *= 2
+                else:
+                    geometry = devil_pair_starting_geometries(
+                        identical_same_team=True)
+            else:
+                geometry = devil_pair_starting_geometries(
+                    identical_same_team=False)
+            factor = pair_state_factor(first, second)
+            if companion.name == "angel":
+                factor = (3 if not opposing else 2) * devil.state_factor
+            states = geometry * factor
+            result.append(class_record(
+                (f"K{first.name}{second.name}vK" if not opposing else
+                 f"K{first.name}vK{second.name}"),
+                states, "devil-spawned-pair-closure-v1",
+                primary=first.name, secondary=second.name,
+                opposing=opposing,
+                filename=(f"k{first.name}{second.name}k.uftb" if not opposing
+                          else f"k{first.name}k{second.name}.uftb"),
+                note=("indexed Devil(s) start on ranks 1-3; sparse closure "
+                      "admits only Minions spawned by an indexed Devil and "
+                      "no arbitrary pre-existing Minions"),
+            ))
+    if len(result) != 48 or len({str(row["filename"]) for row in result}) != 48:
+        raise RuntimeError("Devil K+K+2 planning inventory residual")
+    return sorted(result, key=lambda record: str(record["filename"]))
+
+
 def mirror_copycat_candidates() -> list[dict[str, object]]:
     """User-approved linked-mirror K+K+2 Copycat planning domain.
 
@@ -355,7 +439,7 @@ def mirror_copycat_candidates() -> list[dict[str, object]]:
     result: list[dict[str, object]] = []
     for secondary in PIECES:
         if secondary.name in (DEFERRED_DYNAMIC_K2 | COPYCAT_SEPARATORS |
-                              {"angel"}):
+                              {"angel", "devil"}):
             continue
         for opposing in (False, True):
             states = compound_copycat_pair_states(
@@ -387,16 +471,19 @@ def inventory(budget: int = DEFAULT_BUDGET) -> list[dict[str, object]]:
             continue
         states = single_material_states(piece)
         phase = "kings+1"
+        note = piece.note
         if piece.name == "devil":
-            # Only ranks 1-3 are seeded because Devil cannot move. The final
-            # sparse closure also contains Devil-spawned Minion states; this is
-            # the exact indexed starting-frontier count, not a dense closure
-            # upper bound.
-            states = states * 3 // RANKS
+            # The preserved UFTB uses the complete dense K+Devil-v-K codec so
+            # placements outside the legal first-three-ranks root domain are
+            # explicit excluded sentinels.  The seeded starting frontier is
+            # exactly three tenths of this indexed extent (1,183,104 states),
+            # while spawned Minions live only in the fixed-square proof graph.
             phase = "devil-spawned-closure-v3"
+            note = (piece.note + "; dense root table retains explicit excluded "
+                    "sentinels outside the first three ranks")
         single_filename = {"queen": "kqk.uftb", "rook": "krk.uftb"}.get(
             piece.name, f"k{piece.name}k.uftb")
-        result.append(class_record(f"K{piece.name}vK", states, phase, piece.note,
+        result.append(class_record(f"K{piece.name}vK", states, phase, note,
                                    primary=piece.name,
                                    filename=single_filename))
 

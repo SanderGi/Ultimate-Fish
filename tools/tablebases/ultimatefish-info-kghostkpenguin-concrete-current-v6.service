@@ -1,0 +1,11 @@
+[Unit]
+Description=Ultimate Fish opposed Ghost/Penguin solve with current concrete source v6
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ultimatefish-resume-kghostkpenguin-concrete-current-v6.sh
+Nice=5
+AllowedCPUs=2
+MemoryMax=128G
+TimeoutStartSec=infinity

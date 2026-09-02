@@ -20,6 +20,11 @@ SPEC.loader.exec_module(runner)
 
 
 class CurrentGhostPairRunnerTests(unittest.TestCase):
+    def test_solve_forwards_parallelism_to_fixed_point_workers(self) -> None:
+        source = (ROOT / "tools/tablebases/"
+                  "run_ultimate_ghost_pair_current_aws.py").read_text()
+        self.assertIn('"--workers", str(args.parallelism)', source)
+
     def test_prebuilt_model_binding_is_strict_and_optional(self) -> None:
         executable = Path("solver")
         runner.validate_prebuilt_binding(executable, "a" * 64, "", "b" * 64)
@@ -31,6 +36,24 @@ class CurrentGhostPairRunnerTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "must equal"):
             runner.validate_prebuilt_binding(
                 None, "", "b" * 64, "b" * 64)
+
+    def test_solve_existing_atomically_installs_authenticated_replacement(
+            self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            installed = root / "solver"
+            replacement = root / "solver-v2"
+            installed.write_bytes(b"old solver")
+            replacement.write_bytes(b"new solver")
+            expected = runner.sha256_path(replacement)
+            runner.install_prebuilt(installed, replacement, expected)
+            self.assertEqual(installed.read_bytes(), b"new solver")
+            self.assertFalse((root / "solver.staged").exists())
+            bad = root / "bad"
+            bad.write_bytes(b"bad solver")
+            with self.assertRaisesRegex(RuntimeError, "SHA-256 mismatch"):
+                runner.install_prebuilt(installed, bad, expected)
+            self.assertEqual(installed.read_bytes(), b"new solver")
 
     def test_manifest_requires_both_sidecars(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

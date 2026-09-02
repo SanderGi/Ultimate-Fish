@@ -1,0 +1,9 @@
+[Unit]
+Description=Ultimate Fish same Sniper/Ghost checkpoint-41 CPU handoff v12
+After=ultimatefish-info-kghostsniperk-resume-v11.service
+
+[Service]
+Type=oneshot
+ExecStart=/mnt/ultimatefish/sniper-ghost-same-restore-v11/ultimatefish-handoff-kghostsniperk-30w-v12.sh
+TimeoutStartSec=infinity
+

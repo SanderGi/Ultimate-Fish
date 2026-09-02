@@ -1,0 +1,33 @@
+diff --git a/src/ultimate/tablebases/ghost_parasite_information_solver.cpp b/src/ultimate/tablebases/ghost_parasite_information_solver.cpp
+--- a/src/ultimate/tablebases/ghost_parasite_information_solver.cpp
++++ b/src/ultimate/tablebases/ghost_parasite_information_solver.cpp
+@@ -997,12 +997,23 @@ ParasitePatchCertificate rewrite_lower_parasite_edges(
+                 const std::uint8_t expected = parasiteChild
+                   ? lower_parasite_force_flags(child, material, lower)
+                   : possessed_ghost_force_flags(
+                       child, material, lowerTrackedGhost);
+-                if (edge.domain != ExternalChildDomain::Exact ||
+-                    (!acceptPlaceholders && edge.exact != expected) ||
+-                    (acceptPlaceholders && edge.exact != 0 &&
+-                     edge.exact != expected))
+-                    throw std::runtime_error(
+-                      "Parasite lower-table transition residual");
++                if (edge.domain != ExternalChildDomain::Exact ||
++                    (!acceptPlaceholders && edge.exact != expected) ||
++                    (acceptPlaceholders && edge.exact != 0 &&
++                     edge.exact != expected)) {
++                    std::ostringstream detail;
++                    detail << "Parasite lower-table transition residual"
++                           << " geometry=" << geometryId
++                           << " local=" << local
++                           << " ghost=" << unsigned(ghost)
++                           << " ordinal=" << ordinal
++                           << " domain=" << unsigned(edge.domain)
++                           << " actual=" << unsigned(edge.exact)
++                           << " expected=" << unsigned(expected)
++                           << " parasite_child=" << parasiteChild
++                           << " possessed_ghost=" << possessedGhost;
++                    throw std::runtime_error(detail.str());
++                }
+                 edge.exact = placeholders ? 0 : expected;
+                 ++certificate.lowerEdges;

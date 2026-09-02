@@ -120,6 +120,18 @@ CONTINUATION_HOSTS = {
          (*range(13, 21), 22, 23, *range(25, 29)), 19,
          96 * 1024**3),
     ),
+    # Every 100-million-state sample saturated at depth 9, immediately after
+    # first observing three spawned Minions. Double the cap on a fresh,
+    # disjoint 24-slot partition while avoiding every current Ghost CPU.
+    "highcap-200m": (
+        ("i-03c81f90d2c59a2e7", (0, *range(3, 14)), 0,
+         192 * 1024**3),
+        ("i-0b4523116b2f7765c", tuple(range(13, 19)), 12,
+         96 * 1024**3),
+        ("i-024a2073283e4336e", (4, 5), 18, 32 * 1024**3),
+        ("i-08c0f44a1776cb34a", (0, 1), 20, 32 * 1024**3),
+        ("i-0986ed3d272721f02", (3, 4), 22, 32 * 1024**3),
+    ),
 }
 assert sum(len(host[1]) for host in CONTINUATION_HOSTS["continuation-1"]) == 37
 assert sum(len(host[1]) for host in CONTINUATION_HOSTS["continuation-2"]) == 26
@@ -132,11 +144,14 @@ assert sum(len(host[1]) for host in
            CONTINUATION_HOSTS["highcap-100m-relocated-i098"]) == 2
 assert sum(len(host[1]) for host in
            CONTINUATION_HOSTS["highcap-100m-slot19-fanout"]) == 14
+assert sum(len(host[1]) for host in CONTINUATION_HOSTS["highcap-200m"]) == 24
 
 
 def campaign_stride(campaign: str) -> int:
     if campaign == "highcap-100m-slot19-fanout":
         return SHARDS
+    if campaign == "highcap-200m":
+        return 24
     return 56 if campaign.startswith("highcap-100m") else TOTAL_WORKERS
 
 
@@ -147,6 +162,8 @@ def campaign_global_slot(campaign: str, base: int, slot: int) -> int:
 
 
 def campaign_state_limit(campaign: str) -> int:
+    if campaign == "highcap-200m":
+        return 200_000_000
     return 100_000_000 if campaign.startswith("highcap-100m") else STATE_LIMIT
 
 
@@ -191,7 +208,8 @@ def send(instance: str, commands: list[str], timeout: int = 300) -> str:
         if status not in {"Pending", "InProgress", "Delayed"}:
             raise RuntimeError(
                 f"{instance} SSM {status}: "
-                f"{result.get('StandardErrorContent', '')}")
+                f"stdout={result.get('StandardOutputContent', '')!r} "
+                f"stderr={result.get('StandardErrorContent', '')!r}")
         if time.monotonic() >= deadline:
             raise RuntimeError(f"{instance} SSM timeout")
         time.sleep(1)
@@ -232,7 +250,10 @@ def launch_host(campaign_host: tuple[
             f"systemctl is-active --quiet {child}.service || "
             f"systemd-run --quiet --collect --unit={child} "
             f"--property=AllowedCPUs={cpu} --property=Nice=10 "
-            + ("--property=MemoryHigh=8589934592 "
+            + ("--property=MemoryHigh=15032385536 "
+               "--property=MemoryMax=17179869184 "
+               if campaign == "highcap-200m" else
+               "--property=MemoryHigh=8589934592 "
                "--property=MemoryMax=9663676416 "
                if (campaign.startswith("highcap-100m-relocated") or
                    campaign == "highcap-100m-slot19-fanout") else

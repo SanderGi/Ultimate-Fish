@@ -1,0 +1,13 @@
+[Unit]
+Description=Ultimate Fish canonical Checker/Ghost information-trivial v2 audit
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+AllowedCPUs=0-31
+ExecStart=/usr/local/bin/ultimatefish-audit-kghostkchecker-information-trivial-v2.sh
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

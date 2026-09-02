@@ -1,0 +1,9 @@
+[Unit]
+Description=Ultimate Fish automatic lone-Devil merge and preservation handoff v2
+After=ultimatefish-devil-spawned-v29-square-2.service
+
+[Service]
+Type=oneshot
+ExecStart=/mnt/ultimatefish/devil-preservation-v2/ultimatefish-finalize-preserve-devil-v2.sh
+TimeoutStartSec=infinity
+

@@ -17,6 +17,12 @@
 #include <string>
 #include <vector>
 
+#include <cerrno>
+#include <cstring>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 namespace Stockfish::Ultimate {
 namespace {
 
@@ -36,11 +42,147 @@ constexpr std::uint64_t AngelGraphV1Tag = 0x314c45474e414655ULL;
 constexpr std::uint64_t AngelGiantGraphV1Tag = 0x314741474e414655ULL;
 constexpr std::uint64_t LinkedCopycatPairV1Tag = 0x314b4e4c43434655ULL;
 constexpr std::uint64_t AngelCopycatGraphV1Tag = 0x3152504343414655ULL;
+constexpr std::uint64_t SpawnedDevilRootV1Tag = 0x315256444e505355ULL;
+constexpr std::size_t DevilStatefulHeaderBytes = 32;
+constexpr std::size_t DevilStatefulRecordBytes = 10;
+
+constexpr std::uint64_t choose_devil(unsigned n, unsigned k) {
+    if (k > n)
+        return 0;
+    if (k > n - k)
+        k = n - k;
+    std::uint64_t value = 1;
+    for (unsigned item = 1; item <= k; ++item)
+        value = value * (n - k + item) / item;
+    return value;
+}
+
+std::optional<std::uint64_t> encode_devil_minions(std::uint64_t low,
+                                                   std::uint16_t high) {
+    const unsigned count = static_cast<unsigned>(
+      __builtin_popcountll(low) + __builtin_popcount(high));
+    if (count > 5)
+        return std::nullopt;
+    std::uint64_t rank = 0;
+    for (unsigned smaller = 0; smaller < count; ++smaller)
+        rank += choose_devil(80, smaller);
+    unsigned ordinal = 1;
+    for (unsigned square = 0; square < 80; ++square) {
+        const bool set = square < 64 ? ((low >> square) & 1ULL)
+                                     : ((high >> (square - 64)) & 1U);
+        if (set)
+            rank += choose_devil(square, ordinal++);
+    }
+    return rank < (std::uint64_t{1} << 25)
+      ? std::optional<std::uint64_t>(rank) : std::nullopt;
+}
+
+std::optional<std::uint64_t> compact_devil_key(
+  Color side, unsigned whiteKing, unsigned blackKing, bool alive,
+  unsigned cooldown, std::uint64_t minionLow, std::uint16_t minionHigh) {
+    if (whiteKing >= 80 || blackKing >= 80 || whiteKing == blackKing ||
+        cooldown > 3 || (!alive && cooldown))
+        return std::nullopt;
+    const auto minions = encode_devil_minions(minionLow, minionHigh);
+    if (!minions)
+        return std::nullopt;
+    const unsigned blackIndex = blackKing < whiteKing
+      ? blackKing : blackKing - 1;
+    const std::uint64_t kings = whiteKing * 79ULL + blackIndex;
+    constexpr std::uint64_t NoSecondary = Position::BoardSquares;
+    const std::uint64_t value = *minions | (kings << 25) |
+      (NoSecondary << 38) | (static_cast<std::uint64_t>(cooldown) << 45) |
+      (static_cast<std::uint64_t>(side == Color::Black) << 47) |
+      (static_cast<std::uint64_t>(alive) << 48);
+    return value >> 49 ? std::nullopt : std::optional<std::uint64_t>(value);
+}
+
+#pragma pack(push, 1)
+struct DevilStatefulHeader {
+    std::array<char, 8> magic{};
+    std::uint32_t version = 0;
+    std::uint32_t square = 0;
+    std::uint64_t count = 0;
+    std::uint32_t recordBytes = 0;
+    std::uint32_t reserved = 0;
+};
+struct DevilStatefulRecord {
+    std::array<std::uint8_t, 7> key{};
+    std::uint8_t wdl = 0;
+    std::uint16_t dtw = 0;
+};
+#pragma pack(pop)
+static_assert(sizeof(DevilStatefulHeader) == DevilStatefulHeaderBytes);
+static_assert(sizeof(DevilStatefulRecord) == DevilStatefulRecordBytes);
+
+std::uint64_t devil_record_key(const DevilStatefulRecord& record) {
+    std::uint64_t key = 0;
+    std::memcpy(&key, record.key.data(), record.key.size());
+    return key;
+}
+
+struct DevilStatefulStorage {
+    std::string path;
+    int fd = -1;
+    std::uint32_t square = 0;
+    std::uint64_t count = 0;
+
+    ~DevilStatefulStorage() {
+        if (fd != -1)
+            ::close(fd);
+    }
+
+    std::optional<TablebaseResult> find(std::uint64_t key) const {
+        std::uint64_t first = 0, last = count;
+        while (first < last) {
+            const std::uint64_t middle = first + (last - first) / 2;
+            DevilStatefulRecord record;
+            std::size_t remaining = sizeof(record);
+            auto* cursor = reinterpret_cast<std::uint8_t*>(&record);
+            std::uint64_t offset = DevilStatefulHeaderBytes +
+                                   middle * DevilStatefulRecordBytes;
+            while (remaining) {
+                const ssize_t received = ::pread(
+                  fd, cursor, remaining, static_cast<off_t>(offset));
+                if (received < 0 && errno == EINTR)
+                    continue;
+                if (received <= 0)
+                    throw std::runtime_error("truncated stateful Devil sidecar: " + path);
+                cursor += received;
+                remaining -= static_cast<std::size_t>(received);
+                offset += static_cast<std::uint64_t>(received);
+            }
+            const std::uint64_t candidate = devil_record_key(record);
+            if (candidate < key)
+                first = middle + 1;
+            else
+                last = middle;
+        }
+        if (first == count)
+            return std::nullopt;
+        DevilStatefulRecord record;
+        const ssize_t received = ::pread(
+          fd, &record, sizeof(record), static_cast<off_t>(
+            DevilStatefulHeaderBytes + first * DevilStatefulRecordBytes));
+        if (received != static_cast<ssize_t>(sizeof(record)))
+            throw std::runtime_error("truncated stateful Devil sidecar: " + path);
+        if (devil_record_key(record) != key)
+            return std::nullopt;
+        if (record.wdl < static_cast<std::uint8_t>(TablebaseWdl::Win) ||
+            record.wdl > static_cast<std::uint8_t>(TablebaseWdl::Draw))
+            throw std::runtime_error("invalid stateful Devil WDL: " + path);
+        return TablebaseResult{static_cast<TablebaseWdl>(record.wdl), record.dtw};
+    }
+};
 
 bool compatible_codec(std::uint32_t version, PieceType primary,
                       PieceType secondary, std::uint64_t codecTag) {
-    if (version < 2 || version > 10)
+    if (version < 2 || version > 11)
         return false;
+    if (version == 11)
+        return primary == PieceType::Devil &&
+          secondary == PieceType::Count &&
+          codecTag == SpawnedDevilRootV1Tag;
     const bool angel = primary == PieceType::Angel ||
       secondary == PieceType::Angel;
     const bool foldedGiant = secondary != PieceType::Count &&
@@ -75,6 +217,9 @@ bool compatible_secondary_color(std::uint32_t version, PieceType primary,
     // opponent. A same-team Angel may attach to either linked half, and a hit
     // on the other half can leave a live off-board orphan; that larger graph
     // is deliberately not authenticated by this codec.
+    if (version == 11)
+        return primary == PieceType::Devil &&
+          secondary == PieceType::Count && secondaryColor == Color::White;
     if (version == 10)
         return primary == PieceType::Copycat &&
           ((secondary == PieceType::CopycatClone &&
@@ -123,6 +268,7 @@ struct Database {
     std::uint32_t count = 0;
     bool trackedGhost = false;
     bool linkedCopycatPair = false;
+    bool spawnedDevilRoot = false;
     std::vector<TablebaseResult> records;
     std::shared_ptr<PackedStorage> packed;
     std::vector<std::pair<std::uint32_t, std::uint16_t>> exceptions;
@@ -159,6 +305,12 @@ std::uint32_t encode(Color side, std::uint8_t whiteKing,
 
 std::uint8_t reflect_horizontal(std::uint8_t square) {
     return static_cast<std::uint8_t>((square / 8) * 8 + 7 - square % 8);
+}
+
+std::uint8_t reflect_vertical(std::uint8_t square) {
+    return static_cast<std::uint8_t>(
+      (Position::BoardRanks - 1 - square / Position::BoardFiles) *
+        Position::BoardFiles + square % Position::BoardFiles);
 }
 
 std::uint8_t reflect_giant_anchor_horizontal(std::uint8_t square) {
@@ -359,7 +511,8 @@ std::vector<std::string> paths() {
             std::error_code error;
             if (std::filesystem::is_directory(item, error)) {
                 for (const auto& entry : std::filesystem::directory_iterator(item, error))
-                    if (!error && entry.path().extension() == ".uftb")
+                    if (!error && (entry.path().extension() == ".uftb" ||
+                                   entry.path().extension() == ".ufds"))
                         result.push_back(entry.path().string());
             }
             else result.push_back(item);
@@ -386,6 +539,173 @@ std::vector<std::string> paths() {
     return expand({"tablebases", "../tablebases"});
 }
 
+std::vector<std::shared_ptr<DevilStatefulStorage>> load_devil_stateful() {
+    std::vector<std::shared_ptr<DevilStatefulStorage>> result;
+    std::array<bool, 24> seen{};
+    const std::array<char, 8> expected{{'U','F','D','S','V','1','\0','\0'}};
+    for (const std::string& path : paths()) {
+        if (std::filesystem::path(path).extension() != ".ufds")
+            continue;
+        const int fd = ::open(path.c_str(), O_RDONLY);
+        if (fd == -1)
+            continue;
+        DevilStatefulHeader header;
+        const ssize_t received = ::pread(fd, &header, sizeof(header), 0);
+        struct stat status {};
+        const bool valid = received == static_cast<ssize_t>(sizeof(header)) &&
+          ::fstat(fd, &status) == 0 && header.magic == expected &&
+          header.version == 1 && header.recordBytes == DevilStatefulRecordBytes &&
+          !header.reserved && header.square < 24 && header.square % 8 < 4 &&
+          header.count && static_cast<std::uint64_t>(status.st_size) ==
+            DevilStatefulHeaderBytes + header.count * DevilStatefulRecordBytes;
+        if (!valid || seen[header.square]) {
+            ::close(fd);
+            if (!valid)
+                throw std::runtime_error("invalid stateful Devil sidecar: " + path);
+            throw std::runtime_error("duplicate stateful Devil partition: " + path);
+        }
+        DevilStatefulRecord first, last;
+        if (::pread(fd, &first, sizeof(first), DevilStatefulHeaderBytes) !=
+              static_cast<ssize_t>(sizeof(first)) ||
+            ::pread(fd, &last, sizeof(last), DevilStatefulHeaderBytes +
+              (header.count - 1) * DevilStatefulRecordBytes) !=
+              static_cast<ssize_t>(sizeof(last)) ||
+            devil_record_key(first) > devil_record_key(last)) {
+            ::close(fd);
+            throw std::runtime_error("unsorted stateful Devil sidecar: " + path);
+        }
+        auto storage = std::make_shared<DevilStatefulStorage>();
+        storage->path = path;
+        storage->fd = fd;
+        storage->square = header.square;
+        storage->count = header.count;
+        seen[header.square] = true;
+        result.push_back(std::move(storage));
+    }
+    std::sort(result.begin(), result.end(), [](const auto& first, const auto& second) {
+        return first->square < second->square;
+    });
+    return result;
+}
+
+const std::vector<std::shared_ptr<DevilStatefulStorage>>& devil_stateful() {
+    static const auto value = load_devil_stateful();
+    return value;
+}
+
+struct StatefulDevilProbe {
+    bool material = false;
+    std::optional<TablebaseResult> result;
+};
+
+StatefulDevilProbe probe_stateful_devil(const Position& position) {
+    std::array<int, 2> kings{{Position::NoSquare, Position::NoSquare}};
+    int devilSquare = Position::NoSquare;
+    unsigned devilCooldown = 0;
+    std::vector<int> minions;
+    std::optional<Color> attackerColor;
+    for (int id = 0; id < position.piece_count(); ++id) {
+        const PieceState& piece = position.piece(id);
+        if (!piece.alive)
+            continue;
+        if (!piece.onBoard || piece.host != Position::NoPiece ||
+            piece.link != Position::NoPiece || piece.attachmentOrder ||
+            piece.freezeCount || piece.action || piece.power || !piece.visible)
+            return {};
+        if (piece.type == PieceType::King) {
+            int& target = kings[static_cast<unsigned>(piece.color)];
+            if (target != Position::NoSquare)
+                return {};
+            target = piece.square;
+        }
+        else if (piece.type == PieceType::Devil) {
+            if (devilSquare != Position::NoSquare || piece.cooldown > 3)
+                return {};
+            if (attackerColor && *attackerColor != piece.color)
+                return {};
+            attackerColor = piece.color;
+            devilSquare = piece.square;
+            devilCooldown = piece.cooldown;
+        }
+        else if (piece.type == PieceType::Minion) {
+            if (piece.cooldown || minions.size() == 5)
+                return {};
+            if (attackerColor && *attackerColor != piece.color)
+                return {};
+            attackerColor = piece.color;
+            minions.push_back(piece.square);
+        }
+        else
+            return {};
+    }
+    const bool alive = devilSquare != Position::NoSquare;
+    if (kings[0] == Position::NoSquare || kings[1] == Position::NoSquare ||
+        !attackerColor || (!alive && minions.empty()))
+        return {};
+    StatefulDevilProbe output;
+    output.material = true;
+    const auto make_key = [&](bool reflected) -> std::optional<std::uint64_t> {
+        const auto square = [&](int value) {
+            const auto colorCanonical = *attackerColor == Color::Black
+              ? static_cast<int>(reflect_vertical(value)) : value;
+            return reflected ? static_cast<int>(reflect_horizontal(colorCanonical))
+                             : colorCanonical;
+        };
+        std::uint64_t low = 0;
+        std::uint16_t high = 0;
+        for (const int minion : minions) {
+            const int target = square(minion);
+            if (target < 64)
+                low |= std::uint64_t{1} << target;
+            else
+                high |= static_cast<std::uint16_t>(1U << (target - 64));
+        }
+        const Color side = position.side_to_move() == *attackerColor
+          ? Color::White : Color::Black;
+        const Color defenderColor = *attackerColor == Color::White
+          ? Color::Black : Color::White;
+        return compact_devil_key(side,
+                                 square(kings[static_cast<unsigned>(*attackerColor)]),
+                                 square(kings[static_cast<unsigned>(defenderColor)]),
+                                 alive, devilCooldown, low, high);
+    };
+    const std::array<std::optional<std::uint64_t>, 2> keys{{
+      make_key(false), make_key(true)}};
+    for (const auto& storage : devil_stateful()) {
+        if (alive) {
+            const int colorCanonical = *attackerColor == Color::Black
+              ? reflect_vertical(devilSquare) : devilSquare;
+            const bool reflected = colorCanonical % 8 >= 4;
+            const int canonical = reflected ? reflect_horizontal(colorCanonical)
+                                            : colorCanonical;
+            if (canonical != static_cast<int>(storage->square) || canonical / 8 >= 3)
+                continue;
+            const auto found = keys[reflected ? 1 : 0]
+              ? storage->find(*keys[reflected ? 1 : 0]) : std::nullopt;
+            if (found)
+                output.result = found;
+            break;
+        }
+        // After Devil capture the fixed spawn square is causal provenance, not
+        // physical board state. Membership in any completed partition proves
+        // admissibility. Horizontal reflection accounts for a captured Devil
+        // that originally occupied the unindexed right half.
+        for (const auto& key : keys) {
+            if (!key)
+                continue;
+            const auto found = storage->find(*key);
+            if (!found)
+                continue;
+            if (output.result && (output.result->wdl != found->wdl ||
+                                  output.result->dtw != found->dtw))
+                throw std::runtime_error(
+                  "stateful Devil provenance partitions disagree");
+            output.result = found;
+        }
+    }
+    return output;
+}
+
 std::vector<Database> load_databases() {
     std::vector<Database> result;
     for (const std::string& path : paths()) {
@@ -404,7 +724,7 @@ std::vector<Database> load_databases() {
         std::uint32_t substates = 1;
         if (version >= 3)
             stream.read(reinterpret_cast<char*>(&substates), sizeof(substates));
-        if (!stream || magic != expected || (version < 2 || version > 10) ||
+        if (!stream || magic != expected || (version < 2 || version > 11) ||
             !substates || (version < 5 && count != StateCount * substates) ||
             piece >= static_cast<std::uint32_t>(PieceType::Count))
             continue;
@@ -423,7 +743,7 @@ std::vector<Database> load_databases() {
                 stream.read(reinterpret_cast<char*>(&secondaryColor), sizeof(secondaryColor));
                 if (secondary > static_cast<std::uint32_t>(PieceType::Count) ||
                     (secondary == static_cast<std::uint32_t>(PieceType::Count) &&
-                     version != 8 && version != 9) ||
+                     version != 8 && version != 9 && version != 11) ||
                     secondaryColor > static_cast<std::uint32_t>(Color::Black)) {
                     database.count = 0;
                     continue;
@@ -465,6 +785,8 @@ std::vector<Database> load_databases() {
             database.trackedGhost = codecTag == TrackedGhostV1Tag;
             database.linkedCopycatPair =
               codecTag == LinkedCopycatPairV1Tag;
+            database.spawnedDevilRoot =
+              codecTag == SpawnedDevilRootV1Tag;
             if (!compatible_codec(version, database.attacker,
                                   database.secondary, codecTag) ||
                 !compatible_secondary_color(
@@ -545,6 +867,35 @@ const std::vector<Database>& databases() {
 void TablebaseProbe::preload() { (void) databases(); }
 
 bool TablebaseProbe::uses_compatible_codec(const std::string& path) {
+    if (std::filesystem::path(path).extension() == ".ufds") {
+        const int fd = ::open(path.c_str(), O_RDONLY);
+        if (fd == -1)
+            return false;
+        DevilStatefulHeader header;
+        struct stat status {};
+        DevilStatefulRecord first, last;
+        const std::array<char, 8> expected{{'U','F','D','S','V','1','\0','\0'}};
+        const bool valid =
+          ::pread(fd, &header, sizeof(header), 0) ==
+            static_cast<ssize_t>(sizeof(header)) &&
+          ::fstat(fd, &status) == 0 && header.magic == expected &&
+          header.version == 1 && header.recordBytes == DevilStatefulRecordBytes &&
+          !header.reserved && header.square < 24 && header.square % 8 < 4 &&
+          header.count && static_cast<std::uint64_t>(status.st_size) ==
+            DevilStatefulHeaderBytes + header.count * DevilStatefulRecordBytes &&
+          ::pread(fd, &first, sizeof(first), DevilStatefulHeaderBytes) ==
+            static_cast<ssize_t>(sizeof(first)) &&
+          ::pread(fd, &last, sizeof(last), DevilStatefulHeaderBytes +
+            (header.count - 1) * DevilStatefulRecordBytes) ==
+            static_cast<ssize_t>(sizeof(last)) &&
+          devil_record_key(first) <= devil_record_key(last) &&
+          first.wdl >= static_cast<std::uint8_t>(TablebaseWdl::Win) &&
+          first.wdl <= static_cast<std::uint8_t>(TablebaseWdl::Draw) &&
+          last.wdl >= static_cast<std::uint8_t>(TablebaseWdl::Win) &&
+          last.wdl <= static_cast<std::uint8_t>(TablebaseWdl::Draw);
+        ::close(fd);
+        return valid;
+    }
     const std::string logicalPath = materialize_shards(path);
     std::ifstream stream(logicalPath, std::ios::binary);
     if (!stream)
@@ -557,7 +908,7 @@ bool TablebaseProbe::uses_compatible_codec(const std::string& path) {
     stream.read(reinterpret_cast<char*>(&count), sizeof(count));
     stream.read(reinterpret_cast<char*>(&edges), sizeof(edges));
     const std::array<char, 8> expected{{'U','F','T','B','1','\0','\0','\0'}};
-    if (!stream || magic != expected || version < 2 || version > 10 ||
+    if (!stream || magic != expected || version < 2 || version > 11 ||
         piece >= static_cast<std::uint32_t>(PieceType::Count))
         return false;
     std::uint32_t substates = 1;
@@ -578,7 +929,7 @@ bool TablebaseProbe::uses_compatible_codec(const std::string& path) {
                         sizeof(encodedSecondaryColor));
             if (encodedSecondary > static_cast<std::uint32_t>(PieceType::Count) ||
                 (encodedSecondary == static_cast<std::uint32_t>(PieceType::Count) &&
-                 version != 8 && version != 9) ||
+                 version != 8 && version != 9 && version != 11) ||
                 encodedSecondaryColor > static_cast<std::uint32_t>(Color::Black))
                 return false;
             secondary = static_cast<PieceType>(encodedSecondary);
@@ -626,6 +977,19 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
     }
     if (hasUnmovedRoyal && hasUnmovedRook)
         return std::nullopt;
+
+    // Stateful Devil sidecars supersede the historical minion-free UFTB
+    // projection. A causal Minion-bearing state is admitted by membership in
+    // a solved fixed-square closure; arbitrary pre-existing Minions therefore
+    // fail closed without inventing a broader setup domain.
+    if (position.continuation_ == Continuation::None &&
+        position.forcedPiece_ == Position::NoPiece &&
+        position.enPassantSquare_ == Position::NoSquare &&
+        position.enPassantVictim_ == Position::NoPiece) {
+        const StatefulDevilProbe stateful = probe_stateful_devil(position);
+        if (stateful.material)
+            return stateful.result;
+    }
 
     int whiteKing = Position::NoPiece;
     int blackKing = Position::NoPiece;
@@ -1481,6 +1845,14 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
         case PieceType::Devil:
             if (extra.cooldown > 3 || extra.power)
                 continue;
+            // UFTB v11 stores only the spawned-only Ivory-Devil roots.  Its
+            // internal Minion closure is proof data, not part of the direct
+            // probe codec, and the stationary Devil is intentionally limited
+            // to its first three ranks.
+            if (database.spawnedDevilRoot &&
+                (extra.color != Color::White ||
+                 extra.square / Position::BoardFiles >= 3))
+                continue;
             substate = extra.cooldown;
             break;
         case PieceType::Sniper:
@@ -1573,9 +1945,20 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
           attacker, represented, Position::NoPiece);
         if (!attackerSquare)
             continue;
+        // Every singleton table is stored with the public extra as White.
+        // Canonicalizing a Black extra therefore swaps colors and reverses
+        // the rank axis.  Merely swapping King identities, as the old probe
+        // did, is accidentally harmless for color-symmetric pieces but probes
+        // the wrong state for directional pieces such as Sniper and Pawn.
+        // Keep files fixed: horizontal folding is performed independently by
+        // the table codec where applicable.
+        const auto colorCanonicalSquare = [&](std::uint8_t square) {
+            return swapColors ? reflect_vertical(square) : square;
+        };
         const std::uint32_t index = encode(
-          side, position.pieces_[canonicalWhite].square,
-          position.pieces_[canonicalBlack].square, *attackerSquare) *
+          side, colorCanonicalSquare(position.pieces_[canonicalWhite].square),
+          colorCanonicalSquare(position.pieces_[canonicalBlack].square),
+          colorCanonicalSquare(*attackerSquare)) *
           database.substates + substate;
         return database.at(index);
     }

@@ -92,10 +92,16 @@ Certified tablebases are distributed through the gated
    ```
 
 The manager shows the complete storage required by each `.uftb` and its binary
-sidecars, available disk space, and the total space consumed by downloaded
-tablebases. Files are SHA-256 verified and installed atomically. On Fly.io, set
-a read-only token scoped to this dataset with `fly secrets set HF_TOKEN=hf_...`;
-local CLI credentials are used automatically when `HF_TOKEN` is not set.
+sidecars, plus the twelve-partition stateful Devil class, available disk space,
+and the total space consumed by downloaded tablebases. Every hosted artifact
+must carry a Hugging Face LFS SHA-256 and is verified while downloading. Devil
+partitions above the host's per-file limit are transported as an authenticated
+manifest and ordered shards; the manager reconstructs and verifies the complete
+canonical `.ufds`, removes the transport shards, and then installs it by atomic
+rename. Persistent history-analysis engines reload the installed set at their
+next operation after a download or deletion. On Fly.io, set a read-only token
+scoped to this dataset with `fly secrets set HF_TOKEN=hf_...`; local CLI
+credentials are used automatically when `HF_TOKEN` is not set.
 
 ## Rules and notation
 
@@ -140,11 +146,12 @@ tools/tablebases/generate_ultimate_tablebases.sh
 ```
 
 The generator performs complete retrograde WDL/DTW propagation and then
-Bellman-verifies every state. Ultimate Fish automatically probes files in
-`tablebases/`; set colon-separated `ULTIMATE_TABLEBASE_PATH` to load them from
-another location. Only closed stateless classes are accepted: stateful pieces
-are intentionally rejected until their cooldown/power/attachment transitions
-are represented exactly.
+Bellman-verifies every state. Ultimate Fish automatically probes `.uftb` files
+and the certified stateful-Devil `.ufds` partitions in `tablebases/`; set
+colon-separated `ULTIMATE_TABLEBASE_PATH` to load them from another location.
+Stateful material is accepted only when its cooldown, power, attachment, or
+spawn history is represented by the table's authenticated codec; unsupported
+state remains outside the probe domain and fails closed.
 
 ### Experimental Ultimate NNUE
 

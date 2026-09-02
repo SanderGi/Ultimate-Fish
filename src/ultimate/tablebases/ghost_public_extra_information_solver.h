@@ -46,6 +46,7 @@ struct SolveOptions {
     std::uint64_t composeCacheEntries = 500'000;
     std::uint64_t bddBudgetBytes = 220ULL << 30;
     std::uint32_t compactEvery = 1;
+    std::uint32_t workers = 1;
     std::uint32_t measureIterations = 0;
     bool resumeFixedPoint = false;
     bool resumeConverged = false;

@@ -1,0 +1,13 @@
+[Unit]
+Description=Preserve opposed Sniper/Ghost directional-remap certification v16
+After=ultimatefish-info-kghostksniper-directional-v16.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -lc 'while state=$(systemctl show ultimatefish-info-kghostksniper-directional-v16.service -p ActiveState --value); [[ $state = active || $state = activating || $state = reloading ]]; do sleep 15; done; exec /opt/ultimatefish-certification-sprint/preserve.sh /mnt/ultimatefish/opposed-sniper-v12 kghostksniper ultimatefish-info-kghostksniper-directional-v16.service ultimatefish-info-20260808-a4e679c6-831688117652 results/information/opposed/ghost-sniper/directional-v16 32 /mnt/ultimatefish/opposed-sniper-v12/work/logs/directional-certify-v16.log kghostksniper-directional-v16'
+AllowedCPUs=32-63
+CPUQuota=3200%
+MemoryMax=68719476736
+ReadWritePaths=/mnt/ultimatefish/opposed-sniper-v12
+StandardOutput=journal
+StandardError=journal

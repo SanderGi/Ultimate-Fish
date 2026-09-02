@@ -1,0 +1,18 @@
+[Unit]
+Description=Ultimate Fish opposed Rook/Ghost action-conditioned exact resume v2
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=AWS_DEFAULT_REGION=us-west-2
+ExecStart=/usr/bin/bash /mnt/ultimatefish/ultimatefish-resume-krookkghost-action-conditioned-v2.sh
+WorkingDirectory=/mnt/ultimatefish
+AllowedCPUs=4
+MemoryMax=64G
+TimeoutStartSec=infinity
+StandardOutput=append:/mnt/ultimatefish/ultimatefish-info-krookkghost-action-conditioned-v2.service.log
+StandardError=append:/mnt/ultimatefish/ultimatefish-info-krookkghost-action-conditioned-v2.service.log
+
+[Install]
+WantedBy=multi-user.target

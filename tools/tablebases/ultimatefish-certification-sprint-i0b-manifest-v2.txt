@@ -1,0 +1,2 @@
+/mnt/ultimatefish/ghost-parallel-v7/kninjakghost-parallel-v14|kninjakghost|ultimatefish-info-kninjakghost-action-conditioned-v20.service|results/information/opposed/ninja-ghost/sprint-v1|24||
+/mnt/ultimatefish-jg/opposed-ghost-dragon-memory-v4/restore/ghost-dragon-current-work-v1/kghostkdragon|kghostkdragon|ultimatefish-info-kghostkdragon-parallel-v27.service|results/information/opposed/ghost-dragon/sprint-v1|8|/mnt/ultimatefish-jg/opposed-ghost-dragon-memory-v4/restore/ghost-dragon-current-work-v1/kghostkdragon/work/logs/verify-solve-parallel-v27.log|kghostkdragon-memory-v5

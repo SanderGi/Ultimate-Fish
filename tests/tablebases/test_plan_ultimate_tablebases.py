@@ -119,7 +119,7 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertEqual(copycat["states"], 75_915_840)
         self.assertEqual(copycat["states"], tb.compound_copycat_pair_states())
 
-    def test_mirror_copycat_expansion_is_explicit_and_dynamic_families_deferred(self):
+    def test_mirror_copycat_expansion_is_explicit_and_separate_from_dynamic_families(self):
         records = tb.mirror_copycat_candidates()
         self.assertEqual(36, len(records))
         self.assertEqual(6_784_978_200,
@@ -127,6 +127,8 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertTrue(all(record["primary"] == "copycat" for record in records))
         self.assertTrue(all(record["mirror_simplification"] for record in records))
         self.assertTrue(all(record["secondary"] not in tb.DEFERRED_DYNAMIC_K2
+                            for record in records))
+        self.assertTrue(all(record["secondary"] != "devil"
                             for record in records))
         self.assertFalse(any(record["truncates_native_separation"]
                              for record in records))
@@ -183,10 +185,28 @@ class TablebasePlanTests(unittest.TestCase):
         self.assertFalse(tb.deferred_material(
             "copycat", "angel", opposing=True))
         self.assertFalse(tb.deferred_material("devil"))
-        self.assertTrue(tb.deferred_material("knight", "devil"))
-        self.assertTrue(tb.deferred_material(
+        self.assertFalse(tb.deferred_material("knight", "devil"))
+        self.assertFalse(tb.deferred_material(
             "bishop", "devil", opposing=True))
-        self.assertTrue(tb.deferred_material("queen", "devil"))
+        self.assertFalse(tb.deferred_material("queen", "devil"))
+        self.assertFalse(tb.deferred_material("sludge", "devil"))
+
+    def test_all_devil_pairs_have_spawned_only_planning_records(self):
+        records = tb.devil_candidates()
+        self.assertEqual(48, len(records))
+        self.assertEqual(48, len({record["filename"] for record in records}))
+        self.assertTrue(all(record["phase"] ==
+                            "devil-spawned-pair-closure-v1"
+                            for record in records))
+        self.assertTrue(all("ranks 1-3" in record["note"] and
+                            "no arbitrary pre-existing Minions" in
+                            record["note"] for record in records))
+        by_name = {record["filename"]: record for record in records}
+        self.assertEqual(45_549_504, by_name["krookdevilk.uftb"]["states"])
+        self.assertEqual(26_522_496,
+                         by_name["kdevildevilk.uftb"]["states"])
+        self.assertEqual(53_044_992,
+                         by_name["kdevilkdevil.uftb"]["states"])
 
     def test_one_angel_insufficient_material_is_closed_form(self):
         pieces = {piece.name: piece for piece in tb.PIECES}

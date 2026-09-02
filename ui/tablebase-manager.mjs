@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { createWriteStream, readFileSync } from "node:fs";
+import { createReadStream, createWriteStream, readFileSync } from "node:fs";
 import {
   lstat,
   mkdir,
@@ -10,6 +10,7 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
+import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
 
 const DEFAULT_DATASET = "SanderGi/Ultimate-Fish-Tablebases";
@@ -18,10 +19,13 @@ const CATALOG_TTL_MS = 5 * 60 * 1000;
 const SIDECAR_EXTENSIONS = new Set([
   ".ufcross", ".ufgb", ".ufgd", ".ufgf", ".ufgg", ".ufgi", ".ufgm",
   ".ufgp", ".ufgx", ".uficapture", ".ufiw", ".ufja", ".ufjg", ".ufmg",
-  ".ufog",
+  ".ufog", ".ufds", ".ufdsm", ".ufdsp",
 ]);
 const MANAGED_EXTENSIONS = new Set([".uftb", ...SIDECAR_EXTENSIONS]);
-const SAFE_FILENAME = /^[a-z0-9][a-z0-9-]*\.(?:uftb|ufcross|ufgb|ufgd|ufgf|ufgg|ufgi|ufgm|ufgp|ufgx|uficapture|ufiw|ufja|ufjg|ufmg|ufog)$/;
+const SAFE_FILENAME = /^[a-z0-9][a-z0-9-]*\.(?:uftb|ufcross|ufgb|ufgd|ufds|ufdsm|ufdsp|ufgf|ufgg|ufgi|ufgm|ufgp|ufgx|uficapture|ufiw|ufja|ufjg|ufmg|ufog)$/;
+const DEVIL_PARTITION = /^kdevilk-([a-d][1-3])\.ufds$/;
+const DEVIL_SHARD_MANIFEST = /^kdevilk-([a-d][1-3])\.ufdsm$/;
+const DEVIL_SHARD_PART = /^kdevilk-([a-d][1-3])-part([0-9]{3})\.ufdsp$/;
 const PIECE_NAMES = new Map([
   ["fisherman", "Fisherman"],
   ["berserker", "Berserker"],
@@ -42,6 +46,7 @@ const PIECE_NAMES = new Map([
   ["angel", "Angel"],
   ["ninja", "Ninja"],
   ["bomb", "Bomb"],
+  ["devil", "Devil"],
   ["mage", "Mage"],
   ["pawn", "Pawn"],
   ["rook", "Rook"],
@@ -90,6 +95,36 @@ function fileStem(filename) {
   return filename.slice(0, -path.extname(filename).length);
 }
 
+function groupStem(filename) {
+  return (DEVIL_PARTITION.test(filename) ||
+          DEVIL_SHARD_MANIFEST.test(filename) ||
+          DEVIL_SHARD_PART.test(filename))
+    ? "kdevilk" : fileStem(filename);
+}
+
+function groupFilename(stem, files) {
+  if (files.some((file) => file.filename === `${stem}.uftb`))
+    return `${stem}.uftb`;
+  if (stem === "kdevilk" && files.some((file) =>
+    DEVIL_PARTITION.test(file.filename) ||
+    DEVIL_SHARD_MANIFEST.test(file.filename)))
+    return `${stem}.ufds`;
+  return null;
+}
+
+function groupCounts(filename, files, installedFiles = files) {
+  const statefulPartitions = filename.endsWith(".ufds")
+    ? installedFiles.filter((file) => DEVIL_PARTITION.test(file.filename)).length
+    : 0;
+  return {
+    partitionCount: statefulPartitions,
+    sidecarCount: filename.endsWith(".uftb") ? files.length - 1 : 0,
+    tablebaseBytes: filename.endsWith(".uftb")
+      ? files.find((file) => file.filename === filename)?.size ?? 0
+      : installedFiles.reduce((total, file) => total + file.size, 0),
+  };
+}
+
 function authorizationHeaders(token) {
   return token ? { authorization: `Bearer ${token}` } : {};
 }
@@ -107,6 +142,10 @@ function lfsSha256(entry) {
   const oid = entry?.lfs?.oid ?? entry?.lfs?.sha256;
   const digest = typeof oid === "string" ? oid.replace(/^sha256:/, "") : "";
   return /^[0-9a-f]{64}$/i.test(digest) ? digest.toLowerCase() : null;
+}
+
+function sha256Buffer(value) {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 async function existingStatfsTarget(directory) {
@@ -127,7 +166,8 @@ export function configuredTablebaseDirectory(uiDirectory, configured) {
   if (!configured)
     return path.resolve(uiDirectory, "../tablebases");
   const entries = configured.split(path.delimiter).filter(Boolean);
-  const directory = entries.find((entry) => path.extname(entry) !== ".uftb");
+  const directory = entries.find((entry) =>
+    !MANAGED_EXTENSIONS.has(path.extname(entry)));
   if (!directory)
     throw new Error(
       "ULTIMATE_TABLEBASE_PATH must include a directory to manage downloads.",
@@ -172,6 +212,7 @@ export function createTablebaseManager({
   token,
   fetchImpl = globalThis.fetch,
   catalogTtlMs = CATALOG_TTL_MS,
+  onFilesChanged = () => {},
 } = {}) {
   if (!directory) throw new Error("A tablebase directory is required.");
   if (typeof fetchImpl !== "function") throw new Error("fetch is unavailable.");
@@ -182,6 +223,21 @@ export function createTablebaseManager({
   let catalogCache = null;
   let catalogFetchedAt = 0;
   const jobs = new Map();
+
+  async function fetchCatalogFile(file) {
+    const encodedFile = file.filename.split("/").map(encodeURIComponent).join("/");
+    const url = `${origin}/datasets/${encodedDataset}/resolve/${encodedRevision}/tablebases/${encodedFile}?download=true`;
+    const response = await fetchImpl(url, {
+      headers: authorizationHeaders(token),
+      redirect: "follow",
+    });
+    if (!response.ok)
+      throw new Error(`Download failed for ${file.filename} (${response.status}).`);
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (bytes.length !== file.size || sha256Buffer(bytes) !== file.sha256)
+      throw new Error(`${file.filename} failed manifest verification.`);
+    return bytes;
+  }
 
   async function fetchCatalog({ force = false } = {}) {
     if (!force && catalogCache && Date.now() - catalogFetchedAt < catalogTtlMs)
@@ -210,30 +266,112 @@ export function createTablebaseManager({
           continue;
         const size = Number(entry.lfs?.size ?? entry.size);
         if (!Number.isSafeInteger(size) || size < 0) continue;
-        files.push({ filename, size, sha256: lfsSha256(entry) });
+        const sha256 = lfsSha256(entry);
+        if (!sha256)
+          throw new Error(
+            `Hugging Face tablebase ${filename} lacks a valid LFS SHA-256.`,
+          );
+        files.push({ filename, size, sha256 });
       }
       const next = nextLink(response.headers.get("link"));
       url = next ? new URL(next, origin).toString() : null;
     }
+    const shardManifests = new Map();
+    for (const file of files.filter((candidate) =>
+      DEVIL_SHARD_MANIFEST.test(candidate.filename))) {
+      const label = file.filename.match(DEVIL_SHARD_MANIFEST)?.[1];
+      let manifest;
+      try {
+        manifest = JSON.parse((await fetchCatalogFile(file)).toString("utf8"));
+      } catch (error) {
+        throw new Error(
+          `Invalid stateful Devil shard manifest ${file.filename}: ${error.message}`,
+        );
+      }
+      const logicalFilename = `kdevilk-${label}.ufds`;
+      const parts = manifest?.parts;
+      if (manifest?.schema !== "ultimate-fish-ufds-shard-manifest-v1" ||
+          manifest?.filename !== logicalFilename ||
+          !Number.isSafeInteger(manifest?.bytes) || manifest.bytes <= 0 ||
+          !/^[0-9a-f]{64}$/.test(manifest?.sha256 ?? "") ||
+          !Array.isArray(parts) || parts.length < 2)
+        throw new Error(`Invalid stateful Devil shard manifest ${file.filename}.`);
+      const remoteParts = files.filter((candidate) =>
+        candidate.filename.match(DEVIL_SHARD_PART)?.[1] === label);
+      if (remoteParts.length !== parts.length || files.some((candidate) =>
+        candidate.filename === logicalFilename))
+        throw new Error(`Ambiguous stateful Devil shard set for ${logicalFilename}.`);
+      let total = 0;
+      for (let index = 0; index < parts.length; index += 1) {
+        const expectedName = `kdevilk-${label}-part${String(index).padStart(3, "0")}.ufdsp`;
+        const part = parts[index];
+        const remote = remoteParts.find((candidate) =>
+          candidate.filename === expectedName);
+        if (part?.filename !== expectedName || !remote ||
+            part?.bytes !== remote.size || part?.sha256 !== remote.sha256)
+          throw new Error(`Invalid stateful Devil shard ${expectedName}.`);
+        total += part.bytes;
+      }
+      if (total !== manifest.bytes)
+        throw new Error(`Stateful Devil shards do not conserve ${logicalFilename}.`);
+      shardManifests.set(file.filename, {
+        ...manifest,
+        manifestFile: file,
+        partFiles: parts.map((part) =>
+          remoteParts.find((candidate) => candidate.filename === part.filename)),
+      });
+    }
+    for (const file of files.filter((candidate) => DEVIL_SHARD_PART.test(candidate.filename))) {
+      const label = file.filename.match(DEVIL_SHARD_PART)?.[1];
+      if (!shardManifests.has(`kdevilk-${label}.ufdsm`))
+        throw new Error(`Orphan stateful Devil shard ${file.filename}.`);
+    }
     const groups = new Map();
     for (const file of files) {
-      const stem = fileStem(file.filename);
+      const stem = groupStem(file.filename);
       if (!groups.has(stem)) groups.set(stem, []);
       groups.get(stem).push(file);
     }
     catalogCache = [...groups.entries()]
-      .filter(([, group]) => group.some((file) => file.filename.endsWith(".uftb")))
       .map(([stem, group]) => {
-        const primary = group.find((file) => file.filename === `${stem}.uftb`);
+        const filename = groupFilename(stem, group);
+        if (!filename) return null;
+        const shards = group
+          .filter((file) => DEVIL_SHARD_MANIFEST.test(file.filename))
+          .map((file) => shardManifests.get(file.filename));
+        const installedFiles = filename.endsWith(".ufds")
+          ? [
+              ...group.filter((file) => DEVIL_PARTITION.test(file.filename)),
+              ...shards.map((manifest) => ({
+                filename: manifest.filename,
+                size: manifest.bytes,
+                sha256: manifest.sha256,
+              })),
+            ]
+          : group;
+        const counts = groupCounts(filename, group, installedFiles);
         return {
-          filename: primary.filename,
-          displayName: materialName(primary.filename),
-          sizeBytes: group.reduce((total, file) => total + file.size, 0),
-          tablebaseBytes: primary.size,
-          sidecarCount: group.length - 1,
+          filename,
+          displayName: materialName(filename),
+          // Display persistent installed storage. Shard manifests are verified
+          // catalog metadata and transport parts are replaced by one canonical
+          // UFDS, so neither should inflate the installed-size figure.
+          sizeBytes: filename.endsWith(".ufds")
+            ? counts.tablebaseBytes
+            : group.reduce((total, file) => total + file.size, 0),
+          downloadBytes: group
+            .filter((file) => !DEVIL_SHARD_MANIFEST.test(file.filename))
+            .reduce((total, file) => total + file.size, 0),
+          installBytes: counts.tablebaseBytes + Math.max(
+            0, ...shards.flatMap((manifest) =>
+              manifest.partFiles.map((file) => file.size))),
+          ...counts,
           files: group.sort((left, right) => left.filename.localeCompare(right.filename)),
+          installedFiles,
+          shards,
         };
-      });
+      })
+      .filter(Boolean);
     catalogFetchedAt = Date.now();
     return catalogCache;
   }
@@ -283,7 +421,7 @@ export function createTablebaseManager({
     const installedFiles = await localFiles();
     const installedByStem = new Map();
     for (const file of installedFiles) {
-      const stem = fileStem(file.filename);
+      const stem = groupStem(file.filename);
       if (!installedByStem.has(stem)) installedByStem.set(stem, []);
       installedByStem.get(stem).push(file);
     }
@@ -293,7 +431,7 @@ export function createTablebaseManager({
       known.add(stem);
       const local = installedByStem.get(stem) ?? [];
       const localByName = new Map(local.map((file) => [file.filename, file]));
-      const installed = entry.files.every((file) =>
+      const installed = entry.installedFiles.every((file) =>
         localByName.get(file.filename)?.size === file.size);
       return {
         filename: entry.filename,
@@ -301,6 +439,7 @@ export function createTablebaseManager({
         sizeBytes: entry.sizeBytes,
         tablebaseBytes: entry.tablebaseBytes,
         sidecarCount: entry.sidecarCount,
+        partitionCount: entry.partitionCount,
         downloadedBytes: local.reduce((total, file) => total + file.size, 0),
         installed,
         available: true,
@@ -308,16 +447,15 @@ export function createTablebaseManager({
       };
     });
     for (const [stem, local] of installedByStem) {
-      if (known.has(stem) || !local.some((file) => file.filename === `${stem}.uftb`))
-        continue;
-      const filename = `${stem}.uftb`;
+      const filename = groupFilename(stem, local);
+      if (known.has(stem) || !filename) continue;
       const size = local.reduce((total, file) => total + file.size, 0);
+      const counts = groupCounts(filename, local);
       entries.push({
         filename,
         displayName: materialName(filename),
         sizeBytes: size,
-        tablebaseBytes: local.find((file) => file.filename === filename)?.size ?? 0,
-        sidecarCount: Math.max(0, local.length - 1),
+        ...counts,
         downloadedBytes: size,
         installed: true,
         available: false,
@@ -337,7 +475,7 @@ export function createTablebaseManager({
     };
   }
 
-  async function downloadFile(file, temporary) {
+  async function downloadFile(file, temporary, job) {
     const encodedFile = file.filename.split("/").map(encodeURIComponent).join("/");
     const url = `${origin}/datasets/${encodedDataset}/resolve/${encodedRevision}/tablebases/${encodedFile}?download=true`;
     const response = await fetchImpl(url, {
@@ -354,7 +492,6 @@ export function createTablebaseManager({
     }
     const hash = createHash("sha256");
     let received = 0;
-    const job = jobs.get(`${fileStem(file.filename)}.uftb`);
     const progress = new TransformStream({
       transform(chunk, controller) {
         const bytes = Buffer.from(chunk);
@@ -373,7 +510,7 @@ export function createTablebaseManager({
         `${file.filename} downloaded ${received} bytes; expected ${file.size}.`,
       );
     const digest = hash.digest("hex");
-    if (file.sha256 && digest !== file.sha256)
+    if (digest !== file.sha256)
       throw new Error(`${file.filename} failed SHA-256 verification.`);
   }
 
@@ -382,15 +519,59 @@ export function createTablebaseManager({
     const temporary = [];
     try {
       await mkdir(targetDirectory, { recursive: true });
-      for (const file of entry.files) {
+      const directFiles = entry.files.filter((file) =>
+        !DEVIL_SHARD_MANIFEST.test(file.filename) &&
+        !DEVIL_SHARD_PART.test(file.filename));
+      for (const file of directFiles) {
         const name = `.${file.filename}.${process.pid}.download`;
         const destination = path.join(targetDirectory, name);
         await rm(destination, { force: true });
         temporary.push({ file, destination });
-        await downloadFile(file, destination);
+        await downloadFile(file, destination, job);
+      }
+      for (const manifest of entry.shards) {
+        const output = path.join(
+          targetDirectory, `.${manifest.filename}.${process.pid}.download`);
+        await rm(output, { force: true });
+        temporary.push({
+          file: {
+            filename: manifest.filename,
+            size: manifest.bytes,
+            sha256: manifest.sha256,
+          },
+          destination: output,
+        });
+        const hash = createHash("sha256");
+        let assembled = 0;
+        for (let index = 0; index < manifest.partFiles.length; index += 1) {
+          const part = manifest.partFiles[index];
+          const partPath = path.join(
+            targetDirectory, `.${part.filename}.${process.pid}.download`);
+          await rm(partPath, { force: true });
+          try {
+            await downloadFile(part, partPath, job);
+            const digesting = new Transform({
+              transform(chunk, _encoding, callback) {
+                hash.update(chunk);
+                assembled += chunk.length;
+                callback(null, chunk);
+              },
+            });
+            await pipeline(
+              createReadStream(partPath),
+              digesting,
+              createWriteStream(output, { flags: index === 0 ? "wx" : "a" }),
+            );
+          } finally {
+            await rm(partPath, { force: true });
+          }
+        }
+        if (assembled !== manifest.bytes || hash.digest("hex") !== manifest.sha256)
+          throw new Error(`${manifest.filename} failed reconstruction verification.`);
       }
       for (const item of temporary)
         await rename(item.destination, path.join(targetDirectory, item.file.filename));
+      await onFilesChanged();
       job.status = "complete";
     } catch (error) {
       job.status = "error";
@@ -401,7 +582,8 @@ export function createTablebaseManager({
   }
 
   async function startDownload(filename) {
-    if (!managedFilename(filename) || path.extname(filename) !== ".uftb")
+    if (!managedFilename(filename) ||
+        ![".uftb", ".ufds"].includes(path.extname(filename)))
       throw new Error("Invalid tablebase filename.");
     const active = jobs.get(filename);
     if (active?.status === "downloading") return jobSnapshot(filename);
@@ -413,16 +595,16 @@ export function createTablebaseManager({
       .filter((job) => job.status === "downloading")
       .reduce((total, job) =>
         total + Math.max(0, job.totalBytes - job.receivedBytes), 0);
-    if (entry.sizeBytes > free - reserved)
+    if (entry.installBytes > free - reserved)
       throw new Error(
-        `Not enough disk space: ${entry.sizeBytes} bytes required, ${Math.max(0, free - reserved)} available.`,
+        `Not enough disk space: ${entry.installBytes} bytes required, ${Math.max(0, free - reserved)} available.`,
       );
     const current = jobs.get(filename);
     if (current?.status === "downloading") return jobSnapshot(filename);
     const job = {
       status: "downloading",
       receivedBytes: 0,
-      totalBytes: entry.sizeBytes,
+      totalBytes: entry.downloadBytes,
       error: null,
       promise: null,
     };
@@ -437,15 +619,17 @@ export function createTablebaseManager({
   }
 
   async function deleteTablebase(filename) {
-    if (!managedFilename(filename) || path.extname(filename) !== ".uftb")
+    if (!managedFilename(filename) ||
+        ![".uftb", ".ufds"].includes(path.extname(filename)))
       throw new Error("Invalid tablebase filename.");
     if (jobs.get(filename)?.status === "downloading")
       throw new Error("Wait for the active download before deleting this tablebase.");
-    const stem = fileStem(filename);
+    const stem = groupStem(filename);
     const files = await localFiles();
-    const matching = files.filter((file) => fileStem(file.filename) === stem);
+    const matching = files.filter((file) => groupStem(file.filename) === stem);
     await Promise.all(matching.map((file) =>
       rm(path.join(targetDirectory, file.filename), { force: true })));
+    if (matching.length) await onFilesChanged();
     jobs.delete(filename);
     return { deleted: matching.map((file) => file.filename) };
   }

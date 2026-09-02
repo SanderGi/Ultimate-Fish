@@ -1,0 +1,15 @@
+[Unit]
+Description=Ultimate Fish fresh parallel opposed Ghost/Penguin v24 certification
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/ultimatefish-penguin-parallel-v24/ultimatefish-certify-kghostkpenguin-parallel-v24.sh
+AllowedCPUs=16-63
+MemoryMax=429496729600
+OOMPolicy=stop
+Restart=no
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

@@ -263,7 +263,8 @@ void compact_for_sidecar(ExternalGhostExtraFixedPoint& solver,
         roots.push_back(solver.observerCurrent_[id]);
     auto [compact, proof] = solver.bdd_->compact(
       solver.options_.scratch + ".sidecar-bdd",
-      solver.options_.scratch + ".sidecar-remap", roots);
+      solver.options_.scratch + ".sidecar-remap", roots,
+      solver.options_.workers);
     certificate.arbitraryStructuralResidual =
       proof.structuralResidual + proof.rootResidual;
     if (certificate.arbitraryStructuralResidual)
@@ -800,72 +801,15 @@ void reciprocal_fresh_admission_self_test() {
     const auto started = std::chrono::steady_clock::now();
     for (;;) {
         ++solver.iteration_;
-        std::uint64_t changedOwner = 0;
-        std::uint64_t changedObserver = 0;
-        std::uint64_t changedVisible = 0;
-        for (std::uint32_t geometry = 0;
-             geometry < solver.database_.geometry_count(); ++geometry) {
-            solver.bdd_->clear_computed_caches();
-            const ExternalSolverBlock block = build_external_solver_block(
-              geometry, solver.database_, solver.lower_, solver.domain_,
-              solver.material_
-#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
-              , solver.promoted_, solver.promotedDomain_
-#endif
-              );
-            solver.bellman_geometry(geometry, block);
-            const ExternalGeometryMeta& meta =
-              solver.database_.meta(geometry);
-            for (unsigned actual = 0; actual < Squares; ++actual) {
-                const std::uint64_t index =
-                  std::uint64_t(geometry) * Squares + actual;
-                const ExternalRobdd::Id oldOwner = solver.ownerCurrent_[index];
-                const ExternalRobdd::Id newOwner = solver.ownerNext_[index];
-                if (!solver.bdd_->implies(oldOwner, newOwner))
-                    throw std::runtime_error(
-                      "reciprocal owner least fixed point regressed");
-                changedOwner += oldOwner != newOwner;
-                if ((solver.visibleOwnerCurrent_[index] &&
-                     !solver.visibleOwnerNext_[index]) ||
-                    (solver.visibleObserverCurrent_[index] &&
-                     !solver.visibleObserverNext_[index]))
-                    throw std::runtime_error(
-                      "reciprocal visible least fixed point regressed");
-                changedVisible += solver.visibleOwnerCurrent_[index] !=
-                                  solver.visibleOwnerNext_[index];
-                changedVisible += solver.visibleObserverCurrent_[index] !=
-                                  solver.visibleObserverNext_[index];
-            }
-            for (std::uint32_t local = 0; local < meta.stratumCount; ++local) {
-                const std::uint32_t stratum = meta.stratumBase + local;
-                const ExternalRobdd::Id oldObserver =
-                  solver.observerCurrent_[stratum];
-                const ExternalRobdd::Id newObserver =
-                  solver.observerNext_[stratum];
-                if (!solver.bdd_->implies(oldObserver, newObserver))
-                    throw std::runtime_error(
-                      "reciprocal observer least fixed point regressed");
-                changedObserver += oldObserver != newObserver;
-            }
-            if ((geometry + 1) % 5'000 == 0 ||
-                geometry + 1 == solver.database_.geometry_count()) {
-                const double elapsed = std::chrono::duration<double>(
-                  std::chrono::steady_clock::now() - started).count();
-                std::cout << "reciprocal_ghost_extra_bellman iteration "
-                          << solver.iteration_ << " geometry "
-                          << geometry + 1 << '/'
-                          << solver.database_.geometry_count()
-                          << " bdd_nodes " << solver.bdd_->node_count()
-                          << " peak_rss_bytes " << peak_rss_bytes()
-                          << " elapsed " << elapsed << "s\n" << std::flush;
-            }
-        }
+        const ExternalGhostExtraFixedPoint::BellmanSweepCounts changed =
+          solver.bellman_sweep(
+            "reciprocal_ghost_extra_bellman", "reciprocal", started);
         solver.swap_force_arrays();
         std::cout << "reciprocal_ghost_extra_iteration " << solver.iteration_
                   << " bdd_nodes " << solver.bdd_->node_count()
-                  << " changed_owner " << changedOwner
-                  << " changed_observer " << changedObserver
-                  << " changed_visible " << changedVisible
+                  << " changed_owner " << changed.changedOwner
+                  << " changed_observer " << changed.changedObserver
+                  << " changed_visible " << changed.changedVisible
                   << " peak_rss_bytes " << peak_rss_bytes() << '\n'
                   << std::flush;
         if (solver.options_.measureIterations &&
@@ -877,7 +821,8 @@ void reciprocal_fresh_admission_self_test() {
                       << " proof_complete 0 overlay_written 0\n" << std::flush;
             return false;
         }
-        if (!changedOwner && !changedObserver && !changedVisible)
+        if (!changed.changedOwner && !changed.changedObserver &&
+            !changed.changedVisible)
             break;
         if (solver.options_.compactEvery &&
             solver.iteration_ % solver.options_.compactEvery == 0)
@@ -1160,6 +1105,7 @@ SolveCertificate solve_exact(const SolveOptions& options) {
     legacy.bddLimits.composeCacheEntries = options.composeCacheEntries;
     legacy.bddLimits.budgetBytes = options.bddBudgetBytes;
     legacy.compactEvery = options.compactEvery;
+    legacy.workers = options.workers;
     legacy.measureIterations = options.measureIterations;
     legacy.resumeFixedPoint = options.resumeFixedPoint;
     legacy.resumeConverged = options.resumeConverged;

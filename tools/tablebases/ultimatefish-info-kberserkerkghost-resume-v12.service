@@ -1,0 +1,15 @@
+[Unit]
+Description=Ultimate Fish opposed Berserker/Ghost corrected fresh fixed point v12
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/mnt/ultimatefish/berserker-ghost-opposed-restore-v12/solve_ultimate_opposed_berserker_v12.sh
+AllowedCPUs=32-47
+MemoryMax=220G
+LimitNOFILE=1048576
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

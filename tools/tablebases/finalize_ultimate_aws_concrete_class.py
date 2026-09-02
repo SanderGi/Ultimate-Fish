@@ -84,6 +84,33 @@ def ledger_side_order(filename: str) -> tuple[int, int]:
             else (0, 1))
 
 
+def certificate_conservation_states(
+        filename: str, record: Mapping[str, object],
+        completed: Mapping[str, object]) -> int:
+    """Return the authenticated packed extent used by native audit totals.
+
+    Most catalog rows index their complete dense codec.  Lone Devil is the
+    deliberate exception: its catalog extent is the first-three-ranks root
+    frontier, while the preserved UFTB keeps the full ten-rank dense codec so
+    all out-of-domain placements remain explicit excluded sentinels.  Bind the
+    conservation gate to the certificate's parsed header and require that
+    exact 10/3 relationship; never infer it merely from the material name.
+    """
+    output = completed.get("output")
+    if not isinstance(output, Mapping):
+        raise ValueError("concrete certificate lacks parsed output")
+    states = int(output.get("states", 0))
+    catalog_states = int(record["states"])
+    if states <= 0:
+        raise ValueError("concrete certificate has invalid packed extent")
+    if filename == "kdevilk.uftb":
+        if states * 3 != catalog_states * 10:
+            raise ValueError("Devil root-domain/dense-codec extent residual")
+    elif states != catalog_states:
+        raise ValueError("certificate/catalog packed extent residual")
+    return states
+
+
 def counts(pattern: re.Pattern[str], text: str) -> list[list[int]]:
     result = [[0, 0, 0, 0] for _ in range(2)]
     matches = pattern.findall(text)
@@ -444,7 +471,7 @@ def import_result(args: argparse.Namespace, output: str,
         raise ValueError("certificate/sidecar S3 version binding residual")
 
     totals, omitted, trivial = reporting_counts(args.filename, audit_text)
-    states = int(record["states"])
+    states = certificate_conservation_states(args.filename, record, completed)
     prince_factor = 2 ** sum(
         name == "prince" for name in
         (str(record["primary"]), str(record.get("secondary") or "")))

@@ -1,0 +1,17 @@
+[Unit]
+Description=Ultimate Fish current-rule opposed Sniper/Ghost concrete oracle v15
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/run/ultimatefish-generate-kghostksniper-current-v15.sh
+AllowedCPUs=16-31
+CPUQuota=1600%
+MemoryMax=214748364800
+ReadWritePaths=/mnt/ultimatefish/sniper-concrete-current-v15
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

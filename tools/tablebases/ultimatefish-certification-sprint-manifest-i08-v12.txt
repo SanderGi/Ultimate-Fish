@@ -1,0 +1,3 @@
+/mnt/ultimatefish/ghost-parallel-v6/kghostkprince-canary-striped-bdd-b-8w|kghostkprince|ultimatefish-info-kghostkprince-action-conditioned-v14.service|results/information/opposed/ghost-prince/sprint-v1|32|
+/mnt/ultimatefish/penguin-opposed-parallel-v24-work|kghostkpenguin|ultimatefish-info-kghostkpenguin-worker-options-v29.service|results/information/opposed/ghost-penguin/worker-options-v29|32|/mnt/ultimatefish/penguin-opposed-parallel-v24-work/work/logs/solve.log
+/mnt/ultimatefish/opposed-sniper-v12|kghostksniper|ultimatefish-info-kghostksniper-fresh-v12.service|results/information/opposed/ghost-sniper/sprint-v12|32|/mnt/ultimatefish/opposed-sniper-v12/work/logs/solve-v12.log

@@ -124,6 +124,30 @@ class ExistingInformationArbitraryTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "payload residual"):
                 finalizer.validate_arbitrary(path, source, model, True)
 
+    def test_validates_restored_correlated_ghost_pair_sidecar(self):
+        source = "c" * 64
+        model = "d" * 64
+        body = b"exact correlated ghost-pair payload"
+        header = bytearray(928)
+        header[:8] = b"UFGG1\0\0\0"
+        struct.pack_into("<I", header, 12, len(header))
+        struct.pack_into("<Q", header, 152, len(body))
+        header[160:224] = source.encode()
+        header[224:288] = model.encode()
+        header[800:864] = hashlib.sha256(body).hexdigest().encode()
+        semantics = b"correlated-unordered-pair-public-view-v1"
+        header[864:864 + len(semantics)] = semantics
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "kghostghostk.ufgg"
+            path.write_bytes(header + body)
+            finalizer.validate_arbitrary(path, source, model, False)
+            finalizer.validate_arbitrary(path, source, model, True)
+            payload = bytearray(path.read_bytes())
+            payload[-1] ^= 1
+            path.write_bytes(payload)
+            with self.assertRaisesRegex(ValueError, "payload residual"):
+                finalizer.validate_arbitrary(path, source, model, False)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,19 @@
+{
+  "schema": "ultimate-devil-campaign-resplit-v2",
+  "instance_id": "i-0b4523116b2f7765c",
+  "base_plan_sha256": "227190f236360e8d0e43e3f8a1362502267de447ae0deb4a167a5ba8bbe172f1",
+  "binary_sha256": "90e33f98201f43a2ba1f78d836395e7cb22d11ca72264dc385099c85bb5052e7",
+  "runner_sha256": "e7426b7abaa5550d6c53c796cc6e5134fd5a274d0d41babfc9e2586acd5f498a",
+  "source_worker_modulus": 133,
+  "campaign_modulus": 4,
+  "campaign_residues": [1, 3],
+  "receipt_prefix": "runs/devil-closure-v6/repartition-resplit-v2",
+  "workers": [
+    {"source_worker": 29, "prior_base_log_sha256": "2847dd6a9bf662e4b0d0870fc3f9b335c0f5e82eb66d12041e26d8f76795afba", "prior_split_log_sha256": "a1030f2f1d55d096ad967fdbcffb1e277ed1d912f9dc793c63e9bc46f147036f", "residue_cpus": {"1": 0, "3": 13}},
+    {"source_worker": 30, "prior_base_log_sha256": "95113ae8dd905f0eb31c4cc6cd21cab20e4f9677b9a95556ea0f40f3247ddd61", "prior_split_log_sha256": "53689ab5157b9cb0cab31ac3c6b82bbe9330d41b7736b4b5200bcd483d7a17b1", "residue_cpus": {"1": 1, "3": 14}},
+    {"source_worker": 31, "prior_base_log_sha256": "c5eb50d3332b0b5a54641646b09554a80ed2536dfb3678046db041c6e407d9ad", "prior_split_log_sha256": "23d7a279cc7805f25b234872f151c3db304e4f83c2f0be6fadc66dde548f3a06", "residue_cpus": {"1": 2, "3": 15}},
+    {"source_worker": 32, "prior_base_log_sha256": "4a022bcf4946b7900ad98ceaa374a0c2ed3dfd80a606c13605eccd4ab0f94206", "prior_split_log_sha256": "5a5809011095bc6a2f8511c803c726f10c75b6db2609060cf04e2a1d85a81b0e", "residue_cpus": {"1": 5, "3": 16}},
+    {"source_worker": 33, "prior_base_log_sha256": "88fab934c5cca9be662f78898545b470ee40659e27ee7297f1be36b91b69de97", "prior_split_log_sha256": "59638a4d085140adc325e1f8212202bb5e6b88f193378d419e4e2d01ba9bfe99", "residue_cpus": {"1": 6, "3": 17}},
+    {"source_worker": 34, "prior_base_log_sha256": "eb2531eb8245b5fbe080ec317687a9d95caf3d0a0ea531d7237cbcdb13ee8f89", "prior_split_log_sha256": "372f57f51dc561a284da2dfcd244a423462f14d98ed7c137b8d408e8d4b1b86f", "residue_cpus": {"1": 7, "3": 18}}
+  ]
+}

@@ -66,6 +66,7 @@ struct SolveOptions {
     std::uint32_t maxNodes = 500'000'000;
     std::uint64_t uniqueSlots = std::uint64_t{1} << 30;
     std::uint32_t compactEvery = 1;
+    std::uint32_t workers = 1;
     std::uint32_t measureIterations = 0;
     bool resumeFixedPoint = false;
     bool resumeConverged = false;
@@ -131,6 +132,7 @@ void merge_transitions(const TransitionOptions& output,
                        std::uint32_t expectedGeometries);
 void verify_transitions(const TransitionOptions& options);
 void rebind_transitions(const TransitionOptions& options);
+void restore_transitions(const TransitionOptions& options);
 [[nodiscard]] ResourceEstimate resource_estimate();
 [[nodiscard]] SolveCertificate solve_exact(const SolveOptions& options);
 void exact_self_test(const std::string& scratchPrefix);

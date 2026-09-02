@@ -1,0 +1,21 @@
+{
+  "schema": "ultimate-devil-campaign-split-v1",
+  "instance_id": "i-0b4523116b2f7765c",
+  "base_plan_sha256": "227190f236360e8d0e43e3f8a1362502267de447ae0deb4a167a5ba8bbe172f1",
+  "binary_sha256": "90e33f98201f43a2ba1f78d836395e7cb22d11ca72264dc385099c85bb5052e7",
+  "runner_sha256": "53ff3588e3b0c331b73f32efdf1118086040c6ea8d2189c6bc41464f025768fc",
+  "source_worker_modulus": 133,
+  "lane_semantics": "campaign-index-modulo-2",
+  "receipt_prefix": "runs/devil-closure-v6/repartition-split-v1",
+  "workers": [
+    {"source_worker": 29, "prior_log_sha256": "2847dd6a9bf662e4b0d0870fc3f9b335c0f5e82eb66d12041e26d8f76795afba", "lane_cpus": [13, 0]},
+    {"source_worker": 30, "prior_log_sha256": "95113ae8dd905f0eb31c4cc6cd21cab20e4f9677b9a95556ea0f40f3247ddd61", "lane_cpus": [14, 1]},
+    {"source_worker": 31, "prior_log_sha256": "c5eb50d3332b0b5a54641646b09554a80ed2536dfb3678046db041c6e407d9ad", "lane_cpus": [15, 2]},
+    {"source_worker": 32, "prior_log_sha256": "4a022bcf4946b7900ad98ceaa374a0c2ed3dfd80a606c13605eccd4ab0f94206", "lane_cpus": [16, 5]},
+    {"source_worker": 33, "prior_log_sha256": "88fab934c5cca9be662f78898545b470ee40659e27ee7297f1be36b91b69de97", "lane_cpus": [17, 6]},
+    {"source_worker": 34, "prior_log_sha256": "eb2531eb8245b5fbe080ec317687a9d95caf3d0a0ea531d7237cbcdb13ee8f89", "lane_cpus": [18, 7]},
+    {"source_worker": 35, "prior_log_sha256": "4259c70e1905f3e56bc07b1a227743121d17aa21ad41e4eb69df701184b08a3b", "lane_cpus": [19, 3]},
+    {"source_worker": 36, "prior_log_sha256": "a965aaf0a4465135a84a908f7a7952d2111e4bf61f5b5d3bd85d8e5dda3540ac", "lane_cpus": [20, 4]},
+    {"source_worker": 37, "prior_log_sha256": "814e13cf1f4b8d949d90283403908f6ee3432af7643a59fe218d682da2a5a4b7", "lane_cpus": [22, 9]}
+  ]
+}

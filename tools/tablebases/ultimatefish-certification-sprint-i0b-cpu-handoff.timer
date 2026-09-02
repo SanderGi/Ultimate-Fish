@@ -1,0 +1,12 @@
+[Unit]
+Description=Check Ultimate Fish i0b sprint CPU handoff each minute
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=1min
+AccuracySec=5s
+Persistent=true
+Unit=ultimatefish-certification-sprint-i0b-cpu-handoff.service
+
+[Install]
+WantedBy=timers.target

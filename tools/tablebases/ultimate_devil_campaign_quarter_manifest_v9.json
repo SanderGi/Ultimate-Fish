@@ -1,0 +1,15 @@
+{
+  "schema": "ultimate-devil-campaign-quarter-v9",
+  "instance_id": "i-0b4523116b2f7765c",
+  "base_plan_sha256": "227190f236360e8d0e43e3f8a1362502267de447ae0deb4a167a5ba8bbe172f1",
+  "binary_sha256": "90e33f98201f43a2ba1f78d836395e7cb22d11ca72264dc385099c85bb5052e7",
+  "runner_sha256": "717c471937d6d5a1c859c9c70dbb53dff0d29ff5eddee023666bdc4a10a10ab3",
+  "source_worker_modulus": 133,
+  "campaign_modulus": 4,
+  "shard_modulus": 16,
+  "receipt_prefix": "runs/devil-closure-v6/repartition-campaign-quarter-v9",
+  "lanes": [
+    {"source_worker": 38, "parent_campaign_lane": 1, "shard_residue": 1, "prior_hashes": ["b2807c813edf78018aac58e319d9a314f8f360a7e39a13a96313aaff4dfde392", "200dcd72fe963dd3b555c1c5e78d30c87f7a79f417841f7488bea43d27cd298e", "fd224849f7c0230003909abb877c6aeeb6179f8e8efd75f18340d9c960c67488", "92f9cd0965d475410251506f5180a4e0aab2789ea5d3a7627779f6a8a23c1635", "92f9cd0965d475410251506f5180a4e0aab2789ea5d3a7627779f6a8a23c1635", "92f9cd0965d475410251506f5180a4e0aab2789ea5d3a7627779f6a8a23c1635"], "campaign_cpus": {"1": 17, "3": 3}},
+    {"source_worker": 38, "parent_campaign_lane": 1, "shard_residue": 5, "prior_hashes": ["b2807c813edf78018aac58e319d9a314f8f360a7e39a13a96313aaff4dfde392", "200dcd72fe963dd3b555c1c5e78d30c87f7a79f417841f7488bea43d27cd298e", "fd224849f7c0230003909abb877c6aeeb6179f8e8efd75f18340d9c960c67488", "92f9cd0965d475410251506f5180a4e0aab2789ea5d3a7627779f6a8a23c1635", "51bbc37eff783a24d3dd2fd1ec28479f2bdccd1638aebc95a7578173425bc38e", "51bbc37eff783a24d3dd2fd1ec28479f2bdccd1638aebc95a7578173425bc38e"], "campaign_cpus": {"1": 16, "3": 0}}
+  ]
+}

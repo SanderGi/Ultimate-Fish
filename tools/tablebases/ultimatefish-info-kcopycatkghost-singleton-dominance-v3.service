@@ -1,0 +1,12 @@
+[Unit]
+Description=Ultimate Fish opposed Copycat Ghost singleton-dominance verification v3
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ultimatefish-resume-kcopycatkghost-singleton-dominance-v3.sh
+TimeoutStartSec=infinity
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

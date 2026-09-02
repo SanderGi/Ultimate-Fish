@@ -12,7 +12,7 @@ namespace Model = Stockfish::Ultimate::GhostDragonExact;
 int main(int argc, char** argv) {
     try {
         enum class Command { None, SelfTest, SourceTest, Compile, Merge,
-                             Verify, Rebind, Measure, Solve } command = Command::None;
+                             Verify, Rebind, Restore, Measure, Solve } command = Command::None;
         Model::TransitionOptions transition;
         Model::SolveOptions solve;
         std::vector<std::string> shards;
@@ -37,6 +37,7 @@ int main(int argc, char** argv) {
             else if (option == "--merge-transitions") choose(Command::Merge);
             else if (option == "--verify-transitions") choose(Command::Verify);
             else if (option == "--rebind-transitions") choose(Command::Rebind);
+            else if (option == "--restore-transitions") choose(Command::Restore);
             else if (option == "--solve") choose(Command::Solve);
             else if (option == "--measure") {
                 choose(Command::Measure);
@@ -130,6 +131,8 @@ int main(int argc, char** argv) {
                 solve.uniqueSlots = std::stoull(value());
             else if (option == "--compact-every")
                 solve.compactEvery = std::stoul(value());
+            else if (option == "--workers")
+                solve.workers = std::stoul(value());
             else if (option == "--resume-fixed-point")
                 solve.resumeFixedPoint = true;
             else if (option == "--resume-converged")
@@ -194,6 +197,8 @@ int main(int argc, char** argv) {
             Model::verify_transitions(transition);
         else if (command == Command::Rebind)
             Model::rebind_transitions(transition);
+        else if (command == Command::Restore)
+            Model::restore_transitions(transition);
         else {
             const auto certificate = Model::solve_exact(solve);
             std::cout << "dragon_ghost_certificate dual_force_residual "

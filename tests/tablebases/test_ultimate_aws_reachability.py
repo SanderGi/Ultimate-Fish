@@ -45,6 +45,24 @@ ledger = load("ultimate_reachability_ledger",
 
 
 class UltimateAwsReachabilityTests(unittest.TestCase):
+    def test_devil_conservation_uses_authenticated_dense_codec_extent(self):
+        record = {"states": 1_183_104}
+        completed = {"output": {"states": 3_943_680}}
+        self.assertEqual(
+            3_943_680,
+            finalize.certificate_conservation_states(
+                "kdevilk.uftb", record, completed))
+        with self.assertRaisesRegex(ValueError, "Devil root-domain"):
+            finalize.certificate_conservation_states(
+                "kdevilk.uftb", record,
+                {"output": {"states": 3_943_679}})
+
+    def test_non_devil_conservation_rejects_certificate_catalog_residual(self):
+        with self.assertRaisesRegex(ValueError, "certificate/catalog"):
+            finalize.certificate_conservation_states(
+                "krookk.uftb", {"states": 985_920},
+                {"output": {"states": 985_919}})
+
     def test_audit_command_is_idempotent_and_preserves_output(self):
         job = {
             "filename": "krookbishopk.uftb",

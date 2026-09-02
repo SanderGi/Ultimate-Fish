@@ -65,12 +65,12 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
 
     def test_inventory_and_wave_conservation(self) -> None:
         self.assertEqual(232, len(runner.closed_inventory()))
-        self.assertEqual(30, len(runner.angel_inventory()))
+        self.assertEqual(32, len(runner.angel_inventory()))
         rows = runner.supported_inventory()
-        self.assertEqual(298, len(rows))
-        self.assertEqual(104_004_700_800,
+        self.assertEqual(300, len(rows))
+        self.assertEqual(104_479_174_800,
                          sum(int(row["packed_bytes"]) for row in rows))
-        expected = ((254, 94_705_010_400),
+        expected = ((256, 95_179_484_400),
                     (42, 9_015_006_000),
                     (2, 284_684_400))
         self.assertEqual(expected, tuple(
@@ -100,10 +100,10 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
         self.assertTrue(all(row["secondary"] not in runner.plan.COPYCAT_SEPARATORS
                             for row in runner.mirror_copycat_inventory()))
         deferred = runner.deferred_domain_plan()
-        self.assertEqual(60, deferred["classes"])
-        self.assertEqual(60, len(deferred["inventory"]))
-        self.assertEqual(30, deferred["visible_one_angel_classes_in_scope"])
-        self.assertEqual(2, deferred["angel_graph_classes_deferred"])
+        self.assertEqual(78, deferred["classes"])
+        self.assertEqual(78, len(deferred["inventory"]))
+        self.assertEqual(32, deferred["one_angel_source_graph_classes_in_scope"])
+        self.assertEqual(2, deferred["angel_ghost_information_overlays_required"])
         self.assertEqual(1, deferred["copycat_native_separation_classes"])
         self.assertEqual(37_957_920,
                          deferred["copycat_native_separation_lower_states"])
@@ -225,6 +225,41 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
                 "win 1 loss 1 draw 2\ncomplete states 4/4 elapsed 1s\n")
             self.assertEqual(4, runner.parse_uftb(
                 output, record, log)["substates"])
+
+    def test_spawned_devil_root_v11_is_preservation_parseable(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "kdevilk.uftb"
+            record = {
+                "filename": output.name,
+                "primary": "devil", "secondary": None,
+                "opposing": False, "states": 1_183_104,
+            }
+            states = runner.SPAWNED_DEVIL_ROOT_DENSE_STATES
+            header = struct.pack(
+                "<8sIIIIIIIIIIQQ", b"UFTB1\0\0\0", 11,
+                runner.PIECE_INDEX["devil"], states, 7, 4,
+                states // 4, states, 0,
+                len(runner.PIECE_TYPES), 0, 7,
+                runner.SPAWNED_DEVIL_ROOT_V1_TAG)
+            output.write_bytes(header + bytes([0xff]) * (states // 4) +
+                               bytes(states))
+            log = root / "proof.log"
+            log.write_text(
+                f"verifyok states {states}\n"
+                f"output outputs/{output.name} edges 7 win 0 loss 0 "
+                f"draw {states}\n"
+                f"complete states {states}/{states} elapsed 1s\n")
+            verified = runner.parse_uftb(output, record, log)
+            self.assertEqual(11, verified["version"])
+            self.assertEqual(output.stat().st_size,
+                             runner.uftb_extent(output)["file_bytes"])
+
+            damaged = bytearray(output.read_bytes())
+            struct.pack_into("<Q", damaged, 56, 0)
+            output.write_bytes(damaged)
+            with self.assertRaisesRegex(RuntimeError, "codec header"):
+                runner.parse_uftb(output, record, log)
 
     def test_aws_source_preserves_named_scratch(self) -> None:
         source = (ROOT / "src/ultimate/tablebases/tablebase.cpp").read_text()

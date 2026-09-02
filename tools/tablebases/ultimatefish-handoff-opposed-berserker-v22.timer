@@ -1,0 +1,11 @@
+[Unit]
+Description=Poll authenticated Berserker/Ghost v21-to-v22 handoff
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=2min
+Unit=ultimatefish-handoff-opposed-berserker-v22.service
+Persistent=true
+
+[Install]
+WantedBy=timers.target

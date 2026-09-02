@@ -16,7 +16,7 @@ import run_ultimate_concrete_tablebase_shard_aws as runner  # noqa: E402
 
 
 MODEL = "ac9b2d323aeca8705b79c8cb720242985f82ec24fc561ef6b3417d5d603948e6"
-INVENTORY = "ba8d13582359fcb16c0312e54fb0f23073cd910f0dbf173329c5cbb583a5e143"
+INVENTORY = "8818cbbd5661083994b300ce49a55f1cbb6700df2defaa29d1011d4e08f74371"
 
 
 def fake_item(filename: str, ordinal: int) -> dict[str, object]:
@@ -70,7 +70,7 @@ class AssembleConcreteWaveDependenciesTest(unittest.TestCase):
             self.write_certificate(root, "complete", certificate(self.complete_items()))
             records = assemble.collect_results(
                 root, 0, model=MODEL, inventory=INVENTORY)
-            self.assertEqual(len(records), 254)
+            self.assertEqual(len(records), 256)
             self.assertEqual(set(records), {
                 str(record["filename"]) for record in runner.wave_inventory(0)})
 

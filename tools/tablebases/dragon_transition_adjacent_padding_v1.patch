@@ -1,0 +1,18 @@
+diff --git a/src/ultimate/tablebases/ghost_dragon_information_solver.cpp b/src/ultimate/tablebases/ghost_dragon_information_solver.cpp
+--- a/src/ultimate/tablebases/ghost_dragon_information_solver.cpp
++++ b/src/ultimate/tablebases/ghost_dragon_information_solver.cpp
+@@ -702,6 +702,14 @@ DragonPatchCertificate rewrite_lower_dragon_edges(
+         if (!blocks || offsets.front() || offsets.back() != edges.size())
+             throw std::runtime_error("Dragon transition block read residual");
+         const PublicExtraGeometry& geometry = domain[geometryId];
++        const int kingFileDistance = std::abs(
++          int(geometry.whiteKing % Position::BoardFiles) -
++          int(geometry.blackKing % Position::BoardFiles));
++        const int kingRankDistance = std::abs(
++          int(geometry.whiteKing / Position::BoardFiles) -
++          int(geometry.blackKing / Position::BoardFiles));
++        if (kingFileDistance <= 1 && kingRankDistance <= 1)
++            continue;
+         for (std::uint8_t ghost = 0; ghost < Squares; ++ghost) {
+             if (!valid_geometry_world(geometry, ghost))
+                 continue;

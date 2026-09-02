@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <iostream>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 
 int main() {
@@ -60,6 +61,40 @@ int main() {
     if (bdd.node_count() != beforeImplication)
         throw std::runtime_error(
           "external ROBDD implication dirtied the node arena");
+
+    // Geometry Bellman sweeps share one exact arena.  Exercise concurrent
+    // recursive computed tables and unique-node admission, then prove every
+    // result exhaustively rather than relying on scheduling-dependent IDs.
+    std::array<ExternalRobdd::Id, 8> concurrentRoots{};
+    std::vector<std::thread> threads;
+    for (unsigned worker = 0; worker < concurrentRoots.size(); ++worker) {
+        threads.emplace_back([&, worker] {
+            ExternalRobdd::Id root = ExternalRobdd::False;
+            for (unsigned repeat = 0; repeat < 1'000; ++repeat) {
+                const auto a = bdd.variable(worker % 4);
+                const auto b = bdd.variable((worker + 1) % 4);
+                const auto c = bdd.variable((worker + 2) % 4);
+                root = bdd.logical_or(
+                  bdd.logical_and(a, b), bdd.logical_not(c));
+                if (repeat % 31 == 0)
+                    bdd.clear_computed_caches();
+            }
+            concurrentRoots[worker] = root;
+        });
+    }
+    for (std::thread& thread : threads)
+        thread.join();
+    for (unsigned worker = 0; worker < concurrentRoots.size(); ++worker)
+        for (unsigned assignment = 0; assignment < expected.size();
+             ++assignment) {
+            const bool a = assignment & (1u << (worker % 4));
+            const bool b = assignment & (1u << ((worker + 1) % 4));
+            const bool c = assignment & (1u << ((worker + 2) % 4));
+            if (bdd.evaluate(concurrentRoots[worker], assignment, 0) !=
+                ((a && b) || !c))
+                throw std::runtime_error(
+                  "concurrent external ROBDD truth table mismatch");
+        }
     const std::uint32_t persistedNodes = bdd.node_count();
     bdd.flush();
 
@@ -78,6 +113,23 @@ int main() {
             throw std::runtime_error(
               "reopened external ROBDD changed a persisted function");
 
+    // A fixed point may legitimately outgrow its original acceleration-index
+    // load factor before it exhausts the authoritative node arena.  Expanding
+    // the disposable unique table must retain every persisted ID and allow
+    // exact new reduction without rewriting the old checkpoint files.
+    ExternalRobdd::Limits expandedLimits = limits;
+    expandedLimits.uniqueSlots *= 2;
+    ExternalRobdd expanded(
+      "/tmp/ultimate-external-robdd", expandedLimits, false);
+    if (expanded.node_count() != persistedNodes ||
+        expanded.logical_and(expanded.variable(0), expanded.variable(1)) !=
+          conjunction)
+        throw std::runtime_error("external ROBDD unique rehash failed");
+    for (unsigned assignment = 0; assignment < expected.size(); ++assignment)
+        if (expanded.evaluate(formula, assignment, 0) != expected[assignment])
+            throw std::runtime_error(
+              "expanded-index external ROBDD changed a persisted function");
+
     std::vector<ExternalRobdd::Id> image(8);
     for (unsigned variable = 0; variable < image.size(); ++variable)
         image[variable] = bdd.variable(variable);
@@ -91,7 +143,7 @@ int main() {
     std::vector<ExternalRobdd::Id> roots{formula, conjunction};
     auto [compacted, certificate] = bdd.compact(
       "/tmp/ultimate-external-robdd-compact",
-      "/tmp/ultimate-external-robdd-remap", roots);
+      "/tmp/ultimate-external-robdd-remap", roots, 4);
     if (certificate.structuralResidual || certificate.rootResidual ||
         certificate.roots != roots.size() ||
         compacted->node_count() > bdd.node_count())
@@ -132,6 +184,6 @@ int main() {
               << " compact_nodes " << compacted->node_count()
               << " marked " << certificate.markedNodes
               << " structural_residual 0 root_residual 0"
-              << " implication_read_only 1 reopen_exact 1"
+              << " implication_read_only 1 reopen_exact 1 unique_rehash_exact 1"
               << " cache_eviction_exact 1 budget_gate 1\n";
 }

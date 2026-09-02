@@ -1,0 +1,15 @@
+[Unit]
+Description=Ultimate Fish opposed Bomb/Ghost retained-checkpoint solve v9
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/mnt/ultimatefish/bomb-solve-v9-source/resume_ultimate_bomb_checkpoint_v9.sh
+AllowedCPUs=0-15
+MemoryMax=180G
+LimitNOFILE=1048576
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

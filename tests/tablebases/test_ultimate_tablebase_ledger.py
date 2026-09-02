@@ -29,6 +29,46 @@ cleanup = load("ultimate_local_tablebase_cleanup",
 
 
 class UltimateTablebaseLedgerTests(unittest.TestCase):
+    def test_lone_devil_stateful_recovery_is_distinct_from_entry_slice(self):
+        """Never promote the minion-free projection as the stateful result."""
+        readme = ledger.README.read_text()
+        rows = {row.key: row for row in ledger.entries(readme)}
+        lone = rows["single:devil"]
+        companion = rows["same:bishop+devil"]
+
+        self.assertEqual("certified", lone.status)
+        self.assertEqual("ultimate-devil-stateful-class-certificate.json",
+                         lone.filename)
+        self.assertIn("entry slice", lone.storage)
+        self.assertIn("all twelve primary planes", lone.storage)
+        self.assertIn("95649cf36a9f6287379e9d29ee80b67f7af9c8ca6dff0298e73977f458bd3e0f",
+                      lone.storage)
+        self.assertNotIn("companion", lone.storage.lower())
+        self.assertNotIn("bishop", lone.storage.lower())
+
+        self.assertEqual("planned", companion.status)
+        self.assertEqual("kbishopdevilk.uftb", companion.filename)
+        self.assertIn("All three current supervisor records are explicitly paused",
+                      companion.storage)
+        self.assertIn("never evidence for single:devil", companion.storage)
+
+        # The authority note must explicitly retract the former 12/12 root
+        # projection as certification of the stateful class.
+        self.assertIn("single:devil` is **CERTIFIED**", readme)
+        self.assertIn("minion-free entry-slice projection", readme)
+        self.assertNotIn("single:devil` C1 job remains", readme)
+        self.assertNotIn("the live Devil split", readme)
+
+    def test_opposed_berserker_ghost_records_authenticated_v6_header(self):
+        """Do not reintroduce the Bishop/Berserker source conflation."""
+        rows = {row.key: row for row in ledger.entries(ledger.README.read_text())}
+        storage = rows["opposed:berserker+ghost"].storage
+        self.assertIn("primary piece id 7 Berserker", storage)
+        self.assertIn("secondary piece id 11 Ghost", storage)
+        self.assertIn("WDL plane begins at byte 56", storage)
+        self.assertNotIn("primary piece id 6", storage)
+        self.assertNotIn("encodes primary piece id 6", storage)
+
     def test_inventory_has_every_unique_plot_cell_exactly_once(self):
         rows = ledger.entries(ledger.README.read_text())
         self.assertEqual(624, len(rows))
@@ -36,10 +76,10 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual(24, sum(row.domain == "single" for row in rows))
         self.assertEqual(300, sum(row.domain == "same" for row in rows))
         self.assertEqual(300, sum(row.domain == "opposed" for row in rows))
-        self.assertEqual(101, sum(row.status == "deferred" for row in rows))
-        self.assertEqual(523, sum(row.status != "deferred" for row in rows))
+        self.assertEqual(53, sum(row.status == "deferred" for row in rows))
+        self.assertEqual(571, sum(row.status != "deferred" for row in rows))
         self.assertEqual(
-            523,
+            571,
             sum(row.status == status for row in rows
                 for status in ("certified", "preserving", "computing",
                                "planned", "draw", "blocked")),
@@ -70,8 +110,8 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         and arbitrary-linked-pair lower table. Penguin, Mage, and Fisherman can
         still split the simplified symmetric Copycat compound.
         """
-        dynamic = {"devil", "sludge"}
-        angel_excluded = {"devil", "sludge", "angel"}
+        dynamic = {"sludge"}
+        angel_excluded = {"sludge", "angel"}
         copycat_separators = {"penguin", "mage", "fisherman"}
         expected_dynamic = set()
         expected_copycat = set()
@@ -82,7 +122,9 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             for second in pieces[first_index:]:
                 names = {first, second}
                 target = None
-                if names & dynamic:
+                if "devil" in names:
+                    target = None
+                elif names & dynamic:
                     target = expected_dynamic
                 elif "angel" in names:
                     companion = second if first == "angel" else first
@@ -99,10 +141,20 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             row.key for row in ledger.entries(ledger.README.read_text())
             if row.status == "deferred"
         }
-        self.assertEqual(95, len(expected_dynamic))
+        self.assertEqual(47, len(expected_dynamic))
         self.assertEqual(6, len(expected_copycat))
-        self.assertEqual(101, len(actual))
+        self.assertEqual(53, len(actual))
         self.assertEqual(expected_dynamic | expected_copycat, actual)
+
+        devil_rows = {
+            row.key: row for row in ledger.entries(ledger.README.read_text())
+            if row.key.startswith(("same:", "opposed:")) and
+            "devil" in row.key
+        }
+        self.assertEqual(48, len(devil_rows))
+        self.assertTrue(all(row.status in {
+            "planned", "computing", "preserving", "certified"
+        } for row in devil_rows.values()))
 
     def test_visible_one_angel_rows_are_in_scope_or_exact_draws(self):
         rows = {row.key: row for row in ledger.entries(ledger.README.read_text())}
@@ -123,7 +175,10 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
                 rows[key].status,
                 {"planned", "computing", "preserving", "certified"},
             )
-            self.assertEqual("information required", rows[key].result_kind)
+        self.assertEqual("information v2",
+                         rows["same:ghost+angel"].result_kind)
+        self.assertEqual("information v2",
+                         rows["opposed:ghost+angel"].result_kind)
         self.assertIn(rows["same:copycat+angel"].status,
                       {"planned", "computing", "certified"})
         self.assertEqual(
@@ -150,6 +205,29 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             self.assertEqual(
                 "computing", catalog.opposed("ghost", "knight").kind)
 
+    def test_decommission_reclassifies_only_active_nonfinal_rows(self):
+        with tempfile.TemporaryDirectory() as directory:
+            readme = Path(directory) / "README.md"
+            readme.write_text(ledger.README.read_text())
+            ledger.update(
+                readme,
+                ["opposed:queen+ghost=computing",
+                 "same:bishop+devil=preserving"],
+                [],
+            )
+            ledger.update(readme, [], [], decommission_active=True)
+            rows = {row.key: row for row in ledger.entries(readme.read_text())}
+            self.assertEqual("planned", rows["opposed:queen+ghost"].status)
+            self.assertEqual("planned", rows["same:bishop+devil"].status)
+            self.assertIn(
+                "Fleet decommissioned",
+                rows["opposed:queen+ghost"].storage)
+            self.assertEqual("certified", rows["single:devil"].status)
+            self.assertFalse(any(
+                row.status in {"computing", "preserving"}
+                for row in rows.values()
+            ))
+
     def test_sleeping_wrappers_are_not_marked_computing(self):
         for row in ledger.entries(ledger.README.read_text()):
             if "sleeping" in row.storage.lower():
@@ -157,19 +235,20 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
                     "computing", row.status,
                     f"{row.key} hatches the plot for a sleeping wrapper")
 
-    def test_preserving_ghost_rows_remain_hatched_until_imported(self):
+    def test_closed_preservation_queue_uses_final_or_planned_cells(self):
         catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))
-        self.assertEqual("computing", catalog.together("ghost", "rook").kind)
-        self.assertEqual("computing", catalog.together("prince", "ghost").kind)
-        self.assertEqual("computing", catalog.opposed("ghost", "pawn").kind)
-        self.assertEqual("computing", catalog.opposed("ghost", "turtle").kind)
+        self.assertEqual("win", catalog.together("ghost", "rook").kind)
+        self.assertEqual("win", catalog.together("prince", "ghost").kind)
+        self.assertEqual("unknown", catalog.opposed("ghost", "pawn").kind)
+        self.assertEqual("no_forced_win",
+                         catalog.opposed("ghost", "turtle").kind)
         # The mirrored upper triangle remains deduplicated.
         self.assertEqual("duplicate", catalog.together("rook", "ghost").kind)
 
-    def test_active_ghost_angel_rows_hatch_without_breaking_dedup(self):
+    def test_certified_ghost_angel_rows_preserve_dedup(self):
         catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))
-        self.assertEqual("computing", catalog.together("angel", "ghost").kind)
-        self.assertEqual("computing", catalog.opposed("ghost", "angel").kind)
+        self.assertEqual("win", catalog.together("angel", "ghost").kind)
+        self.assertEqual("mixed", catalog.opposed("ghost", "angel").kind)
         self.assertEqual("duplicate", catalog.together("ghost", "angel").kind)
 
     def test_s3_only_certified_ledger_result_is_plotted(self):
@@ -181,6 +260,18 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         catalog = plot.OutcomeCatalog(summary)
         self.assertNotEqual(
             "unknown", catalog.together("jester", "jester").kind)
+
+    def test_stateful_devil_certificate_is_plotted_not_entry_slice(self):
+        summary = plot.read_summary(ledger.README)
+        certificate = summary[
+            "ultimate-devil-stateful-class-certificate.json"]
+        self.assertEqual(certificate, summary["kdevilk.uftb"])
+        cell = plot.OutcomeCatalog(summary).single("devil")
+        self.assertEqual("mixed", cell.kind)
+        self.assertEqual(8_128_714_266, cell.first.total)
+        self.assertEqual(26_852_917_253, cell.second.total)
+        self.assertEqual(34_981_631_519,
+                         cell.first.total + cell.second.total)
 
     def test_forced_colors_use_trivial_subtracted_display_counts(self):
         forced_win = plot.classify(

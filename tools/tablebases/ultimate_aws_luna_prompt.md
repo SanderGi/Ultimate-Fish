@@ -19,6 +19,20 @@ If stdout is exactly `NO_CHANGE`, finish silently: do not notify, summarize,
 poll again, or inspect quiet logs. Normal progress is intentionally suppressed;
 the primary task handles its two-hour reports.
 
+## Certification sprint deadline
+
+Through **2026-08-29 20:42 America/Los_Angeles**, optimize for the number of
+classes that reach the complete solve -> independent verify -> immutable S3
+preserve/restore -> authenticated import -> ledger/plot state machine. Prefer
+near-terminal and already-solved preservation work over speculative new
+architecture. A utilization improvement is useful only when it increases
+expected certifications before this deadline; never restart or invalidate a
+near-converged checkpoint merely to raise fleet CPU. Fix any correctness or
+bookkeeping defect that blocks a credible certification immediately and bind
+every terminal job to the preservation watcher. At the deadline, launch no new
+experiments: retain/authenticate all checkpoints, report the exact terminal
+state, and notify the primary task so the user can shut down and re-evaluate.
+
 For a JSON event:
 
 1. Read only the reported changed states and the minimum evidence needed for an
@@ -44,15 +58,23 @@ For a JSON event:
    checkpoint/resume path, test any fix locally, commit and push before AWS
    receives it, and require S3 VersionId/HEAD/fresh-download/rehash/restore
    evidence before cleanup.
-4. `ready_jobs` is already the committed supervisor's measured-resource
-   backfill selection; do not replace it with a serial queue or choose a job by
-   hand. The host collector applies `cpu_rebalance_jobs` first, then advances
-   every selected job through its exact source/dependency gate. Single-threaded
-   solvers normally receive one disjoint CPU each; concurrency comes from
-   independent classes. `UNDERUTILIZED` means two consecutive complete samples
-   were below 50% while runnable or stageable work existed. Delegate one bounded
-   staging fix that prepares a source-pinned batch of explicit class
-   units, never a generic "remaining" placeholder.
+4. `ready_jobs` is the committed supervisor's measured-resource backfill
+   selection, but `ready_jobs=[]` is never proof that utilization cannot be
+   improved: the scheduler, phase parallelism, checkpoint layout, storage, or
+   instance mix may itself be the bottleneck. The host collector applies
+   `cpu_rebalance_jobs` first, then advances every selected job through its
+   exact source/dependency gate. Treat two consecutive complete fleet samples
+   below **75%** as an engineering failure requiring action. You are responsible
+   for profiling the active phase and implementing and testing the smallest
+   safe checked-in solver, checkpointing, sharding, scheduler, storage-layout,
+   or instance-fit improvement. Preserve every checkpoint, keep shards
+   non-overlapping, stage immutable source and binaries, and deploy through the
+   exact gate. Do not repeatedly report memory/storage bandwidth, serial work,
+   or an empty ready queue without working on the corresponding code or
+   configuration fix. If independent classes fit, prepare a source-pinned batch
+   of explicit class units, never a generic "remaining" placeholder. Continue
+   until utilization materially improves or a concrete externally controlled
+   blocker remains.
 5. For resource warnings, inspect only the affected unit/cgroup/mount. Stop or
    throttle safely before a hard limit; preserve resumable state. Do not launch
    another job on that host until the warning clears.

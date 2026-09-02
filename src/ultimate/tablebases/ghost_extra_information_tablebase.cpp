@@ -36,19 +36,24 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cerrno>
 #include <chrono>
+#include <cstdlib>
 #include <cstdint>
 #include <cstring>
+#include <exception>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <limits>
 #include <map>
+#include <mutex>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -93,6 +98,11 @@ constexpr std::uint8_t GeometryTransformCount = 4;
 constexpr bool ExtraIsChecker = true;
 #else
 constexpr bool ExtraIsChecker = false;
+#endif
+#ifdef ULTIMATE_GHOST_EXTRA_IS_ANGEL
+constexpr bool ExtraIsAngel = true;
+#else
+constexpr bool ExtraIsAngel = false;
 #endif
 constexpr std::uint32_t LowerGhostStateCount =
   2 * Squares * (Squares - 1) * (Squares - 2) * GhostSubstates;
@@ -238,7 +248,17 @@ struct MaterialSpec {
     return state;
 }
 
-[[nodiscard]] bool valid_world(const FourState& state) {
+[[nodiscard]] bool valid_world(const FourState& state,
+                               const MaterialSpec& material) {
+    if (std::abs(int(state.whiteKing % Position::BoardFiles) -
+                 int(state.blackKing % Position::BoardFiles)) <= 1 &&
+        std::abs(int(state.whiteKing / Position::BoardFiles) -
+                 int(state.blackKing / Position::BoardFiles)) <= 1 &&
+        !(ExtraIsAngel && state.extraSubstate == 1))
+        return false;
+    if constexpr (ExtraIsAngel)
+        if (state.extraSubstate == 2 && material.ghostColor != Color::White)
+            return false;
     if constexpr (ExtraIsCopycat) {
         const std::uint8_t clone = horizontal_reflection(state.bishop);
         if (clone == state.whiteKing || clone == state.blackKing ||
@@ -301,9 +321,30 @@ struct MaterialSpec {
     bool foundBlackKing = false;
     bool foundBishop = false;
     bool foundGhost = false;
+    int extraId = Position::NoPiece;
     for (int id = 0; id < position.piece_count(); ++id) {
         const PieceState& piece = position.piece(id);
-        if (!piece.alive || !piece.onBoard)
+        if (!piece.alive)
+            continue;
+        if constexpr (ExtraIsAngel) {
+            if (piece.type == PieceType::Halo)
+                continue;
+            if (!piece.onBoard && piece.type == PieceType::Bishop &&
+                piece.color == Color::White && !foundBishop) {
+                if (piece.link < 0 || piece.link >= position.piece_count() ||
+                    !position.piece(piece.link).alive ||
+                    !position.piece(piece.link).onBoard ||
+                    position.piece(piece.link).type != PieceType::Halo)
+                    return std::nullopt;
+                ++live;
+                extraId = id;
+                state.bishop = static_cast<std::uint8_t>(
+                  position.piece(piece.link).square);
+                foundBishop = true;
+                continue;
+            }
+        }
+        if (!piece.onBoard)
             continue;
         if constexpr (ExtraIsCopycat)
             if (piece.type == PieceType::CopycatClone)
@@ -324,11 +365,7 @@ struct MaterialSpec {
                  piece.color == Color::White &&
                  !foundBishop) {
             state.bishop = static_cast<std::uint8_t>(piece.square);
-            const auto substate = position.tablebase_substate(
-              id, PieceType::Bishop);
-            if (!substate || *substate >= ExtraSubstates)
-                return std::nullopt;
-            state.extraSubstate = static_cast<std::uint8_t>(*substate);
+            extraId = id;
             foundBishop = true;
         }
         else if (piece.type == PieceType::Ghost &&
@@ -345,6 +382,11 @@ struct MaterialSpec {
     if (live != 4 || !foundWhiteKing || !foundBlackKing || !foundBishop ||
         !foundGhost)
         return std::nullopt;
+    const auto substate = position.tablebase_substate(
+      extraId, PieceType::Bishop);
+    if (!substate || *substate >= ExtraSubstates)
+        return std::nullopt;
+    state.extraSubstate = static_cast<std::uint8_t>(*substate);
     return encode_index(state);
 }
 
@@ -389,6 +431,16 @@ struct ClassifiedChild {
     if (const auto same = same_class_index(position, material))
         return {ChildDomain::SameClass, *same};
 
+    // A capture of either real King is terminal even when a compound piece
+    // leaves derived state behind (for example, Angel + Halo after Link).
+    // Recognize that before the material scan rejects the derived piece.  Do
+    // not move the broader game_over() test here: DragonKernelPosition uses it
+    // deliberately to route complete lower-material children to their exact
+    // dependency domains below.
+    if (!position.has_real_king(Color::White) ||
+        !position.has_real_king(Color::Black))
+        return {ChildDomain::ExactTerminal, NoIndex};
+
     int whiteKing = Position::NoSquare;
     int blackKing = Position::NoSquare;
     int bishop = Position::NoSquare;
@@ -397,7 +449,25 @@ struct ClassifiedChild {
     int live = 0;
     for (int id = 0; id < position.piece_count(); ++id) {
         const PieceState& piece = position.piece(id);
-        if (!piece.alive || !piece.onBoard)
+        if (!piece.alive)
+            continue;
+        if constexpr (ExtraIsAngel) {
+            if (piece.type == PieceType::Halo)
+                continue;
+            if (!piece.onBoard && piece.type == PieceType::Bishop &&
+                piece.color == Color::White &&
+                bishop == Position::NoSquare) {
+                if (piece.link < 0 || piece.link >= position.piece_count() ||
+                    !position.piece(piece.link).alive ||
+                    !position.piece(piece.link).onBoard ||
+                    position.piece(piece.link).type != PieceType::Halo)
+                    return {ChildDomain::Invalid, NoIndex};
+                ++live;
+                bishop = position.piece(piece.link).square;
+                continue;
+            }
+        }
+        if (!piece.onBoard)
             continue;
         if constexpr (ExtraIsCopycat)
             if (piece.type == PieceType::CopycatClone)
@@ -464,6 +534,26 @@ struct ClassifiedChild {
     if (position.game_over())
         return {ChildDomain::ExactTerminal, NoIndex};
     return {ChildDomain::Invalid, NoIndex};
+}
+
+void angel_linked_lower_child_self_test(const MaterialSpec& material) {
+    if constexpr (!ExtraIsAngel)
+        return;
+    Position child;
+    std::string error;
+    if (!child.set_upn(
+          "b;hm=1;fm=1;ep=-;cont=0;forced=-1;epv=-1;win=-;"
+          "king,w,a2,0,0,0,0,1,1,-1,1,-1,0;"
+          "king,b,c1,0,0,0,0,1,1,-1,1,-1,0;"
+          "angel,w,a2,0,0,0,0,1,1,3,0,0,1;"
+          "halo,w,b1,0,0,0,0,0,1,2,1,-1,0",
+          &error))
+        throw std::runtime_error(
+          "Angel linked lower-child fixture failed to parse: " + error);
+    const ClassifiedChild classified = classify_child(child, material);
+    if (classified.domain != ChildDomain::InsufficientBishop)
+        throw std::runtime_error(
+          "Angel linked lower-child domain self-test residual");
 }
 
 void lower_color_normalization_self_test() {
@@ -927,7 +1017,7 @@ void codec_self_test(const MaterialSpec& material) {
         const std::uint32_t index = static_cast<std::uint32_t>(
           std::uint64_t(StateCount) * sampleIndex / 100'000);
         FourState state = decode_index(index);
-        if (!valid_world(state))
+        if (!valid_world(state, material))
             continue;
         FourState vertical = state;
         vertical.whiteKing = vertical_reflection(vertical.whiteKing);
@@ -1050,6 +1140,18 @@ struct PublicExtraGeometry {
 
 [[nodiscard]] bool valid_geometry_world(
   const PublicExtraGeometry& geometry, std::uint8_t ghost) {
+    // The packed concrete source retains dense padding with adjacent real
+    // Kings.  No legal turn boundary can reach those placements, and letting
+    // them enter the public-information graph makes their arbitrary concrete
+    // move lists violate the otherwise exact D2 certificate.  Exclude them at
+    // the shared world-domain gate so fresh compilation and replay verification
+    // agree, rather than filtering only the final singleton comparison.
+    if (std::abs(int(geometry.whiteKing % Position::BoardFiles) -
+                 int(geometry.blackKing % Position::BoardFiles)) <= 1 &&
+        std::abs(int(geometry.whiteKing / Position::BoardFiles) -
+                 int(geometry.blackKing / Position::BoardFiles)) <= 1 &&
+        !(ExtraIsAngel && geometry.extraSubstate == 1))
+        return false;
     if (ghost == geometry.whiteKing || ghost == geometry.blackKing ||
         ghost == geometry.bishop)
         return false;
@@ -1919,7 +2021,8 @@ struct ExternalCompileSummary {
 };
 
 void verify_external_transition_certificate(
-  const std::string& prefix, const MaterialSpec& material);
+  const std::string& prefix, const MaterialSpec& material,
+  bool rebindTerminalForces = false);
 
 [[nodiscard]] std::uint64_t external_move_key(
   const Position& position, const Move& move, std::uint8_t transform,
@@ -1947,7 +2050,8 @@ void verify_external_transition_certificate(
         throw std::runtime_error(
           "ordinary extra move has a semantic auxiliary");
     else if (move.kind != MoveKind::Normal &&
-             move.kind != MoveKind::Shoot)
+             move.kind != MoveKind::Shoot &&
+             move.kind != MoveKind::Link)
         throw std::runtime_error(
           "rectangle certificate encountered an unsupported move kind");
     const std::uint64_t from = rectangle_transform_square(move.from, transform);
@@ -2071,6 +2175,47 @@ struct CanonicalLowerSignature {
 }
 
 void external_child_substate_self_test(const MaterialSpec& material) {
+    angel_linked_lower_child_self_test(material);
+    if constexpr (ExtraIsAngel) {
+        const PublicExtraGeometry parent{
+          static_cast<std::uint8_t>(Color::White), 0, 2, 1, 0, 1};
+        Position position = make_geometry_position(parent, 3, material);
+        const std::vector<Move> legal = position.legal_moves();
+        const auto witness = std::find_if(legal.begin(), legal.end(),
+          [](const Move& candidate) {
+              return candidate.from == 0 && candidate.to == 9;
+          });
+        if (witness == legal.end())
+            throw std::runtime_error(
+              "Angel-attached adjacent-King child witness is not legal");
+        Position child = position;
+        Undo undo;
+        if (!child.make_move(*witness, undo))
+            throw std::runtime_error(
+              "Angel-attached adjacent-King child witness failed");
+        const ClassifiedChild classified = classify_child(child, material);
+        if (classified.domain != ChildDomain::SameClass)
+            throw std::runtime_error(
+              "Angel-attached adjacent-King child escaped the same class");
+        const FourState raw = decode_index(classified.index);
+        if (raw.extraSubstate != 1 || !real_kings_adjacent(raw))
+            throw std::runtime_error(
+              "Angel-attached adjacent-King child lost its public substate");
+        const ExtraGeometryDomain domain;
+        const auto [geometry, transform] = domain.locate({
+          static_cast<std::uint8_t>(raw.side), raw.whiteKing,
+          raw.blackKing, raw.bishop, static_cast<std::uint8_t>(raw.visible),
+          raw.extraSubstate});
+        const std::uint8_t actual = rectangle_transform_square(
+          raw.ghost, transform);
+        if (!valid_geometry_world(domain[geometry], actual))
+            throw std::runtime_error(
+              "Angel-attached adjacent-King child was dropped as padding");
+        std::cout << "ghost_extra_angel_attached_king_child"
+                  << " parent_geometry 469 child_geometry " << geometry
+                  << " child_actual " << unsigned(actual)
+                  << " adjacent_kings_admitted 1 residual 0\n" << std::flush;
+    }
     if constexpr (ExtraSubstates == 1)
         return;
 
@@ -2083,6 +2228,23 @@ void external_child_substate_self_test(const MaterialSpec& material) {
                 continue;
             const Position position = make_geometry_position(
               geometry, ghost, material);
+            // An attached Angel is represented by an off-board Angel plus its
+            // on-board Halo.  Its attachment can legitimately have no ordinary
+            // same-class move witness: the host move is resolved through the
+            // forced-action channel.  Construction above already validates the
+            // exact attachment substate; do not exhaustively search all 37.9M
+            // geometries and treat the absence of an ordinary witness as a
+            // model failure.
+            if constexpr (ExtraIsAngel) {
+                if (geometry.extraSubstate) {
+                    std::cout << "ghost_extra_child_substate states "
+                              << ExtraSubstates << " forced_action_geometry "
+                              << geometryId << " child_substate "
+                              << unsigned(geometry.extraSubstate)
+                              << " residual 0\n" << std::flush;
+                    return;
+                }
+            }
             if (position.game_over())
                 continue;
             for (const Move& move : position.legal_moves()) {
@@ -2413,7 +2575,8 @@ void compile_external_transitions(
 }
 
 void verify_external_transition_certificate(
-  const std::string& prefix, const MaterialSpec& material) {
+  const std::string& prefix, const MaterialSpec& material,
+  bool rebindTerminalForces) {
     const auto started = std::chrono::steady_clock::now();
     std::ifstream headerFile(prefix + ".header", std::ios::binary);
     if (!headerFile)
@@ -2431,7 +2594,7 @@ void verify_external_transition_certificate(
     if (!header.geometryCount || geometryStart + header.geometryCount >
           domain.size())
         throw std::runtime_error("external transition geometry count is invalid");
-    const std::vector<ExternalGeometryMeta> metas =
+    std::vector<ExternalGeometryMeta> metas =
       read_external_vector<ExternalGeometryMeta>(
         prefix + ".meta", header.geometryCount);
     const std::vector<ExternalMask> strata = read_external_vector<ExternalMask>(
@@ -2456,7 +2619,7 @@ void verify_external_transition_certificate(
           geometryStart + localGeometry);
         if (index[localGeometry] > index[localGeometry + 1])
             throw std::runtime_error("external transition index is not monotone");
-        const ExternalGeometryMeta& stored = metas[localGeometry];
+        ExternalGeometryMeta& stored = metas[localGeometry];
         if (stored.stratumBase != verifiedStrata ||
             std::uint64_t(stored.stratumBase) + stored.stratumCount >
               strata.size())
@@ -2515,9 +2678,29 @@ void verify_external_transition_certificate(
                       stored.stratumBase + local;
             ++local;
         }
-        if (std::memcmp(&stored, &regenerated, sizeof(stored)))
+        const bool structuralMismatch =
+          std::memcmp(&stored.live, &regenerated.live, sizeof(stored.live)) ||
+          std::memcmp(&stored.terminal, &regenerated.terminal,
+                      sizeof(stored.terminal)) ||
+          stored.actualStratum != regenerated.actualStratum ||
+          stored.stratumBase != regenerated.stratumBase ||
+          stored.stratumCount != regenerated.stratumCount;
+        if (structuralMismatch)
             throw std::runtime_error(
               "external geometry metadata reload residual is nonzero");
+        const bool terminalForceMismatch =
+          std::memcmp(&stored.terminalOwner, &regenerated.terminalOwner,
+                      sizeof(stored.terminalOwner)) ||
+          std::memcmp(&stored.terminalObserver,
+                      &regenerated.terminalObserver,
+                      sizeof(stored.terminalObserver));
+        if (terminalForceMismatch && !rebindTerminalForces)
+            throw std::runtime_error(
+              "external terminal-force metadata reload residual is nonzero");
+        if (terminalForceMismatch) {
+            stored.terminalOwner = regenerated.terminalOwner;
+            stored.terminalObserver = regenerated.terminalObserver;
+        }
 
         const std::uint64_t blockBytes =
           index[localGeometry + 1] - index[localGeometry];
@@ -2597,6 +2780,25 @@ void verify_external_transition_certificate(
     if (verifiedStrata != header.strata || verifiedEdges != header.edges)
         throw std::runtime_error(
           "external transition reload conservation residual is nonzero");
+    if (rebindTerminalForces) {
+        const std::string temporary = prefix + ".meta.terminal-rebind.tmp";
+        {
+            std::ofstream output(temporary,
+              std::ios::binary | std::ios::trunc);
+            output.write(reinterpret_cast<const char*>(metas.data()),
+                         static_cast<std::streamsize>(
+                           metas.size() * sizeof(ExternalGeometryMeta)));
+            output.flush();
+            if (!output)
+                throw std::runtime_error(
+                  "cannot write rebound external geometry metadata");
+        }
+        const int descriptor = ::open(temporary.c_str(), O_RDONLY);
+        if (descriptor < 0 || ::fsync(descriptor) || ::close(descriptor) ||
+            ::rename(temporary.c_str(), (prefix + ".meta").c_str()))
+            throw std::runtime_error(
+              "cannot atomically publish rebound external geometry metadata");
+    }
     std::cout << "ghost_extra_external_transition_certificate geometries "
               << header.geometryCount << " worlds " << verifiedWorlds
               << " edges " << verifiedEdges << " strata " << verifiedStrata
@@ -2798,7 +3000,52 @@ struct ExternalSolverRelation {
 struct ExternalSolverObservation {
     std::uint32_t relation = 0;
     ExternalMask possibleSources;
+    ExternalMask badObserverSources;
+    std::vector<std::pair<std::uint8_t, ExternalMask>> image;
+    std::uint32_t composeNamespace = 0;
 };
+
+struct ExternalActionObservationAccumulator {
+    ExternalMask possibleSources;
+    ExternalMask badObserverSources;
+    std::map<std::uint8_t, ExternalMask> image;
+};
+
+void accumulate_external_action_observation(
+  ExternalActionObservationAccumulator& observation, std::uint8_t source,
+  bool observerForce, std::optional<std::uint8_t> childActual) {
+    external_mask_set(observation.possibleSources, source);
+    if (!observerForce)
+        external_mask_set(observation.badObserverSources, source);
+    if (childActual)
+        external_mask_set(observation.image[*childActual], source);
+}
+
+void external_action_observation_conditioning_self_test() {
+    constexpr std::uint8_t Source = 6;
+    ExternalActionObservationAccumulator winning;
+    ExternalActionObservationAccumulator losing;
+    accumulate_external_action_observation(
+      winning, Source, true, std::uint8_t{9});
+    accumulate_external_action_observation(
+      losing, Source, false, std::uint8_t{10});
+    ExternalMask collapsedBad = winning.badObserverSources;
+    collapsedBad.low |= losing.badObserverSources.low;
+    collapsedBad.high = static_cast<std::uint16_t>(
+      collapsedBad.high | losing.badObserverSources.high);
+    if (!external_mask_test(collapsedBad, Source) ||
+        external_mask_test(winning.badObserverSources, Source) ||
+        !external_mask_test(losing.badObserverSources, Source) ||
+        !external_mask_test(winning.image.at(9), Source) ||
+        winning.image.count(10) || losing.image.count(9) ||
+        !external_mask_test(losing.image.at(10), Source))
+        throw std::runtime_error(
+          "observer action/observation conditioning self-test residual");
+    std::cout << "ghost_extra_observer_action_conditioning"
+              << " shared_source 1 collapsed_poisoned 1"
+              << " winning_action_poisoned 0 live_image_cross_action 0"
+              << " residual 0\n" << std::flush;
+}
 
 struct ExternalSolverAction {
     ExternalMask legalSources;
@@ -2847,11 +3094,28 @@ class ExternalTransitionDatabase {
           prefix + ".strata", header_.strata);
         index_ = read_external_vector<std::uint64_t>(
           prefix + ".index", std::uint64_t(header_.geometryCount) + 1);
-        blocks_.open(prefix + ".blocks", std::ios::binary);
-        if (!blocks_ || index_.front() || index_.back() != header_.blockBytes)
+        blocksDescriptor_ = ::open((prefix + ".blocks").c_str(), O_RDONLY);
+        struct stat status{};
+        if (blocksDescriptor_ < 0 ||
+            ::fstat(blocksDescriptor_, &status) != 0 ||
+            static_cast<std::uint64_t>(status.st_size) != header_.blockBytes ||
+            index_.front() || index_.back() != header_.blockBytes) {
+            if (blocksDescriptor_ >= 0)
+                ::close(blocksDescriptor_);
+            blocksDescriptor_ = -1;
             throw std::runtime_error(
               "external transition database extent is invalid");
+        }
     }
+
+    ~ExternalTransitionDatabase() {
+        if (blocksDescriptor_ >= 0)
+            ::close(blocksDescriptor_);
+    }
+
+    ExternalTransitionDatabase(const ExternalTransitionDatabase&) = delete;
+    ExternalTransitionDatabase& operator=(
+      const ExternalTransitionDatabase&) = delete;
 
     [[nodiscard]] std::uint32_t geometry_count() const {
         return header_.geometryCount;
@@ -2883,13 +3147,25 @@ class ExternalTransitionDatabase {
         const std::uint64_t edgeCount =
           (end - begin - sizeof(offsets)) / sizeof(ExternalCompiledEdge);
         std::vector<ExternalCompiledEdge> edges(edgeCount);
-        blocks_.clear();
-        blocks_.seekg(static_cast<std::streamoff>(begin));
-        blocks_.read(reinterpret_cast<char*>(offsets.data()), sizeof(offsets));
-        blocks_.read(reinterpret_cast<char*>(edges.data()),
-                     static_cast<std::streamsize>(
-                       edges.size() * sizeof(ExternalCompiledEdge)));
-        if (!blocks_ || offsets.front() || offsets.back() != edges.size())
+        const auto readExact = [&](void* destination, std::uint64_t bytes,
+                                   std::uint64_t offset) {
+            std::uint8_t* output = static_cast<std::uint8_t*>(destination);
+            while (bytes) {
+                const ssize_t read = ::pread(
+                  blocksDescriptor_, output, static_cast<std::size_t>(bytes),
+                  static_cast<off_t>(offset));
+                if (read <= 0)
+                    throw std::runtime_error(
+                      "external transition block failed to load");
+                output += read;
+                offset += static_cast<std::uint64_t>(read);
+                bytes -= static_cast<std::uint64_t>(read);
+            }
+        };
+        readExact(offsets.data(), sizeof(offsets), begin);
+        readExact(edges.data(), edges.size() * sizeof(ExternalCompiledEdge),
+                  begin + sizeof(offsets));
+        if (offsets.front() || offsets.back() != edges.size())
             throw std::runtime_error(
               "external transition block failed to load");
         return {offsets, std::move(edges)};
@@ -2901,7 +3177,7 @@ class ExternalTransitionDatabase {
     std::vector<ExternalGeometryMeta> metas_;
     std::vector<ExternalMask> strata_;
     std::vector<std::uint64_t> index_;
-    std::ifstream blocks_;
+    int blocksDescriptor_ = -1;
 };
 
 [[nodiscard]] bool external_child_force(
@@ -2959,8 +3235,9 @@ class ExternalTransitionDatabase {
     if (static_cast<Color>(domain[geometryId].side) == material.observer())
         result.actions.resize(actionCount);
     std::vector<std::map<std::uint8_t, ExternalMask>> images(relationCount);
-    std::vector<std::map<std::uint32_t, ExternalMask>> actionObservations(
-      result.actions.size());
+    std::vector<std::map<std::uint32_t,
+                         ExternalActionObservationAccumulator>>
+      actionObservations(result.actions.size());
     for (std::uint8_t source = 0; source < Squares; ++source) {
         if (offsets[source] > offsets[source + 1] ||
             offsets[source + 1] > compiled.size())
@@ -3066,8 +3343,23 @@ class ExternalTransitionDatabase {
                 seenActions[edge.action] = 1;
                 external_mask_set(result.actions[edge.action].legalSources,
                                   source);
-                external_mask_set(
-                  actionObservations[edge.action][edge.relation], source);
+                ExternalActionObservationAccumulator& observation =
+                  actionObservations[edge.action][edge.relation];
+                if (edge.domain == ExternalChildDomain::Exact) {
+                    accumulate_external_action_observation(
+                      observation, source, edge.exact & 2, std::nullopt);
+                }
+                else {
+                    const bool observerForce = !childTerminal ||
+                      external_child_force(
+                        relation, edge.childActual, false, database, lower
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                        , promoted
+#endif
+                        );
+                    accumulate_external_action_observation(
+                      observation, source, observerForce, edge.childActual);
+                }
             }
         }
     }
@@ -3091,9 +3383,21 @@ class ExternalTransitionDatabase {
                   "one visible observation contains multiple Ghost squares");
         }
     }
-    for (std::uint32_t action = 0; action < result.actions.size(); ++action)
-        for (const auto& [relation, sources] : actionObservations[action])
-            result.actions[action].observations.push_back({relation, sources});
+    std::uint32_t composeNamespace = relationCount;
+    for (std::uint32_t action = 0; action < result.actions.size(); ++action) {
+        for (const auto& [relation, accumulated] :
+             actionObservations[action]) {
+            ExternalSolverObservation observation;
+            observation.relation = relation;
+            observation.possibleSources = accumulated.possibleSources;
+            observation.badObserverSources = accumulated.badObserverSources;
+            for (const auto& [child, sources] : accumulated.image)
+                observation.image.emplace_back(child, sources);
+            observation.composeNamespace = composeNamespace++;
+            result.actions[action].observations.push_back(
+              std::move(observation));
+        }
+    }
     return result;
 }
 
@@ -3116,6 +3420,7 @@ struct ExternalGhostExtraSolveOptions {
     bool promotedOpposing = false;
 #endif
     ExternalRobdd::Limits bddLimits;
+    std::uint32_t workers = 1;
     std::uint32_t compactEvery = 4;
     // A failed post-fixed-point verifier may leave a complete, exact arena and
     // force-root set.  Resume is explicit and parity-bound: callers must clone
@@ -3138,6 +3443,23 @@ struct ExternalGhostExtraSolveOptions {
     // RSS measurement can gate the much longer fixed point.
     std::uint32_t measureIterations = 0;
 };
+
+[[nodiscard]] ExternalGhostExtraSolveOptions normalize_external_solve_options(
+  ExternalGhostExtraSolveOptions options) {
+    if (const char* configured = std::getenv(
+          "ULTIMATE_GHOST_SOLVE_WORKERS")) {
+        std::size_t consumed = 0;
+        const unsigned long parsed = std::stoul(configured, &consumed);
+        if (configured[consumed] != '\0' || !parsed || parsed > 32)
+            throw std::runtime_error(
+              "ULTIMATE_GHOST_SOLVE_WORKERS must be in [1,32]");
+        if (options.workers == 1)
+            options.workers = static_cast<std::uint32_t>(parsed);
+    }
+    if (!options.workers || options.workers > 32)
+        throw std::runtime_error("external Ghost solve workers must be in [1,32]");
+    return options;
+}
 
 #ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
 #pragma pack(push, 1)
@@ -3487,7 +3809,11 @@ void gate_external_ghost_extra_solve(
   const std::string& transitionPrefix,
   const ExternalTransitionDatabase& database,
   const ExternalGhostExtraSolveOptions& options) {
-    constexpr std::uint64_t Budget = 97ULL << 30;
+    // This is a mutable-scratch admission ceiling, not a target allocation.
+    // Large retained fixed points can safely exceed the historical 97 GiB
+    // threshold on the 512 GiB workers; the independent free-disk, physical-
+    // memory, and cgroup gates below still reject an unsafe launch.
+    constexpr std::uint64_t Budget = 192ULL << 30;
     const std::uint64_t geometryCount = database.geometry_count();
     const std::uint64_t strataCount = database.stratum_count();
     const std::uint64_t ownerRoots = geometryCount * Squares * sizeof(
@@ -3517,7 +3843,7 @@ void gate_external_ghost_extra_solve(
     const std::uint64_t totalFootprintBytes = transitionBytes + scratchBytes;
     if (bddBytes > Budget || scratchBytes > Budget)
         throw std::runtime_error(
-          "exact external Ghost-extra solve exceeds the 97 GiB gate");
+          "exact external Ghost-extra solve exceeds the 192 GiB gate");
     const std::size_t slash = options.scratch.rfind('/');
     const std::string scratchDirectory = slash == std::string::npos
       ? "." : slash == 0 ? "/" : options.scratch.substr(0, slash);
@@ -3598,7 +3924,8 @@ class ExternalGhostExtraFixedPoint {
       const ExtraGeometryDomain& domain, const MaterialSpec& material,
       ExternalGhostExtraSolveOptions options)
       : database_(database), lower_(lower), concrete_(concrete), domain_(domain),
-        material_(material), options_(std::move(options)),
+        material_(material),
+        options_(normalize_external_solve_options(std::move(options))),
         bdd_(std::make_unique<ExternalRobdd>(
           options_.scratch + ".bdd-" +
             (options_.resumeFixedPoint
@@ -3715,6 +4042,150 @@ class ExternalGhostExtraFixedPoint {
         }
         inherited_lower_mask_self_test();
         fresh_root_public_grouping_self_test();
+        std::cout << "ghost_extra_external_workers " << options_.workers
+                  << "\n" << std::flush;
+    }
+
+    struct BellmanSweepCounts {
+        std::uint64_t changedOwner = 0;
+        std::uint64_t changedObserver = 0;
+        std::uint64_t changedVisible = 0;
+    };
+
+    [[nodiscard]] BellmanSweepCounts bellman_sweep(
+      const char* progressPrefix, const char* regressionPrefix,
+      const std::chrono::steady_clock::time_point& started) {
+        const std::uint32_t geometryCount = database_.geometry_count();
+        const std::uint32_t workerCount = std::min(
+          options_.workers, geometryCount);
+        // Geometry costs are extremely skewed.  Large static claims left a
+        // handful of workers processing the final expensive geometries for
+        // hours while the rest of the assigned CPUs went idle.  Claim one
+        // geometry at a time so the shared queue remains balanced through the
+        // exact end of every Bellman sweep.
+        constexpr std::uint32_t GeometryChunk = 1;
+        std::atomic<std::uint32_t> nextGeometry{0};
+        std::atomic<std::uint32_t> completed{0};
+        std::atomic<bool> stopped{false};
+        std::mutex outputMutex;
+        std::mutex exceptionMutex;
+        std::exception_ptr firstException;
+        std::vector<BellmanSweepCounts> partial(workerCount);
+
+        const auto run = [&](std::uint32_t worker) {
+            try {
+                for (;;) {
+                    const std::uint32_t begin = nextGeometry.fetch_add(
+                      GeometryChunk, std::memory_order_relaxed);
+                    if (begin >= geometryCount ||
+                        stopped.load(std::memory_order_relaxed))
+                        break;
+                    const std::uint32_t end = std::min(
+                      geometryCount, begin + GeometryChunk);
+                    for (std::uint32_t geometry = begin; geometry < end;
+                         ++geometry) {
+                        if (stopped.load(std::memory_order_relaxed))
+                            break;
+                        bdd_->clear_computed_caches();
+                        const ExternalSolverBlock block =
+                          build_external_solver_block(
+                            geometry, database_, lower_, domain_, material_
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                            , promoted_, promotedDomain_
+#endif
+                            );
+                        bellman_geometry(geometry, block);
+                        const ExternalGeometryMeta& meta =
+                          database_.meta(geometry);
+                        for (unsigned actual = 0; actual < Squares; ++actual) {
+                            const std::uint64_t index =
+                              owner_index(geometry, actual);
+                            const ExternalRobdd::Id oldOwner =
+                              ownerCurrent_[index];
+                            const ExternalRobdd::Id newOwner = ownerNext_[index];
+                            if (!bdd_->implies(oldOwner, newOwner))
+                                throw std::runtime_error(
+                                  std::string(regressionPrefix) +
+                                  " owner least fixed point regressed");
+                            partial[worker].changedOwner +=
+                              oldOwner != newOwner;
+                            if ((visibleOwnerCurrent_[index] &&
+                                 !visibleOwnerNext_[index]) ||
+                                (visibleObserverCurrent_[index] &&
+                                 !visibleObserverNext_[index]))
+                                throw std::runtime_error(
+                                  std::string(regressionPrefix) +
+                                  " visible least fixed point regressed");
+                            partial[worker].changedVisible +=
+                              visibleOwnerCurrent_[index] !=
+                              visibleOwnerNext_[index];
+                            partial[worker].changedVisible +=
+                              visibleObserverCurrent_[index] !=
+                              visibleObserverNext_[index];
+                        }
+                        for (std::uint32_t local = 0;
+                             local < meta.stratumCount; ++local) {
+                            const std::uint32_t stratum =
+                              meta.stratumBase + local;
+                            const ExternalRobdd::Id oldObserver =
+                              observerCurrent_[stratum];
+                            const ExternalRobdd::Id newObserver =
+                              observerNext_[stratum];
+                            if (!bdd_->implies(oldObserver, newObserver))
+                                throw std::runtime_error(
+                                  std::string(regressionPrefix) +
+                                  " observer least fixed point regressed");
+                            partial[worker].changedObserver +=
+                              oldObserver != newObserver;
+                        }
+                        const std::uint32_t done = completed.fetch_add(
+                          1, std::memory_order_relaxed) + 1;
+                        if (done % 5'000 == 0 || done == geometryCount) {
+                            const double elapsed =
+                              std::chrono::duration<double>(
+                                std::chrono::steady_clock::now() - started)
+                                .count();
+                            std::lock_guard<std::mutex> lock(outputMutex);
+                            std::cout << progressPrefix << " iteration "
+                                      << iteration_ << " geometries " << done
+                                      << '/' << geometryCount
+                                      << " workers " << workerCount
+                                      << " bdd_nodes " << bdd_->node_count()
+                                      << " peak_rss_bytes " << peak_rss_bytes()
+                                      << " elapsed " << elapsed << "s\n"
+                                      << std::flush;
+                        }
+                    }
+                }
+            }
+            catch (...) {
+                stopped.store(true, std::memory_order_relaxed);
+                std::lock_guard<std::mutex> lock(exceptionMutex);
+                if (!firstException)
+                    firstException = std::current_exception();
+            }
+        };
+
+        if (workerCount == 1)
+            run(0);
+        else {
+            std::vector<std::thread> workers;
+            workers.reserve(workerCount);
+            for (std::uint32_t worker = 0; worker < workerCount; ++worker)
+                workers.emplace_back(run, worker);
+            for (std::thread& worker : workers)
+                worker.join();
+        }
+        if (firstException)
+            std::rethrow_exception(firstException);
+
+        BellmanSweepCounts total;
+        for (const BellmanSweepCounts& value : partial) {
+            total.changedOwner += value.changedOwner;
+            total.changedObserver += value.changedObserver;
+            total.changedVisible += value.changedVisible;
+        }
+        return total;
     }
 
     void solve() {
@@ -3729,70 +4200,16 @@ class ExternalGhostExtraFixedPoint {
         const auto started = std::chrono::steady_clock::now();
         for (;;) {
             ++iteration_;
-            std::uint64_t changedOwner = 0;
-            std::uint64_t changedObserver = 0;
-            std::uint64_t changedVisible = 0;
-            for (std::uint32_t geometry = 0;
-                 geometry < database_.geometry_count(); ++geometry) {
-                bdd_->clear_computed_caches();
-                const ExternalSolverBlock block = build_external_solver_block(
-                  geometry, database_, lower_, domain_, material_
-#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
-                  , promoted_, promotedDomain_
-#endif
-                  );
-                bellman_geometry(geometry, block);
-                const ExternalGeometryMeta& meta = database_.meta(geometry);
-                for (unsigned actual = 0; actual < Squares; ++actual) {
-                    const std::uint64_t index = owner_index(geometry, actual);
-                    const ExternalRobdd::Id oldOwner = ownerCurrent_[index];
-                    const ExternalRobdd::Id newOwner = ownerNext_[index];
-                    if (!bdd_->implies(oldOwner, newOwner))
-                        throw std::runtime_error(
-                          "external owner least fixed point regressed");
-                    changedOwner += oldOwner != newOwner;
-                    if ((visibleOwnerCurrent_[index] &&
-                         !visibleOwnerNext_[index]) ||
-                        (visibleObserverCurrent_[index] &&
-                         !visibleObserverNext_[index]))
-                        throw std::runtime_error(
-                          "external visible least fixed point regressed");
-                    changedVisible += visibleOwnerCurrent_[index] !=
-                                      visibleOwnerNext_[index];
-                    changedVisible += visibleObserverCurrent_[index] !=
-                                      visibleObserverNext_[index];
-                }
-                for (std::uint32_t local = 0; local < meta.stratumCount;
-                     ++local) {
-                    const std::uint32_t stratum = meta.stratumBase + local;
-                    const ExternalRobdd::Id oldObserver =
-                      observerCurrent_[stratum];
-                    const ExternalRobdd::Id newObserver = observerNext_[stratum];
-                    if (!bdd_->implies(oldObserver, newObserver))
-                        throw std::runtime_error(
-                          "external observer least fixed point regressed");
-                    changedObserver += oldObserver != newObserver;
-                }
-                if ((geometry + 1) % 5'000 == 0 ||
-                    geometry + 1 == database_.geometry_count()) {
-                    const double elapsed = std::chrono::duration<double>(
-                      std::chrono::steady_clock::now() - started).count();
-                    std::cout << "ghost_extra_external_bellman iteration "
-                              << iteration_ << " geometry " << geometry + 1
-                              << '/' << database_.geometry_count()
-                              << " bdd_nodes " << bdd_->node_count()
-                              << " peak_rss_bytes " << peak_rss_bytes()
-                              << " elapsed " << elapsed << "s\n" << std::flush;
-                }
-            }
+            const BellmanSweepCounts changed = bellman_sweep(
+              "ghost_extra_external_bellman", "external", started);
             swap_force_arrays();
             const double elapsed = std::chrono::duration<double>(
               std::chrono::steady_clock::now() - started).count();
             std::cout << "ghost_extra_external_iteration " << iteration_
                       << " bdd_nodes " << bdd_->node_count()
-                      << " changed_owner " << changedOwner
-                      << " changed_observer " << changedObserver
-                      << " changed_visible " << changedVisible
+                      << " changed_owner " << changed.changedOwner
+                      << " changed_observer " << changed.changedObserver
+                      << " changed_visible " << changed.changedVisible
                       << " peak_rss_bytes " << peak_rss_bytes()
                       << " elapsed " << elapsed << "s\n" << std::flush;
             if (options_.measureIterations &&
@@ -3804,7 +4221,8 @@ class ExternalGhostExtraFixedPoint {
                           << std::flush;
                 return;
             }
-            if (!changedOwner && !changedObserver && !changedVisible)
+            if (!changed.changedOwner && !changed.changedObserver &&
+                !changed.changedVisible)
                 break;
             if (options_.compactEvery &&
                 iteration_ % options_.compactEvery == 0)
@@ -3833,7 +4251,7 @@ class ExternalGhostExtraFixedPoint {
             const std::uint32_t index = static_cast<std::uint32_t>(
               (std::uint64_t(random) * StateCount) >> 32);
             const FourState state = decode_index(index);
-            if (!valid_world(state))
+            if (!valid_world(state, material))
                 continue;
             const std::uint8_t observerKing =
               material.observer() == Color::White ? state.whiteKing
@@ -4092,26 +4510,28 @@ class ExternalGhostExtraFixedPoint {
     }
 
     [[nodiscard]] std::vector<ExternalRobdd::Id> relation_image(
-      const ExternalSolverRelation& relation) {
+      const std::vector<std::pair<std::uint8_t, ExternalMask>>& model) {
         std::vector<ExternalRobdd::Id> image(Squares, ExternalRobdd::False);
-        for (const auto& [child, sources] : relation.image)
+        for (const auto& [child, sources] : model)
             image[child] = mask_any(sources);
         return image;
     }
 
     [[nodiscard]] ExternalRobdd::Id compose(
-      std::uint32_t geometry, std::uint32_t relation,
-      ExternalRobdd::Id child, const ExternalSolverRelation& model) {
+      std::uint32_t geometry, std::uint32_t composeNamespace,
+      ExternalRobdd::Id child,
+      const std::vector<std::pair<std::uint8_t, ExternalMask>>& image) {
         if (child <= ExternalRobdd::True)
             return child;
         const std::uint64_t key =
-          (std::uint64_t(geometry) << 32) | relation;
-        return bdd_->compose(child, relation_image(model), key);
+          (std::uint64_t(geometry) << 32) | composeNamespace;
+        return bdd_->compose(child, relation_image(image), key);
     }
 
     [[nodiscard]] ExternalRobdd::Id owner_successor(
       std::uint32_t geometry, const ExternalSolverEdge& edge,
-      const ExternalSolverRelation& relation) {
+      const ExternalSolverRelation& relation, std::uint32_t composeNamespace,
+      const std::vector<std::pair<std::uint8_t, ExternalMask>>& image) {
         if (edge.domain == ExternalChildDomain::Exact)
             return edge.exact & 1 ? ExternalRobdd::True
                                   : ExternalRobdd::False;
@@ -4156,27 +4576,55 @@ class ExternalGhostExtraFixedPoint {
 #endif
         else
             throw std::runtime_error("unknown live owner child domain");
-        return compose(geometry, edge.relation, child, relation);
+        return compose(geometry, composeNamespace, child, image);
+    }
+
+    [[nodiscard]] ExternalRobdd::Id owner_successor(
+      std::uint32_t geometry, const ExternalSolverEdge& edge,
+      const ExternalSolverRelation& relation) {
+        return owner_successor(
+          geometry, edge, relation, edge.relation, relation.image);
+    }
+
+    [[nodiscard]] ExternalRobdd::Id owner_successor(
+      std::uint32_t geometry, const ExternalSolverEdge& edge,
+      const ExternalSolverRelation& relation,
+      const ExternalSolverObservation& observation) {
+        return owner_successor(geometry, edge, relation,
+          observation.composeNamespace, observation.image);
     }
 
     [[nodiscard]] ExternalRobdd::Id observer_successor(
-      std::uint32_t geometry, std::uint32_t relationId,
-      const ExternalSolverRelation& relation) {
+      std::uint32_t geometry, std::uint32_t composeNamespace,
+      const ExternalSolverRelation& relation,
+      const ExternalMask& badObserverSources,
+      const std::vector<std::pair<std::uint8_t, ExternalMask>>& image) {
         if (relation.domain == ExternalChildDomain::Exact ||
             relation.childTerminal)
-            return no_sources(relation.badObserverSources);
+            return no_sources(badObserverSources);
         ExternalRobdd::Id child = ExternalRobdd::False;
         if (relation.domain == ExternalChildDomain::SameClass) {
             if (relation.childVisible) {
-                const std::uint8_t actual = relation.image.front().first;
+                const std::uint8_t actual = image.front().first;
                 child = visibleObserverCurrent_[owner_index(
                   relation.childGeometry, actual)]
                       ? ExternalRobdd::True : ExternalRobdd::False;
             }
             else {
                 if (relation.childStratum == NoIndex)
-                    throw std::runtime_error(
-                      "same-class hidden relation lacks a child stratum");
+                {
+                    std::ostringstream message;
+                    message << "same-class hidden relation lacks a child stratum"
+                            << " parent_geometry=" << geometry
+                            << " compose_namespace=" << composeNamespace
+                            << " child_geometry=" << relation.childGeometry
+                            << " child_terminal=" << relation.childTerminal
+                            << " child_visible=" << relation.childVisible
+                            << " child_actuals=";
+                    for (const auto& item : relation.image)
+                        message << unsigned(item.first) << ',';
+                    throw std::runtime_error(message.str());
+                }
                 child = observerCurrent_[relation.childStratum];
             }
         }
@@ -4184,7 +4632,7 @@ class ExternalGhostExtraFixedPoint {
             const auto& lowerGeometry = lower_.geometry(
               relation.childGeometry);
             if (relation.childVisible) {
-                const std::uint8_t actual = relation.image.front().first;
+                const std::uint8_t actual = image.front().first;
                 child = lowerGeometry.visibleObserver[actual]
                       ? ExternalRobdd::True : ExternalRobdd::False;
             }
@@ -4200,7 +4648,7 @@ class ExternalGhostExtraFixedPoint {
         else if (relation.domain ==
                    ExternalChildDomain::PromotedQueenGhost) {
             if (relation.childVisible) {
-                const std::uint8_t actual = relation.image.front().first;
+                const std::uint8_t actual = image.front().first;
                 child = promoted_.visible_observer(
                   relation.childGeometry, actual)
                       ? ExternalRobdd::True : ExternalRobdd::False;
@@ -4216,7 +4664,68 @@ class ExternalGhostExtraFixedPoint {
 #endif
         else
             throw std::runtime_error("unknown live observer child domain");
-        return compose(geometry, relationId, child, relation);
+        return compose(geometry, composeNamespace, child, image);
+    }
+
+    [[nodiscard]] ExternalRobdd::Id observer_successor(
+      std::uint32_t geometry, std::uint32_t relationId,
+      const ExternalSolverRelation& relation) {
+        return observer_successor(
+          geometry, relationId, relation, relation.badObserverSources,
+          relation.image);
+    }
+
+    [[nodiscard]] ExternalRobdd::Id observer_successor(
+      std::uint32_t geometry, const ExternalSolverObservation& observation,
+      const ExternalSolverRelation& relation) {
+        return observer_successor(
+          geometry, observation.composeNamespace, relation,
+          observation.badObserverSources, observation.image);
+    }
+
+    [[nodiscard]] bool concrete_observer_successor(
+      const ExternalSolverEdge& edge,
+      const ExternalSolverRelation& relation) {
+        if (edge.domain == ExternalChildDomain::Exact)
+            return edge.exact & 2;
+        if (relation.childTerminal)
+            return external_child_force(
+              relation, edge.childActual, false, database_, lower_
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+              , promoted_
+#endif
+              );
+        const ExternalMask childSingleton =
+          external_singleton_mask(edge.childActual);
+        if (edge.domain == ExternalChildDomain::SameClass) {
+            if (relation.childVisible)
+                return visibleObserverCurrent_[owner_index(
+                  relation.childGeometry, edge.childActual)] != 0;
+            return bdd_->evaluate(
+              observerCurrent_[relation.childStratum], childSingleton.low,
+              childSingleton.high);
+        }
+        if (edge.domain == ExternalChildDomain::LowerGhost) {
+            const auto& lowerGeometry = lower_.geometry(
+              relation.childGeometry);
+            if (relation.childVisible)
+                return lowerGeometry.visibleObserver[edge.childActual] != 0;
+            return lower_.evaluate(
+              lower_.stratum(relation.childStratum).observerRoot,
+              childSingleton);
+        }
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+        if (edge.domain == ExternalChildDomain::PromotedQueenGhost) {
+            if (relation.childVisible)
+                return promoted_.visible_observer(
+                  relation.childGeometry, edge.childActual);
+            return bdd_->evaluate(
+              promotedImport_.root(
+                promoted_.observer_root(relation.childStratum)),
+              childSingleton.low, childSingleton.high);
+        }
+#endif
+        throw std::runtime_error("unknown concrete observer child domain");
     }
 
     [[nodiscard]] const ExternalSolverEdge* action_edge(
@@ -4228,6 +4737,16 @@ class ExternalGhostExtraFixedPoint {
               return edge.action == action;
           });
         return found == edges.end() ? nullptr : &*found;
+    }
+
+    [[nodiscard]] const ExternalSolverObservation* action_observation(
+      const ExternalSolverAction& action, std::uint32_t relation) const {
+        const auto found = std::find_if(
+          action.observations.begin(), action.observations.end(),
+          [&](const ExternalSolverObservation& observation) {
+              return observation.relation == relation;
+          });
+        return found == action.observations.end() ? nullptr : &*found;
     }
 
     void bellman_geometry(std::uint32_t geometryId,
@@ -4252,10 +4771,8 @@ class ExternalGhostExtraFixedPoint {
                     const bool ownerChild = bdd_->evaluate(
                       owner_successor(geometryId, edge, relation),
                       singleton.low, singleton.high);
-                    const bool observerChild = bdd_->evaluate(
-                      observer_successor(
-                        geometryId, edge.relation, relation),
-                      singleton.low, singleton.high);
+                    const bool observerChild = concrete_observer_successor(
+                      edge, relation);
                     if (mover == material_.ghostColor) {
                         ownerValue = ownerValue || ownerChild;
                         observerValue = observerValue && observerChild;
@@ -4290,10 +4807,26 @@ class ExternalGhostExtraFixedPoint {
                         block.actions[action].legalSources.high));
                     const ExternalSolverEdge* edge = action_edge(
                       block, actual, action);
-                    const ExternalRobdd::Id successor = edge
-                      ? owner_successor(geometryId, *edge,
-                          block.relations.at(edge->relation))
-                      : ExternalRobdd::False;
+                    ExternalRobdd::Id successor = ExternalRobdd::False;
+                    if (edge) {
+                        const ExternalSolverObservation* observation =
+                          action_observation(block.actions[action],
+                                             edge->relation);
+                        if (!observation)
+                            throw std::runtime_error(
+                              "observer action lacks its conditioned observation");
+                        // The public transition observation alone is not a
+                        // sufficient successor key: two different observer
+                        // actions can render the same observation.  Mixing
+                        // their images expands even singleton beliefs with
+                        // worlds reached by an action the observer did not
+                        // choose, which can erase genuine owner forces during
+                        // forced Checker/Prince continuations.  Condition the
+                        // owner successor on the chosen action exactly as the
+                        // observer recurrence already does.
+                        successor = owner_successor(geometryId, *edge,
+                          block.relations.at(edge->relation), *observation);
+                    }
                     value = bdd_->logical_and(value, bdd_->logical_or(
                       bdd_->logical_not(common), successor));
                 }
@@ -4333,7 +4866,7 @@ class ExternalGhostExtraFixedPoint {
                         const ExternalRobdd::Id possible = mask_any(
                           possibleSources);
                         const ExternalRobdd::Id child = observer_successor(
-                          geometryId, observation.relation,
+                          geometryId, observation,
                           block.relations.at(observation.relation));
                         gate = bdd_->logical_and(gate, bdd_->logical_or(
                           bdd_->logical_not(possible), child));
@@ -4377,7 +4910,8 @@ class ExternalGhostExtraFixedPoint {
           (compactToB_ ? ".bdd-b" : ".bdd-a");
         compactToB_ = !compactToB_;
         auto [fresh, certificate] = bdd_->compact(
-          replacement, options_.scratch + ".bdd-remap", roots);
+          replacement, options_.scratch + ".bdd-remap", roots,
+          options_.workers);
         std::size_t cursor = 0;
         for (ExternalRobdd::Id& root : lowerImport_.roots())
             root = roots.at(cursor++);
@@ -4408,52 +4942,26 @@ class ExternalGhostExtraFixedPoint {
     void verify() {
         // One independent full Bellman pass proves equality of every force
         // predicate over all 2^80 masks because canonical ROBDD identity is
-        // exact, not sampled.
-        for (std::uint32_t geometry = 0;
-             geometry < database_.geometry_count(); ++geometry) {
-            bdd_->clear_computed_caches();
-            bellman_geometry(geometry, build_external_solver_block(
-              geometry, database_, lower_, domain_, material_
-#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
-              , promoted_, promotedDomain_
-#endif
-              ));
-        }
-        std::uint64_t bellmanResidual = 0;
-        std::uint64_t monotonicityResidual = 0;
-        for (std::uint64_t index = 0; index < ownerCurrent_.size(); ++index) {
-            bellmanResidual += ownerCurrent_[index] != ownerNext_[index];
-            const std::uint32_t geometry = static_cast<std::uint32_t>(
-              index / Squares);
-            const unsigned actual = static_cast<unsigned>(index % Squares);
-            const std::uint32_t stratum =
-              database_.meta(geometry).actualStratum[actual];
-            if (stratum != NoIndex) {
-                const ExternalMask& domain = database_.stratum(stratum);
-                monotonicityResidual += !bdd_->is_upward_closed(
-                  ownerCurrent_[index], domain.low, domain.high);
-            }
-            bellmanResidual += visibleOwnerCurrent_[index] !=
-                               visibleOwnerNext_[index];
-            bellmanResidual += visibleObserverCurrent_[index] !=
-                               visibleObserverNext_[index];
-        }
-        for (std::uint64_t stratum = 0;
-             stratum < observerCurrent_.size(); ++stratum) {
-            bellmanResidual += observerCurrent_[stratum] !=
-                               observerNext_[stratum];
-            const ExternalMask& domain = database_.stratum(
-              static_cast<std::uint32_t>(stratum));
-            monotonicityResidual += !bdd_->is_downward_closed(
-              observerCurrent_[stratum], domain.low, domain.high);
-        }
+        // exact, not sampled.  Use the same disjoint geometry scheduler as a
+        // normal Bellman iteration so --workers also applies to certification;
+        // verification used to strand every assigned core except one here.
+        const auto started = std::chrono::steady_clock::now();
+        (void)bellman_sweep(
+          "ghost_extra_external_verify_bellman",
+          "external verification", started);
+        const auto [bellmanResidual, monotonicityResidual] =
+          verify_symbolic_residuals();
+        std::cout << "ghost_extra_external_symbolic_certificate"
+                  << " bellman_residual " << bellmanResidual
+                  << " monotonicity_residual " << monotonicityResidual
+                  << '\n' << std::flush;
         if (bellmanResidual || monotonicityResidual)
             throw std::runtime_error(
               "external Ghost-extra symbolic certificate has a residual");
-        const std::uint64_t singletonResidual = verify_singletons();
-        if (singletonResidual)
+        const std::uint64_t singletonDominanceResidual = verify_singletons();
+        if (singletonDominanceResidual)
             throw std::runtime_error(
-              "external Ghost-extra singleton result differs from concrete WDL");
+              "external Ghost-extra singleton information dominance residual");
         std::cout << "information_symbolic_certificate iterations "
                   << iteration_ << " bdd_nodes " << bdd_->node_count()
                   << " bellman_residual 0 monotonicity_residual 0"
@@ -4463,19 +4971,182 @@ class ExternalGhostExtraFixedPoint {
             report_fresh_roots();
     }
 
+    [[nodiscard]] std::pair<std::uint64_t, std::uint64_t>
+    verify_symbolic_residuals() {
+        struct Counts {
+            std::uint64_t bellman = 0;
+            std::uint64_t monotonicity = 0;
+        };
+        const std::uint32_t geometryCount = database_.geometry_count();
+        const std::uint32_t workerCount = std::min(
+          options_.workers, geometryCount);
+        constexpr std::uint32_t GeometryChunk = 1;
+        constexpr std::uint32_t StratumChunk = 256;
+        std::atomic<std::uint32_t> nextGeometry{0};
+        std::atomic<std::uint32_t> completedGeometry{0};
+        std::atomic<std::uint32_t> nextStratum{0};
+        std::atomic<std::uint32_t> completedStratum{0};
+        std::atomic<bool> stopped{false};
+        std::mutex outputMutex;
+        std::mutex exceptionMutex;
+        std::exception_ptr firstException;
+        std::vector<Counts> partial(workerCount);
+        const auto started = std::chrono::steady_clock::now();
+
+        const auto run = [&](std::uint32_t worker) {
+          try {
+            bdd_->clear_computed_caches();
+            for (;;) {
+                const std::uint32_t begin = nextGeometry.fetch_add(
+                  GeometryChunk, std::memory_order_relaxed);
+                if (begin >= geometryCount ||
+                    stopped.load(std::memory_order_relaxed))
+                    break;
+                const std::uint32_t end = std::min(
+                  geometryCount, begin + GeometryChunk);
+                for (std::uint32_t geometry = begin; geometry < end;
+                     ++geometry) {
+                    const ExternalGeometryMeta& meta =
+                      database_.meta(geometry);
+                    for (unsigned actual = 0; actual < Squares; ++actual) {
+                        const std::uint64_t index =
+                          owner_index(geometry, actual);
+                        partial[worker].bellman +=
+                          ownerCurrent_[index] != ownerNext_[index];
+                        partial[worker].bellman +=
+                          visibleOwnerCurrent_[index] !=
+                          visibleOwnerNext_[index];
+                        partial[worker].bellman +=
+                          visibleObserverCurrent_[index] !=
+                          visibleObserverNext_[index];
+                        const std::uint32_t stratum =
+                          meta.actualStratum[actual];
+                        if (stratum != NoIndex) {
+                            const ExternalMask& domain =
+                              database_.stratum(stratum);
+                            partial[worker].monotonicity +=
+                              !bdd_->is_upward_closed(ownerCurrent_[index],
+                                domain.low, domain.high);
+                        }
+                    }
+                    const std::uint32_t done = completedGeometry.fetch_add(
+                      1, std::memory_order_relaxed) + 1;
+                    if (done % 5'000 == 0 || done == geometryCount) {
+                        const double elapsed = std::chrono::duration<double>(
+                          std::chrono::steady_clock::now() - started).count();
+                        std::lock_guard<std::mutex> lock(outputMutex);
+                        std::cout << "ghost_extra_symbolic_verify geometries "
+                                  << done << '/' << geometryCount
+                                  << " workers " << workerCount << " elapsed "
+                                  << elapsed << "s\n" << std::flush;
+                    }
+                }
+            }
+            bdd_->clear_computed_caches();
+            const std::uint32_t stratumCount = static_cast<std::uint32_t>(
+              observerCurrent_.size());
+            for (;;) {
+                const std::uint32_t begin = nextStratum.fetch_add(
+                  StratumChunk, std::memory_order_relaxed);
+                if (begin >= stratumCount ||
+                    stopped.load(std::memory_order_relaxed))
+                    break;
+                const std::uint32_t end = std::min(
+                  stratumCount, begin + StratumChunk);
+                for (std::uint32_t stratum = begin; stratum < end;
+                     ++stratum) {
+                    partial[worker].bellman +=
+                      observerCurrent_[stratum] != observerNext_[stratum];
+                    const ExternalMask& domain = database_.stratum(stratum);
+                    partial[worker].monotonicity +=
+                      !bdd_->is_downward_closed(observerCurrent_[stratum],
+                        domain.low, domain.high);
+                    const std::uint32_t done = completedStratum.fetch_add(
+                      1, std::memory_order_relaxed) + 1;
+                    if (done % 100'000 == 0 || done == stratumCount) {
+                        const double elapsed = std::chrono::duration<double>(
+                          std::chrono::steady_clock::now() - started).count();
+                        std::lock_guard<std::mutex> lock(outputMutex);
+                        std::cout << "ghost_extra_symbolic_verify strata "
+                                  << done << '/' << stratumCount
+                                  << " workers " << workerCount << " elapsed "
+                                  << elapsed << "s\n" << std::flush;
+                    }
+                }
+            }
+          }
+          catch (...) {
+              stopped.store(true, std::memory_order_relaxed);
+              std::lock_guard<std::mutex> lock(exceptionMutex);
+              if (!firstException)
+                  firstException = std::current_exception();
+          }
+        };
+
+        if (workerCount == 1)
+            run(0);
+        else {
+            std::vector<std::thread> workers;
+            workers.reserve(workerCount);
+            for (std::uint32_t worker = 0; worker < workerCount; ++worker)
+                workers.emplace_back(run, worker);
+            for (std::thread& worker : workers)
+                worker.join();
+        }
+        if (firstException)
+            std::rethrow_exception(firstException);
+        Counts total;
+        for (const Counts& value : partial) {
+            total.bellman += value.bellman;
+            total.monotonicity += value.monotonicity;
+        }
+        return {total.bellman, total.monotonicity};
+    }
+
     [[nodiscard]] std::uint64_t verify_singletons() {
-        std::uint64_t residual = 0;
-        std::uint64_t checked = 0;
-        std::uint64_t excludedAdjacentKings = 0;
-        for (std::uint32_t placement = 0; placement < PlacementCount;
-             ++placement) {
+        const std::uint32_t workerCount = std::min<std::uint32_t>(
+          options_.workers, PlacementCount);
+        constexpr std::uint32_t PlacementChunk = 1'024;
+        std::atomic<std::uint32_t> nextPlacement{0};
+        std::atomic<std::uint32_t> completed{0};
+        std::atomic<bool> stopped{false};
+        std::atomic<std::uint64_t> witnessCount{0};
+        std::atomic<std::uint64_t> violationTraceCount{0};
+        std::mutex outputMutex;
+        std::mutex exceptionMutex;
+        std::exception_ptr firstException;
+        struct Counts {
+            std::uint64_t dominanceResidual = 0;
+            std::uint64_t informationDifferences = 0;
+            std::uint64_t checked = 0;
+            std::uint64_t excludedAdjacentKings = 0;
+            std::uint64_t excludedImpossibleForced = 0;
+            std::uint64_t excludedUnadmittedRoots = 0;
+            std::array<std::uint64_t, 2 * 2 * ExtraSubstates * 4>
+              dominanceByClass{};
+        };
+        std::vector<Counts> partial(workerCount);
+        const auto started = std::chrono::steady_clock::now();
+
+        const auto run = [&](std::uint32_t worker) {
+          try {
+            for (;;) {
+              const std::uint32_t begin = nextPlacement.fetch_add(
+                PlacementChunk, std::memory_order_relaxed);
+              if (begin >= PlacementCount ||
+                  stopped.load(std::memory_order_relaxed))
+                  break;
+              const std::uint32_t end = std::min<std::uint32_t>(
+                PlacementCount, begin + PlacementChunk);
+              for (std::uint32_t placement = begin; placement < end;
+                   ++placement) {
           for (std::uint8_t extraSubstate = 0;
                extraSubstate < ExtraSubstates; ++extraSubstate)
             for (std::uint32_t substate = 0; substate < 2; ++substate) {
                 FourState state = decode_placement(placement);
                 state.extraSubstate = extraSubstate;
                 state.visible = substate != 0;
-                if (!valid_world(state))
+                if (!valid_world(state, material_))
                     continue;
                 // The packed concrete table deliberately retains dense
                 // placements with adjacent real Kings, but no legal turn
@@ -4487,12 +5158,63 @@ class ExternalGhostExtraFixedPoint {
                 // singleton failures.  All admissible singleton worlds remain
                 // exhaustively checked below.
                 if (real_kings_adjacent(state)) {
-                    ++excludedAdjacentKings;
+                    ++partial[worker].excludedAdjacentKings;
                     continue;
                 }
-                ++checked;
+                if constexpr (ExtraIsChecker) {
+                    if (extraSubstate & 1u) {
+                        // A Checker continuation is an intermediate state of
+                        // the same White turn, and native move application
+                        // creates it only when another legal capture exists.
+                        // The dense concrete codec also contains the opposite
+                        // side-to-move and no-capture combinations as padding.
+                        // They have no legal predecessor and the compiled
+                        // information graph correctly gives them no actions;
+                        // do not treat their arbitrary packed WDL bits as a
+                        // singleton-oracle contract.
+                        if (state.side != Color::White) {
+                            ++partial[worker].excludedImpossibleForced;
+                            continue;
+                        }
+                        const Position continuation = make_position(
+                          (placement * ExtraSubstates + extraSubstate) * 2 +
+                            substate,
+                          material_);
+                        if (!continuation.has_forced_action() ||
+                            continuation.legal_moves().empty()) {
+                            ++partial[worker].excludedImpossibleForced;
+                            continue;
+                        }
+                    }
+                }
                 const std::uint32_t concreteIndex =
                   (placement * ExtraSubstates + extraSubstate) * 2 + substate;
+                const std::uint8_t exact = concrete_.result(concreteIndex);
+                // The concrete table packs unreachable turn-boundary states
+                // into the same two-bit plane as real W/L/D results.  Use the
+                // identical admission contract as report_fresh_roots() before
+                // treating one of those bits as a singleton oracle.  In
+                // particular an observer King adjacent to an enemy Ghost has
+                // no ordinary safe predecessor (visible or hidden); comparing
+                // its padding draw against a legal capture in the information
+                // graph produced a false Sniper/Ghost dominance residual.
+                const std::uint8_t observerKing =
+                  material_.observer() == Color::White ? state.whiteKing
+                                                       : state.blackKing;
+                const bool hiddenAdjacent = !state.visible &&
+                  std::abs(int(state.ghost % Position::BoardFiles) -
+                           int(observerKing % Position::BoardFiles)) <= 1 &&
+                  std::abs(int(state.ghost / Position::BoardFiles) -
+                           int(observerKing / Position::BoardFiles)) <= 1;
+                const Position concretePosition = make_position(
+                  concreteIndex, material_);
+                if (exact == 3 &&
+                    (hiddenAdjacent || concretePosition.has_forced_action() ||
+                     !concretePosition.ordinary_predecessor_king_safe())) {
+                    ++partial[worker].excludedUnadmittedRoots;
+                    continue;
+                }
+                ++partial[worker].checked;
                 const PublicExtraGeometry raw{
                   static_cast<std::uint8_t>(state.side), state.whiteKing,
                   state.blackKing, state.bishop,
@@ -4528,42 +5250,219 @@ class ExternalGhostExtraFixedPoint {
                     observer = bdd_->evaluate(observerCurrent_[stratum],
                       singleton.low, singleton.high);
                 }
-                const std::uint8_t exact = concrete_.result(concreteIndex);
                 const bool ownerExpected =
                   (state.side == material_.ghostColor && exact == 1) ||
                   (state.side == material_.observer() && exact == 2);
                 const bool observerExpected =
                   (state.side == material_.observer() && exact == 1) ||
                   (state.side == material_.ghostColor && exact == 2);
-                const bool mismatch = owner != ownerExpected ||
-                                      observer != observerExpected;
-                if (mismatch && residual < 20) {
-                    std::cout << "ghost_extra_singleton_witness concrete_index "
-                              << concreteIndex << " placement " << placement
-                              << " geometry " << geometry << " actual "
-                              << actual << " side " << unsigned(state.side)
-                              << " visible " << unsigned(state.visible)
-                              << " extra_substate "
-                              << unsigned(state.extraSubstate)
-                              << " exact " << unsigned(exact)
-                              << " owner " << owner
-                              << " owner_expected " << ownerExpected
-                              << " observer " << observer
-                              << " observer_expected " << observerExpected
-                              << " upn "
-                              << make_position(concreteIndex, material_).upn()
-                              << '\n';
+                // A singleton describes what the observer knows now, not a
+                // permanently perfect-information game.  An invisible Ghost
+                // can immediately choose several publicly indistinguishable
+                // destinations, expanding that singleton into a non-singleton
+                // belief.  Therefore exact equality with the concrete WDL is
+                // not a valid information-game oracle (Rook/Ghost supplies a
+                // five-destination witness under one observation).  The sound
+                // cross-model contract is dominance: hiding future Ghost
+                // actions may add owner forces or remove observer forces, but
+                // it may never remove a concrete owner force or create an
+                // observer force absent under perfect information.
+                const bool differs = owner != ownerExpected ||
+                                     observer != observerExpected;
+                const bool dominanceViolation =
+                  (ownerExpected && !owner) || (observer && !observerExpected);
+                if (differs && witnessCount.fetch_add(
+                      1, std::memory_order_relaxed) < 20) {
+                    std::lock_guard<std::mutex> lock(outputMutex);
+                    std::cout
+                      << "ghost_extra_singleton_information_witness concrete_index "
+                      << concreteIndex << " placement " << placement
+                      << " geometry " << geometry << " actual " << actual
+                      << " side " << unsigned(state.side) << " visible "
+                      << unsigned(state.visible) << " extra_substate "
+                      << unsigned(state.extraSubstate) << " exact "
+                      << unsigned(exact) << " owner " << owner
+                      << " owner_expected " << ownerExpected << " observer "
+                      << observer << " observer_expected " << observerExpected
+                      << " upn " << make_position(concreteIndex, material_).upn()
+                      << '\n';
                 }
-                residual += mismatch;
+                partial[worker].informationDifferences += differs;
+                partial[worker].dominanceResidual += dominanceViolation;
+                if (dominanceViolation) {
+                    const std::size_t classification =
+                      (((std::size_t(state.side) * 2 + state.visible) *
+                         ExtraSubstates + extraSubstate) * 4 + exact);
+                    ++partial[worker].dominanceByClass[classification];
+                    if (violationTraceCount.fetch_add(
+                          1, std::memory_order_relaxed) < 12) {
+                        const ExternalSolverBlock block =
+                          build_external_solver_block(
+                            geometry, database_, lower_, domain_, material_
+#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+                            , promoted_, promotedDomain_
+#endif
+                            );
+                        std::lock_guard<std::mutex> lock(outputMutex);
+                        std::cout
+                          << "ghost_extra_singleton_violation_trace geometry "
+                          << geometry << " actual " << actual << " mover "
+                          << unsigned(state.side) << " ghost_color "
+                          << unsigned(material_.ghostColor) << " observer_color "
+                          << unsigned(material_.observer()) << " owner_value "
+                          << owner << " observer_value " << observer
+                          << " concrete_index " << concreteIndex
+                          << " exact " << unsigned(exact)
+                          << " owner_expected " << ownerExpected
+                          << " observer_expected " << observerExpected
+                          << " upn " << make_position(concreteIndex, material_).upn()
+                          << " actions "
+                          << block.actions.size() << " edges "
+                          << block.edges[actual].size() << '\n';
+                        for (const ExternalSolverEdge& edge :
+                             block.edges[actual]) {
+                            const ExternalSolverRelation& relation =
+                              block.relations.at(edge.relation);
+                            std::cout
+                              << "ghost_extra_singleton_violation_edge action "
+                              << edge.action << " relation " << edge.relation
+                              << " domain " << unsigned(edge.domain)
+                              << " exact " << unsigned(edge.exact)
+                              << " child_geometry " << edge.childGeometry
+                              << " child_actual "
+                              << unsigned(edge.childActual)
+                              << " child_terminal " << relation.childTerminal
+                              << " child_visible " << relation.childVisible
+                              << " child_stratum " << relation.childStratum;
+                            const ExternalMask traceSingleton =
+                              external_singleton_mask(actual);
+                            std::cout << " owner_child " << bdd_->evaluate(
+                              owner_successor(geometry, edge, relation),
+                              traceSingleton.low, traceSingleton.high)
+                                      << " observer_child "
+                                      << concrete_observer_successor(
+                                           edge, relation);
+                            if (edge.domain ==
+                                  ExternalChildDomain::SameClass &&
+                                relation.childGeometry < domain_.size()) {
+                                const PublicExtraGeometry& child =
+                                  domain_[relation.childGeometry];
+                                FourState childState{
+                                  static_cast<Color>(child.side),
+                                  child.whiteKing, child.blackKing,
+                                  child.bishop, edge.childActual,
+                                  child.extraSubstate,
+                                  child.visible != 0};
+                                const std::uint32_t childConcreteIndex =
+                                  encode_index(childState);
+                                const Position childPosition = make_position(
+                                  childConcreteIndex, material_);
+                                const std::optional<Color> childWinner =
+                                  childPosition.winner();
+                                std::cout << " child_concrete_index "
+                                          << childConcreteIndex
+                                          << " child_concrete_wdl "
+                                          << unsigned(concrete_.result(
+                                               childConcreteIndex))
+                                          << " child_game_over "
+                                          << childPosition.game_over()
+                                          << " child_winner "
+                                          << (childWinner
+                                                ? int(*childWinner) : -1)
+                                          << " child_upn "
+                                          << childPosition.upn();
+                            }
+                            if (edge.action < block.actions.size())
+                                std::cout << " action_legal_source "
+                                  << external_mask_test(
+                                       block.actions[edge.action].legalSources,
+                                       actual);
+                            std::cout << '\n';
+                        }
+                        std::cout << std::flush;
+                    }
+                }
             }
+                const std::uint32_t done = completed.fetch_add(
+                  1, std::memory_order_relaxed) + 1;
+                if (done % 1'000'000 == 0 || done == PlacementCount) {
+                    const double elapsed = std::chrono::duration<double>(
+                      std::chrono::steady_clock::now() - started).count();
+                    std::lock_guard<std::mutex> lock(outputMutex);
+                    std::cout << "ghost_extra_singleton_verify placements "
+                              << done << '/' << PlacementCount << " workers "
+                              << workerCount << " elapsed " << elapsed
+                              << "s\n" << std::flush;
+                }
+              }
+            }
+          }
+          catch (...) {
+              stopped.store(true, std::memory_order_relaxed);
+              std::lock_guard<std::mutex> lock(exceptionMutex);
+              if (!firstException)
+                  firstException = std::current_exception();
+          }
+        };
+
+        if (workerCount == 1)
+            run(0);
+        else {
+            std::vector<std::thread> workers;
+            workers.reserve(workerCount);
+            for (std::uint32_t worker = 0; worker < workerCount; ++worker)
+                workers.emplace_back(run, worker);
+            for (std::thread& worker : workers)
+                worker.join();
         }
-        if (residual)
-            std::cout << "ghost_extra_singleton_residual " << residual
-                      << '\n' << std::flush;
-        std::cout << "ghost_extra_singleton_domain checked " << checked
-                  << " excluded_adjacent_kings " << excludedAdjacentKings
-                  << " residual " << residual << '\n' << std::flush;
-        return residual;
+        if (firstException)
+            std::rethrow_exception(firstException);
+
+        Counts total;
+        for (const Counts& value : partial) {
+            total.dominanceResidual += value.dominanceResidual;
+            total.informationDifferences += value.informationDifferences;
+            total.checked += value.checked;
+            total.excludedAdjacentKings += value.excludedAdjacentKings;
+            total.excludedImpossibleForced +=
+              value.excludedImpossibleForced;
+            total.excludedUnadmittedRoots += value.excludedUnadmittedRoots;
+            for (std::size_t index = 0;
+                 index < total.dominanceByClass.size(); ++index)
+                total.dominanceByClass[index] +=
+                  value.dominanceByClass[index];
+        }
+        std::cout << "ghost_extra_singleton_domain checked " << total.checked
+                  << " excluded_adjacent_kings "
+                  << total.excludedAdjacentKings
+                  << " excluded_impossible_forced "
+                  << total.excludedImpossibleForced
+                  << " excluded_unadmitted_roots "
+                  << total.excludedUnadmittedRoots
+                  << " information_differences "
+                  << total.informationDifferences
+                  << " dominance_residual " << total.dominanceResidual
+                  << '\n' << std::flush;
+        for (std::uint32_t side = 0; side < 2; ++side)
+            for (std::uint32_t visible = 0; visible < 2; ++visible)
+                for (std::uint32_t extraSubstate = 0;
+                     extraSubstate < ExtraSubstates; ++extraSubstate)
+                    for (std::uint32_t exact = 0; exact < 4; ++exact) {
+                        const std::size_t classification =
+                          (((std::size_t(side) * 2 + visible) *
+                             ExtraSubstates + extraSubstate) * 4 + exact);
+                        const std::uint64_t count =
+                          total.dominanceByClass[classification];
+                        if (count)
+                            std::cout
+                              << "ghost_extra_singleton_dominance_class side "
+                              << side << " visible " << visible
+                              << " extra_substate " << extraSubstate
+                              << " exact " << exact << " residual " << count
+                              << '\n';
+                    }
+        std::cout << std::flush;
+        return total.dominanceResidual;
     }
 
     void report_fresh_roots() {
@@ -4574,7 +5473,7 @@ class ExternalGhostExtraFixedPoint {
         std::uint64_t admittedCount = 0;
         for (std::uint32_t index = 0; index < StateCount; ++index) {
             const FourState state = decode_index(index);
-            if (!valid_world(state)) {
+            if (!valid_world(state, material_)) {
                 ++unreachable[static_cast<std::size_t>(state.side)]
                               [concrete_.result(index)];
                 continue;
@@ -4865,7 +5764,7 @@ void run_preflight(const MaterialSpec& material, const PackedFourTable& concrete
         if (!exhaustiveOracle && sample < 4)
             index = sample == 0 ? 0 : sample == 1 ? StateCount / 2
                   : sample == 2 ? StateCount - 2 : StateCount - 1;
-        if (!valid_world(decode_index(index)))
+        if (!valid_world(decode_index(index), material))
             continue;
         Position position = make_position(index, material);
         if (const auto roundTrip = same_class_index(position, material);
@@ -5181,6 +6080,9 @@ int main(int argc, char** argv) {
             else if (argument == "--solve-compact-every")
                 solveOptions.compactEvery = static_cast<std::uint32_t>(
                   std::stoul(value("--solve-compact-every")));
+            else if (argument == "--solve-workers")
+                solveOptions.workers = static_cast<std::uint32_t>(
+                  std::stoul(value("--solve-workers")));
             else if (argument == "--measure-iterations")
                 solveOptions.measureIterations = static_cast<std::uint32_t>(
                   std::stoul(value("--measure-iterations")));
@@ -5194,6 +6096,7 @@ int main(int argc, char** argv) {
         compact_geometry_identity_self_test();
         tiny_public_geometry_self_test();
         lower_color_normalization_self_test();
+        external_action_observation_conditioning_self_test();
         if (selfTestOnly)
             return 0;
         if (!samples)

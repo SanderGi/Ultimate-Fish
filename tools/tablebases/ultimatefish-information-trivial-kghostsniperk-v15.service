@@ -1,0 +1,14 @@
+[Unit]
+Description=Ultimate Fish same-side Sniper/Ghost information-trivial v2 audit
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ultimatefish-audit-kghostsniperk-information-trivial-v2.sh
+AllowedCPUs=16-31,46-48,51-61
+CPUQuota=3000%
+MemoryMax=17179869184
+ReadWritePaths=/mnt/ultimatefish/information-trivial-v3/sniper-same-v15
+StandardOutput=journal
+StandardError=journal

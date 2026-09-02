@@ -212,6 +212,10 @@ class Position {
                                                 std::uint32_t substate);
     [[nodiscard]] std::optional<std::uint32_t> tablebase_substate(
       int id, PieceType logicalType) const;
+    [[nodiscard]] bool apply_tablebase_angel_substate(
+      int angel, int other, std::uint32_t substate);
+    [[nodiscard]] std::optional<std::uint32_t> tablebase_angel_substate(
+      int angel, int other) const;
     [[nodiscard]] bool has_forced_action() const;
     [[nodiscard]] int en_passant_square() const { return enPassantSquare_; }
     [[nodiscard]] int en_passant_victim() const { return enPassantVictim_; }

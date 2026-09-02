@@ -1,0 +1,24 @@
+[Unit]
+Description=Verify opposed Angel/Ghost information tablebase against corrected concrete source
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/mnt/ultimatefish/ultimatefish-verify-kghostkangel-current-source-v23.sh
+AllowedCPUs=4-31
+CPUQuota=2800%
+MemoryMax=137438953472
+OOMPolicy=stop
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+Restart=no
+TimeoutStartSec=infinity
+StandardOutput=journal
+StandardError=journal
+ReadWritePaths=/mnt/ultimatefish/ghost-parallel-v7
+
+[Install]
+WantedBy=multi-user.target

@@ -2481,6 +2481,23 @@ void test_exact_tablebase_probing() {
     expect(white && black && black->wdl == white->wdl && black->dtw == white->dtw,
            "tablebase color canonicalization preserves exact WDL and DTW");
 
+    Position whiteSniper;
+    moved(whiteSniper, PieceType::King, Color::White, "b1");
+    moved(whiteSniper, PieceType::Sniper, Color::White, "b2");
+    moved(whiteSniper, PieceType::King, Color::Black, "a8");
+    whiteSniper.set_side_to_move(Color::Black);
+    const auto whiteSniperResult = TablebaseProbe::probe(whiteSniper);
+    Position blackSniper;
+    moved(blackSniper, PieceType::King, Color::Black, "b10");
+    moved(blackSniper, PieceType::Sniper, Color::Black, "b9");
+    moved(blackSniper, PieceType::King, Color::White, "a3");
+    blackSniper.set_side_to_move(Color::White);
+    const auto blackSniperResult = TablebaseProbe::probe(blackSniper);
+    expect(whiteSniperResult && blackSniperResult &&
+             blackSniperResult->wdl == whiteSniperResult->wdl &&
+             blackSniperResult->dtw == whiteSniperResult->dtw,
+           "directional singleton table probes reverse ranks when colors swap");
+
     Position unmovedBishopDragon;
     std::string unmovedBishopDragonError;
     expect(unmovedBishopDragon.set_upn(
@@ -2557,7 +2574,7 @@ void test_exact_tablebase_probing() {
     }
 
     for (const PieceType type : {PieceType::Pawn, PieceType::Ghost,
-                                 PieceType::Devil, PieceType::Sniper,
+                                 PieceType::Sniper,
                                  PieceType::Prince, PieceType::Penguin}) {
         Position stateful;
         moved(stateful, PieceType::King, Color::White, "a1");
@@ -2567,12 +2584,21 @@ void test_exact_tablebase_probing() {
             stateful.piece(extra).moved = false;
         else if (type == PieceType::Ghost)
             stateful.piece(extra).visible = false;
-        else if (type == PieceType::Devil || type == PieceType::Sniper)
+        else if (type == PieceType::Sniper)
             stateful.piece(extra).cooldown = 3;
         expect(TablebaseProbe::probe(stateful).has_value(),
                std::string("stateful K+") + std::string(Position::type_name(type)) +
                  "+K tablebase is probeable");
     }
+
+    Position devilWithoutStatefulSidecar;
+    moved(devilWithoutStatefulSidecar, PieceType::King, Color::White, "a1");
+    const int devil = moved(devilWithoutStatefulSidecar, PieceType::Devil,
+                            Color::White, "c3");
+    moved(devilWithoutStatefulSidecar, PieceType::King, Color::Black, "h10");
+    devilWithoutStatefulSidecar.piece(devil).cooldown = 3;
+    expect(!TablebaseProbe::probe(devilWithoutStatefulSidecar),
+           "minion-free Devil entry projection cannot replace the stateful sidecar");
 
     Position fabricatedPenguinCooldown;
     moved(fabricatedPenguinCooldown, PieceType::King, Color::White, "a1");
@@ -3596,6 +3622,13 @@ void test_native_insufficient_material() {
     expect(devil.team_has_sufficient_material(Color::White) &&
              devil.is_checkmate_possible() && !devil.game_over(),
            "Devil is sufficient because it can spawn mating Minions");
+
+    Position spawnedMinion = bare;
+    spawnedMinion.add_piece(PieceType::Minion, Color::White,
+                            Position::square_from_name("a8"));
+    expect(spawnedMinion.team_has_sufficient_material(Color::White) &&
+             spawnedMinion.is_checkmate_possible() && !spawnedMinion.game_over(),
+           "a spawned Minion remains sufficient after its Devil is captured");
 }
 
 void test_native_terminal_reasons() {

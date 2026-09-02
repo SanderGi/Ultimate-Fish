@@ -1,0 +1,20 @@
+{
+  "schema": "ultimate-devil-shard-split-v3",
+  "instance_id": "i-0b4523116b2f7765c",
+  "base_plan_sha256": "227190f236360e8d0e43e3f8a1362502267de447ae0deb4a167a5ba8bbe172f1",
+  "binary_sha256": "90e33f98201f43a2ba1f78d836395e7cb22d11ca72264dc385099c85bb5052e7",
+  "runner_sha256": "232ba3b2860855fb057137eeeba5098d46b40a9793d9ba78569acfe22d2b4e4f",
+  "source_worker_modulus": 133,
+  "campaign_modulus": 4,
+  "campaign_residue": 1,
+  "shard_lane_modulus": 2,
+  "receipt_prefix": "runs/devil-closure-v6/repartition-shard-split-v3",
+  "workers": [
+    {"source_worker": 29, "prior_hashes": ["2847dd6a9bf662e4b0d0870fc3f9b335c0f5e82eb66d12041e26d8f76795afba", "a1030f2f1d55d096ad967fdbcffb1e277ed1d912f9dc793c63e9bc46f147036f", "e4afad4f127c2617c364859f47ecb21a5c32bf0180083b2249e9eb369afb86bd"], "lane_cpus": {"0": 0, "1": 13}},
+    {"source_worker": 30, "prior_hashes": ["95113ae8dd905f0eb31c4cc6cd21cab20e4f9677b9a95556ea0f40f3247ddd61", "53689ab5157b9cb0cab31ac3c6b82bbe9330d41b7736b4b5200bcd483d7a17b1", "577cf0d1166d6e603b48b6106f8cfe5f21cacd242da8daf5bf2bc124fc264d91"], "lane_cpus": {"0": 1, "1": 14}},
+    {"source_worker": 31, "prior_hashes": ["c5eb50d3332b0b5a54641646b09554a80ed2536dfb3678046db041c6e407d9ad", "23d7a279cc7805f25b234872f151c3db304e4f83c2f0be6fadc66dde548f3a06", "477354be3c29846d31dc162a0d384608e92d524f0321d0c7596351eb82da8595"], "lane_cpus": {"0": 2, "1": 15}},
+    {"source_worker": 32, "prior_hashes": ["4a022bcf4946b7900ad98ceaa374a0c2ed3dfd80a606c13605eccd4ab0f94206", "5a5809011095bc6a2f8511c803c726f10c75b6db2609060cf04e2a1d85a81b0e", "1cb1d4c28562c09910db868284761576cb3d5cb6cbd93eab52f3dee692a3c2eb"], "lane_cpus": {"0": 5, "1": 16}},
+    {"source_worker": 33, "prior_hashes": ["88fab934c5cca9be662f78898545b470ee40659e27ee7297f1be36b91b69de97", "59638a4d085140adc325e1f8212202bb5e6b88f193378d419e4e2d01ba9bfe99", "af0ab31f0a298d37c25a5c6cb02f5c3ddd3d011a921482b7012bc0d5d336889d"], "lane_cpus": {"0": 6, "1": 17}},
+    {"source_worker": 34, "prior_hashes": ["eb2531eb8245b5fbe080ec317687a9d95caf3d0a0ea531d7237cbcdb13ee8f89", "372f57f51dc561a284da2dfcd244a423462f14d98ed7c137b8d408e8d4b1b86f", "40200337086c0a1d59ce64d231da017560b7ed9ce3f9bf8239504bd5ba29be7b"], "lane_cpus": {"0": 7, "1": 18}}
+  ]
+}

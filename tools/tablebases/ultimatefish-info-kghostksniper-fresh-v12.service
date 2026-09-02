@@ -1,0 +1,15 @@
+[Unit]
+Description=Ultimate Fish opposed Sniper/Ghost fresh fixed point over retained transitions v12
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/mnt/ultimatefish/opposed-sniper-v12/solve_ultimate_opposed_sniper_v12.sh
+AllowedCPUs=32-63
+MemoryMax=240G
+LimitNOFILE=1048576
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

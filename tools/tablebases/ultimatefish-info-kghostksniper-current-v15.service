@@ -1,0 +1,14 @@
+[Unit]
+Description=Ultimate Fish opposed Sniper/Ghost current-oracle certification v15
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/mnt/ultimatefish/opposed-sniper-v12/ultimatefish-certify-kghostksniper-current-v15.sh
+AllowedCPUs=32-63
+CPUQuota=3200%
+MemoryMax=343597383680
+ReadWritePaths=/mnt/ultimatefish/opposed-sniper-v12
+StandardOutput=journal
+StandardError=journal

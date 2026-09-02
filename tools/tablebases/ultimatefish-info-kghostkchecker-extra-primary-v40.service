@@ -1,0 +1,16 @@
+[Unit]
+Description=Ultimate Fish certifying opposed Checker/Ghost extra-primary v40
+After=network-online.target
+
+[Service]
+Type=simple
+Environment=ULTIMATE_GHOST_SOLVE_WORKERS=32
+ExecStart=/opt/ultimatefish-checker-extra-primary-v40/ultimatefish-certify-kghostkchecker-extra-primary-v40.sh
+CPUAffinity=0-31
+MemoryMax=402653184000
+OOMPolicy=stop
+Restart=no
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

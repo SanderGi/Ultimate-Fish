@@ -24,6 +24,12 @@ README = ROOT / "tablebases/README.md"
 PLOT = ROOT / "tools/tablebases/plot_ultimate_tablebases.py"
 
 ARBITRARY_FORMATS = {
+    # Ghost/Ghost uses a correlated unordered-pair belief catalog rather than
+    # the ordinary single-hidden-piece UFGD layout.  The permanent UFGG1
+    # header is 928 packed bytes: payloadBytes is at 152, source/model begin at
+    # 160/224, and the payload digest/semantics fields begin at 800/864.
+    b"UFGG1\0\0\0": (928, 152, 160, 224, 800, 864,
+                         b"correlated-unordered-pair-public-view-v1", None),
     b"UFGX2\0\0\0": (988, 148, 156, 220, 860, 924,
                          b"fresh-maximal-public-view-v2:reciprocal-bishop-ghost", None),
     b"UFGD1\0\0\0": (1248, 152, 160, 288, 1120, 1184,
@@ -60,28 +66,35 @@ SYMBOLIC_FIXED_RE = re.compile(
 def validate_arbitrary(path: Path, source: str, model: str,
                        opposing: bool) -> None:
     """Verify a restored arbitrary-belief sidecar without local model drift."""
-    payload = path.read_bytes()
-    format_ = ARBITRARY_FORMATS.get(payload[:8])
+    with path.open("rb") as stream:
+        prefix = stream.read(max(value[0] for value in ARBITRARY_FORMATS.values()))
+    format_ = ARBITRARY_FORMATS.get(prefix[:8])
     if format_ is None:
         raise ValueError("unsupported arbitrary sidecar format")
     (header_bytes, payload_offset, source_offset, model_offset,
      payload_sha_offset, semantics_offset, semantics,
      orientation_offset) = format_
-    if (len(payload) < header_bytes or
-            struct.unpack_from("<I", payload, 12)[0] != header_bytes or
-            payload[source_offset:source_offset + 64].decode() != source or
-            payload[model_offset:model_offset + 64].decode() != model or
-            payload[semantics_offset:semantics_offset + 64].rstrip(b"\0") !=
+    size = path.stat().st_size
+    header = prefix[:header_bytes]
+    if (len(header) < header_bytes or
+            struct.unpack_from("<I", header, 12)[0] != header_bytes or
+            header[source_offset:source_offset + 64].decode() != source or
+            header[model_offset:model_offset + 64].decode() != model or
+            header[semantics_offset:semantics_offset + 64].rstrip(b"\0") !=
                 semantics or
             (orientation_offset is not None and
-             struct.unpack_from("<I", payload, orientation_offset)[0] !=
+             struct.unpack_from("<I", header, orientation_offset)[0] !=
                 int(opposing))):
         raise ValueError("arbitrary sidecar header binding residual")
-    payload_bytes = struct.unpack_from("<Q", payload, payload_offset)[0]
-    body = payload[header_bytes:]
-    if (len(body) != payload_bytes or
-            hashlib.sha256(body).hexdigest().encode() !=
-                payload[payload_sha_offset:payload_sha_offset + 64]):
+    payload_bytes = struct.unpack_from("<Q", header, payload_offset)[0]
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        stream.seek(header_bytes)
+        for block in iter(lambda: stream.read(4 << 20), b""):
+            digest.update(block)
+    if (size - header_bytes != payload_bytes or
+            digest.hexdigest().encode() !=
+                header[payload_sha_offset:payload_sha_offset + 64]):
         raise ValueError("arbitrary sidecar payload residual")
 
 

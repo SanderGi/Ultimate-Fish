@@ -35,17 +35,150 @@ test("material names describe both armies", () => {
     materialName("kcopycatkangel.uftb"),
     "King + CopyCat vs King + Angel",
   );
+  assert.equal(materialName("kdevilk.ufds"), "King + Devil vs King");
+});
+
+test("stateful Devil partitions install and delete as one verified class", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "ultimatefish-devil-tablebase-"));
+  const a1 = Buffer.from("certified stateful Devil a1 partition");
+  const d3 = Buffer.from("certified stateful Devil d3 partition");
+  const payloads = new Map([
+    ["kdevilk-a1.ufds", a1],
+    ["kdevilk-d3.ufds", d3],
+  ]);
+  let changed = 0;
+  const fetchImpl = async (url) => {
+    if (String(url).includes("/api/datasets/"))
+      return Response.json([
+        catalogFile("kdevilk-a1.ufds", a1),
+        catalogFile("kdevilk-d3.ufds", d3),
+      ]);
+    const match = String(url).match(/\/tablebases\/([^?]+)/);
+    const payload = payloads.get(decodeURIComponent(match?.[1] ?? ""));
+    return payload ? new Response(payload) : new Response("missing", { status: 404 });
+  };
+
+  try {
+    await writeFile(path.join(directory, "kdevilk-a1.ufds"), a1);
+    const manager = createTablebaseManager({
+      directory,
+      fetchImpl,
+      onFilesChanged: () => { changed += 1; },
+    });
+    let inventory = await manager.inventory();
+    assert.equal(inventory.entries.length, 1);
+    assert.deepEqual(
+      {
+        filename: inventory.entries[0].filename,
+        displayName: inventory.entries[0].displayName,
+        installed: inventory.entries[0].installed,
+        partitionCount: inventory.entries[0].partitionCount,
+        sidecarCount: inventory.entries[0].sidecarCount,
+      },
+      {
+        filename: "kdevilk.ufds",
+        displayName: "King + Devil vs King",
+        installed: false,
+        partitionCount: 2,
+        sidecarCount: 0,
+      },
+    );
+
+    await manager.startDownload("kdevilk.ufds");
+    assert.equal((await manager.waitForDownload("kdevilk.ufds")).status, "complete");
+    inventory = await manager.inventory();
+    assert.equal(inventory.entries[0].installed, true);
+    assert.deepEqual(await readFile(path.join(directory, "kdevilk-a1.ufds")), a1);
+    assert.deepEqual(await readFile(path.join(directory, "kdevilk-d3.ufds")), d3);
+    assert.equal(changed, 1);
+
+    const deleted = await manager.deleteTablebase("kdevilk.ufds");
+    assert.deepEqual(deleted.deleted.sort(), ["kdevilk-a1.ufds", "kdevilk-d3.ufds"]);
+    assert.equal(changed, 2);
+    await assert.rejects(manager.startDownload("kdevilk-a4.ufds"), /not available/);
+    await assert.rejects(manager.startDownload("../kdevilk.ufds"), /Invalid/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("oversized Devil shards reconstruct one canonical verified UFDS", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "ultimatefish-devil-shards-"));
+  const a1 = Buffer.from("direct a1 partition");
+  const first = Buffer.from("certified c2 first half ");
+  const second = Buffer.from("and certified c2 second half");
+  const c2 = Buffer.concat([first, second]);
+  const manifest = Buffer.from(`${JSON.stringify({
+    schema: "ultimate-fish-ufds-shard-manifest-v1",
+    filename: "kdevilk-c2.ufds",
+    bytes: c2.length,
+    sha256: sha256(c2),
+    square: 10,
+    parts: [
+      { filename: "kdevilk-c2-part000.ufdsp", bytes: first.length, sha256: sha256(first) },
+      { filename: "kdevilk-c2-part001.ufdsp", bytes: second.length, sha256: sha256(second) },
+    ],
+  }, null, 2)}\n`);
+  const payloads = new Map([
+    ["kdevilk-a1.ufds", a1],
+    ["kdevilk-c2.ufdsm", manifest],
+    ["kdevilk-c2-part000.ufdsp", first],
+    ["kdevilk-c2-part001.ufdsp", second],
+  ]);
+  const fetchImpl = async (url) => {
+    if (String(url).includes("/api/datasets/"))
+      return Response.json([...payloads].map(([filename, contents]) =>
+        catalogFile(filename, contents)));
+    const match = String(url).match(/\/tablebases\/([^?]+)/);
+    const payload = payloads.get(decodeURIComponent(match?.[1] ?? ""));
+    return payload ? new Response(payload) : new Response("missing", { status: 404 });
+  };
+
+  try {
+    const manager = createTablebaseManager({ directory, fetchImpl });
+    const before = await manager.inventory();
+    assert.equal(before.entries[0].partitionCount, 2);
+    assert.equal(before.entries[0].sizeBytes, a1.length + c2.length);
+    await manager.startDownload("kdevilk.ufds");
+    assert.equal((await manager.waitForDownload("kdevilk.ufds")).status, "complete");
+    assert.deepEqual(await readFile(path.join(directory, "kdevilk-a1.ufds")), a1);
+    assert.deepEqual(await readFile(path.join(directory, "kdevilk-c2.ufds")), c2);
+    await assert.rejects(access(path.join(directory, "kdevilk-c2-part000.ufdsp")));
+    await assert.rejects(access(path.join(directory, "kdevilk-c2.ufdsm")));
+    assert.equal((await manager.inventory()).entries[0].installed, true);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test("the first configured directory is managed", () => {
   assert.equal(
-    configuredTablebaseDirectory("/work/ui", "/one/file.uftb:/two/tables"),
+    configuredTablebaseDirectory(
+      "/work/ui", "/one/file.uftb:/one/kdevilk-a1.ufds:/two/tables"),
     "/two/tables",
   );
   assert.throws(
-    () => configuredTablebaseDirectory("/work/ui", "/one/file.uftb"),
+    () => configuredTablebaseDirectory(
+      "/work/ui", "/one/file.uftb:/one/kdevilk-a1.ufds"),
     /must include a directory/,
   );
+});
+
+test("catalog entries without an authenticated LFS digest fail closed", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "ultimatefish-no-lfs-hash-"));
+  try {
+    const manager = createTablebaseManager({
+      directory,
+      fetchImpl: async () => Response.json([{
+        type: "file",
+        path: "tablebases/kqk.uftb",
+        size: 123,
+      }]),
+    });
+    await assert.rejects(manager.fetchCatalog(), /lacks a valid LFS SHA-256/);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test("environment tokens override Hugging Face CLI credentials", async () => {

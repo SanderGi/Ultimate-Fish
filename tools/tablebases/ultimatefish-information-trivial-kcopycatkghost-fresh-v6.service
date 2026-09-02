@@ -1,0 +1,17 @@
+[Unit]
+Description=Ultimate Fish Copycat/Ghost information-trivial v2 audit
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ultimatefish-audit-kcopycatkghost-information-trivial-v2.sh
+AllowedCPUs=22-30
+CPUQuota=900%
+MemoryMax=17179869184
+TasksMax=64
+LimitNOFILE=65536
+Restart=no
+TimeoutStartSec=infinity
+StandardOutput=journal
+StandardError=journal

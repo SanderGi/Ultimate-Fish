@@ -1,0 +1,12 @@
+[Unit]
+Description=Merge and verify the completed lone-Devil fixed-square campaign
+After=network-online.target ultimatefish-devil-spawned-v28-square-2.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/mnt/ultimatefish/devil-finalize-v1/finalize.sh
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6
+

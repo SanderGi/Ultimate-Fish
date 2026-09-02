@@ -1,0 +1,15 @@
+[Unit]
+Description=Ultimate Fish opposed Bomb/Ghost 30-worker checkpoint-13 solve v16
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/mnt/ultimatefish/bomb-solve-v16-source/ultimatefish-resume-kbombkghost-30w-v16.sh
+AllowedCPUs=0-15,32-45
+MemoryMax=180G
+LimitNOFILE=1048576
+Restart=no
+
+[Install]
+WantedBy=multi-user.target

@@ -58,6 +58,7 @@ struct Arguments {
     std::uint32_t rawBegin = 0;
     std::uint32_t rawCount = 0;
     std::uint32_t iterations = 0;
+    std::uint32_t workers = 1;
     std::uint32_t compactEvery = 4;
     bool requireComplete = true;
     PairRobdd::Limits bdd;
@@ -152,6 +153,9 @@ void set_command(Arguments& arguments, Arguments::Command command) {
         else if (option == "--compact-every")
             result.compactEvery = static_cast<std::uint32_t>(number(
               value(index, count, values, option.c_str()), "compact interval"));
+        else if (option == "--workers")
+            result.workers = static_cast<std::uint32_t>(number(
+              value(index, count, values, option.c_str()), "worker count"));
         else if (option == "--bdd-max-nodes")
             result.bdd.maxNodes = static_cast<std::uint32_t>(number(
               value(index, count, values, option.c_str()), "BDD nodes"));
@@ -198,6 +202,8 @@ void set_command(Arguments& arguments, Arguments::Command command) {
         throw std::invalid_argument("--merge-transitions needs --shard inputs");
     if (result.command == Arguments::Command::Measure && !result.iterations)
         throw std::invalid_argument("--measure must be positive");
+    if (!result.workers)
+        throw std::invalid_argument("--workers must be positive");
     result.resources.maxBddNodes = result.bdd.maxNodes;
     return result;
 }
@@ -219,6 +225,7 @@ void set_command(Arguments& arguments, Arguments::Command command) {
     result.lowerGhostSidecarSha256 = arguments.lowerSidecarSha;
     result.bdd = arguments.bdd;
     result.resources = arguments.resources;
+    result.workers = arguments.workers;
     result.compactEvery = arguments.compactEvery;
     result.measureIterations = arguments.iterations;
     return result;

@@ -1,0 +1,7 @@
+[Unit]
+Description=Ultimate Fish certification sprint i0b CPU handoff
+After=ultimatefish-certification-sprint-watch.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/ultimatefish-certification-sprint/cpu-handoff.sh

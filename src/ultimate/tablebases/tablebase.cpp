@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cerrno>
 #include <chrono>
 #include <cstdlib>
 #include <cstdio>
@@ -25,11 +26,14 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <numeric>
+#include <queue>
 #include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <sys/mman.h>
+#include <sys/stat.h>
 #include <thread>
 #include <tuple>
 #include <type_traits>
@@ -85,6 +89,7 @@ constexpr std::uint64_t AngelGraphV1Tag = 0x314c45474e414655ULL;
 constexpr std::uint64_t AngelGiantGraphV1Tag = 0x314741474e414655ULL;
 constexpr std::uint64_t LinkedCopycatPairV1Tag = 0x314b4e4c43434655ULL;
 constexpr std::uint64_t AngelCopycatGraphV1Tag = 0x3152504343414655ULL;
+constexpr std::uint64_t SpawnedDevilRootV1Tag = 0x315256444e505355ULL;
 
 std::size_t packed_header_size(std::uint32_t version) {
     return 40 + (version >= 5 ? 8 : 0) + (version >= 6 ? 8 : 0) +
@@ -443,6 +448,1386 @@ class MappedArray {
     std::size_t bytes_ = 0;
     T* data_ = nullptr;
 };
+
+// A named, restartable mapping used by the sparse Devil closure.  MappedArray
+// intentionally truncates ordinary scratch on every construction; the Devil
+// index instead commits complete BFS layers and reopens those exact bytes.
+template<typename T>
+class PersistentMappedArray {
+   public:
+    PersistentMappedArray(const std::string& path, std::uint64_t count,
+                          bool create) : path_(path), count_(count) {
+        if (!count || count > std::numeric_limits<std::size_t>::max() / sizeof(T))
+            throw std::runtime_error("invalid persistent Devil array extent");
+        bytes_ = static_cast<std::size_t>(count) * sizeof(T);
+        fd_ = ::open(path.c_str(), O_RDWR | O_CREAT | (create ? O_TRUNC : 0), 0600);
+        if (fd_ == -1)
+            throw std::runtime_error("cannot open persistent Devil array " + path);
+        struct stat status {};
+        if (::fstat(fd_, &status) != 0 ||
+            (!create && static_cast<std::uint64_t>(status.st_size) > bytes_))
+            throw std::runtime_error("persistent Devil array extent residual " + path);
+        if ((create || static_cast<std::uint64_t>(status.st_size) < bytes_) &&
+            ::ftruncate(fd_, static_cast<off_t>(bytes_)) != 0)
+            throw std::runtime_error("cannot size persistent Devil array " + path);
+        void* mapping = ::mmap(nullptr, bytes_, PROT_READ | PROT_WRITE,
+                               MAP_SHARED, fd_, 0);
+        if (mapping == MAP_FAILED)
+            throw std::runtime_error("cannot map persistent Devil array " + path);
+        data_ = static_cast<T*>(mapping);
+    }
+    PersistentMappedArray(const PersistentMappedArray&) = delete;
+    PersistentMappedArray& operator=(const PersistentMappedArray&) = delete;
+    ~PersistentMappedArray() {
+        if (data_)
+            ::munmap(data_, bytes_);
+        if (fd_ != -1)
+            ::close(fd_);
+    }
+    T& operator[](std::uint64_t index) { return data_[index]; }
+    const T& operator[](std::uint64_t index) const { return data_[index]; }
+    T* data() { return data_; }
+    std::uint64_t count() const { return count_; }
+    void advise_sequential() const {
+        advise(MADV_SEQUENTIAL, "sequential");
+    }
+    void advise_random() const {
+        advise(MADV_RANDOM, "random");
+    }
+    void sync_prefix(std::uint64_t count) const {
+        if (count > count_)
+            throw std::runtime_error("persistent Devil sync extent residual " + path_);
+        const std::size_t bytes = static_cast<std::size_t>(count) * sizeof(T);
+        if ((bytes && ::msync(data_, bytes, MS_SYNC) != 0) || ::fsync(fd_) != 0)
+            throw std::runtime_error("cannot sync persistent Devil array " + path_);
+    }
+   private:
+    void advise(int mappingAdvice, const char* description) const {
+        if (::madvise(data_, bytes_, mappingAdvice) != 0)
+            throw std::runtime_error(
+              "cannot set " + std::string(description) +
+              " persistent Devil mapping advice " + path_ + ": " +
+              std::strerror(errno));
+#if defined(__linux__)
+        const int fileAdvice = mappingAdvice == MADV_RANDOM
+          ? POSIX_FADV_RANDOM : POSIX_FADV_SEQUENTIAL;
+        const int error = ::posix_fadvise(fd_, 0, 0, fileAdvice);
+        if (error != 0)
+            throw std::runtime_error(
+              "cannot set " + std::string(description) +
+              " persistent Devil file advice " + path_ + ": " +
+              std::strerror(error));
+#endif
+    }
+    std::string path_;
+    int fd_ = -1;
+    std::uint64_t count_ = 0;
+    std::size_t bytes_ = 0;
+    T* data_ = nullptr;
+};
+
+// Zero-filled, process-lifetime scratch.  The Devil hash slots are rebuilt
+// exactly from the committed key prefix after a restart and therefore must not
+// generate tens of gigabytes of dirty filesystem writeback.
+template<typename T>
+class VolatileMappedArray {
+   public:
+    explicit VolatileMappedArray(std::uint64_t count) : count_(count) {
+        if (!count || count > std::numeric_limits<std::size_t>::max() / sizeof(T))
+            throw std::runtime_error("invalid volatile Devil array extent");
+        bytes_ = static_cast<std::size_t>(count) * sizeof(T);
+        void* mapping = ::mmap(nullptr, bytes_, PROT_READ | PROT_WRITE,
+                               MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        if (mapping == MAP_FAILED)
+            throw std::runtime_error("cannot map volatile Devil array");
+        data_ = static_cast<T*>(mapping);
+    }
+    VolatileMappedArray(const VolatileMappedArray&) = delete;
+    VolatileMappedArray& operator=(const VolatileMappedArray&) = delete;
+    ~VolatileMappedArray() {
+        if (data_)
+            ::munmap(data_, bytes_);
+    }
+    T& operator[](std::uint64_t index) { return data_[index]; }
+    const T& operator[](std::uint64_t index) const { return data_[index]; }
+    std::uint64_t count() const { return count_; }
+
+   private:
+    std::uint64_t count_ = 0;
+    std::size_t bytes_ = 0;
+    T* data_ = nullptr;
+};
+
+// Read-only, restartable proof input.  A retained Devil frontier can contain
+// billions of dense indexes; copying it into an anonymous vector needlessly
+// duplicates the durable file and can push the disposable hash over its
+// cgroup limit.  Keep the first resumed layer file-backed so clean pages are
+// reclaimable, then return to ordinary vectors for newly generated layers.
+template<typename T>
+class ReadOnlyMappedArray {
+   public:
+    ReadOnlyMappedArray(const std::string& path, std::uint64_t count)
+      : path_(path), count_(count) {
+        if (!count || count > std::numeric_limits<std::size_t>::max() / sizeof(T))
+            throw std::runtime_error("invalid read-only Devil array extent");
+        bytes_ = static_cast<std::size_t>(count) * sizeof(T);
+        fd_ = ::open(path.c_str(), O_RDONLY);
+        struct stat status {};
+        if (fd_ == -1)
+            throw std::runtime_error("cannot open read-only Devil array " + path_);
+        if (::fstat(fd_, &status) != 0 ||
+            static_cast<std::uint64_t>(status.st_size) != bytes_) {
+            ::close(fd_);
+            fd_ = -1;
+            throw std::runtime_error("read-only Devil array extent residual " + path_);
+        }
+        void* mapping = ::mmap(nullptr, bytes_, PROT_READ, MAP_SHARED, fd_, 0);
+        if (mapping == MAP_FAILED) {
+            ::close(fd_);
+            fd_ = -1;
+            throw std::runtime_error("cannot map read-only Devil array " + path_);
+        }
+        data_ = static_cast<const T*>(mapping);
+        if (::madvise(const_cast<T*>(data_), bytes_, MADV_SEQUENTIAL) != 0) {
+            ::munmap(const_cast<T*>(data_), bytes_);
+            data_ = nullptr;
+            ::close(fd_);
+            fd_ = -1;
+            throw std::runtime_error("cannot advise read-only Devil array " + path_);
+        }
+#if defined(__linux__)
+        const int error = ::posix_fadvise(fd_, 0, 0, POSIX_FADV_SEQUENTIAL);
+        if (error != 0) {
+            ::munmap(const_cast<T*>(data_), bytes_);
+            data_ = nullptr;
+            ::close(fd_);
+            fd_ = -1;
+            throw std::runtime_error("cannot advise read-only Devil file " + path_);
+        }
+#endif
+    }
+    ReadOnlyMappedArray(const ReadOnlyMappedArray&) = delete;
+    ReadOnlyMappedArray& operator=(const ReadOnlyMappedArray&) = delete;
+    ~ReadOnlyMappedArray() {
+        if (data_)
+            ::munmap(const_cast<T*>(data_), bytes_);
+        if (fd_ != -1)
+            ::close(fd_);
+    }
+    const T& operator[](std::uint64_t index) const { return data_[index]; }
+    std::uint64_t count() const { return count_; }
+
+   private:
+    std::string path_;
+    int fd_ = -1;
+    std::uint64_t count_ = 0;
+    std::size_t bytes_ = 0;
+    const T* data_ = nullptr;
+};
+
+struct DevilReverseRecord {
+    std::uint64_t child = 0;
+    std::uint64_t packedParent = 0;
+};
+
+static_assert(sizeof(DevilReverseRecord) == 16);
+
+constexpr std::uint64_t DevilReverseSameSide = std::uint64_t{1} << 63;
+constexpr std::uint64_t DevilReverseHashOffset = 1469598103934665603ULL;
+constexpr std::uint64_t DevilReverseHashPrime = 1099511628211ULL;
+constexpr std::uint32_t DevilReverseBucketCount = 16;
+
+std::uint64_t devil_reverse_hash(std::uint64_t hash,
+                                 const DevilReverseRecord& record) {
+    const auto* bytes = reinterpret_cast<const std::uint8_t*>(&record);
+    for (std::size_t index = 0; index < sizeof(record); ++index) {
+        hash ^= bytes[index];
+        hash *= DevilReverseHashPrime;
+    }
+    return hash;
+}
+
+void sync_file(const std::string& path) {
+    const int fd = ::open(path.c_str(), O_RDONLY);
+    if (fd == -1)
+        throw std::runtime_error("cannot open Devil reverse checkpoint " + path);
+    const bool failed = ::fsync(fd) != 0;
+    ::close(fd);
+    if (failed)
+        throw std::runtime_error("cannot sync Devil reverse checkpoint " + path);
+}
+
+void sync_directory(const std::string& path) {
+    const int fd = ::open(path.c_str(), O_RDONLY | O_DIRECTORY);
+    if (fd == -1)
+        throw std::runtime_error("cannot open Devil reverse checkpoint directory " + path);
+    const bool failed = ::fsync(fd) != 0;
+    ::close(fd);
+    if (failed)
+        throw std::runtime_error("cannot sync Devil reverse checkpoint directory " + path);
+}
+
+struct SpawnedDevilCheckpoint {
+    std::uint32_t version = 0;
+    std::uint32_t square = 0;
+    std::uint64_t limit = 0;
+    std::uint64_t size = 0;
+    std::uint64_t frontier = 0;
+    std::uint32_t ply = 0;
+    bool operator==(const SpawnedDevilCheckpoint& other) const {
+        return version == other.version && square == other.square &&
+               limit == other.limit && size == other.size &&
+               frontier == other.frontier && ply == other.ply;
+    }
+};
+
+SpawnedDevilCheckpoint read_spawned_devil_checkpoint(
+  const std::string& path, std::uint32_t expectedVersion) {
+    std::ifstream stream(path, std::ios::binary);
+    std::array<char, 8> magic{};
+    SpawnedDevilCheckpoint value;
+    stream.read(magic.data(), magic.size());
+    stream.read(reinterpret_cast<char*>(&value.version), sizeof(value.version));
+    stream.read(reinterpret_cast<char*>(&value.square), sizeof(value.square));
+    stream.read(reinterpret_cast<char*>(&value.limit), sizeof(value.limit));
+    stream.read(reinterpret_cast<char*>(&value.size), sizeof(value.size));
+    stream.read(reinterpret_cast<char*>(&value.frontier), sizeof(value.frontier));
+    stream.read(reinterpret_cast<char*>(&value.ply), sizeof(value.ply));
+    const std::array<char, 8> expected{{'U','F','D','V','C','P','1','\0'}};
+    if (!stream || stream.peek() != std::ifstream::traits_type::eof() ||
+        magic != expected || (expectedVersion && value.version != expectedVersion) ||
+        !value.limit ||
+        value.size > value.limit || value.frontier > value.size ||
+        value.square >= Position::BoardSquares)
+        throw std::runtime_error("spawned-only Devil migration metadata residual " +
+                                 path);
+    return value;
+}
+
+void write_spawned_devil_checkpoint(const std::string& path,
+                                    const SpawnedDevilCheckpoint& value) {
+    std::ofstream stream(path, std::ios::binary | std::ios::trunc);
+    const std::array<char, 8> magic{{'U','F','D','V','C','P','1','\0'}};
+    stream.write(magic.data(), magic.size());
+    stream.write(reinterpret_cast<const char*>(&value.version),
+                 sizeof(value.version));
+    stream.write(reinterpret_cast<const char*>(&value.square),
+                 sizeof(value.square));
+    stream.write(reinterpret_cast<const char*>(&value.limit), sizeof(value.limit));
+    stream.write(reinterpret_cast<const char*>(&value.size), sizeof(value.size));
+    stream.write(reinterpret_cast<const char*>(&value.frontier),
+                 sizeof(value.frontier));
+    stream.write(reinterpret_cast<const char*>(&value.ply), sizeof(value.ply));
+    if (!stream)
+        throw std::runtime_error("cannot write spawned-only Devil migration metadata");
+}
+
+void read_exact_at(int fd, void* data, std::size_t bytes, std::uint64_t offset,
+                   const std::string& label) {
+    auto* cursor = static_cast<std::uint8_t*>(data);
+    while (bytes) {
+        const ssize_t count = ::pread(fd, cursor, bytes, static_cast<off_t>(offset));
+        if (count < 0 && errno == EINTR)
+            continue;
+        if (count <= 0)
+            throw std::runtime_error("short spawned-only Devil migration read " + label);
+        cursor += count;
+        bytes -= static_cast<std::size_t>(count);
+        offset += static_cast<std::uint64_t>(count);
+    }
+}
+
+void write_exact_at(int fd, const void* data, std::size_t bytes,
+                    std::uint64_t offset, const std::string& label) {
+    const auto* cursor = static_cast<const std::uint8_t*>(data);
+    while (bytes) {
+        const ssize_t count = ::pwrite(fd, cursor, bytes, static_cast<off_t>(offset));
+        if (count < 0 && errno == EINTR)
+            continue;
+        if (count <= 0)
+            throw std::runtime_error("short spawned-only Devil migration write " + label);
+        cursor += count;
+        bytes -= static_cast<std::size_t>(count);
+        offset += static_cast<std::uint64_t>(count);
+    }
+}
+
+constexpr std::uint64_t choose_devil(unsigned n, unsigned k) {
+    if (k > n)
+        return 0;
+    if (k > n - k)
+        k = n - k;
+    std::uint64_t value = 1;
+    for (unsigned item = 1; item <= k; ++item)
+        value = value * (n - k + item) / item;
+    return value;
+}
+
+constexpr std::uint64_t DevilMinionCodeCount =
+  choose_devil(80, 0) + choose_devil(80, 1) + choose_devil(80, 2) +
+  choose_devil(80, 3) + choose_devil(80, 4) + choose_devil(80, 5);
+static_assert(DevilMinionCodeCount < (std::uint64_t{1} << 25));
+
+std::uint64_t encode_devil_minions(std::uint64_t low, std::uint16_t high) {
+    const unsigned count = static_cast<unsigned>(__builtin_popcountll(low) +
+                                                  __builtin_popcount(high));
+    if (count > 5)
+        throw std::runtime_error("spawned-only Devil exceeds five Minions");
+    std::uint64_t rank = 0;
+    for (unsigned smaller = 0; smaller < count; ++smaller)
+        rank += choose_devil(80, smaller);
+    unsigned ordinal = 1;
+    for (unsigned square = 0; square < 80; ++square) {
+        const bool set = square < 64 ? ((low >> square) & 1ULL)
+                                     : ((high >> (square - 64)) & 1U);
+        if (set)
+            rank += choose_devil(square, ordinal++);
+    }
+    if (rank >= DevilMinionCodeCount)
+        throw std::runtime_error("spawned-only Devil Minion rank residual");
+    return rank;
+}
+
+std::pair<std::uint64_t, std::uint16_t> decode_devil_minions(
+  std::uint64_t code) {
+    unsigned count = 0;
+    std::uint64_t offset = 0;
+    for (; count <= 5; ++count) {
+        const std::uint64_t next = offset + choose_devil(80, count);
+        if (code < next)
+            break;
+        offset = next;
+    }
+    if (count > 5 || code >= DevilMinionCodeCount)
+        throw std::runtime_error("spawned-only Devil Minion code residual");
+    std::uint64_t rank = code - offset;
+    std::uint64_t low = 0;
+    std::uint16_t high = 0;
+    unsigned maximum = 79;
+    for (unsigned ordinal = count; ordinal; --ordinal) {
+        while (choose_devil(maximum, ordinal) > rank) {
+            if (!maximum)
+                throw std::runtime_error("spawned-only Devil Minion unrank residual");
+            --maximum;
+        }
+        if (maximum < 64)
+            low |= std::uint64_t{1} << maximum;
+        else
+            high |= static_cast<std::uint16_t>(1U << (maximum - 64));
+        rank -= choose_devil(maximum, ordinal);
+        if (maximum)
+            --maximum;
+    }
+    if (rank)
+        throw std::runtime_error("spawned-only Devil Minion rank remainder");
+    return {low, high};
+}
+
+constexpr int LegacySideShift = 16;
+constexpr int LegacyWhiteKingShift = 17;
+constexpr int LegacyBlackKingShift = 24;
+constexpr int LegacyDevilSquareShift = 31;
+constexpr int LegacyDevilCooldownShift = 38;
+constexpr int LegacySecondaryShift = 40;
+constexpr std::uint64_t LegacySquareMask = 0x7fULL;
+constexpr std::uint64_t DevilNoSquare = Position::BoardSquares;
+
+std::uint64_t pack_compact_devil_key(std::uint64_t low, std::uint64_t high,
+                                     unsigned fixedSquare) {
+    if (high >> 47 || fixedSquare >= Position::BoardSquares)
+        throw std::runtime_error("spawned-only Devil legacy high-key residual");
+    const unsigned whiteKing = static_cast<unsigned>(
+      (high >> LegacyWhiteKingShift) & LegacySquareMask);
+    const unsigned blackKing = static_cast<unsigned>(
+      (high >> LegacyBlackKingShift) & LegacySquareMask);
+    const unsigned devilSquare = static_cast<unsigned>(
+      (high >> LegacyDevilSquareShift) & LegacySquareMask);
+    const unsigned secondary = static_cast<unsigned>(
+      (high >> LegacySecondaryShift) & LegacySquareMask);
+    const unsigned cooldown = static_cast<unsigned>(
+      (high >> LegacyDevilCooldownShift) & 3ULL);
+    if (whiteKing >= 80 || blackKing >= 80 || whiteKing == blackKing ||
+        secondary > DevilNoSquare ||
+        (devilSquare != DevilNoSquare && devilSquare != fixedSquare) ||
+        (devilSquare == DevilNoSquare && cooldown))
+        throw std::runtime_error("spawned-only Devil compact field residual");
+    const std::uint64_t minions = encode_devil_minions(
+      low, static_cast<std::uint16_t>(high & 0xffffULL));
+    const unsigned blackIndex = blackKing < whiteKing ? blackKing : blackKing - 1;
+    const std::uint64_t kings = whiteKing * 79ULL + blackIndex;
+    const std::uint64_t side = (high >> LegacySideShift) & 1ULL;
+    const std::uint64_t alive = devilSquare != DevilNoSquare;
+    const std::uint64_t value = minions | (kings << 25) |
+      (static_cast<std::uint64_t>(secondary) << 38) |
+      (static_cast<std::uint64_t>(cooldown) << 45) | (side << 47) |
+      (alive << 48);
+    if (value >> 49)
+        throw std::runtime_error("spawned-only Devil compact key overflow");
+    return value;
+}
+
+std::pair<std::uint64_t, std::uint64_t> unpack_compact_devil_key(
+  std::uint64_t value, unsigned fixedSquare) {
+    if (value >> 49 || fixedSquare >= Position::BoardSquares)
+        throw std::runtime_error("spawned-only Devil compact key residual");
+    auto [low, minionHigh] = decode_devil_minions(
+      value & ((std::uint64_t{1} << 25) - 1));
+    const unsigned kings = static_cast<unsigned>((value >> 25) & 0x1fffULL);
+    const unsigned whiteKing = kings / 79;
+    const unsigned blackIndex = kings % 79;
+    const unsigned blackKing = blackIndex >= whiteKing
+      ? blackIndex + 1 : blackIndex;
+    const unsigned secondary = static_cast<unsigned>((value >> 38) & 0x7fULL);
+    const unsigned cooldown = static_cast<unsigned>((value >> 45) & 3ULL);
+    const unsigned side = static_cast<unsigned>((value >> 47) & 1ULL);
+    const bool alive = ((value >> 48) & 1ULL) != 0;
+    if (whiteKing >= 80 || blackKing >= 80 || secondary > DevilNoSquare ||
+        (!alive && cooldown))
+        throw std::runtime_error("spawned-only Devil compact decode residual");
+    std::uint64_t high = minionHigh;
+    high |= static_cast<std::uint64_t>(side) << LegacySideShift;
+    high |= static_cast<std::uint64_t>(whiteKing) << LegacyWhiteKingShift;
+    high |= static_cast<std::uint64_t>(blackKing) << LegacyBlackKingShift;
+    high |= static_cast<std::uint64_t>(alive ? fixedSquare : DevilNoSquare)
+            << LegacyDevilSquareShift;
+    high |= static_cast<std::uint64_t>(cooldown) << LegacyDevilCooldownShift;
+    high |= static_cast<std::uint64_t>(secondary) << LegacySecondaryShift;
+    return {low, high};
+}
+
+std::uint64_t migration_hash(std::uint64_t hash, const std::uint8_t* data,
+                             std::size_t bytes) {
+    for (std::size_t index = 0; index < bytes; ++index) {
+        hash ^= data[index];
+        hash *= DevilReverseHashPrime;
+    }
+    return hash;
+}
+
+// Convert a committed v1/v2/v3 proof-key prefix to the v4 seven-byte layout in a
+// separate destination.  The source stays live and untouched: committed key
+// prefixes are append-only, and opening the atomically replaced frontier before
+// rereading identical metadata binds that exact generation.  The v4 metadata
+// is installed last and acts as the destination commit marker.
+void migrate_spawned_devil_checkpoint(const std::string& sourcePrefix,
+                                      const std::string& destinationPrefix) {
+    if (sourcePrefix.empty() || destinationPrefix.empty() ||
+        sourcePrefix == destinationPrefix)
+        throw std::runtime_error("invalid spawned-only Devil migration paths");
+    const std::string sourceMetadata = sourcePrefix + ".closure";
+    const std::string sourceKeys = sourcePrefix + ".keys";
+    const std::string sourceFrontier = sourcePrefix + ".frontier";
+    const std::string destinationMetadata = destinationPrefix + ".closure";
+    const std::string destinationKeys = destinationPrefix + ".keys";
+    const std::string destinationFrontier = destinationPrefix + ".frontier";
+    const std::array<std::string, 6> outputs{{
+      destinationMetadata, destinationKeys, destinationFrontier,
+      destinationMetadata + ".tmp", destinationKeys + ".tmp",
+      destinationFrontier + ".tmp"}};
+    for (const auto& path : outputs)
+        if (::access(path.c_str(), F_OK) == 0)
+            throw std::runtime_error(
+              "spawned-only Devil migration destination already exists " + path);
+
+    const SpawnedDevilCheckpoint first =
+      read_spawned_devil_checkpoint(sourceMetadata, 0);
+    if (first.version != 1 && first.version != 2 && first.version != 3)
+        throw std::runtime_error("spawned-only Devil migration source version residual");
+    // V1 and V2 both persisted the original pair of uint64_t proof-key
+    // fields.  V2 only strengthened checkpointing around that unchanged
+    // record layout; V3 subsequently packed the same fields into 14 bytes.
+    const std::uint64_t sourceRecordBytes = first.version <= 2 ? 16 : 14;
+    const int sourceKeyFd = ::open(sourceKeys.c_str(), O_RDONLY);
+    const int sourceFrontierFd = ::open(sourceFrontier.c_str(), O_RDONLY);
+    if (sourceKeyFd == -1 || sourceFrontierFd == -1)
+        throw std::runtime_error("cannot open spawned-only Devil migration source");
+    const SpawnedDevilCheckpoint second =
+      read_spawned_devil_checkpoint(sourceMetadata, first.version);
+    if (!(first == second))
+        throw std::runtime_error("spawned-only Devil migration generation changed");
+    if (first.limit > std::numeric_limits<std::uint64_t>::max() /
+                        sourceRecordBytes ||
+        first.limit > std::numeric_limits<std::uint64_t>::max() / 7 ||
+        first.frontier > std::numeric_limits<std::uint64_t>::max() / 8)
+        throw std::runtime_error("spawned-only Devil migration extent overflow");
+    struct stat keyStatus {}, frontierStatus {};
+    if (::fstat(sourceKeyFd, &keyStatus) != 0 ||
+        ::fstat(sourceFrontierFd, &frontierStatus) != 0 ||
+        static_cast<std::uint64_t>(keyStatus.st_size) !=
+          first.limit * sourceRecordBytes ||
+        static_cast<std::uint64_t>(frontierStatus.st_size) != first.frontier * 8)
+        throw std::runtime_error("spawned-only Devil migration source extent residual");
+
+    const int destinationKeyFd = ::open(
+      (destinationKeys + ".tmp").c_str(), O_WRONLY | O_CREAT | O_EXCL, 0600);
+    const int destinationFrontierFd = ::open(
+      (destinationFrontier + ".tmp").c_str(), O_WRONLY | O_CREAT | O_EXCL, 0600);
+    if (destinationKeyFd == -1 || destinationFrontierFd == -1)
+        throw std::runtime_error("cannot create spawned-only Devil migration destination");
+    constexpr std::uint64_t RecordsPerBlock = 1 << 16;
+    std::vector<std::uint8_t> oldBlock(RecordsPerBlock * sourceRecordBytes);
+    std::vector<std::uint8_t> newBlock(RecordsPerBlock * 7);
+    std::uint64_t hash = DevilReverseHashOffset;
+    for (std::uint64_t begin = 0; begin < first.size; begin += RecordsPerBlock) {
+        const std::uint64_t count = std::min(RecordsPerBlock, first.size - begin);
+        read_exact_at(sourceKeyFd, oldBlock.data(), count * sourceRecordBytes,
+                      begin * sourceRecordBytes, sourceKeys);
+        for (std::uint64_t index = 0; index < count; ++index) {
+            const std::uint8_t* oldKey = oldBlock.data() +
+                                         index * sourceRecordBytes;
+            std::uint64_t low = 0;
+            std::uint64_t high = 0;
+            std::memcpy(&low, oldKey, sizeof(low));
+            std::memcpy(&high, oldKey + 8,
+                        static_cast<std::size_t>(sourceRecordBytes - 8));
+            const std::uint64_t compact = pack_compact_devil_key(
+              low, high, first.square);
+            const auto roundTrip = unpack_compact_devil_key(compact, first.square);
+            if (roundTrip.first != low || roundTrip.second != high)
+                throw std::runtime_error(
+                  "spawned-only Devil migration round-trip residual at " +
+                  std::to_string(begin + index));
+            std::uint8_t* newKey = newBlock.data() + index * 7;
+            std::memcpy(newKey, &compact, 7);
+            hash = migration_hash(hash, newKey, 7);
+        }
+        write_exact_at(destinationKeyFd, newBlock.data(), count * 7,
+                       begin * 7, destinationKeys);
+        if ((begin + count) / 100'000'000 != begin / 100'000'000)
+            std::cout << "devil_migrate_keys " << begin + count << '/'
+                      << first.size << '\n' << std::flush;
+    }
+    if (::ftruncate(destinationKeyFd, static_cast<off_t>(first.limit * 7)) != 0 ||
+        ::fsync(destinationKeyFd) != 0)
+        throw std::runtime_error("cannot finalize spawned-only Devil migrated keys");
+
+    std::vector<std::uint8_t> copyBlock(8 << 20);
+    const std::uint64_t frontierBytes = first.frontier * 8;
+    for (std::uint64_t offset = 0; offset < frontierBytes;) {
+        const std::size_t bytes = static_cast<std::size_t>(
+          std::min<std::uint64_t>(copyBlock.size(), frontierBytes - offset));
+        read_exact_at(sourceFrontierFd, copyBlock.data(), bytes, offset,
+                      sourceFrontier);
+        write_exact_at(destinationFrontierFd, copyBlock.data(), bytes, offset,
+                       destinationFrontier);
+        offset += bytes;
+    }
+    if (::fsync(destinationFrontierFd) != 0)
+        throw std::runtime_error("cannot finalize spawned-only Devil migrated frontier");
+    ::close(sourceKeyFd);
+    ::close(sourceFrontierFd);
+    ::close(destinationKeyFd);
+    ::close(destinationFrontierFd);
+
+    SpawnedDevilCheckpoint migrated = first;
+    migrated.version = 4;
+    write_spawned_devil_checkpoint(destinationMetadata + ".tmp", migrated);
+    sync_file(destinationMetadata + ".tmp");
+    if (std::rename((destinationKeys + ".tmp").c_str(),
+                    destinationKeys.c_str()) != 0 ||
+        std::rename((destinationFrontier + ".tmp").c_str(),
+                    destinationFrontier.c_str()) != 0 ||
+        std::rename((destinationMetadata + ".tmp").c_str(),
+                    destinationMetadata.c_str()) != 0)
+        throw std::runtime_error("cannot install spawned-only Devil migration");
+    const std::size_t separator = destinationPrefix.find_last_of('/');
+    sync_directory(separator == std::string::npos
+                     ? "." : destinationPrefix.substr(0, separator));
+    std::cout << "DEVIL_CHECKPOINT_MIGRATED source_version " << first.version
+              << " destination_version 4"
+              << " square " << first.square << " ply " << first.ply
+              << " states " << first.size << " frontier " << first.frontier
+              << " key_hash " << std::hex << hash << std::dec << '\n';
+}
+
+void self_test_spawned_devil_checkpoint_migration(const std::string& root) {
+    // Exercise combinadic boundaries and a deterministic spread through the
+    // complete size-0..5 Minion code space before testing the on-disk
+    // conversion.  This catches rank/unrank regressions without enumerating
+    // all 25 million valid subsets in every build.
+    std::vector<std::uint64_t> minionCodes;
+    std::uint64_t boundary = 0;
+    for (unsigned count = 0; count <= 5; ++count) {
+        const std::uint64_t size = choose_devil(80, count);
+        minionCodes.push_back(boundary);
+        minionCodes.push_back(boundary + size - 1);
+        boundary += size;
+    }
+    for (std::uint64_t code = 0; code < DevilMinionCodeCount;
+         code += 7919)
+        minionCodes.push_back(code);
+    minionCodes.push_back(DevilMinionCodeCount - 1);
+    for (const std::uint64_t code : minionCodes) {
+        const auto bits = decode_devil_minions(code);
+        if (encode_devil_minions(bits.first, bits.second) != code)
+            throw std::runtime_error("Devil compact Minion codec residual");
+    }
+
+    // Cover every ordered King pair and all remaining field endpoints.  The
+    // full legacy-to-compact-to-legacy equality is the proof obligation used
+    // by both migration and checkpoint restart.
+    for (unsigned whiteKing = 0; whiteKing < 80; ++whiteKing)
+        for (unsigned blackKing = 0; blackKing < 80; ++blackKing) {
+            if (whiteKing == blackKing)
+                continue;
+            for (unsigned variant = 0; variant < 8; ++variant) {
+                const auto bits = decode_devil_minions(
+                  minionCodes[(whiteKing * 80 + blackKing + variant) %
+                              minionCodes.size()]);
+                std::uint64_t high = bits.second;
+                high |= static_cast<std::uint64_t>(variant & 1) <<
+                        LegacySideShift;
+                high |= static_cast<std::uint64_t>(whiteKing) <<
+                        LegacyWhiteKingShift;
+                high |= static_cast<std::uint64_t>(blackKing) <<
+                        LegacyBlackKingShift;
+                const bool alive = (variant & 4) == 0;
+                high |= static_cast<std::uint64_t>(
+                  alive ? 2 : DevilNoSquare) << LegacyDevilSquareShift;
+                high |= static_cast<std::uint64_t>(alive ? (variant & 3) : 0) <<
+                        LegacyDevilCooldownShift;
+                high |= static_cast<std::uint64_t>(
+                  (variant & 2) ? DevilNoSquare : (variant * 9) % 80) <<
+                        LegacySecondaryShift;
+                const auto roundTrip = unpack_compact_devil_key(
+                  pack_compact_devil_key(bits.first, high, 2), 2);
+                if (roundTrip.first != bits.first || roundTrip.second != high)
+                    throw std::runtime_error("Devil compact proof-key residual");
+            }
+        }
+
+    const std::string sourceDirectory = root + "/source";
+    const std::string destinationDirectory = root + "/destination";
+    if ((::mkdir(sourceDirectory.c_str(), 0700) != 0 && errno != EEXIST) ||
+        (::mkdir(destinationDirectory.c_str(), 0700) != 0 && errno != EEXIST))
+        throw std::runtime_error("cannot create Devil migration self-test directories");
+    const std::string source = sourceDirectory + "/devil-2";
+    const std::string destination = destinationDirectory + "/devil-2";
+    SpawnedDevilCheckpoint metadata;
+    // C1 is the last retained v1 checkpoint, so the migration self-test must
+    // exercise that exact 16-byte source format rather than only its v2 twin.
+    metadata.version = 1;
+    metadata.square = 2;
+    metadata.limit = 100;
+    metadata.size = 3;
+    metadata.frontier = 2;
+    metadata.ply = 7;
+    write_spawned_devil_checkpoint(source + ".closure", metadata);
+    const int keyFd = ::open((source + ".keys").c_str(),
+                             O_WRONLY | O_CREAT | O_EXCL, 0600);
+    if (keyFd == -1 || ::ftruncate(keyFd, 1600) != 0)
+        throw std::runtime_error("cannot create Devil migration self-test keys");
+    std::array<std::uint8_t, 48> oldKeys{};
+    const std::array<std::uint64_t, 3> lows{{1, 9, (1ULL << 10) | (1ULL << 20)}};
+    std::array<std::uint64_t, 3> highs{};
+    for (std::size_t index = 0; index < highs.size(); ++index) {
+        highs[index] = static_cast<std::uint64_t>(index & 1) << LegacySideShift;
+        highs[index] |= static_cast<std::uint64_t>(4 + index) <<
+                        LegacyWhiteKingShift;
+        highs[index] |= static_cast<std::uint64_t>(20 + index) <<
+                        LegacyBlackKingShift;
+        highs[index] |= static_cast<std::uint64_t>(
+          index == 2 ? DevilNoSquare : metadata.square) << LegacyDevilSquareShift;
+        highs[index] |= static_cast<std::uint64_t>(index == 2 ? 0 : index) <<
+                        LegacyDevilCooldownShift;
+        highs[index] |= static_cast<std::uint64_t>(
+          index == 1 ? 30 : DevilNoSquare) << LegacySecondaryShift;
+    }
+    for (std::size_t index = 0; index < lows.size(); ++index) {
+        std::memcpy(oldKeys.data() + index * 16, &lows[index], 8);
+        std::memcpy(oldKeys.data() + index * 16 + 8, &highs[index], 8);
+    }
+    write_exact_at(keyFd, oldKeys.data(), oldKeys.size(), 0, source + ".keys");
+    ::close(keyFd);
+    const std::array<std::uint64_t, 2> frontier{{0, 2}};
+    const int frontierFd = ::open((source + ".frontier").c_str(),
+      O_WRONLY | O_CREAT | O_EXCL, 0600);
+    if (frontierFd == -1)
+        throw std::runtime_error("cannot create Devil migration self-test frontier");
+    write_exact_at(frontierFd, frontier.data(), sizeof(frontier), 0,
+                   source + ".frontier");
+    ::close(frontierFd);
+
+    migrate_spawned_devil_checkpoint(source, destination);
+    const SpawnedDevilCheckpoint migrated =
+      read_spawned_devil_checkpoint(destination + ".closure", 4);
+    struct stat keyStatus {}, frontierStatus {};
+    if (migrated.square != metadata.square || migrated.limit != metadata.limit ||
+        migrated.size != metadata.size || migrated.frontier != metadata.frontier ||
+        migrated.ply != metadata.ply ||
+        ::stat((destination + ".keys").c_str(), &keyStatus) != 0 ||
+        ::stat((destination + ".frontier").c_str(), &frontierStatus) != 0 ||
+        keyStatus.st_size != 700 || frontierStatus.st_size != 16)
+        throw std::runtime_error("Devil migration self-test extent residual");
+    std::array<std::uint8_t, 21> newKeys{};
+    const int migratedFd = ::open((destination + ".keys").c_str(), O_RDONLY);
+    if (migratedFd == -1)
+        throw std::runtime_error("cannot reopen Devil migration self-test keys");
+    read_exact_at(migratedFd, newKeys.data(), newKeys.size(), 0,
+                  destination + ".keys");
+    ::close(migratedFd);
+    for (std::size_t index = 0; index < lows.size(); ++index) {
+        std::array<std::uint8_t, 7> expected{};
+        const std::uint64_t compact = pack_compact_devil_key(
+          lows[index], highs[index], metadata.square);
+        std::memcpy(expected.data(), &compact, 7);
+        if (!std::equal(expected.begin(), expected.end(),
+                        newKeys.begin() + index * 7))
+            throw std::runtime_error("Devil migration self-test key residual");
+    }
+    std::cout << "devilcheckpointmigrationok states 3 frontier 2\n";
+}
+
+struct DevilReverseShard {
+    std::uint64_t begin = 0;
+    std::uint64_t end = 0;
+    std::array<std::uint64_t, DevilReverseBucketCount> counts{};
+    std::array<std::uint64_t, DevilReverseBucketCount> hashes{};
+};
+
+std::string devil_reverse_shard_stem(const std::string& directory,
+                                     std::uint32_t shard) {
+    return directory + "/shard-" + std::to_string(shard);
+}
+
+std::string devil_reverse_bucket_path(const std::string& directory,
+                                      std::uint32_t shard,
+                                      std::uint32_t bucket) {
+    return devil_reverse_shard_stem(directory, shard) + "-bucket-" +
+           std::to_string(bucket) + ".edges";
+}
+
+std::string devil_reverse_sorted_bucket_path(const std::string& directory,
+                                             std::uint32_t shard,
+                                             std::uint32_t bucket) {
+    return devil_reverse_bucket_path(directory, shard, bucket) + ".sorted";
+}
+
+std::set<std::uint32_t> adopted_devil_reverse_buckets() {
+    const char* raw = std::getenv("ULTIMATE_DEVIL_REVERSE_ADOPT_BUCKETS");
+    std::set<std::uint32_t> result;
+    if (!raw || !*raw)
+        return result;
+    std::istringstream stream(raw);
+    std::string token;
+    while (std::getline(stream, token, ',')) {
+        if (token.empty() || token.find_first_not_of("0123456789") !=
+                               std::string::npos)
+            throw std::runtime_error("invalid adopted Devil reverse bucket list");
+        const unsigned long oneBased = std::stoul(token);
+        if (!oneBased || oneBased > DevilReverseBucketCount ||
+            !result.insert(static_cast<std::uint32_t>(oneBased - 1)).second)
+            throw std::runtime_error("invalid adopted Devil reverse bucket");
+    }
+    return result;
+}
+
+void write_devil_reverse_marker(const std::string& directory,
+                                std::uint32_t shard, int fixedSquare,
+                                std::uint64_t graphStates,
+                                const DevilReverseShard& value) {
+    const std::string path = devil_reverse_shard_stem(directory, shard) +
+                             ".complete";
+    const std::string temporary = path + ".tmp";
+    {
+        std::ofstream stream(temporary, std::ios::binary | std::ios::trunc);
+        const std::array<char, 8> magic{{'U','F','D','R','S','P','1','\0'}};
+        const std::uint32_t version = 1;
+        const std::uint32_t square = static_cast<std::uint32_t>(fixedSquare);
+        const std::uint32_t buckets = DevilReverseBucketCount;
+        stream.write(magic.data(), magic.size());
+        stream.write(reinterpret_cast<const char*>(&version), sizeof(version));
+        stream.write(reinterpret_cast<const char*>(&square), sizeof(square));
+        stream.write(reinterpret_cast<const char*>(&graphStates), sizeof(graphStates));
+        stream.write(reinterpret_cast<const char*>(&value.begin), sizeof(value.begin));
+        stream.write(reinterpret_cast<const char*>(&value.end), sizeof(value.end));
+        stream.write(reinterpret_cast<const char*>(&buckets), sizeof(buckets));
+        stream.write(reinterpret_cast<const char*>(value.counts.data()),
+                     sizeof(value.counts));
+        stream.write(reinterpret_cast<const char*>(value.hashes.data()),
+                     sizeof(value.hashes));
+        if (!stream)
+            throw std::runtime_error("cannot write Devil reverse shard marker");
+    }
+    sync_file(temporary);
+    if (std::rename(temporary.c_str(), path.c_str()) != 0)
+        throw std::runtime_error("cannot install Devil reverse shard marker");
+    sync_directory(directory);
+}
+
+std::optional<DevilReverseShard> read_devil_reverse_marker(
+  const std::string& directory, std::uint32_t shard, int fixedSquare,
+  std::uint64_t graphStates, std::uint64_t expectedBegin,
+  std::uint64_t expectedEnd) {
+    const std::string path = devil_reverse_shard_stem(directory, shard) +
+                             ".complete";
+    std::ifstream stream(path, std::ios::binary);
+    if (!stream)
+        return std::nullopt;
+    std::array<char, 8> magic{};
+    std::uint32_t version = 0, square = 0, buckets = 0;
+    std::uint64_t states = 0;
+    DevilReverseShard value;
+    stream.read(magic.data(), magic.size());
+    stream.read(reinterpret_cast<char*>(&version), sizeof(version));
+    stream.read(reinterpret_cast<char*>(&square), sizeof(square));
+    stream.read(reinterpret_cast<char*>(&states), sizeof(states));
+    stream.read(reinterpret_cast<char*>(&value.begin), sizeof(value.begin));
+    stream.read(reinterpret_cast<char*>(&value.end), sizeof(value.end));
+    stream.read(reinterpret_cast<char*>(&buckets), sizeof(buckets));
+    stream.read(reinterpret_cast<char*>(value.counts.data()), sizeof(value.counts));
+    stream.read(reinterpret_cast<char*>(value.hashes.data()), sizeof(value.hashes));
+    const std::array<char, 8> expectedMagic{{'U','F','D','R','S','P','1','\0'}};
+    if (!stream || stream.peek() != std::ifstream::traits_type::eof() ||
+        magic != expectedMagic || version != 1 ||
+        square != static_cast<std::uint32_t>(fixedSquare) ||
+        states != graphStates || value.begin != expectedBegin ||
+        value.end != expectedEnd || buckets != DevilReverseBucketCount)
+        throw std::runtime_error("Devil reverse shard marker residual " + path);
+    for (std::uint32_t bucket = 0; bucket < DevilReverseBucketCount; ++bucket) {
+        struct stat status {};
+        const std::string edgePath = devil_reverse_bucket_path(
+          directory, shard, bucket);
+        const std::uint64_t bytes = value.counts[bucket] *
+                                    sizeof(DevilReverseRecord);
+        if (::stat(edgePath.c_str(), &status) != 0 ||
+            static_cast<std::uint64_t>(status.st_size) != bytes)
+            throw std::runtime_error("Devil reverse edge extent residual " + edgePath);
+    }
+    return value;
+}
+
+template<typename Successors>
+void build_restartable_devil_reverse(
+  const std::string& prefix, int fixedSquare, std::uint64_t graphStates,
+  std::uint64_t edgeCount, std::uint32_t workers,
+  const std::uint32_t* degrees, std::uint64_t* offsets,
+  std::uint64_t* predecessors, std::uint8_t* predecessorSides,
+  Successors&& successors) {
+    if (!graphStates || !workers)
+        throw std::runtime_error("invalid Devil reverse spool geometry");
+    const std::string directory = prefix + ".reverse-spool";
+    if (::mkdir(directory.c_str(), 0700) != 0 && errno != EEXIST)
+        throw std::runtime_error("cannot create Devil reverse spool directory");
+    struct stat directoryStatus {};
+    if (::stat(directory.c_str(), &directoryStatus) != 0 ||
+        !S_ISDIR(directoryStatus.st_mode) ||
+        ::access(directory.c_str(), W_OK | X_OK) != 0)
+        throw std::runtime_error(
+          "Devil reverse spool directory is not a writable resolved directory: " +
+          directory);
+    // The shard geometry is independent of worker count so a resumed service
+    // may safely gain or lose CPUs without invalidating completed shards.
+    const std::uint32_t shardCount = static_cast<std::uint32_t>(
+      std::min<std::uint64_t>(512, graphStates));
+    const std::uint64_t shardWidth =
+      (graphStates + shardCount - 1) / shardCount;
+    const std::uint64_t bucketWidth =
+      (graphStates + DevilReverseBucketCount - 1) /
+      DevilReverseBucketCount;
+    std::vector<DevilReverseShard> shards(shardCount);
+    std::atomic<std::uint32_t> nextShard{0};
+    std::atomic<std::uint64_t> completedStates{0};
+    std::atomic<bool> failed{false};
+    std::exception_ptr failure;
+    std::mutex failureMutex;
+    std::mutex outputMutex;
+    std::vector<std::thread> tasks;
+    for (std::uint32_t worker = 0; worker < workers; ++worker)
+        tasks.emplace_back([&] {
+            try {
+                while (!failed.load(std::memory_order_relaxed)) {
+                    const std::uint32_t shard = nextShard.fetch_add(
+                      1, std::memory_order_relaxed);
+                    if (shard >= shardCount)
+                        break;
+                    const std::uint64_t begin = std::min(
+                      graphStates, std::uint64_t(shard) * shardWidth);
+                    const std::uint64_t end = std::min(
+                      graphStates, begin + shardWidth);
+                    if (const auto saved = read_devil_reverse_marker(
+                          directory, shard, fixedSquare, graphStates, begin, end)) {
+                        shards[shard] = *saved;
+                    }
+                    else {
+                        DevilReverseShard value;
+                        value.begin = begin;
+                        value.end = end;
+                        value.hashes.fill(DevilReverseHashOffset);
+                        std::array<std::ofstream, DevilReverseBucketCount> streams;
+                        std::array<std::vector<char>, DevilReverseBucketCount> buffers;
+                        for (std::uint32_t bucket = 0;
+                             bucket < DevilReverseBucketCount; ++bucket) {
+                            buffers[bucket].resize(64 * 1024);
+                            streams[bucket].rdbuf()->pubsetbuf(
+                              buffers[bucket].data(), buffers[bucket].size());
+                            streams[bucket].open(
+                              devil_reverse_bucket_path(directory, shard, bucket) +
+                                ".tmp",
+                              std::ios::binary | std::ios::trunc);
+                            if (!streams[bucket])
+                                throw std::runtime_error(
+                                  "cannot create Devil reverse edge spool");
+                        }
+                        for (std::uint64_t parent = begin; parent < end; ++parent) {
+                            successors(parent, [&](std::optional<std::uint64_t> child,
+                                                   std::optional<Color>,
+                                                   bool sameSide) {
+                                if (!child)
+                                    return;
+                                const std::uint32_t bucket = static_cast<std::uint32_t>(
+                                  std::min<std::uint64_t>(
+                                    DevilReverseBucketCount - 1,
+                                    *child / bucketWidth));
+                                DevilReverseRecord record{
+                                  *child, parent | (sameSide ? DevilReverseSameSide : 0)};
+                                streams[bucket].write(
+                                  reinterpret_cast<const char*>(&record),
+                                  sizeof(record));
+                                if (!streams[bucket])
+                                    throw std::runtime_error(
+                                      "cannot write Devil reverse edge spool");
+                                ++value.counts[bucket];
+                                value.hashes[bucket] = devil_reverse_hash(
+                                  value.hashes[bucket], record);
+                            });
+                        }
+                        for (auto& stream : streams)
+                            stream.close();
+                        for (std::uint32_t bucket = 0;
+                             bucket < DevilReverseBucketCount; ++bucket) {
+                            const std::string path = devil_reverse_bucket_path(
+                              directory, shard, bucket);
+                            const std::string temporary = path + ".tmp";
+                            sync_file(temporary);
+                            if (std::rename(temporary.c_str(), path.c_str()) != 0)
+                                throw std::runtime_error(
+                                  "cannot install Devil reverse edge spool");
+                        }
+                        sync_directory(directory);
+                        write_devil_reverse_marker(
+                          directory, shard, fixedSquare, graphStates, value);
+                        shards[shard] = value;
+                    }
+                    const std::uint64_t done = completedStates.fetch_add(
+                      end - begin, std::memory_order_relaxed) + end - begin;
+                    std::lock_guard<std::mutex> lock(outputMutex);
+                    std::cout << "devil_reverse_spool square " << fixedSquare
+                              << " states " << done << '/' << graphStates
+                              << " shards " << shard + 1 << '/' << shardCount
+                              << '\n' << std::flush;
+                }
+            }
+            catch (...) {
+                failed.store(true, std::memory_order_relaxed);
+                std::lock_guard<std::mutex> lock(failureMutex);
+                if (!failure)
+                    failure = std::current_exception();
+            }
+        });
+    for (auto& task : tasks)
+        task.join();
+    if (failure)
+        std::rethrow_exception(failure);
+
+    const std::set<std::uint32_t> adopted = adopted_devil_reverse_buckets();
+    std::array<std::uint64_t, DevilReverseBucketCount> bucketRecords{};
+    for (const DevilReverseShard& shard : shards)
+        for (std::uint32_t bucket = 0; bucket < DevilReverseBucketCount; ++bucket)
+            bucketRecords[bucket] += shard.counts[bucket];
+
+    std::uint64_t computedEdges = 0;
+    for (std::uint64_t index = 0; index < graphStates; ++index) {
+        const std::uint64_t begin = computedEdges;
+        computedEdges += degrees[index];
+        const std::uint32_t bucket = static_cast<std::uint32_t>(
+          std::min<std::uint64_t>(DevilReverseBucketCount - 1,
+                                  index / bucketWidth));
+        if (adopted.count(bucket)) {
+            // A stopped in-progress merge leaves a completed child's cursor
+            // at its end; a fully finalized retained CSR restores it to the
+            // begin offset.  Both forms prove completion when the complete
+            // payload below is also structurally valid.
+            if (offsets[index] != begin && offsets[index] != computedEdges)
+                throw std::runtime_error(
+                  "adopted Devil reverse cursor residual at graph index " +
+                  std::to_string(index));
+            for (std::uint64_t edge = begin; edge < computedEdges; ++edge)
+                if (predecessors[edge] >= graphStates ||
+                    predecessorSides[edge] > 1)
+                    throw std::runtime_error(
+                      "adopted Devil reverse payload residual");
+            offsets[index] = computedEdges;
+        }
+        else
+            offsets[index] = begin;
+    }
+    offsets[graphStates] = computedEdges;
+    if (computedEdges != edgeCount)
+        throw std::runtime_error("Devil reverse degree conservation residual");
+    std::array<std::uint64_t, DevilReverseBucketCount> degreeRecords{};
+    for (std::uint64_t index = 0; index < graphStates; ++index) {
+        const std::uint32_t bucket = static_cast<std::uint32_t>(
+          std::min<std::uint64_t>(DevilReverseBucketCount - 1,
+                                  index / bucketWidth));
+        degreeRecords[bucket] += degrees[index];
+    }
+    if (degreeRecords != bucketRecords)
+        throw std::runtime_error("Devil reverse bucket degree residual");
+    if (!adopted.empty()) {
+        std::cout << "devil_reverse_adopt square " << fixedSquare
+                  << " buckets";
+        for (const std::uint32_t bucket : adopted)
+            std::cout << ' ' << bucket + 1;
+        std::cout << '\n' << std::flush;
+    }
+
+    std::atomic<std::uint32_t> nextBucket{0};
+    failed.store(false, std::memory_order_relaxed);
+    failure = nullptr;
+    tasks.clear();
+    // Each shard/bucket file is only a few hundred MiB even when the complete
+    // reverse graph has tens of billions of edges.  Sort those independent
+    // files once, then perform a buffered k-way merge.  The old implementation
+    // sorted one-million-record chunks and scattered each chunk through the
+    // same mmap range, causing tens of TiB of write amplification for C1.
+    // This path writes the retained predecessor planes monotonically.
+    const auto processBucket = [&](std::uint32_t bucket) {
+        std::atomic<std::uint32_t> nextSortShard{0};
+        std::atomic<bool> sortFailed{false};
+        std::exception_ptr sortFailure;
+        std::mutex sortFailureMutex;
+        std::vector<std::thread> sortTasks;
+        const std::uint32_t bucketWorkers = std::min<std::uint32_t>(
+          workers, DevilReverseBucketCount);
+        const std::uint32_t sortWorkers = std::max<std::uint32_t>(
+          1, workers / bucketWorkers);
+        for (std::uint32_t worker = 0; worker < sortWorkers; ++worker)
+            sortTasks.emplace_back([&, bucket] {
+            try {
+                std::vector<DevilReverseRecord> records;
+                while (!sortFailed.load(std::memory_order_relaxed)) {
+                    const std::uint32_t shard = nextSortShard.fetch_add(
+                      1, std::memory_order_relaxed);
+                    if (shard >= shardCount)
+                        break;
+                    const std::uint64_t count = shards[shard].counts[bucket];
+                    if (count > std::numeric_limits<std::size_t>::max() /
+                                  sizeof(DevilReverseRecord))
+                        throw std::runtime_error(
+                          "Devil reverse sorted shard allocation overflow");
+                    records.resize(static_cast<std::size_t>(count));
+                    const std::string input = devil_reverse_bucket_path(
+                      directory, shard, bucket);
+                    std::ifstream stream(input, std::ios::binary);
+                    if (!stream)
+                        throw std::runtime_error(
+                          "cannot read Devil reverse edge spool");
+                    if (count)
+                        stream.read(reinterpret_cast<char*>(records.data()),
+                                    static_cast<std::streamsize>(
+                                      count * sizeof(DevilReverseRecord)));
+                    if (!stream || stream.peek() !=
+                                   std::ifstream::traits_type::eof())
+                        throw std::runtime_error(
+                          "cannot read complete Devil reverse edge spool");
+                    std::uint64_t hash = DevilReverseHashOffset;
+                    for (const auto& record : records)
+                        hash = devil_reverse_hash(hash, record);
+                    if (hash != shards[shard].hashes[bucket])
+                        throw std::runtime_error(
+                          "Devil reverse edge spool hash residual");
+                    std::sort(records.begin(), records.end(),
+                              [](const auto& left, const auto& right) {
+                                  return std::tie(left.child, left.packedParent) <
+                                         std::tie(right.child, right.packedParent);
+                              });
+                    const std::string output = devil_reverse_sorted_bucket_path(
+                      directory, shard, bucket);
+                    const std::string temporary = output + ".tmp";
+                    std::ofstream sorted(temporary,
+                      std::ios::binary | std::ios::trunc);
+                    if (count)
+                        sorted.write(reinterpret_cast<const char*>(records.data()),
+                                     static_cast<std::streamsize>(
+                                       count * sizeof(DevilReverseRecord)));
+                    if (!sorted)
+                        throw std::runtime_error(
+                          "cannot write sorted Devil reverse shard");
+                    sorted.close();
+                    sync_file(temporary);
+                    if (std::rename(temporary.c_str(), output.c_str()) != 0)
+                        throw std::runtime_error(
+                          "cannot install sorted Devil reverse shard");
+                }
+            }
+            catch (...) {
+                sortFailed.store(true, std::memory_order_relaxed);
+                std::lock_guard<std::mutex> lock(sortFailureMutex);
+                if (!sortFailure)
+                    sortFailure = std::current_exception();
+            }
+        });
+        for (auto& task : sortTasks)
+            task.join();
+        if (sortFailure)
+            std::rethrow_exception(sortFailure);
+        sync_directory(directory);
+        {
+            std::lock_guard<std::mutex> lock(outputMutex);
+            std::cout << "devil_reverse_sort square " << fixedSquare
+                      << " bucket " << bucket + 1 << '/'
+                      << DevilReverseBucketCount << " shards " << shardCount
+                      << '\n' << std::flush;
+        }
+
+        struct SortedReader {
+            std::ifstream stream;
+            std::uint64_t remaining = 0;
+            std::vector<DevilReverseRecord> buffer;
+            std::size_t cursor = 0;
+            std::size_t size = 0;
+            SortedReader(const std::string& path, std::uint64_t count)
+                : stream(path, std::ios::binary), remaining(count),
+                  buffer(4096) {
+                if (!stream)
+                    throw std::runtime_error(
+                      "cannot open sorted Devil reverse shard");
+            }
+            bool next(DevilReverseRecord& value) {
+                if (cursor == size) {
+                    if (!remaining) {
+                        if (stream.peek() != std::ifstream::traits_type::eof())
+                            throw std::runtime_error(
+                              "sorted Devil reverse shard extent residual");
+                        return false;
+                    }
+                    size = static_cast<std::size_t>(
+                      std::min<std::uint64_t>(remaining, buffer.size()));
+                    stream.read(reinterpret_cast<char*>(buffer.data()),
+                                static_cast<std::streamsize>(
+                                  size * sizeof(DevilReverseRecord)));
+                    if (!stream)
+                        throw std::runtime_error(
+                          "cannot read sorted Devil reverse shard");
+                    remaining -= size;
+                    cursor = 0;
+                }
+                value = buffer[cursor++];
+                return true;
+            }
+        };
+        struct HeapItem {
+            DevilReverseRecord record;
+            std::uint32_t shard = 0;
+        };
+        const auto greater = [](const HeapItem& left, const HeapItem& right) {
+            return std::tie(left.record.child, left.record.packedParent,
+                            left.shard) >
+                   std::tie(right.record.child, right.record.packedParent,
+                            right.shard);
+        };
+        std::priority_queue<HeapItem, std::vector<HeapItem>, decltype(greater)>
+          heap(greater);
+        std::vector<std::unique_ptr<SortedReader>> readers;
+        readers.reserve(shardCount);
+        for (std::uint32_t shard = 0; shard < shardCount; ++shard) {
+            readers.push_back(std::make_unique<SortedReader>(
+              devil_reverse_sorted_bucket_path(directory, shard, bucket),
+              shards[shard].counts[bucket]));
+            DevilReverseRecord record;
+            if (readers.back()->next(record))
+                heap.push({record, shard});
+        }
+        const std::uint64_t bucketBegin = std::uint64_t(bucket) * bucketWidth;
+        const std::uint64_t bucketEnd = std::min(
+          graphStates, bucketBegin + bucketWidth);
+        std::uint64_t merged = 0;
+        while (!heap.empty()) {
+            const HeapItem item = heap.top();
+            heap.pop();
+            if (item.record.child < bucketBegin ||
+                item.record.child >= bucketEnd)
+                throw std::runtime_error(
+                  "sorted Devil reverse edge bucket residual");
+            const std::uint64_t cursor = offsets[item.record.child]++;
+            if (cursor >= edgeCount)
+                throw std::runtime_error("Devil reverse cursor overflow");
+            predecessors[cursor] =
+              item.record.packedParent & ~DevilReverseSameSide;
+            predecessorSides[cursor] =
+              (item.record.packedParent & DevilReverseSameSide) != 0;
+            ++merged;
+            if (merged % 100'000'000 == 0) {
+                std::lock_guard<std::mutex> lock(outputMutex);
+                std::cout << "devil_reverse_sequential square " << fixedSquare
+                          << " bucket " << bucket + 1 << " records "
+                          << merged << '/' << bucketRecords[bucket]
+                          << '\n' << std::flush;
+            }
+            DevilReverseRecord next;
+            if (readers[item.shard]->next(next))
+                heap.push({next, item.shard});
+        }
+        if (merged != bucketRecords[bucket])
+            throw std::runtime_error("Devil reverse sorted count residual");
+        readers.clear();
+        for (std::uint32_t shard = 0; shard < shardCount; ++shard)
+            if (::unlink(devil_reverse_sorted_bucket_path(
+                  directory, shard, bucket).c_str()) != 0)
+                throw std::runtime_error(
+                  "cannot remove sorted Devil reverse shard");
+        sync_directory(directory);
+        {
+            std::lock_guard<std::mutex> lock(outputMutex);
+            std::cout << "devil_reverse_merge square " << fixedSquare
+                      << " bucket " << bucket + 1 << '/'
+                      << DevilReverseBucketCount << " parallel "
+                      << std::min<std::uint32_t>(workers,
+                                                DevilReverseBucketCount)
+                      << '\n' << std::flush;
+        }
+    };
+    const std::uint32_t bucketWorkers = std::min<std::uint32_t>(
+      workers, DevilReverseBucketCount);
+    for (std::uint32_t worker = 0; worker < bucketWorkers; ++worker)
+        tasks.emplace_back([&] {
+            try {
+                while (!failed.load(std::memory_order_relaxed)) {
+                    std::uint32_t bucket = nextBucket.fetch_add(
+                      1, std::memory_order_relaxed);
+                    while (bucket < DevilReverseBucketCount &&
+                           adopted.count(bucket))
+                        bucket = nextBucket.fetch_add(1,
+                                                       std::memory_order_relaxed);
+                    if (bucket >= DevilReverseBucketCount)
+                        break;
+                    processBucket(bucket);
+                }
+            }
+            catch (...) {
+                failed.store(true, std::memory_order_relaxed);
+                std::lock_guard<std::mutex> lock(failureMutex);
+                if (!failure)
+                    failure = std::current_exception();
+            }
+        });
+    for (auto& task : tasks)
+        task.join();
+    if (failure)
+        std::rethrow_exception(failure);
+    std::uint64_t running = 0;
+    for (std::uint64_t index = 0; index < graphStates; ++index) {
+        if (offsets[index] != running + degrees[index])
+            throw std::runtime_error("Devil reverse merge conservation residual");
+        offsets[index] = running;
+        running += degrees[index];
+    }
+    offsets[graphStates] = running;
+    if (running != edgeCount)
+        throw std::runtime_error("Devil reverse edge-count residual");
+}
+
+void self_test_devil_reverse_spool(const std::string& workDirectory) {
+    if (::mkdir(workDirectory.c_str(), 0700) != 0 && errno != EEXIST)
+        throw std::runtime_error("cannot create Devil reverse self-test directory");
+    constexpr std::uint64_t States = 64;
+    std::array<std::vector<std::pair<std::uint64_t, bool>>, States> expected;
+    for (std::uint64_t parent = 0; parent < States; ++parent) {
+        const std::array<std::pair<std::uint64_t, bool>, 3> children{{
+          {(parent + 1) % States, false},
+          {(parent * 7 + 3) % States, true},
+          {(parent * 13 + 11) % States, parent % 3 == 0}}};
+        for (const auto& edge : children)
+            expected[edge.first].push_back({parent, edge.second});
+    }
+    const std::uint64_t edges = States * 3;
+    const auto run = [&](std::uint64_t expectedSuccessorCalls) {
+        std::array<std::uint64_t, States + 1> offsets{};
+        std::array<std::uint64_t, edges> predecessors{};
+        std::array<std::uint8_t, edges> sides{};
+        std::array<std::uint32_t, States> observedDegrees{};
+        std::atomic<std::uint64_t> successorCalls{0};
+        const auto observedSuccessors = [&](std::uint64_t parent, auto&& consume) {
+            successorCalls.fetch_add(1, std::memory_order_relaxed);
+            const std::array<std::pair<std::uint64_t, bool>, 3> children{{
+              {(parent + 1) % States, false},
+              {(parent * 7 + 3) % States, true},
+              {(parent * 13 + 11) % States, parent % 3 == 0}}};
+            for (const auto& [child, sameSide] : children)
+                consume(std::optional<std::uint64_t>{child},
+                        std::optional<Color>{}, sameSide);
+            consume(std::optional<std::uint64_t>{}, Color::White, false);
+        };
+        for (std::uint64_t child = 0; child < States; ++child)
+            observedDegrees[child] = static_cast<std::uint32_t>(
+              expected[child].size());
+        build_restartable_devil_reverse(
+          workDirectory + "/synthetic", 2, States, edges, 4,
+          observedDegrees.data(), offsets.data(), predecessors.data(),
+          sides.data(), observedSuccessors);
+        if (successorCalls.load(std::memory_order_relaxed) !=
+            expectedSuccessorCalls)
+            throw std::runtime_error(
+              "Devil reverse self-test resume did not reuse completed shards");
+        for (std::uint64_t child = 0; child < States; ++child) {
+            std::vector<std::pair<std::uint64_t, bool>> actual;
+            for (std::uint64_t edge = offsets[child];
+                 edge < offsets[child + 1]; ++edge)
+                actual.push_back({predecessors[edge], sides[edge] != 0});
+            std::sort(actual.begin(), actual.end());
+            auto wanted = expected[child];
+            std::sort(wanted.begin(), wanted.end());
+            if (actual != wanted)
+                throw std::runtime_error(
+                  "Devil reverse self-test predecessor residual");
+        }
+    };
+    // The second run must authenticate and reuse the completed edge shards
+    // while rebuilding identical final arrays from scratch.
+    run(States);
+    run(0);
+    // A production recovery may retain already-merged predecessor planes.
+    // Exercise the explicit adoption gate against those exact bytes: every
+    // cursor and payload must validate, and no successor replay is allowed.
+    std::array<std::uint64_t, States + 1> adoptedOffsets{};
+    std::array<std::uint64_t, edges> adoptedPredecessors{};
+    std::array<std::uint8_t, edges> adoptedSides{};
+    std::array<std::uint32_t, States> adoptedDegrees{};
+    for (std::uint64_t child = 0; child < States; ++child)
+        adoptedDegrees[child] = static_cast<std::uint32_t>(
+          expected[child].size());
+    const auto noReplay = [&](std::uint64_t, auto&&) {
+        throw std::runtime_error(
+          "adopted Devil reverse self-test replayed successors");
+        return std::uint32_t{0};
+    };
+    // Populate the retained planes once from authenticated spool shards.
+    build_restartable_devil_reverse(
+      workDirectory + "/synthetic", 2, States, edges, 4,
+      adoptedDegrees.data(), adoptedOffsets.data(), adoptedPredecessors.data(),
+      adoptedSides.data(), noReplay);
+    const char* prior = std::getenv("ULTIMATE_DEVIL_REVERSE_ADOPT_BUCKETS");
+    const std::string priorValue = prior ? prior : "";
+    if (::setenv("ULTIMATE_DEVIL_REVERSE_ADOPT_BUCKETS",
+                 "1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16", 1) != 0)
+        throw std::runtime_error("cannot set Devil reverse adoption self-test");
+    build_restartable_devil_reverse(
+      workDirectory + "/synthetic", 2, States, edges, 4,
+      adoptedDegrees.data(), adoptedOffsets.data(), adoptedPredecessors.data(),
+      adoptedSides.data(), noReplay);
+    if (prior) {
+        if (::setenv("ULTIMATE_DEVIL_REVERSE_ADOPT_BUCKETS",
+                     priorValue.c_str(), 1) != 0)
+            throw std::runtime_error(
+              "cannot restore Devil reverse adoption environment");
+    }
+    else if (::unsetenv("ULTIMATE_DEVIL_REVERSE_ADOPT_BUCKETS") != 0)
+        throw std::runtime_error(
+          "cannot clear Devil reverse adoption self-test");
+    std::cout << "devilreversespoolok states " << States
+              << " edges " << edges << '\n';
+}
 
 std::uint32_t encode_placement(const State& state) {
     const std::uint32_t blackRank = state.blackKing - (state.blackKing > state.whiteKing);
@@ -824,6 +2209,10 @@ constexpr bool packed_codec_matches(
   std::uint32_t version, bool trackedGhost, bool angelGraph,
   bool foldedGiant, bool linkedCopycatPair, bool angelCopycatGraph,
   std::uint64_t codecTag) {
+    if (version == 11)
+        return !trackedGhost && !angelGraph && !foldedGiant &&
+          !linkedCopycatPair && !angelCopycatGraph &&
+          codecTag == SpawnedDevilRootV1Tag;
     if (version == 10)
         return (linkedCopycatPair && !angelGraph && !trackedGhost &&
                 codecTag == LinkedCopycatPairV1Tag) ||
@@ -1041,10 +2430,42 @@ class TablebaseGenerator {
                   << LegalDotWitness << " residual 0\n";
     }
 
+    static bool terminal_successor(const Position& child) {
+        return child.game_over() || child.forced_timeout_winner() ||
+               !child.has_real_king(Color::White) ||
+               !child.has_real_king(Color::Black) ||
+               !child.is_checkmate_possible();
+    }
+
+    void self_test_penguin_ghost_terminal_capture() const {
+        if (attackerType_ != PieceType::Ghost ||
+            secondaryType_ != PieceType::Penguin ||
+            secondaryColor_ != Color::Black)
+            return;
+        constexpr std::uint32_t Witness = 318'855'161;
+        Position position;
+        if (!make_position_at(Witness, position))
+            throw std::runtime_error("Penguin/Ghost terminal witness is invalid");
+        bool found = false;
+        for_each_legal_successor(position, [&](const Move& move,
+                                                const Position& child) {
+            if (move.from == 0 && move.to == 9) {
+                found = terminal_successor(child) && child.game_over() &&
+                        child.winner() == position.side_to_move();
+            }
+        });
+        if (!found)
+            throw std::runtime_error(
+              "Penguin/Ghost frozen-King capture was not a terminal win");
+        std::cout << "penguinghostterminalcaptureok index " << Witness
+                  << " residual 0\n";
+    }
+
     void self_test() const {
         self_test_jester_overlay_color_symmetry();
         self_test_penguin_causal_codec();
         self_test_angel_transition_decision();
+        self_test_penguin_ghost_terminal_capture();
         if (!parallel_graph_scan_enabled(
               true, stateCount_, true, stateCount_) ||
             parallel_graph_scan_enabled(
@@ -1481,6 +2902,21 @@ class TablebaseGenerator {
                         const Color encodedSide = encoded_side(index);
                         Position position;
                         bool unreachable = !make_position_at(index, position);
+                        if (!unreachable && version == 11 &&
+                            attackerType_ == PieceType::Devil) {
+                            bool admittedDevil = false;
+                            for (int id = 0; id < position.piece_count(); ++id) {
+                                const PieceState& piece = position.piece(id);
+                                if (piece.alive && piece.onBoard &&
+                                    piece.type == PieceType::Devil &&
+                                    piece.color == Color::White) {
+                                    admittedDevil = piece.square /
+                                      Position::BoardFiles < 3;
+                                    break;
+                                }
+                            }
+                            unreachable = !admittedDevil;
+                        }
                         if (!unreachable && !position.has_forced_action())
                             unreachable = !position.ordinary_predecessor_king_safe();
                         if (!unreachable && full) {
@@ -1950,12 +3386,13 @@ class TablebaseGenerator {
           static_cast<Color>(informationWord(20));
         if (transposeInformationSubstates &&
             (attackerType_ != PieceType::Ghost ||
-             secondaryType_ != PieceType::Penguin ||
-             primarySubstates_ != 2 || secondarySubstates_ != 8 ||
+             secondaryType_ == PieceType::Count ||
+             primarySubstates_ != 2 || secondarySubstates_ <= 1 ||
              overlayPrimary != PieceType::Ghost ||
-             overlaySecondary != PieceType::Penguin))
+             overlaySecondary != secondaryType_))
             throw std::runtime_error(
-              "information substate transpose is restricted to Ghost+Penguin");
+              "information substate transpose needs a stateful Ghost-primary "
+              "material match");
 
         using Counts = std::array<std::array<std::uint64_t, 4>, 2>;
         using SubstateCounts = std::vector<Counts>;
@@ -1990,12 +3427,14 @@ class TablebaseGenerator {
                         if ((attackerType_ == PieceType::Prince && primarySubstate) ||
                             (secondaryType_ == PieceType::Prince && secondarySubstate))
                             continue;
-                        // This certified overlay uses [Penguin substate][Ghost
-                        // visibility], while its bound concrete UFTB uses
-                        // [Ghost visibility][Penguin substate]. Keep concrete
-                        // WDL and geometry on the raw index and transpose only
-                        // the overlay lookup. The gate above forbids this for
-                        // every other material class.
+                        // Generic Ghost-primary concrete UFTBs pack [Ghost
+                        // visibility][secondary substate].  The information
+                        // solvers use the role-logical [public-extra substate]
+                        // [Ghost visibility] order.  Keep concrete WDL and
+                        // geometry on the raw index and transpose only the
+                        // overlay lookup.  The material/header gate above and
+                        // the runner's exact source/model allowlist prevent a
+                        // stale overlay from opting into this conversion.
                         const std::uint32_t overlayIndex =
                           transposeInformationSubstates
                           ? index - static_cast<std::uint32_t>(index % substates_) +
@@ -3714,6 +5153,75 @@ class TablebaseGenerator {
                 return static_cast<std::size_t>(value);
             }
         };
+        // The census reaches hundreds of millions of keys.  A node-based
+        // unordered_set spends more memory on allocation metadata, pointers,
+        // and buckets than on the exact 16-byte key, which made otherwise idle
+        // CPUs unusable behind the per-worker RAM gate.  Keep the identical
+        // key and equality semantics in a zero-initialized, open-addressed
+        // table.  DevilKey::highPacked uses fewer than 48 bits, so bit 63 is a
+        // lossless occupied marker.  A maximum load of 80% bounds probing while
+        // requiring 2^28 slots (4 GiB) for the 200-million-state census cap.
+        class FlatDevilSet {
+           public:
+            explicit FlatDevilSet(std::uint64_t limit) {
+                if (!limit || limit > std::numeric_limits<std::size_t>::max())
+                    throw std::runtime_error("invalid flat Devil set limit");
+                const std::uint64_t target = limit + (limit + 3) / 4;
+                while (capacity_ < target) {
+                    if (capacity_ >
+                        std::numeric_limits<std::size_t>::max() / 2)
+                        throw std::runtime_error("flat Devil set too large");
+                    capacity_ <<= 1;
+                }
+                if (capacity_ >
+                    std::uint64_t{std::numeric_limits<std::uint32_t>::max()} + 1)
+                    throw std::runtime_error("flat Devil set index too wide");
+                slots_ = static_cast<DevilKey*>(
+                  std::calloc(capacity_, sizeof(DevilKey)));
+                if (!slots_)
+                    throw std::bad_alloc();
+            }
+
+            FlatDevilSet(const FlatDevilSet&) = delete;
+            FlatDevilSet& operator=(const FlatDevilSet&) = delete;
+
+            ~FlatDevilSet() { std::free(slots_); }
+
+            std::pair<bool, std::uint32_t> insert(const DevilKey& key) {
+                std::size_t index = DevilKeyHash{}(key) & (capacity_ - 1);
+                for (;;) {
+                    DevilKey& slot = slots_[index];
+                    if (!(slot.highPacked & occupied_marker())) {
+                        slot.low = key.low;
+                        slot.highPacked = key.highPacked | occupied_marker();
+                        ++size_;
+                        return {true, static_cast<std::uint32_t>(index)};
+                    }
+                    if (slot.low == key.low &&
+                        (slot.highPacked & ~occupied_marker()) == key.highPacked)
+                        return {false, static_cast<std::uint32_t>(index)};
+                    index = (index + 1) & (capacity_ - 1);
+                }
+            }
+
+            std::size_t size() const { return size_; }
+
+            DevilKey key_at(std::uint32_t index) const {
+                if (index >= capacity_ ||
+                    !(slots_[index].highPacked & occupied_marker()))
+                    throw std::runtime_error("invalid flat Devil set index");
+                return {slots_[index].low,
+                        slots_[index].highPacked & ~occupied_marker()};
+            }
+
+           private:
+            static constexpr std::uint64_t occupied_marker() {
+                return std::uint64_t{1} << 63;
+            }
+            DevilKey* slots_ = nullptr;
+            std::size_t capacity_ = 1;
+            std::size_t size_ = 0;
+        };
         constexpr std::uint64_t DevilMinionHighMask = 0xffffULL;
         constexpr int DevilSideShift = 16;
         constexpr int DevilWhiteKingShift = 17;
@@ -3859,16 +5367,23 @@ class TablebaseGenerator {
             return position;
         };
 
-        std::unordered_set<DevilKey, DevilKeyHash> visited;
-        std::vector<DevilKey> frontier;
+        FlatDevilSet visited(stateLimit);
+        // Frontier entries are 32-bit slots in the exact visited table rather
+        // than duplicate 128-bit keys.  Current and next layers are disjoint,
+        // so even at the cap their combined worst case is 800 MB instead of
+        // 3.2 GB.
+        std::vector<std::uint32_t> frontier;
         for (std::uint32_t index = shard; index < stateCount_;
              index += shardCount) {
             Position position;
             if (!make_position_at(index, position))
                 continue;
             std::optional<DevilKey> key = encodeDevil(position);
-            if (key && visited.insert(*key).second)
-                frontier.push_back(*key);
+            if (key) {
+                const auto [inserted, slot] = visited.insert(*key);
+                if (inserted)
+                    frontier.push_back(slot);
+            }
         }
         std::uint64_t boundary = 0;
         std::size_t maxMinions = 0;
@@ -3879,8 +5394,9 @@ class TablebaseGenerator {
                   << capped << '\n' << std::flush;
         for (std::uint32_t ply = 1; ply <= depth && !frontier.empty() && !capped;
              ++ply) {
-            std::vector<DevilKey> next;
-            for (const DevilKey& key : frontier) {
+            std::vector<std::uint32_t> next;
+            for (const std::uint32_t slot : frontier) {
+                const DevilKey key = visited.key_at(slot);
                 Position position = decodeDevil(key);
                 for (const Move& move : position.legal_moves()) {
                     Position child = position;
@@ -3897,8 +5413,10 @@ class TablebaseGenerator {
                       static_cast<std::size_t>(__builtin_popcountll(
                         childKey->highPacked & DevilMinionHighMask));
                     maxMinions = std::max(maxMinions, childMinions);
-                    if (visited.insert(*childKey).second) {
-                        next.push_back(*childKey);
+                    const auto [inserted, childSlot] =
+                      visited.insert(*childKey);
+                    if (inserted) {
+                        next.push_back(childSlot);
                         if (visited.size() >= stateLimit) {
                             capped = true;
                             break;
@@ -3919,6 +5437,1063 @@ class TablebaseGenerator {
                   << shardCount << " visited " << visited.size()
                   << " boundary " << boundary << " max_minions "
                   << maxMinions << " capped " << capped << '\n';
+    }
+
+    // Solve one of the twelve disjoint fixed-Devil-square graphs used by the
+    // spawned-only Devil tablebase.  Unlike census_devil_frontier(), the
+    // partition key is invariant under every in-class transition: the Devil
+    // cannot move, and its canonical starting square remains latent provenance
+    // after capture while surviving Minions finish their automatic runs.  The
+    // closure is global within that partition, edges are regenerated against
+    // the completed exact index, WDL/DTW is solved by retrograde, and every
+    // node receives an exhaustive Bellman replay before a root fragment is
+    // emitted.
+    void solve_devil_spawned_square(int fixedSquare,
+                                    std::uint64_t stateLimit,
+                                    std::uint64_t hashCapacity,
+                                    const std::string& workDirectory) const {
+        // The exact key already reserves a seven-bit secondary square.  Admit
+        // ordinary companion pieces whose complete material state is their
+        // type/color/square; stateful companions need a wider substate codec
+        // and fail closed here instead of being silently flattened.
+        if (attackerType_ != PieceType::Devil ||
+            (fourModels_ && (secondarySubstates_ != 1 ||
+                             secondaryType_ == PieceType::Devil)) ||
+            fixedSquare < 0 || fixedSquare >= Position::BoardSquares ||
+            fixedSquare % Position::BoardFiles >= Position::BoardFiles / 2 ||
+            fixedSquare / Position::BoardFiles >= 3 || !stateLimit ||
+            workDirectory.empty())
+            throw std::runtime_error("invalid spawned-only Devil solve arguments");
+        if (!hashCapacity)
+            hashCapacity = stateLimit;
+        if (hashCapacity > stateLimit)
+            throw std::runtime_error(
+              "spawned-only Devil hash capacity exceeds state limit");
+
+        // At most five spawned Minions coexist.  Rank that sparse subset among
+        // all size-0..5 subsets of 80 squares (25 bits), rank the ordered Kings
+        // in 13 bits, and retain secondary square, cooldown, side, and Devil
+        // presence in another 11 bits.  The fixed Devil square is partition
+        // provenance and is restored from fixedSquare.  Thus the complete
+        // logical proof key fits in 49 bits and seven persistent bytes rather
+        // than the former 14/16.  At the fail-closed 12-billion-state gate this
+        // removes 84/108 GB from the random-read plane without weakening the
+        // state model.
+        struct __attribute__((packed)) DevilKey {
+            std::uint64_t value : 56;
+            bool operator==(const DevilKey& other) const {
+                return value == other.value;
+            }
+        };
+        static_assert(sizeof(DevilKey) == 7,
+                      "spawned-only Devil proof key must remain seven bytes");
+        struct DevilKeyHash {
+            std::uint64_t operator()(const DevilKey& key) const {
+                std::uint64_t value = key.value;
+                value ^= value >> 30;
+                value *= 0xbf58476d1ce4e5b9ULL;
+                value ^= value >> 27;
+                value *= 0x94d049bb133111ebULL;
+                value ^= value >> 31;
+                return value;
+            }
+        };
+        struct Checkpoint {
+            std::uint32_t version = 0;
+            std::uint64_t size = 0;
+            std::uint64_t frontier = 0;
+            std::uint32_t ply = 0;
+            std::uint64_t limit = 0;
+        };
+        const std::string prefix = workDirectory + "/devil-" +
+          std::to_string(fixedSquare);
+        const std::string metadataPath = prefix + ".closure";
+        const std::string frontierPath = prefix + ".frontier";
+        const std::string keyPath = prefix + ".keys";
+        const std::string fragmentPath = prefix + ".roots";
+        if (::mkdir(workDirectory.c_str(), 0700) != 0 && errno != EEXIST)
+            throw std::runtime_error("cannot create spawned-only Devil work directory");
+
+        const auto load_checkpoint = [&]() -> std::optional<Checkpoint> {
+            std::ifstream stream(metadataPath, std::ios::binary);
+            if (!stream)
+                return std::nullopt;
+            std::array<char, 8> magic{};
+            std::uint32_t version = 0, square = 0;
+            std::uint64_t limit = 0;
+            Checkpoint result;
+            stream.read(magic.data(), magic.size());
+            stream.read(reinterpret_cast<char*>(&version), sizeof(version));
+            stream.read(reinterpret_cast<char*>(&square), sizeof(square));
+            stream.read(reinterpret_cast<char*>(&limit), sizeof(limit));
+            stream.read(reinterpret_cast<char*>(&result.size), sizeof(result.size));
+            stream.read(reinterpret_cast<char*>(&result.frontier), sizeof(result.frontier));
+            stream.read(reinterpret_cast<char*>(&result.ply), sizeof(result.ply));
+            const std::array<char, 8> expected{{'U','F','D','V','C','P','1','\0'}};
+            // Version 4 binds the seven-byte combinatorial proof-key layout.
+            // Earlier layouts are accepted only through the explicit,
+            // source-preserving migration path.
+            if (!stream || magic != expected || version != 4 ||
+                square != static_cast<std::uint32_t>(fixedSquare) ||
+                limit > stateLimit || result.size > limit)
+                throw std::runtime_error("spawned-only Devil checkpoint residual");
+            result.version = version;
+            result.limit = limit;
+            return result;
+        };
+        const auto saved = load_checkpoint();
+        if (saved && saved->size >= hashCapacity)
+            throw std::runtime_error(
+              "spawned-only Devil retained checkpoint exceeds hash capacity");
+        bool create = !saved;
+        PersistentMappedArray<DevilKey> keys(keyPath, stateLimit, create);
+        // A retained-index rebuild consumes the committed proof keys in dense
+        // order, whereas closure expansion probes them randomly on hash
+        // fingerprint matches.  Tell both the VM and filesystem about that
+        // phase transition.  Otherwise Linux readahead amplifies a sparse
+        // seven-byte equality check into unnecessary storage traffic, which
+        // starves the parallel expansion workers on bandwidth-bound hosts.
+        if (saved)
+            keys.advise_sequential();
+        // The hash slots are a disposable acceleration index, not proof data.
+        // Rebuilding them from the committed dense key prefix on restart is
+        // both exact and dramatically cheaper during normal execution than
+        // synchronizing a sparse multi-gigabyte mapping after every BFS layer.
+        if (stateLimit >= (std::uint64_t{1} << 40))
+            throw std::runtime_error(
+              "spawned-only Devil state limit exceeds packed hash geometry");
+        std::uint32_t slotBits = 0;
+        for (std::uint64_t capacity = 1; capacity <= stateLimit;
+             capacity <<= 1)
+            ++slotBits;
+        constexpr std::uint32_t StripeCount = 4096;
+        // V19 sizes the disposable hash for the reviewed current layer rather
+        // than the larger fail-closed proof-state limit.  A too-small hash
+        // capacity stops without committing the partial layer, so operators
+        // can raise only this restart-time cache envelope while the durable
+        // state limit and checkpoint remain unchanged.  This is especially
+        // valuable for retained C1, whose 5.1B committed states otherwise
+        // paid the anonymous-memory cost of a 16B worst-case proof gate.
+        // The table still targets 90% occupancy.  The four-bit
+        // fingerprint keeps the extra packed-slot probes in anonymous RAM
+        // while exact-key reads still occur only for the matching 1/16
+        // candidates.  At a 16B gate this releases about 10 GiB for the
+        // retained key cache, which is materially more valuable than the few
+        // additional in-RAM probes on the memory-bound r8gd hosts.
+        const std::uint64_t desiredSlots =
+          hashCapacity + (hashCapacity + 7) / 8;
+        // Each stripe starts on a packed-word boundary, but its length need
+        // not be a power of two.  Rounding the whole table to a power of two
+        // made a 16B-state campaign allocate 2^35 35-bit slots (about
+        // 150 GiB) when 18B slots (about 74 GiB) provide the intended 90%
+        // load factor.  The excess mapping evicted the retained key prefix
+        // and converted a parallel hash rebuild into random EBS reads.
+        const std::uint64_t stripeAlignment =
+          64 / std::gcd<std::uint64_t>(64, slotBits);
+        const std::uint64_t desiredStripe =
+          (desiredSlots + StripeCount - 1) / StripeCount;
+        const std::uint64_t stripeSize =
+          ((desiredStripe + stripeAlignment - 1) / stripeAlignment) *
+          stripeAlignment;
+        const std::uint64_t slotCount = stripeSize * StripeCount;
+        const std::uint64_t slotWordCount =
+          (slotCount * slotBits + 63) / 64;
+        VolatileMappedArray<std::uint64_t> slots(slotWordCount);
+        // An eight-bit hash fingerprint prevents an occupied probe from
+        // fetching a random seven-byte proof key unless the candidate can
+        // actually be equal.  Exact equality is still checked on every
+        // fingerprint match, so collisions cannot hide a duplicate. V21
+        // uses one byte per slot to reject 255/256 unrelated candidates.
+        // Besides cutting false proof-key reads by another factor of four,
+        // the byte-aligned load removes the cross-word packed-bit path from
+        // every hash probe.  The extra two bits consume about 5 GiB at an
+        // 18B-state envelope and remain inside the reviewed 224-GiB cgroup;
+        // exact equality is still authoritative on every fingerprint match.
+        constexpr std::uint32_t FingerprintBits = 8;
+        constexpr std::uint64_t FingerprintMask =
+          (std::uint64_t{1} << FingerprintBits) - 1;
+        VolatileMappedArray<std::uint8_t> fingerprints(slotCount);
+        const std::uint64_t slotMask =
+          (std::uint64_t{1} << slotBits) - 1;
+        // Hash construction is stripe-locked, and every stripe contains an
+        // aligned number of slots so its packed bit span ends on a word
+        // boundary.  locate() runs only after construction.
+        // Exact bit packing is therefore race-free while avoiding the padding
+        // of even the earlier five-byte representation: a 12B campaign needs
+        // 34 bits per slot, saving another 12 GiB at 2^34 slots.
+        const auto load_slot = [&](std::uint64_t index) {
+            const std::uint64_t bit = index * slotBits;
+            const std::uint64_t word = bit >> 6;
+            const std::uint32_t shift = static_cast<std::uint32_t>(bit & 63);
+            std::uint64_t value = slots[word] >> shift;
+            if (shift + slotBits > 64)
+                value |= slots[word + 1] << (64 - shift);
+            return value & slotMask;
+        };
+        const auto store_slot = [&](std::uint64_t index, std::uint64_t value) {
+            if (value > slotMask)
+                throw std::runtime_error(
+                  "spawned-only Devil packed hash index overflow");
+            const std::uint64_t bit = index * slotBits;
+            const std::uint64_t word = bit >> 6;
+            const std::uint32_t shift = static_cast<std::uint32_t>(bit & 63);
+            slots[word] = (slots[word] & ~(slotMask << shift)) |
+                          (value << shift);
+            if (shift + slotBits > 64) {
+                const std::uint32_t spill = shift + slotBits - 64;
+                const std::uint64_t spillMask =
+                  (std::uint64_t{1} << spill) - 1;
+                slots[word + 1] =
+                  (slots[word + 1] & ~spillMask) |
+                  ((value >> (64 - shift)) & spillMask);
+            }
+        };
+        const auto fingerprint_for = [](std::uint64_t hash) {
+            return static_cast<std::uint8_t>(
+              (hash ^ (hash >> 17) ^ (hash >> 37) ^ (hash >> 53)) &
+              FingerprintMask);
+        };
+        const auto load_fingerprint = [&](std::uint64_t index) {
+            return fingerprints[index];
+        };
+        const auto store_fingerprint = [&](std::uint64_t index,
+                                           std::uint8_t value) {
+            if (value > FingerprintMask)
+                throw std::runtime_error(
+                  "spawned-only Devil fingerprint overflow");
+            fingerprints[index] = value;
+        };
+        if (slotCount < StripeCount || slotCount % StripeCount)
+            throw std::runtime_error("spawned-only Devil hash geometry residual");
+        auto stripeLocks = std::make_unique<std::mutex[]>(StripeCount);
+        std::atomic<std::uint64_t> keyCount{saved ? saved->size : 0};
+
+        const auto locate = [&](const DevilKey& key) -> std::optional<std::uint64_t> {
+            const std::uint64_t hash = DevilKeyHash{}(key);
+            const std::uint8_t fingerprint = fingerprint_for(hash);
+            const std::uint32_t stripe = static_cast<std::uint32_t>(hash) &
+                                         (StripeCount - 1);
+            const std::uint64_t base = std::uint64_t(stripe) * stripeSize;
+            std::uint64_t offset = (hash >> 12) % stripeSize;
+            for (std::uint64_t probe = 0; probe < stripeSize; ++probe) {
+                const std::uint64_t value = load_slot(base + offset);
+                if (!value)
+                    return std::nullopt;
+                const std::uint64_t index = value - 1;
+                if (load_fingerprint(base + offset) == fingerprint &&
+                    keys[index] == key)
+                    return index;
+                if (++offset == stripeSize)
+                    offset = 0;
+            }
+            return std::nullopt;
+        };
+        const auto insert = [&](const DevilKey& key) {
+            const std::uint64_t hash = DevilKeyHash{}(key);
+            const std::uint8_t fingerprint = fingerprint_for(hash);
+            const std::uint32_t stripe = static_cast<std::uint32_t>(hash) &
+                                         (StripeCount - 1);
+            std::lock_guard<std::mutex> lock(stripeLocks[stripe]);
+            const std::uint64_t base = std::uint64_t(stripe) * stripeSize;
+            std::uint64_t offset = (hash >> 12) % stripeSize;
+            for (std::uint64_t probe = 0; probe < stripeSize; ++probe) {
+                const std::uint64_t slot = base + offset;
+                const std::uint64_t value = load_slot(slot);
+                if (!value) {
+                    const std::uint64_t dense = keyCount.fetch_add(
+                      1, std::memory_order_relaxed);
+                    if (dense >= stateLimit)
+                        throw std::runtime_error(
+                          "spawned-only Devil exact graph exceeds configured limit");
+                    if (dense >= hashCapacity)
+                        throw std::runtime_error(
+                          "spawned-only Devil exact graph exceeds hash capacity");
+                    keys[dense] = key;
+                    store_fingerprint(slot, fingerprint);
+                    store_slot(slot, dense + 1);
+                    return std::pair<bool, std::uint64_t>{true, dense};
+                }
+                const std::uint64_t dense = value - 1;
+                if (load_fingerprint(slot) == fingerprint &&
+                    keys[dense] == key)
+                    return std::pair<bool, std::uint64_t>{false, dense};
+                if (++offset == stripeSize)
+                    offset = 0;
+            }
+            throw std::runtime_error("spawned-only Devil hash stripe saturated");
+        };
+        if (saved) {
+            const std::uint32_t rebuildWorkers = std::min(
+              workerThreads_, std::max(1u, std::thread::hardware_concurrency()));
+            std::atomic<std::uint64_t> next{0};
+            std::atomic<std::uint64_t> done{0};
+            std::atomic<bool> failed{false};
+            std::exception_ptr failure;
+            std::mutex failureMutex;
+            std::vector<std::thread> tasks;
+            for (std::uint32_t worker = 0; worker < rebuildWorkers; ++worker)
+                tasks.emplace_back([&] {
+                    try {
+                        while (!failed.load(std::memory_order_relaxed)) {
+                            const std::uint64_t begin = next.fetch_add(
+                              4096, std::memory_order_relaxed);
+                            if (begin >= saved->size)
+                                break;
+                            const std::uint64_t end = std::min(
+                              saved->size, begin + 4096);
+                            for (std::uint64_t item = begin; item < end; ++item) {
+                                const std::uint64_t dense = item;
+                                const DevilKey& key = keys[dense];
+                                const std::uint64_t hash = DevilKeyHash{}(key);
+                                const std::uint8_t fingerprint =
+                                  fingerprint_for(hash);
+                                const std::uint32_t stripe =
+                                  static_cast<std::uint32_t>(hash) &
+                                  (StripeCount - 1);
+                                std::lock_guard<std::mutex> lock(
+                                  stripeLocks[stripe]);
+                                const std::uint64_t base =
+                                  std::uint64_t(stripe) * stripeSize;
+                                std::uint64_t offset =
+                                  (hash >> 12) % stripeSize;
+                                bool bound = false;
+                                for (std::uint64_t probe = 0;
+                                     probe < stripeSize; ++probe) {
+                                    const std::uint64_t slot = base + offset;
+                                    const std::uint64_t value = load_slot(slot);
+                                    if (!value) {
+                                        store_fingerprint(slot, fingerprint);
+                                        store_slot(slot, dense + 1);
+                                        bound = true;
+                                        break;
+                                    }
+                                    if (load_fingerprint(slot) == fingerprint &&
+                                        keys[value - 1] == key)
+                                        throw std::runtime_error(
+                                          "duplicate committed spawned-only Devil key");
+                                    if (++offset == stripeSize)
+                                        offset = 0;
+                                }
+                                if (!bound)
+                                    throw std::runtime_error(
+                                      "spawned-only Devil rebuilt hash stripe saturated");
+                            }
+                            const std::uint64_t completed = done.fetch_add(
+                              end - begin, std::memory_order_relaxed) + end - begin;
+                            if (completed / 100'000'000 !=
+                                (completed - (end - begin)) / 100'000'000)
+                                std::cout << "devil_resume_index square "
+                                          << fixedSquare << " states "
+                                          << completed << '/' << saved->size
+                                          << '\n' << std::flush;
+                        }
+                    }
+                    catch (...) {
+                        failed.store(true, std::memory_order_relaxed);
+                        std::lock_guard<std::mutex> lock(failureMutex);
+                        if (!failure)
+                            failure = std::current_exception();
+                    }
+                });
+            for (auto& task : tasks)
+                task.join();
+            if (failure)
+                std::rethrow_exception(failure);
+            std::cout << "devil_resume_index square " << fixedSquare
+                      << " states " << saved->size << " workers "
+                      << rebuildWorkers << '\n' << std::flush;
+        }
+        keys.advise_random();
+
+        constexpr std::uint64_t MinionHighMask = 0xffffULL;
+        constexpr int SideShift = LegacySideShift;
+        constexpr int WhiteKingShift = LegacyWhiteKingShift;
+        constexpr int BlackKingShift = LegacyBlackKingShift;
+        constexpr int DevilSquareShift = LegacyDevilSquareShift;
+        constexpr int DevilCooldownShift = LegacyDevilCooldownShift;
+        constexpr int SecondaryShift = LegacySecondaryShift;
+        constexpr std::uint64_t SquareMask = LegacySquareMask;
+        constexpr std::uint64_t NoSquare = DevilNoSquare;
+        const auto encode_position = [&](const Position& position,
+                                         bool canonicalRoot)
+          -> std::optional<DevilKey> {
+            int whiteKing = Position::NoSquare;
+            int blackKing = Position::NoSquare;
+            int devilSquare = Position::NoSquare;
+            int devilCooldown = 0;
+            int secondarySquare = Position::NoSquare;
+            std::uint64_t minionLow = 0;
+            std::uint64_t minionHigh = 0;
+            for (int id = 0; id < position.piece_count(); ++id) {
+                const PieceState& piece = position.piece(id);
+                if (!piece.alive || !piece.onBoard)
+                    continue;
+                if (piece.type == PieceType::King)
+                    (piece.color == Color::White ? whiteKing : blackKing) =
+                      piece.square;
+                else if (piece.type == PieceType::Devil &&
+                         piece.color == Color::White &&
+                         devilSquare == Position::NoSquare) {
+                    devilSquare = piece.square;
+                    devilCooldown = piece.cooldown;
+                }
+                else if (piece.type == PieceType::Minion &&
+                         piece.color == Color::White) {
+                    if (piece.square < 64)
+                        minionLow |= std::uint64_t{1} << piece.square;
+                    else
+                        minionHigh |=
+                          std::uint64_t{1} << (piece.square - 64);
+                }
+                else if (fourModels_ && piece.type == secondaryType_ &&
+                         piece.color == secondaryColor_ &&
+                         secondarySquare == Position::NoSquare)
+                    secondarySquare = piece.square;
+                else
+                    return std::nullopt;
+            }
+            const bool hasMinion = minionLow || (minionHigh & MinionHighMask);
+            // Spawn sets cooldown 3 and finish_turn immediately decrements it;
+            // the Devil can therefore spawn only every second White turn.  A
+            // White Minion advances on every subsequent White turn and even a
+            // rank-1 spawn is gone on its tenth advance.  Thus at most five
+            // spawned Minions coexist.  This is a proved model invariant, not
+            // the old census's observed maximum of three.
+            const int minionCount = __builtin_popcountll(minionLow) +
+              __builtin_popcountll(minionHigh & MinionHighMask);
+            if (whiteKing == Position::NoSquare ||
+                blackKing == Position::NoSquare || devilCooldown > 3 ||
+                (devilSquare == Position::NoSquare && !hasMinion &&
+                 secondarySquare == Position::NoSquare) ||
+                (!fourModels_ && secondarySquare != Position::NoSquare) ||
+                minionCount > 5)
+                return std::nullopt;
+            bool reflected = canonicalRoot && devilSquare % Position::BoardFiles >= 4;
+            const auto reflect = [&](int square) {
+                return reflected
+                  ? static_cast<int>(horizontal_reflection(
+                      static_cast<std::uint8_t>(square)))
+                  : square;
+            };
+            std::uint64_t legacyLow = 0;
+            std::uint64_t legacyHigh = 0;
+            auto add_minion = [&](int square) {
+                const int target = reflect(square);
+                const int minimumFile = std::max(
+                  0, fixedSquare % Position::BoardFiles - 2);
+                const int maximumFile = std::min(
+                  Position::BoardFiles - 1,
+                  fixedSquare % Position::BoardFiles + 2);
+                if (target % Position::BoardFiles < minimumFile ||
+                    target % Position::BoardFiles > maximumFile)
+                    throw std::runtime_error(
+                      "spawned-only Devil Minion escaped its fixed spawn files");
+                if (target < 64)
+                    legacyLow |= std::uint64_t{1} << target;
+                else
+                    legacyHigh |= std::uint64_t{1} << (target - 64);
+            };
+            std::uint64_t bits = minionLow;
+            while (bits) {
+                const int square = __builtin_ctzll(bits);
+                bits &= bits - 1;
+                add_minion(square);
+            }
+            bits = minionHigh & MinionHighMask;
+            while (bits) {
+                const int square = 64 + __builtin_ctzll(bits);
+                bits &= bits - 1;
+                add_minion(square);
+            }
+            legacyHigh |= static_cast<std::uint64_t>(
+              position.side_to_move() == Color::Black) << SideShift;
+            legacyHigh |= static_cast<std::uint64_t>(reflect(whiteKing)) <<
+                              WhiteKingShift;
+            legacyHigh |= static_cast<std::uint64_t>(reflect(blackKing)) <<
+                              BlackKingShift;
+            legacyHigh |= static_cast<std::uint64_t>(
+              devilSquare == Position::NoSquare ? NoSquare : reflect(devilSquare)) <<
+              DevilSquareShift;
+            legacyHigh |= static_cast<std::uint64_t>(devilCooldown) <<
+                              DevilCooldownShift;
+            legacyHigh |= static_cast<std::uint64_t>(
+              secondarySquare == Position::NoSquare
+                ? NoSquare : reflect(secondarySquare)) << SecondaryShift;
+            const int encodedDevil = static_cast<int>(
+              (legacyHigh >> DevilSquareShift) & SquareMask);
+            if (encodedDevil != static_cast<int>(NoSquare) &&
+                encodedDevil != fixedSquare)
+                return std::nullopt;
+            return DevilKey{pack_compact_devil_key(
+              legacyLow, legacyHigh, static_cast<unsigned>(fixedSquare))};
+        };
+        const auto decode_position = [&](const DevilKey& key) {
+            const auto legacy = unpack_compact_devil_key(
+              key.value, static_cast<unsigned>(fixedSquare));
+            const std::uint64_t legacyLow = legacy.first;
+            const std::uint64_t legacyHigh = legacy.second;
+            const auto field = [&](int shift) {
+                return static_cast<int>((legacyHigh >> shift) & SquareMask);
+            };
+            Position position;
+            position.clear();
+            position.add_piece(PieceType::King, Color::White,
+                               field(WhiteKingShift));
+            position.add_piece(PieceType::King, Color::Black,
+                               field(BlackKingShift));
+            const int devilSquare = field(DevilSquareShift);
+            if (devilSquare != static_cast<int>(NoSquare)) {
+                const int devil = position.add_piece(
+                  PieceType::Devil, Color::White, devilSquare);
+                position.piece(devil).cooldown = static_cast<std::uint8_t>(
+                  (legacyHigh >> DevilCooldownShift) & 3ULL);
+            }
+            const int secondarySquare = field(SecondaryShift);
+            if (secondarySquare != static_cast<int>(NoSquare))
+                position.add_piece(secondaryType_, secondaryColor_,
+                                   secondarySquare);
+            std::uint64_t bits = legacyLow;
+            while (bits) {
+                const int square = __builtin_ctzll(bits);
+                bits &= bits - 1;
+                position.add_piece(PieceType::Minion, Color::White, square);
+            }
+            bits = legacyHigh & MinionHighMask;
+            while (bits) {
+                const int square = 64 + __builtin_ctzll(bits);
+                bits &= bits - 1;
+                position.add_piece(PieceType::Minion, Color::White, square);
+            }
+            position.set_side_to_move(
+              ((legacyHigh >> SideShift) & 1ULL)
+                ? Color::Black : Color::White);
+            for (int id = 0; id < position.piece_count(); ++id)
+                position.piece(id).moved = true;
+            return position;
+        };
+
+        const std::uint32_t workers = std::min(
+          workerThreads_, std::max(1u, std::thread::hardware_concurrency()));
+        std::vector<std::uint64_t> frontier;
+        std::unique_ptr<ReadOnlyMappedArray<std::uint64_t>> retainedFrontier;
+        std::uint32_t ply = 0;
+        if (saved) {
+            ply = saved->ply;
+            if (saved->frontier)
+                retainedFrontier =
+                  std::make_unique<ReadOnlyMappedArray<std::uint64_t>>(
+                    frontierPath, saved->frontier);
+        }
+        else {
+            std::atomic<std::uint32_t> nextRoot{0};
+            std::atomic<bool> failed{false};
+            std::exception_ptr failure;
+            std::mutex failureMutex;
+            std::vector<std::vector<std::uint64_t>> roots(workers);
+            std::vector<std::thread> tasks;
+            for (std::uint32_t worker = 0; worker < workers; ++worker)
+                tasks.emplace_back([&, worker] {
+                    try {
+                        auto& local = roots[worker];
+                        while (!failed.load(std::memory_order_relaxed)) {
+                            const std::uint32_t begin = nextRoot.fetch_add(
+                              4096, std::memory_order_relaxed);
+                            if (begin >= stateCount_)
+                                break;
+                            const std::uint32_t end = std::min<std::uint32_t>(
+                              stateCount_, begin + 4096);
+                            for (std::uint32_t index = begin; index < end; ++index) {
+                                Position position;
+                                if (!make_position_at(index, position))
+                                    continue;
+                                const auto key = encode_position(position, true);
+                                if (!key)
+                                    continue;
+                                const auto [inserted, dense] = insert(*key);
+                                if (inserted)
+                                    local.push_back(dense);
+                            }
+                        }
+                    }
+                    catch (...) {
+                        failed.store(true, std::memory_order_relaxed);
+                        std::lock_guard<std::mutex> lock(failureMutex);
+                        if (!failure)
+                            failure = std::current_exception();
+                    }
+                });
+            for (auto& task : tasks)
+                task.join();
+            if (failure)
+                std::rethrow_exception(failure);
+            std::size_t rootCount = 0;
+            for (const auto& local : roots)
+                rootCount += local.size();
+            frontier.reserve(rootCount);
+            for (auto& local : roots)
+                frontier.insert(frontier.end(), local.begin(), local.end());
+            std::cout << "devil_roots square " << fixedSquare
+                      << " roots " << frontier.size() << " workers "
+                      << workers << '\n' << std::flush;
+        }
+        const auto save_layer = [&](std::uint32_t completedPly,
+                                    const std::vector<std::uint64_t>& values) {
+            keys.sync_prefix(keyCount.load(std::memory_order_relaxed));
+            const std::string frontierTemporary = frontierPath + ".tmp";
+            {
+                std::ofstream stream(frontierTemporary,
+                                     std::ios::binary | std::ios::trunc);
+                stream.write(reinterpret_cast<const char*>(values.data()),
+                             values.size() * sizeof(std::uint64_t));
+                if (!stream)
+                    throw std::runtime_error("cannot write spawned-only Devil frontier");
+            }
+            if (std::rename(frontierTemporary.c_str(), frontierPath.c_str()) != 0)
+                throw std::runtime_error("cannot install spawned-only Devil frontier");
+            const std::string temporary = metadataPath + ".tmp";
+            {
+                std::ofstream stream(temporary,
+                                     std::ios::binary | std::ios::trunc);
+                const std::array<char, 8> magic{{'U','F','D','V','C','P','1','\0'}};
+                const std::uint32_t version = 4;
+                const std::uint32_t square = fixedSquare;
+                const std::uint64_t size = keyCount.load(std::memory_order_relaxed);
+                const std::uint64_t frontierSize = values.size();
+                stream.write(magic.data(), magic.size());
+                stream.write(reinterpret_cast<const char*>(&version), sizeof(version));
+                stream.write(reinterpret_cast<const char*>(&square), sizeof(square));
+                stream.write(reinterpret_cast<const char*>(&stateLimit), sizeof(stateLimit));
+                stream.write(reinterpret_cast<const char*>(&size), sizeof(size));
+                stream.write(reinterpret_cast<const char*>(&frontierSize), sizeof(frontierSize));
+                stream.write(reinterpret_cast<const char*>(&completedPly), sizeof(completedPly));
+                if (!stream)
+                    throw std::runtime_error("cannot write spawned-only Devil checkpoint");
+            }
+            if (std::rename(temporary.c_str(), metadataPath.c_str()) != 0)
+                throw std::runtime_error("cannot install spawned-only Devil checkpoint");
+        };
+        if (!saved)
+            save_layer(0, frontier);
+
+        while (retainedFrontier || !frontier.empty()) {
+            const std::uint64_t frontierSize = retainedFrontier
+              ? retainedFrontier->count() : frontier.size();
+            const auto frontier_at = [&](std::uint64_t index) {
+                return retainedFrontier
+                  ? (*retainedFrontier)[index] : frontier[index];
+            };
+            std::atomic<std::size_t> next{0};
+            std::atomic<bool> failed{false};
+            std::exception_ptr failure;
+            std::mutex failureMutex;
+            std::vector<std::vector<std::uint64_t>> additions(workers);
+            std::vector<std::thread> tasks;
+            for (std::uint32_t worker = 0; worker < workers; ++worker)
+                tasks.emplace_back([&, worker] {
+                    try {
+                        auto& local = additions[worker];
+                        while (!failed.load(std::memory_order_relaxed)) {
+                            const std::size_t begin = next.fetch_add(
+                              4096, std::memory_order_relaxed);
+                            if (begin >= frontierSize)
+                                break;
+                            const std::size_t end = std::min(
+                              static_cast<std::size_t>(frontierSize),
+                              begin + 4096);
+                            // Closure layers contain many repeated children.
+                            // Probing the global exact index immediately made
+                            // every repetition pay another random proof-key
+                            // page read.  Retain a bounded worker-local batch,
+                            // order it by its global hash path, and eliminate
+                            // exact duplicates before acquiring stripe locks.
+                            // This changes only disposable insertion order;
+                            // the committed exact key set and proof semantics
+                            // remain unchanged.
+                            std::vector<std::pair<std::uint64_t, DevilKey>> children;
+                            children.reserve((end - begin) * 16);
+                            for (std::size_t item = begin; item < end; ++item) {
+                                Position position = decode_position(
+                                  keys[frontier_at(item)]);
+                                for (const Move& move : position.legal_moves()) {
+                                    Position child = position;
+                                    if (!child.apply_move_unchecked(move))
+                                        throw std::runtime_error(
+                                          "spawned-only Devil legal move failed");
+                                    if (child.game_over())
+                                        continue;
+                                    const auto childKey = encode_position(child, false);
+                                    if (!childKey)
+                                        throw std::runtime_error(
+                                          "spawned-only Devil nonterminal closure residual: " +
+                                          child.upn());
+                                    children.emplace_back(
+                                      DevilKeyHash{}(*childKey), *childKey);
+                                }
+                            }
+                            std::sort(children.begin(), children.end(),
+                                      [](const auto& lhs, const auto& rhs) {
+                                return lhs.first < rhs.first ||
+                                  (lhs.first == rhs.first &&
+                                   lhs.second.value < rhs.second.value);
+                            });
+                            DevilKey previous{};
+                            bool havePrevious = false;
+                            for (const auto& candidate : children) {
+                                if (havePrevious && candidate.second == previous)
+                                    continue;
+                                previous = candidate.second;
+                                havePrevious = true;
+                                const auto [inserted, dense] = insert(candidate.second);
+                                    if (inserted)
+                                        local.push_back(dense);
+                            }
+                        }
+                    }
+                    catch (...) {
+                        failed.store(true, std::memory_order_relaxed);
+                        std::lock_guard<std::mutex> lock(failureMutex);
+                        if (!failure)
+                            failure = std::current_exception();
+                    }
+                });
+            for (auto& task : tasks)
+                task.join();
+            if (failure)
+                std::rethrow_exception(failure);
+            std::vector<std::uint64_t> nextFrontier;
+            std::size_t nextSize = 0;
+            for (const auto& local : additions)
+                nextSize += local.size();
+            nextFrontier.reserve(nextSize);
+            for (auto& local : additions)
+                nextFrontier.insert(nextFrontier.end(), local.begin(), local.end());
+            retainedFrontier.reset();
+            frontier.swap(nextFrontier);
+            ++ply;
+            save_layer(ply, frontier);
+            std::cout << "devil_closure square " << fixedSquare
+                      << " ply " << ply << " frontier " << frontier.size()
+                      << " states " << keyCount.load(std::memory_order_relaxed)
+                      << " workers " << workers << '\n' << std::flush;
+        }
+
+        const std::uint64_t graphStates = keyCount.load(std::memory_order_relaxed);
+        if (!graphStates)
+            throw std::runtime_error("empty spawned-only Devil graph");
+        const char* adoptedReverseRaw = std::getenv(
+          "ULTIMATE_DEVIL_REVERSE_ADOPT_BUCKETS");
+        const bool resumeReverse = adoptedReverseRaw && *adoptedReverseRaw;
+        PersistentMappedArray<Node> graphNodes(
+          prefix + ".nodes", graphStates, !resumeReverse);
+        PersistentMappedArray<std::uint32_t> degrees(
+          prefix + ".degrees", graphStates, !resumeReverse);
+        const auto graph_scan = [&](const char* phase, auto&& action) {
+            std::atomic<std::uint64_t> next{0};
+            std::atomic<std::uint64_t> done{0};
+            std::atomic<bool> failed{false};
+            std::exception_ptr failure;
+            std::mutex failureMutex;
+            std::vector<std::thread> tasks;
+            for (std::uint32_t worker = 0; worker < workers; ++worker)
+                tasks.emplace_back([&] {
+                    try {
+                        while (!failed.load(std::memory_order_relaxed)) {
+                            const std::uint64_t begin = next.fetch_add(
+                              4096, std::memory_order_relaxed);
+                            if (begin >= graphStates)
+                                break;
+                            const std::uint64_t end = std::min(
+                              graphStates, begin + 4096);
+                            for (std::uint64_t index = begin; index < end; ++index)
+                                action(index);
+                            const std::uint64_t completed = done.fetch_add(
+                              end - begin, std::memory_order_relaxed) + end - begin;
+                            if (completed / 10'000'000 !=
+                                (completed - (end - begin)) / 10'000'000)
+                                std::cout << phase << " square " << fixedSquare
+                                          << " states " << completed << '/'
+                                          << graphStates << '\n' << std::flush;
+                        }
+                    }
+                    catch (...) {
+                        failed.store(true, std::memory_order_relaxed);
+                        std::lock_guard<std::mutex> lock(failureMutex);
+                        if (!failure)
+                            failure = std::current_exception();
+                    }
+                });
+            for (auto& task : tasks)
+                task.join();
+            if (failure)
+                std::rethrow_exception(failure);
+        };
+        const auto successors = [&](std::uint64_t index, auto&& consume) {
+            Position position = decode_position(keys[index]);
+            std::uint32_t legal = 0;
+            for (const Move& move : position.legal_moves()) {
+                ++legal;
+                Position child = position;
+                if (!child.apply_move_unchecked(move))
+                    throw std::runtime_error("spawned-only Devil graph move failed");
+                if (child.game_over()) {
+                    consume(std::nullopt, child.winner(),
+                            child.side_to_move() == position.side_to_move());
+                    continue;
+                }
+                const auto childKey = encode_position(child, false);
+                if (!childKey)
+                    throw std::runtime_error(
+                      "spawned-only Devil edge leaves nonterminal closure");
+                const auto childIndex = locate(*childKey);
+                if (!childIndex || *childIndex >= graphStates)
+                    throw std::runtime_error(
+                      "spawned-only Devil completed closure misses successor");
+                consume(childIndex, std::optional<Color>{},
+                        child.side_to_move() == position.side_to_move());
+            }
+            return legal;
+        };
+        if (!resumeReverse)
+            graph_scan("devil_graph", [&](std::uint64_t index) {
+                Node& node = graphNodes[index];
+                const Position parent = decode_position(keys[index]);
+                const std::uint32_t legal = successors(
+                  index, [&](std::optional<std::uint64_t> child,
+                             std::optional<Color> winner, bool) {
+                    if (node.remaining ==
+                        std::numeric_limits<std::uint16_t>::max())
+                        throw std::runtime_error(
+                          "spawned-only Devil move-count overflow");
+                    ++node.remaining;
+                    if (child) {
+                        __atomic_fetch_add(&degrees[*child], 1u,
+                                           __ATOMIC_RELAXED);
+                        return;
+                    }
+                    if (winner && *winner == parent.side_to_move()) {
+                        node.wdl = Wdl::Win;
+                        node.dtw = 1;
+                    }
+                    else if (winner && node.remaining)
+                        --node.remaining;
+                });
+                if (!legal) {
+                    const auto winner = parent.winner();
+                    node.wdl = winner && *winner != parent.side_to_move()
+                      ? Wdl::Loss : Wdl::Draw;
+                }
+                else if (node.wdl == Wdl::Unknown && !node.remaining) {
+                    node.wdl = Wdl::Loss;
+                    node.dtw = 1;
+                }
+            });
+        else
+            std::cout << "devil_graph_adopt square " << fixedSquare
+                      << " states " << graphStates << '\n' << std::flush;
+        // The degree plane can contain tens of billions of entries.  A
+        // single-thread prefix reduction left an otherwise idle 32-vCPU host
+        // scanning hundreds of gigabytes after the parallel graph pass.
+        // Reduce disjoint ranges in parallel; addition is associative and the
+        // resulting exact edge count is independent of worker scheduling.
+        std::vector<std::uint64_t> partialEdgeCounts(workers, 0);
+        std::atomic<std::uint64_t> nextDegree{0};
+        std::atomic<bool> degreeFailed{false};
+        std::exception_ptr degreeFailure;
+        std::mutex degreeFailureMutex;
+        std::vector<std::thread> degreeTasks;
+        for (std::uint32_t worker = 0; worker < workers; ++worker)
+            degreeTasks.emplace_back([&, worker] {
+                try {
+                    std::uint64_t local = 0;
+                    while (!degreeFailed.load(std::memory_order_relaxed)) {
+                        const std::uint64_t begin = nextDegree.fetch_add(
+                          1'048'576, std::memory_order_relaxed);
+                        if (begin >= graphStates)
+                            break;
+                        const std::uint64_t end = std::min(
+                          graphStates, begin + 1'048'576);
+                        for (std::uint64_t index = begin; index < end; ++index) {
+                            if (local > std::numeric_limits<std::uint64_t>::max() -
+                                          degrees[index])
+                                throw std::runtime_error(
+                                  "spawned-only Devil edge-count overflow");
+                            local += degrees[index];
+                        }
+                    }
+                    partialEdgeCounts[worker] = local;
+                }
+                catch (...) {
+                    degreeFailed.store(true, std::memory_order_relaxed);
+                    std::lock_guard<std::mutex> lock(degreeFailureMutex);
+                    if (!degreeFailure)
+                        degreeFailure = std::current_exception();
+                }
+            });
+        for (auto& task : degreeTasks)
+            task.join();
+        if (degreeFailure)
+            std::rethrow_exception(degreeFailure);
+        std::uint64_t edgeCount = 0;
+        for (const std::uint64_t partial : partialEdgeCounts) {
+            if (edgeCount > std::numeric_limits<std::uint64_t>::max() - partial)
+                throw std::runtime_error("spawned-only Devil edge-count overflow");
+            edgeCount += partial;
+        }
+        std::cout << "devil_degree_sum square " << fixedSquare
+                  << " states " << graphStates << " edges " << edgeCount
+                  << " workers " << workers << '\n' << std::flush;
+        PersistentMappedArray<std::uint64_t> offsets(
+          prefix + ".offsets", graphStates + 1, !resumeReverse);
+        // Central-square Devil closures can exceed 2^32 states.  Keep the
+        // dense predecessor index wide and retain its same-side flag separately.
+        PersistentMappedArray<std::uint64_t> predecessors(
+          prefix + ".predecessors", edgeCount, !resumeReverse);
+        PersistentMappedArray<std::uint8_t> predecessorSides(
+          prefix + ".predecessor-sides", edgeCount, !resumeReverse);
+        build_restartable_devil_reverse(
+          prefix, fixedSquare, graphStates, edgeCount, workers, degrees.data(),
+          offsets.data(), predecessors.data(), predecessorSides.data(),
+          successors);
+        std::vector<std::vector<std::uint64_t>> buckets(
+          std::numeric_limits<std::uint16_t>::max() + 1ULL);
+        for (std::uint64_t index = 0; index < graphStates; ++index)
+            if (graphNodes[index].wdl == Wdl::Win ||
+                graphNodes[index].wdl == Wdl::Loss)
+                buckets[graphNodes[index].dtw].push_back(index);
+        std::uint64_t propagated = 0;
+        for (std::uint32_t distance = 0; distance < buckets.size(); ++distance)
+            for (std::size_t queued = 0; queued < buckets[distance].size(); ++queued) {
+                const std::uint64_t child = buckets[distance][queued];
+                const Node childNode = graphNodes[child];
+                if (distance != childNode.dtw)
+                    continue;
+                if (++propagated % 10'000'000 == 0)
+                    std::cout << "devil_propagate square " << fixedSquare
+                              << " queue " << propagated << '\n' << std::flush;
+                for (std::uint64_t edge = offsets[child];
+                     edge < offsets[child + 1]; ++edge) {
+                    const std::uint64_t parentIndex = predecessors[edge];
+                    Node& parent = graphNodes[parentIndex];
+                    const Wdl outcome = parent_wdl(
+                      childNode.wdl, predecessorSides[edge] != 0);
+                    if (parent.wdl == Wdl::Win && outcome == Wdl::Win) {
+                        const std::uint16_t value = static_cast<std::uint16_t>(
+                          std::min<int>(std::numeric_limits<std::uint16_t>::max(),
+                                        childNode.dtw + 1));
+                        if (value < parent.dtw) {
+                            parent.dtw = value;
+                            buckets[value].push_back(parentIndex);
+                        }
+                    }
+                    else if (parent.wdl == Wdl::Unknown && outcome == Wdl::Win) {
+                        parent.wdl = Wdl::Win;
+                        parent.dtw = static_cast<std::uint16_t>(std::min<int>(
+                          std::numeric_limits<std::uint16_t>::max(),
+                          childNode.dtw + 1));
+                        buckets[parent.dtw].push_back(parentIndex);
+                    }
+                    else if (parent.wdl == Wdl::Unknown && outcome == Wdl::Loss) {
+                        if (parent.remaining)
+                            --parent.remaining;
+                        parent.longestWinChild = std::max(
+                          parent.longestWinChild, childNode.dtw);
+                        if (!parent.remaining) {
+                            parent.wdl = Wdl::Loss;
+                            parent.dtw = static_cast<std::uint16_t>(std::min<int>(
+                              std::numeric_limits<std::uint16_t>::max(),
+                              parent.longestWinChild + 1));
+                            buckets[parent.dtw].push_back(parentIndex);
+                        }
+                    }
+                }
+            }
+        for (std::uint64_t index = 0; index < graphStates; ++index)
+            if (graphNodes[index].wdl == Wdl::Unknown)
+                graphNodes[index].wdl = Wdl::Draw;
+
+        graph_scan("devil_verify", [&](std::uint64_t index) {
+            const Node node = graphNodes[index];
+            const Position parent = decode_position(keys[index]);
+            bool hasWinningMove = false;
+            bool hasDraw = false;
+            bool allChildrenWin = true;
+            std::uint16_t shortestLoss = std::numeric_limits<std::uint16_t>::max();
+            std::uint16_t longestWin = 0;
+            const std::uint32_t legal = successors(
+              index, [&](std::optional<std::uint64_t> child,
+                         std::optional<Color> winner, bool sameSide) {
+                Wdl outcome = Wdl::Draw;
+                std::uint16_t childDtw = 0;
+                if (child) {
+                    outcome = parent_wdl(graphNodes[*child].wdl, sameSide);
+                    childDtw = graphNodes[*child].dtw;
+                }
+                else if (winner)
+                    outcome = *winner == parent.side_to_move()
+                      ? Wdl::Win : Wdl::Loss;
+                if (outcome == Wdl::Win) {
+                    hasWinningMove = true;
+                    shortestLoss = std::min(shortestLoss, childDtw);
+                    allChildrenWin = false;
+                }
+                else if (outcome == Wdl::Draw) {
+                    hasDraw = true;
+                    allChildrenWin = false;
+                }
+                else
+                    longestWin = std::max(longestWin, childDtw);
+            });
+            allChildrenWin = legal && allChildrenWin;
+            const bool valid = node.wdl == Wdl::Win
+              ? hasWinningMove && node.dtw == shortestLoss + 1
+              : node.wdl == Wdl::Loss
+                ? ((!legal && node.dtw == 0) ||
+                   (allChildrenWin && node.dtw == longestWin + 1))
+                : !hasWinningMove && (!legal || hasDraw);
+            if (!valid)
+                throw std::runtime_error(
+                  "spawned-only Devil Bellman residual at graph index " +
+                  std::to_string(index));
+        });
+
+        std::ofstream fragment(fragmentPath, std::ios::binary | std::ios::trunc);
+        const std::array<char, 12> magic{{'U','F','D','V','R','O','O','T','1','\0','\0','\0'}};
+        const std::uint32_t version = 1;
+        const std::uint32_t square = fixedSquare;
+        std::vector<std::tuple<std::uint32_t, std::uint8_t, std::uint16_t>> roots;
+        for (std::uint32_t dense = 0; dense < stateCount_; ++dense) {
+            Position position;
+            if (!make_position_at(dense, position))
+                continue;
+            const auto key = encode_position(position, true);
+            if (!key)
+                continue;
+            const auto graph = locate(*key);
+            if (!graph || *graph >= graphStates)
+                throw std::runtime_error("spawned-only Devil root closure residual");
+            roots.emplace_back(dense,
+              static_cast<std::uint8_t>(graphNodes[*graph].wdl),
+              graphNodes[*graph].dtw);
+        }
+        const std::uint64_t rootCount = roots.size();
+        fragment.write(magic.data(), magic.size());
+        fragment.write(reinterpret_cast<const char*>(&version), sizeof(version));
+        fragment.write(reinterpret_cast<const char*>(&square), sizeof(square));
+        fragment.write(reinterpret_cast<const char*>(&stateLimit), sizeof(stateLimit));
+        fragment.write(reinterpret_cast<const char*>(&graphStates), sizeof(graphStates));
+        fragment.write(reinterpret_cast<const char*>(&edgeCount), sizeof(edgeCount));
+        fragment.write(reinterpret_cast<const char*>(&rootCount), sizeof(rootCount));
+        for (const auto [dense, wdl, dtw] : roots) {
+            fragment.write(reinterpret_cast<const char*>(&dense), sizeof(dense));
+            fragment.write(reinterpret_cast<const char*>(&wdl), sizeof(wdl));
+            fragment.write(reinterpret_cast<const char*>(&dtw), sizeof(dtw));
+        }
+        if (!fragment)
+            throw std::runtime_error("cannot write spawned-only Devil root fragment");
+        std::cout << "DEVIL_SPAWNED_SQUARE_OK square " << fixedSquare
+                  << " states " << graphStates << " edges " << edgeCount
+                  << " roots " << rootCount << " fragment " << fragmentPath
+                  << '\n';
     }
 
    private:
@@ -5158,10 +7733,7 @@ class TablebaseGenerator {
                       "tablebase node exceeds the exact move-count plane");
                 ++nodes_[index].remaining;
             }
-            if (child.forced_timeout_winner() ||
-                !child.has_real_king(Color::White) ||
-                !child.has_real_king(Color::Black) ||
-                !child.is_checkmate_possible()) {
+            if (terminal_successor(child)) {
                 const auto winner = child.winner();
                 if (initialize) {
                     if (winner && *winner == position.side_to_move()) {
@@ -5381,10 +7953,7 @@ class TablebaseGenerator {
             std::uint16_t longestWin = 0;
             const std::uint32_t legalMoves = for_each_legal_successor(
               position, [&](const Move&, const Position& child) {
-                if (child.forced_timeout_winner() ||
-                    !child.has_real_king(Color::White) ||
-                    !child.has_real_king(Color::Black) ||
-                    !child.is_checkmate_possible()) {
+                if (terminal_successor(child)) {
                     const auto winner = child.winner();
                     if (winner && *winner == position.side_to_move()) {
                         hasLoss = true;
@@ -5526,6 +8095,10 @@ int main(int argc, char** argv) {
     std::uint32_t checkpointEvery = 50'000;
     bool selfTest = false;
     bool fourCodecSelfTest = false;
+    std::string devilReverseSelfTest;
+    std::string devilCheckpointMigrationSelfTest;
+    std::string devilCheckpointMigrationSource;
+    std::string devilCheckpointMigrationDestination;
     bool diskBacked = false;
     bool trackedGhost = false;
     bool linkedCopycatPair = false;
@@ -5554,6 +8127,10 @@ int main(int argc, char** argv) {
     std::uint32_t devilFrontierShard = 0;
     std::uint32_t devilFrontierShards = 1;
     std::uint64_t devilFrontierLimit = 2'000'000;
+    int devilSpawnedSquare = Position::NoSquare;
+    std::uint64_t devilSpawnedLimit = 250'000'000;
+    std::uint64_t devilSpawnedHashCapacity = 0;
+    std::string devilSpawnedWork;
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
         const auto value = [&](const char* option) -> std::string {
@@ -5639,6 +8216,27 @@ int main(int argc, char** argv) {
               std::stoul(value("--devil-frontier-shards")));
         else if (argument == "--devil-frontier-limit")
             devilFrontierLimit = std::stoull(value("--devil-frontier-limit"));
+        else if (argument == "--solve-devil-spawned-square")
+            devilSpawnedSquare = std::stoi(value("--solve-devil-spawned-square"));
+        else if (argument == "--devil-spawned-limit")
+            devilSpawnedLimit = std::stoull(value("--devil-spawned-limit"));
+        else if (argument == "--devil-spawned-hash-capacity")
+            devilSpawnedHashCapacity =
+              std::stoull(value("--devil-spawned-hash-capacity"));
+        else if (argument == "--devil-spawned-work")
+            devilSpawnedWork = value("--devil-spawned-work");
+        else if (argument == "--devil-reverse-self-test")
+            devilReverseSelfTest = value("--devil-reverse-self-test");
+        else if (argument == "--devil-checkpoint-migration-self-test")
+            devilCheckpointMigrationSelfTest =
+              value("--devil-checkpoint-migration-self-test");
+        else if (argument == "--migrate-devil-checkpoint-v2" ||
+                 argument == "--migrate-devil-checkpoint")
+            devilCheckpointMigrationSource =
+              value("--migrate-devil-checkpoint");
+        else if (argument == "--devil-migration-destination")
+            devilCheckpointMigrationDestination =
+              value("--devil-migration-destination");
         else if (argument == "--self-test") selfTest = true;
         else if (argument == "--four-codec-self-test") fourCodecSelfTest = true;
         else throw std::runtime_error("unknown argument: " + argument);
@@ -5658,9 +8256,32 @@ int main(int argc, char** argv) {
             self_test_four_codec();
             return 0;
         }
+        if (!devilReverseSelfTest.empty()) {
+            self_test_devil_reverse_spool(devilReverseSelfTest);
+            return 0;
+        }
+        if (!devilCheckpointMigrationSelfTest.empty()) {
+            self_test_spawned_devil_checkpoint_migration(
+              devilCheckpointMigrationSelfTest);
+            return 0;
+        }
+        if (!devilCheckpointMigrationSource.empty() ||
+            !devilCheckpointMigrationDestination.empty()) {
+            if (devilCheckpointMigrationSource.empty() ||
+                devilCheckpointMigrationDestination.empty())
+                throw std::runtime_error(
+                  "Devil checkpoint migration requires source and destination");
+            migrate_spawned_devil_checkpoint(
+              devilCheckpointMigrationSource,
+              devilCheckpointMigrationDestination);
+            return 0;
+        }
         if (secondaryType == PieceType::Count) {
-            if (!devilFrontierDepth &&
-                !closed_position_only_attacker(attackerType))
+            if (!devilFrontierDepth && devilSpawnedSquare == Position::NoSquare &&
+                !closed_position_only_attacker(attackerType) &&
+                !(attackerType == PieceType::Devil &&
+                  (!auditPredecessorSafety.empty() ||
+                   !auditReachability.empty())))
                 throw std::runtime_error("piece is not a closed K+K+1 tablebase class");
         }
         else if (!devilFrontierDepth) {
@@ -5677,13 +8298,20 @@ int main(int argc, char** argv) {
                secondaryType == PieceType::Ghost) ||
               (attackerType == PieceType::Ghost &&
                secondaryType == PieceType::Angel);
+            const bool closedSpawnedDevilCompanion =
+              devilSpawnedSquare != Position::NoSquare &&
+              attackerType == PieceType::Devil &&
+              stateless_four_piece(secondaryType);
             if ((!closed_four_piece(attackerType) ||
                  !closed_four_piece(secondaryType)) && !closedUnsplitCopycat &&
-                !closedAngelGhost)
+                !closedAngelGhost && !closedSpawnedDevilCompanion)
                 throw std::runtime_error("K+K+2 piece requires a larger non-closed model");
         }
-        if (!workerThreads || workerThreads > 32)
-            throw std::runtime_error("tablebase workers must be between 1 and 32");
+        const std::uint32_t hardwareWorkers = std::max(
+          1u, std::thread::hardware_concurrency());
+        if (!workerThreads || workerThreads > hardwareWorkers)
+            throw std::runtime_error(
+              "tablebase workers exceed available hardware concurrency");
         TablebaseGenerator generator(attackerType, secondaryType, secondaryColor,
                                      output, checkpoint, checkpointEvery, diskBacked,
                                      trackedGhost, linkedCopycatPair,
@@ -5714,6 +8342,10 @@ int main(int argc, char** argv) {
             generator.census_devil_frontier(
               devilFrontierDepth, devilFrontierShard,
               devilFrontierShards, devilFrontierLimit);
+        if (devilSpawnedSquare != Position::NoSquare)
+            generator.solve_devil_spawned_square(
+              devilSpawnedSquare, devilSpawnedLimit,
+              devilSpawnedHashCapacity, devilSpawnedWork);
         if (!solveJesterInformation.empty()) {
             if (referenceInformationSolver)
                 generator.solve_jester_information_reference(
@@ -5733,7 +8365,8 @@ int main(int argc, char** argv) {
             auditPredecessorSafety.empty() && auditReachability.empty() &&
             auditTurnBoundaryReachability.empty() &&
             auditInformationTrivial.empty() &&
-            solveJesterInformation.empty() && !devilFrontierDepth)
+            solveJesterInformation.empty() && !devilFrontierDepth &&
+            devilSpawnedSquare == Position::NoSquare)
             generator.generate();
     }
     catch (const std::exception& error) {

@@ -135,9 +135,44 @@ class SupervisionTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "invalid ledger_results"):
             SUPERVISOR.validate_config(invalid)
         invalid = config()
+        invalid["jobs"][0]["ledger_files"] = ["arbitrary-certificate.json"]
+        with self.assertRaisesRegex(RuntimeError, "invalid ledger_files"):
+            SUPERVISOR.validate_config(invalid)
+        invalid = config()
         invalid["jobs"][1]["superseded_by"] = "replacement"
         with self.assertRaisesRegex(RuntimeError, "superseded.*advanceable"):
             SUPERVISOR.validate_config(invalid)
+        invalid = config()
+        invalid["jobs"][0]["paused"] = "yes"
+        with self.assertRaisesRegex(RuntimeError, "paused must be boolean"):
+            SUPERVISOR.validate_config(invalid)
+        invalid = config()
+        invalid["jobs"][0]["scheduling_priority"] = -1
+        with self.assertRaisesRegex(RuntimeError, "scheduling_priority"):
+            SUPERVISOR.validate_config(invalid)
+        invalid = config()
+        invalid["jobs"][1]["paused"] = True
+        with self.assertRaisesRegex(RuntimeError, "paused.*advanceable"):
+            SUPERVISOR.validate_config(invalid)
+
+    def test_terminated_instance_stops_spend_and_current_burn(self) -> None:
+        terminated = json.loads(json.dumps(self.ec2))
+        instance = terminated["i-0123456789abcdef0"]
+        instance["State"] = {"Name": "terminated"}
+        instance["StateTransitionReason"] = (
+            "User initiated (2026-08-10 11:30:00 GMT)")
+        with mock.patch.object(
+                SUPERVISOR, "ec2_inventory", return_value=terminated):
+            output, state = SUPERVISOR.supervise(config(), {}, self.now)
+        report = output["report"]
+        self.assertEqual(3.0, report["estimated_spend_usd"])
+        self.assertEqual(0.0, report["fleet_burn_usd_per_hour"])
+        self.assertEqual(0, report["scheduling"]["measured_capacity_vcpus"])
+        observed = state["report"]["instances"][
+            "i-0123456789abcdef0"]
+        self.assertEqual("terminated", observed["ec2_state"])
+        self.assertEqual(
+            "2026-08-10T11:30:00+00:00", observed["billing_end_time"])
 
     def test_current_queue_rejects_superseded_dependency(self) -> None:
         invalid = config()
@@ -151,6 +186,192 @@ class SupervisionTests(unittest.TestCase):
                 RuntimeError,
                 "third depends on superseded first.*replacement"):
             SUPERVISOR.validate_config(invalid)
+
+    def test_single_material_supersession_cannot_cross_ledger_rows(self) -> None:
+        document = config()
+        old = document["jobs"][0]
+        replacement = json.loads(json.dumps(old))
+        old["ledger_files"] = ["kdevilk.uftb"]
+        old["superseded_by"] = "replacement"
+        replacement["id"] = "replacement"
+        replacement["unit"] = "ultimatefish-replacement.service"
+        replacement["ledger_files"] = ["kbishopdevilk.uftb"]
+        document["jobs"].append(replacement)
+        with self.assertRaisesRegex(RuntimeError, "cannot supersede ledger material"):
+            SUPERVISOR.validate_config(document)
+
+    def test_stateful_lone_devil_recovery_is_distinct_from_paused_bishop(self) -> None:
+        document = json.loads(
+            (ROOT / "tools/tablebases/ultimate_aws_supervision.json").read_text())
+        jobs = document["jobs"]
+        current_lone = [
+            job for job in jobs
+            if "kdevilk.uftb" in job.get("ledger_files", [])
+            and not job.get("superseded_by")
+        ]
+        current_bishop = [
+            job for job in jobs
+            if "kbishopdevilk.uftb" in job.get("ledger_files", [])
+            and not job.get("superseded_by")
+        ]
+        self.assertEqual(["devil-spawned-square-2-v29"], [
+            job["id"] for job in current_lone
+            if job.get("unit", "").endswith("square-2.service")
+        ])
+        lone_c1 = next(
+            job for job in current_lone
+            if job["id"] == "devil-spawned-square-2-v29")
+        self.assertEqual(["kdevilk.uftb"], lone_c1["ledger_files"])
+        self.assertFalse(lone_c1.get("s3_only_certified"))
+        self.assertFalse(lone_c1.get("ledger_certifies"))
+        self.assertIn("kdevilk.uftb", lone_c1.get("ledger_results", {}))
+        active_recovery = {
+            job["id"] for job in current_lone
+            if job["id"].startswith("devil-stateful-recompute-v1-")
+        }
+        self.assertEqual({
+            "devil-stateful-recompute-v1-square-0",
+            "devil-stateful-recompute-v1-square-1",
+            "devil-stateful-recompute-v1-square-3",
+            "devil-stateful-recompute-v1-square-8",
+            "devil-stateful-recompute-v1-square-16",
+            "devil-stateful-recompute-v1-square-17",
+            "devil-stateful-recompute-v1-square-19",
+        }, active_recovery)
+        self.assertEqual(1, sum(
+            job["id"] == "devil-stateful-sidecar-v3-square-10"
+            and job.get("unit") ==
+            "ultimatefish-export-preserve-devil-stateful-v3-square-10.service"
+            for job in jobs))
+        self.assertTrue(all(
+            not job.get("ledger_certifies") for job in current_lone
+            if job["id"] in active_recovery))
+        self.assertGreater(
+            lone_c1.get("scheduling_priority", 0),
+            max(job.get("scheduling_priority", 0) for job in current_bishop))
+        self.assertTrue(all(job.get("paused") for job in current_bishop))
+        finalizer = next(
+            job for job in jobs
+            if job["id"] == "devil-spawned-root-merge-v1")
+        self.assertTrue(finalizer.get("paused"))
+        lone_evidence = " ".join(
+            [lone_c1["id"], lone_c1["unit"]]
+            + lone_c1.get("checkpoint_paths", [])
+            + lone_c1.get("completion_paths", []))
+        self.assertNotIn("companion", lone_evidence.lower())
+        self.assertNotIn("bishop", lone_evidence.lower())
+
+    def test_bomb_checkpoint_handoff_tracks_live_v16_unit(self) -> None:
+        document = json.loads(
+            (ROOT / "tools/tablebases/ultimate_aws_supervision.json").read_text())
+        job = next(job for job in document["jobs"]
+                   if job["id"] == "bomb-ghost-opposing-resume-v12")
+        self.assertEqual(
+            "ultimatefish-info-kbombkghost-resume-v16.service", job["unit"])
+        self.assertEqual("0-15,32-45", job["expected_allowed_cpus"])
+        self.assertEqual(30, job["resource_requirements"]["cpu_threads"])
+        bindings = {item["sha256"] for item in job["source_bindings"]}
+        certificates = {item["sha256"] for item in job["s3_certificates"]}
+        for digest in (
+                "f822aceee41acd2e78c01cc4b21d499aa482ebcd8e21caf037e2020e705d4a9c",
+                "a2afeb51f522779ea448ac245b2168cba3a4a887624bcdb7d8d7712bdb845e87"):
+            self.assertIn(digest, bindings)
+            self.assertIn(digest, certificates)
+        same_sniper = next(job for job in document["jobs"]
+                           if job["id"] == "sniper-ghost-same-resume-v14")
+        berserker = next(job for job in document["jobs"]
+                         if job["id"] == "opposed-berserker-ghost-corrected-v12")
+        bomb_cpus = SUPERVISOR.parse_cpu_set(job["expected_allowed_cpus"], 64)
+        sniper_cpus = SUPERVISOR.parse_cpu_set(
+            same_sniper["expected_allowed_cpus"], 64)
+        berserker_cpus = SUPERVISOR.parse_cpu_set(
+            berserker["expected_allowed_cpus"], 64)
+        self.assertFalse(bomb_cpus & sniper_cpus)
+        self.assertEqual(sniper_cpus, berserker_cpus)
+        self.assertIn(
+            "2cf7c7f249dbb741b4b3942bbe388c74da9c9e24a7345d0227e50ab85dcec122",
+            {item["sha256"] for item in berserker["source_bindings"]})
+
+    def test_i03_dragon_race_is_supervised_and_cpu_disjoint_from_queen(self) -> None:
+        document = json.loads(
+            (ROOT / "tools/tablebases/ultimate_aws_supervision.json").read_text())
+        jobs = {job["id"]: job for job in document["jobs"]}
+        queen = jobs["parallel-opposed-queen-ghost-solve-v17"]
+        dragon = jobs["dragon-ghost-i03-certification-race-v1"]
+
+        self.assertEqual("0-1", queen["expected_allowed_cpus"])
+        self.assertEqual(2, queen["resource_requirements"]["cpu_threads"])
+        self.assertEqual("2-15", dragon["expected_allowed_cpus"])
+        self.assertEqual(14, dragon["resource_requirements"]["cpu_threads"])
+        self.assertTrue(dragon["ledger_certifies"])
+        self.assertEqual(["kghostkdragon.uftb"], dragon["ledger_files"])
+        binding_hashes = {
+            item["sha256"] for item in dragon["source_bindings"]}
+        certificate_hashes = {
+            item["sha256"] for item in dragon["s3_certificates"]}
+        self.assertTrue(binding_hashes <= certificate_hashes)
+        self.assertIn(
+            "900f8dba335e71b4742898e1c5858840c3d4f04160f526d0d21004a4a6f313a6",
+            binding_hashes)
+
+        i0b = next(instance for instance in document["instances"]
+                   if instance["instance_id"] == "i-0b4523116b2f7765c")
+        self.assertIn(
+            "ultimatefish-certification-sprint-i0b-phase-handoff-v2.service",
+            i0b["ignored_active_units"])
+
+    def test_scheduler_honors_explicit_priority_before_memory_size(self) -> None:
+        document = config()
+        low = document["jobs"][1]
+        low["id"] = "small-low-priority"
+        low["dependencies"] = []
+        low["scheduling_priority"] = 1
+        low["resource_requirements"]["memory_peak_bytes"] = 1
+        low["expected_allowed_cpus"] = "16"
+        high = json.loads(json.dumps(low))
+        high["id"] = "large-high-priority"
+        high["scheduling_priority"] = 100
+        high["resource_requirements"]["memory_peak_bytes"] = 99
+        high["expected_allowed_cpus"] = "17"
+        document["jobs"] = [low, high]
+        report = {
+            "jobs": {
+                low["id"]: {"status": "READY"},
+                high["id"]: {"status": "READY"},
+            },
+            "instances": {"i-0123456789abcdef0": {
+                "remote": {
+                    "memory": {"MemAvailable": 100},
+                    "mounts": [{"path": "/", "free_bytes": 100}],
+                    "jobs": [],
+                },
+                "cpu_allocation": {
+                    "measurement_complete": True,
+                    "measured_busy_vcpus": 0.0,
+                },
+            }},
+        }
+        scheduled = SUPERVISOR.schedule_backfill(document, report)
+        self.assertEqual(scheduled["selected"], ["large-high-priority"])
+        self.assertEqual(
+            scheduled["blocked"]["small-low-priority"],
+            "insufficient measured memory headroom")
+
+    def test_transition_continuation_must_reach_certifying_job(self) -> None:
+        document = config()
+        transition = document["jobs"][0]
+        solve = document["jobs"][1]
+        transition["ledger_files"] = ["kghostkrook.uftb"]
+        transition["ledger_certifies"] = False
+        transition["continuation_job"] = "second"
+        transition["superseded_by"] = "second"
+        solve["ledger_files"] = ["kghostkrook.uftb"]
+        solve["ledger_certifies"] = True
+        document["jobs"][2]["dependencies"] = ["second"]
+        SUPERVISOR.validate_config(document)
+        solve["ledger_certifies"] = False
+        with self.assertRaisesRegex(RuntimeError, "mandatory continuation"):
+            SUPERVISOR.validate_config(document)
 
     def test_ledger_readme_parser_rejects_conflicting_duplicate_rows(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -361,8 +582,10 @@ class SupervisionTests(unittest.TestCase):
             active_records = observed["jobs"][:-1]
             self.assertTrue(all(
                 record["unit"]["ActiveState"] == "active"
-                and record["checkpoints"] == []
-                and record["completion"] == []
+                and record["checkpoints"][0]["exists"]
+                and record["checkpoints"][0]["match_count"] == 1
+                and record["checkpoints"][0]["allocated_bytes"] > 0
+                and record["checkpoints"][0]["metadata_sha256"]
                 and record["diagnostics"][0]["status"] == "ok"
                 and len(record["diagnostics"][0]["tail"])
                     <= SUPERVISOR.ACTIVE_DIAGNOSTIC_TAIL_BYTES
@@ -511,6 +734,36 @@ class SupervisionTests(unittest.TestCase):
             with self.subTest(compact=compact):
                 self.assertFalse(SUPERVISOR.source_exact(job, compact))
 
+    def test_source_probe_requires_explicit_bound_for_large_binding(self) -> None:
+        document = config()
+        document["instances"][0]["mounts"] = ["/"]
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "authenticated-input.uftb"
+            payload = b"x" * (16 * 1024 * 1024 + 1)
+            path.write_bytes(payload)
+            job = document["jobs"][0]
+            job["source_bindings"] = [{
+                "path": str(path),
+                "sha256": SUPERVISOR.sha256_bytes(payload),
+            }]
+            observed = SUPERVISOR.local_probe(
+                SUPERVISOR.remote_script(document["instances"][0], [job]))
+            self.assertFalse(observed["jobs"][0]["sources_exact"])
+            job["source_bindings"][0]["max_bytes"] = len(payload)
+            SUPERVISOR.validate_config(document)
+            observed = SUPERVISOR.local_probe(
+                SUPERVISOR.remote_script(document["instances"][0], [job]))
+            self.assertTrue(observed["jobs"][0]["sources_exact"])
+
+    def test_source_binding_bound_accepts_large_retained_graphs(self) -> None:
+        document = config()
+        binding = document["jobs"][0]["source_bindings"][0]
+        binding["max_bytes"] = 1_108_977_657
+        SUPERVISOR.validate_config(document)
+        binding["max_bytes"] = SUPERVISOR.SOURCE_BINDING_MAX_BYTES + 1
+        with self.assertRaisesRegex(RuntimeError, "max_bytes"):
+            SUPERVISOR.validate_config(document)
+
     def test_compact_source_probe_fits_each_batch_host_budget(self) -> None:
         document = json.loads(
             (ROOT / "tools/tablebases/ultimate_aws_supervision.json").read_text())
@@ -612,10 +865,21 @@ class SupervisionTests(unittest.TestCase):
         # i0b bindings after the fleet reconciliation.  The current opposed
         # Checker recovery now runs on i024, while retired superseded concrete
         # jobs no longer contribute their source bindings to the live request.
-        # Bomb and Ninja bind only their small restored executables, wrappers,
-        # and markers locally and authenticate their large migration archives
-        # through S3 instead of the bounded hash table.
-        self.assertEqual(108, len(table))
+        # Bomb's retained solve has migrated to i024, so its three former i0b
+        # bindings are retired. Ninja binds only its small restored executable,
+        # wrapper, and marker locally and authenticates its large migration
+        # archive through S3 instead of the bounded hash table. The corrected
+        # Angel/Ghost jobs now run on i024 and no longer consume i0b probe
+        # bindings. Their same/opposed resumptions intentionally bind distinct
+        # fail-closed source revisions while the opposed v8 shards finish. The
+        # completed a1 and the retained current Devil graph keep their
+        # independently version-pinned source/binary pairs. The opposed
+        # Berserker/Ghost recovery has migrated to i024, so its superseded i0b
+        # runner and quarantine bindings no longer enter this live request.
+        # The persistent certification watcher contributes five authenticated
+        # host bindings, and the result-gated i0b CPU handoff contributes its
+        # script, service, and timer without duplicating them per live job.
+        self.assertEqual(110, len(table))
 
     def test_cpu_allocation_reports_idle_capacity_and_overlap(self) -> None:
         definition = config()["instances"][0]
@@ -629,6 +893,17 @@ class SupervisionTests(unittest.TestCase):
         report = SUPERVISOR.cpu_allocation(definition, document)
         self.assertEqual(24, report["allocated_vcpus"])
         self.assertTrue(report["overlaps"])
+
+    def test_cpu_allocation_accepts_cpuaffinity_fallback(self) -> None:
+        definition = config()["instances"][0]
+        document = remote()
+        document["jobs"][0]["unit"]["AllowedCPUs"] = ""
+        document["jobs"][0]["unit"]["CPUAffinity"] = "0-15"
+        report = SUPERVISOR.cpu_allocation(definition, document)
+        self.assertEqual(16, report["allocated_vcpus"])
+        self.assertEqual(16, report["idle_vcpus"])
+        self.assertEqual(16, report["active_jobs"]["first"])
+        self.assertTrue(report["allocation_known"])
 
     def test_cpu_allocation_reports_interval_utilization(self) -> None:
         definition = config()["instances"][0]
@@ -846,6 +1121,76 @@ class SupervisionTests(unittest.TestCase):
         self.assertEqual(
             "READY", second["report"]["jobs"]["second"]["status"])
 
+    @mock.patch.object(SUPERVISOR, "head_certificate")
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    @mock.patch.object(SUPERVISOR, "ec2_inventory")
+    def test_running_work_can_be_underutilized_without_ready_jobs(
+            self, inventory: mock.Mock, probe: mock.Mock,
+            head: mock.Mock) -> None:
+        document = config()
+        document["underutilized_samples"] = 1
+        inventory.return_value = self.ec2
+        probe.return_value = remote(first="active")
+        first, state = SUPERVISOR.supervise(document, {}, self.now)
+        self.assertFalse(first["report"]["scheduling"]["underutilized"])
+        second, _ = SUPERVISOR.supervise(
+            document, state, self.now + dt.timedelta(minutes=5))
+        self.assertEqual([], second["ready_jobs"])
+        self.assertTrue(second["report"]["scheduling"]["underutilized"])
+        self.assertEqual(
+            "UNDERUTILIZED", second["report"]["errors"][-1]["fleet"])
+        self.assertIn(
+            "0 runnable and 1 running",
+            second["report"]["errors"][-1]["error"])
+
+    @mock.patch.object(SUPERVISOR, "head_certificate")
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    @mock.patch.object(SUPERVISOR, "ec2_inventory")
+    def test_partial_probe_uses_conservative_utilization_upper_bound(
+            self, inventory: mock.Mock, probe: mock.Mock,
+            head: mock.Mock) -> None:
+        document = config()
+        document["underutilized_samples"] = 1
+        document["underutilized_fraction"] = .75
+        document["probe_workers"] = 1
+        second_instance = dict(document["instances"][0])
+        second_instance["instance_id"] = "i-0fedcba9876543210"
+        second_instance["name"] = "incomplete"
+        document["instances"].append(second_instance)
+        inventory.return_value = {
+            **self.ec2,
+            second_instance["instance_id"]: {
+                "InstanceId": second_instance["instance_id"],
+                "InstanceType": "r8gd.8xlarge",
+                "LaunchTime": "2026-08-10T10:00:00Z",
+                "State": {"Name": "running"},
+            },
+        }
+        incomplete = {
+            "memory": {"MemAvailable": 100},
+            "mounts": [{"path": "/", "free_bytes": 100,
+                        "total_bytes": 200}],
+            "jobs": [],
+            "unconfigured_active_units": {
+                "count": 1, "sha256": SHA_A,
+                "sample": ["ultimatefish-unknown.service"],
+                "probe_status": 0, "details": [],
+            },
+        }
+        probe.side_effect = [remote(first="active"), incomplete,
+                             remote(first="active"), incomplete]
+        first, state = SUPERVISOR.supervise(document, {}, self.now)
+        self.assertFalse(first["report"]["scheduling"]["underutilized"])
+        second, _ = SUPERVISOR.supervise(
+            document, state, self.now + dt.timedelta(minutes=5))
+        scheduling = second["report"]["scheduling"]
+        self.assertFalse(scheduling["measurement_complete"])
+        self.assertEqual(50.0, scheduling["utilization_upper_bound_percent"])
+        self.assertTrue(scheduling["underutilized"])
+        self.assertIn(
+            "utilization upper bound 0.500",
+            second["report"]["errors"][-1]["error"])
+
     @mock.patch.object(SUPERVISOR, "local_probe")
     def test_uninstalled_queue_records_do_not_consume_remote_budget(
             self, probe: mock.Mock) -> None:
@@ -889,6 +1234,29 @@ class SupervisionTests(unittest.TestCase):
             "SUPERSEDED", output["report"]["jobs"]["first"]["status"])
         self.assertEqual("SUPERSEDED", state["report"]["jobs"]["first"]["status"])
         self.assertFalse(output["delegate_sol"])
+
+    @mock.patch.object(SUPERVISOR, "local_probe")
+    @mock.patch.object(SUPERVISOR, "ec2_inventory")
+    def test_intentionally_paused_transient_job_retains_nonfailure_status(
+            self, inventory: mock.Mock, probe: mock.Mock) -> None:
+        document = config()
+        document["jobs"][0]["paused"] = True
+        inventory.return_value = self.ec2
+        observed = remote(first="inactive")
+        observed["jobs"][0]["unit"]["LoadState"] = "not-found"
+        observed["jobs"][0]["sources"] = []
+        probe.return_value = observed
+        previous = {
+            "underutilized_samples": 0,
+            "report": {"jobs": {"first": {"status": "RUNNING"}}},
+        }
+
+        output, state = SUPERVISOR.supervise(
+            document, previous, self.now)
+
+        self.assertEqual("PAUSED", output["report"]["jobs"]["first"]["status"])
+        self.assertEqual("PAUSED", state["report"]["jobs"]["first"]["status"])
+        self.assertFalse(state["report"]["jobs"]["first"]["source_exact"])
 
     @mock.patch.object(SUPERVISOR, "head_certificate")
     @mock.patch.object(SUPERVISOR, "local_probe")
@@ -969,6 +1337,7 @@ class SupervisionTests(unittest.TestCase):
         self.assertFalse(SUPERVISOR.has_result_certificate(definition))
         definition["s3_certificates"][0]["key"] = "results/first"
         self.assertTrue(SUPERVISOR.has_result_certificate(definition))
+
         definition["s3_certificates"][0]["key"] = (
             "hidden/first/existing-ufiw/sha256/result.tar.zst")
         self.assertTrue(SUPERVISOR.has_result_certificate(definition))
@@ -991,6 +1360,15 @@ class SupervisionTests(unittest.TestCase):
             {"key": "results/second/second-result.tar.zst"})
         definition["result_certificate_keys"]["second.uftb"] = [
             "results/second/second-result.tar.zst"]
+        self.assertTrue(SUPERVISOR.has_result_certificate(definition))
+
+    def test_nonledger_fragment_can_require_result_certificate(self) -> None:
+        definition = config()["jobs"][0]
+        definition["ledger_certifies"] = False
+        definition["requires_result_certificate"] = True
+        definition["s3_certificates"][0]["key"] = "sources/fragment-builder"
+        self.assertFalse(SUPERVISOR.has_result_certificate(definition))
+        definition["s3_certificates"][0]["key"] = "results/fragment.roots"
         self.assertTrue(SUPERVISOR.has_result_certificate(definition))
 
     @mock.patch.object(SUPERVISOR, "head_certificate")

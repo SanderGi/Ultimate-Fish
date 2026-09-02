@@ -1,0 +1,26 @@
+--- a/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp
++++ b/src/ultimate/tablebases/ghost_extra_information_tablebase.cpp
+@@ -4849,16 +4849,12 @@
+     void verify() {
+         // One independent full Bellman pass proves equality of every force
+         // predicate over all 2^80 masks because canonical ROBDD identity is
+-        // exact, not sampled.
+-        for (std::uint32_t geometry = 0;
+-             geometry < database_.geometry_count(); ++geometry) {
+-            bdd_->clear_computed_caches();
+-            bellman_geometry(geometry, build_external_solver_block(
+-              geometry, database_, lower_, domain_, material_
+-#ifdef ULTIMATE_GHOST_ORDINARY_PROMOTES_TO_QUEEN
+-              , promoted_, promotedDomain_
+-#endif
+-              ));
+-        }
++        // exact, not sampled.  Use the same disjoint geometry scheduler as a
++        // normal Bellman iteration so --workers also applies to certification;
++        // verification used to strand every assigned core except one here.
++        const auto started = std::chrono::steady_clock::now();
++        (void)bellman_sweep(
++          "ghost_extra_external_verify_bellman",
++          "external verification", started);
+         std::uint64_t bellmanResidual = 0;
+         std::uint64_t monotonicityResidual = 0;

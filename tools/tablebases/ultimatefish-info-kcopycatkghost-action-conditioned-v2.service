@@ -1,0 +1,18 @@
+[Unit]
+Description=Ultimate Fish opposed Copycat/Ghost action-conditioned exact resume v2
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment=AWS_DEFAULT_REGION=us-west-2
+ExecStart=/usr/bin/bash /mnt/ultimatefish/ultimatefish-resume-kcopycatkghost-action-conditioned-v2.sh
+WorkingDirectory=/mnt/ultimatefish
+AllowedCPUs=30
+MemoryMax=48G
+TimeoutStartSec=infinity
+StandardOutput=append:/mnt/ultimatefish/ultimatefish-info-kcopycatkghost-action-conditioned-v2.service.log
+StandardError=append:/mnt/ultimatefish/ultimatefish-info-kcopycatkghost-action-conditioned-v2.service.log
+
+[Install]
+WantedBy=multi-user.target

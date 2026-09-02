@@ -25,12 +25,14 @@ const tablebaseDirectory = configuredTablebaseDirectory(
   uiDirectory,
   process.env.ULTIMATE_TABLEBASE_PATH,
 );
+let tablebaseGeneration = 0;
 const tablebaseManager = createTablebaseManager({
   directory: tablebaseDirectory,
   dataset: process.env.ULTIMATE_TABLEBASE_DATASET,
   revision: process.env.ULTIMATE_TABLEBASE_REVISION,
   hfOrigin: process.env.ULTIMATE_TABLEBASE_HF_ORIGIN,
   token: resolveHuggingFaceToken(),
+  onFilesChanged: () => { tablebaseGeneration += 1; },
 });
 
 function runEngine(commands, signal, onLine) {
@@ -441,6 +443,7 @@ class IncrementalHistorySession {
     this.pending = "";
     this.active = null;
     this.preparedMoves = null;
+    this.tablebaseGeneration = tablebaseGeneration;
   }
 
   stop(error = new Error("Incremental history session stopped")) {
@@ -533,8 +536,10 @@ class IncrementalHistorySession {
       const extendsCurrent = this.moves.length <= requestedMoves.length &&
         this.moves.every((move, index) => requestedMoves[index] === move);
       const commands = [];
-      if (!extendsCurrent || !this.child) {
+      if (!extendsCurrent || !this.child ||
+          this.tablebaseGeneration !== tablebaseGeneration) {
         this.start();
+        this.tablebaseGeneration = tablebaseGeneration;
         commands.push(...historyCommands(
           this.initialUpn, [], this.observer, this.enemyKingKnown,
           this.initialDeploymentKnown, this.enemyKingCandidates,
