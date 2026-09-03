@@ -48,9 +48,12 @@ manifests; they are never silently deleted or blindly restarted.
 > review and are not evidence of a live computation.
 
 > **Corrected Devil authority (2026-08-29):** `kdevilk.uftb` is an authenticated
-> **minion-free entry-slice projection**, not a complete King+Devil+causally
-> spawned Minions vs King tablebase. It must not be presented as proving that
-> the stateful endgame is a forced draw. `single:devil` is **CERTIFIED** from
+> **causal entry-root projection**. Its starting positions may already contain
+> Minions when those Minions could have been placed by earlier spawns from the
+> indexed Devil; only arbitrary starting Minions without such a causal history
+> are excluded. The projection is not a complete King+Devil+causally spawned
+> Minions vs King tablebase and must not be presented as proving that the
+> stateful endgame is a forced draw. `single:devil` is **CERTIFIED** from
 > canonical logical keys and final eight-byte WDL/DTW nodes for all twelve
 > fixed-square partitions, each preserved by exact S3 VersionId and exposed
 > through an independently restored searchable stateful sidecar. The complete
@@ -68,7 +71,8 @@ manifests; they are never silently deleted or blindly restarted.
 > The machine-readable authority for recovery is
 > [`ultimate_devil_stateful_recovery.json`](../tools/tablebases/ultimate_devil_stateful_recovery.json);
 > it requires exactly twelve fixed-square partitions and cannot count the
-> entry slice or any Bishop+Devil artifact as stateful lone-Devil evidence.
+> causal entry-root projection or any Bishop+Devil artifact as stateful
+> lone-Devil evidence.
 > As of 2026-08-29 19:48 PDT, all twelve primary planes (A1, B1, C1, D1, A2,
 > B2, C2, D2, A3, B3, C3, and D3) survive or have been recomputed and are
 > exact-VersionId restore-authenticated. Searchable, independently restored
@@ -96,7 +100,7 @@ manifests; they are never silently deleted or blindly restarted.
 > An exhaustive census of that complete B3 sidecar found 59,213,715 wins,
 > 404,942 losses, and 1,650,627,371 draws (conservation and sorted-key
 > residuals both zero, maximum DTW 17). In particular, its Minion-bearing
-> states include decisive outcomes, directly disproving the old entry-slice
+> states include decisive outcomes, directly disproving the old entry-root-only
 > presentation that made the full stateful class look like a forced draw.
 > D2 independently confirms the same result: its 5,194,192,187-state census
 > contains 186,874,833 wins, 133,292 losses, and 5,007,184,062 draws with
@@ -624,7 +628,8 @@ manifests; they are never silently deleted or blindly restarted.
 > This is a superseded 2026-08-27 snapshot: at that time the plot remained
 > 6,126 x 2,904 pixels and eleven lone-Devil root fragments were authenticated.
 > Authentic lone-Devil C1 subsequently completed, but the resulting 12/12
-> statement certified only the minion-free entry projection and is retracted
+> statement certified only the causal entry-root projection, including starting
+> Minions that could have been placed by that Devil, and is retracted
 > as authority for the full stateful class. The 27.209-billion-state C1 checkpoint discussed
 > nearby belongs only to `same:bishop+devil` and is not lone-Devil evidence.
 > The eleven historical lone-Devil partition records are explicitly paused;
@@ -1073,8 +1078,10 @@ explicitly and are not counted as unfinished tablebases.
 
 > **Devil/Minion spawned-only closure (2026-08-21):** the new Devil campaign
 > deliberately assumes that no Minion is present unless it was spawned by the
-> indexed Devil in that tablebase. It does not admit arbitrary pre-existing,
-> setup, or externally created Minions. The Devil itself is sufficient
+> indexed Devil in that tablebase. A starting position may therefore contain
+> Minions when their placements are causally reachable from earlier spawns by
+> that Devil; arbitrary setup or externally created Minions are not admitted.
+> The Devil itself is sufficient
 > material because it can spawn Minions; the earlier app/engine shortcut that
 > adjudicated King+Devil versus King as an immediate draw was incorrect and is
 > not used by this campaign. Because a Devil cannot move, indexed starting
@@ -1205,8 +1212,10 @@ explicitly and are not counted as unfinished tablebases.
 > builds and do not use a
 > failure-retriggering path unit. All 48 same-team and opposed companion Devil rows are
 > **PLANNED** under the same documented simplification: indexed Devils start on
-> ranks 1-3, and the sparse closure admits only Minions spawned by an indexed
-> Devil, never arbitrary pre-existing Minions. Their position totals are exact
+> ranks 1-3, and both the starting frontier and sparse closure admit only
+> Minions causally placed by an indexed Devil, including Minions already present
+> at the start when earlier Devil spawns can account for them. Arbitrary starting
+> Minions remain excluded. Their position totals are exact
 > indexed starting-frontier counts, not dense spawned-closure size claims.
 > A frontier census alone is never presented as a tablebase result, and no W/L/D
 > cell will be published before the exact fixed point and verification pass.
@@ -2493,14 +2502,17 @@ generated exclusively from the canonical ledger below by
 > Older notes below are historical provenance only where a row's final sentence
 > records a newer unit or a non-running status.
 
-> **Historical Devil entry-slice campaign (corrected 2026-08-29):** the former
-> `single:devil` certification applies only to minion-free entry roots. Its
+> **Historical Devil entry-root campaign (corrected 2026-08-29):** the former
+> `single:devil` certification applies only to causal entry roots. Those roots
+> may contain starting Minions when earlier spawns by the indexed Devil can
+> account for their placement; arbitrary starting Minions are excluded. Its
 > authentic lone-Devil C1 (`square 2`) independently verified
 > all 3,861,213,174 closure states and 24,608,033,758 edges, emitted 98,592
 > roots, and merged with the other eleven restore-authenticated fixed-square
-> fragments.  The merged dense root table explicitly excludes placements
-> outside Devil's legal first three ranks; spawned Minions occur only in the
-> fixed-square proof closures.  The result archive, certificate, and causal
+> fragments. The merged root projection explicitly excludes Devil placements
+> outside the legal first three ranks and admits starting Minions only through
+> authenticated causal histories from that Devil. The result archive,
+> certificate, and causal
 > reachability sidecar were each uploaded, exact-VersionId downloaded, hashed,
 > restored, and atomically imported.  The distinct 27,209,034,909-state
 > checkpoint belongs only to `same:bishop+devil`; all Bishop+Devil jobs remain
@@ -2564,7 +2576,7 @@ Ledger totals: **463 certified**, **0 preserving**, **0 computing**, **47 exact 
 | `single:mage` | King+Mage vs King | single | — | **DRAW** | — | insufficient material | 0 / 0 / 1 | 0 / 0 / 1 | closed-form draw | — |
 | `single:penguin` | King+Penguin vs King | single | `kpenguink.uftb` | **CERTIFIED** | 3,943,680 | concrete | 1,264 [0] (52,024) / 192 [0] / 491,504 [0] (1,426,856) | 796 [0] (45,080) / 3,272 [0] / 530,700 [78,584] (1,391,992) | 492,960 / 1,478,880; 534,768 / 1,437,072 | S3 archive sha256:7bb7da4d5ee6bbe7cb74fd6d65c5d318e79e4ac41492c424960d3934335d22c7 VersionId n.2zykICTUqovc8HRIl7A_JUBWcOK12t; result sha256:5abd70c847e799b85ed08c49f01c4e5deb3d253505583b8bc145290a84417edd; certificate sha256:a2c9023d0fba7eb60b5daa8a4afbfd76cc649cbf26b3472c94fca170285c4629 VersionId OJUUS1OstRF50J2LZ_o74FLgzbUnyNH9; reachability v3 sha256:8fbaa3ca8952d6e95313715e924efe5ead6e7a1e7baba014923b9a1505b6d686 VersionId b_EAC6ZjKQuOS_70aXudVEQyWbH.lSrh |
 | `single:parasite` | King+Parasite vs King | single | `kparasitek.uftb` | **CERTIFIED** | 985,920 | concrete | 412,616 [0] (80,344) / 0 [0] / 0 [0] | 0 [0] (41,808) / 451,120 [0] / 32 [32] | 412,616 / 80,344; 451,152 / 41,808 | S3 legacy archive sha256:e296deebc6d0f4ef2c53e14eab86fd1c2bbc9954a6051ffca5ce7b9623b08263 VersionId YTpSbC_DShKsF8QwShKRSIBUVf8PH0VJ; preservation certificate sha256:1232600dfdc1be8be002701245e6523bfde8334dd4594c8241429a88b5cd825d VersionId 5hp3sJXKSZLcNwkzKEcs8AXrYuGea3RY; reachability v3 sha256:9ad18b1d8bc389268f03b27af73dab30711fd71fbc2c518767820eed3636d856 VersionId byjhKm2Sz411VGDXy94mE4wjYudqzLmT |
-| `single:devil` | King+Devil+causally-spawned-Minions vs King | single | `ultimate-devil-stateful-class-certificate.json` | **CERTIFIED** | 34,981,631,519 | stateful concrete | 25,120 / 4,444,400 / 8,124,244,746 | 1,271,239,678 / 0 / 25,581,677,575 | 8,128,714,266 / 0; 26,852,917,253 / 0 | Class certificate sha256:95649cf36a9f6287379e9d29ee80b67f7af9c8ca6dff0298e73977f458bd3e0f VersionId vzZ.mORQVSqa.0cfr665BEmMugKyGfav; all twelve primary planes, searchable sidecars, and censuses are exact-VersionId restore-authenticated; complete twelve-square causal closure; historical `kdevilk.uftb` retained only as an excluded entry slice |
+| `single:devil` | King+Devil+causally-spawned-Minions vs King | single | `ultimate-devil-stateful-class-certificate.json` | **CERTIFIED** | 34,981,631,519 | stateful concrete | 25,120 / 4,444,400 / 8,124,244,746 | 1,271,239,678 / 0 / 25,581,677,575 | 8,128,714,266 / 0; 26,852,917,253 / 0 | Class certificate sha256:95649cf36a9f6287379e9d29ee80b67f7af9c8ca6dff0298e73977f458bd3e0f VersionId vzZ.mORQVSqa.0cfr665BEmMugKyGfav; all twelve primary planes, searchable sidecars, and censuses are exact-VersionId restore-authenticated; complete twelve-square causal closure; historical `kdevilk.uftb` retained only as an excluded causal entry-root projection that admits causally placed starting Minions |
 | `single:sludge` | King+Sludge vs King | single | — | **DEFERRED** | — | concrete | — | — | — | — |
 | `single:sniper` | King+Sniper vs King | single | `ksniperk.uftb` | **CERTIFIED** | 3,943,680 | concrete | 5,014 [0] (194,552) / 0 [0] / 872,222 [16] (900,052) | 0 [0] (167,232) / 1,210 [0] (1,066) / 901,094 [73,572] (901,238) | 877,236 / 1,094,604; 902,304 / 1,069,536 | S3 legacy archive sha256:e296deebc6d0f4ef2c53e14eab86fd1c2bbc9954a6051ffca5ce7b9623b08263 VersionId YTpSbC_DShKsF8QwShKRSIBUVf8PH0VJ; preservation certificate sha256:1232600dfdc1be8be002701245e6523bfde8334dd4594c8241429a88b5cd825d VersionId 5hp3sJXKSZLcNwkzKEcs8AXrYuGea3RY; reachability v3 sha256:5591ad8af93e5596bc029a375d95b549eba9385af0992320f93f7758184433e4 VersionId kUwnb4.rFQYJA7OEQF_zTQQHNkhfEtjL |
 | `single:prince` | King+Prince vs King | single | `kprincek.uftb` | **CERTIFIED** | 1,971,840 | concrete | 412,616 [0] (80,344) / 0 [0] / 0 [0] | 0 [0] (41,808) / 414,344 [0] / 36,808 [36,808] | 412,616 / 80,344; 451,152 / 41,808 | S3 legacy archive sha256:e296deebc6d0f4ef2c53e14eab86fd1c2bbc9954a6051ffca5ce7b9623b08263 VersionId YTpSbC_DShKsF8QwShKRSIBUVf8PH0VJ; preservation certificate sha256:1232600dfdc1be8be002701245e6523bfde8334dd4594c8241429a88b5cd825d VersionId 5hp3sJXKSZLcNwkzKEcs8AXrYuGea3RY; reachability v3 sha256:31191d85346d514e2a660d5209b1570a1a2cc3c963a405a59724819c924bd38b VersionId 8mhcEgM2D4WLXQMjy_gDh7WtIbz9xnkx |
@@ -3650,8 +3662,9 @@ whose HEAD, fresh download, full SHA-256, and archive restore checks passed,
 and binds each compressed byte count back to the logical table SHA and extent.
 Lone Bishop, Knight, Turtle, Mage, Checker, Fisherman, and Angel classes need no
 file because the recovered native insufficient-material rule makes each an
-immediate draw. Sludge and arbitrary-pre-existing-Minions Devil domains remain
-deferred spawning families; the narrower Devil-spawned-only closure is the
+immediate draw. Sludge and arbitrary-starting-Minions Devil domains remain
+deferred spawning families; causally placed starting Minions are included in
+the narrower Devil-spawned-only closure, which is the
 authenticated campaign described above. The
 remaining Angel deferrals are unsupported ordered or hidden-information graph
 topologies, not claims that the material is insufficient.
@@ -3706,9 +3719,11 @@ The remaining deferred sufficient K+K+2 materials contain Sludge or one of the
 six separator-asymmetric Copycat pairings named above. The complete
 single-Devil spawned-only class is **CERTIFIED** by the twelve-partition
 stateful certificate described above. Its companion Devil materials are
-**PLANNED** under the first-three-ranks/spawned-Minions-only simplification;
-those companions await their additional codec dimensions rather than being
-deferred. Arbitrary pre-existing Minions and persistent Goop remain outside
+**PLANNED** under the first-three-ranks/causally-spawned-Minions-only
+simplification; those companions await their additional codec dimensions rather
+than being deferred. Starting Minions are included when earlier spawns by the
+indexed Devil can account for them; arbitrary starting Minions and persistent
+Goop remain outside
 the indexed scope. The exact
 one-Angel source graph now covers 32 material classes, including both
 Ghost/Angel orientations. Those two classes remain `information required`
