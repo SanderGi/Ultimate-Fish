@@ -1224,7 +1224,9 @@ explicitly and are not counted as unfinished tablebases.
 
 Diagonal hatching means the class is currently computing. The image is
 generated exclusively from the canonical ledger below by
-`python3 tools/tablebases/plot_ultimate_tablebases.py`.
+`python3 tools/tablebases/plot_ultimate_tablebases.py`. Exact Berserker-radius
+and Giant-start-class rows additionally consume their authenticated compact
+slice summaries; the renderer never infers those rows from filenames.
 
 > **Ghost rules invalidation (2026-08-13):** every result containing a Ghost
 > from an earlier model generation is superseded. Old concrete tables,
@@ -1467,6 +1469,28 @@ generated exclusively from the canonical ledger below by
 > sha256:079011cded676096fa97e15903ae5cd27a87ae7953b3bf4f972614adf7be1540
 > is VersionId `_JQrhjDC5nWBO6PXxlHo40qvYb38QC5N` and binds every shard,
 > source, runner, evidence archive, and final summary version.
+
+> **Giant start-class plot audit (2026-09-03):** the four rows immediately
+> below aggregate Giant are exact root-anchor parity components on the 7×9
+> lower-left-anchor grid: Giant-20 is even-file/even-rank, Giant-16 is
+> even/odd, Giant-15 is odd/even, and Giant-12 is odd/odd. A Giant's own
+> two-square orthogonal moves preserve this component; Fisherman pulls, Mage
+> swaps, and other external effects remain fully represented by the solved
+> W/L/D and may move the Giant between components after the root. The summary
+> covers all 45 certified Giant material records. Forty concrete tables and
+> four Jester/Ghost information overlays were downloaded from immutable public
+> Hugging Face revision `ed8375c43f26e42c5b14ac79ff41e77d4317b97f`,
+> SHA-256 verified, audited serially with at most two native workers, and
+> deleted one material group at a time. The exchange-folded same-team
+> Giant/Giant record repeats its aggregate cell because it has no distinguished
+> row Giant; opposed Giant/Giant remains exactly sliced by owner. Every class
+> stores admitted, authenticated trivial, and displayed W/L/D, with displayed
+> equal to admitted minus trivial and the four displayed classes conserving
+> the ledger aggregate for both starting sides. The 176-class compact input is
+> `tablebases/giant-start-class-summary.json`,
+> sha256:c68814092c4246f4dcc5a1d233e84dc1b5e520e2da0f19d55ac37e4bfbf44004;
+> its audit binary is
+> sha256:cb9fda10d5e5aeec3f4d5bcf7a6ec9c10ecb6f21a7c7153cd2d7e32b664725eb.
 
 > **Prior AWS fleet audit (2026-08-20 17:36 PDT / 2026-08-21 00:36 UTC):** i03 was
 > externally stopped with EC2 reason `User initiated` at about 21:04 UTC. Its
@@ -3843,7 +3867,8 @@ and require
 `python3 tools/tablebases/update_ultimate_tablebase_ledger.py --check-launch FILE`
 before staging new work (`--resume` requires an existing **COMPUTING** row).
 and regenerate the checked-in plot with
-`python3 tools/tablebases/plot_ultimate_tablebases.py`. The plot reads this README only;
+`python3 tools/tablebases/plot_ultimate_tablebases.py`. The plot reads the
+ledger plus the authenticated Berserker-radius and Giant-start-class summaries;
 it neither scans local payloads nor guesses completion from filenames.
 
 ### Penguin/Ghost terminal-source correction (2026-08-27 18:36 UTC)

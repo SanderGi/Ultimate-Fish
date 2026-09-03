@@ -2851,6 +2851,7 @@ class TablebaseGenerator {
             throw std::runtime_error("truncated packed WDL plane");
 
         using Counts = std::array<std::array<std::uint64_t, 4>, 2>;
+        using GiantClassCounts = std::array<Counts, 4>;
         using Examples = std::array<std::array<std::uint32_t, 4>, 2>;
         constexpr std::uint32_t Block = 10'000;
         const std::uint32_t workers = std::min(
@@ -2859,6 +2860,12 @@ class TablebaseGenerator {
         std::vector<Counts> local(workers);
         std::vector<Counts> localAll(workers);
         std::vector<Counts> localTrivial(workers);
+        std::vector<GiantClassCounts> localGiantPrimaryAll(workers);
+        std::vector<GiantClassCounts> localGiantPrimaryExcluded(workers);
+        std::vector<GiantClassCounts> localGiantPrimaryTrivial(workers);
+        std::vector<GiantClassCounts> localGiantSecondaryAll(workers);
+        std::vector<GiantClassCounts> localGiantSecondaryExcluded(workers);
+        std::vector<GiantClassCounts> localGiantSecondaryTrivial(workers);
         std::vector<std::vector<Counts>> localByPrimarySubstate(
           workers, std::vector<Counts>(primarySubstates_));
         std::vector<std::vector<Counts>> localAllByPrimarySubstate(
@@ -2901,7 +2908,8 @@ class TablebaseGenerator {
                             continue;
                         const Color encodedSide = encoded_side(index);
                         Position position;
-                        bool unreachable = !make_position_at(index, position);
+                        const bool hasPosition = make_position_at(index, position);
+                        bool unreachable = !hasPosition;
                         if (!unreachable && version == 11 &&
                             attackerType_ == PieceType::Devil) {
                             bool admittedDevil = false;
@@ -3014,13 +3022,33 @@ class TablebaseGenerator {
                         const std::uint32_t result =
                           (wdl[index / 4] >> (2 * (index % 4))) & 3;
                         const std::size_t side = static_cast<std::size_t>(encodedSide);
+                        const auto primaryGiantClass = hasPosition && primary_is_giant()
+                          ? std::optional<std::size_t>(
+                              giant_start_class_for_slot(position, true))
+                          : std::nullopt;
+                        const auto secondaryGiantClass = hasPosition && secondary_is_giant()
+                          ? std::optional<std::size_t>(
+                              giant_start_class_for_slot(position, false))
+                          : std::nullopt;
                         ++localAll[worker][side][result];
+                        if (primaryGiantClass)
+                            ++localGiantPrimaryAll[worker]
+                              [*primaryGiantClass][side][result];
+                        if (secondaryGiantClass)
+                            ++localGiantSecondaryAll[worker]
+                              [*secondaryGiantClass][side][result];
                         ++localAllByPrimarySubstate[worker][primarySubstate][side][result];
                         ++localAllBySecondarySubstate[worker][secondarySubstate][side][result];
                         ++localAllByCombinedSubstate[worker][combinedSubstate][side][result];
                         if (!unreachable) {
                             if (full && is_trivial_reachable_position(position)) {
                                 ++localTrivial[worker][side][result];
+                                if (primaryGiantClass)
+                                    ++localGiantPrimaryTrivial[worker]
+                                      [*primaryGiantClass][side][result];
+                                if (secondaryGiantClass)
+                                    ++localGiantSecondaryTrivial[worker]
+                                      [*secondaryGiantClass][side][result];
                                 ++localTrivialByPrimarySubstate[worker][primarySubstate]
                                                                      [side][result];
                                 ++localTrivialBySecondarySubstate[worker][secondarySubstate]
@@ -3033,6 +3061,12 @@ class TablebaseGenerator {
                             continue;
                         }
                         ++local[worker][side][result];
+                        if (primaryGiantClass)
+                            ++localGiantPrimaryExcluded[worker]
+                              [*primaryGiantClass][side][result];
+                        if (secondaryGiantClass)
+                            ++localGiantSecondaryExcluded[worker]
+                              [*secondaryGiantClass][side][result];
                         ++localByPrimarySubstate[worker][primarySubstate][side][result];
                         ++localBySecondarySubstate[worker][secondarySubstate][side][result];
                         ++localByCombinedSubstate[worker][combinedSubstate][side][result];
@@ -3042,6 +3076,9 @@ class TablebaseGenerator {
         for (std::thread& task : tasks)
             task.join();
         Counts totals{}, allTotals{}, trivialTotals{};
+        GiantClassCounts giantPrimaryAll{}, giantPrimaryExcluded{},
+          giantPrimaryTrivial{}, giantSecondaryAll{}, giantSecondaryExcluded{},
+          giantSecondaryTrivial{};
         std::vector<Counts> byPrimarySubstate(primarySubstates_);
         std::vector<Counts> allByPrimarySubstate(primarySubstates_);
         std::vector<Counts> trivialByPrimarySubstate(primarySubstates_);
@@ -3066,6 +3103,46 @@ class TablebaseGenerator {
             for (std::size_t side = 0; side < 2; ++side)
                 for (std::size_t result = 0; result < 4; ++result)
                     trivialTotals[side][result] += part[side][result];
+        const auto mergeGiantClasses = [](
+          GiantClassCounts& target, const std::vector<GiantClassCounts>& parts) {
+            for (const GiantClassCounts& part : parts)
+                for (std::size_t giantClass = 0; giantClass < target.size(); ++giantClass)
+                    for (std::size_t side = 0; side < 2; ++side)
+                        for (std::size_t result = 0; result < 4; ++result)
+                            target[giantClass][side][result] +=
+                              part[giantClass][side][result];
+        };
+        mergeGiantClasses(giantPrimaryAll, localGiantPrimaryAll);
+        mergeGiantClasses(giantPrimaryExcluded, localGiantPrimaryExcluded);
+        mergeGiantClasses(giantPrimaryTrivial, localGiantPrimaryTrivial);
+        mergeGiantClasses(giantSecondaryAll, localGiantSecondaryAll);
+        mergeGiantClasses(giantSecondaryExcluded, localGiantSecondaryExcluded);
+        mergeGiantClasses(giantSecondaryTrivial, localGiantSecondaryTrivial);
+        const auto verifyGiantClasses = [&](
+          const GiantClassCounts& all, const GiantClassCounts& excluded,
+          const GiantClassCounts& trivial) {
+            for (std::size_t side = 0; side < 2; ++side)
+                for (std::size_t result = 0; result < 4; ++result) {
+                    std::uint64_t admittedSum = 0;
+                    std::uint64_t trivialSum = 0;
+                    for (std::size_t giantClass = 0;
+                         giantClass < GiantStartClassSizes.size(); ++giantClass) {
+                        admittedSum += all[giantClass][side][result] -
+                                       excluded[giantClass][side][result];
+                        trivialSum += trivial[giantClass][side][result];
+                    }
+                    if (admittedSum != allTotals[side][result] - totals[side][result] ||
+                        trivialSum != trivialTotals[side][result])
+                        throw std::runtime_error(
+                          "Giant start-class reachability conservation residual");
+                }
+        };
+        if (primary_is_giant())
+            verifyGiantClasses(
+              giantPrimaryAll, giantPrimaryExcluded, giantPrimaryTrivial);
+        if (secondary_is_giant())
+            verifyGiantClasses(
+              giantSecondaryAll, giantSecondaryExcluded, giantSecondaryTrivial);
         for (const auto& worker : localByPrimarySubstate)
             for (std::size_t substate = 0; substate < primarySubstates_; ++substate)
                 for (std::size_t side = 0; side < 2; ++side)
@@ -3167,6 +3244,37 @@ class TablebaseGenerator {
                           << " loss " << trivialTotals[side][2]
                           << " draw " << trivialTotals[side][3] << '\n';
             }
+        if (full) {
+            const auto printGiantClasses = [&](
+              const char* slot, const GiantClassCounts& all,
+              const GiantClassCounts& excluded,
+              const GiantClassCounts& trivial) {
+                for (std::size_t giantClass = 0;
+                     giantClass < GiantStartClassSizes.size(); ++giantClass)
+                    for (std::size_t side = 0; side < 2; ++side) {
+                        const auto print = [&](const char* suffix,
+                                               const Counts& source) {
+                            std::cout << "reachability_" << slot
+                                      << "_giant_class" << suffix
+                                      << " class " << GiantStartClassSizes[giantClass]
+                                      << " side " << side
+                                      << " unknown " << source[side][0]
+                                      << " win " << source[side][1]
+                                      << " loss " << source[side][2]
+                                      << " draw " << source[side][3] << '\n';
+                        };
+                        print("_total", all[giantClass]);
+                        print("_excluded", excluded[giantClass]);
+                        print("_trivial", trivial[giantClass]);
+                    }
+            };
+            if (primary_is_giant())
+                printGiantClasses("primary", giantPrimaryAll,
+                                  giantPrimaryExcluded, giantPrimaryTrivial);
+            if (secondary_is_giant())
+                printGiantClasses("secondary", giantSecondaryAll,
+                                  giantSecondaryExcluded, giantSecondaryTrivial);
+        }
         if (primarySubstates_ > 1)
             for (std::size_t substate = 0; substate < primarySubstates_; ++substate)
                 for (std::size_t side = 0; side < 2; ++side) {
@@ -3396,6 +3504,7 @@ class TablebaseGenerator {
 
         using Counts = std::array<std::array<std::uint64_t, 4>, 2>;
         using SubstateCounts = std::vector<Counts>;
+        using GiantClassCounts = std::array<Counts, 4>;
         constexpr std::uint32_t Block = 10'000;
         const std::uint32_t workers = std::min(
           workerThreads_, std::max(1u, std::thread::hardware_concurrency()));
@@ -3404,6 +3513,10 @@ class TablebaseGenerator {
         std::vector<Counts> localAdmitted(workers);
         std::vector<Counts> localExcluded(workers);
         std::vector<Counts> localTrivial(workers);
+        std::vector<GiantClassCounts> localGiantPrimaryAdmitted(workers);
+        std::vector<GiantClassCounts> localGiantPrimaryTrivial(workers);
+        std::vector<GiantClassCounts> localGiantSecondaryAdmitted(workers);
+        std::vector<GiantClassCounts> localGiantSecondaryTrivial(workers);
         std::vector<SubstateCounts> localAdmittedBySubstate(
           workers, SubstateCounts(substates_));
         std::vector<SubstateCounts> localExcludedBySubstate(
@@ -3482,10 +3595,31 @@ class TablebaseGenerator {
                             invalid.store(true, std::memory_order_relaxed);
                             break;
                         }
+                        const auto primaryGiantClass = primary_is_giant()
+                          ? std::optional<std::size_t>(
+                              giant_start_class_for_slot(position, true))
+                          : std::nullopt;
+                        const auto secondaryGiantClass = secondary_is_giant()
+                          ? std::optional<std::size_t>(
+                              giant_start_class_for_slot(position, false))
+                          : std::nullopt;
+                        if (primaryGiantClass)
+                            ++localGiantPrimaryAdmitted[worker]
+                              [*primaryGiantClass][side][result];
+                        if (secondaryGiantClass)
+                            ++localGiantSecondaryAdmitted[worker]
+                              [*secondaryGiantClass][side][result];
                         const bool isTrivial =
                           is_trivial_reachable_position(position);
-                        if (isTrivial)
+                        if (isTrivial) {
                             ++localTrivial[worker][side][result];
+                            if (primaryGiantClass)
+                                ++localGiantPrimaryTrivial[worker]
+                                  [*primaryGiantClass][side][result];
+                            if (secondaryGiantClass)
+                                ++localGiantSecondaryTrivial[worker]
+                                  [*secondaryGiantClass][side][result];
+                        }
                         if (isTrivial)
                             ++localTrivialBySubstate[worker]
                               [index % substates_][side][result];
@@ -3499,6 +3633,8 @@ class TablebaseGenerator {
               "invalid information flags, concrete WDL, or admitted geometry");
 
         Counts admitted{}, excluded{}, trivial{};
+        GiantClassCounts giantPrimaryAdmitted{}, giantPrimaryTrivial{},
+          giantSecondaryAdmitted{}, giantSecondaryTrivial{};
         SubstateCounts admittedBySubstate(substates_);
         SubstateCounts excludedBySubstate(substates_);
         SubstateCounts trivialBySubstate(substates_);
@@ -3511,6 +3647,41 @@ class TablebaseGenerator {
         merge(admitted, localAdmitted);
         merge(excluded, localExcluded);
         merge(trivial, localTrivial);
+        const auto mergeGiantClasses = [](
+          GiantClassCounts& target, const std::vector<GiantClassCounts>& parts) {
+            for (const GiantClassCounts& part : parts)
+                for (std::size_t giantClass = 0; giantClass < target.size(); ++giantClass)
+                    for (std::size_t side = 0; side < 2; ++side)
+                        for (std::size_t result = 0; result < 4; ++result)
+                            target[giantClass][side][result] +=
+                              part[giantClass][side][result];
+        };
+        mergeGiantClasses(giantPrimaryAdmitted, localGiantPrimaryAdmitted);
+        mergeGiantClasses(giantPrimaryTrivial, localGiantPrimaryTrivial);
+        mergeGiantClasses(giantSecondaryAdmitted, localGiantSecondaryAdmitted);
+        mergeGiantClasses(giantSecondaryTrivial, localGiantSecondaryTrivial);
+        const auto verifyGiantClasses = [&](
+          const GiantClassCounts& classAdmitted,
+          const GiantClassCounts& classTrivial) {
+            for (std::size_t side = 0; side < 2; ++side)
+                for (std::size_t result = 0; result < 4; ++result) {
+                    std::uint64_t admittedSum = 0;
+                    std::uint64_t trivialSum = 0;
+                    for (std::size_t giantClass = 0;
+                         giantClass < GiantStartClassSizes.size(); ++giantClass) {
+                        admittedSum += classAdmitted[giantClass][side][result];
+                        trivialSum += classTrivial[giantClass][side][result];
+                    }
+                    if (admittedSum != admitted[side][result] ||
+                        trivialSum != trivial[side][result])
+                        throw std::runtime_error(
+                          "information Giant start-class conservation residual");
+                }
+        };
+        if (primary_is_giant())
+            verifyGiantClasses(giantPrimaryAdmitted, giantPrimaryTrivial);
+        if (secondary_is_giant())
+            verifyGiantClasses(giantSecondaryAdmitted, giantSecondaryTrivial);
         const auto mergeSubstates = [](
           SubstateCounts& target,
           const std::vector<SubstateCounts>& parts) {
@@ -3580,6 +3751,33 @@ class TablebaseGenerator {
                       excludedBySubstate);
         printSubstate("information_reachability_substate_trivial",
                       trivialBySubstate);
+        const auto printGiantClasses = [&](
+          const char* slot, const GiantClassCounts& classAdmitted,
+          const GiantClassCounts& classTrivial) {
+            for (std::size_t giantClass = 0;
+                 giantClass < GiantStartClassSizes.size(); ++giantClass)
+                for (std::size_t side = 0; side < 2; ++side) {
+                    const auto print = [&](const char* suffix,
+                                           const Counts& source) {
+                        std::cout << "information_reachability_" << slot
+                                  << "_giant_class_" << suffix
+                                  << " class " << GiantStartClassSizes[giantClass]
+                                  << " side " << side
+                                  << " unknown " << source[side][0]
+                                  << " win " << source[side][1]
+                                  << " loss " << source[side][2]
+                                  << " draw " << source[side][3] << '\n';
+                    };
+                    print("admitted", classAdmitted[giantClass]);
+                    print("trivial", classTrivial[giantClass]);
+                }
+        };
+        if (primary_is_giant())
+            printGiantClasses("primary", giantPrimaryAdmitted,
+                              giantPrimaryTrivial);
+        if (secondary_is_giant())
+            printGiantClasses("secondary", giantSecondaryAdmitted,
+                              giantSecondaryTrivial);
         if (attackerType_ == PieceType::Prince ||
             secondaryType_ == PieceType::Prince)
             std::cout << "information_reachability_scope turn_boundary\n";
@@ -6737,6 +6935,32 @@ class TablebaseGenerator {
 
     [[nodiscard]] bool secondary_is_giant() const {
         return fourModels_ && secondaryType_ == PieceType::Giant;
+    }
+
+    static constexpr std::array<unsigned, 4> GiantStartClassSizes{
+      20, 16, 15, 12};
+
+    static std::size_t giant_start_class(std::uint8_t square) {
+        const unsigned file = square % Position::BoardFiles;
+        const unsigned rank = square / Position::BoardFiles;
+        if (file >= Position::BoardFiles - 1 || rank >= Position::BoardRanks - 1)
+            throw std::runtime_error("Giant start-class square is not an anchor");
+        // A Giant translates by two squares orthogonally. Its own moves
+        // therefore preserve anchor-file and anchor-rank parity. On the 7x9
+        // lower-left-anchor grid the four components contain 20, 16, 15, and
+        // 12 placements respectively.
+        return (file & 1u ? 2u : 0u) + (rank & 1u ? 1u : 0u);
+    }
+
+    std::size_t giant_start_class_for_slot(
+      const Position& position, bool primary) const {
+        const int id = primary ? 2 : compoundCopycat_ ? 4 : 3;
+        if (id >= position.piece_count() || !position.piece(id).alive ||
+            !position.piece(id).onBoard ||
+            position.piece(id).type != PieceType::Giant)
+            throw std::runtime_error(
+              "Giant start-class material slot does not contain a Giant");
+        return giant_start_class(position.piece(id).square);
     }
 
     FourState canonicalize_four(FourState state) const {

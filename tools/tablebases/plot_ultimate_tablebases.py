@@ -104,11 +104,15 @@ PIECE_LABELS = {piece.name: piece.name.title() for piece in PIECES}
 PIECE_BY_NAME = {piece.name: piece for piece in PIECES}
 PIECE_INDEX = {piece.name: index for index, piece in enumerate(PIECES)}
 BERSERKER_RADIUS_ROWS = tuple(f"berserker_radius_{radius}" for radius in range(1, 4))
+GIANT_START_ROWS = tuple(f"giant_start_{size}" for size in (20, 16, 15, 12))
 PIECE_LABELS.update(
     {
         row: f"Berserker (radius {radius})"
         for radius, row in enumerate(BERSERKER_RADIUS_ROWS, 1)
     }
+)
+PIECE_LABELS.update(
+    {row: f"Giant-{size}" for row, size in zip(GIANT_START_ROWS, (20, 16, 15, 12))}
 )
 
 
@@ -237,6 +241,51 @@ def read_berserker_radii(path: Path) -> dict[tuple[str, int], ReadmeResult]:
     return results
 
 
+def read_giant_start_classes(path: Path) -> dict[tuple[str, int], ReadmeResult]:
+    """Read exact, reachability-filtered Giant root-anchor parity slices."""
+    document = json.loads(path.read_text(encoding="utf-8"))
+    if (
+        document.get("schema") != 1
+        or document.get("semantics") != "reachability-admitted-minus-trivial-v3"
+        or tuple(document.get("class_sizes", ())) != (20, 16, 15, 12)
+    ):
+        raise ValueError(f"unsupported Giant start-class summary schema: {path}")
+    results: dict[tuple[str, int], ReadmeResult] = {}
+    for filename, record in document.get("files", {}).items():
+        if record.get("excluded"):
+            continue
+        seen: set[int] = set()
+        for class_text, raw in record.get("classes", {}).items():
+            giant_class = int(class_text)
+            if giant_class not in (20, 16, 15, 12):
+                raise ValueError(
+                    f"unsupported Giant start class {giant_class}: {filename}")
+            if giant_class in seen:
+                raise ValueError(
+                    f"duplicate Giant start class {giant_class}: {filename}")
+            seen.add(giant_class)
+            sides = []
+            for key in ("first_starts", "second_starts"):
+                side = raw[key]
+                admitted = side["admitted"]
+                trivial = side["trivial"]
+                display = side["display"]
+                for field in ("wins", "losses", "draws"):
+                    if (
+                        trivial[field] > admitted[field]
+                        or display[field] != admitted[field] - trivial[field]
+                    ):
+                        raise ValueError(
+                            f"invalid Giant start-class conservation for "
+                            f"{filename} class {giant_class} {key} {field}"
+                        )
+                sides.append(WDL(display["wins"], display["losses"], display["draws"]))
+            results[(filename, giant_class)] = ReadmeResult(sides[0], sides[1])
+        if seen != {20, 16, 15, 12}:
+            raise ValueError(f"incomplete Giant start-class coverage: {filename}")
+    return results
+
+
 def row_side_result(raw: ReadmeResult, row_is_primary: bool = True) -> tuple[WDL, WDL]:
     """Return row-side W/L/D for row-to-move, then opponent-to-move.
 
@@ -296,9 +345,11 @@ class OutcomeCatalog:
         self,
         summary: dict[str, ReadmeResult],
         berserker_radii: dict[tuple[str, int], ReadmeResult] | None = None,
+        giant_start_classes: dict[tuple[str, int], ReadmeResult] | None = None,
     ) -> None:
         self.summary = summary
         self.berserker_radii = berserker_radii or {}
+        self.giant_start_classes = giant_start_classes or {}
         # Match the canonical ledger's record precedence.  The broad stateful
         # catalog may contain a normalized duplicate for an already generated
         # requested class.  The exact inventory record must win so a certified
@@ -393,52 +444,108 @@ class OutcomeCatalog:
         first, second = row_side_result(raw, row_is_primary)
         return classify(first, second, allow_loss)
 
+    @staticmethod
+    def _giant_class(row: str) -> int | None:
+        if row not in GIANT_START_ROWS:
+            return None
+        return int(row.rsplit("_", 1)[1])
+
+    def _giant_cell_for_record(
+        self,
+        record: dict[str, object] | None,
+        giant_class: int,
+        row_is_primary: bool = True,
+        allow_loss: bool = False,
+    ) -> Cell:
+        if record is None:
+            return Cell("unknown")
+        filename = str(record["filename"])
+        aggregate = self.summary.get(filename)
+        if aggregate is not None and aggregate.status in {"computing", "preserving"}:
+            return Cell("computing")
+        raw = self.giant_start_classes.get((filename, giant_class))
+        if raw is None:
+            return Cell("unknown")
+        first, second = row_side_result(raw, row_is_primary)
+        return classify(first, second, allow_loss)
+
     def single_row(self, row: str) -> Cell:
         radius = self._radius(row)
-        if radius is None:
-            return self.single(row)
-        return self._radius_cell_for_record(self.singles.get("berserker"), radius)
+        if radius is not None:
+            return self._radius_cell_for_record(self.singles.get("berserker"), radius)
+        giant_class = self._giant_class(row)
+        if giant_class is not None:
+            return self._giant_cell_for_record(
+                self.singles.get("giant"), giant_class)
+        return self.single(row)
 
     def together_row(self, row: str, column: str) -> Cell:
         radius = self._radius(row)
-        if radius is None:
-            return self.together(row, column)
-        if column == "berserker":
-            # Two same-team Berserkers are exchange-folded, so there is no
-            # distinguished row Berserker to slice.  Repeat the certified
-            # aggregate outcome across the three radius rows instead.
-            return self.together("berserker", "berserker")
-        if deferred_material("berserker", column):
-            return Cell("unknown")
-        first, second = sorted(("berserker", column), key=PIECE_INDEX.__getitem__)
-        if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
-            return known_draw()
-        return self._radius_cell_for_record(self.same_team.get((first, second)), radius)
+        if radius is not None:
+            if column == "berserker":
+                # Two same-team Berserkers are exchange-folded, so there is no
+                # distinguished row Berserker to slice.  Repeat the certified
+                # aggregate outcome across the three radius rows instead.
+                return self.together("berserker", "berserker")
+            if deferred_material("berserker", column):
+                return Cell("unknown")
+            first, second = sorted(("berserker", column), key=PIECE_INDEX.__getitem__)
+            if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
+                return known_draw()
+            return self._radius_cell_for_record(self.same_team.get((first, second)), radius)
+        giant_class = self._giant_class(row)
+        if giant_class is not None:
+            if column == "giant":
+                return self.together("giant", "giant")
+            if deferred_material("giant", column):
+                return Cell("unknown")
+            first, second = sorted(("giant", column), key=PIECE_INDEX.__getitem__)
+            if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
+                return known_draw()
+            return self._giant_cell_for_record(
+                self.same_team.get((first, second)), giant_class)
+        return self.together(row, column)
 
     def opposed_row(self, row: str, column: str) -> Cell:
         radius = self._radius(row)
-        if radius is None:
-            return self.opposed(row, column)
-        if column == "berserker":
+        if radius is not None:
+            if column == "berserker":
+                return self._radius_cell_for_record(
+                    self.opposing.get(("berserker", "berserker")),
+                    radius,
+                    allow_loss=True,
+                )
+            if deferred_material("berserker", column, opposing=True):
+                return Cell("unknown")
+            first, second = sorted(("berserker", column), key=PIECE_INDEX.__getitem__)
+            if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], False):
+                return known_draw()
+            record = self.opposing.get((first, second))
             return self._radius_cell_for_record(
-                self.opposing.get(("berserker", "berserker")),
+                record,
                 radius,
+                row_is_primary=(
+                    record is not None and str(record["primary"]) == "berserker"
+                ),
                 allow_loss=True,
             )
-        if deferred_material("berserker", column, opposing=True):
-            return Cell("unknown")
-        first, second = sorted(("berserker", column), key=PIECE_INDEX.__getitem__)
-        if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], False):
-            return known_draw()
-        record = self.opposing.get((first, second))
-        return self._radius_cell_for_record(
-            record,
-            radius,
-            row_is_primary=(
-                record is not None and str(record["primary"]) == "berserker"
-            ),
-            allow_loss=True,
-        )
+        giant_class = self._giant_class(row)
+        if giant_class is not None:
+            if deferred_material("giant", column, opposing=True):
+                return Cell("unknown")
+            first, second = sorted(("giant", column), key=PIECE_INDEX.__getitem__)
+            if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], False):
+                return known_draw()
+            record = self.opposing.get((first, second))
+            return self._giant_cell_for_record(
+                record,
+                giant_class,
+                row_is_primary=(
+                    record is not None and str(record["primary"]) == "giant"
+                ),
+                allow_loss=True,
+            )
+        return self.opposed(row, column)
 
     def together(self, row: str, column: str) -> Cell:
         if PIECE_INDEX[column] > PIECE_INDEX[row]:
@@ -692,12 +799,17 @@ def draw_grid(
     return total_width, header_height + len(rows) * cell_height
 
 
-def render(readme: Path, radii: Path, output: Path, scale: int) -> None:
-    catalog = OutcomeCatalog(read_summary(readme), read_berserker_radii(radii))
+def render(readme: Path, radii: Path, giant_classes: Path,
+           output: Path, scale: int) -> None:
+    catalog = OutcomeCatalog(
+        read_summary(readme), read_berserker_radii(radii),
+        read_giant_start_classes(giant_classes))
     names = [piece.name for piece in PIECES]
     rows = list(names)
     berserker_index = rows.index("berserker") + 1
     rows[berserker_index:berserker_index] = BERSERKER_RADIUS_ROWS
+    giant_index = rows.index("giant") + 1
+    rows[giant_index:giant_index] = GIANT_START_ROWS
 
     cell_width = 102 * scale
     cell_height = 82 * scale
@@ -732,7 +844,7 @@ def render(readme: Path, radii: Path, output: Path, scale: int) -> None:
     )
     draw.text(
         (width // 2, 151 * scale),
-        "Reachable positions only · Immediate stalemates and forced one-ply/tactical material simplifications are excluded · Prince: cont=0 starting boundaries only · Copycat: one linked mirrored pair · Devil: own spawned Minions only; starts on ranks 1-3",
+        "Reachable positions only · Immediate stalemates and forced one-ply/tactical material simplifications are excluded · Giant-20/16/15/12: root-anchor parity classes · Prince: cont=0 starting boundaries only · Copycat: one linked mirrored pair · Devil: own spawned Minions only; starts on ranks 1-3",
         fill=COLORS["muted"],
         font=font(20 * scale),
         anchor="ma",
@@ -843,6 +955,12 @@ def main() -> None:
         help="exact reachability-filtered radius 1/2/3 Berserker results",
     )
     parser.add_argument(
+        "--giant-classes",
+        type=Path,
+        default=ROOT / "tablebases" / "giant-start-class-summary.json",
+        help="exact reachability-filtered Giant root-anchor class results",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=ROOT / "tablebases" / "ultimate-tablebase-grid.png",
@@ -858,7 +976,7 @@ def main() -> None:
     render(
         args.readme.resolve(),
         args.berserker_radii.resolve(),
-        args.output.resolve(),
+        args.giant_classes.resolve(), args.output.resolve(),
         args.scale,
     )
 
