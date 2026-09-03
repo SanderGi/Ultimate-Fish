@@ -270,6 +270,8 @@ SearchLimits parse_limits(std::istringstream& input, const Position* position = 
             limits.moveOverhead = std::chrono::milliseconds(std::max(0, parsed));
         else if (token == "factored")
             limits.factoredBeliefs = parsed != 0;
+        else if (token == "tablebases")
+            limits.useTablebases = parsed != 0;
     }
     if (position) {
         const bool white = position->side_to_move() == Color::White;
@@ -285,6 +287,7 @@ SearchLimits parse_limits(std::istringstream& input, const Position* position = 
 int main() {
     std::cout.setf(std::ios::unitbuf);
     Position position;
+    std::vector<std::vector<std::uint64_t>> positionRepetitionHistory;
     Search search;
     DraftState draft;
     PublicBeliefState beliefs;
@@ -315,6 +318,7 @@ int main() {
         }
         if (line == "ucinewgame") {
             position.clear();
+            positionRepetitionHistory.clear();
             beliefs = PublicBeliefState{};
             history = PublicHistoryState{};
             search.clear();
@@ -483,6 +487,7 @@ int main() {
             input >> token >> token;
             SearchLimits limits = parse_limits(
               input, nullptr, configuredMoveOverhead);
+            limits.repetitionHistory = history.repetition_history();
             const bool streamIterations =
               line.find(" stream") != std::string::npos;
             if (streamIterations)
@@ -716,17 +721,24 @@ int main() {
             std::string error;
             if (!position.set_upn(line.substr(13), &error))
                 std::cout << "info string invalid upn " << error << '\n';
-            else
+            else {
+                positionRepetitionHistory = {{position.key()}};
                 std::cout << "positionok\n";
+            }
             continue;
         }
         if (line.rfind("move ", 0) == 0) {
+            if (positionRepetitionHistory.empty())
+                positionRepetitionHistory.push_back({position.key()});
             const auto move = position.move_from_string(line.substr(5));
             Undo undo;
             if (!move || !position.make_move(*move, undo))
                 std::cout << "illegalmove\n";
-            else
+            else {
+                if (positionRepetitionHistory.back().front() != position.key())
+                    positionRepetitionHistory.push_back({position.key()});
                 std::cout << "position " << position.upn() << '\n';
+            }
             continue;
         }
         if (line.rfind("notation ", 0) == 0) {
@@ -750,6 +762,7 @@ int main() {
             std::string token;
             input >> token;
             SearchLimits limits = parse_limits(input, &position, configuredMoveOverhead);
+            limits.repetitionHistory = positionRepetitionHistory;
             const bool streamIterations = line.find(" stream") != std::string::npos;
             if (streamIterations)
                 limits.onIteration = [&position](const SearchResult& iteration) {

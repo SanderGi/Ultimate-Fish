@@ -2408,6 +2408,44 @@ void test_search_and_perft_regressions() {
     const SearchResult boundedCycle = cycleSearch.think(cycle, cycleLimits);
     expect(boundedCycle.bestMove.has_value() && boundedCycle.nodes <= cycleLimits.nodes,
            "forcing quiescence cycles respect the hard ply/node bounds");
+
+    Position fishermanGiantMate;
+    expect(fishermanGiantMate.set_upn(
+      "b;hm=1;fm=1;ep=-;cont=0;forced=-1;epv=-1;"
+      "fisherman,w,e10,0,0,0,0,0,1,-1,1,-1,0;"
+      "king,b,e9,0,0,0,0,0,1,-1,1,-1,0;"
+      "giant,w,a7,0,0,0,0,0,1,-1,1,-1,0;"
+      "king,w,f7,0,0,0,0,1,1,-1,1,-1,0", &error),
+      "Fisherman/Giant native-mate regression parses: " + error);
+    SearchLimits nativeMateLimits;
+    nativeMateLimits.depth = 16;
+    nativeMateLimits.useTablebases = false;
+    Search nativeMateSearch(8);
+    const SearchResult nativeMate = nativeMateSearch.think(
+      fishermanGiantMate, nativeMateLimits);
+    expect(nativeMate.score < -29'900 &&
+             nativeMate.principalVariation.size() == 14,
+           "native search reports the complete fourteen-action mate proof");
+    Position mateLine = fishermanGiantMate;
+    std::map<std::uint64_t, int> mateOccurrences{{mateLine.key(), 1}};
+    bool legalMateLine = true;
+    bool crossedThreefold = false;
+    for (const Move& move : nativeMate.principalVariation) {
+        Undo undo;
+        legalMateLine = legalMateLine && mateLine.make_move(move, undo);
+        if (!legalMateLine)
+            break;
+        crossedThreefold = crossedThreefold || ++mateOccurrences[mateLine.key()] >= 3;
+    }
+    expect(legalMateLine && !crossedThreefold && mateLine.game_over() &&
+             mateLine.winner() == Color::White,
+           "the native mate PV is legal, repetition-safe, and terminal");
+    const SearchResult cachedNativeMate = nativeMateSearch.think(
+      fishermanGiantMate, nativeMateLimits);
+    expect(cachedNativeMate.score == nativeMate.score &&
+             cachedNativeMate.principalVariation.size() == 14 &&
+             cachedNativeMate.nodes < nativeMate.nodes,
+           "a warm TT returns the complete mate PV without repeating its proof search");
 }
 
 void test_exact_tablebase_probing() {
@@ -2844,6 +2882,47 @@ void test_native_information_set_search() {
              repetition.score == 0,
            "a root completing public threefold repetition scores as a draw in native search");
 
+    Position repeatedChild = safe;
+    Undo repeatedUndo;
+    expect(repeatedChild.make_move(*drawingCapture, repeatedUndo),
+           "history-aware repetition fixture applies its root action");
+    SearchLimits historyRepetitionLimits;
+    historyRepetitionLimits.depth = 3;
+    historyRepetitionLimits.rootMoves = {*drawingCapture};
+    historyRepetitionLimits.repetitionHistory = {
+      {repeatedChild.key()}, {repeatedChild.key()}, {safe.key()}};
+    Search historyRepetitionSearch(2);
+    const SearchResult historyRepetition = historyRepetitionSearch.think(
+      safe, historyRepetitionLimits);
+    expect(historyRepetition.bestMove && historyRepetition.score == 0,
+           "native search derives a third-occurrence draw from full history");
+
+    const auto repetitionPosition = [](const char* upn) {
+        Position position;
+        std::string error;
+        if (!position.set_upn(upn, &error))
+            throw std::runtime_error("invalid repetition fixture: " + error);
+        return position;
+    };
+    Position inertMoved = repetitionPosition(
+      "w;king,w,a1;bishop,w,c3;king,b,h10");
+    Position movedBishop = inertMoved;
+    movedBishop.piece(1).moved = true;
+    expect(inertMoved.key() == movedBishop.key(),
+           "position identity ignores a semantically inert Bishop moved bit");
+    Position castlingState = repetitionPosition(
+      "w;king,w,a1;rook,w,h1;king,b,h10");
+    Position lostCastling = castlingState;
+    lostCastling.piece(0).moved = true;
+    expect(castlingState.key() != lostCastling.key(),
+           "position identity retains a moved bit while it controls castling");
+    Position pawnState = repetitionPosition(
+      "w;king,w,a1;pawn,w,c3;king,b,h10");
+    Position movedPawn = pawnState;
+    movedPawn.piece(1).moved = true;
+    expect(pawnState.key() != movedPawn.key(),
+           "position identity retains the Pawn double-step state");
+
     auto winningFixture = [](int ghostSquare) {
         Position position;
         position.add_piece(PieceType::King, Color::White,
@@ -3268,6 +3347,10 @@ void test_public_history_reconstruction() {
              afterHiddenMove.beliefs().decision_partitions() == 1,
            "an invisible Ghost action advances the private cursor without "
            "collapsing the observer's information set");
+    expect(afterHiddenMove.repetition_history().size() == 2 &&
+             !afterHiddenMove.repetition_history().front().empty() &&
+             !afterHiddenMove.repetition_history().back().empty(),
+           "public history records every observed position set for native repetition search");
 
     PublicHistoryState preparedHiddenMove;
     PublicHistoryState directHiddenMove;

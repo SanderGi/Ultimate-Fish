@@ -11,6 +11,7 @@
 #include "nnue.h"
 
 #include <chrono>
+#include <array>
 #include <cstdint>
 #include <functional>
 #include <map>
@@ -36,6 +37,11 @@ struct SearchLimits {
     // Roots which immediately complete a public threefold repetition. They
     // remain legal candidates but must score as draws inside native search.
     std::vector<std::string> rootDrawMoveStrings;
+    // Chronological public repetition history. Each entry contains every
+    // concrete Position::key() compatible with that observed state. Concrete
+    // callers use singleton entries; exact belief-search handoffs can recover
+    // the compatible concrete history from the retained sets.
+    std::vector<std::vector<std::uint64_t>> repetitionHistory;
     // Optional reporting hook invoked after each fully completed iterative-
     // deepening pass. Callers that do not opt in retain the single final result.
     std::function<void(const SearchResult&)> onIteration;
@@ -43,6 +49,9 @@ struct SearchLimits {
     // Test/benchmark escape hatch which retains the exact enumerated-world
     // solver as an oracle for the factored information-set search.
     bool factoredBeliefs = true;
+    // Test/benchmark switch. Production callers leave exact tablebase probing
+    // enabled; regression tests can exercise the native search deterministically.
+    bool useTablebases = true;
 };
 
 struct SearchResult {
@@ -273,10 +282,13 @@ class PublicHistoryState {
     [[nodiscard]] bool initialized() const;
     [[nodiscard]] const Position& actual_position() const;
     [[nodiscard]] const PublicBeliefState& beliefs() const;
+    [[nodiscard]] const std::vector<std::vector<std::uint64_t>>&
+      repetition_history() const;
 
    private:
     Position actual_;
     PublicBeliefState beliefs_;
+    std::vector<std::vector<std::uint64_t>> repetitionHistory_;
     std::optional<BeliefSuccessorPartitions> preparedOpponentTransitions_;
     bool initialized_ = false;
 };
@@ -359,10 +371,24 @@ class Search {
     };
 
     int negamax(Position& position, int depth, int alpha, int beta, int ply,
-                std::vector<Move>& pv, const Move* excludedMove = nullptr,
+                std::vector<Move>& pv,
+                const Move* excludedMove = nullptr,
                 const LazyRoyalContext* lazyRoyals = nullptr);
     int quiescence(Position& position, int alpha, int beta, int ply,
-                   const LazyRoyalContext* lazyRoyals = nullptr);
+                   const LazyRoyalContext* lazyRoyals = nullptr,
+                   bool repetitionPossible = false);
+    void initialize_repetition(
+      std::uint64_t rootKey,
+      const std::vector<std::vector<std::uint64_t>>& history,
+      int basePly = 0);
+    [[nodiscard]] bool enter_repetition(std::uint64_t key, int ply);
+    [[nodiscard]] int root_repetition_count(std::uint64_t key) const;
+    [[nodiscard]] bool tablebase_history_safe(int ply) const;
+    [[nodiscard]] std::optional<int> verify_or_repair_mate_principal_variation(
+      const Position& root, int depth, int score, std::vector<Move>& pv);
+    void extend_cached_principal_variation(
+      const Position& root, int depth, int score, int maximumActions,
+      std::vector<Move>& pv);
     int move_score(const Position& position, const Move& move,
                    const Move* ttMove, int ply) const;
     int evaluate(const Position& position, int ply) const;
@@ -400,6 +426,13 @@ class Search {
       history_{};
     std::array<std::array<Move, 2>, MaxPly> killers_{};
     std::array<UltimateNnue::Accumulator, MaxPly> accumulators_{};
+    std::vector<std::pair<std::uint64_t, std::uint8_t>> rootRepetitionCounts_;
+    std::uint64_t singleRootRepetitionKey_ = 0;
+    std::uint8_t singleRootRepetitionCount_ = 0;
+    std::array<std::uint64_t, MaxPly> repetitionPath_{};
+    int repetitionBasePly_ = 0;
+    bool rootHasRepeatedPosition_ = false;
+    bool repairingPrincipalVariation_ = false;
 };
 
 }  // namespace Stockfish::Ultimate

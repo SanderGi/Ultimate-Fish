@@ -440,6 +440,16 @@ and remaps every relationship so captures cannot corrupt a round trip.
 - The native insufficient-material table is implemented, including its special
   minor/color-bound/support combinations. With both real kings present and
   neither team sufficient, the result is a draw.
+- Three occurrences of the same legal position are a draw. The history
+  protocol retains the chronological set of concrete keys compatible with
+  every public observation; concrete search and exact singleton handoffs use
+  that history and also detect repetitions created below the root. Position
+  identity ignores a non-Pawn `moved` bit unless it preserves a live
+  King/Jester-and-Rook castling right; Pawn double-step and effective castling
+  rights remain distinct. Decisive, history-free tablebase values are bypassed
+  after a second occurrence makes DTW history-dependent. A public-information
+  root repetition is accepted only when every surviving concrete successor has
+  occurred twice already.
 
 ## Conformance status
 

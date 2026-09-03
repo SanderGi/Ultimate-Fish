@@ -41,6 +41,26 @@ std::uint64_t string_key(std::string_view value) {
     return hash;
 }
 
+std::vector<std::uint64_t> repetition_keys(const PublicBeliefState& beliefs) {
+    std::vector<std::uint64_t> keys;
+    keys.reserve(beliefs.size());
+    for (const auto& [upn, position] : beliefs.concrete_worlds()) {
+        (void)upn;
+        keys.push_back(position.key());
+    }
+    std::sort(keys.begin(), keys.end());
+    keys.erase(std::unique(keys.begin(), keys.end()), keys.end());
+    return keys;
+}
+
+void append_repetition_state(
+  std::vector<std::vector<std::uint64_t>>& history,
+  std::vector<std::uint64_t> keys) {
+    if (keys.empty() || (!history.empty() && history.back() == keys))
+        return;
+    history.push_back(std::move(keys));
+}
+
 bool belief_stays_concrete(const Position& position, Color observer) {
     // Royal identity is monotone knowledge, but Ghost location is not: a
     // currently observed Ghost keeps a public destination for its first quiet
@@ -1335,6 +1355,7 @@ bool PublicHistoryState::start(Position initial,
                                DisclosureContext disclosure,
                                bool initialDeploymentKnown,
                                std::string* error) {
+    repetitionHistory_.clear();
     PublicBeliefState initialBeliefs(disclosure);
     std::string localError;
     if (!initial_public_beliefs(
@@ -1347,6 +1368,7 @@ bool PublicHistoryState::start(Position initial,
     }
     actual_ = std::move(initial);
     beliefs_ = std::move(initialBeliefs);
+    append_repetition_state(repetitionHistory_, repetition_keys(beliefs_));
     preparedOpponentTransitions_.reset();
     initialized_ = true;
     return true;
@@ -1357,6 +1379,7 @@ bool PublicHistoryState::start(
   bool initialDeploymentKnown,
   const std::vector<int>& enemyKingCandidateSquares,
   std::string* error) {
+    repetitionHistory_.clear();
     if (enemyKingCandidateSquares.empty()) {
         if (error)
             *error = "an exact enemy King candidate set cannot be empty";
@@ -1489,6 +1512,7 @@ bool PublicHistoryState::apply_actual(std::string_view moveText,
 
     actual_ = std::move(after);
     beliefs_.replace_with_successor(std::move(*selected));
+    append_repetition_state(repetitionHistory_, repetition_keys(beliefs_));
     return true;
 }
 
@@ -1512,6 +1536,11 @@ const Position& PublicHistoryState::actual_position() const { return actual_; }
 
 const PublicBeliefState& PublicHistoryState::beliefs() const { return beliefs_; }
 
+const std::vector<std::vector<std::uint64_t>>&
+PublicHistoryState::repetition_history() const {
+    return repetitionHistory_;
+}
+
 Search::Search(std::size_t hashMegabytes) {
     const std::size_t bytes = std::max<std::size_t>(1, hashMegabytes) * 1024 * 1024;
     std::size_t entries = 1;
@@ -1530,6 +1559,332 @@ void Search::clear() {
     history_ = {};
     killers_ = {};
     generation_ = 0;
+}
+
+void Search::initialize_repetition(
+  std::uint64_t rootKey,
+  const std::vector<std::vector<std::uint64_t>>& history,
+  int basePly) {
+    std::unordered_map<std::uint64_t, unsigned> counts;
+    if (history.empty()) {
+        counts[rootKey] = 1;
+    } else {
+        for (const std::vector<std::uint64_t>& state : history) {
+            for (const std::uint64_t key : state)
+                ++counts[key];
+        }
+        if (history.back().empty() ||
+            std::find(history.back().begin(), history.back().end(), rootKey) ==
+              history.back().end()) {
+            ++counts[rootKey];
+        }
+    }
+    rootRepetitionCounts_.clear();
+    rootRepetitionCounts_.reserve(counts.size());
+    for (const auto& [key, count] : counts)
+        rootRepetitionCounts_.emplace_back(
+          key, static_cast<std::uint8_t>(std::min(count, 3U)));
+    std::sort(rootRepetitionCounts_.begin(), rootRepetitionCounts_.end());
+    singleRootRepetitionKey_ = rootRepetitionCounts_.size() == 1
+                             ? rootRepetitionCounts_.front().first : 0;
+    singleRootRepetitionCount_ = rootRepetitionCounts_.size() == 1
+                               ? rootRepetitionCounts_.front().second : 0;
+    rootHasRepeatedPosition_ = std::any_of(
+      rootRepetitionCounts_.begin(), rootRepetitionCounts_.end(),
+      [](const auto& entry) { return entry.second >= 2; });
+    repetitionBasePly_ = basePly;
+}
+
+int Search::root_repetition_count(std::uint64_t key) const {
+    if (singleRootRepetitionCount_)
+        return key == singleRootRepetitionKey_
+             ? singleRootRepetitionCount_ : 0;
+    const auto found = std::lower_bound(
+      rootRepetitionCounts_.begin(), rootRepetitionCounts_.end(), key,
+      [](const auto& entry, std::uint64_t candidate) {
+          return entry.first < candidate;
+      });
+    return found != rootRepetitionCounts_.end() && found->first == key
+         ? found->second : 0;
+}
+
+bool Search::enter_repetition(std::uint64_t key, int ply) {
+    if (ply == repetitionBasePly_)
+        return singleRootRepetitionCount_
+             ? key == singleRootRepetitionKey_ &&
+                 singleRootRepetitionCount_ >= 3
+             : root_repetition_count(key) >= 3;
+    const int relativePly = ply - repetitionBasePly_;
+    // From a fresh singleton root, the earliest possible third occurrence is
+    // four actions away (the position key includes side/continuation state).
+    // This is by far the common search path and avoids even a tiny ancestor
+    // scan in the top four layers.
+    if (!rootHasRepeatedPosition_ && singleRootRepetitionCount_ == 1 &&
+        relativePly < 4) {
+        repetitionPath_[relativePly - 1] = key;
+        return false;
+    }
+    int count = singleRootRepetitionCount_
+              ? int(key == singleRootRepetitionKey_) *
+                  singleRootRepetitionCount_
+              : root_repetition_count(key);
+    for (int ancestor = relativePly - 2; ancestor >= 0 && count < 2;
+         --ancestor)
+        count += repetitionPath_[ancestor] == key;
+    repetitionPath_[relativePly - 1] = key;
+    return count >= 2;
+}
+
+bool Search::tablebase_history_safe(int ply) const {
+    // Decisive DTW values do not encode the game history. They remain exact
+    // only while no position has acquired a second occurrence: otherwise the
+    // nominal DTW-optimal continuation could encounter it once more and draw.
+    if (rootHasRepeatedPosition_)
+        return false;
+    const int relativePly = ply - repetitionBasePly_;
+    for (int current = 0; current < relativePly; ++current) {
+        const std::uint64_t key = repetitionPath_[current];
+        if (root_repetition_count(key) > 0)
+            return false;
+        for (int prior = 0; prior < current; ++prior)
+            if (repetitionPath_[prior] == key)
+                return false;
+    }
+    return true;
+}
+
+std::optional<int> Search::verify_or_repair_mate_principal_variation(
+  const Position& root, int depth, int score, std::vector<Move>& pv) {
+    if (std::abs(score) < MateThreshold)
+        return score;
+    const int expectedActions = Mate - std::abs(score);
+    const Color expectedWinner = score > 0
+                               ? root.side_to_move() : ~root.side_to_move();
+    const auto replay = [&](const std::vector<Move>& line,
+                            Position& tail, int& ply,
+                            int& perspective, int& turnChanges) {
+        tail = root;
+        ply = 0;
+        perspective = 1;
+        turnChanges = 0;
+        if (enter_repetition(root.key(), 0))
+            return false;
+        for (const Move& move : line) {
+            if (ply >= MaxPly - 1 || tail.game_over())
+                return false;
+            const Color before = tail.side_to_move();
+            Undo undo;
+            if (!tail.make_move(move, undo))
+                return false;
+            ++ply;
+            if (tail.side_to_move() != before) {
+                perspective = -perspective;
+                ++turnChanges;
+            }
+            if (!tail.game_over() && enter_repetition(tail.key(), ply))
+                return false;
+        }
+        return true;
+    };
+    const auto complete = [&](const Position& position, int actions) {
+        return actions == expectedActions && position.game_over() &&
+               position.winner() == expectedWinner;
+    };
+
+    Position tail;
+    int ply = 0;
+    int perspective = 1;
+    int turnChanges = 0;
+    if (!replay(pv, tail, ply, perspective, turnChanges))
+        pv.clear();
+    else if (complete(tail, ply))
+        return score;
+
+    // Most truncations end at an exact TT hit. Walk its score-consistent move
+    // chain first; this restores the cached part of the proof without
+    // searching a single additional node.
+    while (!pv.empty() && ply < expectedActions && !tail.game_over()) {
+        Entry* entry = find_entry(tail.key());
+        std::optional<Move> continuation;
+        if (entry && score_from_tt(entry->score, ply) == perspective * score)
+            continuation = entry->move.unpack();
+        // Exact tablebase leaves intentionally bypass the TT. Reconstruct one
+        // score-preserving successor directly when a native mate proof enters
+        // an installed table, while still rejecting a third-occurrence child.
+        if (!continuation && limits_.useTablebases &&
+            tablebase_history_safe(ply) && TablebaseProbe::probe(tail)) {
+            for (const Move& candidate : tail.legal_moves()) {
+                const Color before = tail.side_to_move();
+                Position child = tail;
+                Undo undo;
+                if (!child.make_move(candidate, undo))
+                    continue;
+                const int childPly = ply + 1;
+                if (!child.game_over() &&
+                    enter_repetition(child.key(), childPly))
+                    continue;
+                int childScore = 0;
+                if (child.game_over()) {
+                    const std::optional<Color> winner = child.winner();
+                    if (winner)
+                        childScore = *winner == child.side_to_move()
+                                   ? Mate - childPly : -Mate + childPly;
+                } else if (tablebase_history_safe(childPly)) {
+                    const auto childTablebase = TablebaseProbe::probe(child);
+                    if (!childTablebase)
+                        continue;
+                    const int distance = std::min<int>(
+                      childTablebase->dtw, MateThreshold - 1);
+                    childScore = childTablebase->wdl == TablebaseWdl::Draw
+                               ? 0
+                               : childTablebase->wdl == TablebaseWdl::Win
+                               ? Mate - childPly - distance
+                               : -Mate + childPly + distance;
+                } else
+                    continue;
+                const int fromTail = child.side_to_move() == before
+                                   ? childScore : -childScore;
+                if (fromTail == perspective * score) {
+                    continuation = candidate;
+                    break;
+                }
+            }
+        }
+        if (!continuation)
+            break;
+        const Move move = *continuation;
+        const Color before = tail.side_to_move();
+        Position child = tail;
+        Undo undo;
+        if (!child.make_move(move, undo))
+            break;
+        const int childPly = ply + 1;
+        if (!child.game_over() && enter_repetition(child.key(), childPly))
+            break;
+        pv.push_back(move);
+        tail = std::move(child);
+        ply = childPly;
+        if (tail.side_to_move() != before) {
+            perspective = -perspective;
+            ++turnChanges;
+        }
+    }
+    if (complete(tail, ply))
+        return score;
+
+    // If a bound entry or quiescence boundary ended the exact chain, request
+    // one score-preserving action at a time. The narrow window reuses all
+    // ordinary TT cutoffs, so cached actions cost zero nodes and an uncached
+    // forcing action is proved with the smallest useful search.
+    while (!pv.empty() && ply < expectedActions && !tail.game_over()) {
+        const int target = perspective * score;
+        std::vector<Move> continuation;
+        const int continuationScore = negamax(
+          tail, std::max(1, depth - turnChanges), target - 1, target + 1,
+          ply, continuation);
+        if (stopped() || continuationScore != target || continuation.empty())
+            break;
+        const Move move = continuation.front();
+        const Color before = tail.side_to_move();
+        Position child = tail;
+        Undo undo;
+        if (!child.make_move(move, undo))
+            break;
+        const int childPly = ply + 1;
+        if (!child.game_over() && enter_repetition(child.key(), childPly))
+            break;
+        pv.push_back(move);
+        tail = std::move(child);
+        ply = childPly;
+        if (tail.side_to_move() != before) {
+            perspective = -perspective;
+            ++turnChanges;
+        }
+    }
+    if (complete(tail, ply))
+        return score;
+
+    // Illegal/stale TT moves or a score proved entirely below the nominal
+    // horizon have no trustworthy prefix. One full-window PV-only re-search
+    // is the correctness fallback; ordinary searches never pay this cost.
+    Position repairRoot = root;
+    std::vector<Move> repairedPv;
+    repairingPrincipalVariation_ = true;
+    const int repairedScore = negamax(
+      repairRoot, depth, -Infinity, Infinity, 0, repairedPv);
+    repairingPrincipalVariation_ = false;
+    if (stopped())
+        return std::nullopt;
+    pv = std::move(repairedPv);
+    if (std::abs(repairedScore) < MateThreshold)
+        return repairedScore;
+    const int repairedActions = Mate - std::abs(repairedScore);
+    const Color repairedWinner = repairedScore > 0
+                               ? root.side_to_move() : ~root.side_to_move();
+    return replay(pv, tail, ply, perspective, turnChanges) &&
+           ply == repairedActions && tail.game_over() &&
+           tail.winner() == repairedWinner
+         ? std::optional<int>(repairedScore) : std::nullopt;
+}
+
+void Search::extend_cached_principal_variation(
+  const Position& root, int depth, int score, int maximumActions,
+  std::vector<Move>& pv) {
+    if (pv.empty() || maximumActions <= static_cast<int>(pv.size()))
+        return;
+
+    Position tail = root;
+    int ply = 0;
+    int perspective = 1;
+    int turnChanges = 0;
+    if (enter_repetition(root.key(), 0))
+        return;
+    for (const Move& move : pv) {
+        if (tail.game_over() || ply >= MaxPly - 1)
+            return;
+        const Color before = tail.side_to_move();
+        Undo undo;
+        if (!tail.make_move(move, undo))
+            return;
+        ++ply;
+        if (tail.side_to_move() != before) {
+            perspective = -perspective;
+            ++turnChanges;
+        }
+        if (!tail.game_over() && enter_repetition(tail.key(), ply))
+            return;
+    }
+
+    // A value cutoff stores only its first action in the caller's PV. Follow
+    // exact, score-consistent cached successors through the nominal horizon;
+    // this has no node cost and never presents an unsearched continuation.
+    while (!tail.game_over() && ply < MaxPly - 1 &&
+           static_cast<int>(pv.size()) < maximumActions &&
+           turnChanges < depth) {
+        Entry* entry = find_entry(tail.key());
+        const int remainingDepth = std::max(1, depth - turnChanges);
+        if (!entry || entry->depth < remainingDepth ||
+            entry->bound != Bound::Exact ||
+            score_from_tt(entry->score, ply) != perspective * score)
+            break;
+        const std::optional<Move> continuation = entry->move.unpack();
+        if (!continuation)
+            break;
+        const Color before = tail.side_to_move();
+        Position child = tail;
+        Undo undo;
+        if (!child.make_move(*continuation, undo))
+            break;
+        if (!child.game_over() && enter_repetition(child.key(), ply + 1))
+            break;
+        pv.push_back(*continuation);
+        tail = std::move(child);
+        ++ply;
+        if (tail.side_to_move() != before) {
+            perspective = -perspective;
+            ++turnChanges;
+        }
+    }
 }
 
 Search::Entry* Search::find_entry(std::uint64_t key) {
@@ -1684,14 +2039,16 @@ int Search::move_score(const Position& position, const Move& move,
     if (ttMove && move == *ttMove)
         return 1'000'000;
     int score = 0;
-    const bool capture = position.is_capture(move);
+    // Both search frontiers annotate every pseudo-legal move in one pass
+    // before ordering, so consulting the board again here only duplicated
+    // special-action capture classification for every comparison candidate.
+    const bool capture = (move.flags & Move::Capture) != 0;
+    const int attacker = position.piece_on(move.from);
     if (capture) {
         const int victim = position.piece_on(move.to);
-        const int attacker = position.piece_on(move.from);
         if (victim != Position::NoPiece)
             score += 100'000 + piece_order_value(position.piece(victim).type);
-        const PieceType attackerType = attacker == Position::NoPiece ? PieceType::Count
-                                                                    : position.piece(attacker).type;
+        const PieceType attackerType = position.piece(attacker).type;
         const bool linkedCapture = attackerType == PieceType::Checker ||
                                    attackerType == PieceType::CheckerKing ||
                                    attackerType == PieceType::Copycat ||
@@ -1702,8 +2059,7 @@ int Search::move_score(const Position& position, const Move& move,
             score += 100'000 + piece_order_value(position.piece(secondary).type);
         if (victim == Position::NoPiece && secondary == Position::NoPiece)
             score += 100'000;
-        if (attacker != Position::NoPiece)
-            score -= piece_order_value(position.piece(attacker).type) / 16;
+        score -= piece_order_value(attackerType) / 16;
 #ifndef ULTIMATE_DISABLE_SEE_ORDERING
         if (const auto exchange = position.static_exchange(move))
             score += *exchange >= 0
@@ -1721,8 +2077,7 @@ int Search::move_score(const Position& position, const Move& move,
         score += 6'000;
     if (move.kind == MoveKind::Link || move.kind == MoveKind::Spawn)
         score += 2'000;
-    const int attacker = position.piece_on(move.from);
-    if (attacker != Position::NoPiece && !capture) {
+    if (!capture) {
         if (ply < static_cast<int>(killers_.size()) && move == killers_[ply][0])
             score += 70'000;
         else if (ply < static_cast<int>(killers_.size()) && move == killers_[ply][1])
@@ -1733,7 +2088,8 @@ int Search::move_score(const Position& position, const Move& move,
 }
 
 int Search::quiescence(Position& position, int alpha, int beta, int ply,
-                       const LazyRoyalContext* lazyRoyals) {
+                       const LazyRoyalContext* lazyRoyals,
+                       bool repetitionPossible) {
     ++nodes_;
     if (stopped())
         return evaluate_lazy_royals(position, ply, lazyRoyals);
@@ -1747,17 +2103,28 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply,
     if (!position.is_checkmate_possible())
         return 0;
     // Repeated checks, pulls, or other forcing actions can form a reversible
-    // quiescence cycle. Never let such a line consume the native thread's
-    // stack; the ordinary stand-pat cap below cannot apply while in check.
+    // quiescence cycle. A third occurrence is the native draw condition; the
+    // hard cap remains only as a defensive stack bound.
     if (ply >= MaxPly - 1)
         return evaluate_lazy_royals(position, ply, lazyRoyals);
-    if (ply > 0 && !lazyRoyals)
+    if (repetitionPossible) {
+        std::uint64_t repetitionKey = position.key();
+        if (lazyRoyals)
+            repetitionKey ^= mix_key(lazyRoyals->candidatesLow) ^
+                             mix_key(lazyRoyals->candidatesHigh ^
+                                     0xd8a4f3b2761c905eULL);
+        if (enter_repetition(repetitionKey, ply))
+            return 0;
+    }
+    if (limits_.useTablebases && ply > 0 && !lazyRoyals)
         if (const auto tablebase = TablebaseProbe::probe(position)) {
             if (tablebase->wdl == TablebaseWdl::Draw)
                 return 0;
-            const int distance = std::min<int>(tablebase->dtw, MateThreshold - 1);
-            return tablebase->wdl == TablebaseWdl::Win
-                 ? Mate - ply - distance : -Mate + ply + distance;
+            if (tablebase_history_safe(ply)) {
+                const int distance = std::min<int>(tablebase->dtw, MateThreshold - 1);
+                return tablebase->wdl == TablebaseWdl::Win
+                     ? Mate - ply - distance : -Mate + ply + distance;
+            }
         }
 
     // A Checker jump or Prince follow-up is not optional. Likewise, when any
@@ -1821,9 +2188,13 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply,
         const bool sameSide = child.side_to_move() == before;
         const LazyRoyalContext* nextRoyals =
           lazyRoyals && childRoyals.count() > 1 ? &childRoyals : nullptr;
+        const bool nextRepetitionPossible =
+          (move.flags & Move::Capture) == 0;
         const int score = sameSide
-          ? quiescence(child, alpha, beta, ply + 1, nextRoyals)
-          : -quiescence(child, -beta, -alpha, ply + 1, nextRoyals);
+          ? quiescence(child, alpha, beta, ply + 1, nextRoyals,
+                       nextRepetitionPossible)
+          : -quiescence(child, -beta, -alpha, ply + 1, nextRoyals,
+                        nextRepetitionPossible);
         if (stopped())
             return alpha;
         if (score >= beta)
@@ -1852,24 +2223,34 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
         return 0;
     if (ply >= MaxPly - 1)
         return evaluate_lazy_royals(position, ply, lazyRoyals);
-    if (ply > 0 && !lazyRoyals)
+    std::uint64_t repetitionKey = position.key();
+    if (lazyRoyals)
+        repetitionKey ^= mix_key(lazyRoyals->candidatesLow) ^
+                         mix_key(lazyRoyals->candidatesHigh ^
+                                 0xd8a4f3b2761c905eULL);
+    if (enter_repetition(repetitionKey, ply))
+        return 0;
+    const bool pvNode = beta - alpha > 1;
+    if (limits_.useTablebases && ply > 0 && !lazyRoyals)
         if (const auto tablebase = TablebaseProbe::probe(position)) {
             if (tablebase->wdl == TablebaseWdl::Draw)
                 return 0;
-            const int distance = std::min<int>(tablebase->dtw, MateThreshold - 1);
-            return tablebase->wdl == TablebaseWdl::Win
-                 ? Mate - ply - distance : -Mate + ply + distance;
+            if (tablebase_history_safe(ply)) {
+                const int distance = std::min<int>(tablebase->dtw, MateThreshold - 1);
+                return tablebase->wdl == TablebaseWdl::Win
+                     ? Mate - ply - distance : -Mate + ply + distance;
+            }
         }
     if (depth <= 0)
         return quiescence(position, alpha, beta, ply, lazyRoyals);
 
     ++nodes_;
     const int originalAlpha = alpha;
-    const bool pvNode = beta - alpha > 1;
-    std::uint64_t key = position.key();
-    if (lazyRoyals)
-        key ^= mix_key(lazyRoyals->candidatesLow) ^
-               mix_key(lazyRoyals->candidatesHigh ^ 0xd8a4f3b2761c905eULL);
+    // Repetition is adjudicated before the position-only TT probe. Keeping
+    // the mature geometric key here preserves transpositions and throughput;
+    // repetition-dependent terminal leaves are never stored as standalone TT
+    // entries, and mate lines are independently replay-verified at the root.
+    const std::uint64_t key = repetitionKey;
     Entry* entry = find_entry(key);
     const bool restrictedRoot = ply == 0 && !rootMoves_.empty();
     const bool adjustedRoot = restrictedRoot || (ply == 0 && !rootDrawMoves_.empty());
@@ -1879,17 +2260,12 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
     if (entry && !adjustedNode) {
         ttMove = entry->move.unpack();
         ttMovePtr = &ttMove;
-        if (entry->depth >= depth) {
+        if (!repairingPrincipalVariation_ && entry->depth >= depth) {
             const int ttScore = score_from_tt(entry->score, ply);
-            if (entry->bound == Bound::Exact) {
-                pv.push_back(ttMove);
-                return ttScore;
-            }
-            if (entry->bound == Bound::Lower && ttScore >= beta) {
-                pv.push_back(ttMove);
-                return ttScore;
-            }
-            if (entry->bound == Bound::Upper && ttScore <= alpha) {
+            const bool cutoff = entry->bound == Bound::Exact ||
+              (entry->bound == Bound::Lower && ttScore >= beta) ||
+              (entry->bound == Bound::Upper && ttScore <= alpha);
+            if (cutoff) {
                 pv.push_back(ttMove);
                 return ttScore;
             }
@@ -1912,7 +2288,8 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
 
 #ifndef ULTIMATE_DISABLE_SINGULAR_EXTENSIONS
     bool singularTtMove = false;
-    if (ply > 0 && depth >= 6 && entry && ttMovePtr &&
+    if (!repairingPrincipalVariation_ && ply > 0 && depth >= 6 &&
+        entry && ttMovePtr &&
         entry->bound == Bound::Lower && entry->depth >= depth - 2 &&
         std::abs(score_from_tt(entry->score, ply)) < MateThreshold &&
         ttMove.kind == MoveKind::Normal &&
@@ -1948,7 +2325,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
         // Special actions can relocate multiple pieces, create material, or
         // trigger a Giant collision. Treat only ordinary non-captures as LMR
         // candidates; reducing those actions was a large tactical blind spot.
-        const bool capture = position.is_capture(move);
+        const bool capture = (move.flags & Move::Capture) != 0;
         const bool quiet = move.kind == MoveKind::Normal && !capture;
         const int attacker = position.piece_on(move.from);
         int score;
@@ -2014,8 +2391,8 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
             }
             if (moveNumber == 0) {
                 score = sameSide
-                  ? negamax(child, nextDepth, alpha, beta, ply + 1, childPv,
-                            nullptr, nextRoyals)
+                  ? negamax(child, nextDepth, alpha, beta, ply + 1,
+                            childPv, nullptr, nextRoyals)
                   : -negamax(child, nextDepth, -beta, -alpha, ply + 1,
                              childPv, nullptr, nextRoyals);
             }
@@ -2048,7 +2425,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
         }
         alpha = std::max(alpha, score);
         if (alpha >= beta) {
-            if (quiet && attacker != Position::NoPiece) {
+            if (quiet) {
                 if (ply < static_cast<int>(killers_.size()) && !(move == killers_[ply][0])) {
                     killers_[ply][1] = killers_[ply][0];
                     killers_[ply][0] = move;
@@ -2082,6 +2459,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
 
 SearchResult Search::think(Position& position, const SearchLimits& limits) {
     limits_ = limits;
+    initialize_repetition(position.key(), limits.repetitionHistory);
     softTime_ = std::chrono::milliseconds{0};
     if (!limits_.moveTime.count() && limits_.remainingTime.count()) {
         const auto usable = std::max(
@@ -2099,6 +2477,7 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
     start_ = std::chrono::steady_clock::now();
     nodes_ = 0;
     stop_ = false;
+    repairingPrincipalVariation_ = false;
     useNnue_ = UltimateNnue::enabled();
     if (useNnue_)
         UltimateNnue::refresh(position, accumulators_[0]);
@@ -2111,9 +2490,15 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
     // An unrestricted concrete root can retain the tablebase's exact WDL/DTW
     // independently of the numeric search score. Searching one iteration is
     // still necessary to select the DTW-optimal legal root action.
-    const auto rootTablebase = rootMoves_.empty() && rootDrawMoves_.empty()
-                             ? TablebaseProbe::probe(position)
-                             : std::nullopt;
+    const auto probedRootTablebase = limits_.useTablebases &&
+                                     rootMoves_.empty() && rootDrawMoves_.empty()
+                                   ? TablebaseProbe::probe(position)
+                                   : std::nullopt;
+    const bool repeatedRoot = root_repetition_count(position.key()) >= 3;
+    const auto rootTablebase = probedRootTablebase && !repeatedRoot &&
+        (probedRootTablebase->wdl == TablebaseWdl::Draw ||
+         !rootHasRepeatedPosition_)
+      ? probedRootTablebase : std::nullopt;
     const int maxDepth = std::clamp(limits.depth, 1, MaxPly - 2);
     int previousScore = 0;
     std::optional<Move> previousBest;
@@ -2135,6 +2520,18 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
         }
         if (stop_)
             break;
+        extend_cached_principal_variation(
+          position, depth, score, MaxPly - 1, pv);
+        bool mateScore = std::abs(score) >= MateThreshold;
+        if (mateScore && !rootTablebase) {
+            const std::optional<int> verified =
+              verify_or_repair_mate_principal_variation(
+                position, depth, score, pv);
+            if (!verified)
+                continue;
+            score = *verified;
+            mateScore = std::abs(score) >= MateThreshold;
+        }
         const int scoreChange = std::abs(score - previousScore);
         previousScore = score;
         result.score = score;
@@ -2163,7 +2560,7 @@ SearchResult Search::think(Position& position, const SearchLimits& limits) {
             limits_.onIteration(result);
         if (rootTablebase)
             break;
-        if (std::abs(score) >= Mate - 128)
+        if (mateScore)
             break;
         if (result.bestMove && previousBest && *result.bestMove == *previousBest)
             ++stableBest;
@@ -2460,6 +2857,10 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
             else
                 lazy.candidatesHigh |= std::uint64_t{1} << (candidate - 64);
         }
+        const std::uint64_t lazyRootKey = root.position.key() ^
+          mix_key(lazy.candidatesLow) ^
+          mix_key(lazy.candidatesHigh ^ 0xd8a4f3b2761c905eULL);
+        initialize_repetition(lazyRootKey, {});
         // Candidate materializations do not share one NNUE accumulator. The
         // handcrafted evaluator is exact for this tiny symbolic material and
         // avoids refreshing a network once per retained royal identity.
@@ -2559,6 +2960,7 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
         if (state.candidates.size() == 1 && ply < MaxPly - 1) {
             ++singletonHandoffs;
             Position position = state.position;
+            initialize_repetition(position.key(), limits.repetitionHistory, ply);
             if (useNnue_)
                 UltimateNnue::refresh(position, accumulators_[ply]);
             std::vector<Move> concretePv;
@@ -3182,7 +3584,6 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
         }
         return tuple;
     };
-
     // Each tuple stores every varying piece fact, not merely an independent
     // square per Ghost. This makes the domain exact for arbitrary material:
     // blind captures, visibility, attachments, cooldowns, promotions, royal
@@ -3327,6 +3728,8 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
             Position concrete = materialize(state, state.assignments.front());
             if (belief_stays_concrete(concrete, observer)) {
                 ++singletonHandoffs;
+                initialize_repetition(concrete.key(), limits.repetitionHistory,
+                                      ply);
                 std::vector<Move> concretePv;
                 const int score = side == observer
                   ? negamax(concrete, depth, alpha, beta, ply, concretePv)
@@ -4005,6 +4408,7 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
                                   observer)) {
             ++singletonHandoffs;
             Position position = state.concrete_worlds().begin()->second;
+            initialize_repetition(position.key(), limits.repetitionHistory, ply);
             if (useNnue_)
                 UltimateNnue::refresh(position, accumulators_[ply]);
             std::vector<Move> concretePv;

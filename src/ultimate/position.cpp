@@ -2993,6 +2993,17 @@ std::uint64_t Position::key() const {
         hash ^= value;
         hash *= 0x100000001b3ULL;
     };
+    const bool canRetainCastling =
+      (byType_[index(Color::White)][index(PieceType::Rook)] |
+       byType_[index(Color::Black)][index(PieceType::Rook)]) &&
+      (byType_[index(Color::White)][index(PieceType::King)] |
+       byType_[index(Color::White)][index(PieceType::Jester)] |
+       byType_[index(Color::Black)][index(PieceType::King)] |
+       byType_[index(Color::Black)][index(PieceType::Jester)]);
+    bool hasUnmovedRoyal = false;
+    bool hasUnmovedRook = false;
+    std::uint64_t unmovedCastleLow = 0;
+    std::uint64_t unmovedCastleHigh = 0;
     mix(static_cast<std::uint8_t>(sideToMove_));
     mix(static_cast<std::uint8_t>(continuation_));
     mix(static_cast<std::uint64_t>(forcedTimeoutWinner_ + 1));
@@ -3009,11 +3020,33 @@ std::uint64_t Position::key() const {
         mix(piece.square | (std::uint64_t(piece.onBoard) << 8));
         mix(piece.action | (std::uint64_t(piece.cooldown) << 8) |
             (std::uint64_t(piece.freezeCount) << 16) | (std::uint64_t(piece.power) << 24));
-        mix(std::uint64_t(piece.moved) | (std::uint64_t(piece.visible) << 1) |
+        if (canRetainCastling && piece.onBoard && !piece.moved) {
+            const bool royal = piece.type == PieceType::King ||
+                               piece.type == PieceType::Jester;
+            const bool rook = piece.type == PieceType::Rook;
+            if (royal || rook) {
+                hasUnmovedRoyal = hasUnmovedRoyal || royal;
+                hasUnmovedRook = hasUnmovedRook || rook;
+                if (id < 64)
+                    unmovedCastleLow |= std::uint64_t{1} << id;
+                else
+                    unmovedCastleHigh |= std::uint64_t{1} << (id - 64);
+            }
+        }
+        // Only a Pawn double-step or a surviving King/Jester+Rook castling
+        // right makes the monotone moved bit alter future legal actions. Hash
+        // those effective rights, rather than inert serialization history, so
+        // TT reuse and threefold detection compare legal positions.
+        mix(std::uint64_t(piece.type == PieceType::Pawn && piece.moved) |
+            (std::uint64_t(piece.visible) << 1) |
             (std::uint64_t(piece.parasiteTracked) << 2) |
             (std::uint64_t(piece.link + 1) << 8) |
             (std::uint64_t(piece.host + 1) << 16) |
             (std::uint64_t(piece.attachmentOrder) << 24));
+    }
+    if (hasUnmovedRoyal && hasUnmovedRook) {
+        mix(unmovedCastleLow);
+        mix(unmovedCastleHigh);
     }
     return hash;
 }
