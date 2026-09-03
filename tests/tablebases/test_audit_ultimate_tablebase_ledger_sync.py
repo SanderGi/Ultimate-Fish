@@ -130,6 +130,20 @@ class LedgerSyncAuditTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "admission residual"):
                 audit.rendered(path, "krookbishopk.uftb")
 
+    def test_information_wdl_alignment_rejects_reversed_win_loss(self) -> None:
+        admitted = [0, 11, 22, 33]
+        trivial = [0, 1, 2, 3]
+        self.assertEqual(
+            trivial,
+            audit.align_information_trivial(
+                admitted, trivial, admitted, "krookghostk.uftb", 0),
+        )
+        with self.assertRaisesRegex(ValueError, "orientation residual"):
+            audit.align_information_trivial(
+                admitted, trivial, [0, 22, 11, 33],
+                "krookkghost.uftb", 0,
+            )
+
     def test_information_prince_sidecar_uses_boundary_counts(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "kjesterprincek.information-trivial-v1.txt"

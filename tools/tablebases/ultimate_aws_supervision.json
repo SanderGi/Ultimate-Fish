@@ -8877,8 +8877,8 @@
       "ledger_results": {
         "kghostkchecker.uftb": {
           "result_kind": "information v2",
-          "first": "0 (9,405,704) / 66,510,136 (7,987,800) / 0 (67,928,040)",
-          "second": "60,624,674 (9,699,168) / 0 (6,435,153) / 4,388,153 (70,684,532)",
+          "first": "66,510,136 (9,405,704) / 0 (7,987,800) / 0 (67,928,040)",
+          "second": "0 (9,699,168) / 60,624,674 (6,435,153) / 4,388,153 (70,684,532)",
           "reachability": "66,510,136 / 85,321,544; 65,012,827 / 86,818,853",
           "storage": "S3 information archive sha256:5f9321d19ab86a17d302b4ab45983289ccf40ac33cd119ebbcaaee1bd55e7a03 VersionId mFxNTgWIxia9aN8jamtlvRHvbCGkg59K; preservation certificate sha256:1a444dc77e985d069f359c748380687f19b96498ed9163bbf838f3db55deb2da VersionId _Y6KGaUfYVB5ACl6nT6lp2k9DL_S68vo; result certificate sha256:7494fddda2a37f2943a92d1105d32be634f9bfe50f08d11f07b7ce406c991be6 VersionId D9TtjHvn7c.62mxcomz3VlOA2BPzpBNP; arbitrary sidecar sha256:7764deee6a452d986ae501aaf5093eebb13b3348d448085aad1b63cf673b4398"
         }
@@ -20723,8 +20723,8 @@
       "ledger_results": {
         "kknightkghost.uftb": {
           "result_kind": "information v2",
-          "first": "232,358 (5,617,920) / 20 (10,626) / 30,725,994 (1,371,002)",
-          "second": "8 (4,702,852) / 7,280,492 / 25,974,568",
+          "first": "20 (5,617,920) / 232,358 (10,626) / 30,725,994 (1,371,002)",
+          "second": "7,280,492 (4,702,852) / 8 / 25,974,568",
           "reachability": "30,958,372 / 6,999,548; 33,255,068 / 4,702,852",
           "storage": "S3 information archive sha256:42fa05acd616973d212ddfe70f4860605b679db39d92d756bf6046a84e675882 VersionId _r_Elrcjl159cHgitIN50KaVtZOwwHLY; certificate sha256:b4fcc1344ff82fd5f0f2b32c36473da15e1d0fd280686ca829f80cd72b2169f1 VersionId SStfNZVMcPeWOlg0c9WtyvYJuHBWR31o; arbitrary sidecar sha256:ab895ddaa444bc2e8057154a860f43f10ebf19bce357cd983b6b0efa53ef9155"
         }
@@ -20762,8 +20762,8 @@
       "ledger_results": {
         "kknightkghost.uftb": {
           "result_kind": "information v2",
-          "first": "232,358 (5,617,920) / 20 (10,626) / 30,725,994 (1,371,002)",
-          "second": "8 (4,702,852) / 7,280,492 / 25,974,568",
+          "first": "20 (5,617,920) / 232,358 (10,626) / 30,725,994 (1,371,002)",
+          "second": "7,280,492 (4,702,852) / 8 / 25,974,568",
           "reachability": "30,958,372 / 6,999,548; 33,255,068 / 4,702,852",
           "storage": "S3 information archive sha256:42fa05acd616973d212ddfe70f4860605b679db39d92d756bf6046a84e675882 VersionId _r_Elrcjl159cHgitIN50KaVtZOwwHLY; certificate sha256:b4fcc1344ff82fd5f0f2b32c36473da15e1d0fd280686ca829f80cd72b2169f1 VersionId SStfNZVMcPeWOlg0c9WtyvYJuHBWR31o; arbitrary sidecar sha256:ab895ddaa444bc2e8057154a860f43f10ebf19bce357cd983b6b0efa53ef9155"
         }
@@ -22038,8 +22038,8 @@
       "ledger_results": {
         "kturtlekghost.uftb": {
           "result_kind": "information v2",
-          "first": "10,686,114 (4,794,328) / 0 (27,342) / 21,061,532 (1,388,604)",
-          "second": "0 (4,702,852) / 19,285,540 / 13,969,528",
+          "first": "0 (4,794,328) / 10,686,114 (27,342) / 21,061,532 (1,388,604)",
+          "second": "19,285,540 (4,702,852) / 0 / 13,969,528",
           "reachability": "31,747,646 / 6,210,274; 33,255,068 / 4,702,852",
           "storage": "S3 information archive sha256:0911049dbd6d99d36beb9123a6f789cf563cae1848be4cb988b764d117991393 VersionId 6azYjlEeY3krsYccmBnlZ5O6kctgJYtY; preservation certificate sha256:b62b46fc08cd618d12de8e1214f0266d59c620eaf44d0d5d3c22d318fe0da6a7 VersionId aQSSANepz3zDQVgN.GrYcY6lGpnST9yI; result certificate sha256:c978b6a3968ecc23082b425de3e5b157782e40696a232ef1c010f46353c82986 VersionId bQn64IPhUcuTJ_p8w8dgsmTZuymB6Z4X; arbitrary sidecar sha256:e936d847d9995cea76569d22ef787e9a973634825fc4f8b3c9359c8e07c5b888"
         }
@@ -24821,8 +24821,8 @@
       "ledger_results": {
         "krookkghost.uftb": {
           "result_kind": "information v2",
-          "first": "4,806 (11,103,138) / 4,642,892 (4,494) / 22,114,242 (88,348)",
-          "second": "439,876 (4,702,852) / 6,466,580 / 26,348,612",
+          "first": "4,642,892 (11,103,138) / 4,806 (4,494) / 22,114,242 (88,348)",
+          "second": "6,466,580 (4,702,852) / 439,876 / 26,348,612",
           "reachability": "26,761,940 / 11,195,980; 33,255,068 / 4,702,852",
           "storage": "S3 information archive sha256:852a08e3af1ee3bd85855484b91ae77855b5f7c18769cae052a91bcb88a386b7 VersionId eUKHKHvIO8vF418a1zAY27tWBpXen6_r; preservation certificate sha256:17ab53663f0615d4196e11d8e01898c9e21bf0768981be2bd90c40a723edaf7b VersionId aDp4y3ZLtQb5harNEr41.JIItGCF2shM; result certificate sha256:b4f3d67ec0e2eb5df0ba04a244af99c5088bc9cfa3458caff599789af65a44cb VersionId BzKzIfXrRkmGE2lDPkqU5xTEeUqGcFWU; arbitrary sidecar sha256:87e76d1aee3238605c4e64e2808b78ea6ef82550cec4ccb0ebd864de4ccc837d"
         }
@@ -25392,8 +25392,8 @@
       "ledger_results": {
         "kcopycatkghost.uftb": {
           "result_kind": "information v2",
-          "first": "696,168 (18,749,800) / 7,381,648 (15,208) / 46,094,704 (2,978,312)",
-          "second": "752,248 (9,054,144) / 21,382,176 / 41,844,392 (2,882,880)",
+          "first": "7,381,648 (18,749,800) / 696,168 (15,208) / 46,094,704 (2,978,312)",
+          "second": "21,382,176 (9,054,144) / 752,248 / 41,844,392 (2,882,880)",
           "reachability": "54,172,520 / 21,743,320; 63,978,816 / 11,937,024",
           "storage": "S3 information archive sha256:9f33560e7c5a23604f32a630646bce69393504dc7bb071f5e29b549734bfcff7 VersionId _3YYFiavaNSS3dcn3qUzzNAO2P8fLFAM; preservation certificate sha256:c340e333c2b7dc597e64a95fb05464f0f9f80cc25c3bd68ee547abaac445bc6d VersionId GX7mwvd_TKAYi56vnyZh35t8_XsrkcP4; result certificate sha256:30d4d8e33a491eb418ec028258b846293a2bf86ffaed9fb4fdd3fd32b0a4ca41 VersionId Sb6e6zm1nFZYwwDyjlwD8Zgl3H2PSFB1; arbitrary sidecar sha256:80b72ae88963752773bfe3e79af3c7df85ef8d7e53dbf899ecf03dd151c898aa"
         }

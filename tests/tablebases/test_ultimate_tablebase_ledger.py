@@ -240,8 +240,9 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual("win", catalog.together("ghost", "rook").kind)
         self.assertEqual("win", catalog.together("prince", "ghost").kind)
         self.assertEqual("unknown", catalog.opposed("ghost", "pawn").kind)
-        self.assertEqual("no_forced_win",
+        self.assertEqual("no_forced_loss",
                          catalog.opposed("ghost", "turtle").kind)
+        self.assertEqual("win", catalog.opposed("ghost", "checker").kind)
         # The mirrored upper triangle remains deduplicated.
         self.assertEqual("duplicate", catalog.together("rook", "ghost").kind)
 

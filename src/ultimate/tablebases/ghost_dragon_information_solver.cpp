@@ -273,6 +273,13 @@ void write_overlay_header(std::ostream& output, Orientation orientation,
         throw std::runtime_error("failed writing Dragon overlay header");
 }
 
+[[nodiscard]] std::pair<bool, bool> mover_force_result(
+  Color side, Color ghostOwner, bool ownerForces, bool observerForces) {
+    const bool moverIsOwner = side == ghostOwner;
+    return {moverIsOwner ? ownerForces : observerForces,
+            moverIsOwner ? observerForces : ownerForces};
+}
+
 void overlay_header_self_test() {
     for (const Orientation orientation : {Orientation::Same,
                                            Orientation::Opposing}) {
@@ -300,6 +307,15 @@ void overlay_header_self_test() {
             bytes.substr(32, 64) != std::string(64, 'a') ||
             bytes.substr(96, 64) != std::string(64, 'b'))
             throw std::runtime_error("Dragon UFIW2 header contract residual");
+    }
+    for (const Color ghostOwner : {Color::White, Color::Black}) {
+        const auto ownerTurn = mover_force_result(
+          ghostOwner, ghostOwner, true, false);
+        const auto observerTurn = mover_force_result(
+          ~ghostOwner, ghostOwner, true, false);
+        if (ownerTurn != std::pair<bool, bool>{true, false} ||
+            observerTurn != std::pair<bool, bool>{false, true})
+            throw std::runtime_error("Dragon mover-role summary residual");
     }
     std::cout << "ghost_dragon_overlay_contract same Ghost/Dragon/White"
                  " opposing Ghost/Dragon/Black residual 0\n";
@@ -1268,8 +1284,8 @@ FreshSummary report_fresh_roots(
         }
         flags[index] = static_cast<std::uint8_t>(
           4 | (owner ? 1 : 0) | (observer ? 2 : 0));
-        const bool moverWins = state.side == Color::White ? owner : observer;
-        const bool moverLoses = state.side == Color::White ? observer : owner;
+        const auto [moverWins, moverLoses] = mover_force_result(
+          state.side, material.ghostColor, owner, observer);
         ++totals[side][moverWins ? 1 : moverLoses ? 2 : 3];
     }
     FreshSummary certificate;

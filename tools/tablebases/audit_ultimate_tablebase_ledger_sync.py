@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import itertools
 import json
 from pathlib import Path
 import re
@@ -140,23 +139,17 @@ def information_cell_buckets(cell: str) -> tuple[list[int], list[int]]:
 def align_information_trivial(
         admitted: list[int], trivial: list[int], expected: list[int],
         filename: str, side: int) -> list[int]:
-    """Align raw force buckets to certified public-information W/L/D.
+    """Bind raw and certified public-information W/L/D without reordering.
 
-    UFIW2 force-bit order is solver-specific (notably for Ghost owner versus
-    observer views).  Accept an orientation only when a permutation exactly
-    reproduces all three certified admitted buckets.  Ambiguous permutations
-    are safe only when they produce the same trivial subset.
+    Reachability reports and ledger cells are both side-to-move W/L/D. A
+    permutation here can conceal an owner/observer reporting bug by silently
+    accepting reversed wins and losses.
     """
-    candidates = {
-        tuple([0] + [trivial[index] for index in permutation])
-        for permutation in itertools.permutations((1, 2, 3))
-        if [0] + [admitted[index] for index in permutation] == expected
-    }
-    if len(candidates) != 1:
+    if admitted != expected:
         raise ValueError(
             f"{filename}: information force-bucket orientation residual "
-            f"for side {side}: candidates={len(candidates)}")
-    return list(candidates.pop())
+            f"for side {side}: reported={admitted} expected={expected}")
+    return trivial
 
 
 def rendered_information(path: Path, filename: str, first: str, second: str
