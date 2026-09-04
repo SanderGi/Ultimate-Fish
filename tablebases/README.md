@@ -1232,10 +1232,10 @@ explicitly and are not counted as unfinished tablebases.
 Diagonal hatching means the class is currently computing. The image is
 generated exclusively from the canonical ledger below by
 `python3 tools/tablebases/plot_ultimate_tablebases.py`. Exact Berserker-radius,
-Giant-start-class, lone-Devil current-Minion, Checker root-type, and Sniper
-color-relative root-rank rows
-additionally consume their authenticated compact slice summaries; the renderer
-never infers those rows from filenames.
+Giant-start-class, lone-Devil current-Minion, Checker root-type, Sniper
+color-relative root-rank, and Angel symmetry-folded root-square rows additionally
+consume their authenticated compact slice summaries; the renderer never infers
+those rows from filenames.
 
 > **Ghost rules invalidation (2026-08-13):** every result containing a Ghost
 > from an earlier model generation is superseded. Old concrete tables,
@@ -1577,6 +1577,34 @@ never infers those rows from filenames.
 > sha256:63a26213c9dd82fcaa9a3a9cbd4eb2f32ae36f0c0a41ad46470281ca898480c1;
 > its audit binary is
 > sha256:566b7cb053f05f248816d68b54460c5bb99e629c2d4356dbfe260d4ee8c7357c.
+
+> **Angel root-square plot audit (2026-09-04):** the twelve rows immediately
+> below aggregate Angel split exact roots across the legal deployment squares
+> up to horizontal reflection: files a/h, b/g, c/f, and d/e on each
+> color-relative rank 1, 2, and 3. For an attached Angel the classifier uses
+> its immobile Halo/return square rather than the host's current square. Every
+> successor remains unrestricted, so attachment, rescue, external displacement,
+> and later play retain the original tablebase W/L/D. The native audit reports
+> all 40 color-relative, horizontally folded square buckets and proves that they
+> conserve each ledger aggregate for both starting sides; only the twelve legal
+> deployment buckets are plotted, so they need not sum to the broader aggregate
+> containing later-game roots on ranks 4-10. The inventory contains 32 certified
+> one-Angel material records. All 28 concrete tables and both available
+> Ghost/Angel information overlays were downloaded from immutable public
+> Hugging Face revision
+> `ed8375c43f26e42c5b14ac79ff41e77d4317b97f`, SHA-256 verified, audited
+> serially with two native workers, and deleted one material group at a time.
+> The two Jester/Angel slice cells remain blank: their certified public-
+> information overlays are absent from that dataset, and the ledger-bound S3
+> object versions are no longer available. The opposed Ghost-primary/Angel
+> information record required W/L role normalization on both starting-side
+> buckets; the importer accepted it only because the reversed counts exactly
+> matched the authenticated ledger aggregate. Total transfer was 9,963,956,240
+> bytes and maximum live payload was 1,423,422,064 bytes. The compact input is
+> `tablebases/angel-start-square-summary.json`,
+> sha256:fd1ffb728542780e2bda9ee519f081086bf1dfbe4c7cd1309a7019908023e1c9;
+> its audit binary is
+> sha256:699c36828a3eb369d427c83adfc7701d270307aff86e03587ff58a02dc515fcb.
 
 > **Prior AWS fleet audit (2026-08-20 17:36 PDT / 2026-08-21 00:36 UTC):** i03 was
 > externally stopped with EC2 reason `User initiated` at about 21:04 UTC. Its

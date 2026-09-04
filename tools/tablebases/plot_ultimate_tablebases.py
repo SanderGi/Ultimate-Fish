@@ -108,10 +108,23 @@ GIANT_START_ROWS = tuple(f"giant_start_{size}" for size in (20, 16, 15, 12))
 DEVIL_MINION_ROWS = tuple(f"devil_minions_{count}" for count in range(6))
 CHECKER_START_ROWS = ("checker_normal", "checker_king")
 SNIPER_START_ROWS = tuple(f"sniper_rank_{rank}" for rank in range(1, 4))
+ANGEL_MIRROR_FILES = {"a": "h", "b": "g", "c": "f", "d": "e"}
+ANGEL_START_SQUARES = tuple(
+    f"{file}{rank}" for rank in range(1, 4) for file in "abcd"
+)
+ANGEL_START_ROWS = tuple(
+    f"angel_square_{square}" for square in ANGEL_START_SQUARES
+)
 PIECE_LABELS.update(
     {
         row: f"Berserker (radius {radius})"
         for radius, row in enumerate(BERSERKER_RADIUS_ROWS, 1)
+    }
+)
+PIECE_LABELS.update(
+    {
+        row: f"Angel ({square}/{ANGEL_MIRROR_FILES[square[0]]}{square[1:]})"
+        for row, square in zip(ANGEL_START_ROWS, ANGEL_START_SQUARES)
     }
 )
 PIECE_LABELS.update(
@@ -450,6 +463,68 @@ def read_sniper_start_ranks(path: Path) -> dict[tuple[str, int], ReadmeResult]:
     return results
 
 
+def read_angel_start_squares(path: Path) -> dict[tuple[str, str], ReadmeResult]:
+    """Read exact color-relative, horizontally mirrored Angel root squares."""
+    document = json.loads(path.read_text(encoding="utf-8"))
+    all_squares = tuple(
+        f"{file}{rank}" for rank in range(1, 11) for file in "abcd"
+    )
+    plotted_squares = ANGEL_START_SQUARES
+    expected_symmetry = {
+        file: f"{file}/{mirror}" for file, mirror in ANGEL_MIRROR_FILES.items()
+    }
+    if (
+        document.get("schema") != 1
+        or document.get("semantics") != "reachability-admitted-minus-trivial-v3"
+        or tuple(document.get("all_square_buckets", ())) != all_squares
+        or tuple(document.get("plotted_start_squares", ())) != plotted_squares
+        or document.get("file_symmetry") != expected_symmetry
+    ):
+        raise ValueError(f"unsupported Angel start-square summary schema: {path}")
+    results: dict[tuple[str, str], ReadmeResult] = {}
+    for filename, record in document.get("files", {}).items():
+        if record.get("excluded"):
+            continue
+        rows = record.get("squares", {})
+        if set(rows) != set(all_squares):
+            raise ValueError(f"incomplete Angel root-square coverage: {filename}")
+        for square in all_squares:
+            raw = rows[square]
+            sides = []
+            for key in ("first_starts", "second_starts"):
+                side = raw[key]
+                admitted = side["admitted"]
+                trivial = side["trivial"]
+                display = side["display"]
+                for field in ("wins", "losses", "draws"):
+                    if (
+                        trivial[field] > admitted[field]
+                        or display[field] != admitted[field] - trivial[field]
+                    ):
+                        raise ValueError(
+                            f"invalid Angel root-square conservation for "
+                            f"{filename} square {square} {key} {field}"
+                        )
+                    if "total" in side or "excluded" in side:
+                        if not {"total", "excluded"} <= set(side):
+                            raise ValueError(
+                                f"partial Angel total/excluded data for "
+                                f"{filename} square {square} {key}"
+                            )
+                        if (side["excluded"][field] > side["total"][field] or
+                                admitted[field] != side["total"][field] -
+                                side["excluded"][field]):
+                            raise ValueError(
+                                f"invalid Angel total/excluded conservation for "
+                                f"{filename} square {square} {key} {field}"
+                            )
+                sides.append(WDL(display["wins"], display["losses"],
+                                 display["draws"]))
+            if square in plotted_squares:
+                results[(filename, square)] = ReadmeResult(sides[0], sides[1])
+    return results
+
+
 def row_side_result(raw: ReadmeResult, row_is_primary: bool = True) -> tuple[WDL, WDL]:
     """Return row-side W/L/D for row-to-move, then opponent-to-move.
 
@@ -513,6 +588,7 @@ class OutcomeCatalog:
         devil_minion_starts: dict[tuple[str, int], ReadmeResult] | None = None,
         checker_start_states: dict[tuple[str, str], ReadmeResult] | None = None,
         sniper_start_ranks: dict[tuple[str, int], ReadmeResult] | None = None,
+        angel_start_squares: dict[tuple[str, str], ReadmeResult] | None = None,
     ) -> None:
         self.summary = summary
         self.berserker_radii = berserker_radii or {}
@@ -520,6 +596,7 @@ class OutcomeCatalog:
         self.devil_minion_starts = devil_minion_starts or {}
         self.checker_start_states = checker_start_states or {}
         self.sniper_start_ranks = sniper_start_ranks or {}
+        self.angel_start_squares = angel_start_squares or {}
         # Match the canonical ledger's record precedence.  The broad stateful
         # catalog may contain a normalized duplicate for an already generated
         # requested class.  The exact inventory record must win so a certified
@@ -708,6 +785,31 @@ class OutcomeCatalog:
         first, second = row_side_result(raw, row_is_primary)
         return classify(first, second, allow_loss)
 
+    @staticmethod
+    def _angel_square(row: str) -> str | None:
+        if row not in ANGEL_START_ROWS:
+            return None
+        return row.removeprefix("angel_square_")
+
+    def _angel_cell_for_record(
+        self,
+        record: dict[str, object] | None,
+        square: str,
+        row_is_primary: bool = True,
+        allow_loss: bool = False,
+    ) -> Cell:
+        if record is None:
+            return Cell("unknown")
+        filename = str(record["filename"])
+        aggregate = self.summary.get(filename)
+        if aggregate is not None and aggregate.status in {"computing", "preserving"}:
+            return Cell("computing")
+        raw = self.angel_start_squares.get((filename, square))
+        if raw is None:
+            return Cell("unknown")
+        first, second = row_side_result(raw, row_is_primary)
+        return classify(first, second, allow_loss)
+
     def single_row(self, row: str) -> Cell:
         radius = self._radius(row)
         if radius is not None:
@@ -725,6 +827,8 @@ class OutcomeCatalog:
             return self._sniper_cell_for_record(
                 self.singles.get("sniper"), sniper_rank
             )
+        if self._angel_square(row) is not None:
+            return known_draw()
         return self.single(row)
 
     def together_row(self, row: str, column: str) -> Cell:
@@ -758,13 +862,24 @@ class OutcomeCatalog:
             if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
                 return known_draw()
             record = self.same_team.get((first, second))
-            return self._sniper_cell_for_record(
-                record,
-                sniper_rank,
-                row_is_primary=(
-                    record is not None and str(record["primary"]) == "sniper"
-                ),
-            )
+            # Both material pieces have the same owner in this grid, so the
+            # row side is the primary side even when Sniper occupies the
+            # tablebase codec's secondary material slot.
+            return self._sniper_cell_for_record(record, sniper_rank)
+        angel_square = self._angel_square(row)
+        if angel_square is not None:
+            if column == "angel":
+                return self.together("angel", "angel")
+            if deferred_material("angel", column):
+                return Cell("unknown")
+            first, second = sorted(("angel", column), key=PIECE_INDEX.__getitem__)
+            if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
+                return known_draw()
+            record = self.same_team.get((first, second))
+            # Both material pieces have the same owner in this grid, so the
+            # row side is the primary side even when Angel occupies the
+            # tablebase codec's secondary material slot.
+            return self._angel_cell_for_record(record, angel_square)
         radius = self._radius(row)
         if radius is not None:
             if column == "berserker":
@@ -826,6 +941,24 @@ class OutcomeCatalog:
                 sniper_rank,
                 row_is_primary=(
                     record is not None and str(record["primary"]) == "sniper"
+                ),
+                allow_loss=True,
+            )
+        angel_square = self._angel_square(row)
+        if angel_square is not None:
+            if column == "angel":
+                return self.opposed("angel", "angel")
+            if deferred_material("angel", column, opposing=True):
+                return Cell("unknown")
+            first, second = sorted(("angel", column), key=PIECE_INDEX.__getitem__)
+            if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], False):
+                return known_draw()
+            record = self.opposing.get((first, second))
+            return self._angel_cell_for_record(
+                record,
+                angel_square,
+                row_is_primary=(
+                    record is not None and str(record["primary"]) == "angel"
                 ),
                 allow_loss=True,
             )
@@ -1128,6 +1261,7 @@ def render(
     devil_minions: Path,
     checker_states: Path,
     sniper_ranks: Path,
+    angel_squares: Path,
     output: Path,
     scale: int,
 ) -> None:
@@ -1138,6 +1272,7 @@ def render(
         read_devil_minion_starts(devil_minions),
         read_checker_start_states(checker_states),
         read_sniper_start_ranks(sniper_ranks),
+        read_angel_start_squares(angel_squares),
     )
     names = [piece.name for piece in PIECES]
     rows = list(names)
@@ -1151,6 +1286,8 @@ def render(
     rows[checker_index:checker_index] = CHECKER_START_ROWS
     sniper_index = rows.index("sniper") + 1
     rows[sniper_index:sniper_index] = SNIPER_START_ROWS
+    angel_index = rows.index("angel") + 1
+    rows[angel_index:angel_index] = ANGEL_START_ROWS
 
     cell_width = 102 * scale
     cell_height = 82 * scale
@@ -1320,6 +1457,12 @@ def main() -> None:
         help="exact color-relative Sniper root-rank results",
     )
     parser.add_argument(
+        "--angel-squares",
+        type=Path,
+        default=ROOT / "tablebases" / "angel-start-square-summary.json",
+        help="exact symmetry-folded Angel root-square results",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=ROOT / "tablebases" / "ultimate-tablebase-grid.png",
@@ -1339,6 +1482,7 @@ def main() -> None:
         args.devil_minions.resolve(),
         args.checker_states.resolve(),
         args.sniper_ranks.resolve(),
+        args.angel_squares.resolve(),
         args.output.resolve(),
         args.scale,
     )

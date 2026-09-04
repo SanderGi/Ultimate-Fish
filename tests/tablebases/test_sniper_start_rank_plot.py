@@ -168,6 +168,25 @@ class SniperStartRankPlotTests(unittest.TestCase):
         self.assertEqual(plot.WDL(0, 4, 0), cell.first)
         self.assertEqual(plot.WDL(0, 3, 0), cell.second)
 
+    def test_same_team_row_keeps_material_side_when_sniper_is_secondary(self):
+        record = {
+            "filename": "krooksniperk.uftb", "primary": "rook",
+            "secondary": "sniper", "phase": "kings+2-stateful",
+            "opposing": False,
+        }
+        catalog = plot.OutcomeCatalog(
+            {record["filename"]: plot.ReadmeResult(
+                plot.WDL(1, 0, 0), plot.WDL(0, 1, 0), "certified")},
+            sniper_start_ranks={
+                (record["filename"], 2): plot.ReadmeResult(
+                    plot.WDL(3, 0, 0), plot.WDL(0, 4, 0))
+            },
+        )
+        catalog.same_team[("rook", "sniper")] = record
+        cell = catalog.together_row("sniper_rank_2", "rook")
+        self.assertEqual(plot.WDL(3, 0, 0), cell.first)
+        self.assertEqual(plot.WDL(4, 0, 0), cell.second)
+
     def test_same_team_two_snipers_repeat_exchange_folded_aggregate(self):
         catalog = plot.OutcomeCatalog({})
         expected = plot.Cell("draw", plot.WDL(0, 0, 1), plot.WDL(0, 0, 1))

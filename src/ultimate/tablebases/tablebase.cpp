@@ -2853,6 +2853,8 @@ class TablebaseGenerator {
         using Counts = std::array<std::array<std::uint64_t, 4>, 2>;
         using GiantClassCounts = std::array<Counts, 4>;
         using SniperRankCounts = std::array<Counts, Position::BoardRanks>;
+        using AngelSquareCounts = std::array<
+          Counts, Position::BoardRanks * (Position::BoardFiles / 2)>;
         using Examples = std::array<std::array<std::uint32_t, 4>, 2>;
         constexpr std::uint32_t Block = 10'000;
         const std::uint32_t workers = std::min(
@@ -2873,6 +2875,12 @@ class TablebaseGenerator {
         std::vector<SniperRankCounts> localSniperSecondaryAll(workers);
         std::vector<SniperRankCounts> localSniperSecondaryExcluded(workers);
         std::vector<SniperRankCounts> localSniperSecondaryTrivial(workers);
+        std::vector<AngelSquareCounts> localAngelPrimaryAll(workers);
+        std::vector<AngelSquareCounts> localAngelPrimaryExcluded(workers);
+        std::vector<AngelSquareCounts> localAngelPrimaryTrivial(workers);
+        std::vector<AngelSquareCounts> localAngelSecondaryAll(workers);
+        std::vector<AngelSquareCounts> localAngelSecondaryExcluded(workers);
+        std::vector<AngelSquareCounts> localAngelSecondaryTrivial(workers);
         std::vector<std::vector<Counts>> localByPrimarySubstate(
           workers, std::vector<Counts>(primarySubstates_));
         std::vector<std::vector<Counts>> localAllByPrimarySubstate(
@@ -3045,6 +3053,14 @@ class TablebaseGenerator {
                           ? std::optional<std::size_t>(
                               sniper_relative_rank_for_slot(position, false))
                           : std::nullopt;
+                        const auto primaryAngelSquare = hasPosition && primary_is_angel()
+                          ? std::optional<std::size_t>(
+                              angel_root_square_class_for_slot(position, true))
+                          : std::nullopt;
+                        const auto secondaryAngelSquare = hasPosition && secondary_is_angel()
+                          ? std::optional<std::size_t>(
+                              angel_root_square_class_for_slot(position, false))
+                          : std::nullopt;
                         ++localAll[worker][side][result];
                         if (primaryGiantClass)
                             ++localGiantPrimaryAll[worker]
@@ -3058,6 +3074,12 @@ class TablebaseGenerator {
                         if (secondarySniperRank)
                             ++localSniperSecondaryAll[worker]
                               [*secondarySniperRank][side][result];
+                        if (primaryAngelSquare)
+                            ++localAngelPrimaryAll[worker]
+                              [*primaryAngelSquare][side][result];
+                        if (secondaryAngelSquare)
+                            ++localAngelSecondaryAll[worker]
+                              [*secondaryAngelSquare][side][result];
                         ++localAllByPrimarySubstate[worker][primarySubstate][side][result];
                         ++localAllBySecondarySubstate[worker][secondarySubstate][side][result];
                         ++localAllByCombinedSubstate[worker][combinedSubstate][side][result];
@@ -3076,6 +3098,12 @@ class TablebaseGenerator {
                                 if (secondarySniperRank)
                                     ++localSniperSecondaryTrivial[worker]
                                       [*secondarySniperRank][side][result];
+                                if (primaryAngelSquare)
+                                    ++localAngelPrimaryTrivial[worker]
+                                      [*primaryAngelSquare][side][result];
+                                if (secondaryAngelSquare)
+                                    ++localAngelSecondaryTrivial[worker]
+                                      [*secondaryAngelSquare][side][result];
                                 ++localTrivialByPrimarySubstate[worker][primarySubstate]
                                                                      [side][result];
                                 ++localTrivialBySecondarySubstate[worker][secondarySubstate]
@@ -3100,6 +3128,12 @@ class TablebaseGenerator {
                         if (secondarySniperRank)
                             ++localSniperSecondaryExcluded[worker]
                               [*secondarySniperRank][side][result];
+                        if (primaryAngelSquare)
+                            ++localAngelPrimaryExcluded[worker]
+                              [*primaryAngelSquare][side][result];
+                        if (secondaryAngelSquare)
+                            ++localAngelSecondaryExcluded[worker]
+                              [*secondaryAngelSquare][side][result];
                         ++localByPrimarySubstate[worker][primarySubstate][side][result];
                         ++localBySecondarySubstate[worker][secondarySubstate][side][result];
                         ++localByCombinedSubstate[worker][combinedSubstate][side][result];
@@ -3115,6 +3149,9 @@ class TablebaseGenerator {
         SniperRankCounts sniperPrimaryAll{}, sniperPrimaryExcluded{},
           sniperPrimaryTrivial{}, sniperSecondaryAll{}, sniperSecondaryExcluded{},
           sniperSecondaryTrivial{};
+        AngelSquareCounts angelPrimaryAll{}, angelPrimaryExcluded{},
+          angelPrimaryTrivial{}, angelSecondaryAll{}, angelSecondaryExcluded{},
+          angelSecondaryTrivial{};
         std::vector<Counts> byPrimarySubstate(primarySubstates_);
         std::vector<Counts> allByPrimarySubstate(primarySubstates_);
         std::vector<Counts> trivialByPrimarySubstate(primarySubstates_);
@@ -3168,6 +3205,21 @@ class TablebaseGenerator {
         mergeSniperRanks(sniperSecondaryAll, localSniperSecondaryAll);
         mergeSniperRanks(sniperSecondaryExcluded, localSniperSecondaryExcluded);
         mergeSniperRanks(sniperSecondaryTrivial, localSniperSecondaryTrivial);
+        const auto mergeAngelSquares = [](
+          AngelSquareCounts& target, const std::vector<AngelSquareCounts>& parts) {
+            for (const AngelSquareCounts& part : parts)
+                for (std::size_t square = 0; square < target.size(); ++square)
+                    for (std::size_t side = 0; side < 2; ++side)
+                        for (std::size_t result = 0; result < 4; ++result)
+                            target[square][side][result] +=
+                              part[square][side][result];
+        };
+        mergeAngelSquares(angelPrimaryAll, localAngelPrimaryAll);
+        mergeAngelSquares(angelPrimaryExcluded, localAngelPrimaryExcluded);
+        mergeAngelSquares(angelPrimaryTrivial, localAngelPrimaryTrivial);
+        mergeAngelSquares(angelSecondaryAll, localAngelSecondaryAll);
+        mergeAngelSquares(angelSecondaryExcluded, localAngelSecondaryExcluded);
+        mergeAngelSquares(angelSecondaryTrivial, localAngelSecondaryTrivial);
         const auto verifyGiantClasses = [&](
           const GiantClassCounts& all, const GiantClassCounts& excluded,
           const GiantClassCounts& trivial) {
@@ -3217,6 +3269,30 @@ class TablebaseGenerator {
         if (secondary_is_sniper())
             verifySniperRanks(
               sniperSecondaryAll, sniperSecondaryExcluded, sniperSecondaryTrivial);
+        const auto verifyAngelSquares = [&](
+          const AngelSquareCounts& all, const AngelSquareCounts& excluded,
+          const AngelSquareCounts& trivial) {
+            for (std::size_t side = 0; side < 2; ++side)
+                for (std::size_t result = 0; result < 4; ++result) {
+                    std::uint64_t admittedSum = 0;
+                    std::uint64_t trivialSum = 0;
+                    for (std::size_t square = 0; square < all.size(); ++square) {
+                        admittedSum += all[square][side][result] -
+                                       excluded[square][side][result];
+                        trivialSum += trivial[square][side][result];
+                    }
+                    if (admittedSum != allTotals[side][result] - totals[side][result] ||
+                        trivialSum != trivialTotals[side][result])
+                        throw std::runtime_error(
+                          "Angel root-square reachability conservation residual");
+                }
+        };
+        if (primary_is_angel())
+            verifyAngelSquares(
+              angelPrimaryAll, angelPrimaryExcluded, angelPrimaryTrivial);
+        if (secondary_is_angel())
+            verifyAngelSquares(
+              angelSecondaryAll, angelSecondaryExcluded, angelSecondaryTrivial);
         for (const auto& worker : localByPrimarySubstate)
             for (std::size_t substate = 0; substate < primarySubstates_; ++substate)
                 for (std::size_t side = 0; side < 2; ++side)
@@ -3376,6 +3452,38 @@ class TablebaseGenerator {
             if (secondary_is_sniper())
                 printSniperRanks("secondary", sniperSecondaryAll,
                                   sniperSecondaryExcluded, sniperSecondaryTrivial);
+            const auto printAngelSquares = [&](
+              const char* slot, const AngelSquareCounts& all,
+              const AngelSquareCounts& excluded,
+              const AngelSquareCounts& trivial) {
+                for (std::size_t square = 0; square < all.size(); ++square)
+                    for (std::size_t side = 0; side < 2; ++side) {
+                        const auto print = [&](const char* suffix,
+                                               const Counts& source) {
+                            const char file = static_cast<char>(
+                              'a' + square % (Position::BoardFiles / 2));
+                            const std::size_t rank =
+                              square / (Position::BoardFiles / 2) + 1;
+                            std::cout << "reachability_" << slot
+                                      << "_angel_square" << suffix
+                                      << " square " << file << rank
+                                      << " side " << side
+                                      << " unknown " << source[side][0]
+                                      << " win " << source[side][1]
+                                      << " loss " << source[side][2]
+                                      << " draw " << source[side][3] << '\n';
+                        };
+                        print("_total", all[square]);
+                        print("_excluded", excluded[square]);
+                        print("_trivial", trivial[square]);
+                    }
+            };
+            if (primary_is_angel())
+                printAngelSquares("primary", angelPrimaryAll,
+                                   angelPrimaryExcluded, angelPrimaryTrivial);
+            if (secondary_is_angel())
+                printAngelSquares("secondary", angelSecondaryAll,
+                                   angelSecondaryExcluded, angelSecondaryTrivial);
         }
         if (primarySubstates_ > 1)
             for (std::size_t substate = 0; substate < primarySubstates_; ++substate)
@@ -3608,6 +3716,8 @@ class TablebaseGenerator {
         using SubstateCounts = std::vector<Counts>;
         using GiantClassCounts = std::array<Counts, 4>;
         using SniperRankCounts = std::array<Counts, Position::BoardRanks>;
+        using AngelSquareCounts = std::array<
+          Counts, Position::BoardRanks * (Position::BoardFiles / 2)>;
         constexpr std::uint32_t Block = 10'000;
         const std::uint32_t workers = std::min(
           workerThreads_, std::max(1u, std::thread::hardware_concurrency()));
@@ -3624,6 +3734,10 @@ class TablebaseGenerator {
         std::vector<SniperRankCounts> localSniperPrimaryTrivial(workers);
         std::vector<SniperRankCounts> localSniperSecondaryAdmitted(workers);
         std::vector<SniperRankCounts> localSniperSecondaryTrivial(workers);
+        std::vector<AngelSquareCounts> localAngelPrimaryAdmitted(workers);
+        std::vector<AngelSquareCounts> localAngelPrimaryTrivial(workers);
+        std::vector<AngelSquareCounts> localAngelSecondaryAdmitted(workers);
+        std::vector<AngelSquareCounts> localAngelSecondaryTrivial(workers);
         std::vector<SubstateCounts> localAdmittedBySubstate(
           workers, SubstateCounts(substates_));
         std::vector<SubstateCounts> localExcludedBySubstate(
@@ -3718,6 +3832,14 @@ class TablebaseGenerator {
                           ? std::optional<std::size_t>(
                               sniper_relative_rank_for_slot(position, false))
                           : std::nullopt;
+                        const auto primaryAngelSquare = primary_is_angel()
+                          ? std::optional<std::size_t>(
+                              angel_root_square_class_for_slot(position, true))
+                          : std::nullopt;
+                        const auto secondaryAngelSquare = secondary_is_angel()
+                          ? std::optional<std::size_t>(
+                              angel_root_square_class_for_slot(position, false))
+                          : std::nullopt;
                         if (primaryGiantClass)
                             ++localGiantPrimaryAdmitted[worker]
                               [*primaryGiantClass][side][result];
@@ -3730,6 +3852,12 @@ class TablebaseGenerator {
                         if (secondarySniperRank)
                             ++localSniperSecondaryAdmitted[worker]
                               [*secondarySniperRank][side][result];
+                        if (primaryAngelSquare)
+                            ++localAngelPrimaryAdmitted[worker]
+                              [*primaryAngelSquare][side][result];
+                        if (secondaryAngelSquare)
+                            ++localAngelSecondaryAdmitted[worker]
+                              [*secondaryAngelSquare][side][result];
                         const bool isTrivial =
                           is_trivial_reachable_position(position);
                         if (isTrivial) {
@@ -3746,6 +3874,12 @@ class TablebaseGenerator {
                             if (secondarySniperRank)
                                 ++localSniperSecondaryTrivial[worker]
                                   [*secondarySniperRank][side][result];
+                            if (primaryAngelSquare)
+                                ++localAngelPrimaryTrivial[worker]
+                                  [*primaryAngelSquare][side][result];
+                            if (secondaryAngelSquare)
+                                ++localAngelSecondaryTrivial[worker]
+                                  [*secondaryAngelSquare][side][result];
                         }
                         if (isTrivial)
                             ++localTrivialBySubstate[worker]
@@ -3764,6 +3898,8 @@ class TablebaseGenerator {
           giantSecondaryAdmitted{}, giantSecondaryTrivial{};
         SniperRankCounts sniperPrimaryAdmitted{}, sniperPrimaryTrivial{},
           sniperSecondaryAdmitted{}, sniperSecondaryTrivial{};
+        AngelSquareCounts angelPrimaryAdmitted{}, angelPrimaryTrivial{},
+          angelSecondaryAdmitted{}, angelSecondaryTrivial{};
         SubstateCounts admittedBySubstate(substates_);
         SubstateCounts excludedBySubstate(substates_);
         SubstateCounts trivialBySubstate(substates_);
@@ -3801,6 +3937,19 @@ class TablebaseGenerator {
         mergeSniperRanks(sniperPrimaryTrivial, localSniperPrimaryTrivial);
         mergeSniperRanks(sniperSecondaryAdmitted, localSniperSecondaryAdmitted);
         mergeSniperRanks(sniperSecondaryTrivial, localSniperSecondaryTrivial);
+        const auto mergeAngelSquares = [](
+          AngelSquareCounts& target, const std::vector<AngelSquareCounts>& parts) {
+            for (const AngelSquareCounts& part : parts)
+                for (std::size_t square = 0; square < target.size(); ++square)
+                    for (std::size_t side = 0; side < 2; ++side)
+                        for (std::size_t result = 0; result < 4; ++result)
+                            target[square][side][result] +=
+                              part[square][side][result];
+        };
+        mergeAngelSquares(angelPrimaryAdmitted, localAngelPrimaryAdmitted);
+        mergeAngelSquares(angelPrimaryTrivial, localAngelPrimaryTrivial);
+        mergeAngelSquares(angelSecondaryAdmitted, localAngelSecondaryAdmitted);
+        mergeAngelSquares(angelSecondaryTrivial, localAngelSecondaryTrivial);
         const auto verifyGiantClasses = [&](
           const GiantClassCounts& classAdmitted,
           const GiantClassCounts& classTrivial) {
@@ -3844,6 +3993,28 @@ class TablebaseGenerator {
             verifySniperRanks(sniperPrimaryAdmitted, sniperPrimaryTrivial);
         if (secondary_is_sniper())
             verifySniperRanks(sniperSecondaryAdmitted, sniperSecondaryTrivial);
+        const auto verifyAngelSquares = [&](
+          const AngelSquareCounts& squareAdmitted,
+          const AngelSquareCounts& squareTrivial) {
+            for (std::size_t side = 0; side < 2; ++side)
+                for (std::size_t result = 0; result < 4; ++result) {
+                    std::uint64_t admittedSum = 0;
+                    std::uint64_t trivialSum = 0;
+                    for (std::size_t square = 0;
+                         square < squareAdmitted.size(); ++square) {
+                        admittedSum += squareAdmitted[square][side][result];
+                        trivialSum += squareTrivial[square][side][result];
+                    }
+                    if (admittedSum != admitted[side][result] ||
+                        trivialSum != trivial[side][result])
+                        throw std::runtime_error(
+                          "information Angel root-square conservation residual");
+                }
+        };
+        if (primary_is_angel())
+            verifyAngelSquares(angelPrimaryAdmitted, angelPrimaryTrivial);
+        if (secondary_is_angel())
+            verifyAngelSquares(angelSecondaryAdmitted, angelSecondaryTrivial);
         const auto mergeSubstates = [](
           SubstateCounts& target,
           const std::vector<SubstateCounts>& parts) {
@@ -3966,6 +4137,37 @@ class TablebaseGenerator {
         if (secondary_is_sniper())
             printSniperRanks("secondary", sniperSecondaryAdmitted,
                               sniperSecondaryTrivial);
+        const auto printAngelSquares = [&](
+          const char* slot, const AngelSquareCounts& squareAdmitted,
+          const AngelSquareCounts& squareTrivial) {
+            for (std::size_t square = 0;
+                 square < squareAdmitted.size(); ++square)
+                for (std::size_t side = 0; side < 2; ++side) {
+                    const auto print = [&](const char* suffix,
+                                           const Counts& source) {
+                        const char file = static_cast<char>(
+                          'a' + square % (Position::BoardFiles / 2));
+                        const std::size_t rank =
+                          square / (Position::BoardFiles / 2) + 1;
+                        std::cout << "information_reachability_" << slot
+                                  << "_angel_square_" << suffix
+                                  << " square " << file << rank
+                                  << " side " << side
+                                  << " unknown " << source[side][0]
+                                  << " win " << source[side][1]
+                                  << " loss " << source[side][2]
+                                  << " draw " << source[side][3] << '\n';
+                    };
+                    print("admitted", squareAdmitted[square]);
+                    print("trivial", squareTrivial[square]);
+                }
+        };
+        if (primary_is_angel())
+            printAngelSquares("primary", angelPrimaryAdmitted,
+                               angelPrimaryTrivial);
+        if (secondary_is_angel())
+            printAngelSquares("secondary", angelSecondaryAdmitted,
+                               angelSecondaryTrivial);
         if (attackerType_ == PieceType::Prince ||
             secondaryType_ == PieceType::Prince)
             std::cout << "information_reachability_scope turn_boundary\n";
@@ -7133,6 +7335,14 @@ class TablebaseGenerator {
         return fourModels_ && secondaryType_ == PieceType::Sniper;
     }
 
+    [[nodiscard]] bool primary_is_angel() const {
+        return attackerType_ == PieceType::Angel;
+    }
+
+    [[nodiscard]] bool secondary_is_angel() const {
+        return fourModels_ && secondaryType_ == PieceType::Angel;
+    }
+
     static constexpr std::array<unsigned, 4> GiantStartClassSizes{
       20, 16, 15, 12};
 
@@ -7172,6 +7382,29 @@ class TablebaseGenerator {
           sniper.square / Position::BoardFiles;
         return sniper.color == Color::White
           ? absoluteRank : Position::BoardRanks - 1 - absoluteRank;
+    }
+
+    std::size_t angel_root_square_class_for_slot(
+      const Position& position, bool primary) const {
+        const int angel = primary ? 2 : compoundCopycat_ ? 4 : 3;
+        const int other = primary
+          ? (fourModels_ ? 3 : Position::NoPiece) : 2;
+        if (angel >= position.piece_count() || !position.piece(angel).alive ||
+            position.piece(angel).type != PieceType::Angel)
+            throw std::runtime_error(
+              "Angel root-square material slot does not contain an Angel");
+        // For a deployed Angel this is its board square. For an attached Angel
+        // the material proxy is its immobile Halo, which preserves the root
+        // return/start square while the off-board Angel tracks its host.
+        const std::uint8_t square = material_square(
+          position, angel, PieceType::Angel, other);
+        const std::size_t absoluteFile = square % Position::BoardFiles;
+        const std::size_t mirroredFile = std::min(
+          absoluteFile, Position::BoardFiles - 1 - absoluteFile);
+        const std::size_t absoluteRank = square / Position::BoardFiles;
+        const std::size_t relativeRank = position.piece(angel).color == Color::White
+          ? absoluteRank : Position::BoardRanks - 1 - absoluteRank;
+        return relativeRank * (Position::BoardFiles / 2) + mirroredFile;
     }
 
     FourState canonicalize_four(FourState state) const {
