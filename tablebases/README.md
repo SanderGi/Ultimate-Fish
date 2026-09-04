@@ -1232,7 +1232,8 @@ explicitly and are not counted as unfinished tablebases.
 Diagonal hatching means the class is currently computing. The image is
 generated exclusively from the canonical ledger below by
 `python3 tools/tablebases/plot_ultimate_tablebases.py`. Exact Berserker-radius,
-Giant-start-class, lone-Devil current-Minion, and Checker root-type rows
+Giant-start-class, lone-Devil current-Minion, Checker root-type, and Sniper
+color-relative root-rank rows
 additionally consume their authenticated compact slice summaries; the renderer
 never infers those rows from filenames.
 
@@ -1549,6 +1550,33 @@ never infers those rows from filenames.
 > sha256:238c17ed175356bc9c6c8ad1e079d2761a243b458b6c31f9f4b45cd79a404687;
 > its audit binary is
 > sha256:ad757c852b2efed98a8331eb291f8567bd65c414a68c8c879e030786fbdb99eb.
+
+> **Sniper root-rank plot audit (2026-09-04):** the three rows immediately
+> below aggregate Sniper are exact roots whose Sniper currently occupies its
+> color-relative legal deployment rank 1, 2, or 3 (physical ranks 1-3 for
+> Ivory and 10-8 for Onyx). Sniper cooldown substates remain combined, and
+> every successor is unrestricted, so Fisherman pulls, Mage swaps, and all
+> later play retain the original tablebase W/L/D. The native audit reports all
+> ten color-relative rank buckets and proves that they conserve each ledger
+> aggregate for both starting sides; only the three legal deployment ranks are
+> plotted, so those three rows are intentionally not required to sum to the
+> broader aggregate containing later-game roots on ranks 4-10. The summary
+> covers all 45 certified Sniper material records: 40 concrete tables and four
+> Jester/Ghost information overlays were downloaded from immutable public
+> Hugging Face revision
+> `ed8375c43f26e42c5b14ac79ff41e77d4317b97f`, SHA-256 verified, audited
+> serially with two native workers, and deleted one material group at a time.
+> The exchange-folded same-team Sniper/Sniper record repeats its aggregate
+> cell because it has no distinguished row Sniper; opposed Sniper/Sniper is
+> exactly sliced by owner. The certified Ghost-primary/Sniper information
+> record required a W/L role normalization on both starting-side buckets; the
+> importer accepted it only because the reversed counts exactly matched the
+> authenticated ledger aggregate. Total transfer was 18,945,934,504 bytes and
+> maximum live payload was 1,897,896,056 bytes. The compact input is
+> `tablebases/sniper-start-rank-summary.json`,
+> sha256:63a26213c9dd82fcaa9a3a9cbd4eb2f32ae36f0c0a41ad46470281ca898480c1;
+> its audit binary is
+> sha256:566b7cb053f05f248816d68b54460c5bb99e629c2d4356dbfe260d4ee8c7357c.
 
 > **Prior AWS fleet audit (2026-08-20 17:36 PDT / 2026-08-21 00:36 UTC):** i03 was
 > externally stopped with EC2 reason `User initiated` at about 21:04 UTC. Its

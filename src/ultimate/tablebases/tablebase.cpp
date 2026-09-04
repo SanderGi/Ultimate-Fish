@@ -2852,6 +2852,7 @@ class TablebaseGenerator {
 
         using Counts = std::array<std::array<std::uint64_t, 4>, 2>;
         using GiantClassCounts = std::array<Counts, 4>;
+        using SniperRankCounts = std::array<Counts, Position::BoardRanks>;
         using Examples = std::array<std::array<std::uint32_t, 4>, 2>;
         constexpr std::uint32_t Block = 10'000;
         const std::uint32_t workers = std::min(
@@ -2866,6 +2867,12 @@ class TablebaseGenerator {
         std::vector<GiantClassCounts> localGiantSecondaryAll(workers);
         std::vector<GiantClassCounts> localGiantSecondaryExcluded(workers);
         std::vector<GiantClassCounts> localGiantSecondaryTrivial(workers);
+        std::vector<SniperRankCounts> localSniperPrimaryAll(workers);
+        std::vector<SniperRankCounts> localSniperPrimaryExcluded(workers);
+        std::vector<SniperRankCounts> localSniperPrimaryTrivial(workers);
+        std::vector<SniperRankCounts> localSniperSecondaryAll(workers);
+        std::vector<SniperRankCounts> localSniperSecondaryExcluded(workers);
+        std::vector<SniperRankCounts> localSniperSecondaryTrivial(workers);
         std::vector<std::vector<Counts>> localByPrimarySubstate(
           workers, std::vector<Counts>(primarySubstates_));
         std::vector<std::vector<Counts>> localAllByPrimarySubstate(
@@ -3030,6 +3037,14 @@ class TablebaseGenerator {
                           ? std::optional<std::size_t>(
                               giant_start_class_for_slot(position, false))
                           : std::nullopt;
+                        const auto primarySniperRank = hasPosition && primary_is_sniper()
+                          ? std::optional<std::size_t>(
+                              sniper_relative_rank_for_slot(position, true))
+                          : std::nullopt;
+                        const auto secondarySniperRank = hasPosition && secondary_is_sniper()
+                          ? std::optional<std::size_t>(
+                              sniper_relative_rank_for_slot(position, false))
+                          : std::nullopt;
                         ++localAll[worker][side][result];
                         if (primaryGiantClass)
                             ++localGiantPrimaryAll[worker]
@@ -3037,6 +3052,12 @@ class TablebaseGenerator {
                         if (secondaryGiantClass)
                             ++localGiantSecondaryAll[worker]
                               [*secondaryGiantClass][side][result];
+                        if (primarySniperRank)
+                            ++localSniperPrimaryAll[worker]
+                              [*primarySniperRank][side][result];
+                        if (secondarySniperRank)
+                            ++localSniperSecondaryAll[worker]
+                              [*secondarySniperRank][side][result];
                         ++localAllByPrimarySubstate[worker][primarySubstate][side][result];
                         ++localAllBySecondarySubstate[worker][secondarySubstate][side][result];
                         ++localAllByCombinedSubstate[worker][combinedSubstate][side][result];
@@ -3049,6 +3070,12 @@ class TablebaseGenerator {
                                 if (secondaryGiantClass)
                                     ++localGiantSecondaryTrivial[worker]
                                       [*secondaryGiantClass][side][result];
+                                if (primarySniperRank)
+                                    ++localSniperPrimaryTrivial[worker]
+                                      [*primarySniperRank][side][result];
+                                if (secondarySniperRank)
+                                    ++localSniperSecondaryTrivial[worker]
+                                      [*secondarySniperRank][side][result];
                                 ++localTrivialByPrimarySubstate[worker][primarySubstate]
                                                                      [side][result];
                                 ++localTrivialBySecondarySubstate[worker][secondarySubstate]
@@ -3067,6 +3094,12 @@ class TablebaseGenerator {
                         if (secondaryGiantClass)
                             ++localGiantSecondaryExcluded[worker]
                               [*secondaryGiantClass][side][result];
+                        if (primarySniperRank)
+                            ++localSniperPrimaryExcluded[worker]
+                              [*primarySniperRank][side][result];
+                        if (secondarySniperRank)
+                            ++localSniperSecondaryExcluded[worker]
+                              [*secondarySniperRank][side][result];
                         ++localByPrimarySubstate[worker][primarySubstate][side][result];
                         ++localBySecondarySubstate[worker][secondarySubstate][side][result];
                         ++localByCombinedSubstate[worker][combinedSubstate][side][result];
@@ -3079,6 +3112,9 @@ class TablebaseGenerator {
         GiantClassCounts giantPrimaryAll{}, giantPrimaryExcluded{},
           giantPrimaryTrivial{}, giantSecondaryAll{}, giantSecondaryExcluded{},
           giantSecondaryTrivial{};
+        SniperRankCounts sniperPrimaryAll{}, sniperPrimaryExcluded{},
+          sniperPrimaryTrivial{}, sniperSecondaryAll{}, sniperSecondaryExcluded{},
+          sniperSecondaryTrivial{};
         std::vector<Counts> byPrimarySubstate(primarySubstates_);
         std::vector<Counts> allByPrimarySubstate(primarySubstates_);
         std::vector<Counts> trivialByPrimarySubstate(primarySubstates_);
@@ -3118,6 +3154,20 @@ class TablebaseGenerator {
         mergeGiantClasses(giantSecondaryAll, localGiantSecondaryAll);
         mergeGiantClasses(giantSecondaryExcluded, localGiantSecondaryExcluded);
         mergeGiantClasses(giantSecondaryTrivial, localGiantSecondaryTrivial);
+        const auto mergeSniperRanks = [](
+          SniperRankCounts& target, const std::vector<SniperRankCounts>& parts) {
+            for (const SniperRankCounts& part : parts)
+                for (std::size_t rank = 0; rank < target.size(); ++rank)
+                    for (std::size_t side = 0; side < 2; ++side)
+                        for (std::size_t result = 0; result < 4; ++result)
+                            target[rank][side][result] += part[rank][side][result];
+        };
+        mergeSniperRanks(sniperPrimaryAll, localSniperPrimaryAll);
+        mergeSniperRanks(sniperPrimaryExcluded, localSniperPrimaryExcluded);
+        mergeSniperRanks(sniperPrimaryTrivial, localSniperPrimaryTrivial);
+        mergeSniperRanks(sniperSecondaryAll, localSniperSecondaryAll);
+        mergeSniperRanks(sniperSecondaryExcluded, localSniperSecondaryExcluded);
+        mergeSniperRanks(sniperSecondaryTrivial, localSniperSecondaryTrivial);
         const auto verifyGiantClasses = [&](
           const GiantClassCounts& all, const GiantClassCounts& excluded,
           const GiantClassCounts& trivial) {
@@ -3143,6 +3193,30 @@ class TablebaseGenerator {
         if (secondary_is_giant())
             verifyGiantClasses(
               giantSecondaryAll, giantSecondaryExcluded, giantSecondaryTrivial);
+        const auto verifySniperRanks = [&](
+          const SniperRankCounts& all, const SniperRankCounts& excluded,
+          const SniperRankCounts& trivial) {
+            for (std::size_t side = 0; side < 2; ++side)
+                for (std::size_t result = 0; result < 4; ++result) {
+                    std::uint64_t admittedSum = 0;
+                    std::uint64_t trivialSum = 0;
+                    for (std::size_t rank = 0; rank < Position::BoardRanks; ++rank) {
+                        admittedSum += all[rank][side][result] -
+                                       excluded[rank][side][result];
+                        trivialSum += trivial[rank][side][result];
+                    }
+                    if (admittedSum != allTotals[side][result] - totals[side][result] ||
+                        trivialSum != trivialTotals[side][result])
+                        throw std::runtime_error(
+                          "Sniper root-rank reachability conservation residual");
+                }
+        };
+        if (primary_is_sniper())
+            verifySniperRanks(
+              sniperPrimaryAll, sniperPrimaryExcluded, sniperPrimaryTrivial);
+        if (secondary_is_sniper())
+            verifySniperRanks(
+              sniperSecondaryAll, sniperSecondaryExcluded, sniperSecondaryTrivial);
         for (const auto& worker : localByPrimarySubstate)
             for (std::size_t substate = 0; substate < primarySubstates_; ++substate)
                 for (std::size_t side = 0; side < 2; ++side)
@@ -3274,6 +3348,34 @@ class TablebaseGenerator {
             if (secondary_is_giant())
                 printGiantClasses("secondary", giantSecondaryAll,
                                   giantSecondaryExcluded, giantSecondaryTrivial);
+            const auto printSniperRanks = [&](
+              const char* slot, const SniperRankCounts& all,
+              const SniperRankCounts& excluded,
+              const SniperRankCounts& trivial) {
+                for (std::size_t rank = 0; rank < Position::BoardRanks; ++rank)
+                    for (std::size_t side = 0; side < 2; ++side) {
+                        const auto print = [&](const char* suffix,
+                                               const Counts& source) {
+                            std::cout << "reachability_" << slot
+                                      << "_sniper_rank" << suffix
+                                      << " rank " << rank + 1
+                                      << " side " << side
+                                      << " unknown " << source[side][0]
+                                      << " win " << source[side][1]
+                                      << " loss " << source[side][2]
+                                      << " draw " << source[side][3] << '\n';
+                        };
+                        print("_total", all[rank]);
+                        print("_excluded", excluded[rank]);
+                        print("_trivial", trivial[rank]);
+                    }
+            };
+            if (primary_is_sniper())
+                printSniperRanks("primary", sniperPrimaryAll,
+                                  sniperPrimaryExcluded, sniperPrimaryTrivial);
+            if (secondary_is_sniper())
+                printSniperRanks("secondary", sniperSecondaryAll,
+                                  sniperSecondaryExcluded, sniperSecondaryTrivial);
         }
         if (primarySubstates_ > 1)
             for (std::size_t substate = 0; substate < primarySubstates_; ++substate)
@@ -3505,6 +3607,7 @@ class TablebaseGenerator {
         using Counts = std::array<std::array<std::uint64_t, 4>, 2>;
         using SubstateCounts = std::vector<Counts>;
         using GiantClassCounts = std::array<Counts, 4>;
+        using SniperRankCounts = std::array<Counts, Position::BoardRanks>;
         constexpr std::uint32_t Block = 10'000;
         const std::uint32_t workers = std::min(
           workerThreads_, std::max(1u, std::thread::hardware_concurrency()));
@@ -3517,6 +3620,10 @@ class TablebaseGenerator {
         std::vector<GiantClassCounts> localGiantPrimaryTrivial(workers);
         std::vector<GiantClassCounts> localGiantSecondaryAdmitted(workers);
         std::vector<GiantClassCounts> localGiantSecondaryTrivial(workers);
+        std::vector<SniperRankCounts> localSniperPrimaryAdmitted(workers);
+        std::vector<SniperRankCounts> localSniperPrimaryTrivial(workers);
+        std::vector<SniperRankCounts> localSniperSecondaryAdmitted(workers);
+        std::vector<SniperRankCounts> localSniperSecondaryTrivial(workers);
         std::vector<SubstateCounts> localAdmittedBySubstate(
           workers, SubstateCounts(substates_));
         std::vector<SubstateCounts> localExcludedBySubstate(
@@ -3603,12 +3710,26 @@ class TablebaseGenerator {
                           ? std::optional<std::size_t>(
                               giant_start_class_for_slot(position, false))
                           : std::nullopt;
+                        const auto primarySniperRank = primary_is_sniper()
+                          ? std::optional<std::size_t>(
+                              sniper_relative_rank_for_slot(position, true))
+                          : std::nullopt;
+                        const auto secondarySniperRank = secondary_is_sniper()
+                          ? std::optional<std::size_t>(
+                              sniper_relative_rank_for_slot(position, false))
+                          : std::nullopt;
                         if (primaryGiantClass)
                             ++localGiantPrimaryAdmitted[worker]
                               [*primaryGiantClass][side][result];
                         if (secondaryGiantClass)
                             ++localGiantSecondaryAdmitted[worker]
                               [*secondaryGiantClass][side][result];
+                        if (primarySniperRank)
+                            ++localSniperPrimaryAdmitted[worker]
+                              [*primarySniperRank][side][result];
+                        if (secondarySniperRank)
+                            ++localSniperSecondaryAdmitted[worker]
+                              [*secondarySniperRank][side][result];
                         const bool isTrivial =
                           is_trivial_reachable_position(position);
                         if (isTrivial) {
@@ -3619,6 +3740,12 @@ class TablebaseGenerator {
                             if (secondaryGiantClass)
                                 ++localGiantSecondaryTrivial[worker]
                                   [*secondaryGiantClass][side][result];
+                            if (primarySniperRank)
+                                ++localSniperPrimaryTrivial[worker]
+                                  [*primarySniperRank][side][result];
+                            if (secondarySniperRank)
+                                ++localSniperSecondaryTrivial[worker]
+                                  [*secondarySniperRank][side][result];
                         }
                         if (isTrivial)
                             ++localTrivialBySubstate[worker]
@@ -3635,6 +3762,8 @@ class TablebaseGenerator {
         Counts admitted{}, excluded{}, trivial{};
         GiantClassCounts giantPrimaryAdmitted{}, giantPrimaryTrivial{},
           giantSecondaryAdmitted{}, giantSecondaryTrivial{};
+        SniperRankCounts sniperPrimaryAdmitted{}, sniperPrimaryTrivial{},
+          sniperSecondaryAdmitted{}, sniperSecondaryTrivial{};
         SubstateCounts admittedBySubstate(substates_);
         SubstateCounts excludedBySubstate(substates_);
         SubstateCounts trivialBySubstate(substates_);
@@ -3660,6 +3789,18 @@ class TablebaseGenerator {
         mergeGiantClasses(giantPrimaryTrivial, localGiantPrimaryTrivial);
         mergeGiantClasses(giantSecondaryAdmitted, localGiantSecondaryAdmitted);
         mergeGiantClasses(giantSecondaryTrivial, localGiantSecondaryTrivial);
+        const auto mergeSniperRanks = [](
+          SniperRankCounts& target, const std::vector<SniperRankCounts>& parts) {
+            for (const SniperRankCounts& part : parts)
+                for (std::size_t rank = 0; rank < target.size(); ++rank)
+                    for (std::size_t side = 0; side < 2; ++side)
+                        for (std::size_t result = 0; result < 4; ++result)
+                            target[rank][side][result] += part[rank][side][result];
+        };
+        mergeSniperRanks(sniperPrimaryAdmitted, localSniperPrimaryAdmitted);
+        mergeSniperRanks(sniperPrimaryTrivial, localSniperPrimaryTrivial);
+        mergeSniperRanks(sniperSecondaryAdmitted, localSniperSecondaryAdmitted);
+        mergeSniperRanks(sniperSecondaryTrivial, localSniperSecondaryTrivial);
         const auto verifyGiantClasses = [&](
           const GiantClassCounts& classAdmitted,
           const GiantClassCounts& classTrivial) {
@@ -3682,6 +3823,27 @@ class TablebaseGenerator {
             verifyGiantClasses(giantPrimaryAdmitted, giantPrimaryTrivial);
         if (secondary_is_giant())
             verifyGiantClasses(giantSecondaryAdmitted, giantSecondaryTrivial);
+        const auto verifySniperRanks = [&](
+          const SniperRankCounts& rankAdmitted,
+          const SniperRankCounts& rankTrivial) {
+            for (std::size_t side = 0; side < 2; ++side)
+                for (std::size_t result = 0; result < 4; ++result) {
+                    std::uint64_t admittedSum = 0;
+                    std::uint64_t trivialSum = 0;
+                    for (std::size_t rank = 0; rank < Position::BoardRanks; ++rank) {
+                        admittedSum += rankAdmitted[rank][side][result];
+                        trivialSum += rankTrivial[rank][side][result];
+                    }
+                    if (admittedSum != admitted[side][result] ||
+                        trivialSum != trivial[side][result])
+                        throw std::runtime_error(
+                          "information Sniper root-rank conservation residual");
+                }
+        };
+        if (primary_is_sniper())
+            verifySniperRanks(sniperPrimaryAdmitted, sniperPrimaryTrivial);
+        if (secondary_is_sniper())
+            verifySniperRanks(sniperSecondaryAdmitted, sniperSecondaryTrivial);
         const auto mergeSubstates = [](
           SubstateCounts& target,
           const std::vector<SubstateCounts>& parts) {
@@ -3778,6 +3940,32 @@ class TablebaseGenerator {
         if (secondary_is_giant())
             printGiantClasses("secondary", giantSecondaryAdmitted,
                               giantSecondaryTrivial);
+        const auto printSniperRanks = [&](
+          const char* slot, const SniperRankCounts& rankAdmitted,
+          const SniperRankCounts& rankTrivial) {
+            for (std::size_t rank = 0; rank < Position::BoardRanks; ++rank)
+                for (std::size_t side = 0; side < 2; ++side) {
+                    const auto print = [&](const char* suffix,
+                                           const Counts& source) {
+                        std::cout << "information_reachability_" << slot
+                                  << "_sniper_rank_" << suffix
+                                  << " rank " << rank + 1
+                                  << " side " << side
+                                  << " unknown " << source[side][0]
+                                  << " win " << source[side][1]
+                                  << " loss " << source[side][2]
+                                  << " draw " << source[side][3] << '\n';
+                    };
+                    print("admitted", rankAdmitted[rank]);
+                    print("trivial", rankTrivial[rank]);
+                }
+        };
+        if (primary_is_sniper())
+            printSniperRanks("primary", sniperPrimaryAdmitted,
+                              sniperPrimaryTrivial);
+        if (secondary_is_sniper())
+            printSniperRanks("secondary", sniperSecondaryAdmitted,
+                              sniperSecondaryTrivial);
         if (attackerType_ == PieceType::Prince ||
             secondaryType_ == PieceType::Prince)
             std::cout << "information_reachability_scope turn_boundary\n";
@@ -6937,6 +7125,14 @@ class TablebaseGenerator {
         return fourModels_ && secondaryType_ == PieceType::Giant;
     }
 
+    [[nodiscard]] bool primary_is_sniper() const {
+        return attackerType_ == PieceType::Sniper;
+    }
+
+    [[nodiscard]] bool secondary_is_sniper() const {
+        return fourModels_ && secondaryType_ == PieceType::Sniper;
+    }
+
     static constexpr std::array<unsigned, 4> GiantStartClassSizes{
       20, 16, 15, 12};
 
@@ -6961,6 +7157,21 @@ class TablebaseGenerator {
             throw std::runtime_error(
               "Giant start-class material slot does not contain a Giant");
         return giant_start_class(position.piece(id).square);
+    }
+
+    std::size_t sniper_relative_rank_for_slot(
+      const Position& position, bool primary) const {
+        const int id = primary ? 2 : compoundCopycat_ ? 4 : 3;
+        if (id >= position.piece_count() || !position.piece(id).alive ||
+            !position.piece(id).onBoard ||
+            position.piece(id).type != PieceType::Sniper)
+            throw std::runtime_error(
+              "Sniper root-rank material slot does not contain a Sniper");
+        const PieceState& sniper = position.piece(id);
+        const std::size_t absoluteRank =
+          sniper.square / Position::BoardFiles;
+        return sniper.color == Color::White
+          ? absoluteRank : Position::BoardRanks - 1 - absoluteRank;
     }
 
     FourState canonicalize_four(FourState state) const {
