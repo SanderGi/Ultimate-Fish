@@ -40,12 +40,19 @@ manifests; they are never silently deleted or blindly restarted.
 > preserving. Unfinished checkpoint narratives below are retained as historical
 > provenance only; their ledger rows are **PLANNED** and expose no uncertified
 > result cells. The final downloadable catalog is authenticated at Hugging Face
-> dataset revision `ed8375c43f26e42c5b14ac79ff41e77d4317b97f`: 462 certified
-> ordinary `.uftb` files plus the complete twelve-partition stateful Devil
-> class, with 584 managed payload/sidecar/transport files totaling
-> 498,278,947,677 bytes. Persistent EBS volumes, the versioned S3 preservation
-> bucket, and project network/IAM resources remain intact pending final operator
-> review and are not evidence of a live computation.
+> dataset revision `c574ae2347e2b324f0e90888478fb498776cf372`: 462 certified
+> ordinary `.uftb` files, two exact auxiliary lower-domain `.uftb` files, and
+> the complete twelve-partition stateful Devil class, with 586 managed
+> payload/sidecar/transport files totaling 498,327,627,605 bytes. The former
+> versioned S3 preservation bucket was deleted after migration; Hugging Face is
+> the downloadable tablebase authority.
+>
+> The two exact lower-domain dependencies are part of the Hugging Face catalog:
+> `kcopycatlinkedk.uftb` covers arbitrary intact linked
+> Copycat/clone placements, while `kghostk-tracked.uftb` covers a lone Ghost
+> whose location remains permanently tracked after a Parasite interaction.
+> They are auxiliary codecs rather than ordinary material-ledger rows and are
+> therefore counted separately from the 462 ordinary `.uftb` files above.
 
 > **Corrected Devil authority (2026-08-29):** `kdevilk.uftb` is an authenticated
 > **causal entry-root projection**. Its starting positions may already contain

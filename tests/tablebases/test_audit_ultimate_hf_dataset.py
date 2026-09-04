@@ -21,6 +21,12 @@ def item(name, size, digest):
 
 
 class AuditUltimateHfDatasetTests(unittest.TestCase):
+    def test_auxiliary_lower_tables_are_part_of_the_expected_catalog(self):
+        self.assertEqual(auditor.AUXILIARY_UFTB_FILES, {
+            "kcopycatlinkedk.uftb",
+            "kghostk-tracked.uftb",
+        })
+
     def test_exact_catalog_and_manifest(self):
         digest = "a" * 64
         devil_digest = "b" * 64

@@ -36,6 +36,53 @@ test("material names describe both armies", () => {
     "King + CopyCat vs King + Angel",
   );
   assert.equal(materialName("kdevilk.ufds"), "King + Devil vs King");
+  assert.equal(
+    materialName("kcopycatlinkedk.uftb"),
+    "King + Copycat (asym) vs King",
+  );
+  assert.equal(
+    materialName("kghostk-tracked.uftb"),
+    "King + Ghost (tracked) vs King",
+  );
+});
+
+test("auxiliary lower tables are exposed as independent downloads", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "ultimatefish-aux-tablebases-"));
+  const copycat = Buffer.from("certified asymmetric linked Copycat tablebase");
+  const ghost = Buffer.from("certified permanently tracked Ghost tablebase");
+  try {
+    const manager = createTablebaseManager({
+      directory,
+      fetchImpl: async (url) => String(url).includes("/api/datasets/")
+        ? Response.json([
+            catalogFile("kcopycatlinkedk.uftb", copycat),
+            catalogFile("kghostk-tracked.uftb", ghost),
+          ])
+        : new Response("unused", { status: 404 }),
+    });
+    const inventory = await manager.inventory();
+    assert.deepEqual(
+      inventory.entries.map(({ filename, displayName, available, installed }) => ({
+        filename, displayName, available, installed,
+      })),
+      [
+        {
+          filename: "kcopycatlinkedk.uftb",
+          displayName: "King + Copycat (asym) vs King",
+          available: true,
+          installed: false,
+        },
+        {
+          filename: "kghostk-tracked.uftb",
+          displayName: "King + Ghost (tracked) vs King",
+          available: true,
+          installed: false,
+        },
+      ],
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test("stateful Devil partitions install and delete as one verified class", async () => {

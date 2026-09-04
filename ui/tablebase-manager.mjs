@@ -55,6 +55,10 @@ const PIECE_NAMES = new Map([
 ]);
 const PIECE_TOKENS = [...PIECE_NAMES.keys()].sort((left, right) =>
   right.length - left.length);
+const AUXILIARY_MATERIAL_NAMES = new Map([
+  ["kcopycatlinkedk.uftb", "King + Copycat (asym) vs King"],
+  ["kghostk-tracked.uftb", "King + Ghost (tracked) vs King"],
+]);
 
 function splitPieces(text, memo = new Map()) {
   if (!text) return [];
@@ -73,6 +77,8 @@ function splitPieces(text, memo = new Map()) {
 }
 
 export function materialName(filename) {
+  const auxiliaryName = AUXILIARY_MATERIAL_NAMES.get(path.basename(filename));
+  if (auxiliaryName) return auxiliaryName;
   const stem = path.basename(filename, path.extname(filename));
   if (!stem.startsWith("k")) return stem;
   for (let index = 1; index < stem.length; index += 1) {

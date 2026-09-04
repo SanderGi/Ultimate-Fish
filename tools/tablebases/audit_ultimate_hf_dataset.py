@@ -28,6 +28,10 @@ MANAGED_EXTENSIONS = {
     ".ufjg", ".ufmg", ".ufog",
 }
 LFS_MAX_FILE_BYTES = 50_000_000_000
+AUXILIARY_UFTB_FILES = {
+    "kcopycatlinkedk.uftb",
+    "kghostk-tracked.uftb",
+}
 
 
 def devil_name(partition: dict[str, Any]) -> str:
@@ -39,7 +43,7 @@ def expected_catalog(readme: Path, devil_certificate: Path) -> tuple[set[str], d
     tables = {
         row.filename for row in rows
         if row.status == "certified" and row.filename.endswith(".uftb")
-    }
+    } | AUXILIARY_UFTB_FILES
     certificate = json.loads(devil_certificate.read_text(encoding="utf-8"))
     if certificate.get("schema") != "ultimate-devil-stateful-class-certificate-v1":
         raise RuntimeError("invalid Devil class certificate schema")
