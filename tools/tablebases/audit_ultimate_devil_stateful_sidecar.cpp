@@ -68,6 +68,9 @@ struct Stats {
     std::array<std::uint64_t, 4> outcomes{};
     std::array<std::array<std::uint64_t, 4>, MaxMinions + 1> byMinions{};
     std::array<std::array<std::uint64_t, 4>, 2> bySide{};
+    std::array<
+      std::array<std::array<std::uint64_t, 4>, 2>, MaxMinions + 1>
+      aliveByMinionsAndSide{};
     std::array<std::uint16_t, 4> maxDtw{};
     std::array<std::array<std::uint64_t, 4>, MaxMinions + 1> witness{};
     std::array<std::array<bool, 4>, MaxMinions + 1> haveWitness{};
@@ -85,6 +88,9 @@ void merge(Stats& destination, const Stats& source) {
         for (unsigned minions = 0; minions <= MaxMinions; ++minions) {
             destination.byMinions[minions][outcome] +=
               source.byMinions[minions][outcome];
+            for (unsigned side = 0; side < 2; ++side)
+                destination.aliveByMinionsAndSide[minions][side][outcome] +=
+                  source.aliveByMinionsAndSide[minions][side][outcome];
             if (!destination.haveWitness[minions][outcome] &&
                 source.haveWitness[minions][outcome]) {
                 destination.haveWitness[minions][outcome] = true;
@@ -98,6 +104,74 @@ void merge(Stats& destination, const Stats& source) {
 void print_outcomes(const std::array<std::uint64_t, 4>& counts) {
     std::cout << "{\"win\":" << counts[1] << ",\"loss\":" << counts[2]
               << ",\"draw\":" << counts[3] << '}';
+}
+
+void audit_record(Stats& stats, const std::uint8_t* record,
+                  std::uint64_t& previous, bool& havePrevious) {
+    const std::uint64_t key = logical_key(record);
+    const unsigned outcome = record[7];
+    std::uint16_t dtw = 0;
+    std::memcpy(&dtw, record + 8, sizeof(dtw));
+    if (outcome < 1 || outcome > 3)
+        throw std::runtime_error("invalid WDL byte");
+    if (havePrevious && key <= previous)
+        ++stats.sortedResidual;
+    previous = key;
+    havePrevious = true;
+    const unsigned minions = minion_count(key);
+    const unsigned side = static_cast<unsigned>((key >> 47) & 1);
+    const bool alive = ((key >> 48) & 1) != 0;
+    ++stats.outcomes[outcome];
+    ++stats.byMinions[minions][outcome];
+    ++stats.bySide[side][outcome];
+    if (alive)
+        ++stats.aliveByMinionsAndSide[minions][side][outcome];
+    stats.maxDtw[outcome] = std::max(stats.maxDtw[outcome], dtw);
+    if (!stats.haveWitness[minions][outcome]) {
+        stats.haveWitness[minions][outcome] = true;
+        stats.witness[minions][outcome] = key;
+    }
+}
+
+Header read_header(std::istream& stream, unsigned expectedSquare) {
+    Header header;
+    stream.read(reinterpret_cast<char*>(&header), sizeof(header));
+    if (stream.gcount() != static_cast<std::streamsize>(sizeof(header)))
+        throw std::runtime_error("truncated sidecar header");
+    const std::array<char, 8> magic{{'U','F','D','S','V','1','\0','\0'}};
+    if (header.magic != magic || header.version != 1 ||
+        header.square != expectedSquare || header.recordBytes != RecordBytes ||
+        header.reserved != 0)
+        throw std::runtime_error("invalid stateful sidecar header");
+    return header;
+}
+
+Stats audit_stream(std::istream& stream, const Header& header) {
+    // Keep the working set below a MiB so the complete stateful class can be
+    // consumed from a network pipe without materializing any UFDS partition.
+    constexpr std::size_t RecordsPerBlock = 65536;
+    std::array<std::uint8_t, RecordsPerBlock * RecordBytes> bytes{};
+    Stats stats;
+    std::uint64_t previous = 0;
+    bool havePrevious = false;
+    std::uint64_t completed = 0;
+    while (completed < header.count) {
+        const std::size_t records = static_cast<std::size_t>(
+          std::min<std::uint64_t>(RecordsPerBlock, header.count - completed));
+        const std::size_t wanted = records * RecordBytes;
+        stream.read(reinterpret_cast<char*>(bytes.data()),
+                    static_cast<std::streamsize>(wanted));
+        if (stream.gcount() != static_cast<std::streamsize>(wanted))
+            throw std::runtime_error("truncated stateful sidecar records");
+        for (std::size_t index = 0; index < records; ++index)
+            audit_record(stats, bytes.data() + index * RecordBytes,
+                         previous, havePrevious);
+        completed += records;
+    }
+    char extra = 0;
+    if (stream.read(&extra, 1) || stream.gcount())
+        throw std::runtime_error("stateful sidecar extent residual");
+    return stats;
 }
 
 }  // namespace
@@ -123,75 +197,67 @@ int main(int argc, char** argv) try {
     if (!workers)
         throw std::runtime_error("--workers must be positive");
 
-    const int descriptor = ::open(input.c_str(), O_RDONLY);
-    if (descriptor < 0)
-        throw std::runtime_error("cannot open sidecar");
-    const std::uint64_t extent = std::filesystem::file_size(input);
-    if (extent < HeaderBytes)
-        throw std::runtime_error("truncated sidecar header");
-    void* mapped = ::mmap(nullptr, extent, PROT_READ, MAP_PRIVATE, descriptor, 0);
-    if (mapped == MAP_FAILED)
-        throw std::runtime_error("cannot map sidecar");
-    const auto* bytes = static_cast<const std::uint8_t*>(mapped);
     Header header;
-    std::memcpy(&header, bytes, sizeof(header));
-    const std::array<char, 8> magic{{'U','F','D','S','V','1','\0','\0'}};
-    if (header.magic != magic || header.version != 1 ||
-        header.square != expectedSquare || header.recordBytes != RecordBytes ||
-        header.reserved != 0)
-        throw std::runtime_error("invalid stateful sidecar header");
-    if (extent != HeaderBytes + header.count * RecordBytes)
-        throw std::runtime_error("stateful sidecar extent residual");
-
-    workers = std::min<std::uint64_t>(workers, std::max<std::uint64_t>(1, header.count));
-    std::vector<Stats> partial(workers);
-    std::vector<std::thread> threads;
-    for (unsigned worker = 0; worker < workers; ++worker) {
-        const std::uint64_t begin = header.count * worker / workers;
-        const std::uint64_t end = header.count * (worker + 1) / workers;
-        threads.emplace_back([&, worker, begin, end] {
-            auto& stats = partial[worker];
-            std::uint64_t previous = 0;
-            bool havePrevious = false;
-            for (std::uint64_t index = begin; index < end; ++index) {
-                const auto* record = bytes + HeaderBytes + index * RecordBytes;
-                const std::uint64_t key = logical_key(record);
-                const unsigned outcome = record[7];
-                std::uint16_t dtw = 0;
-                std::memcpy(&dtw, record + 8, sizeof(dtw));
-                if (outcome < 1 || outcome > 3)
-                    throw std::runtime_error("invalid WDL byte");
-                if (havePrevious && key <= previous)
-                    ++stats.sortedResidual;
-                previous = key;
-                havePrevious = true;
-                const unsigned minions = minion_count(key);
-                const unsigned side = static_cast<unsigned>((key >> 47) & 1);
-                ++stats.outcomes[outcome];
-                ++stats.byMinions[minions][outcome];
-                ++stats.bySide[side][outcome];
-                stats.maxDtw[outcome] = std::max(stats.maxDtw[outcome], dtw);
-                if (!stats.haveWitness[minions][outcome]) {
-                    stats.haveWitness[minions][outcome] = true;
-                    stats.witness[minions][outcome] = key;
-                }
-            }
-        });
-    }
-    for (auto& thread : threads)
-        thread.join();
     Stats total;
-    for (const auto& stats : partial)
-        merge(total, stats);
-    for (unsigned worker = 1; worker < workers; ++worker) {
-        const std::uint64_t index = header.count * worker / workers;
-        const auto left = logical_key(bytes + HeaderBytes + (index - 1) * RecordBytes);
-        const auto right = logical_key(bytes + HeaderBytes + index * RecordBytes);
-        if (right <= left)
-            ++total.sortedResidual;
+    if (input == "-") {
+        if (workers != 1)
+            throw std::runtime_error("streaming input requires --workers 1");
+        std::ios::sync_with_stdio(false);
+        header = read_header(std::cin, expectedSquare);
+        total = audit_stream(std::cin, header);
     }
-    ::munmap(mapped, extent);
-    ::close(descriptor);
+    else {
+        const int descriptor = ::open(input.c_str(), O_RDONLY);
+        if (descriptor < 0)
+            throw std::runtime_error("cannot open sidecar");
+        const std::uint64_t extent = std::filesystem::file_size(input);
+        if (extent < HeaderBytes)
+            throw std::runtime_error("truncated sidecar header");
+        void* mapped = ::mmap(nullptr, extent, PROT_READ, MAP_PRIVATE, descriptor, 0);
+        if (mapped == MAP_FAILED)
+            throw std::runtime_error("cannot map sidecar");
+        const auto* bytes = static_cast<const std::uint8_t*>(mapped);
+        std::memcpy(&header, bytes, sizeof(header));
+        const std::array<char, 8> magic{{'U','F','D','S','V','1','\0','\0'}};
+        if (header.magic != magic || header.version != 1 ||
+            header.square != expectedSquare || header.recordBytes != RecordBytes ||
+            header.reserved != 0)
+            throw std::runtime_error("invalid stateful sidecar header");
+        if (extent != HeaderBytes + header.count * RecordBytes)
+            throw std::runtime_error("stateful sidecar extent residual");
+
+        workers = std::min<std::uint64_t>(
+          workers, std::max<std::uint64_t>(1, header.count));
+        std::vector<Stats> partial(workers);
+        std::vector<std::thread> threads;
+        for (unsigned worker = 0; worker < workers; ++worker) {
+            const std::uint64_t begin = header.count * worker / workers;
+            const std::uint64_t end = header.count * (worker + 1) / workers;
+            threads.emplace_back([&, worker, begin, end] {
+                auto& stats = partial[worker];
+                std::uint64_t previous = 0;
+                bool havePrevious = false;
+                for (std::uint64_t index = begin; index < end; ++index)
+                    audit_record(stats, bytes + HeaderBytes + index * RecordBytes,
+                                 previous, havePrevious);
+            });
+        }
+        for (auto& thread : threads)
+            thread.join();
+        for (const auto& stats : partial)
+            merge(total, stats);
+        for (unsigned worker = 1; worker < workers; ++worker) {
+            const std::uint64_t index = header.count * worker / workers;
+            const auto left = logical_key(
+              bytes + HeaderBytes + (index - 1) * RecordBytes);
+            const auto right = logical_key(
+              bytes + HeaderBytes + index * RecordBytes);
+            if (right <= left)
+                ++total.sortedResidual;
+        }
+        ::munmap(mapped, extent);
+        ::close(descriptor);
+    }
 
     const std::uint64_t conservation = total.outcomes[1] + total.outcomes[2] +
       total.outcomes[3];
@@ -211,6 +277,12 @@ int main(int argc, char** argv) try {
         if (minions) std::cout << ',';
         std::cout << "{\"minions\":" << minions << ",\"outcomes\":";
         print_outcomes(total.byMinions[minions]);
+        std::cout << ",\"alive_outcomes_by_side_to_move\":[";
+        for (unsigned side = 0; side < 2; ++side) {
+            if (side) std::cout << ',';
+            print_outcomes(total.aliveByMinionsAndSide[minions][side]);
+        }
+        std::cout << ']';
         std::cout << ",\"witness_keys\":{";
         for (unsigned outcome = 1; outcome <= 3; ++outcome) {
             if (outcome > 1) std::cout << ',';

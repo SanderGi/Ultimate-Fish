@@ -105,6 +105,7 @@ PIECE_BY_NAME = {piece.name: piece for piece in PIECES}
 PIECE_INDEX = {piece.name: index for index, piece in enumerate(PIECES)}
 BERSERKER_RADIUS_ROWS = tuple(f"berserker_radius_{radius}" for radius in range(1, 4))
 GIANT_START_ROWS = tuple(f"giant_start_{size}" for size in (20, 16, 15, 12))
+DEVIL_MINION_ROWS = tuple(f"devil_minions_{count}" for count in range(6))
 PIECE_LABELS.update(
     {
         row: f"Berserker (radius {radius})"
@@ -113,6 +114,12 @@ PIECE_LABELS.update(
 )
 PIECE_LABELS.update(
     {row: f"Giant-{size}" for row, size in zip(GIANT_START_ROWS, (20, 16, 15, 12))}
+)
+PIECE_LABELS.update(
+    {
+        row: f"Devil + {count} Minion{'s' if count != 1 else ''}"
+        for row, count in zip(DEVIL_MINION_ROWS, range(6))
+    }
 )
 
 
@@ -259,10 +266,12 @@ def read_giant_start_classes(path: Path) -> dict[tuple[str, int], ReadmeResult]:
             giant_class = int(class_text)
             if giant_class not in (20, 16, 15, 12):
                 raise ValueError(
-                    f"unsupported Giant start class {giant_class}: {filename}")
+                    f"unsupported Giant start class {giant_class}: {filename}"
+                )
             if giant_class in seen:
                 raise ValueError(
-                    f"duplicate Giant start class {giant_class}: {filename}")
+                    f"duplicate Giant start class {giant_class}: {filename}"
+                )
             seen.add(giant_class)
             sides = []
             for key in ("first_starts", "second_starts"):
@@ -283,6 +292,44 @@ def read_giant_start_classes(path: Path) -> dict[tuple[str, int], ReadmeResult]:
             results[(filename, giant_class)] = ReadmeResult(sides[0], sides[1])
         if seen != {20, 16, 15, 12}:
             raise ValueError(f"incomplete Giant start-class coverage: {filename}")
+    return results
+
+
+def read_devil_minion_starts(path: Path) -> dict[tuple[str, int], ReadmeResult]:
+    """Read exact alive-Devil root cohorts by current spawned Minion count."""
+    document = json.loads(path.read_text(encoding="utf-8"))
+    expected_counts = tuple(range(6))
+    if (
+        document.get("schema") != 1
+        or document.get("semantics") != "reachable-devil-alive-root-current-minions-v1"
+        or tuple(document.get("minion_counts", ())) != expected_counts
+        or set(document.get("files", {})) != {"kdevilk.uftb"}
+    ):
+        raise ValueError(f"unsupported Devil Minion-start summary schema: {path}")
+    results: dict[tuple[str, int], ReadmeResult] = {}
+    for filename, record in document["files"].items():
+        rows = record.get("minion_counts", {})
+        if set(rows) != {str(count) for count in expected_counts}:
+            raise ValueError(f"incomplete Devil Minion-start coverage: {filename}")
+        for count in expected_counts:
+            raw = rows[str(count)]
+            sides = []
+            for key in ("first_starts", "second_starts"):
+                side = raw[key]
+                admitted = side["admitted"]
+                trivial = side["trivial"]
+                display = side["display"]
+                for field in ("wins", "losses", "draws"):
+                    if (
+                        trivial[field] > admitted[field]
+                        or display[field] != admitted[field] - trivial[field]
+                    ):
+                        raise ValueError(
+                            f"invalid Devil Minion-start conservation for "
+                            f"{filename} count {count} {key} {field}"
+                        )
+                sides.append(WDL(display["wins"], display["losses"], display["draws"]))
+            results[(filename, count)] = ReadmeResult(sides[0], sides[1])
     return results
 
 
@@ -346,10 +393,12 @@ class OutcomeCatalog:
         summary: dict[str, ReadmeResult],
         berserker_radii: dict[tuple[str, int], ReadmeResult] | None = None,
         giant_start_classes: dict[tuple[str, int], ReadmeResult] | None = None,
+        devil_minion_starts: dict[tuple[str, int], ReadmeResult] | None = None,
     ) -> None:
         self.summary = summary
         self.berserker_radii = berserker_radii or {}
         self.giant_start_classes = giant_start_classes or {}
+        self.devil_minion_starts = devil_minion_starts or {}
         # Match the canonical ledger's record precedence.  The broad stateful
         # catalog may contain a normalized duplicate for an already generated
         # requested class.  The exact inventory record must win so a certified
@@ -469,17 +518,42 @@ class OutcomeCatalog:
         first, second = row_side_result(raw, row_is_primary)
         return classify(first, second, allow_loss)
 
+    @staticmethod
+    def _devil_minions(row: str) -> int | None:
+        if row not in DEVIL_MINION_ROWS:
+            return None
+        return int(row.rsplit("_", 1)[1])
+
+    def _devil_minion_cell(self, minions: int) -> Cell:
+        record = self.singles.get("devil")
+        if record is None:
+            return Cell("unknown")
+        aggregate = self.summary.get(str(record["filename"]))
+        if aggregate is not None and aggregate.status in {"computing", "preserving"}:
+            return Cell("computing")
+        raw = self.devil_minion_starts.get((str(record["filename"]), minions))
+        if raw is None:
+            return Cell("unknown")
+        first, second = row_side_result(raw)
+        return classify(first, second, allow_loss=False)
+
     def single_row(self, row: str) -> Cell:
         radius = self._radius(row)
         if radius is not None:
             return self._radius_cell_for_record(self.singles.get("berserker"), radius)
         giant_class = self._giant_class(row)
         if giant_class is not None:
-            return self._giant_cell_for_record(
-                self.singles.get("giant"), giant_class)
+            return self._giant_cell_for_record(self.singles.get("giant"), giant_class)
+        devil_minions = self._devil_minions(row)
+        if devil_minions is not None:
+            return self._devil_minion_cell(devil_minions)
         return self.single(row)
 
     def together_row(self, row: str, column: str) -> Cell:
+        if self._devil_minions(row) is not None:
+            # Only the certified lone-Devil closure has been sliced. Companion
+            # classes deliberately remain blank until their own exact solves.
+            return Cell("unknown")
         radius = self._radius(row)
         if radius is not None:
             if column == "berserker":
@@ -492,7 +566,9 @@ class OutcomeCatalog:
             first, second = sorted(("berserker", column), key=PIECE_INDEX.__getitem__)
             if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
                 return known_draw()
-            return self._radius_cell_for_record(self.same_team.get((first, second)), radius)
+            return self._radius_cell_for_record(
+                self.same_team.get((first, second)), radius
+            )
         giant_class = self._giant_class(row)
         if giant_class is not None:
             if column == "giant":
@@ -503,10 +579,13 @@ class OutcomeCatalog:
             if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
                 return known_draw()
             return self._giant_cell_for_record(
-                self.same_team.get((first, second)), giant_class)
+                self.same_team.get((first, second)), giant_class
+            )
         return self.together(row, column)
 
     def opposed_row(self, row: str, column: str) -> Cell:
+        if self._devil_minions(row) is not None:
+            return Cell("unknown")
         radius = self._radius(row)
         if radius is not None:
             if column == "berserker":
@@ -799,17 +878,28 @@ def draw_grid(
     return total_width, header_height + len(rows) * cell_height
 
 
-def render(readme: Path, radii: Path, giant_classes: Path,
-           output: Path, scale: int) -> None:
+def render(
+    readme: Path,
+    radii: Path,
+    giant_classes: Path,
+    devil_minions: Path,
+    output: Path,
+    scale: int,
+) -> None:
     catalog = OutcomeCatalog(
-        read_summary(readme), read_berserker_radii(radii),
-        read_giant_start_classes(giant_classes))
+        read_summary(readme),
+        read_berserker_radii(radii),
+        read_giant_start_classes(giant_classes),
+        read_devil_minion_starts(devil_minions),
+    )
     names = [piece.name for piece in PIECES]
     rows = list(names)
     berserker_index = rows.index("berserker") + 1
     rows[berserker_index:berserker_index] = BERSERKER_RADIUS_ROWS
     giant_index = rows.index("giant") + 1
     rows[giant_index:giant_index] = GIANT_START_ROWS
+    devil_index = rows.index("devil") + 1
+    rows[devil_index:devil_index] = DEVIL_MINION_ROWS
 
     cell_width = 102 * scale
     cell_height = 82 * scale
@@ -844,7 +934,7 @@ def render(readme: Path, radii: Path, giant_classes: Path,
     )
     draw.text(
         (width // 2, 151 * scale),
-        "Reachable positions only · Immediate stalemates and forced one-ply/tactical material simplifications are excluded · Giant-20/16/15/12: root-anchor parity classes · Prince: cont=0 starting boundaries only · Copycat: one linked mirrored pair · Devil: own spawned Minions only; starts on ranks 1-3",
+        "Reachable positions only · Immediate stalemates and forced one-ply/tactical material simplifications are excluded · Prince: cont=0 starting boundaries only · Copycat: one linked mirrored pair · Devil: own spawned Minions only; starts on ranks 1-3",
         fill=COLORS["muted"],
         font=font(20 * scale),
         anchor="ma",
@@ -961,6 +1051,12 @@ def main() -> None:
         help="exact reachability-filtered Giant root-anchor class results",
     )
     parser.add_argument(
+        "--devil-minions",
+        type=Path,
+        default=ROOT / "tablebases" / "devil-minion-start-summary.json",
+        help="exact alive lone-Devil root results by current Minion count",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=ROOT / "tablebases" / "ultimate-tablebase-grid.png",
@@ -976,7 +1072,9 @@ def main() -> None:
     render(
         args.readme.resolve(),
         args.berserker_radii.resolve(),
-        args.giant_classes.resolve(), args.output.resolve(),
+        args.giant_classes.resolve(),
+        args.devil_minions.resolve(),
+        args.output.resolve(),
         args.scale,
     )
 

@@ -1224,9 +1224,10 @@ explicitly and are not counted as unfinished tablebases.
 
 Diagonal hatching means the class is currently computing. The image is
 generated exclusively from the canonical ledger below by
-`python3 tools/tablebases/plot_ultimate_tablebases.py`. Exact Berserker-radius
-and Giant-start-class rows additionally consume their authenticated compact
-slice summaries; the renderer never infers those rows from filenames.
+`python3 tools/tablebases/plot_ultimate_tablebases.py`. Exact Berserker-radius,
+Giant-start-class, and lone-Devil current-Minion rows additionally consume
+their authenticated compact slice summaries; the renderer never infers those
+rows from filenames.
 
 > **Ghost rules invalidation (2026-08-13):** every result containing a Ghost
 > from an earlier model generation is superseded. Old concrete tables,
@@ -1491,6 +1492,22 @@ slice summaries; the renderer never infers those rows from filenames.
 > sha256:c68814092c4246f4dcc5a1d233e84dc1b5e520e2da0f19d55ac37e4bfbf44004;
 > its audit binary is
 > sha256:cb9fda10d5e5aeec3f4d5bcf7a6ec9c10ecb6f21a7c7153cd2d7e32b664725eb.
+
+> **Devil current-Minion plot audit (2026-09-03):** the six rows immediately
+> below aggregate Devil are exact lone-Devil root slices with the Devil alive
+> and 0 through 5 currently surviving Minions. These are root-only filters:
+> every solved successor remains unrestricted, so the underlying W/L/D values
+> still include later Devil spawns. Companion cells are intentionally blank
+> until their own material classes are audited. The complete certified
+> 34,981,631,519-state class was streamed serially from immutable public
+> Hugging Face revision `ed8375c43f26e42c5b14ac79ff41e77d4317b97f` and
+> SHA-256 verified without retaining tablebase payloads on disk. The six rows
+> cover 33,631,448,390 alive-Devil roots; 1,350,183,129 dead-Devil continuation
+> states remain in the solved class but are excluded from these root cohorts.
+> The compact input is `tablebases/devil-minion-start-summary.json`,
+> sha256:4a8f050cb533f1ec1fe43668394bdb7f885e1958c9db0b94dca2364baafc7a2b;
+> its audit source is
+> sha256:05f340f7a100e993f57a8c015f9f5fff1a591bc72d6153182dfa576827fe8607.
 
 > **Prior AWS fleet audit (2026-08-20 17:36 PDT / 2026-08-21 00:36 UTC):** i03 was
 > externally stopped with EC2 reason `User initiated` at about 21:04 UTC. Its
