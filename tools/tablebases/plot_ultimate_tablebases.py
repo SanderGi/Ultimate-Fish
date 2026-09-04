@@ -106,11 +106,15 @@ PIECE_INDEX = {piece.name: index for index, piece in enumerate(PIECES)}
 BERSERKER_RADIUS_ROWS = tuple(f"berserker_radius_{radius}" for radius in range(1, 4))
 GIANT_START_ROWS = tuple(f"giant_start_{size}" for size in (20, 16, 15, 12))
 DEVIL_MINION_ROWS = tuple(f"devil_minions_{count}" for count in range(6))
+CHECKER_START_ROWS = ("checker_normal", "checker_king")
 PIECE_LABELS.update(
     {
         row: f"Berserker (radius {radius})"
         for radius, row in enumerate(BERSERKER_RADIUS_ROWS, 1)
     }
+)
+PIECE_LABELS.update(
+    {"checker_normal": "Checker (normal)", "checker_king": "Checker King"}
 )
 PIECE_LABELS.update(
     {row: f"Giant-{size}" for row, size in zip(GIANT_START_ROWS, (20, 16, 15, 12))}
@@ -338,6 +342,51 @@ def read_devil_minion_starts(path: Path) -> dict[tuple[str, int], ReadmeResult]:
     return results
 
 
+def read_checker_start_states(path: Path) -> dict[tuple[str, str], ReadmeResult]:
+    """Read exact normal-Checker and Checker-King root-state slices."""
+    document = json.loads(path.read_text(encoding="utf-8"))
+    expected_states = ("normal", "king")
+    if (
+        document.get("schema") != 1
+        or document.get("semantics") != "reachability-admitted-minus-trivial-v3"
+        or tuple(document.get("start_states", ())) != expected_states
+        or document.get("substate_groups") != {"normal": [0, 1], "king": [2, 3]}
+    ):
+        raise ValueError(f"unsupported Checker start-state summary schema: {path}")
+    results: dict[tuple[str, str], ReadmeResult] = {}
+    for filename, record in document.get("files", {}).items():
+        if record.get("excluded"):
+            continue
+        rows = record.get("start_states", {})
+        if set(rows) != set(expected_states):
+            raise ValueError(f"incomplete Checker start-state coverage: {filename}")
+        for state in expected_states:
+            raw = rows[state]
+            sides = []
+            for key in ("first_starts", "second_starts"):
+                side = raw[key]
+                total = side["total"]
+                excluded = side["excluded"]
+                admitted = side["admitted"]
+                trivial = side["trivial"]
+                display = side["display"]
+                for field in ("wins", "losses", "draws"):
+                    if (
+                        excluded[field] > total[field]
+                        or admitted[field] != total[field] - excluded[field]
+                        or trivial[field] > admitted[field]
+                        or display[field] != admitted[field] - trivial[field]
+                    ):
+                        raise ValueError(
+                            f"invalid Checker start-state conservation for "
+                            f"{filename} {state} {key} {field}"
+                        )
+                sides.append(WDL(display["wins"], display["losses"],
+                                 display["draws"]))
+            results[(filename, state)] = ReadmeResult(sides[0], sides[1])
+    return results
+
+
 def row_side_result(raw: ReadmeResult, row_is_primary: bool = True) -> tuple[WDL, WDL]:
     """Return row-side W/L/D for row-to-move, then opponent-to-move.
 
@@ -399,11 +448,13 @@ class OutcomeCatalog:
         berserker_radii: dict[tuple[str, int], ReadmeResult] | None = None,
         giant_start_classes: dict[tuple[str, int], ReadmeResult] | None = None,
         devil_minion_starts: dict[tuple[str, int], ReadmeResult] | None = None,
+        checker_start_states: dict[tuple[str, str], ReadmeResult] | None = None,
     ) -> None:
         self.summary = summary
         self.berserker_radii = berserker_radii or {}
         self.giant_start_classes = giant_start_classes or {}
         self.devil_minion_starts = devil_minion_starts or {}
+        self.checker_start_states = checker_start_states or {}
         # Match the canonical ledger's record precedence.  The broad stateful
         # catalog may contain a normalized duplicate for an already generated
         # requested class.  The exact inventory record must win so a certified
@@ -542,6 +593,31 @@ class OutcomeCatalog:
         first, second = row_side_result(raw)
         return classify(first, second, allow_loss=False)
 
+    @staticmethod
+    def _checker_state(row: str) -> str | None:
+        if row not in CHECKER_START_ROWS:
+            return None
+        return row.removeprefix("checker_")
+
+    def _checker_cell_for_record(
+        self,
+        record: dict[str, object] | None,
+        state: str,
+        row_is_primary: bool = True,
+        allow_loss: bool = False,
+    ) -> Cell:
+        if record is None:
+            return Cell("unknown")
+        filename = str(record["filename"])
+        aggregate = self.summary.get(filename)
+        if aggregate is not None and aggregate.status in {"computing", "preserving"}:
+            return Cell("computing")
+        raw = self.checker_start_states.get((filename, state))
+        if raw is None:
+            return Cell("unknown")
+        first, second = row_side_result(raw, row_is_primary)
+        return classify(first, second, allow_loss)
+
     def single_row(self, row: str) -> Cell:
         radius = self._radius(row)
         if radius is not None:
@@ -552,6 +628,8 @@ class OutcomeCatalog:
         devil_minions = self._devil_minions(row)
         if devil_minions is not None:
             return self._devil_minion_cell(devil_minions)
+        if self._checker_state(row) is not None:
+            return known_draw()
         return self.single(row)
 
     def together_row(self, row: str, column: str) -> Cell:
@@ -559,6 +637,20 @@ class OutcomeCatalog:
             # Only the certified lone-Devil closure has been sliced. Companion
             # classes deliberately remain blank until their own exact solves.
             return Cell("unknown")
+        checker_state = self._checker_state(row)
+        if checker_state is not None:
+            if column == "checker":
+                # Same-team Checkers are exchange-folded, so the row Checker
+                # is not distinguishable from the column Checker.
+                return self.together("checker", "checker")
+            if deferred_material("checker", column):
+                return Cell("unknown")
+            first, second = sorted(("checker", column), key=PIECE_INDEX.__getitem__)
+            if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
+                return known_draw()
+            return self._checker_cell_for_record(
+                self.same_team.get((first, second)), checker_state
+            )
         radius = self._radius(row)
         if radius is not None:
             if column == "berserker":
@@ -591,6 +683,22 @@ class OutcomeCatalog:
     def opposed_row(self, row: str, column: str) -> Cell:
         if self._devil_minions(row) is not None:
             return Cell("unknown")
+        checker_state = self._checker_state(row)
+        if checker_state is not None:
+            if deferred_material("checker", column, opposing=True):
+                return Cell("unknown")
+            first, second = sorted(("checker", column), key=PIECE_INDEX.__getitem__)
+            if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], False):
+                return known_draw()
+            record = self.opposing.get((first, second))
+            return self._checker_cell_for_record(
+                record,
+                checker_state,
+                row_is_primary=(
+                    record is not None and str(record["primary"]) == "checker"
+                ),
+                allow_loss=True,
+            )
         radius = self._radius(row)
         if radius is not None:
             if column == "berserker":
@@ -888,6 +996,7 @@ def render(
     radii: Path,
     giant_classes: Path,
     devil_minions: Path,
+    checker_states: Path,
     output: Path,
     scale: int,
 ) -> None:
@@ -896,6 +1005,7 @@ def render(
         read_berserker_radii(radii),
         read_giant_start_classes(giant_classes),
         read_devil_minion_starts(devil_minions),
+        read_checker_start_states(checker_states),
     )
     names = [piece.name for piece in PIECES]
     rows = list(names)
@@ -905,6 +1015,8 @@ def render(
     rows[giant_index:giant_index] = GIANT_START_ROWS
     devil_index = rows.index("devil") + 1
     rows[devil_index:devil_index] = DEVIL_MINION_ROWS
+    checker_index = rows.index("checker") + 1
+    rows[checker_index:checker_index] = CHECKER_START_ROWS
 
     cell_width = 102 * scale
     cell_height = 82 * scale
@@ -1062,6 +1174,12 @@ def main() -> None:
         help="exact alive lone-Devil root results by current Minion count",
     )
     parser.add_argument(
+        "--checker-states",
+        type=Path,
+        default=ROOT / "tablebases" / "checker-start-state-summary.json",
+        help="exact normal-Checker and Checker-King root results",
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=ROOT / "tablebases" / "ultimate-tablebase-grid.png",
@@ -1079,6 +1197,7 @@ def main() -> None:
         args.berserker_radii.resolve(),
         args.giant_classes.resolve(),
         args.devil_minions.resolve(),
+        args.checker_states.resolve(),
         args.output.resolve(),
         args.scale,
     )

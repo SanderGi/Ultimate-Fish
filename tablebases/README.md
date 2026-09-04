@@ -1232,9 +1232,9 @@ explicitly and are not counted as unfinished tablebases.
 Diagonal hatching means the class is currently computing. The image is
 generated exclusively from the canonical ledger below by
 `python3 tools/tablebases/plot_ultimate_tablebases.py`. Exact Berserker-radius,
-Giant-start-class, and lone-Devil current-Minion rows additionally consume
-their authenticated compact slice summaries; the renderer never infers those
-rows from filenames.
+Giant-start-class, lone-Devil current-Minion, and Checker root-type rows
+additionally consume their authenticated compact slice summaries; the renderer
+never infers those rows from filenames.
 
 > **Ghost rules invalidation (2026-08-13):** every result containing a Ghost
 > from an earlier model generation is superseded. Old concrete tables,
@@ -1527,6 +1527,28 @@ rows from filenames.
 > sha256:9181f97e8209def10013b9e86fe4d123a9f4b7105f4fe75d51eb20d8c840dfc9,
 > and its native classifier-verifier source bundle is
 > sha256:3f2e10fc0e0e0bad623a58d9fbcc27baa74189ceac4d826af5aa3dae994b6b2b.
+
+> **Checker root-type plot audit (2026-09-04):** the two rows immediately
+> below aggregate Checker split root positions into normal Checker substates
+> 0/1 and Checker King substates 2/3. Ordinary and forced-jump roots remain in
+> their respective type row, while all legal successors are unrestricted, so
+> promotion and continued play retain the original tablebase W/L/D. The
+> summary covers all 37 certified Checker material records: 32 concrete tables
+> and four Jester/Ghost information overlays were downloaded from immutable
+> public Hugging Face revision
+> `ed8375c43f26e42c5b14ac79ff41e77d4317b97f`, SHA-256 verified, audited
+> serially with two native workers, and deleted one material group at a time.
+> The exchange-folded same-team Checker/Checker record repeats its aggregate
+> cell because it has no distinguished row Checker. The opposed Ghost/Checker
+> overlay's historical substate transpose is accepted only for its exact
+> certified source/model hash pair. Every distinguished class stores total,
+> excluded, admitted, authenticated trivial, and displayed W/L/D; displayed
+> equals admitted minus trivial, and the normal plus king rows conserve the
+> ledger aggregate for both starting sides. The compact input is
+> `tablebases/checker-start-state-summary.json`,
+> sha256:238c17ed175356bc9c6c8ad1e079d2761a243b458b6c31f9f4b45cd79a404687;
+> its audit binary is
+> sha256:ad757c852b2efed98a8331eb291f8567bd65c414a68c8c879e030786fbdb99eb.
 
 > **Prior AWS fleet audit (2026-08-20 17:36 PDT / 2026-08-21 00:36 UTC):** i03 was
 > externally stopped with EC2 reason `User initiated` at about 21:04 UTC. Its
@@ -3904,8 +3926,9 @@ and require
 before staging new work (`--resume` requires an existing **COMPUTING** row).
 and regenerate the checked-in plot with
 `python3 tools/tablebases/plot_ultimate_tablebases.py`. The plot reads the
-ledger plus the authenticated Berserker-radius and Giant-start-class summaries;
-it neither scans local payloads nor guesses completion from filenames.
+ledger plus the authenticated Berserker-radius, Giant-start-class, Devil
+current-Minion, and Checker root-type summaries; it neither scans local
+payloads nor guesses completion from filenames.
 
 ### Penguin/Ghost terminal-source correction (2026-08-27 18:36 UTC)
 
