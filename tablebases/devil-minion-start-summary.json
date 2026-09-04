@@ -5,13 +5,15 @@
     "win": 1242065074
   },
   "alive_root_states": 33631448390,
-  "audit_binary_sha256": "a21b2277ce35d0e600ce46e5a8f4b63e3aa5e3edb232108defcb6b4432b245ed",
-  "audit_source_sha256": "05f340f7a100e993f57a8c015f9f5fff1a591bc72d6153182dfa576827fe8607",
+  "audit_binary_sha256": "b398310892e312c388262a3992bb304a547cf57bb31642a1721f3894175b9143",
+  "audit_source_sha256": "9181f97e8209def10013b9e86fe4d123a9f4b7105f4fe75d51eb20d8c840dfc9",
   "certificate_sha256": "95649cf36a9f6287379e9d29ee80b67f7af9c8ca6dff0298e73977f458bd3e0f",
+  "classifier_verifier_result": "DEVIL_SLICE_VERIFIED states=841552 admitted=769882",
+  "classifier_verifier_source_sha256": "3f2e10fc0e0e0bad623a58d9fbcc27baa74189ceac4d826af5aa3dae994b6b2b",
   "dataset": "SanderGi/Ultimate-Fish-Tablebases",
   "dataset_revision": "ed8375c43f26e42c5b14ac79ff41e77d4317b97f",
   "dead_devil_continuation_states": 1350183129,
-  "description": "Certified lone-Devil UFDS states grouped only by the current root Minion count while all solved successors remain unrestricted",
+  "description": "Certified lone-Devil UFDS root states grouped by current Minion count after root reachability admission and trivial subtraction; all solved successors remain unrestricted",
   "files": {
     "kdevilk.uftb": {
       "minion_counts": {
@@ -20,15 +22,25 @@
             "admitted": {
               "draws": 270656,
               "losses": 0,
-              "wins": 25120
+              "wins": 0
             },
             "display": {
+              "draws": 270644,
+              "losses": 0,
+              "wins": 0
+            },
+            "excluded": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 25120
+            },
+            "total": {
               "draws": 270656,
               "losses": 0,
               "wins": 25120
             },
             "trivial": {
-              "draws": 0,
+              "draws": 12,
               "losses": 0,
               "wins": 0
             }
@@ -37,15 +49,25 @@
             "admitted": {
               "draws": 270656,
               "losses": 0,
-              "wins": 25120
+              "wins": 0
             },
             "display": {
+              "draws": 249640,
+              "losses": 0,
+              "wins": 0
+            },
+            "excluded": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 25120
+            },
+            "total": {
               "draws": 270656,
               "losses": 0,
               "wins": 25120
             },
             "trivial": {
-              "draws": 0,
+              "draws": 21016,
               "losses": 0,
               "wins": 0
             }
@@ -63,6 +85,16 @@
               "losses": 115,
               "wins": 0
             },
+            "excluded": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            },
+            "total": {
+              "draws": 3322639,
+              "losses": 115,
+              "wins": 0
+            },
             "trivial": {
               "draws": 0,
               "losses": 0,
@@ -76,14 +108,24 @@
               "wins": 40427
             },
             "display": {
+              "draws": 3374009,
+              "losses": 0,
+              "wins": 567
+            },
+            "excluded": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            },
+            "total": {
               "draws": 3396630,
               "losses": 0,
               "wins": 40427
             },
             "trivial": {
-              "draws": 0,
+              "draws": 22621,
               "losses": 0,
-              "wins": 0
+              "wins": 39860
             }
           }
         },
@@ -99,6 +141,16 @@
               "losses": 6254,
               "wins": 0
             },
+            "excluded": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            },
+            "total": {
+              "draws": 57337258,
+              "losses": 6254,
+              "wins": 0
+            },
             "trivial": {
               "draws": 0,
               "losses": 0,
@@ -112,14 +164,24 @@
               "wins": 1650354
             },
             "display": {
+              "draws": 70021548,
+              "losses": 0,
+              "wins": 23815
+            },
+            "excluded": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            },
+            "total": {
               "draws": 70060584,
               "losses": 0,
               "wins": 1650354
             },
             "trivial": {
-              "draws": 0,
+              "draws": 39036,
               "losses": 0,
-              "wins": 0
+              "wins": 1626539
             }
           }
         },
@@ -135,6 +197,16 @@
               "losses": 153645,
               "wins": 0
             },
+            "excluded": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            },
+            "total": {
+              "draws": 553565691,
+              "losses": 153645,
+              "wins": 0
+            },
             "trivial": {
               "draws": 0,
               "losses": 0,
@@ -148,14 +220,24 @@
               "wins": 28777969
             },
             "display": {
+              "draws": 825100172,
+              "losses": 0,
+              "wins": 477676
+            },
+            "excluded": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            },
+            "total": {
               "draws": 825112834,
               "losses": 0,
               "wins": 28777969
             },
             "trivial": {
-              "draws": 0,
+              "draws": 12662,
               "losses": 0,
-              "wins": 0
+              "wins": 28300293
             }
           }
         },
@@ -171,6 +253,16 @@
               "losses": 1539973,
               "wins": 0
             },
+            "excluded": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            },
+            "total": {
+              "draws": 2841552221,
+              "losses": 1539973,
+              "wins": 0
+            },
             "trivial": {
               "draws": 0,
               "losses": 0,
@@ -186,12 +278,22 @@
             "display": {
               "draws": 5717668854,
               "losses": 0,
+              "wins": 4801362
+            },
+            "excluded": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            },
+            "total": {
+              "draws": 5717668854,
+              "losses": 0,
               "wins": 258956368
             },
             "trivial": {
               "draws": 0,
               "losses": 0,
-              "wins": 0
+              "wins": 254155006
             }
           }
         },
@@ -207,6 +309,16 @@
               "losses": 2429356,
               "wins": 0
             },
+            "excluded": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            },
+            "total": {
+              "draws": 4022840024,
+              "losses": 2429356,
+              "wins": 0
+            },
             "trivial": {
               "draws": 0,
               "losses": 0,
@@ -222,12 +334,22 @@
             "display": {
               "draws": 18289855926,
               "losses": 0,
+              "wins": 16470120
+            },
+            "excluded": {
+              "draws": 0,
+              "losses": 0,
+              "wins": 0
+            },
+            "total": {
+              "draws": 18289855926,
+              "losses": 0,
               "wins": 952589716
             },
             "trivial": {
               "draws": 0,
               "losses": 0,
-              "wins": 0
+              "wins": 936119596
             }
           }
         }
@@ -250,7 +372,7 @@
   ],
   "partitions": [
     {
-      "elapsed_seconds": 102.53,
+      "elapsed_seconds": 169.617,
       "label": "A1",
       "payloads": [
         {
@@ -264,7 +386,7 @@
       "states": 305073281
     },
     {
-      "elapsed_seconds": 408.886,
+      "elapsed_seconds": 699.092,
       "label": "B1",
       "payloads": [
         {
@@ -278,7 +400,7 @@
       "states": 1270009248
     },
     {
-      "elapsed_seconds": 1226.085,
+      "elapsed_seconds": 2224.079,
       "label": "C1",
       "payloads": [
         {
@@ -292,7 +414,7 @@
       "states": 3861213174
     },
     {
-      "elapsed_seconds": 1263.435,
+      "elapsed_seconds": 2363.798,
       "label": "D1",
       "payloads": [
         {
@@ -306,7 +428,7 @@
       "states": 3873307130
     },
     {
-      "elapsed_seconds": 240.53,
+      "elapsed_seconds": 198.075,
       "label": "A2",
       "payloads": [
         {
@@ -320,7 +442,7 @@
       "states": 364746583
     },
     {
-      "elapsed_seconds": 522.502,
+      "elapsed_seconds": 909.857,
       "label": "B2",
       "payloads": [
         {
@@ -334,7 +456,7 @@
       "states": 1632071820
     },
     {
-      "elapsed_seconds": 1666.283,
+      "elapsed_seconds": 2842.719,
       "label": "C2",
       "payloads": [
         {
@@ -353,7 +475,7 @@
       "states": 5176987699
     },
     {
-      "elapsed_seconds": 1646.468,
+      "elapsed_seconds": 2832.446,
       "label": "D2",
       "payloads": [
         {
@@ -372,7 +494,7 @@
       "states": 5194192187
     },
     {
-      "elapsed_seconds": 116.417,
+      "elapsed_seconds": 195.788,
       "label": "A3",
       "payloads": [
         {
@@ -386,7 +508,7 @@
       "states": 361229977
     },
     {
-      "elapsed_seconds": 546.352,
+      "elapsed_seconds": 929.485,
       "label": "B3",
       "payloads": [
         {
@@ -400,7 +522,7 @@
       "states": 1710246028
     },
     {
-      "elapsed_seconds": 1820.487,
+      "elapsed_seconds": 3175.801,
       "label": "C3",
       "payloads": [
         {
@@ -419,7 +541,7 @@
       "states": 5606753226
     },
     {
-      "elapsed_seconds": 1786.894,
+      "elapsed_seconds": 3045.023,
       "label": "D3",
       "payloads": [
         {
@@ -438,6 +560,14 @@
       "states": 5625801166
     }
   ],
-  "schema": 1,
-  "semantics": "reachable-devil-alive-root-current-minions-v1"
+  "root_filter_states": {
+    "admitted": 33631398150,
+    "display": 32411061509,
+    "excluded": 50240,
+    "total": 33631448390,
+    "trivial": 1220336641
+  },
+  "schema": 2,
+  "semantics": "stateful-reachability-admitted-minus-trivial-v1",
+  "zero_minion_oracle": "authenticated-entry-root-v2"
 }

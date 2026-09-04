@@ -28,6 +28,12 @@ from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE = ROOT / "tools/tablebases/audit_ultimate_devil_stateful_sidecar.cpp"
+FILTER_SOURCE = ROOT / "tools/tablebases/ultimate_devil_stateful_slice.h"
+VERIFIER_SOURCE = ROOT / "tools/tablebases/verify_ultimate_devil_stateful_slice.cpp"
+POSITION_SOURCE = ROOT / "src/ultimate/position.cpp"
+POSITION_HEADER = ROOT / "src/ultimate/position.h"
+NNUE_SOURCE = ROOT / "src/ultimate/nnue.cpp"
+NNUE_HEADER = ROOT / "src/ultimate/nnue.h"
 CERTIFICATE = ROOT / "tablebases/ultimate-devil-stateful-class-certificate.json"
 OUTPUT = ROOT / "tablebases/devil-minion-start-summary.json"
 DEFAULT_DATASET = "SanderGi/Ultimate-Fish-Tablebases"
@@ -38,6 +44,38 @@ TRANSFER_BYTES = 8 * 1024 * 1024
 PROGRESS_BYTES = 1024 * 1024 * 1024
 RESULTS = ("win", "loss", "draw")
 MAX_MINIONS = 5
+A1_ZERO_MINION_ORACLE = (
+    {
+        "total": {"win": 2_120, "loss": 0, "draw": 22_528},
+        "excluded": {"win": 2_120, "loss": 0, "draw": 0},
+        "admitted": {"win": 0, "loss": 0, "draw": 22_528},
+        "trivial": {"win": 0, "loss": 0, "draw": 0},
+        "display": {"win": 0, "loss": 0, "draw": 22_528},
+    },
+    {
+        "total": {"win": 2_120, "loss": 0, "draw": 22_528},
+        "excluded": {"win": 2_120, "loss": 0, "draw": 0},
+        "admitted": {"win": 0, "loss": 0, "draw": 22_528},
+        "trivial": {"win": 0, "loss": 0, "draw": 876},
+        "display": {"win": 0, "loss": 0, "draw": 21_652},
+    },
+)
+ZERO_MINION_ORACLE = (
+    {
+        "total": {"win": 25_120, "loss": 0, "draw": 270_656},
+        "excluded": {"win": 25_120, "loss": 0, "draw": 0},
+        "admitted": {"win": 0, "loss": 0, "draw": 270_656},
+        "trivial": {"win": 0, "loss": 0, "draw": 12},
+        "display": {"win": 0, "loss": 0, "draw": 270_644},
+    },
+    {
+        "total": {"win": 25_120, "loss": 0, "draw": 270_656},
+        "excluded": {"win": 25_120, "loss": 0, "draw": 0},
+        "admitted": {"win": 0, "loss": 0, "draw": 270_656},
+        "trivial": {"win": 0, "loss": 0, "draw": 21_016},
+        "display": {"win": 0, "loss": 0, "draw": 249_640},
+    },
+)
 
 
 def sha256(path: Path) -> str:
@@ -45,6 +83,18 @@ def sha256(path: Path) -> str:
     with path.open("rb") as stream:
         for block in iter(lambda: stream.read(TRANSFER_BYTES), b""):
             digest.update(block)
+    return digest.hexdigest()
+
+
+def source_bundle_sha256(paths: tuple[Path, ...]) -> str:
+    digest = hashlib.sha256()
+    for path in paths:
+        label = str(path.relative_to(ROOT)).encode("utf-8")
+        payload = path.read_bytes()
+        digest.update(len(label).to_bytes(4, "little"))
+        digest.update(label)
+        digest.update(len(payload).to_bytes(8, "little"))
+        digest.update(payload)
     return digest.hexdigest()
 
 
@@ -257,7 +307,7 @@ def payloads(partition: dict[str, Any], remote: dict[str, dict[str, Any]],
 
 
 def build_auditor(work_root: Path) -> tuple[Path, str, str]:
-    source_sha = sha256(SOURCE)
+    source_sha = source_bundle_sha256((SOURCE, FILTER_SOURCE))
     binary = work_root / "audit_ultimate_devil_stateful_sidecar"
     receipt = work_root / "auditor-source.sha256"
     if not (binary.is_file() and receipt.is_file() and
@@ -271,6 +321,39 @@ def build_auditor(work_root: Path) -> tuple[Path, str, str]:
         temporary.replace(binary)
         receipt.write_text(source_sha + "\n", encoding="utf-8")
     return binary, source_sha, sha256(binary)
+
+
+def verify_classifier(work_root: Path) -> tuple[str, str]:
+    sources = (VERIFIER_SOURCE, FILTER_SOURCE, POSITION_SOURCE,
+               POSITION_HEADER, NNUE_SOURCE, NNUE_HEADER)
+    source_sha = source_bundle_sha256(sources)
+    binary = work_root / "verify_ultimate_devil_stateful_slice"
+    receipt = work_root / "verifier-passed.json"
+    if binary.is_file() and receipt.is_file():
+        cached = json.loads(receipt.read_text(encoding="utf-8"))
+        if (cached.get("source_sha256") == source_sha and
+                cached.get("binary_sha256") == sha256(binary) and
+                str(cached.get("result", "")).startswith(
+                    "DEVIL_SLICE_VERIFIED")):
+            return source_sha, str(cached["result"])
+    temporary = binary.with_suffix(".tmp")
+    subprocess.run([
+        "c++", "-std=c++17", "-O3", "-DNDEBUG", "-Wall", "-Wextra",
+        "-Wpedantic", "-Werror", "-I", str(ROOT / "tools/tablebases"),
+        "-I", str(ROOT / "src/ultimate"), str(VERIFIER_SOURCE),
+        str(POSITION_SOURCE), str(NNUE_SOURCE), "-o", str(temporary),
+    ], check=True)
+    temporary.replace(binary)
+    result = subprocess.check_output(
+        [str(binary), "250000"], text=True).strip()
+    if not result.startswith("DEVIL_SLICE_VERIFIED"):
+        raise RuntimeError("Devil root classifier verification failed")
+    write_json(receipt, {
+        "source_sha256": source_sha,
+        "binary_sha256": sha256(binary),
+        "result": result,
+    })
+    return source_sha, result
 
 
 def audit_partition(partition: dict[str, Any], entries: list[dict[str, Any]],
@@ -305,10 +388,13 @@ def audit_partition(partition: dict[str, Any], entries: list[dict[str, Any]],
     expected_outcomes = {
         name: int(partition["outcomes"][name]) for name in RESULTS}
     if (census.get("schema") != "ultimate-devil-stateful-census-v1" or
+            census.get("root_filter_semantics") !=
+            "stateful-reachability-admitted-minus-trivial-v1" or
             census.get("square") != partition["square"] or
             census.get("states") != partition["states"] or
             census.get("outcomes") != expected_outcomes or
             census.get("conservation_residual") != 0 or
+            census.get("root_filter_conservation_residual") != 0 or
             census.get("sorted_key_residual") != 0):
         raise RuntimeError(
             f"certified census mismatch for {logical_name(partition)}")
@@ -328,27 +414,71 @@ def add_outcomes(destination: dict[str, int], source: dict[str, Any]) -> None:
         destination[name] += int(source[name])
 
 
-def side_record(outcomes: dict[str, int]) -> dict[str, dict[str, int]]:
-    displayed = {
-        "wins": outcomes["win"],
-        "losses": outcomes["loss"],
-        "draws": outcomes["draw"],
-    }
-    zero = {name: 0 for name in displayed}
+def empty_filter() -> dict[str, dict[str, int]]:
     return {
-        "admitted": dict(displayed), "trivial": zero,
-        "display": dict(displayed)}
+        bucket: empty_outcomes()
+        for bucket in ("total", "excluded", "admitted", "trivial", "display")
+    }
+
+
+def validate_filter(record: dict[str, Any], label: str) -> None:
+    if set(record) != {"total", "excluded", "admitted", "trivial", "display"}:
+        raise RuntimeError(f"incomplete Devil root filter: {label}")
+    for result in RESULTS:
+        total = int(record["total"][result])
+        excluded = int(record["excluded"][result])
+        admitted = int(record["admitted"][result])
+        trivial = int(record["trivial"][result])
+        display = int(record["display"][result])
+        if (excluded > total or admitted != total - excluded or
+                trivial > admitted or display != admitted - trivial):
+            raise RuntimeError(
+                f"invalid Devil root-filter conservation: {label} {result}")
+
+
+def add_filter(destination: dict[str, dict[str, int]],
+               source: dict[str, Any], label: str) -> None:
+    validate_filter(source, label)
+    for bucket in destination:
+        add_outcomes(destination[bucket], source[bucket])
+
+
+def side_record(record: dict[str, dict[str, int]]) -> dict[str, dict[str, int]]:
+    validate_filter(record, "summary")
+    def plural(outcomes: dict[str, int]) -> dict[str, int]:
+        return {
+            "wins": outcomes["win"],
+            "losses": outcomes["loss"],
+            "draws": outcomes["draw"],
+        }
+    return {
+        bucket: plural(record[bucket])
+        for bucket in ("total", "excluded", "admitted", "trivial", "display")
+    }
+
+
+def validate_a1_gate(census: dict[str, Any]) -> None:
+    """Fail before the long stream unless its smallest shard matches history."""
+    rows = census.get("by_minion_count", ())
+    if (census.get("label") != "A1" or census.get("square") != 0 or
+            len(rows) != MAX_MINIONS + 1 or rows[0].get("minions") != 0 or
+            tuple(rows[0].get("root_filter_by_side_to_move", ())) !=
+            A1_ZERO_MINION_ORACLE):
+        raise RuntimeError(
+            "Devil A1 pilot does not reproduce the authenticated zero-Minion "
+            "root-filter oracle")
 
 
 def build_summary(certificate: dict[str, Any], certificate_sha: str,
                   progress: dict[str, Any], dataset: str, revision: str,
-                  source_sha: str, binary_sha: str) -> dict[str, Any]:
+                  source_sha: str, binary_sha: str,
+                  verifier_source_sha: str, verifier_result: str) -> dict[str, Any]:
     partitions = certificate["partitions"]
     expected = {str(partition["square"]) for partition in partitions}
     if set(progress) != expected:
         raise RuntimeError("cannot finalize an incomplete Devil Minion audit")
     classes = {
-        minions: [empty_outcomes(), empty_outcomes()]
+        minions: [empty_filter(), empty_filter()]
         for minions in range(MAX_MINIONS + 1)}
     full = empty_outcomes()
     alive = empty_outcomes()
@@ -364,12 +494,17 @@ def build_summary(certificate: dict[str, Any], certificate_sha: str,
         for minions, row in enumerate(rows):
             if row.get("minions") != minions:
                 raise RuntimeError("misordered Minion-count census")
-            sides = row.get("alive_outcomes_by_side_to_move", ())
-            if len(sides) != 2:
-                raise RuntimeError("census lacks alive Minion/side cross-tab")
+            raw_sides = row.get("alive_outcomes_by_side_to_move", ())
+            sides = row.get("root_filter_by_side_to_move", ())
+            if len(raw_sides) != 2 or len(sides) != 2:
+                raise RuntimeError("census lacks Devil root-filter cross-tab")
             for side in range(2):
-                add_outcomes(classes[minions][side], sides[side])
-                add_outcomes(alive, sides[side])
+                if sides[side].get("total") != raw_sides[side]:
+                    raise RuntimeError("Devil raw/root-filter total mismatch")
+                add_filter(
+                    classes[minions][side], sides[side],
+                    f"{partition['label']} minions={minions} side={side}")
+                add_outcomes(alive, raw_sides[side])
         bindings.append({
             "label": partition["label"], "square": partition["square"],
             "states": census["states"], "sidecar_sha256": partition["sidecar_sha256"],
@@ -382,24 +517,45 @@ def build_summary(certificate: dict[str, Any], certificate_sha: str,
         name: int(aggregate[aggregate_fields[name]]) for name in RESULTS}
     if total_states != aggregate["states"] or full != expected_full:
         raise RuntimeError("Devil partition audit does not reproduce certificate")
+    for minions in range(MAX_MINIONS + 1):
+        for side in range(2):
+            validate_filter(classes[minions][side],
+                            f"aggregate minions={minions} side={side}")
+    if tuple(classes[0]) != ZERO_MINION_ORACLE:
+        raise RuntimeError(
+            "Devil zero-Minion slice does not reproduce the authenticated "
+            "entry-root reachability/trivial oracle")
     alive_states = sum(alive.values())
+    root_totals = {
+        bucket: sum(
+            sum(classes[minions][side][bucket].values())
+            for minions in range(MAX_MINIONS + 1) for side in range(2))
+        for bucket in ("total", "excluded", "admitted", "trivial", "display")
+    }
+    if root_totals["total"] != alive_states:
+        raise RuntimeError("Devil aggregate root-filter total mismatch")
     return {
-        "schema": 1,
-        "semantics": "reachable-devil-alive-root-current-minions-v1",
+        "schema": 2,
+        "semantics": "stateful-reachability-admitted-minus-trivial-v1",
         "description": (
-            "Certified lone-Devil UFDS states grouped only by the current "
-            "root Minion count while all solved successors remain unrestricted"),
+            "Certified lone-Devil UFDS root states grouped by current Minion "
+            "count after root reachability admission and trivial subtraction; "
+            "all solved successors remain unrestricted"),
         "dataset": dataset,
         "dataset_revision": revision,
         "certificate_sha256": certificate_sha,
         "audit_source_sha256": source_sha,
         "audit_binary_sha256": binary_sha,
+        "classifier_verifier_source_sha256": verifier_source_sha,
+        "classifier_verifier_result": verifier_result,
+        "zero_minion_oracle": "authenticated-entry-root-v2",
         "minion_counts": list(range(MAX_MINIONS + 1)),
         "full_class_states": total_states,
         "alive_root_states": alive_states,
         "dead_devil_continuation_states": total_states - alive_states,
         "full_class_outcomes": full,
         "alive_root_outcomes": alive,
+        "root_filter_states": root_totals,
         "partitions": bindings,
         "files": {
             "kdevilk.uftb": {
@@ -437,6 +593,8 @@ def main() -> None:
     certificate = validate_certificate(args.certificate)
     certificate_sha = sha256(args.certificate)
     binary, source_sha, binary_sha = build_auditor(args.work_root)
+    verifier_source_sha, verifier_result = verify_classifier(args.work_root)
+    print(verifier_result, flush=True)
     token = hf_token()
     revision, remote = catalog(
         args.origin, args.dataset, args.revision, token)
@@ -454,6 +612,8 @@ def main() -> None:
         if (cached and cached.get("sidecar_sha256") == partition["sidecar_sha256"] and
                 cached.get("dataset_revision") == revision and
                 cached.get("audit_source_sha256") == source_sha):
+            if square == 0:
+                validate_a1_gate(cached)
             print(f"reusing {partition['label']} checkpoint", flush=True)
             continue
         entries = payloads(
@@ -472,6 +632,8 @@ def main() -> None:
             "audit_source_sha256": source_sha,
             "audit_binary_sha256": binary_sha,
         })
+        if square == 0:
+            validate_a1_gate(census)
         progress[str(square)] = census
         write_json(progress_path, progress)
         print(
@@ -483,7 +645,7 @@ def main() -> None:
     if set(progress) == expected:
         summary = build_summary(
             certificate, certificate_sha, progress, args.dataset, revision,
-            source_sha, binary_sha)
+            source_sha, binary_sha, verifier_source_sha, verifier_result)
         write_json(args.output, summary)
         print(f"wrote {args.output}", flush=True)
     else:

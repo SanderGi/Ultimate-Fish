@@ -19,11 +19,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "ultimate_devil_stateful_slice.h"
+
 namespace {
 
 constexpr std::size_t HeaderBytes = 32;
 constexpr std::size_t RecordBytes = 10;
-constexpr unsigned MaxMinions = 5;
+constexpr unsigned MaxMinions = UltimateDevilSlice::MaxMinions;
 
 #pragma pack(push, 1)
 struct Header {
@@ -36,27 +38,6 @@ struct Header {
 };
 #pragma pack(pop)
 static_assert(sizeof(Header) == HeaderBytes);
-
-constexpr std::uint64_t choose(unsigned n, unsigned k) {
-    if (k > n)
-        return 0;
-    k = std::min(k, n - k);
-    std::uint64_t value = 1;
-    for (unsigned item = 1; item <= k; ++item)
-        value = value * (n - k + item) / item;
-    return value;
-}
-
-unsigned minion_count(std::uint64_t key) {
-    const std::uint64_t rank = key & ((std::uint64_t{1} << 25) - 1);
-    std::uint64_t upper = 0;
-    for (unsigned count = 0; count <= MaxMinions; ++count) {
-        upper += choose(80, count);
-        if (rank < upper)
-            return count;
-    }
-    throw std::runtime_error("invalid Minion combination rank");
-}
 
 std::uint64_t logical_key(const std::uint8_t* record) {
     std::uint64_t value = 0;
@@ -71,6 +52,15 @@ struct Stats {
     std::array<
       std::array<std::array<std::uint64_t, 4>, 2>, MaxMinions + 1>
       aliveByMinionsAndSide{};
+    std::array<
+      std::array<std::array<std::uint64_t, 4>, 2>, MaxMinions + 1>
+      excludedByMinionsAndSide{};
+    std::array<
+      std::array<std::array<std::uint64_t, 4>, 2>, MaxMinions + 1>
+      trivialByMinionsAndSide{};
+    std::array<
+      std::array<std::array<std::uint64_t, 4>, 2>, MaxMinions + 1>
+      displayByMinionsAndSide{};
     std::array<std::uint16_t, 4> maxDtw{};
     std::array<std::array<std::uint64_t, 4>, MaxMinions + 1> witness{};
     std::array<std::array<bool, 4>, MaxMinions + 1> haveWitness{};
@@ -88,9 +78,16 @@ void merge(Stats& destination, const Stats& source) {
         for (unsigned minions = 0; minions <= MaxMinions; ++minions) {
             destination.byMinions[minions][outcome] +=
               source.byMinions[minions][outcome];
-            for (unsigned side = 0; side < 2; ++side)
+            for (unsigned side = 0; side < 2; ++side) {
                 destination.aliveByMinionsAndSide[minions][side][outcome] +=
                   source.aliveByMinionsAndSide[minions][side][outcome];
+                destination.excludedByMinionsAndSide[minions][side][outcome] +=
+                  source.excludedByMinionsAndSide[minions][side][outcome];
+                destination.trivialByMinionsAndSide[minions][side][outcome] +=
+                  source.trivialByMinionsAndSide[minions][side][outcome];
+                destination.displayByMinionsAndSide[minions][side][outcome] +=
+                  source.displayByMinionsAndSide[minions][side][outcome];
+            }
             if (!destination.haveWitness[minions][outcome] &&
                 source.haveWitness[minions][outcome]) {
                 destination.haveWitness[minions][outcome] = true;
@@ -107,8 +104,10 @@ void print_outcomes(const std::array<std::uint64_t, 4>& counts) {
 }
 
 void audit_record(Stats& stats, const std::uint8_t* record,
+                  unsigned fixedSquare,
                   std::uint64_t& previous, bool& havePrevious) {
     const std::uint64_t key = logical_key(record);
+    const UltimateDevilSlice::State state = UltimateDevilSlice::decode(key);
     const unsigned outcome = record[7];
     std::uint16_t dtw = 0;
     std::memcpy(&dtw, record + 8, sizeof(dtw));
@@ -118,14 +117,26 @@ void audit_record(Stats& stats, const std::uint8_t* record,
         ++stats.sortedResidual;
     previous = key;
     havePrevious = true;
-    const unsigned minions = minion_count(key);
-    const unsigned side = static_cast<unsigned>((key >> 47) & 1);
-    const bool alive = ((key >> 48) & 1) != 0;
+    const unsigned minions = state.minionCount;
+    const unsigned side = state.side;
     ++stats.outcomes[outcome];
     ++stats.byMinions[minions][outcome];
     ++stats.bySide[side][outcome];
-    if (alive)
+    if (state.alive)
         ++stats.aliveByMinionsAndSide[minions][side][outcome];
+    switch (UltimateDevilSlice::classify(state, fixedSquare)) {
+    case UltimateDevilSlice::Bucket::Dead:
+        break;
+    case UltimateDevilSlice::Bucket::Excluded:
+        ++stats.excludedByMinionsAndSide[minions][side][outcome];
+        break;
+    case UltimateDevilSlice::Bucket::Trivial:
+        ++stats.trivialByMinionsAndSide[minions][side][outcome];
+        break;
+    case UltimateDevilSlice::Bucket::Display:
+        ++stats.displayByMinionsAndSide[minions][side][outcome];
+        break;
+    }
     stats.maxDtw[outcome] = std::max(stats.maxDtw[outcome], dtw);
     if (!stats.haveWitness[minions][outcome]) {
         stats.haveWitness[minions][outcome] = true;
@@ -165,6 +176,7 @@ Stats audit_stream(std::istream& stream, const Header& header) {
             throw std::runtime_error("truncated stateful sidecar records");
         for (std::size_t index = 0; index < records; ++index)
             audit_record(stats, bytes.data() + index * RecordBytes,
+                         header.square,
                          previous, havePrevious);
         completed += records;
     }
@@ -239,6 +251,7 @@ int main(int argc, char** argv) try {
                 bool havePrevious = false;
                 for (std::uint64_t index = begin; index < end; ++index)
                     audit_record(stats, bytes + HeaderBytes + index * RecordBytes,
+                                 header.square,
                                  previous, havePrevious);
             });
         }
@@ -263,7 +276,24 @@ int main(int argc, char** argv) try {
       total.outcomes[3];
     if (conservation != header.count || total.sortedResidual)
         throw std::runtime_error("stateful sidecar audit residual");
+    std::uint64_t rootFilterResidual = 0;
+    for (unsigned minions = 0; minions <= MaxMinions; ++minions)
+        for (unsigned side = 0; side < 2; ++side)
+            for (unsigned outcome = 1; outcome <= 3; ++outcome) {
+                const std::uint64_t raw =
+                  total.aliveByMinionsAndSide[minions][side][outcome];
+                const std::uint64_t classified =
+                  total.excludedByMinionsAndSide[minions][side][outcome] +
+                  total.trivialByMinionsAndSide[minions][side][outcome] +
+                  total.displayByMinionsAndSide[minions][side][outcome];
+                rootFilterResidual += raw > classified
+                  ? raw - classified : classified - raw;
+            }
+    if (rootFilterResidual)
+        throw std::runtime_error("stateful root-filter conservation residual");
     std::cout << "{\"schema\":\"ultimate-devil-stateful-census-v1\","
+              << "\"root_filter_semantics\":"
+                 "\"stateful-reachability-admitted-minus-trivial-v1\","
               << "\"square\":" << expectedSquare << ",\"states\":"
               << header.count << ",\"outcomes\":";
     print_outcomes(total.outcomes);
@@ -282,6 +312,26 @@ int main(int argc, char** argv) try {
             if (side) std::cout << ',';
             print_outcomes(total.aliveByMinionsAndSide[minions][side]);
         }
+        std::cout << "],\"root_filter_by_side_to_move\":[";
+        for (unsigned side = 0; side < 2; ++side) {
+            if (side) std::cout << ',';
+            std::array<std::uint64_t, 4> admitted{};
+            for (unsigned outcome = 1; outcome <= 3; ++outcome)
+                admitted[outcome] =
+                  total.aliveByMinionsAndSide[minions][side][outcome] -
+                  total.excludedByMinionsAndSide[minions][side][outcome];
+            std::cout << "{\"total\":";
+            print_outcomes(total.aliveByMinionsAndSide[minions][side]);
+            std::cout << ",\"excluded\":";
+            print_outcomes(total.excludedByMinionsAndSide[minions][side]);
+            std::cout << ",\"admitted\":";
+            print_outcomes(admitted);
+            std::cout << ",\"trivial\":";
+            print_outcomes(total.trivialByMinionsAndSide[minions][side]);
+            std::cout << ",\"display\":";
+            print_outcomes(total.displayByMinionsAndSide[minions][side]);
+            std::cout << '}';
+        }
         std::cout << ']';
         std::cout << ",\"witness_keys\":{";
         for (unsigned outcome = 1; outcome <= 3; ++outcome) {
@@ -295,6 +345,7 @@ int main(int argc, char** argv) try {
     std::cout << "],\"max_dtw\":{\"win\":" << total.maxDtw[1]
               << ",\"loss\":" << total.maxDtw[2] << ",\"draw\":"
               << total.maxDtw[3] << "},\"conservation_residual\":0,"
+              << "\"root_filter_conservation_residual\":0,"
               << "\"sorted_key_residual\":0}\n";
     return 0;
 } catch (const std::exception& error) {

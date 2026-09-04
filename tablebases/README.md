@@ -1500,21 +1500,33 @@ rows from filenames.
 > its audit binary is
 > sha256:cb9fda10d5e5aeec3f4d5bcf7a6ec9c10ecb6f21a7c7153cd2d7e32b664725eb.
 
-> **Devil current-Minion plot audit (2026-09-03):** the six rows immediately
+> **Devil current-Minion plot audit (2026-09-04):** the six rows immediately
 > below aggregate Devil are exact lone-Devil root slices with the Devil alive
-> and 0 through 5 currently surviving Minions. These are root-only filters:
-> every solved successor remains unrestricted, so the underlying W/L/D values
-> still include later Devil spawns. Companion cells are intentionally blank
-> until their own material classes are audited. The complete certified
-> 34,981,631,519-state class was streamed serially from immutable public
-> Hugging Face revision `ed8375c43f26e42c5b14ac79ff41e77d4317b97f` and
+> and 0 through 5 currently surviving Minions. Each slice applies the same
+> ordinary-predecessor reachability admission and immediate-stalemate/material-
+> simplification subtraction as the established plot; every solved successor
+> remains unrestricted, so the underlying W/L/D values still include later
+> Devil spawns. The zero-Minion slice reproduces the authenticated historical
+> entry-root audit exactly and is a draw for either starting side. The other
+> five slices contain no Devil wins after filtering. Companion cells are
+> intentionally blank until their own material classes are audited. The
+> complete certified 34,981,631,519-state class was streamed serially from
+> immutable public Hugging Face revision
+> `ed8375c43f26e42c5b14ac79ff41e77d4317b97f` and
 > SHA-256 verified without retaining tablebase payloads on disk. The six rows
 > cover 33,631,448,390 alive-Devil roots; 1,350,183,129 dead-Devil continuation
 > states remain in the solved class but are excluded from these root cohorts.
+> Of the alive roots, 50,240 predecessor-unsafe states and 1,220,336,641
+> immediate trivial states are excluded, leaving 32,411,061,509 displayed
+> roots. A native verifier exhaustively checked all 591,552 zero-Minion compact
+> states and deterministically sampled another 250,000 Minion states, including
+> compact Minion-code round trips, before the long stream was allowed to run.
 > The compact input is `tablebases/devil-minion-start-summary.json`,
-> sha256:4a8f050cb533f1ec1fe43668394bdb7f885e1958c9db0b94dca2364baafc7a2b;
-> its audit source is
-> sha256:05f340f7a100e993f57a8c015f9f5fff1a591bc72d6153182dfa576827fe8607.
+> sha256:f00535c2d05b9b70f7e6c0488eebf38f3a3829c0f995e880734b4f40c0782a5f;
+> its audit source bundle is
+> sha256:9181f97e8209def10013b9e86fe4d123a9f4b7105f4fe75d51eb20d8c840dfc9,
+> and its native classifier-verifier source bundle is
+> sha256:3f2e10fc0e0e0bad623a58d9fbcc27baa74189ceac4d826af5aa3dae994b6b2b.
 
 > **Prior AWS fleet audit (2026-08-20 17:36 PDT / 2026-08-21 00:36 UTC):** i03 was
 > externally stopped with EC2 reason `User initiated` at about 21:04 UTC. Its

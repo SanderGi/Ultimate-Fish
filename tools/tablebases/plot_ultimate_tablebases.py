@@ -300,8 +300,9 @@ def read_devil_minion_starts(path: Path) -> dict[tuple[str, int], ReadmeResult]:
     document = json.loads(path.read_text(encoding="utf-8"))
     expected_counts = tuple(range(6))
     if (
-        document.get("schema") != 1
-        or document.get("semantics") != "reachable-devil-alive-root-current-minions-v1"
+        document.get("schema") != 2
+        or document.get("semantics")
+        != "stateful-reachability-admitted-minus-trivial-v1"
         or tuple(document.get("minion_counts", ())) != expected_counts
         or set(document.get("files", {})) != {"kdevilk.uftb"}
     ):
@@ -316,12 +317,16 @@ def read_devil_minion_starts(path: Path) -> dict[tuple[str, int], ReadmeResult]:
             sides = []
             for key in ("first_starts", "second_starts"):
                 side = raw[key]
+                total = side["total"]
+                excluded = side["excluded"]
                 admitted = side["admitted"]
                 trivial = side["trivial"]
                 display = side["display"]
                 for field in ("wins", "losses", "draws"):
                     if (
-                        trivial[field] > admitted[field]
+                        excluded[field] > total[field]
+                        or admitted[field] != total[field] - excluded[field]
+                        or trivial[field] > admitted[field]
                         or display[field] != admitted[field] - trivial[field]
                     ):
                         raise ValueError(

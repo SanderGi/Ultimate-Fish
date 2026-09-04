@@ -29,8 +29,8 @@ cleanup = load("ultimate_local_tablebase_cleanup",
 
 
 class UltimateTablebaseLedgerTests(unittest.TestCase):
-    def test_lone_devil_stateful_recovery_is_distinct_from_entry_slice(self):
-        """Never promote the minion-free projection as the stateful result."""
+    def test_lone_devil_stateful_recovery_is_distinct_from_entry_root_projection(self):
+        """Never promote the entry-root projection as the stateful result."""
         readme = ledger.README.read_text()
         rows = {row.key: row for row in ledger.entries(readme)}
         lone = rows["single:devil"]
@@ -39,7 +39,7 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual("certified", lone.status)
         self.assertEqual("ultimate-devil-stateful-class-certificate.json",
                          lone.filename)
-        self.assertIn("entry slice", lone.storage)
+        self.assertIn("entry-root projection", lone.storage)
         self.assertIn("all twelve primary planes", lone.storage)
         self.assertIn("95649cf36a9f6287379e9d29ee80b67f7af9c8ca6dff0298e73977f458bd3e0f",
                       lone.storage)
@@ -55,7 +55,7 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         # The authority note must explicitly retract the former 12/12 root
         # projection as certification of the stateful class.
         self.assertIn("single:devil` is **CERTIFIED**", readme)
-        self.assertIn("minion-free entry-slice projection", readme)
+        self.assertIn("causal entry-root projection", readme)
         self.assertNotIn("single:devil` C1 job remains", readme)
         self.assertNotIn("the live Devil split", readme)
 

@@ -1,4 +1,5 @@
 import importlib.util
+import copy
 import json
 from pathlib import Path
 import sys
@@ -25,10 +26,21 @@ audit = load("audit_ultimate_devil_minion_starts_test",
 
 
 def side(wins: int, losses: int, draws: int) -> dict[str, object]:
+    counts = {"wins": wins, "losses": losses, "draws": draws}
+    zero = {"wins": 0, "losses": 0, "draws": 0}
     return {
-        "admitted": {"wins": wins, "losses": losses, "draws": draws},
-        "trivial": {"wins": 0, "losses": 0, "draws": 0},
-        "display": {"wins": wins, "losses": losses, "draws": draws},
+        "total": dict(counts), "excluded": dict(zero),
+        "admitted": dict(counts), "trivial": dict(zero),
+        "display": dict(counts),
+    }
+
+
+def root_filter(outcomes: dict[str, int]) -> dict[str, dict[str, int]]:
+    zero = {name: 0 for name in ("win", "loss", "draw")}
+    return {
+        "total": dict(outcomes), "excluded": dict(zero),
+        "admitted": dict(outcomes), "trivial": dict(zero),
+        "display": dict(outcomes),
     }
 
 
@@ -43,8 +55,8 @@ class DevilMinionStartPlotTests(unittest.TestCase):
 
     def test_summary_parser_and_lone_cell_leave_companions_blank(self):
         document = {
-            "schema": 1,
-            "semantics": "reachable-devil-alive-root-current-minions-v1",
+            "schema": 2,
+            "semantics": "stateful-reachability-admitted-minus-trivial-v1",
             "minion_counts": list(range(6)),
             "files": {
                 "kdevilk.uftb": {
@@ -78,17 +90,30 @@ class DevilMinionStartPlotTests(unittest.TestCase):
     def test_summary_aggregates_only_alive_roots_into_rows(self):
         rows = []
         for count in range(6):
-            first = {"win": count + 1, "loss": 0, "draw": 0}
-            second = {"win": 0, "loss": count + 2, "draw": 0}
+            if count == 0:
+                first = dict(audit.ZERO_MINION_ORACLE[0]["total"])
+                second = dict(audit.ZERO_MINION_ORACLE[1]["total"])
+                filters = copy.deepcopy(audit.ZERO_MINION_ORACLE)
+            else:
+                first = {"win": count + 1, "loss": 0, "draw": 0}
+                second = {"win": 0, "loss": count + 2, "draw": 0}
+                filters = [root_filter(first), root_filter(second)]
             rows.append({
                 "minions": count,
                 "alive_outcomes_by_side_to_move": [first, second],
+                "root_filter_by_side_to_move": filters,
             })
-        alive = sum(count + 1 + count + 2 for count in range(6))
+        alive_outcomes = {
+            name: sum(row["alive_outcomes_by_side_to_move"][side][name]
+                      for row in rows for side in range(2))
+            for name in ("win", "loss", "draw")
+        }
+        alive = sum(alive_outcomes.values())
         certificate = {
             "aggregate": {
-                "states": alive + 7, "wins": 21, "losses": 27,
-                "draws": 7,
+                "states": alive + 7, "wins": alive_outcomes["win"],
+                "losses": alive_outcomes["loss"],
+                "draws": alive_outcomes["draw"] + 7,
             },
             "partitions": [{
                 "label": "A1", "square": 0, "states": alive + 7,
@@ -96,7 +121,8 @@ class DevilMinionStartPlotTests(unittest.TestCase):
             }],
         }
         outcomes = {
-            "win": 21, "loss": 27, "draw": 7}
+            "win": alive_outcomes["win"], "loss": alive_outcomes["loss"],
+            "draw": alive_outcomes["draw"] + 7}
         progress = {"0": {
             "states": alive + 7, "outcomes": outcomes,
             "by_minion_count": rows, "elapsed_seconds": 1.0,
@@ -104,7 +130,8 @@ class DevilMinionStartPlotTests(unittest.TestCase):
         }}
         summary = audit.build_summary(
             certificate, "b" * 64, progress, "dataset", "c" * 40,
-            "d" * 64, "e" * 64)
+            "d" * 64, "e" * 64, "f" * 64,
+            "DEVIL_SLICE_VERIFIED states=1 admitted=1")
         self.assertEqual(alive, summary["alive_root_states"])
         self.assertEqual(7, summary["dead_devil_continuation_states"])
         self.assertEqual(
@@ -112,6 +139,24 @@ class DevilMinionStartPlotTests(unittest.TestCase):
             summary["files"]["kdevilk.uftb"]["minion_counts"]["3"]
             ["first_starts"]["display"],
         )
+        self.assertEqual(2 * 25_120,
+                         summary["root_filter_states"]["excluded"])
+
+    def test_a1_gate_rejects_semantic_drift(self):
+        census = {
+            "label": "A1", "square": 0,
+            "by_minion_count": [
+                {"minions": count,
+                 "root_filter_by_side_to_move": [
+                     *copy.deepcopy(audit.A1_ZERO_MINION_ORACLE)]}
+                for count in range(6)
+            ],
+        }
+        audit.validate_a1_gate(census)
+        census["by_minion_count"][0]["root_filter_by_side_to_move"][0][
+            "display"]["draw"] -= 1
+        with self.assertRaisesRegex(RuntimeError, "A1 pilot"):
+            audit.validate_a1_gate(census)
 
 
 if __name__ == "__main__":
