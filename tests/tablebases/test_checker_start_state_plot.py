@@ -109,7 +109,10 @@ class CheckerStartStatePlotTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             overlay = root / "kghostkchecker.ufiw"
-            source, model = next(iter(audit.TRANSPOSED_INFORMATION_OVERLAYS))[1:]
+            source = (
+                "231d2f45d8d1db2a6e47aa413485444d93599fc68ae0d069afabd5e60369ee10")
+            model = (
+                "bb4e8b3b44571b7ed5caad19dc17d26db9afe976393175f399f5e546ea490316")
             overlay.write_bytes(b"UFIW2\0\0\0" + b"\0" * 24 +
                                 source.encode("ascii") + model.encode("ascii"))
             record = {"primary": "ghost", "secondary": "checker",
@@ -117,6 +120,38 @@ class CheckerStartStatePlotTests(unittest.TestCase):
             command = audit.command(root / "binary", record,
                                     root / "source.uftb", 2, overlay)
         self.assertIn("--information-transpose-substates", command)
+
+    def test_same_team_ghost_transpose_is_bound_to_exact_overlay(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            overlay = root / "kghostcheckerk.ufiw"
+            source = (
+                "fdd9329ed29fb7823b27e4bd46263b62f6ac66e638b510e232b3ee386ca6be1e")
+            model = (
+                "f983e18aae182467f5a0279996c35087d4984b11c80fe6404f16d9214c26d01d")
+            overlay.write_bytes(b"UFIW2\0\0\0" + b"\0" * 24 +
+                                source.encode("ascii") + model.encode("ascii"))
+            record = {"primary": "ghost", "secondary": "checker",
+                      "opposing": False}
+            command = audit.command(root / "binary", record,
+                                    root / "source.uftb", 2, overlay)
+        self.assertIn("--information-transpose-substates", command)
+
+    def test_transpose_rejects_the_wrong_material_orientation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            overlay = root / "kghostcheckerk.ufiw"
+            source = (
+                "fdd9329ed29fb7823b27e4bd46263b62f6ac66e638b510e232b3ee386ca6be1e")
+            model = (
+                "f983e18aae182467f5a0279996c35087d4984b11c80fe6404f16d9214c26d01d")
+            overlay.write_bytes(b"UFIW2\0\0\0" + b"\0" * 24 +
+                                source.encode("ascii") + model.encode("ascii"))
+            record = {"primary": "ghost", "secondary": "checker",
+                      "opposing": True}
+            with self.assertRaisesRegex(RuntimeError, "material residual"):
+                audit.command(root / "binary", record,
+                              root / "source.uftb", 2, overlay)
 
     def test_summary_parser_checks_conservation_and_preserves_states(self):
         document = {
@@ -226,6 +261,27 @@ class CheckerStartStatePlotTests(unittest.TestCase):
                     for field in ("wins", "losses", "draws")
                 ))
                 self.assertEqual(expected, actual, f"{filename} {key}")
+
+    def test_same_team_ghost_checker_king_cell_is_populated(self):
+        path = ROOT / "tablebases" / "checker-start-state-summary.json"
+        slices = plot.read_checker_start_states(path)
+        king = slices[("kghostcheckerk.uftb", "king")]
+        self.assertEqual(plot.WDL(30_817_192, 0, 0), king.first_starts)
+        self.assertEqual(plot.WDL(0, 29_259_238, 0), king.second_starts)
+
+        summary = plot.read_summary(ROOT / "tablebases" / "README.md")
+        catalog = plot.OutcomeCatalog(summary, checker_start_states=slices)
+        cell = catalog.together_row("checker_king", "ghost")
+        self.assertEqual("win", cell.kind)
+        self.assertEqual(plot.WDL(30_817_192, 0, 0), cell.first)
+        self.assertEqual(plot.WDL(29_259_238, 0, 0), cell.second)
+
+        aggregate = catalog.together("checker", "ghost")
+        normal = catalog.together_row("checker_normal", "ghost")
+        self.assertEqual(aggregate.first.wins,
+                         normal.first.wins + cell.first.wins)
+        self.assertEqual(aggregate.second.wins,
+                         normal.second.wins + cell.second.wins)
 
 
 if __name__ == "__main__":

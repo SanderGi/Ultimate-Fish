@@ -87,6 +87,25 @@ class DevilMinionStartPlotTests(unittest.TestCase):
         self.assertEqual("unknown",
                          catalog.opposed_row("devil_minions_3", "bishop").kind)
 
+    def test_overall_devil_cell_equals_all_filtered_minion_cohorts(self):
+        starts = plot.read_devil_minion_starts(
+            ROOT / "tablebases" / "devil-minion-start-summary.json")
+        summary = plot.read_summary(ROOT / "tablebases" / "README.md")
+        aggregate = summary["kdevilk.uftb"]
+
+        for key in ("first_starts", "second_starts"):
+            rows = [getattr(starts[("kdevilk.uftb", count)], key)
+                    for count in range(6)]
+            expected = plot.WDL(*(
+                sum(getattr(row, field) for row in rows)
+                for field in ("wins", "losses", "draws")
+            ))
+            self.assertEqual(expected, getattr(aggregate, key))
+
+        cell = plot.OutcomeCatalog(summary).single("devil")
+        self.assertEqual(32_411_061_509,
+                         cell.first.total + cell.second.total)
+
     def test_summary_aggregates_only_alive_roots_into_rows(self):
         rows = []
         for count in range(6):

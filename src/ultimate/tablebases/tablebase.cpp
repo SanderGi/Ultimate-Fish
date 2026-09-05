@@ -2382,7 +2382,8 @@ class TablebaseGenerator {
     }
 
     void self_test_angel_transition_decision() const {
-        if (secondaryType_ != PieceType::Angel)
+        if (attackerType_ != PieceType::Jester ||
+            secondaryType_ != PieceType::Angel)
             return;
         constexpr std::uint32_t LegalDotWitness = 492'966;
         const State state = decode_placement(LegalDotWitness);

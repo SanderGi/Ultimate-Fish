@@ -262,17 +262,49 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertNotEqual(
             "unknown", catalog.together("jester", "jester").kind)
 
-    def test_stateful_devil_certificate_is_plotted_not_entry_slice(self):
+    def test_stateful_devil_certificate_plots_filtered_root_cohorts(self):
         summary = plot.read_summary(ledger.README)
         certificate = summary[
             "ultimate-devil-stateful-class-certificate.json"]
         self.assertEqual(certificate, summary["kdevilk.uftb"])
         cell = plot.OutcomeCatalog(summary).single("devil")
         self.assertEqual("mixed", cell.kind)
-        self.assertEqual(8_128_714_266, cell.first.total)
-        self.assertEqual(26_852_917_253, cell.second.total)
-        self.assertEqual(34_981_631_519,
+        self.assertEqual(
+            plot.WDL(0, 4_129_343, 7_478_888_477), cell.first)
+        self.assertEqual(
+            plot.WDL(0, 21_773_540, 24_906_270_149), cell.second)
+        self.assertEqual(7_483_017_820, cell.first.total)
+        self.assertEqual(24_928_043_689, cell.second.total)
+        self.assertEqual(32_411_061_509,
                          cell.first.total + cell.second.total)
+        row = next(item for item in ledger.entries(ledger.README.read_text())
+                   if item.key == "single:devil")
+        first_admitted, first_excluded = ledger.parse_wdl(row.first)
+        second_admitted, second_excluded = ledger.parse_wdl(row.second)
+        self.assertEqual(
+            row.states,
+            first_admitted + first_excluded
+            + second_admitted + second_excluded,
+        )
+
+    def test_every_certified_result_domain_requires_trivial_counts(self):
+        readme = """
+<!-- GENERATED_TABLE_START -->
+| `seed.uftb` | 2 | 0 | 1 / 0 / 0 | 0 / 0 / 1 | `digest` |
+<!-- GENERATED_TABLE_END -->
+<!-- COMPUTATION_LEDGER_START -->
+| `single:test` | Test | single | `test.uftb` | **CERTIFIED** | 2 | future exact domain | 1 / 0 / 0 | 0 / 0 / 1 | 1 / 0; 1 / 0 | stored |
+<!-- COMPUTATION_LEDGER_END -->
+"""
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "README.md"
+            path.write_text(readme, encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "trivial counts"):
+                plot.read_summary(path)
+
+        with self.assertRaisesRegex(ValueError, "trivial count"):
+            plot.parse_wdl(
+                "1 [0] / 0 / 0 [0]", require_trivial=True)
 
     def test_forced_colors_use_trivial_subtracted_display_counts(self):
         forced_win = plot.classify(

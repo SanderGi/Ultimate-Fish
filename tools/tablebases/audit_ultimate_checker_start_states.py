@@ -48,17 +48,23 @@ INFORMATION_LINE = re.compile(
     r"information_reachability_substate_(admitted|excluded|trivial) "
     r"substate (\d+) side ([01]) unknown (\d+) win (\d+) loss (\d+) draw (\d+)"
 )
-# This one certified overlay is intentionally encoded in logical
-# [Checker substate][Ghost visibility] order while its concrete Ghost-primary
-# source is [visibility][Checker substate]. Bind the transpose to the exact
-# source/model pair so a future overlay cannot silently inherit the exception.
-TRANSPOSED_INFORMATION_OVERLAYS = frozenset({
+# These certified overlays are intentionally encoded in logical [Checker
+# substate][Ghost visibility] order while their concrete Ghost-primary sources
+# are [visibility][Checker substate]. Bind each transpose to its exact
+# source/model pair and material orientation so a future overlay cannot
+# silently inherit the exception.
+TRANSPOSED_INFORMATION_OVERLAYS = {
+    (
+        "kghostcheckerk",
+        "fdd9329ed29fb7823b27e4bd46263b62f6ac66e638b510e232b3ee386ca6be1e",
+        "f983e18aae182467f5a0279996c35087d4984b11c80fe6404f16d9214c26d01d",
+    ): ("ghost", "checker", False),
     (
         "kghostkchecker",
         "231d2f45d8d1db2a6e47aa413485444d93599fc68ae0d069afabd5e60369ee10",
         "bb4e8b3b44571b7ed5caad19dc17d26db9afe976393175f399f5e546ea490316",
-    ),
-})
+    ): ("ghost", "checker", True),
+}
 
 
 def sha256(path: Path) -> str:
@@ -251,9 +257,10 @@ def command(binary: Path, record: dict[str, Any], table: Path,
                "--information-source-sha256", source_sha,
                "--information-model-sha256", model_sha]
     transpose_key = (overlay.stem, source_sha, model_sha)
-    if transpose_key in TRANSPOSED_INFORMATION_OVERLAYS:
+    transpose_material = TRANSPOSED_INFORMATION_OVERLAYS.get(transpose_key)
+    if transpose_material is not None:
         if (record["primary"], record.get("secondary"),
-                bool(record.get("opposing"))) != ("ghost", "checker", True):
+                bool(record.get("opposing"))) != transpose_material:
             raise RuntimeError("Ghost/Checker transpose material residual")
         result.append("--information-transpose-substates")
     return result
@@ -434,6 +441,10 @@ def main() -> None:
     parser.add_argument("--revision", default=DEFAULT_REVISION)
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--max-retries", type=int, default=5)
+    parser.add_argument(
+        "--refresh", action="append", default=[], metavar="FILENAME",
+        help="reaudit this certified filename even when its cached hashes match",
+    )
     args = parser.parse_args()
     if not 1 <= args.workers <= 4:
         parser.error("--workers must be between 1 and 4")
@@ -461,6 +472,13 @@ def main() -> None:
         (filename, record) for filename, record in material.items()
         if summaries.get(filename) and summaries[filename].status == "certified"
     ]
+    certified = {filename for filename, _ in certified_items}
+    refresh = set(args.refresh)
+    if not refresh <= certified:
+        parser.error(
+            f"--refresh is not a certified Checker record: "
+            f"{sorted(refresh - certified)}"
+        )
     for filename, record in certified_items:
         if (record["primary"] == "checker" and
                 record.get("secondary") == "checker" and
@@ -504,7 +522,8 @@ def main() -> None:
         if information and overlay_entry is None:
             raise RuntimeError(f"Hugging Face catalog lacks {overlay_name}")
         cached = progress.get(filename)
-        if (cached and cached.get("audit_binary_sha256") == binary_sha and
+        if (filename not in refresh and cached and
+                cached.get("audit_binary_sha256") == binary_sha and
                 cached.get("tablebase_sha256") == table_entry["sha256"] and
                 cached.get("information_overlay_sha256") ==
                 (overlay_entry["sha256"] if overlay_entry else None)):
@@ -555,7 +574,6 @@ def main() -> None:
                 table.unlink(missing_ok=True)
                 table.with_suffix(table.suffix + ".download").unlink(missing_ok=True)
 
-    certified = {filename for filename, _ in certified_items}
     if set(progress) != certified:
         raise RuntimeError(
             "Checker summary coverage residual: "

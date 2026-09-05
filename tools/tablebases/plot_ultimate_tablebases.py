@@ -150,7 +150,7 @@ PIECE_LABELS.update(
 )
 
 
-def parse_wdl(text: str) -> WDL:
+def parse_wdl(text: str, *, require_trivial: bool = False) -> WDL:
     """Parse plotted W/L/D after subtracting `[trivial]` positions.
 
     Parenthesized unreachable counts are outside the admitted count and remain
@@ -165,6 +165,8 @@ def parse_wdl(text: str) -> WDL:
         )
         if not match:
             raise ValueError(f"invalid W/L/D value: {text!r}")
+        if require_trivial and match.group(2) is None:
+            raise ValueError(f"W/L/D lacks explicit trivial count: {text!r}")
         admitted = int(match.group(1).replace(",", ""))
         trivial = int(match.group(2).replace(",", "")) if match.group(2) else 0
         if trivial > admitted:
@@ -206,12 +208,18 @@ def read_summary(path: Path) -> dict[str, ReadmeResult]:
             filename = fields[3].strip("`")
             key = fields[0].strip("`")
             status = fields[4].strip("*").lower()
-            if (
-                status == "certified"
-                and fields[6] in {"concrete", "information v2"}
-                and ("[" not in fields[7] or "[" not in fields[8])
-            ):
-                raise ValueError(f"certified row lacks trivial counts: {filename}")
+            # Every certified result-bearing plot cell must explicitly carry
+            # authenticated trivial counts.  Do not key this invariant to a
+            # list of known result-domain labels: a new exact solver domain
+            # must not silently fall back to plotting its full closure census.
+            if status == "certified" and fields[7] != "—" and fields[8] != "—":
+                try:
+                    parse_wdl(fields[7], require_trivial=True)
+                    parse_wdl(fields[8], require_trivial=True)
+                except ValueError as exc:
+                    raise ValueError(
+                        f"certified row lacks trivial counts: {filename}"
+                    ) from exc
             # The computation ledger is canonical.  In particular, certified
             # S3-only payloads no longer have to appear in the legacy generated
             # local-file summary, but their exact W/L/D values still belong in
@@ -230,9 +238,9 @@ def read_summary(path: Path) -> dict[str, ReadmeResult]:
             # The complete stateful Devil runtime is twelve canonical UFDS
             # partitions bound by a class certificate.  Its logical planner
             # record retains the historical kdevilk.uftb name, which denotes
-            # only an excluded minion-free entry slice.  Alias the certified
-            # class result solely for catalog lookup; never read the entry
-            # slice's old outcome cells.
+            # only an excluded minion-free entry-root projection.  Alias the
+            # certificate's audited, root-filtered ledger result solely for
+            # catalog lookup; never read the projection's old outcome cells.
             if key == "single:devil":
                 results["kdevilk.uftb"] = raw
     return results
