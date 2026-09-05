@@ -50,7 +50,6 @@ Kind = Literal[
     "loss",
     "computing",
     "unknown",
-    "duplicate",
 ]
 
 
@@ -98,8 +97,14 @@ COLORS = {
     "loss": "#D15B3B",
     "computing": "#C9D8E6",
     "unknown": "#FFFFFF",
-    "duplicate": "#FFFFFF",
 }
+
+PLOT_SCOPE_CAPTION = (
+    "Reachable positions only · Immediate stalemates and forced one-ply/tactical "
+    "material simplifications are excluded · Prince: cont=0 starting boundaries "
+    "only · Copycat: starts with one mirrored pair · Devil: own spawned Minions "
+    "only; starts on ranks 1-3"
+)
 
 PIECE_LABELS = {piece.name: piece.name.title() for piece in PIECES}
 PIECE_BY_NAME = {piece.name: piece for piece in PIECES}
@@ -1040,11 +1045,9 @@ class OutcomeCatalog:
         return self.opposed(row, column)
 
     def together(self, row: str, column: str) -> Cell:
-        if PIECE_INDEX[column] > PIECE_INDEX[row]:
-            return Cell("duplicate")
-        if deferred_material(row, column):
-            return Cell("unknown")
         first, second = sorted((row, column), key=PIECE_INDEX.__getitem__)
+        if deferred_material(first, second):
+            return Cell("unknown")
         if not sufficient_pair(PIECE_BY_NAME[first], PIECE_BY_NAME[second], True):
             return known_draw()
         return self._cell_for_record(self.same_team.get((first, second)))
@@ -1117,7 +1120,7 @@ def legend_positions(
 
 
 def cell_text(cell: Cell) -> str:
-    if cell.kind in {"unknown", "duplicate", "computing"}:
+    if cell.kind in {"unknown", "computing"}:
         return ""
     if cell.kind == "win":
         return "Win"
@@ -1149,6 +1152,27 @@ def cell_text(cell: Cell) -> str:
         return "\n".join(f"{label} {first}%" for label, first, _ in displayed)
     lines = [f"{label} {first}–{second}%" for label, first, second in displayed]
     return "\n".join(lines)
+
+
+def same_team_grid(
+    catalog: OutcomeCatalog, rows: list[str], columns: list[str]
+) -> list[list[Cell]]:
+    """Build a full same-team grid with one source Cell per mirrored pair."""
+    mirrored: dict[tuple[str, str], Cell] = {}
+    for row_index, row in enumerate(columns):
+        for column in columns[row_index:]:
+            cell = catalog.together(row, column)
+            mirrored[(row, column)] = cell
+            mirrored[(column, row)] = cell
+    return [
+        [
+            mirrored[(row, column)]
+            if row in PIECE_INDEX
+            else catalog.together_row(row, column)
+            for column in columns
+        ]
+        for row in rows
+    ]
 
 
 def diagonal_hatch(
@@ -1365,7 +1389,7 @@ def render_png(
     )
     draw.text(
         (width // 2, 151 * scale),
-        "Reachable positions only · Immediate stalemates and forced one-ply/tactical material simplifications are excluded · Prince: cont=0 starting boundaries only · Copycat: one linked mirrored pair · Devil: own spawned Minions only; starts on ranks 1-3",
+        PLOT_SCOPE_CAPTION,
         fill=COLORS["muted"],
         font=font(20 * scale),
         anchor="ma",
@@ -1392,7 +1416,7 @@ def render_png(
         "King + A + B  vs  King",
         names,
         rows,
-        [[catalog.together_row(row, column) for column in names] for row in rows],
+        same_team_grid(catalog, rows, names),
         cell_width,
         cell_height,
         row_label_width,
@@ -1424,7 +1448,7 @@ def render_png(
         ("loss_star", "Loss when column starts"),
         ("loss", "Forced loss"),
         ("computing", "Computing"),
-        ("unknown", "Not computed/duplicate"),
+        ("unknown", "Not computed"),
     )
     legend_y = height - 126 * scale
     legend_font = font(22 * scale)
@@ -1658,7 +1682,7 @@ def render_svg(
     )
     svg_text(
         elements, (width // 2, 151 * scale),
-        "Reachable positions only · Immediate stalemates and forced one-ply/tactical material simplifications are excluded · Prince: cont=0 starting boundaries only · Copycat: one linked mirrored pair · Devil: own spawned Minions only; starts on ranks 1-3",
+        PLOT_SCOPE_CAPTION,
         fill=COLORS["muted"], size=20 * scale, baseline="hanging",
     )
 
@@ -1672,7 +1696,7 @@ def render_svg(
     x += single_width + gap
     draw_grid_svg(
         elements, (x, grid_y), "King + A + B  vs  King", names, rows,
-        [[catalog.together_row(row, column) for column in names] for row in rows],
+        same_team_grid(catalog, rows, names),
         cell_width, cell_height, row_label_width, header_height,
     )
     x += matrix_width + gap
@@ -1694,7 +1718,7 @@ def render_svg(
         ("loss_star", "Loss when column starts"),
         ("loss", "Forced loss"),
         ("computing", "Computing"),
-        ("unknown", "Not computed/duplicate"),
+        ("unknown", "Not computed"),
     )
     legend_y = height - 126 * scale
     legend_size = 22 * scale

@@ -238,19 +238,47 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
     def test_closed_preservation_queue_uses_final_or_planned_cells(self):
         catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))
         self.assertEqual("win", catalog.together("ghost", "rook").kind)
+        self.assertEqual(
+            catalog.together("ghost", "rook"),
+            catalog.together("rook", "ghost"),
+        )
         self.assertEqual("win", catalog.together("prince", "ghost").kind)
         self.assertEqual("unknown", catalog.opposed("ghost", "pawn").kind)
         self.assertEqual("no_forced_loss",
                          catalog.opposed("ghost", "turtle").kind)
         self.assertEqual("win", catalog.opposed("ghost", "checker").kind)
-        # The mirrored upper triangle remains deduplicated.
-        self.assertEqual("duplicate", catalog.together("rook", "ghost").kind)
 
-    def test_certified_ghost_angel_rows_preserve_dedup(self):
+    def test_certified_ghost_angel_rows_fill_both_mirrored_cells(self):
         catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))
         self.assertEqual("win", catalog.together("angel", "ghost").kind)
         self.assertEqual("mixed", catalog.opposed("ghost", "angel").kind)
-        self.assertEqual("duplicate", catalog.together("ghost", "angel").kind)
+        self.assertEqual(
+            catalog.together("angel", "ghost"),
+            catalog.together("ghost", "angel"),
+        )
+
+    def test_same_team_grid_reuses_each_cell_across_the_diagonal(self):
+        catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))
+        names = [piece.name for piece in plot.PIECES]
+        cells = plot.same_team_grid(catalog, names, names)
+
+        for row_index, row in enumerate(names):
+            for column_index, column in enumerate(names):
+                self.assertIs(
+                    cells[row_index][column_index],
+                    cells[column_index][row_index],
+                    f"{row}+{column}",
+                )
+                self.assertEqual(
+                    catalog.together(row, column),
+                    cells[row_index][column_index],
+                )
+
+    def test_plot_caption_describes_copycat_start_state(self):
+        self.assertIn(
+            "Copycat: starts with one mirrored pair", plot.PLOT_SCOPE_CAPTION
+        )
+        self.assertNotIn("linked mirrored pair", plot.PLOT_SCOPE_CAPTION)
 
     def test_s3_only_certified_ledger_result_is_plotted(self):
         summary = plot.read_summary(ledger.README)
