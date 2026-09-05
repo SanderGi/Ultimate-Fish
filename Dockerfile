@@ -17,6 +17,7 @@ WORKDIR /build/ui
 COPY ui/package.json ui/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci
 COPY ui/ ./
+COPY tablebases/ultimate-tablebase-grid.svg public/ultimate-tablebase-grid.svg
 RUN npm run build
 
 

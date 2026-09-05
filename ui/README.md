@@ -62,6 +62,12 @@ Next server, the loopback engine bridge, the draft helper, and the bundled
 tablebases into one image. The public server listens on port `8080`; the engine
 bridge remains accessible only inside the container.
 
+The image also publishes the canonical tablebase outcome plot at
+`/ultimate-tablebase-grid.svg`. The Docker build copies it directly from
+`tablebases/ultimate-tablebase-grid.svg`, so the deployed asset cannot drift
+from the repository plot. It is covered by the same password protection as the
+rest of the server.
+
 Production fails closed unless `UI_PASSWORD` is set. HTTP Basic authentication
 uses the username `ultimatefish` by default; set `UI_USERNAME` to override it.
 For Fly.io, configure both values as app secrets rather than build arguments:

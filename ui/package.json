@@ -9,7 +9,7 @@
     "build": "next build",
     "dev": "next dev",
     "engine": "node engine-server.mjs",
-    "test": "node --test tests/board-interactions.test.mjs tests/engine-settings.test.mjs tests/piece-state.test.mjs tests/public-information.test.mjs tests/rendered-html.test.mjs tests/engine-bridge.test.mjs tests/tablebase-manager.test.mjs",
+    "test": "node --test tests/board-interactions.test.mjs tests/deployment.test.mjs tests/engine-settings.test.mjs tests/piece-state.test.mjs tests/public-information.test.mjs tests/rendered-html.test.mjs tests/engine-bridge.test.mjs tests/tablebase-manager.test.mjs",
     "test:ui": "node --test tests/rendered-html.test.mjs",
     "test:bridge": "node --test tests/engine-bridge.test.mjs",
     "lint": "eslint . --ignore-pattern .next"
