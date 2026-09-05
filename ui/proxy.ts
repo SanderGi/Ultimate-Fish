@@ -1,5 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { isPasswordExemptPath } from "./password-exemption.mjs";
 
 function equal(left: string, right: string) {
   const leftBytes = Buffer.from(left);
@@ -19,6 +20,8 @@ function unauthorized() {
 }
 
 export function proxy(request: NextRequest) {
+  if (isPasswordExemptPath(request.nextUrl.pathname)) return NextResponse.next();
+
   const password = process.env.UI_PASSWORD;
   if (!password) {
     if (process.env.NODE_ENV !== "production") return NextResponse.next();

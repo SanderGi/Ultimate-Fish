@@ -65,8 +65,8 @@ bridge remains accessible only inside the container.
 The image also publishes the canonical tablebase outcome plot at
 `/ultimate-tablebase-grid.svg`. The Docker build copies it directly from
 `tablebases/ultimate-tablebase-grid.svg`, so the deployed asset cannot drift
-from the repository plot. It is covered by the same password protection as the
-rest of the server.
+from the repository plot. This exact path is the server's sole password
+exemption; every other page, API route, and static asset remains protected.
 
 Production fails closed unless `UI_PASSWORD` is set. HTTP Basic authentication
 uses the username `ultimatefish` by default; set `UI_USERNAME` to override it.
