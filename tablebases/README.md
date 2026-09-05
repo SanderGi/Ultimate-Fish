@@ -40,12 +40,28 @@ manifests; they are never silently deleted or blindly restarted.
 > preserving. Unfinished checkpoint narratives below are retained as historical
 > provenance only; their ledger rows are **PLANNED** and expose no uncertified
 > result cells. The final downloadable catalog is authenticated at Hugging Face
-> dataset revision `c574ae2347e2b324f0e90888478fb498776cf372`: 462 certified
+> dataset revision `3532f701f81f8ba190d932891818a16af13243b8`: 462 certified
 > ordinary `.uftb` files, two exact auxiliary lower-domain `.uftb` files, and
-> the complete twelve-partition stateful Devil class, with 586 managed
-> payload/sidecar/transport files totaling 498,327,627,605 bytes. The former
+> the complete twelve-partition stateful Devil class, with 588 managed
+> payload/sidecar/transport files totaling 498,517,417,525 bytes. The former
 > versioned S3 preservation bucket was deleted after migration; Hugging Face is
 > the downloadable tablebase authority.
+>
+> **Jester/Angel sidecar recovery (2026-09-04):** the two information overlays
+> accidentally omitted during the final S3-to-Hugging-Face migration were
+> recomputed from the exact certified v3 source and inputs. The recovered
+> `kjesterangelk.ufiw` is 113,873,920 bytes at
+> sha256:69041ef5b9727975045fe69edf51b76e960022f7ada23f8bd1d219b5a4296f6f;
+> `kjesterkangel.ufiw` is 75,916,000 bytes at
+> sha256:9b24d964480077be987a9dc6c05f6b63e3be3bac11d050d2fab56053cd92d0da.
+> Both exactly reproduce the historical certified hashes and were published
+> atomically at the revision above. The UI manager's authenticated catalog and
+> full download path were then exercised against both complete material groups.
+> Recovery worker `i-0a60b212533f48d94` is stopped (not terminated) with its
+> encrypted root volume `vol-0eb28a2751728560a`; private handoff bucket
+> `ultimatefish-jester-angel-recompute-20260904-831688117652` and its narrowly
+> scoped IAM role/profile remain intact pending operator-reviewed cleanup. None
+> of those temporary AWS resources is a downloadable tablebase authority.
 >
 > The two exact lower-domain dependencies are part of the Hugging Face catalog:
 > `kcopycatlinkedk.uftb` covers arbitrary intact linked
@@ -1624,20 +1640,21 @@ those rows from filenames.
 > conserve each ledger aggregate for both starting sides; only the twelve legal
 > deployment buckets are plotted, so they need not sum to the broader aggregate
 > containing later-game roots on ranks 4-10. The inventory contains 32 certified
-> one-Angel material records. All 28 concrete tables and both available
-> Ghost/Angel information overlays were downloaded from immutable public
-> Hugging Face revision
-> `ed8375c43f26e42c5b14ac79ff41e77d4317b97f`, SHA-256 verified, audited
-> serially with two native workers, and deleted one material group at a time.
-> The two Jester/Angel slice cells remain blank: their certified public-
-> information overlays are absent from that dataset, and the ledger-bound S3
-> object versions are no longer available. The opposed Ghost-primary/Angel
-> information record required W/L role normalization on both starting-side
+> one-Angel material records. All 28 concrete tables and both Ghost/Angel
+> information overlays were downloaded from immutable public Hugging Face
+> revision `ed8375c43f26e42c5b14ac79ff41e77d4317b97f`, SHA-256 verified,
+> audited serially with two native workers, and deleted one material group at a
+> time. After their byte-identical recovery, the same audit binary processed the
+> same-team and opposed Jester/Angel tables and information overlays from
+> revision `3532f701f81f8ba190d932891818a16af13243b8`. All 32 records and all
+> twelve plotted Angel-square breakdowns are therefore populated. The opposed
+> Ghost-primary/Angel information record required W/L role normalization on
+> both starting-side
 > buckets; the importer accepted it only because the reversed counts exactly
-> matched the authenticated ledger aggregate. Total transfer was 9,963,956,240
+> matched the authenticated ledger aggregate. Total transfer was 10,390,983,288
 > bytes and maximum live payload was 1,423,422,064 bytes. The compact input is
 > `tablebases/angel-start-square-summary.json`,
-> sha256:fd1ffb728542780e2bda9ee519f081086bf1dfbe4c7cd1309a7019908023e1c9;
+> sha256:03bf8804cd81f0358df7b220e80586a59916c96d197c2a1486f5a45085504484;
 > its audit binary is
 > sha256:699c36828a3eb369d427c83adfc7701d270307aff86e03587ff58a02dc515fcb.
 

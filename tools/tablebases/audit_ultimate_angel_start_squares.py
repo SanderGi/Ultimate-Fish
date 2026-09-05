@@ -41,9 +41,12 @@ ALL_SQUARES = tuple(
 PLOTTED_SQUARES = tuple(
     f"{file}{rank}" for rank in range(1, 4) for file in "abcd"
 )
-KNOWN_UNAVAILABLE_OVERLAYS = frozenset({
-    "kjesterangelk.uftb", "kjesterkangel.uftb",
-})
+DEFAULT_REVISION = "3532f701f81f8ba190d932891818a16af13243b8"
+HISTORICALLY_UNAVAILABLE_OVERLAYS_BY_REVISION = {
+    common.DEFAULT_REVISION: frozenset({
+        "kjesterangelk.uftb", "kjesterkangel.uftb",
+    }),
+}
 CONCRETE_LINE = re.compile(
     r"reachability_(primary|secondary)_angel_square"
     r"_(total|excluded|trivial) square ([a-d](?:10|[1-9])) side ([01]) "
@@ -215,7 +218,7 @@ def main() -> None:
                         "ultimatefish-angel-start-square-audit")
     parser.add_argument("--dataset", default=common.DEFAULT_DATASET)
     parser.add_argument("--origin", default=common.DEFAULT_ORIGIN)
-    parser.add_argument("--revision", default=common.DEFAULT_REVISION)
+    parser.add_argument("--revision", default=DEFAULT_REVISION)
     parser.add_argument("--workers", type=int, default=2)
     parser.add_argument("--max-retries", type=int, default=5)
     parser.add_argument("--plan-only", action="store_true",
@@ -244,7 +247,8 @@ def main() -> None:
         if information_material(record):
             overlay_name = f"{Path(filename).stem}.ufiw"
             if overlay_name not in remote:
-                if filename in KNOWN_UNAVAILABLE_OVERLAYS:
+                if filename in HISTORICALLY_UNAVAILABLE_OVERLAYS_BY_REVISION.get(
+                        revision, frozenset()):
                     unavailable.add(filename)
                     continue
                 available = sorted(

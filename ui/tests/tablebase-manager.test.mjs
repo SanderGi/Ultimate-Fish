@@ -317,6 +317,54 @@ test("inventory, verified group download, and group deletion", async () => {
   }
 });
 
+test("Jester Angel information overlays follow both material classes", async () => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "ultimatefish-jester-angel-"));
+  const sameTable = Buffer.from("same-team Jester Angel tablebase");
+  const sameOverlay = Buffer.from("same-team Jester Angel information overlay");
+  const opposedTable = Buffer.from("opposed Jester Angel tablebase");
+  const opposedOverlay = Buffer.from("opposed Jester Angel information overlay");
+  const payloads = new Map([
+    ["kjesterangelk.uftb", sameTable],
+    ["kjesterangelk.ufiw", sameOverlay],
+    ["kjesterkangel.uftb", opposedTable],
+    ["kjesterkangel.ufiw", opposedOverlay],
+  ]);
+  const fetchImpl = async (url) => {
+    if (String(url).includes("/api/datasets/")) {
+      return Response.json([...payloads].map(([filename, payload]) =>
+        catalogFile(filename, payload)));
+    }
+    const match = String(url).match(/\/tablebases\/([^?]+)/);
+    const payload = payloads.get(decodeURIComponent(match?.[1] ?? ""));
+    return payload ? new Response(payload) : new Response("missing", { status: 404 });
+  };
+
+  try {
+    const manager = createTablebaseManager({ directory, fetchImpl });
+    const inventory = await manager.inventory();
+    const same = inventory.entries.find((entry) =>
+      entry.filename === "kjesterangelk.uftb");
+    const opposed = inventory.entries.find((entry) =>
+      entry.filename === "kjesterkangel.uftb");
+    assert.equal(same.displayName, "King + Jester + Angel vs King");
+    assert.equal(opposed.displayName, "King + Jester vs King + Angel");
+    assert.equal(same.sidecarCount, 1);
+    assert.equal(opposed.sidecarCount, 1);
+    assert.equal(same.sizeBytes, sameTable.length + sameOverlay.length);
+    assert.equal(opposed.sizeBytes, opposedTable.length + opposedOverlay.length);
+
+    for (const filename of [same.filename, opposed.filename]) {
+      await manager.startDownload(filename);
+      assert.equal((await manager.waitForDownload(filename)).status, "complete");
+    }
+    for (const [filename, payload] of payloads) {
+      assert.deepEqual(await readFile(path.join(directory, filename)), payload);
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
 test("a digest mismatch never replaces an installed file", async () => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "ultimatefish-bad-tablebase-"));
   const oldContents = Buffer.from("old certified contents");

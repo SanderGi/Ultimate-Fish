@@ -212,6 +212,7 @@ class AngelStartSquarePlotTests(unittest.TestCase):
     def test_published_summary_covers_all_certified_angel_records(self):
         summary_path = ROOT / "tablebases/angel-start-square-summary.json"
         document = json.loads(summary_path.read_text(encoding="utf-8"))
+        self.assertEqual(audit.DEFAULT_REVISION, document["dataset_revision"])
         ledger = plot.read_summary(ROOT / "tablebases/README.md")
         expected = {
             filename for filename in audit.records()
@@ -222,14 +223,14 @@ class AngelStartSquarePlotTests(unittest.TestCase):
             filename for filename, record in document["files"].items()
             if record.get("excluded")
         }
-        self.assertEqual(audit.KNOWN_UNAVAILABLE_OVERLAYS, excluded)
+        self.assertEqual(set(), excluded)
         self.assertEqual(
             28,
             sum(record.get("result_kind") == "concrete"
                 for record in document["files"].values()),
         )
         self.assertEqual(
-            2,
+            4,
             sum(record.get("result_kind") == "information-v2"
                 for record in document["files"].values()),
         )
@@ -243,9 +244,6 @@ class AngelStartSquarePlotTests(unittest.TestCase):
         )
         plot.read_angel_start_squares(summary_path)
         for filename, record in document["files"].items():
-            if record.get("excluded"):
-                self.assertIn(filename, audit.KNOWN_UNAVAILABLE_OVERLAYS)
-                continue
             self.assertEqual(
                 [],
                 audit.normalize_and_validate_aggregate(
