@@ -100,7 +100,7 @@ def reconcile_ledger(repo: Path, event: dict[str, Any], *, commit: bool,
                      python: Path) -> dict[str, Any]:
     """Apply current-generation material state from one durable event."""
     readme = repo / "tablebases/README.md"
-    plot = repo / "tablebases/ultimate-tablebase-grid.png"
+    plot = repo / "tablebases/ultimate-tablebase-grid.svg"
     current = ledger_statuses(readme)
     updates: dict[str, str] = {}
     certified: dict[str, dict[str, str]] = {}

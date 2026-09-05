@@ -1227,7 +1227,7 @@ explicitly and are not counted as unfinished tablebases.
 > A frontier census alone is never presented as a tablebase result, and no W/L/D
 > cell will be published before the exact fixed point and verification pass.
 
-![Ultimate tablebase computation and outcome grid](ultimate-tablebase-grid.png)
+![Ultimate tablebase computation and outcome grid](ultimate-tablebase-grid.svg)
 
 Diagonal hatching means the class is currently computing. The image is
 generated exclusively from the canonical ledger below by
@@ -1480,10 +1480,11 @@ those rows from filenames.
 > is VersionId `_JQrhjDC5nWBO6PXxlHo40qvYb38QC5N` and binds every shard,
 > source, runner, evidence archive, and final summary version.
 
-> **Complete Berserker-level plot refresh (2026-09-04):** the rows below
-> aggregate Berserker now cover every tablebase power bucket: exact radii 1-9
-> (`power=0..8`) and the codec's board-saturating radius-10+ bucket
-> (`power=9+`). Only the root position is partitioned; successors remain
+> **Complete Berserker-level plot refresh (2026-09-04):** the authenticated
+> summary covers every tablebase power bucket: exact radii 1-9 (`power=0..8`)
+> and the codec's board-saturating radius-10+ bucket (`power=9+`). The plot
+> shows radii 1-8; the board-saturating radius 9 and 10 rows are omitted. Only
+> the root position is partitioned; successors remain
 > unrestricted, so growth after the starting position retains the original
 > tablebase W/L/D. All 42 distinguished certified records were downloaded from
 > immutable public Hugging Face revision
@@ -1501,8 +1502,8 @@ those rows from filenames.
 > sha256:b4fd962689f9bb0d50a7bfc2b7694059f78e4d1ae3dba68ba232113db9826013;
 > its audit binary is
 > sha256:699c36828a3eb369d427c83adfc7701d270307aff86e03587ff58a02dc515fcb.
-> The regenerated 6126×5692 plot is
-> sha256:c26e017112d0d726cd60068da05821cb0910628dcea808fa6f3ff02aa0726828.
+> The regenerated native-vector 6126×5528 SVG is
+> sha256:ecb33faae37863ef7b6daf1c0499a3bf32f1ed1cce80728f08da3bb45e070fe6.
 
 > **Giant start-class plot audit (2026-09-03):** the four rows immediately
 > below aggregate Giant are exact root-anchor parity components on the 7×9

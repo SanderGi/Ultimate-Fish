@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import argparse
+from html import escape
 import json
 import re
 import sys
@@ -104,8 +105,9 @@ PIECE_LABELS = {piece.name: piece.name.title() for piece in PIECES}
 PIECE_BY_NAME = {piece.name: piece for piece in PIECES}
 PIECE_INDEX = {piece.name: index for index, piece in enumerate(PIECES)}
 BERSERKER_RADII = tuple(range(1, 11))
+BERSERKER_PLOTTED_RADII = tuple(range(1, 9))
 BERSERKER_RADIUS_ROWS = tuple(
-    f"berserker_radius_{radius}" for radius in BERSERKER_RADII
+    f"berserker_radius_{radius}" for radius in BERSERKER_PLOTTED_RADII
 )
 GIANT_START_ROWS = tuple(f"giant_start_{size}" for size in (20, 16, 15, 12))
 DEVIL_MINION_ROWS = tuple(f"devil_minions_{count}" for count in range(6))
@@ -120,8 +122,8 @@ ANGEL_START_ROWS = tuple(
 )
 PIECE_LABELS.update(
     {
-        row: f"Berserker (radius {radius}{'+' if radius == 10 else ''})"
-        for radius, row in zip(BERSERKER_RADII, BERSERKER_RADIUS_ROWS)
+        row: f"Berserker (radius {radius})"
+        for radius, row in zip(BERSERKER_PLOTTED_RADII, BERSERKER_RADIUS_ROWS)
     }
 )
 PIECE_LABELS.update(
@@ -1285,7 +1287,7 @@ def draw_grid(
     return total_width, header_height + len(rows) * cell_height
 
 
-def render(
+def render_png(
     readme: Path,
     radii: Path,
     giant_classes: Path,
@@ -1449,6 +1451,316 @@ def render(
     print(f"Wrote {output} ({width}×{height})")
 
 
+SVG_FONT_FAMILY = "Arial, 'DejaVu Sans', sans-serif"
+
+
+def svg_rect(
+    elements: list[str],
+    left: int,
+    top: int,
+    right: int,
+    bottom: int,
+    *,
+    fill: str,
+    outline: str | None = None,
+    stroke_width: int = 1,
+    radius: int = 0,
+) -> None:
+    stroke = (
+        f' stroke="{outline}" stroke-width="{stroke_width}"'
+        if outline else ""
+    )
+    rounded = f' rx="{radius}" ry="{radius}"' if radius else ""
+    elements.append(
+        f'<rect x="{left}" y="{top}" width="{right - left}" '
+        f'height="{bottom - top}" fill="{fill}"{stroke}{rounded}/>'
+    )
+
+
+def svg_text(
+    elements: list[str],
+    xy: tuple[int, int],
+    value: str,
+    *,
+    fill: str,
+    size: int,
+    bold: bool = False,
+    anchor: Literal["start", "middle", "end"] = "middle",
+    baseline: Literal["middle", "hanging"] = "middle",
+    angle: int = 0,
+    spacing: int = 1,
+) -> None:
+    x, y = xy
+    transform = f' transform="rotate({angle} {x} {y})"' if angle else ""
+    weight = 700 if bold else 400
+    lines = value.splitlines() or [""]
+    line_height = size + spacing
+    first_y = y - (len(lines) - 1) * line_height / 2
+    for index, line in enumerate(lines):
+        line_y = first_y + index * line_height
+        elements.append(
+            f'<text x="{x}" y="{line_y:g}" fill="{fill}" '
+            f'font-family="{SVG_FONT_FAMILY}" font-size="{size}" '
+            f'font-weight="{weight}" text-anchor="{anchor}" '
+            f'dominant-baseline="{baseline}"{transform}>'
+            f'{escape(line)}</text>'
+        )
+
+
+def draw_grid_svg(
+    elements: list[str],
+    origin: tuple[int, int],
+    title: str,
+    columns: list[str],
+    rows: list[str],
+    cells: list[list[Cell]],
+    cell_width: int,
+    cell_height: int,
+    row_label_width: int,
+    header_height: int,
+) -> tuple[int, int]:
+    x0, y0 = origin
+    total_width = row_label_width + len(columns) * cell_width
+    svg_text(
+        elements, (x0 + total_width // 2, y0 - 56), title,
+        fill=COLORS["ink"], size=34, bold=True,
+    )
+    svg_rect(
+        elements, x0, y0, x0 + row_label_width, y0 + header_height,
+        fill=COLORS["header"],
+    )
+    svg_text(
+        elements,
+        (x0 + row_label_width // 2, y0 + header_height - 28),
+        "Material", fill="white", size=20, bold=True,
+    )
+
+    for column_index, column in enumerate(columns):
+        left = x0 + row_label_width + column_index * cell_width
+        svg_rect(
+            elements, left, y0, left + cell_width, y0 + header_height,
+            fill=COLORS["header"], outline="#7F96AA",
+        )
+        svg_text(
+            elements,
+            (left + cell_width // 2, y0 + header_height // 2 + 10),
+            PIECE_LABELS.get(column, column), fill="white", size=20,
+            bold=True, angle=-55,
+        )
+
+    body_y = y0 + header_height
+    for row_index, row in enumerate(rows):
+        top = body_y + row_index * cell_height
+        svg_rect(
+            elements, x0, top, x0 + row_label_width, top + cell_height,
+            fill=COLORS["row_header"], outline=COLORS["grid"],
+        )
+        svg_text(
+            elements, (x0 + 16, top + cell_height // 2),
+            PIECE_LABELS.get(row, row), fill=COLORS["ink"], size=21,
+            anchor="start",
+        )
+        for column_index, cell in enumerate(cells[row_index]):
+            left = x0 + row_label_width + column_index * cell_width
+            svg_rect(
+                elements, left, top, left + cell_width, top + cell_height,
+                fill=COLORS[cell.kind], outline=COLORS["grid"],
+            )
+            if cell.kind == "computing":
+                svg_rect(
+                    elements, left, top, left + cell_width, top + cell_height,
+                    fill="url(#computing-hatch)",
+                )
+            value = cell_text(cell)
+            if not value:
+                continue
+            detailed = cell.kind in {
+                "mixed", "win_mostly", "no_forced_loss", "no_forced_win",
+                "loss_mostly",
+            }
+            svg_text(
+                elements, (left + cell_width // 2, top + cell_height // 2),
+                value, fill=COLORS["ink"], size=17 if detailed else 24,
+                bold=True,
+            )
+    return total_width, header_height + len(rows) * cell_height
+
+
+def render_svg(
+    readme: Path,
+    radii: Path,
+    giant_classes: Path,
+    devil_minions: Path,
+    checker_states: Path,
+    sniper_ranks: Path,
+    angel_squares: Path,
+    output: Path,
+    scale: int,
+) -> None:
+    catalog = OutcomeCatalog(
+        read_summary(readme),
+        read_berserker_radii(radii),
+        read_giant_start_classes(giant_classes),
+        read_devil_minion_starts(devil_minions),
+        read_checker_start_states(checker_states),
+        read_sniper_start_ranks(sniper_ranks),
+        read_angel_start_squares(angel_squares),
+    )
+    names = [piece.name for piece in PIECES]
+    rows = list(names)
+    rows[rows.index("berserker") + 1:rows.index("berserker") + 1] = (
+        BERSERKER_RADIUS_ROWS
+    )
+    rows[rows.index("giant") + 1:rows.index("giant") + 1] = GIANT_START_ROWS
+    rows[rows.index("devil") + 1:rows.index("devil") + 1] = DEVIL_MINION_ROWS
+    rows[rows.index("checker") + 1:rows.index("checker") + 1] = CHECKER_START_ROWS
+    rows[rows.index("sniper") + 1:rows.index("sniper") + 1] = SNIPER_START_ROWS
+    rows[rows.index("angel") + 1:rows.index("angel") + 1] = ANGEL_START_ROWS
+
+    cell_width = 102 * scale
+    cell_height = 82 * scale
+    row_label_width = 250 * scale
+    header_height = 225 * scale
+    outer = 70 * scale
+    gap = 60 * scale
+    top = 255 * scale
+    footer = 210 * scale
+    single_cell_width = 220 * scale
+    single_width = row_label_width + single_cell_width
+    matrix_width = row_label_width + len(names) * cell_width
+    width = outer * 2 + single_width + matrix_width * 2 + gap * 2
+    height = top + header_height + len(rows) * cell_height + footer
+
+    spacing = 10 * scale
+    line_width = max(1, spacing // 5)
+    elements = [
+        f'<rect width="{width}" height="{height}" fill="{COLORS["page"]}"/>',
+    ]
+    svg_text(
+        elements, (width // 2, 45 * scale),
+        "Ultimate Fish · Endgame Tablebase Grouped by Material",
+        fill=COLORS["ink"], size=47 * scale, bold=True, baseline="hanging",
+    )
+    svg_text(
+        elements, (width // 2, 113 * scale),
+        "Percent ranges show the row side starting then the opponent starting · Win/Loss Cells indicate the result for the row",
+        fill=COLORS["muted"], size=23 * scale, baseline="hanging",
+    )
+    svg_text(
+        elements, (width // 2, 151 * scale),
+        "Reachable positions only · Immediate stalemates and forced one-ply/tactical material simplifications are excluded · Prince: cont=0 starting boundaries only · Copycat: one linked mirrored pair · Devil: own spawned Minions only; starts on ranks 1-3",
+        fill=COLORS["muted"], size=20 * scale, baseline="hanging",
+    )
+
+    grid_y = top
+    x = outer
+    draw_grid_svg(
+        elements, (x, grid_y), "King + A  vs  King", ["Outcome"], rows,
+        [[catalog.single_row(row)] for row in rows], single_cell_width,
+        cell_height, row_label_width, header_height,
+    )
+    x += single_width + gap
+    draw_grid_svg(
+        elements, (x, grid_y), "King + A + B  vs  King", names, rows,
+        [[catalog.together_row(row, column) for column in names] for row in rows],
+        cell_width, cell_height, row_label_width, header_height,
+    )
+    x += matrix_width + gap
+    draw_grid_svg(
+        elements, (x, grid_y), "King + A  vs  King + B", names, rows,
+        [[catalog.opposed_row(row, column) for column in names] for row in rows],
+        cell_width, cell_height, row_label_width, header_height,
+    )
+
+    legend_items = (
+        ("win", "Forced win"),
+        ("win_star", "Win when row starts"),
+        ("win_mostly", "Mostly win / no forced loss"),
+        ("no_forced_loss", "No forced loss"),
+        ("draw", "Forced draw"),
+        ("mixed", "State-dependent"),
+        ("no_forced_win", "No forced win"),
+        ("loss_mostly", "Mostly loss / no forced win"),
+        ("loss_star", "Loss when column starts"),
+        ("loss", "Forced loss"),
+        ("computing", "Computing"),
+        ("unknown", "Not computed/duplicate"),
+    )
+    legend_y = height - 126 * scale
+    legend_size = 22 * scale
+    legend_font = font(legend_size)
+    item_widths = []
+    probe = ImageDraw.Draw(Image.new("L", (1, 1)))
+    for _, label in legend_items:
+        bounds = probe.textbbox((0, 0), label, font=legend_font)
+        item_widths.append(52 * scale + bounds[2] - bounds[0])
+    positions, legend_width = legend_positions(
+        item_widths, normal_gap=18 * scale, group_gap=62 * scale,
+        group_starts=frozenset({4, 6, 10}),
+    )
+    legend_x = (width - legend_width) // 2
+    for index, (kind, label) in enumerate(legend_items):
+        left = legend_x + positions[index]
+        svg_rect(
+            elements, left, legend_y, left + 42 * scale,
+            legend_y + 30 * scale, fill=COLORS[kind], outline=COLORS["grid"],
+            radius=6 * scale,
+        )
+        if kind == "computing":
+            svg_rect(
+                elements, left, legend_y, left + 42 * scale,
+                legend_y + 30 * scale, fill="url(#computing-hatch)",
+                radius=6 * scale,
+            )
+        svg_text(
+            elements, (left + 52 * scale, legend_y + 15 * scale), label,
+            fill=COLORS["ink"], size=legend_size, anchor="start",
+        )
+
+    definitions = (
+        f'<defs><pattern id="computing-hatch" width="{spacing}" '
+        f'height="{spacing}" patternUnits="userSpaceOnUse">'
+        f'<path d="M 0 0 L {spacing} {spacing}" fill="none" '
+        f'stroke="#6E8FA9" stroke-width="{line_width}"/>'
+        f'</pattern></defs>'
+    )
+    document = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" '
+        f'height="{height}" viewBox="0 0 {width} {height}" '
+        'role="img" aria-labelledby="plot-title plot-description" '
+        'text-rendering="geometricPrecision">\n'
+        '<title id="plot-title">Ultimate Fish endgame tablebase outcomes</title>\n'
+        '<desc id="plot-description">Three grids summarize single-piece, '
+        'same-team two-piece, and opposing two-piece endgames.</desc>\n'
+        f'{definitions}\n' + "\n".join(elements) + "\n</svg>\n"
+    )
+    output.parent.mkdir(parents=True, exist_ok=True)
+    output.write_text(document, encoding="utf-8")
+    print(f"Wrote {output} ({width}×{height} viewBox)")
+
+
+def render(
+    readme: Path,
+    radii: Path,
+    giant_classes: Path,
+    devil_minions: Path,
+    checker_states: Path,
+    sniper_ranks: Path,
+    angel_squares: Path,
+    output: Path,
+    scale: int,
+) -> None:
+    suffix = output.suffix.lower()
+    renderer = render_svg if suffix == ".svg" else render_png if suffix == ".png" else None
+    if renderer is None:
+        raise ValueError("plot output must use an .svg or .png extension")
+    renderer(
+        readme, radii, giant_classes, devil_minions, checker_states,
+        sniper_ranks, angel_squares, output, scale,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1496,14 +1808,14 @@ def main() -> None:
     parser.add_argument(
         "--output",
         type=Path,
-        default=ROOT / "tablebases" / "ultimate-tablebase-grid.png",
+        default=ROOT / "tablebases" / "ultimate-tablebase-grid.svg",
     )
     parser.add_argument(
         "--scale",
         type=int,
         default=1,
         choices=(1, 2),
-        help="render at 1× or 2× resolution (default: 1)",
+        help="render at 1× or 2× drawing scale (default: 1)",
     )
     args = parser.parse_args()
     render(

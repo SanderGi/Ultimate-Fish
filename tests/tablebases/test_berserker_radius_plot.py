@@ -45,6 +45,26 @@ import_radius_trivial = load(
 
 
 class BerserkerRadiusPlotTests(unittest.TestCase):
+    def test_svg_render_is_native_vector_content(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "plot.svg"
+            plot.render(
+                ROOT / "tablebases" / "README.md",
+                ROOT / "tablebases" / "berserker-radius-summary.json",
+                ROOT / "tablebases" / "giant-start-class-summary.json",
+                ROOT / "tablebases" / "devil-minion-start-summary.json",
+                ROOT / "tablebases" / "checker-start-state-summary.json",
+                ROOT / "tablebases" / "sniper-start-rank-summary.json",
+                ROOT / "tablebases" / "angel-start-square-summary.json",
+                output,
+                1,
+            )
+            rendered = output.read_text(encoding="utf-8")
+        self.assertIn('viewBox="0 0 6126 5528"', rendered)
+        self.assertIn("<rect", rendered)
+        self.assertIn("<text", rendered)
+        self.assertNotIn("<image", rendered)
+
     def test_shard_merge_requires_exact_disjoint_coverage(self):
         common = {
             "schema": 2,
@@ -157,11 +177,12 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
         self.assertEqual("Berserker", plot.PIECE_LABELS["berserker"])
         self.assertEqual(
             tuple(
-                f"Berserker (radius {radius}{'+' if radius == 10 else ''})"
-                for radius in range(1, 11)
+                f"Berserker (radius {radius})"
+                for radius in range(1, 9)
             ),
             tuple(plot.PIECE_LABELS[row] for row in plot.BERSERKER_RADIUS_ROWS),
         )
+        self.assertEqual(tuple(range(1, 11)), plot.BERSERKER_RADII)
 
     def test_radius_summary_preserves_exact_start_order_and_row_view(self):
         document = {
@@ -312,13 +333,8 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
                     f"berserker_radius_{radius}", "prince"
                 ).kind,
             )
-        for radius in (9, 10):
-            self.assertEqual(
-                "unknown",
-                catalog.together_row(
-                    f"berserker_radius_{radius}", "prince"
-                ).kind,
-            )
+        self.assertNotIn("berserker_radius_9", plot.BERSERKER_RADIUS_ROWS)
+        self.assertNotIn("berserker_radius_10", plot.BERSERKER_RADIUS_ROWS)
 
     def test_prince_radius_audit_requests_turn_boundary_scope(self):
         record = {
@@ -349,7 +365,7 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
     def test_identical_berserker_intersections_repeat_same_team_outcome(self):
         catalog = plot.OutcomeCatalog(
             plot.read_summary(ROOT / "tablebases" / "README.md"), {})
-        for radius in range(1, 11):
+        for radius in range(1, 9):
             self.assertEqual(
                 "win",
                 catalog.together_row(
