@@ -325,6 +325,22 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual("Loss", plot.cell_text(forced_loss))
         self.assertEqual("#D15B3B", plot.COLORS[forced_loss.kind])
 
+    def test_empty_starting_side_is_visible_as_state_dependent_zeros(self):
+        populated = plot.WDL(7, 2, 1)
+        empty = plot.WDL(0, 0, 0)
+
+        row_empty = plot.classify(empty, populated, allow_loss=True)
+        self.assertEqual("mixed", row_empty.kind)
+        self.assertEqual("W 0–70%\nL 0–20%\nD 0–10%", plot.cell_text(row_empty))
+
+        column_empty = plot.classify(populated, empty, allow_loss=True)
+        self.assertEqual("mixed", column_empty.kind)
+        self.assertEqual("W 70–0%\nL 20–0%\nD 10–0%", plot.cell_text(column_empty))
+
+        both_empty = plot.classify(empty, empty, allow_loss=True)
+        self.assertEqual("mixed", both_empty.kind)
+        self.assertEqual("W 0–0%\nL 0–0%\nD 0–0%", plot.cell_text(both_empty))
+
     def test_hidden_material_is_never_certified_from_concrete_wdl(self):
         for row in ledger.entries(ledger.README.read_text()):
             if (row.status == "certified" and row.filename and

@@ -573,7 +573,11 @@ def row_side_result(raw: ReadmeResult, row_is_primary: bool = True) -> tuple[WDL
 
 def classify(first: WDL, second: WDL, allow_loss: bool) -> Cell:
     if first.total == 0 or second.total == 0:
-        return Cell("unknown")
+        # An authenticated slice can legitimately have every position for one
+        # starting side removed by the reachability/triviality filters.  Keep
+        # that information visible instead of making the cell look uncomputed;
+        # cell_text renders the empty cohort as an explicit zero triplet.
+        return Cell("mixed", first, second)
     if first.wins == first.total and second.wins == second.total:
         return Cell("win", first, second)
     if first.wins == first.total and second.wins != second.total:
@@ -1081,6 +1085,8 @@ def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.Im
 
 
 def percentage(value: int, total: int) -> str:
+    if total == 0:
+        return "0"
     percent = 100.0 * value / total
     if value == 0:
         return "0"
@@ -1135,7 +1141,11 @@ def cell_text(cell: Cell) -> str:
                 percentage(second_value, cell.second.total),
             )
         )
-    if all(first == second for _, first, second in displayed):
+    if (
+        cell.first.total != 0
+        and cell.second.total != 0
+        and all(first == second for _, first, second in displayed)
+    ):
         return "\n".join(f"{label} {first}%" for label, first, _ in displayed)
     lines = [f"{label} {first}–{second}%" for label, first, second in displayed]
     return "\n".join(lines)
