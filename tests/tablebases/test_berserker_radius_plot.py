@@ -26,6 +26,10 @@ audit = load(
     "ultimate_berserker_radius_audit",
     TOOLS / "run_ultimate_berserker_radius_audit_aws.py",
 )
+level_audit = load(
+    "ultimate_berserker_level_audit",
+    TOOLS / "audit_ultimate_berserker_levels.py",
+)
 prepare = load(
     "ultimate_berserker_radius_prepare",
     TOOLS / "prepare_berserker_radius_audit.py",
@@ -152,20 +156,30 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
     def test_radius_rows_extend_berserker_without_renaming_existing_labels(self):
         self.assertEqual("Berserker", plot.PIECE_LABELS["berserker"])
         self.assertEqual(
-            ("Berserker (radius 1)", "Berserker (radius 2)",
-             "Berserker (radius 3)"),
+            tuple(
+                f"Berserker (radius {radius}{'+' if radius == 10 else ''})"
+                for radius in range(1, 11)
+            ),
             tuple(plot.PIECE_LABELS[row] for row in plot.BERSERKER_RADIUS_ROWS),
         )
 
     def test_radius_summary_preserves_exact_start_order_and_row_view(self):
         document = {
-            "schema": 2,
+            "schema": 3,
             "semantics": "reachability-admitted-minus-trivial-v3",
+            "radius_to_power_substate": {
+                str(radius): radius - 1 for radius in range(1, 11)
+            },
+            "saturated_radius": 10,
             "files": {
                 "kberserkerkninja.uftb": {
                     "radii": {
-                        "1": {
+                        str(radius): {
+                            "power_substate": radius - 1,
                             "first_starts": {
+                                "total": {"wins": 2_500_001, "losses": 6_240_002,
+                                          "draws": 7_150_003},
+                                "excluded": {"wins": 1, "losses": 2, "draws": 3},
                                 "admitted": {"wins": 2_500_000, "losses": 6_240_000,
                                              "draws": 7_150_000},
                                 "trivial": {"wins": 420, "losses": 1_184,
@@ -174,6 +188,9 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
                                             "draws": 7_147_320},
                             },
                             "second_starts": {
+                                "total": {"wins": 9_870_001, "losses": 6_002,
+                                          "draws": 3_850_003},
+                                "excluded": {"wins": 1, "losses": 2, "draws": 3},
                                 "admitted": {"wins": 9_870_000, "losses": 6_000,
                                              "draws": 3_850_000},
                                 "trivial": {"wins": 3_802, "losses": 320,
@@ -181,7 +198,7 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
                                 "display": {"wins": 9_866_198, "losses": 5_680,
                                             "draws": 3_847_982},
                             },
-                        }
+                        } for radius in range(1, 11)
                     }
                 }
             },
@@ -205,9 +222,16 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
         path = ROOT / "tablebases" / "berserker-radius-summary.json"
         document = json.loads(path.read_text(encoding="utf-8"))
         radii = plot.read_berserker_radii(path)
+        ledger = plot.read_summary(ROOT / "tablebases" / "README.md")
 
+        self.assertEqual(3, document["schema"])
+        self.assertEqual(
+            {str(radius): radius - 1 for radius in range(1, 11)},
+            document["radius_to_power_substate"],
+        )
+        self.assertEqual(10, document["saturated_radius"])
         self.assertEqual(43, len(document["files"]))
-        self.assertEqual(126, len(radii))
+        self.assertEqual(420, len(radii))
         self.assertEqual(
             {
                 "excluded": True,
@@ -218,10 +242,30 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
             },
             document["files"]["kberserkerberserkerk.uftb"],
         )
-        for record in document["files"].values():
+        for record_name, record in document["files"].items():
             if record.get("excluded"):
                 continue
-            self.assertEqual({"1", "2", "3"}, set(record["radii"]))
+            self.assertEqual(
+                {str(radius) for radius in range(1, 11)},
+                set(record["radii"]),
+            )
+            expected = ledger[record_name]
+            for key, wanted in (
+                ("first_starts", expected.first_starts),
+                ("second_starts", expected.second_starts),
+            ):
+                self.assertEqual(
+                    {"wins": wanted.wins, "losses": wanted.losses,
+                     "draws": wanted.draws},
+                    {
+                        field: sum(
+                            record["radii"][str(radius)][key]["display"][field]
+                            for radius in range(1, 11)
+                        )
+                        for field in ("wins", "losses", "draws")
+                    },
+                    (record_name, key),
+                )
 
         self.assertIn(("kberserkerangelk.uftb", 1), radii)
         self.assertIn(("kberserkerkberserker.uftb", 3), radii)
@@ -261,9 +305,16 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
             plot.read_summary(ROOT / "tablebases" / "README.md"),
             plot.read_berserker_radii(path),
         )
-        for radius in (1, 2, 3):
+        for radius in range(1, 9):
             self.assertEqual(
                 "win",
+                catalog.together_row(
+                    f"berserker_radius_{radius}", "prince"
+                ).kind,
+            )
+        for radius in (9, 10):
+            self.assertEqual(
+                "unknown",
                 catalog.together_row(
                     f"berserker_radius_{radius}", "prince"
                 ).kind,
@@ -298,7 +349,7 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
     def test_identical_berserker_intersections_repeat_same_team_outcome(self):
         catalog = plot.OutcomeCatalog(
             plot.read_summary(ROOT / "tablebases" / "README.md"), {})
-        for radius in (1, 2, 3):
+        for radius in range(1, 11):
             self.assertEqual(
                 "win",
                 catalog.together_row(
@@ -308,6 +359,57 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
         self.assertEqual(
             "unknown",
             catalog.opposed_row("berserker_radius_1", "berserker").kind,
+        )
+
+    def test_level_audit_parser_preserves_all_ten_concrete_substates(self):
+        lines = []
+        for substate in range(10):
+            for side in range(2):
+                total = [0, 100 + substate + side, 20, 30]
+                excluded = [0, 10, 2, 3]
+                trivial = [0, 5, 1, 2]
+                for suffix, values in (("_total", total), ("", excluded),
+                                       ("_trivial", trivial)):
+                    lines.append(
+                        f"reachability_primary_substate{suffix} "
+                        f"substate {substate} side {side} unknown {values[0]} "
+                        f"win {values[1]} loss {values[2]} draw {values[3]}"
+                    )
+        radii = level_audit.parse_counts(
+            "\n".join(lines),
+            {"primary": "berserker", "secondary": "rook"},
+            False,
+        )
+        self.assertEqual({str(radius) for radius in range(1, 11)}, set(radii))
+        self.assertEqual(9, radii["10"]["power_substate"])
+        self.assertEqual(
+            {"wins": 94, "losses": 17, "draws": 25},
+            radii["10"]["first_starts"]["display"],
+        )
+
+    def test_level_audit_information_parser_uses_berserker_slot(self):
+        lines = []
+        # Jester has one tablebase substate, Berserker has ten.
+        for combined in range(10):
+            for side in range(2):
+                for kind, values in (
+                    ("admitted", [0, combined + 10, 4, 3]),
+                    ("excluded", [0, 2, 1, 1]),
+                    ("trivial", [0, 1, 1, 1]),
+                ):
+                    lines.append(
+                        f"information_reachability_substate_{kind} "
+                        f"substate {combined} side {side} unknown {values[0]} "
+                        f"win {values[1]} loss {values[2]} draw {values[3]}"
+                    )
+        radii = level_audit.parse_counts(
+            "\n".join(lines),
+            {"primary": "jester", "secondary": "berserker"},
+            True,
+        )
+        self.assertEqual(
+            {"wins": 18, "losses": 3, "draws": 2},
+            radii["10"]["second_starts"]["display"],
         )
 
     def test_concrete_parser_subtracts_unreachable_per_substate(self):

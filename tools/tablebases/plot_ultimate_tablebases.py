@@ -103,7 +103,10 @@ COLORS = {
 PIECE_LABELS = {piece.name: piece.name.title() for piece in PIECES}
 PIECE_BY_NAME = {piece.name: piece for piece in PIECES}
 PIECE_INDEX = {piece.name: index for index, piece in enumerate(PIECES)}
-BERSERKER_RADIUS_ROWS = tuple(f"berserker_radius_{radius}" for radius in range(1, 4))
+BERSERKER_RADII = tuple(range(1, 11))
+BERSERKER_RADIUS_ROWS = tuple(
+    f"berserker_radius_{radius}" for radius in BERSERKER_RADII
+)
 GIANT_START_ROWS = tuple(f"giant_start_{size}" for size in (20, 16, 15, 12))
 DEVIL_MINION_ROWS = tuple(f"devil_minions_{count}" for count in range(6))
 CHECKER_START_ROWS = ("checker_normal", "checker_king")
@@ -117,8 +120,8 @@ ANGEL_START_ROWS = tuple(
 )
 PIECE_LABELS.update(
     {
-        row: f"Berserker (radius {radius})"
-        for radius, row in enumerate(BERSERKER_RADIUS_ROWS, 1)
+        row: f"Berserker (radius {radius}{'+' if radius == 10 else ''})"
+        for radius, row in zip(BERSERKER_RADII, BERSERKER_RADIUS_ROWS)
     }
 )
 PIECE_LABELS.update(
@@ -239,26 +242,46 @@ def read_berserker_radii(path: Path) -> dict[tuple[str, int], ReadmeResult]:
     """Read exact, reachability-filtered Berserker power slices."""
     document = json.loads(path.read_text(encoding="utf-8"))
     if (
-        document.get("schema") != 2
+        document.get("schema") != 3
         or document.get("semantics") != "reachability-admitted-minus-trivial-v3"
+        or document.get("radius_to_power_substate") != {
+            str(radius): radius - 1 for radius in BERSERKER_RADII
+        }
+        or document.get("saturated_radius") != 10
     ):
         raise ValueError(f"unsupported Berserker radius summary schema: {path}")
     results: dict[tuple[str, int], ReadmeResult] = {}
     for filename, record in document.get("files", {}).items():
-        for radius_text, raw in record.get("radii", {}).items():
+        if record.get("excluded"):
+            continue
+        rows = record.get("radii", {})
+        if set(rows) != {str(radius) for radius in BERSERKER_RADII}:
+            raise ValueError(f"incomplete Berserker radius coverage: {filename}")
+        for radius_text, raw in rows.items():
             radius = int(radius_text)
-            if radius not in (1, 2, 3):
-                continue
+            if raw.get("power_substate") != radius - 1:
+                raise ValueError(
+                    f"invalid Berserker radius mapping: {filename} radius {radius}"
+                )
             sides = []
             for key in ("first_starts", "second_starts"):
                 side = raw[key]
                 admitted = side["admitted"]
                 trivial = side["trivial"]
                 display = side["display"]
+                if not {"total", "excluded"} <= set(side):
+                    raise ValueError(
+                        f"missing Berserker total/excluded counts for "
+                        f"{filename} radius {radius} {key}"
+                    )
+                total = side["total"]
+                excluded = side["excluded"]
                 for field in ("wins", "losses", "draws"):
                     if (
                         trivial[field] > admitted[field]
                         or display[field] != admitted[field] - trivial[field]
+                        or excluded[field] > total[field]
+                        or admitted[field] != total[field] - excluded[field]
                     ):
                         raise ValueError(
                             f"invalid Berserker radius conservation for "
@@ -885,7 +908,7 @@ class OutcomeCatalog:
             if column == "berserker":
                 # Two same-team Berserkers are exchange-folded, so there is no
                 # distinguished row Berserker to slice.  Repeat the certified
-                # aggregate outcome across the three radius rows instead.
+                # aggregate outcome across the ten radius rows instead.
                 return self.together("berserker", "berserker")
             if deferred_material("berserker", column):
                 return Cell("unknown")
@@ -1430,7 +1453,7 @@ def main() -> None:
         "--berserker-radii",
         type=Path,
         default=ROOT / "tablebases" / "berserker-radius-summary.json",
-        help="exact reachability-filtered radius 1/2/3 Berserker results",
+        help="exact reachability-filtered radius 1-9/10+ Berserker results",
     )
     parser.add_argument(
         "--giant-classes",

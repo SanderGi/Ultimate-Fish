@@ -1438,8 +1438,9 @@ those rows from filenames.
 > S3 VersionId `.nr3tzspic8TXWi5SKV31uiY0rf2eDuC`, bound to concrete output
 > sha256:b436e4a2f00c76cda8854c2262f79c3ed0daf362436e5a205770c5d1f5cb7796.
 >
-> **Berserker radius plot audit (2026-08-21):** the three rows immediately
-> below aggregate Berserker are exact initial-radius 1, 2, and 3 slices
+> **Original Berserker radius plot audit (2026-08-21):** the three rows
+> originally published below aggregate Berserker are exact initial-radius 1,
+> 2, and 3 slices
 > (`power` substates 0, 1, and 2), not relabeled aggregate values. The refreshed
 > schema-2 input covers all 43 certified Berserker records: 40 concrete tables
 > were scanned, two Jester information overlays were decoded directly, and only
@@ -1478,6 +1479,30 @@ those rows from filenames.
 > sha256:079011cded676096fa97e15903ae5cd27a87ae7953b3bf4f972614adf7be1540
 > is VersionId `_JQrhjDC5nWBO6PXxlHo40qvYb38QC5N` and binds every shard,
 > source, runner, evidence archive, and final summary version.
+
+> **Complete Berserker-level plot refresh (2026-09-04):** the rows below
+> aggregate Berserker now cover every tablebase power bucket: exact radii 1-9
+> (`power=0..8`) and the codec's board-saturating radius-10+ bucket
+> (`power=9+`). Only the root position is partitioned; successors remain
+> unrestricted, so growth after the starting position retains the original
+> tablebase W/L/D. All 42 distinguished certified records were downloaded from
+> immutable public Hugging Face revision
+> `ed8375c43f26e42c5b14ac79ff41e77d4317b97f`, SHA-256 verified, audited
+> serially with at most four low-priority native workers, and deleted one
+> material group at a time. The exchange-folded same-team two-Berserker record
+> remains the sole exclusion because it has no distinguished row piece; the
+> color-distinguished opposed two-Berserker record is fully sliced. Every
+> displayed count equals admitted minus authenticated trivial roots, all ten
+> buckets reproduce the ledger aggregate for both starting sides, and the
+> regenerated radii 1-3 exactly match every count in the 2026-08-21 summary.
+> Total transfer was 41,101,775,088 bytes and maximum live payload was
+> 4,744,740,056 bytes. The schema-3, 420-cell input is
+> `tablebases/berserker-radius-summary.json`,
+> sha256:b4fd962689f9bb0d50a7bfc2b7694059f78e4d1ae3dba68ba232113db9826013;
+> its audit binary is
+> sha256:699c36828a3eb369d427c83adfc7701d270307aff86e03587ff58a02dc515fcb.
+> The regenerated 6126×5692 plot is
+> sha256:cf9903f897da675a3586d504c2ff0239010aa517e04d923e7c8263e4aa9efd67.
 
 > **Giant start-class plot audit (2026-09-03):** the four rows immediately
 > below aggregate Giant are exact root-anchor parity components on the 7×9
