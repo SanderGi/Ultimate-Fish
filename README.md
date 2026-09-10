@@ -248,5 +248,8 @@ character keys and never needs gems or money.
 - `ui/`: local Next.js workbench and loopback engine bridge
 - `docs/`: recovered rules, provenance, and benchmark records
 
-Ultimate Fish is an independent community project and is not affiliated with
-the Chess Ultimate app or its developers.
+Ultimate Fish is an independently developed community project, published with
+permission from the Chess Ultimate developer, who plans to integrate it into
+the app. Ultimate Fish is distributed under GPLv3 (see [`Copying.txt`](Copying.txt));
+this license does not grant rights to proprietary Chess Ultimate assets, which
+remain the property of their respective owners.
