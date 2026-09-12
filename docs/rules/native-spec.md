@@ -441,6 +441,29 @@ and remaps every relationship so captures cannot corrupt a round trip.
   confirmed in Ranked when a public linked CopyCat move was accepted while its
   owner's real King remained attacked. Check filtering resumes in the first
   resulting position without a living Jester.
+- Current-turn check is tested after a hypothetical opponent turn-start phase:
+  `Bot.GetAllAvailableMoves` calls `SimulatedBoard.ChangeTurn`, then
+  `Bot.DidKingDie`, then `UndoChangeTurn`. Cooldowns decrement and eligible
+  opponent Minions advance before the threat test. Thus a Minion net with no
+  legal royal escape is checkmate, not stalemate. Automatic movement may also
+  uncover or obstruct another character's checking ray; frozen Minions, Angel
+  rescues, and simultaneous King deaths keep their ordinary simulation rules.
+  The no-move result is checkmate (CheckType 2) only for an opposing win;
+  otherwise it is stalemate (3). `GameManager.GetAllMoves` maps those to
+  GameOverReason Checkmate (5) and Stalemate (6). Post-action legality does not
+  repeat this phase: the actual move has already changed turns. The engine
+  uses this distinction for terminal results, search check evasions, and move
+  notation. Recovered on 2026-09-12 from the hash-matched APK documented in
+  `docs/reverse-engineering.md`: ARMv7 RVAs `0x17df510`, `0x1810908`,
+  `0x17e01f0`, and `0x1852bb8` respectively (these recovered addresses differ
+  from the later interaction-ledger address set). Regression:
+  `b;king,w,b8;king,b,a10;devil,w,a1;minion,w,a9;minion,w,b9` is Ivory mate.
+  The same error occurs with a ready-next-turn Sniper in
+  `b;king,w,b8;king,b,a10;sniper,w,a9,0,1;knight,w,c8` (Ivory mate).
+  Published Devil/Minion and Sniper WDL/DTW predates this rule correction and
+  is not trusted by the runtime; recomputation and plot repair remain separate
+  work. Both runtime probes and UFTB material compatibility reject the stale
+  classes, including roots that currently have no Minions or cooldown.
 - Legal-move dots are private pre-decision observations. The active player may
   select each of their own characters and inspect the destinations the native
   UI offers before committing an action; the nonmoving opponent does not see

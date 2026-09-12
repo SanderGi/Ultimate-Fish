@@ -177,6 +177,11 @@ struct DevilStatefulStorage {
 
 bool compatible_codec(std::uint32_t version, PieceType primary,
                       PieceType secondary, std::uint64_t codecTag) {
+    // These classes used pre-ChangeTurn check/stalemate seeds. Snipers become
+    // ready on that phase; Devils create automatically advancing Minions.
+    if (primary == PieceType::Devil || secondary == PieceType::Devil ||
+        primary == PieceType::Sniper || secondary == PieceType::Sniper)
+        return false;
     // All existing Checker payload versions used short-range Checker Kings.
     // Ordinary Checker roots are affected too: they can promote. Do not let
     // a stale WDL/DTW verdict override the corrected native move generator.
@@ -963,6 +968,18 @@ bool TablebaseProbe::uses_compatible_codec(const std::string& path) {
 
 std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
     if (position.forcedTimeoutWinner_ >= 0)
+        return std::nullopt;
+
+    // Published Devil/Sniper closures predate turn-start check detection.
+    // Even Minion-free roots (and Minions whose Devil has died) inherit those
+    // incorrect stalemate seeds. Search must not trust their WDL/DTW until a
+    // new rule-versioned closure has been solved and independently verified.
+    if (position.pieces(Color::White, PieceType::Devil) ||
+        position.pieces(Color::Black, PieceType::Devil) ||
+        position.pieces(Color::White, PieceType::Minion) ||
+        position.pieces(Color::Black, PieceType::Minion) ||
+        position.pieces(Color::White, PieceType::Sniper) ||
+        position.pieces(Color::Black, PieceType::Sniper))
         return std::nullopt;
 
     // Generated tables represent the closed no-castling state class. Most

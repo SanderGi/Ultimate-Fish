@@ -2130,8 +2130,10 @@ int Search::quiescence(Position& position, int alpha, int beta, int ply,
     // A Checker jump or Prince follow-up is not optional. Likewise, when any
     // Checker has a capture the native rules suppress every quiet action. Do
     // not apply the usual quiescence "stand pat" assumption in those states.
+    // Preserve the inline Jester fast path: most hidden-royal leaves do not
+    // need to enter the more general turn-start check routine at all.
     const bool inCheck = !position.pieces(side, PieceType::Jester) &&
-                         position.real_king_threatened(side);
+                         position.in_check();
     const bool forced = position.has_forced_action() || inCheck;
     if (!forced) {
         const int standPat = evaluate_lazy_royals(position, ply, lazyRoyals);
@@ -2279,7 +2281,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
             return std::find(rootMoves_.begin(), rootMoves_.end(), move) == rootMoves_.end();
         }), moves.end());
     if (moves.empty())
-        return position.real_king_threatened(side) ? -Mate + ply : 0;
+        return position.in_check() ? -Mate + ply : 0;
     for (Move& move : moves)
         move.orderScore = move_score(position, move, ttMovePtr, ply);
     std::stable_sort(moves.begin(), moves.end(), [](const Move& lhs, const Move& rhs) {
@@ -2315,7 +2317,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
       std::abs(alpha) < MateThreshold && !position.has_forced_action() &&
       position.supports_ordinary_exchange() &&
       (position.pieces(side, PieceType::Jester) ||
-       !position.real_king_threatened(side));
+       !position.in_check());
     const int staticEval = quietPruningNode
                          ? evaluate_lazy_royals(position, ply, lazyRoyals) : 0;
     for (const Move& move : moves) {
@@ -2439,7 +2441,7 @@ int Search::negamax(Position& position, int depth, int alpha, int beta, int ply,
 
     if (bestScore == -Infinity)
         return stop_ ? evaluate_lazy_royals(position, ply, lazyRoyals)
-                     : position.real_king_threatened(side) ? -Mate + ply : 0;
+                     : position.in_check() ? -Mate + ply : 0;
 
     if (!stop_ && !adjustedNode &&
         (!entry || depth >= entry->depth || entry->generation != generation_)) {
@@ -2932,7 +2934,7 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
                 else if (!position.is_checkmate_possible())
                     score = 0;
                 else if (!position.has_legal_move())
-                    score = position.real_king_threatened(mover)
+                    score = position.in_check()
                           ? -Mate + ply : 0;
                 else
                     score = position.handcrafted_evaluate();
@@ -3261,7 +3263,7 @@ std::optional<BeliefSearchResult> Search::think_factored_royals(
               !world.position.has_forced_action() &&
               world.position.supports_ordinary_exchange() &&
               (world.position.pieces(side, PieceType::Jester) ||
-               !world.position.real_king_threatened(side));
+               !world.position.in_check());
         const int staticEval = quietPruningNode
                              ? observer_evaluate(state, ply) : 0;
         for (const std::string& action : ordered) {
@@ -3700,7 +3702,7 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
                 else if (!world.is_checkmate_possible())
                     score = 0;
                 else if (!world.has_legal_move())
-                    score = world.real_king_threatened(mover)
+                    score = world.in_check()
                           ? -Mate + ply : 0;
                 else
                     score = world.handcrafted_evaluate();
@@ -4071,7 +4073,7 @@ std::optional<BeliefSearchResult> Search::think_factored_ghost_steppers(
               !item.world.has_forced_action() &&
               item.world.supports_ordinary_exchange() &&
               (item.world.pieces(side, PieceType::Jester) ||
-               !item.world.real_king_threatened(side));
+               !item.world.in_check());
         const int staticEval = quietPruningNode ? robust_eval(state, ply) : 0;
         for (const std::string& action : orderedActions) {
             if (stopped())
@@ -4360,7 +4362,7 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
                 else if (!position.is_checkmate_possible())
                     score = 0;
                 else if (!position.has_legal_move())
-                    score = position.real_king_threatened(mover)
+                    score = position.in_check()
                           ? -Mate + ply : 0;
                 else
                     score = position.handcrafted_evaluate();
@@ -4723,7 +4725,7 @@ BeliefSearchResult Search::think_beliefs(const PublicBeliefState& beliefs,
               !position.has_forced_action() &&
               position.supports_ordinary_exchange() &&
               (position.pieces(*side, PieceType::Jester) ||
-               !position.real_king_threatened(*side));
+               !position.in_check());
         }
         const int staticEval = quietPruningNode
                              ? observer_evaluate(state, ply) : 0;

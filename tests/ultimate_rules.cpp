@@ -924,6 +924,9 @@ void test_stale_checker_tablebase_codec() {
              !check(PieceType::Rook, PieceType::Checker) &&
              !check(PieceType::CheckerKing, PieceType::Rook),
            "legacy Checker codecs are rejected in either material slot, including promotions");
+    for (const PieceType stale : {PieceType::Devil, PieceType::Sniper})
+        expect(!check(stale, PieceType::Rook) && !check(PieceType::Rook, stale),
+               "pre-turn-start check codecs are rejected in either material slot");
     std::filesystem::remove(path);
 }
 
@@ -2649,10 +2652,8 @@ void test_exact_tablebase_probing() {
     moved(blackSniper, PieceType::King, Color::White, "a3");
     blackSniper.set_side_to_move(Color::White);
     const auto blackSniperResult = TablebaseProbe::probe(blackSniper);
-    expect(whiteSniperResult && blackSniperResult &&
-             blackSniperResult->wdl == whiteSniperResult->wdl &&
-             blackSniperResult->dtw == whiteSniperResult->dtw,
-           "directional singleton table probes reverse ranks when colors swap");
+    expect(!whiteSniperResult && !blackSniperResult,
+           "pre-turn-start Sniper tablebases are quarantined for both colors");
 
     Position unmovedBishopDragon;
     std::string unmovedBishopDragonError;
@@ -2742,9 +2743,9 @@ void test_exact_tablebase_probing() {
             stateful.piece(extra).visible = false;
         else if (type == PieceType::Sniper)
             stateful.piece(extra).cooldown = 3;
-        expect(TablebaseProbe::probe(stateful).has_value(),
+        expect(TablebaseProbe::probe(stateful).has_value() == (type != PieceType::Sniper),
                std::string("stateful K+") + std::string(Position::type_name(type)) +
-                 "+K tablebase is probeable");
+                 "+K tablebase is probeable unless its check-rule seeds are stale");
     }
 
     Position devilWithoutStatefulSidecar;
@@ -3791,6 +3792,142 @@ void test_belief_terminal_and_observer_scoring() {
     expect(observerMate.score >= 29900,
            "singleton belief scores and mate distance are converted from the "
            "side to move to the configured observer");
+}
+
+void test_turn_start_check() {
+    const auto parse = [](const char* upn) {
+        Position position;
+        std::string error;
+        expect(position.set_upn(upn, &error), "turn-start fixture: " + error);
+        return position;
+    };
+    Position mate = parse(
+      "b;king,w,b8;king,b,a10;devil,w,a1;minion,w,a9;minion,w,b9");
+    const auto original = mate.upn();
+    const auto originalKey = mate.key();
+    expect(mate.in_check() && mate.legal_moves().empty() &&
+             mate.terminal_reason() == TerminalReason::Checkmate &&
+             mate.winner() == Color::White,
+           "automatic Minion advance is checkmate, not stalemate");
+    expect(!TablebaseProbe::probe(mate),
+           "stale Devil/Minion tables cannot override turn-start checkmate");
+    SearchLimits limits;
+    limits.depth = 2;
+    limits.useTablebases = false;
+    Search search(1);
+    const auto result = search.think(mate, limits);
+    expect(!result.bestMove && result.score <= -29900,
+           "concrete search scores automatic Minion mate without tablebases");
+    PublicBeliefState belief({Color::White, true});
+    std::string error;
+    expect(belief.add(mate, &error), "Minion mate belief: " + error);
+    Search beliefSearch(1);
+    const auto beliefResult = beliefSearch.think_beliefs(belief, limits);
+    expect(!beliefResult.bestMove && beliefResult.score >= 29900,
+           "belief search scores Minion mate from the observer perspective");
+    expect(mate.upn() == original && mate.key() == originalKey,
+           "check/terminal/search queries do not mutate Minions or position state");
+
+    Position mirrored = parse(
+      "w;king,b,g3;king,w,h1;devil,b,h10;minion,b,h2;minion,b,g2");
+    expect(mirrored.in_check() && mirrored.winner() == Color::Black &&
+             mirrored.terminal_reason() == TerminalReason::Checkmate,
+           "Onyx Minions give the color/rank-reflected checkmate");
+
+    Position setup = parse(
+      "w;king,w,c8;king,b,a10;devil,w,a1;minion,w,a9;minion,w,b9");
+    const Move matingMove = require_move(setup, "c8-b8");
+    expect(setup.move_to_display_string(matingMove) == "Kb8#",
+           "a King move completing a Minion net is displayed as mate");
+    Search setupSearch(1);
+    const auto setupResult = setupSearch.think(setup, limits);
+    expect(setupResult.bestMove && setupResult.score >= 29900,
+           "search propagates automatic mate through quiescence");
+    if (setupResult.bestMove) {
+        Position chosen = setup;
+        Undo undo;
+        expect(chosen.make_move(*setupResult.bestMove, undo) &&
+                 chosen.winner() == Color::White,
+               "reported mating move actually ends the game");
+    }
+
+    Position escaping = parse("b;king,w,h1;king,b,a10;minion,w,a9");
+    expect(escaping.in_check() && !escaping.game_over(),
+           "a Minion threat with a legal escape is check, not mate");
+    const auto escapingUpn = escaping.upn();
+    Undo escape;
+    expect(escaping.make_move(require_move(escaping, "a10-b10"), escape) &&
+             escaping.piece_on(Position::square_from_name("a10")) != Position::NoPiece,
+           "a legal escape advances the Minion exactly once, not off the edge");
+    escaping.undo_move(escape);
+    expect(escaping.upn() == escapingUpn, "Minion escape is fully reversible");
+    Position checkingMove = parse("w;king,w,h1;king,b,a10;minion,w,a9");
+    expect(checkingMove.move_to_display_string(require_move(checkingMove, "h1-h2")) == "Kh2+",
+           "a nonmating Minion threat receives the check suffix");
+
+    Position stalemate = parse(
+      "b;king,w,b8;king,b,a10;pawn,w,a9;minion,w,b9");
+    expect(!stalemate.in_check() && stalemate.legal_moves().empty() &&
+             stalemate.terminal_reason() == TerminalReason::Stalemate &&
+             !stalemate.winner(),
+           "Minions restricting escape squares do not make every stalemate mate");
+
+    Position cooling = parse("b;king,w,h1;king,b,a10;minion,w,a9");
+    const int minion = cooling.piece_on(Position::square_from_name("a9"));
+    cooling.piece(minion).cooldown = 2;
+    expect(!cooling.in_check(), "Minion cooldown two survives the hypothetical turn");
+    cooling.piece(minion).cooldown = 1;
+    expect(cooling.in_check(), "Minion cooldown one expires before automatic movement");
+    cooling.piece(minion).freezeCount = 1;
+    expect(!cooling.in_check(), "a frozen Minion does not advance into the King");
+
+    Position train = parse("b;king,w,h1;king,b,a10;minion,w,a8;minion,w,a9");
+    expect(train.in_check(), "an automatic Minion train threatens through its front member");
+    Position edge = parse("b;king,w,h1;king,b,a9;minion,w,a10");
+    expect(!edge.in_check(), "far-edge Minions disappear instead of attacking backward");
+    Position revealedRay = parse("b;king,w,h1;king,b,h10;rook,w,b10;minion,w,f10");
+    expect(revealedRay.in_check(),
+           "far-edge disappearance can uncover another character's checking ray");
+    Position blockedRay = parse("b;king,w,h1;king,b,h6;rook,w,a6;minion,w,b5");
+    expect(!blockedRay.in_check(),
+           "automatic movement can block a ray that was checking before the turn phase");
+
+    Position protectedKing = parse("b;king,w,h1;king,b,a10;angel,b,h8;minion,w,a8");
+    Undo attach;
+    expect(protectedKing.make_move(require_move(protectedKing, "h8&a10"), attach),
+           "attach an Angel before the approaching Minion reaches the King");
+    protectedKing.set_side_to_move(Color::Black);
+    const auto protectedUpn = protectedKing.upn();
+    expect(!protectedKing.in_check() && protectedKing.upn() == protectedUpn,
+           "hypothetical Minion collision respects Angel rescue without consuming it");
+
+    // The Minion's Bomb capture kills both nearby Kings.
+    Position mutual = parse("b;king,w,c9;king,b,a10;bomb,b,b10;minion,w,b9");
+    expect(!mutual.in_check(),
+           "an automatic simultaneous royal knockout is not an opposing mate threat");
+
+    Position cooldownAttack = parse("w;king,w,a1;king,b,h10;sniper,b,a8;rook,w,h2");
+    const int sniper = cooldownAttack.piece_on(Position::square_from_name("a8"));
+    cooldownAttack.piece(sniper).cooldown = 1;
+    expect(cooldownAttack.in_check(),
+           "turn-start check also recognizes an opponent Sniper becoming ready");
+    expect(!cooldownAttack.move_from_string("h2-h3"),
+           "post-action legality rejects a quiet move leaving the readied Sniper's check");
+    cooldownAttack.piece(sniper).cooldown = 2;
+    expect(!cooldownAttack.in_check(), "a still-cooling Sniper does not give check");
+    Position sniperMate = parse(
+      "b;king,w,b8;king,b,a10;sniper,w,a9,0,1;knight,w,c8");
+    expect(sniperMate.in_check() && sniperMate.legal_moves().empty() &&
+             sniperMate.terminal_reason() == TerminalReason::Checkmate &&
+             !TablebaseProbe::probe(sniperMate),
+           "a ready-next-turn Sniper mates and cannot use stale tablebase seeds");
+
+    Position disguised = mate;
+    disguised.add_piece(PieceType::Jester, Color::Black, Position::square_from_name("h10"));
+    expect(!disguised.in_check() && !disguised.game_over(),
+           "King/Jester ambiguity still suspends check and checkmate");
+    Position ghost = parse("b;king,w,h1;king,b,a10;ghost,w,a9");
+    expect(!ghost.in_check(), "Ghost attacks still do not give check");
 }
 
 void test_native_insufficient_material() {
@@ -5022,6 +5159,7 @@ int main(int argc, char** argv) {
     test_public_history_reconstruction();
     test_belief_terminal_and_observer_scoring();
     test_native_terminal_reasons();
+    test_turn_start_check();
     test_native_insufficient_material();
     test_pawn_en_passant_lifetime();
     test_cooldowns_minions_and_freeze_stacking();

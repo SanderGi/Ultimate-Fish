@@ -236,6 +236,10 @@ class Position {
     [[nodiscard]] bool ordinary_predecessor_king_safe() const;
     [[nodiscard]] bool team_has_sufficient_material(Color color) const;
     [[nodiscard]] bool is_checkmate_possible() const;
+    // Current-turn check includes the hypothetical opponent turn-start phase.
+    // Post-action legality must instead use real_king_threatened: that phase
+    // has already run when a completed action changes sides.
+    [[nodiscard]] bool in_check() const;
     [[nodiscard]] TerminalReason terminal_reason() const;
     [[nodiscard]] bool game_over() const;
     [[nodiscard]] std::optional<Color> winner() const;

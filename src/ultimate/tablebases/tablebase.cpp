@@ -2739,7 +2739,7 @@ class TablebaseGenerator {
         // already stalemate. Checkmate remains a substantive tablebase result.
         if (moves.empty())
             return position.is_checkmate_possible() &&
-              !position.real_king_threatened(position.side_to_move());
+              !position.in_check();
 
         const auto leaves_material_class = [&](const Position& parent,
                                                const Move& move) {
@@ -2761,7 +2761,7 @@ class TablebaseGenerator {
         // fork/skewer/pin test below and avoids classifying unrelated hanging
         // material merely because a capture might occur on the next turn.
         bool checkedOrPinned =
-          position.real_king_threatened(position.side_to_move());
+          position.in_check();
         if (!checkedOrPinned) {
             const Color mover = position.side_to_move();
             for (const Move& move : position.pseudo_legal_moves()) {

@@ -1598,6 +1598,52 @@ std::vector<Move> Position::pseudo_legal_moves() const {
     return moves;
 }
 
+bool Position::in_check() const {
+    if (pieces(sideToMove_, PieceType::Jester) || !has_real_king(sideToMove_))
+        return false;
+
+    // In King/Devil/Minion endgames there are no rays, blasts, possessions or
+    // rescues. With separated Kings and no Minion immediately behind either
+    // royal, a turn phase cannot create check. This conservative bitboard
+    // rejection avoids copying/marching an entire army at every quiet leaf;
+    // collisions near a royal still use the full native simulation below.
+    const Bitboard kings = pieces(Color::White, PieceType::King) |
+                           pieces(Color::Black, PieceType::King);
+    const Bitboard whiteMinions = pieces(Color::White, PieceType::Minion);
+    const Bitboard blackMinions = pieces(Color::Black, PieceType::Minion);
+    if ((whiteMinions || blackMinions) &&
+        !(occupied() & ~(kings | whiteMinions | blackMinions |
+                        pieces(Color::White, PieceType::Devil) |
+                        pieces(Color::Black, PieceType::Devil))) &&
+        !((whiteMinions << BoardFiles | blackMinions >> BoardFiles) & kings) &&
+        !(threat_geometry().king[lsb_square(pieces(sideToMove_, PieceType::King))] &
+          pieces(~sideToMove_, PieceType::King)))
+        return false;
+
+    // Bot.GetAllAvailableMoves calls ChangeTurn before DidKingDie, then undoes
+    // it. Usually that changes no attack-relevant state: avoid copying the
+    // position or running the automatic phase in the ordinary chess case.
+    bool changesAttacks = bool(pieces(~sideToMove_, PieceType::Minion));
+    for (int id = 0; !changesAttacks && id < pieceCount_; ++id)
+        // Without Minions, only a newly readied attacker can change threats:
+        // a cooldown above one stays blocked and a victim's cooldown cannot
+        // prevent its capture. With friendly Minions, retain all decrements
+        // because an indirect reply simulation can start their next phase.
+        changesAttacks = pieces_[id].alive && pieces_[id].cooldown &&
+          (pieces(sideToMove_, PieceType::Minion) ||
+           (pieces_[id].color != sideToMove_ && pieces_[id].cooldown == 1));
+    if (!changesAttacks)
+        return real_king_threatened(sideToMove_);
+
+    Position next = *this;
+    next.finish_turn();
+    // Automatic friendly collisions/Bomb chains may kill the attacking King,
+    // including both Kings. Native DidKingDie requires an opposing winner,
+    // not a simultaneous knockout, to report check.
+    return next.has_real_king(~sideToMove_) &&
+           next.real_king_threatened(sideToMove_);
+}
+
 bool Position::real_king_threatened(Color color) const {
     if (!has_real_king(color))
         return true;
@@ -1612,27 +1658,16 @@ bool Position::real_king_threatened(Color color) const {
     // A captured Bomb can reach the King through a chain of adjacent Bombs.
     // Build that connected danger set once, then reject the many captures
     // whose victim and blast cannot possibly affect the royal.
-    Bitboard dangerousBombs = 0;
-    for (int id = 0; id < pieceCount_; ++id)
-        if (pieces_[id].alive && pieces_[id].onBoard && pieces_[id].type == PieceType::Bomb &&
-            adjacent(pieces_[id].square, kingSquare))
-            dangerousBombs |= square_bb(pieces_[id].square);
-    for (bool changed = true; changed;) {
-        changed = false;
-        for (int id = 0; id < pieceCount_; ++id) {
-            if (!pieces_[id].alive || !pieces_[id].onBoard ||
-                pieces_[id].type != PieceType::Bomb ||
-                (dangerousBombs & square_bb(pieces_[id].square)))
-                continue;
-            Bitboard connected = dangerousBombs;
-            while (connected) {
-                if (adjacent(pieces_[id].square, pop_lsb(connected))) {
-                    dangerousBombs |= square_bb(pieces_[id].square);
-                    changed = true;
-                    break;
-                }
-            }
-        }
+    const ThreatGeometry& geometry = threat_geometry();
+    const Bitboard allBombs = pieces(Color::White, PieceType::Bomb) |
+                              pieces(Color::Black, PieceType::Bomb);
+    Bitboard dangerousBombs = allBombs & geometry.king[kingSquare];
+    Bitboard frontier = dangerousBombs;
+    while (frontier) {
+        const Bitboard added = geometry.king[pop_lsb(frontier)] &
+                               allBombs & ~dangerousBombs;
+        dangerousBombs |= added;
+        frontier |= added;
     }
 
     const Bitboard royalDanger = square_bb(kingSquare) | dangerousBombs;
@@ -1670,7 +1705,6 @@ bool Position::real_king_threatened(Color color) const {
     const Color attackingColor = ~color;
     const auto ordinaryActorCanReachDanger = [&](int actor) {
         const PieceState& piece = attacker.pieces_[actor];
-        const ThreatGeometry& geometry = threat_geometry();
         Bitboard reach = 0;
         switch (piece.type) {
         case PieceType::King:
@@ -1708,7 +1742,6 @@ bool Position::real_king_threatened(Color color) const {
         return bool(reach & royalDanger);
     };
     std::vector<Move> replies;
-    replies.reserve(128);
     for (int actor = 0; actor < attacker.pieceCount_; ++actor) {
         if (!attacker.pieces_[actor].alive || !attacker.pieces_[actor].onBoard ||
             attacker.pieces_[actor].color != attackingColor)
@@ -1718,7 +1751,13 @@ bool Position::real_king_threatened(Color color) const {
         // Ghost attacks never produce check/checkmate in the app. A royal may
         // enter a hidden Ghost's adjacency, reveal it, and remain alive until
         // the Ghost actually captures it on a later action.
-        if (attacker.pieces_[actor].type == PieceType::Ghost)
+        // Minion advances belong to the turn phase, not the manual attack
+        // list. Devil spawns and inert Goop/Halos also have no such attacks.
+        if (attacker.pieces_[actor].type == PieceType::Ghost ||
+            attacker.pieces_[actor].type == PieceType::Minion ||
+            attacker.pieces_[actor].type == PieceType::Devil ||
+            attacker.pieces_[actor].type == PieceType::Goop ||
+            attacker.pieces_[actor].type == PieceType::Halo)
             continue;
 
         const PieceType actorType = attacker.pieces_[actor].type;
@@ -1730,6 +1769,8 @@ bool Position::real_king_threatened(Color color) const {
         // Most characters can knock out a King only through their native
         // attack list. Mage and Fisherman can forcibly translate a Giant,
         // while either CopyCat half may move quietly as its partner captures.
+        if (replies.capacity() == 0)
+            replies.reserve(128);
         replies.clear();
         attacker.append_moves_for(replies, actor, !needsQuietCompanion);
         for (const Move& reply : replies) {
@@ -2966,7 +3007,7 @@ TerminalReason Position::terminal_reason() const {
         return TerminalReason::InsufficientMaterial;
     if (has_legal_move())
         return TerminalReason::Ongoing;
-    return real_king_threatened(sideToMove_)
+    return in_check()
       ? TerminalReason::Checkmate : TerminalReason::Stalemate;
 }
 
@@ -2983,7 +3024,7 @@ std::optional<Color> Position::winner() const {
         return white ? Color::White : Color::Black;
     if (!white || !is_checkmate_possible())
         return std::nullopt;
-    if (legal_moves().empty() && real_king_threatened(sideToMove_))
+    if (!has_legal_move() && in_check())
         return ~sideToMove_;
     return std::nullopt;
 }
@@ -3473,8 +3514,7 @@ std::string Position::move_to_display_string(const Move& move,
             return "GH";
         if (child.winner() == actor.color)
             notation += '#';
-        else if (child.has_real_king(~actor.color) &&
-                 child.real_king_threatened(~actor.color))
+        else if (child.side_to_move() != actor.color && child.in_check())
             notation += '+';
     }
     return notation;
