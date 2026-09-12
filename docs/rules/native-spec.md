@@ -287,6 +287,21 @@ and remaps every relationship so captures cannot corrupt a round trip.
   but it does not suppress moves by the side's other characters. Once the
   first jump is chosen, further jumps by that Checker are forced. Checkers
   promote at the far rank.
+- Checker Kings slide along all four diagonals. The 5.731 ARMv7 method
+  `SimulatedChecker.GetPieceSimulations` at `0x18163b8` sets `movementAmount`
+  to 8 for type 22, versus 1 for ordinary type 21. A capture scans to the
+  first visible enemy and lands exactly one square beyond it, not at an
+  arbitrary square past it. Friendly occupancy or an unavailable landing
+  blocks that jump. `GetAllQueuedMoves` (`0x18177d8`) and
+  `HasAvailableAttack` (`0x1818c84`) also use this long range; promotion in
+  `ShouldUpgrade` (`0x1819514`) changes the range immediately, including
+  during a capture chain. Hidden enemy Ghosts remain apparent quiet squares
+  along the move-generation ray and are not exposed as jump victims.
+  These addresses were resolved from the authenticated ARMv7 package's own
+  metadata and Assembly-CSharp method table on 2026-09-12; the older interaction
+  audit's Checker addresses do not identify these methods in that binary.
+  Existing Checker-containing tablebase payloads encode the old short-range
+  rules and are rejected pending regeneration and a new compatibility marker.
 - Sludge creates goop on its origin and, for a two-square move, the intervening
   square.
 - Goop has no moves. When a melee character other than a bomb attacks it, goop

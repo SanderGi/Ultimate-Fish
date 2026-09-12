@@ -177,6 +177,12 @@ struct DevilStatefulStorage {
 
 bool compatible_codec(std::uint32_t version, PieceType primary,
                       PieceType secondary, std::uint64_t codecTag) {
+    // All existing Checker payload versions used short-range Checker Kings.
+    // Ordinary Checker roots are affected too: they can promote. Do not let
+    // a stale WDL/DTW verdict override the corrected native move generator.
+    if (primary == PieceType::Checker || primary == PieceType::CheckerKing ||
+        secondary == PieceType::Checker || secondary == PieceType::CheckerKing)
+        return false;
     if (version < 2 || version > 11)
         return false;
     if (version == 11)

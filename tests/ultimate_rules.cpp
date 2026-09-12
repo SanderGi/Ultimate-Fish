@@ -809,6 +809,124 @@ void test_ninja_and_mage() {
            "mage excludes Giant-tile swaps whose translated footprint leaves the board");
 }
 
+void test_checker_king_long_diagonals() {
+    const auto position = [](const char* extra, Color side = Color::White) {
+        Position result;
+        std::string error;
+        expect(result.set_upn(std::string("w;king,w,a1;king,b,h10;rook,w,b1;pawn,w,h1;") +
+                              extra, &error), "Checker King fixture parses: " + error);
+        result.set_side_to_move(side);
+        return result;
+    };
+    for (const Color side : {Color::White, Color::Black}) {
+        Position quiet = position(side == Color::White ? "checkerKing,w,d5"
+                                                       : "checkerKing,b,d5", side);
+        for (const char* to : {"a2", "a8", "h9", "h1"}) {
+            // h1 is occupied; every other diagonal reaches its edge.
+            if (std::string(to) != "h1")
+                expect(quiet.move_from_string(std::string("d5-") + to).has_value(),
+                       "Checker King slides in both forward and backward directions");
+        }
+        expect(quiet.move_from_string("d5-g2").has_value() &&
+                 !quiet.move_from_string("d5-h1").has_value() &&
+                 !quiet.move_from_string("d5-d8").has_value(),
+               "Checker King stops at occupancy and never moves orthogonally");
+        const std::string before = quiet.upn();
+        const auto key = quiet.key();
+        Undo undo;
+        expect(quiet.make_move(require_move(quiet, "d5-a8"), undo),
+               "long quiet Checker King move applies");
+        quiet.undo_move(undo);
+        expect(quiet.upn() == before && quiet.key() == key,
+               "long quiet move restores exact UPN and hash");
+    }
+    Position chain = position("checkerKing,w,b2;pawn,b,e5;pawn,b,d8");
+    const std::string original = chain.upn();
+    const Move jump = require_move(chain, "b2-f6");
+    expect(jump.auxiliary == Position::square_from_name("e5") && chain.is_capture(jump),
+           "long jump identifies the distant victim, not the midpoint");
+    expect(!chain.move_from_string("b2-e5") && !chain.move_from_string("b2-g7"),
+           "jump lands exactly one square beyond the victim");
+    Undo first, second;
+    expect(chain.make_move(jump, first) && chain.piece_on(Position::square_from_name("e5")) ==
+             Position::NoPiece && chain.has_forced_action(),
+           "long capture removes its victim and starts the distant continuation");
+    expect(chain.legal_moves().size() == 1 &&
+             chain.make_move(require_move(chain, "f6-c9"), second) &&
+             chain.side_to_move() == Color::Black,
+           "long backward continuation captures and ends the turn");
+    chain.undo_move(second);
+    chain.undo_move(first);
+    expect(chain.upn() == original, "long capture chain is fully reversible");
+
+    for (const char* blockers : {
+           "checkerKing,w,b2;pawn,w,d4;pawn,b,e5",
+           "checkerKing,w,b2;pawn,b,e5;pawn,b,f6",
+           "checkerKing,w,b2;pawn,b,e5;pawn,w,f6"}) {
+        Position blocked = position(blockers);
+        expect(!blocked.move_from_string("b2-f6") && !blocked.move_from_string("b2-g7"),
+               "friendly intervening pieces and either color on the landing block jumps");
+    }
+    Position threat;
+    std::string error;
+    expect(threat.set_upn("w;king,w,a1;king,b,e5;checkerKing,w,b2", &error) &&
+             !threat.ordinary_predecessor_king_safe(),
+           "a distant Checker King jump threatens the King");
+    threat.add_piece(PieceType::Pawn, Color::Black, Position::square_from_name("f6"));
+    expect(threat.ordinary_predecessor_king_safe(),
+           "blocked jump landing removes the royal threat");
+
+    Position promotion = position("checker,w,b8;pawn,b,c9;pawn,b,f8");
+    const std::string beforePromotion = promotion.upn();
+    Undo promote, finish;
+    expect(promotion.make_move(require_move(promotion, "b8-d10"), promote) &&
+             promotion.has_forced_action(), "promotion immediately enables a long backward jump");
+    expect(promotion.make_move(require_move(promotion, "d10-g7"), finish),
+           "newly promoted Checker King jumps the distant piece in the same turn");
+    promotion.undo_move(finish);
+    promotion.undo_move(promote);
+    expect(promotion.upn() == beforePromotion, "promotion and long continuation undo exactly");
+
+    Position hidden = position("checkerKing,w,b2;ghost,b,d4,0,0,0,0,0,0");
+    const int checker = hidden.piece_on(Position::square_from_name("b2"));
+    expect(hidden.move_from_string("b2-d4") && hidden.move_from_string("b2-f6") &&
+             !hidden.is_capture(require_move(hidden, "b2-f6")),
+           "hidden Ghost is an apparent quiet endpoint, transparent to the ray, not a jump");
+    const std::string beforeHidden = hidden.upn();
+    Undo collision;
+    expect(hidden.make_move(require_move(hidden, "b2-d4"), collision) &&
+             !hidden.piece(checker).alive, "long blind landing retains mutual knockout");
+    hidden.undo_move(collision);
+    expect(hidden.upn() == beforeHidden, "blind long-range collision undoes exactly");
+    Position ordinary = position("checker,w,b2");
+    expect(ordinary.move_from_string("b2-c3") && !ordinary.move_from_string("b2-d4") &&
+             !ordinary.move_from_string("b2-c1"), "unpromoted Checker remains short-range");
+}
+
+void test_stale_checker_tablebase_codec() {
+    const auto path = std::filesystem::temp_directory_path() /
+      "ultimatefish-stale-checker-codec.uftb";
+    std::array<char, 48> header{};
+    std::memcpy(header.data(), "UFTB1\0\0\0", 8);
+    const auto put = [&](int offset, std::uint32_t value) {
+        std::memcpy(header.data() + offset, &value, sizeof(value));
+    };
+    put(8, 5); put(16, 4); put(24, 1); put(28, 1); put(32, 4);
+    const auto check = [&](PieceType first, PieceType second) {
+        put(12, static_cast<std::uint32_t>(first));
+        put(40, static_cast<std::uint32_t>(second));
+        { std::ofstream file(path, std::ios::binary); file.write(header.data(), header.size()); }
+        return TablebaseProbe::uses_compatible_codec(path.string());
+    };
+    expect(check(PieceType::Rook, PieceType::Bishop),
+           "unaffected legacy material codec remains available");
+    expect(!check(PieceType::Checker, PieceType::Rook) &&
+             !check(PieceType::Rook, PieceType::Checker) &&
+             !check(PieceType::CheckerKing, PieceType::Rook),
+           "legacy Checker codecs are rejected in either material slot, including promotions");
+    std::filesystem::remove(path);
+}
+
 void test_checker_chain_and_prince_turns() {
     Position checker;
     checker.add_piece(PieceType::King, Color::White, Position::square_from_name("a1"));
@@ -4887,6 +5005,8 @@ int main(int argc, char** argv) {
     test_bomb_check_legality();
     test_native_castling();
     test_ninja_and_mage();
+    test_checker_king_long_diagonals();
+    test_stale_checker_tablebase_codec();
     test_checker_chain_and_prince_turns();
     test_sludge_and_victory();
     test_giant_rechecks_angel_rescue_footprint();

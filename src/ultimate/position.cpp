@@ -972,35 +972,46 @@ void Position::add_checker_moves(std::vector<Move>& moves, int id, bool attacksO
     const PieceState& piece = pieces_[id];
     const int direction = piece.color == Color::White ? 1 : -1;
     const bool king = piece.type == PieceType::CheckerKing;
+    // Native SimulatedChecker uses movementAmount=8 after promotion. A king
+    // scans to the first visible blocker, then jumps exactly one cell beyond
+    // an enemy; it does not choose arbitrary landing cells beyond the victim.
+    const int range = king ? 8 : 1;
     bool foundCapture = false;
-    std::vector<Move> blindCollisions;
+    const std::size_t firstMove = moves.size();
     for (const int vertical : {direction, -direction}) {
         if (vertical == -direction && !king)
             continue;
         for (const int horizontal : {-1, 1}) {
-            const int middleFile = file_of(piece.square) + horizontal;
-            const int middleRank = rank_of(piece.square) + vertical;
-            const int targetFile = file_of(piece.square) + 2 * horizontal;
-            const int targetRank = rank_of(piece.square) + 2 * vertical;
+          for (int distance = 1; distance <= range; ++distance) {
+            const int middleFile = file_of(piece.square) + distance * horizontal;
+            const int middleRank = rank_of(piece.square) + distance * vertical;
+            const int targetFile = middleFile + horizontal;
+            const int targetRank = middleRank + vertical;
             if (middleFile < 0 || middleFile >= BoardFiles ||
                 middleRank < 0 || middleRank >= BoardRanks)
-                continue;
+                break;
             const int jumped = board_[make_square(middleFile, middleRank)];
+            if (jumped == NoPiece) {
+                if (!attacksOnly && !foundCapture)
+                    moves.push_back({piece.square,
+                      static_cast<std::uint8_t>(make_square(middleFile, middleRank))});
+                continue;
+            }
             if (jumped != NoPiece && pieces_[jumped].color != piece.color &&
                 pieces_[jumped].type == PieceType::Ghost &&
                 !pieces_[jumped].visible) {
                 // A hidden enemy Ghost is not exposed as a public jump. The
-                // native Checker instead offers the adjacent cell as a blind
-                // collision unless a visible capture elsewhere is mandatory.
-                if (!attacksOnly)
-                    blindCollisions.push_back({
+                // native Checker offers the cell as a blind collision; a
+                // king's apparent quiet ray also continues beyond it.
+                if (!attacksOnly && !foundCapture)
+                    moves.push_back({
                       piece.square,
                       static_cast<std::uint8_t>(make_square(middleFile, middleRank))});
                 continue;
             }
             if (targetFile < 0 || targetFile >= BoardFiles || targetRank < 0 ||
                 targetRank >= BoardRanks)
-                continue;
+                break;
             const int target = make_square(targetFile, targetRank);
             const int landing = board_[target];
             const bool emptyOrHiddenEnemy =
@@ -1010,24 +1021,14 @@ void Position::add_checker_moves(std::vector<Move>& moves, int id, bool attacksO
                !pieces_[landing].visible);
             if (jumped != NoPiece && pieces_[jumped].color != piece.color &&
                 pieces_[jumped].visible && emptyOrHiddenEnemy) {
+                if (!foundCapture)
+                    moves.resize(firstMove);
                 foundCapture = true;
                 moves.push_back({piece.square, static_cast<std::uint8_t>(target),
                                  static_cast<std::uint8_t>(make_square(middleFile, middleRank))});
             }
-        }
-    }
-    if (foundCapture || attacksOnly)
-        return;
-    moves.insert(moves.end(), blindCollisions.begin(), blindCollisions.end());
-    for (const int vertical : {direction, -direction}) {
-        if (vertical == -direction && !king)
-            continue;
-        for (const int horizontal : {-1, 1}) {
-            const int file = file_of(piece.square) + horizontal;
-            const int rank = rank_of(piece.square) + vertical;
-            if (file >= 0 && file < BoardFiles && rank >= 0 && rank < BoardRanks &&
-                board_[make_square(file, rank)] == NoPiece)
-                moves.push_back({piece.square, static_cast<std::uint8_t>(make_square(file, rank))});
+            break;
+          }
         }
     }
 }
