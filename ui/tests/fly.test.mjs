@@ -9,8 +9,55 @@ import {createReferee} from '../fly/referee.mjs';
 import {createAnatomy} from '../fly/anatomy.mjs';
 import {Vector3} from 'three';
 import {validCandidates,isSameOrigin} from '../fly-service.mjs';
+import {createFlyPolicy} from '../fly-policy.mjs';
 import {FLY_PUBLIC_PATHS,isPasswordExemptPath} from '../password-exemption.mjs';
 const call=async game=>{const result=await refereeGame(game);assert.equal(result.status,200,JSON.stringify(result.body));return result.body;};
+test('fly score reuse preserves candidate order, exact inputs, and fresh chosen telemetry',async()=>{
+ const commands=[];
+ let last;
+ const checkpoint={mean:[.2,0],scale:[.3,1],weights:[.7,-.1]};
+ const command=async line=>{
+  commands.push(line);
+  if(line==='0')return {frames:[last],active:17};
+  const [n,...values]=line.split(' ').map(Number);
+  const rows=Array.from({length:n},(_,i)=>values.slice(i*8,(i+1)*8));
+  last=rows.at(-1);
+  return rows.map(f=>[f[0],f[1]]);
+ };
+ const choose=createFlyPolicy(checkpoint,command);
+ const a=[.5,0,0,0,0,0,0,0],b=[1,0,0,0,0,0,0,0];
+ const result=await choose([a,b,a,b]);
+ assert.equal(result.index,1);
+ assert.deepEqual(result.scores,[a,b,a,b].map(f=>(f[0]-.2)/.3*.7));
+ assert.deepEqual(result.frames,[b]);assert.equal(result.active,17);
+ assert.equal(commands[0],`2 ${a.join(' ')} ${b.join(' ')}`);
+ commands.length=0;
+ const reordered=await choose([b,a,b]);
+ assert.equal(reordered.index,0);
+ assert.deepEqual(commands,[`1 ${b.join(' ')}`,'0']);
+ // Close inputs must not be rounded into the same cache key.
+ commands.length=0;
+ await choose([[.5000000001,...a.slice(1)],a]);
+ assert.match(commands[0],/^1 0\.5000000001 /);
+});
+test('bounded fly score cache survives eviction and is scoped to its checkpoint',async()=>{
+ let evaluated=0;
+ const command=async line=>{
+  if(line==='0')return {frames:[],active:0};
+  const [n,...values]=line.split(' ').map(Number);evaluated+=n;
+  return Array.from({length:n},(_,i)=>[values[i*8]]);
+ };
+ const checkpoint={mean:[0],scale:[1],weights:[1]};
+ const a=[0,0,0,0,0,0,0,0],b=[.5,...a.slice(1)],c=[1,...a.slice(1)];
+ const choose=createFlyPolicy(checkpoint,command,2);
+ const first=await choose([a,b,c,a]);
+ assert.deepEqual(first.scores,[0,.5,1,0]);assert.equal(first.index,2);
+ assert.equal(evaluated,4);
+ evaluated=0;await choose([b,c]);assert.equal(evaluated,1);
+ evaluated=0;await choose([a]);assert.equal(evaluated,2);
+ const other=createFlyPolicy({...checkpoint,weights:[-1]},command,2);
+ assert.equal((await other([a,b,c])).index,0);
+});
 test('origin checks work behind the standalone server and HTTPS proxy',()=>{
  const request=(origin,host='ultimatefish.fly.dev',proto='https')=>new Request('http://localhost:8080/api/fly/choose',{headers:{origin,host,'x-forwarded-proto':proto}});
  assert.equal(isSameOrigin(request('https://ultimatefish.fly.dev')),true);

@@ -17,8 +17,39 @@ The browser handles display, input and animation; no WebAssembly is required.
 The full neural circuit runs in a persistent native subprocess loaded lazily by
 `/api/fly/choose`. That public endpoint accepts at most 256 eight-number action-feature
 vectors, caps the request at 32 KiB, admits one inference at a time (429 otherwise),
-and kills a stalled computation after 120 seconds. Peak circuit payload is about
-196 MiB plus working arrays; the full graph is never sent to browsers.
+and kills a stalled computation after 120 seconds. The graph is about 196 MiB on
+disk. Batched inference keeps a second, stable incoming-edge layout in memory,
+bringing circuit memory to roughly 410 MiB including working arrays. The full
+graph is never sent to browsers.
+
+The server evaluates up to eight independent candidates together, preserving the
+scalar circuit's contribution order and all eight synchronous steps. It uses no
+fast-math, weight pruning, reduced precision, or reduced circuit. Identical public
+feature vectors share an exact score; a bounded 4,096-entry LRU cache belongs to
+the loaded checkpoint and resets with the worker. Keys use the unchanged input
+serialization without rounding. Candidate order and first-maximum tie breaking
+are preserved. The chosen candidate is always run through the original scalar
+encoder for fresh telemetry, including on cache hits. Its animation plays while
+the board updates, without an additional 1.4-second delay before applying the move.
+
+`tools/fly/brain.cpp` remains the unchanged training/recording reference;
+`tools/fly/brain-server.cpp` adds the optimized CLI. Verify bit-for-bit motor
+outputs, all final neuron activities and telemetry at batch boundaries, including
+the 256-candidate limit:
+
+```sh
+c++ -std=c++17 -O3 tests/fly_brain_parity.cpp -o /tmp/fly-parity
+/tmp/fly-parity networks/fly/connectome.bin
+c++ -std=c++17 -O3 -DFLY_BRAIN_CLI tools/fly/brain.cpp -o /tmp/fly-reference
+node tools/fly/benchmark-inference.mjs /tmp/fly-reference /tmp/fly-performance.json
+```
+
+The benchmark compares every candidate's motor outputs and the complete policy
+response against the scalar reference on three armies, both reflections, and
+plies 0, 16 and 40 of deterministic legal histories. It reports cold score-cache,
+cross-position cache, and repeated-position latency separately. Worker startup
+and graph hashing are excluded; the incoming layout is initialized before the
+timed policy comparisons. These are local measurements, not deployed latency.
 
 `password-exemption.mjs` enumerates the page, its required static files, the
 corresponding-source archive and precisely `/api/fly/choose` and `/api/fly/state`. Existing engine APIs,

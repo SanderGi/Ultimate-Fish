@@ -238,9 +238,6 @@ async function flyTurn(token = generation) {
     $("activity-count").textContent = result.active.toLocaleString();
     $("think-time").textContent = (result.elapsedMs / 1000).toFixed(1) + "s";
     $("brain-phase").textContent = "Replaying the chosen action’s activity";
-    if (!visual.paused)
-      await new Promise((resolve) => setTimeout(resolve, 1400));
-    if (token !== generation) return;
     await apply(state.moves[result.index]);
     if (token !== generation) return;
     visual.celebrateUntil = performance.now() + 900;

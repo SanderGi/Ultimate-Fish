@@ -21,7 +21,7 @@ COPY src/ src/
 RUN make -C src ultimatefish
 
 FROM native-builder AS fly-brain-builder
-COPY tools/fly/build-native.sh tools/fly/brain.cpp tools/fly/
+COPY tools/fly/build-native.sh tools/fly/brain.cpp tools/fly/brain-server.cpp tools/fly/
 RUN tools/fly/build-native.sh brain
 
 FROM native-builder AS fly-rules-builder

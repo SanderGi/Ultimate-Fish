@@ -5,7 +5,8 @@ import {readFile} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
-let worker, lines, readout, busy=false;
+import {createFlyPolicy} from './fly-policy.mjs';
+let worker, lines, readout, policy, busy=false;
 export function isSameOrigin(request) {
   const origin = request.headers.get('origin');
   if (!origin) return true;
@@ -40,6 +41,7 @@ async function initialize() {
   child.on('exit',()=>{if(worker===child)worker=undefined;});
   const ready=await lines.next();
   if(ready.value!==`ready ${readout.motor}`)throw new Error('Fly circuit failed to load');
+  policy=createFlyPolicy(readout,command);
 }
 async function command(line) {
   worker.stdin.write(line+'\n');const result=await lines.next();
@@ -54,12 +56,8 @@ export async function inferFly(candidates) {
   try {
     const task=(async()=>{
       await initialize();
-      const rows=await command(`${candidates.length} ${candidates.flat().join(' ')}`);
-      const scores=rows.map(row=>row.reduce((sum,v,i)=>sum+(v-readout.mean[i])/readout.scale[i]*readout.weights[i],0));
-      const index=scores.indexOf(Math.max(...scores));
-      await command(`1 ${candidates[index].join(' ')}`);
-      const telemetry=await command('0');
-      return {index,scores,...telemetry,elapsedMs:Math.round(performance.now()-start),neurons:164587,connections:25563197};
+      const result=await policy(candidates);
+      return {...result,elapsedMs:Math.round(performance.now()-start),neurons:164587,connections:25563197};
     })();
     const body=await Promise.race([task,new Promise((_,reject)=>{timeout=setTimeout(()=>reject(Error('Fly inference timed out')),120000);})]);
     return {status:200,body};

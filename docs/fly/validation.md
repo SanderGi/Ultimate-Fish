@@ -69,3 +69,51 @@ inference (5.746 seconds for the tested opening), native move application, and
 all twelve public draft windows through the authenticated engine API. It ran as
 the non-root node user. Deployment regression tests passed. No image was pushed
 or deployed; all source changes remain uncommitted.
+
+## Exact inference optimization (2026-09-13)
+
+The original scalar `brain.cpp`, trained checkpoint, circuit binary, referee and
+recorded activity are unchanged. The native server uses a stable incoming-edge
+layout to evaluate eight independent candidates together. Its memory footprint
+increases by approximately one graph copy; total circuit memory is about 410 MiB.
+A checkpoint-scoped 4,096-entry score cache reuses only identical serialized
+feature vectors. Selected-action telemetry always uses a fresh scalar run. The
+browser no longer waits an extra 1.4 seconds before applying the selected move.
+
+Local Apple M1 Pro benchmark on 18 deterministic positions (three armies, both
+reflections, plies 0/16/40), using Apple Clang 17 `-std=c++17 -O3`:
+
+| Policy | Mean inference | Relative speed |
+| --- | ---: | ---: |
+| Original | 5.336 s | 1× |
+| Batched, empty score cache | 1.730 s | 3.08× |
+| Batched, cache retained across positions | 0.799 s | 6.68× |
+| Immediate repetition of each position | 0.163 s | 32.79× |
+
+Move generation averaged 5.7 ms. These timings exclude worker startup, graph
+hashing, the initial incoming-edge transpose, network latency and rendering.
+They are local comparisons, not measurements of the deployed service. Full
+per-position timings and source hashes are in `inference-performance.json`;
+reproduce with the commands in `README.md`.
+
+- All 2,129 motor outputs for every candidate, all policy scores, selected indices,
+  activity counts and all eight telemetry frames matched the scalar reference
+  exactly across those 18 positions.
+- `tests/fly_brain_parity.cpp` additionally compared float bits for motor outputs
+  and all 164,587 final neuron activities, plus every frame, for batch sizes
+  1/2/3/4/5/7/8/9/10/11/12/15/16/17/31/255/256. Inputs include zero, negative zero,
+  extremes and reproducible random features (seed 20260913).
+- Linux GCC 14 on ARM64 and GCC 10.2 on x86-64 (emulated locally) passed the same
+  bitwise checks for batch sizes 1/4/8/9. Emulated timings are not reported.
+- Exact-cache tests cover duplicates, input ordering, ties, close unrounded inputs,
+  eviction, independent checkpoints and fresh chosen-action telemetry.
+- The actual Docker compiler (Debian GCC 12.2 on ARM64) also passed those bitwise
+  boundary checks. The complete production Docker image built successfully,
+  including the Next standalone bundle and corresponding-source archive.
+- An isolated production-container API smoke test verified `/fly` and both public
+  APIs, full neuron/connection counts, eight activity frames, exact cached response
+  parity and native move application. Root and engine routes still returned 401.
+  The first opening decision took 3,000 ms including initialization; repeating it
+  took 149 ms. Native-worker RSS was 397 MiB, with a 411 MiB high-water mark.
+- UI lint and all 54 UI tests passed (using the existing local server and native
+  teacher parity). `git diff --check` passed. Nothing was deployed or committed.
