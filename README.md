@@ -253,3 +253,7 @@ permission from the Chess Ultimate developer, who plans to integrate it into
 the app. Ultimate Fish is distributed under GPLv3 (see [`Copying.txt`](Copying.txt));
 this license does not grant rights to proprietary Chess Ultimate assets, which
 remain the property of their respective owners.
+
+The unlinked Ultimate Fly experiment is documented in [docs/fly](docs/fly/README.md).
+Its anatomical fly assets use [Flybody](https://github.com/TuragaLab/flybody), with
+the original prototype inspired by [fly-connectome-template by Mert Cobanov](https://github.com/cobanov/fly-connectome-template).

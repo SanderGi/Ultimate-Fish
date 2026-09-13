@@ -6,23 +6,26 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "build": "next build",
+    "build": "npm run build:fly && next build",
     "dev": "next dev",
     "engine": "node engine-server.mjs",
-    "test": "node --test tests/board-interactions.test.mjs tests/deployment.test.mjs tests/engine-settings.test.mjs tests/piece-state.test.mjs tests/public-information.test.mjs tests/rendered-html.test.mjs tests/engine-bridge.test.mjs tests/tablebase-manager.test.mjs",
+    "test": "node --test tests/board-interactions.test.mjs tests/deployment.test.mjs tests/engine-settings.test.mjs tests/piece-state.test.mjs tests/public-information.test.mjs tests/rendered-html.test.mjs tests/engine-bridge.test.mjs tests/tablebase-manager.test.mjs tests/fly.test.mjs",
     "test:ui": "node --test tests/rendered-html.test.mjs",
     "test:bridge": "node --test tests/engine-bridge.test.mjs",
-    "lint": "eslint . --ignore-pattern .next"
+    "lint": "eslint . --ignore-pattern .next",
+    "build:fly": "node fly/build.mjs"
   },
   "dependencies": {
     "next": "16.2.6",
     "react": "19.2.6",
-    "react-dom": "19.2.6"
+    "react-dom": "19.2.6",
+    "three": "^0.186.0"
   },
   "devDependencies": {
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "esbuild": "^0.28.2",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
     "typescript": "5.9.3"

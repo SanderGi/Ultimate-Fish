@@ -31,13 +31,15 @@ test("production image serves the canonical tablebase plot", async () => {
   assert.match(proxy, /isPasswordExemptPath\(request\.nextUrl\.pathname\)/);
 });
 
-test("the canonical tablebase plot is the only password-exempt path", () => {
+test("the canonical tablebase plot and explicit fly resources are password-exempt", () => {
   assert.equal(PASSWORD_EXEMPT_PATH, "/ultimate-tablebase-grid.svg");
   assert.equal(isPasswordExemptPath(PASSWORD_EXEMPT_PATH), true);
 
   for (const protectedPath of [
     "/",
     "/api/engine/state",
+    "/api/fly/anything", "/fly/engine", "/fly/../api/engine/state",
+    "/fly/data/private.json", "/fly/rules.mjs",
     "/ultimate-fish-logo.png",
     "/ultimate-tablebase-grid.svg/",
     "/plots/ultimate-tablebase-grid.svg",

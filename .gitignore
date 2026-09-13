@@ -69,3 +69,6 @@ tablebases/*.uficapture
 # Transient tablebase coordination locks
 tablebases/*.lock
 tools/tablebases/*.lock
+
+# Generated full MaleCNS payload; rebuild with tools/fly/prepare-connectome.py.
+/networks/fly/*.bin

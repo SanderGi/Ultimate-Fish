@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#e9e9df">
+<title>Ultimate Fly · Chess with a fruit fly</title>
+<meta name="description" content="Play Chess Ultimate against a trained readout of the full 164,587-neuron fruit fly connectome.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ctext y='30' font-size='30'%3E🪰%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="/fly/style.css">
+</head>
+<body>
+<header><div class="header-brand"><a class="wordmark" href="/fly" aria-label="Ultimate Fly home">ULTIMATE FLY</a><span class="edition">Play Chess Ultimate Against a Fruit Fly</span></div><div class="controls" role="group" aria-label="Game controls"><label class="select-label">Army<select id="army"><option value="0">Classic roots</option><option value="1" selected>Strange company</option><option value="2">Wild things</option></select></label><label class="select-label">Play as<select id="color"><option value="0">White</option><option value="1">Black</option></select></label><button id="new-game" class="primary">New game</button><button id="undo" disabled>↶ Take back</button></div></header>
+<main>
+<div class="workbench">
+<section class="play" aria-label="Chess Ultimate game">
+<div class="player-line"><span class="dot fly-dot"></span><strong id="opponent-name">The fruit fly</strong><span id="opponent-side">Black</span><span id="turn-pill" class="pill">Loading rules</span></div>
+<div id="board" class="board" role="group" aria-label="Chess Ultimate board, eight files and ten ranks"></div>
+<div class="player-line bottom"><span class="dot human-dot"></span><strong>You</strong><span id="human-side">White</span><span id="move-number">Action 0</span></div>
+<div class="game-status"><span id="status" role="status" aria-live="polite">Preparing the board…</span><button id="retry" hidden>Retry fly move</button></div>
+<div id="choices" class="choices" aria-label="Choose action"></div>
+</section>
+<aside class="specimen">
+<section class="fly-panel" aria-label="Interactive 3D anatomical fruit fly">
+<div class="panel-heading"><div><h2>Your move, human.</h2></div></div>
+<div id="fly-scene" class="fly-scene"><p class="scene-loading">Preparing the specimen…</p></div>
+</section>
+<section class="brain-panel" aria-label="Computed neural activity">
+<div class="panel-heading"><span class="eyebrow">BRAIN VISUALIZATION</span><span id="brain-phase" class="brain-phase">Waiting for a move</span></div>
+<div id="brain-scene" class="brain-scene"><p class="scene-loading">Loading measured neuron positions…</p></div>
+<div class="legend"><span><i class="cyan"></i>Visual</span><span><i class="sage"></i>Central / VNC</span><span><i class="orange"></i>Motor</span><span id="brain-key">Dim points show measured anatomy</span></div>
+<div class="metrics"><div><b>164,587</b><span>simulated neurons</span></div><div><b>25.6M</b><span>directed connections</span></div><div><b id="activity-count">—</b><span>active rate units</span></div><div><b id="think-time">—</b><span>decision time</span></div></div>
+</section>
+</aside>
+</div>
+<footer><span>The state is encoded as sensory cell stimulations and the simulated fly brain's motor response is mapped to a move using trained weights.</span><div class="footer-links"><a class="footer-link" href="https://flychess-hq.vercel.app/" target="_blank" rel="noreferrer">Inspired by Fly Chess ↗</a><button id="about-open" class="footer-link">About the experiment ↗</button><a class="footer-link" href="https://store.steampowered.com/app/2580000/Chess_Ultimate/" target="_blank" rel="noreferrer">Chess Ultimate ↗</a></div></footer>
+</main>
+<dialog id="about"><button id="about-close" class="close" aria-label="Close about">×</button><span class="eyebrow">THE EXPERIMENT</span><h2>Mapping the simulated brain to moves.</h2><p>Every choice runs the full <b>164,587-neuron MaleCNS v1.0 circuit</b>, retaining all <b>25,563,197 measured directed connections</b>. Eight engineered descriptions of each legal action stimulate sensory cells. A trained linear readout of 2,129 descending and motor cells ranks the actions.</p><p>The biological wiring stays fixed. The artificial readout learned from node-limited Ultimate Fish searches. Neural inference and native Ultimate move rules run on this server. The browser displays the game and animations.</p><p>Note that this connectome-based computation experiment does not imply that a living fly understands Chess Ultimate. Neuron dynamics and sensory encoding are engineering assumptions. The anatomical body’s flight and hovering are authored animations. Dim points always show the measured anatomy. During computation, recorded full-circuit runs provide the waiting animation; these are not live telemetry from the current move. Once computation finishes, its own activity replay takes over.</p><p>We deliberately only allow choosing from pre-determined armies to avoid the possibility of using the fly to cheat (not that it would be good at that lol).</p><p id="training-summary">Loading training results…</p><h3>Sources & credits</h3><p><a href="https://male-cns.janelia.org/download/">MaleCNS / FlyEM, HHMI Janelia & collaborators</a> — CC BY 4.0. <a href="https://github.com/TuragaLab/flybody">Flybody</a> — Apache 2.0. Original prototype inspired by <a href="https://github.com/cobanov/fly-connectome-template">fly-connectome-template by Mert Cobanov</a>. Inspired by <a href="https://flychess-hq.vercel.app/">Ernesto’s Fly Chess</a> and <a href="https://github.com/cobanov/awesome-fly">Awesome Fly</a>.</p><p><a href="/fly/data/NOTICE.md">Data, licenses & methods</a> · <a href="/fly/source.tar.gz">Source archive</a> · <a href="/fly/data/manifest.json">Full circuit manifest</a> · <a href="/fly/data/training-report.json">Training report</a></p></dialog>
+<script type="module" src="/fly/app.js"></script>
+</body></html>

@@ -32,3 +32,8 @@ yarn-error.log*
 
 # typescript
 next-env.d.ts
+
+# Reproducible Ultimate Fly browser builds
+/public/fly/app.js
+/public/fly/pieces.svg
+/public/fly/source.tar.gz

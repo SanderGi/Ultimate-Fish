@@ -15,3 +15,32 @@ dist
 *.xapk
 *.ipa
 training
+
+# Keep only the fly documentation needed to assemble its public source/report.
+!docs/
+docs/*
+!docs/fly/
+networks/fly/*.bin
+src/ultimate_fly_brain
+src/ultimate_fly_rules
+
+# The image rebuilds executables and browser bundles from source.
+src/*
+!src/Makefile
+!src/ultimate/
+ui/public/fly/app.js
+ui/public/fly/pieces.svg
+ui/public/fly/source.tar.gz
+ui/.fly-build
+
+# Only the published plot, Fly source archive inputs, and draft bridge helpers
+# are consumed by Docker. Keep local datasets and unrelated tooling out.
+networks/
+tablebases/*
+!tablebases/ultimate-tablebase-grid.svg
+tools/*
+!tools/fly/
+!tools/search_ultimate_public_draft.py
+!tools/evolve_ultimate_army.py
+!tools/evolve_ultimate_draft.py
+!tools/ultimate_phone.py

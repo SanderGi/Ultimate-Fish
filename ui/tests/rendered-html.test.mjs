@@ -64,3 +64,25 @@ test("local server renders the Ultimate Fish workbench", async () => {
   assert.match(html, /free/);
   assert.match(html, /used/);
 });
+
+test("fly HTTP referee validates histories and returns native moves", async () => {
+  const post = (body, headers = {}) => fetch(`${base}/api/fly/state`, {
+    method: "POST", headers: {"content-type": "application/json", ...headers}, body,
+  });
+  const game = {preset: 1, reflection: 0, moves: []};
+  const initialResponse = await post(JSON.stringify(game), {origin: new URL(base).origin});
+  assert.equal(initialResponse.status, 200);
+  assert.equal(initialResponse.headers.get("cache-control"), "no-store");
+  const initial = await initialResponse.json();
+  assert.equal(initial.ply, 0);
+  assert.equal(initial.pieces.length, 32);
+  const moved = await post(JSON.stringify({...game, moves: [initial.moves[0].index]}));
+  assert.equal(moved.status, 200);
+  assert.equal((await moved.json()).ply, 1);
+  assert.deepEqual(await (await post(JSON.stringify(game))).json(), initial);
+  assert.equal((await post(JSON.stringify({...game, moves: [4095]}))).status, 400);
+  assert.equal((await post(JSON.stringify({...game, upn: "arbitrary"}))).status, 400);
+  assert.equal((await post("{")).status, 400);
+  assert.equal((await post(" ".repeat(8193))).status, 413);
+  assert.equal((await post(JSON.stringify(game), {origin: "https://unrelated.invalid"})).status, 403);
+});
