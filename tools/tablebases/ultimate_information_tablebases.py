@@ -752,8 +752,11 @@ def solver_model_fingerprint(filename: str, *, root: Path = ROOT) -> str:
     fingerprint_domain = (f"solver-model:{domain}:{filename}"
                           if domain in {"ordinary-ghost", "angel-ghost"}
                           else f"solver-model:{domain}")
+    sources = SOLVER_DOMAIN_SOURCES[domain]
+    if any(piece in filename for piece in ("checker", "sniper", "devil")):
+        sources = (*sources, TABLEBASE_SOURCES / "rules_revision.h")
     return _source_fingerprint(
-        SOLVER_DOMAIN_SOURCES[domain], domain=fingerprint_domain,
+        sources, domain=fingerprint_domain,
         root=root)
 
 

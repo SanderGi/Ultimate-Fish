@@ -165,6 +165,25 @@ int main(int argc, char** argv) try {
     const std::uint64_t samples = argc > 1 ? std::stoull(argv[1]) : 250000;
     std::uint64_t checked = 0;
     std::uint64_t admitted = 0;
+    // Native turn-start mate witness: b8 protects a9/b9, whose automatic
+    // advances trap the bare king on a10. This must remain in the plot.
+    State mate;
+    mate.whiteKing = 57;
+    mate.blackKing = 72;
+    mate.secondary = Position::BoardSquares;
+    mate.side = 1;
+    mate.cooldown = 0;
+    mate.alive = true;
+    mate.minionCount = 2;
+    Minions matingMinions;
+    matingMinions.count = 2;
+    matingMinions.squares[0] = 64;
+    matingMinions.squares[1] = 65;
+    if (UltimateDevilSlice::trivial(mate, 0, &matingMinions) ||
+        make_position(mate, 0, matingMinions).terminal_reason() !=
+          TerminalReason::Checkmate)
+        throw std::runtime_error("Minion checkmate was excluded from plot");
+    check(mate, 0, matingMinions, checked, admitted);
     const Minions none{};
     for (const unsigned fixedSquare : FixedSquares)
         for (unsigned whiteKing = 0; whiteKing < Position::BoardSquares;

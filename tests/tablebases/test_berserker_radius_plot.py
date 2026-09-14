@@ -1,10 +1,13 @@
 import importlib.util
+import hashlib
+import io
 import json
 from pathlib import Path
 import struct
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -489,6 +492,35 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
         self.assertFalse(
             manifest["files"]["kberserkerkberserker.uftb"]["excluded"]
         )
+
+    def test_repaired_berserker_manifest_uses_exact_hf_payloads(self):
+        manifest = prepare.build(ROOT / "tablebases" / "README.md")
+        proof = json.loads((ROOT / "tablebases" /
+                            "rules-repair-certificate-20260912.json").read_text())
+        for name in ("kberserkercheckerk.uftb", "kberserkerkchecker.uftb",
+                     "kberserkersniperk.uftb", "kberserkerksniper.uftb"):
+            record = manifest["files"][name]
+            self.assertEqual(proof["dataset_revision"], record["hf_revision"])
+            self.assertEqual(proof["concrete"][name]["sha256"],
+                             record["expected_payload_sha256"])
+            self.assertIsNone(record["expected_archive_version_id"])
+            self.assertIsNone(record["expected_archive_key"])
+
+    def test_hf_berserker_fetch_authenticates_download_and_cached_bytes(self):
+        payload = b"test repaired table"
+        record = dict(filename="kberserkercheckerk.uftb", hf_revision="a" * 40,
+                      hf_dataset="SanderGi/Ultimate-Fish-Tablebases",
+                      expected_payload_sha256=hashlib.sha256(payload).hexdigest())
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with mock.patch.object(audit.urllib.request, "urlopen",
+                                   return_value=io.BytesIO(payload)) as request:
+                binding = audit.fetch_record(record, [], root, "", "", root / "unused")
+                self.assertIn("/" + "a" * 40 + "/tablebases/", request.call_args.args[0])
+            self.assertEqual(record["expected_payload_sha256"], binding["source_sha256"])
+            Path(binding["table"]).write_bytes(b"corrupt")
+            with self.assertRaisesRegex(RuntimeError, "source hash mismatch"):
+                audit.fetch_record(record, [], root, "", "", root / "unused")
 
     def test_information_parser_vectorizes_flags_without_changing_semantics(self):
         # Jester primary, Berserker secondary, two geometries per side.

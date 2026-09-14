@@ -239,7 +239,12 @@ inline bool trivial(const State& state, unsigned devilSquare,
         return !white_king_has_move(state, devilSquare, minions);
     }
     const BlackMoves moves = black_moves(state, devilSquare, minions);
-    return moves.leavesClass || !moves.legal;
+    // ChangeTurn advances Ivory's Minions before classifying a trapped Onyx
+    // king. A simultaneous royal collision has no opposing winner and is a
+    // stalemate; a surviving Ivory king makes the Onyx collision checkmate.
+    const bool check = minion_advances_onto(minions, state.blackKing) &&
+      !minion_advances_onto(minions, state.whiteKing);
+    return moves.leavesClass || (!moves.legal && !check);
 }
 
 inline Bucket classify(const State& state, unsigned devilSquare) {

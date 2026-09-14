@@ -1,0 +1,2862 @@
+{
+  "concrete": {
+    "kberserkercheckerk.uftb": {
+      "audit_log_sha256": "75ec9e3cb9f8eba8fb34b44fa4e06718f4c5a804fd9f3cde0e42ea0b02ce70bd",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 1897896064,
+      "elapsed_seconds": 6192.298803567886,
+      "filename": "kberserkercheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "c73eca0546d21f9d921fe60cfc2ee962b318c38ff8d2e048fde8343621206e32",
+      "solve_log_sha256": "cbb6b2fe1b740501aedf67eb465530c05d336a946a920fee139ed5dc3eaf764e",
+      "started_unix": 1789258512.2446706,
+      "states": 1518316800,
+      "workers": 64
+    },
+    "kberserkerkchecker.uftb": {
+      "audit_log_sha256": "ed94ff45b92c9dd9c159d6deadd6a0d6616c53713d788c5ec9c095d02051902a",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 1897896064,
+      "elapsed_seconds": 8675.582762002945,
+      "filename": "kberserkerkchecker.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "87411a071450830c3dab3875fc31a12633ab435a8b21f9828a326120da28fbf8",
+      "solve_log_sha256": "35b658d72cbe95ae6fdd7228190542ce58d82438f4c993b690f447b6de7d19c1",
+      "started_unix": 1789264704.5440269,
+      "states": 1518316800,
+      "workers": 64
+    },
+    "kberserkerksniper.uftb": {
+      "audit_log_sha256": "7755a0dc53ac220cb4922b00ddc35423c21749510f4285b3f98cf1746353025b",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 1897896064,
+      "elapsed_seconds": 11960.080723285675,
+      "filename": "kberserkerksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "e54e2149ce8c12d7ccbe389e4c060bb317003b2d08d0ea40b5ad80468a267763",
+      "solve_log_sha256": "390689eedfd10d508b3542323bf704832f52ed481e6bec732c882a75017a1132",
+      "started_unix": 1789273380.127442,
+      "states": 1518316800,
+      "workers": 64
+    },
+    "kberserkersniperk.uftb": {
+      "audit_log_sha256": "b6b02586d3c4d5f76da3726a77c8e256edb29ab42b3b061c02137f08182fcbb3",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 1897896064,
+      "elapsed_seconds": 11379.761069774628,
+      "filename": "kberserkersniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "0c0f68c5f8a3477d365ac75f183bf112447e189a45ff55b305e60dd6c9030b9c",
+      "solve_log_sha256": "1944b48fcc1c03f2d6e7d24fc96f03015b753ab247b1481ac74b359a5c3ddec5",
+      "started_unix": 1789285340.2087007,
+      "states": 1518316800,
+      "workers": 64
+    },
+    "kbishopcheckerk.uftb": {
+      "audit_log_sha256": "b38a62d2fa731362e145226900f247b8b7ad87ca61701aafec497a0e4bd75535",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 38.159111976623535,
+      "filename": "kbishopcheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "f9b932b8cff66fd68518092e5923db5bb1e7b75068ecbcc502d7b25c4595f3e7",
+      "solve_log_sha256": "ba8c514dd6a2ff2776a08d03716b8e61a5e108cf002e888b56667a7ef18b7345",
+      "started_unix": 1789250023.9311764,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kbishopksniper.uftb": {
+      "audit_log_sha256": "066d66c34c66d794929033e6d915df9279e580ca8170ed7ecaffa227e1d50bd1",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 78.64680552482605,
+      "filename": "kbishopksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "4a71fae712397a62144217a3ef479b28073c0fbec2fd0ac6692a1b93ba0b5d15",
+      "solve_log_sha256": "1617ca10ffdbca08c6537fbc6c171d5db96cea59a91217ee2d1ab7fea73f5bb4",
+      "started_unix": 1789250062.0907714,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kbishopsniperk.uftb": {
+      "audit_log_sha256": "6218fdf4368ac35d585be04276a8bd4b071f8554bca6a9131ba54557dbf79a83",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 83.87222003936768,
+      "filename": "kbishopsniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "e59281249b934b02c7cd20b4aae7f22f47f8fe69b36e402a4f96fd275e7ecf7c",
+      "solve_log_sha256": "eb7e9d9d4047ad14ebbb9b8fb847cc447c542a6735bcd2c14fb5914f52941b2a",
+      "started_unix": 1789250140.7380517,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kbombcheckerk.uftb": {
+      "audit_log_sha256": "46f0c36744f74a90a1f6b01dffb963c2057a554970e473ae96755ce2fa45acf2",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 76.30418658256531,
+      "filename": "kbombcheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "23dd5491ef5749650f823ad5fafa906a11a86deea0d089fdcd28f4fe9c441073",
+      "solve_log_sha256": "04378995cd031bd8275d49ea8db25b3ad54084f6bb2728684a8a1af11132c94c",
+      "started_unix": 1789250224.6106987,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kbombkchecker.uftb": {
+      "audit_log_sha256": "23ef853b41f4b07cfdfedd4944857b4c3eef4ef43c2bef704ed083d2382ad975",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 84.08035778999329,
+      "filename": "kbombkchecker.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "482a74d1d177a8ee20cb9ecd70d77502ef9552c42c53e8167cb9bc2dbd16a565",
+      "solve_log_sha256": "ab89472f735b90aa3ae8fab29a4b3c91a51935052192d6d8588d03de94c35eb8",
+      "started_unix": 1789250300.9153259,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kbombksniper.uftb": {
+      "audit_log_sha256": "e2de87f9755fb4078cca80105866f22b0b4aa565b357442fcfd3396b9e144379",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 106.50896668434143,
+      "filename": "kbombksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "e22ab163d948670a91d70b700c56ef65101a997b8adf884b6467662428b49e24",
+      "solve_log_sha256": "a0ec37fccbea74ea537841132e7da58aa94969b58da0290816bd88a2b5a73c18",
+      "started_unix": 1789250384.9961216,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kbombsniperk.uftb": {
+      "audit_log_sha256": "1f827cca54df3d01eca0619dee30efd7f5b576ab7078bd66b8764ef78b5c0a18",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 103.67016005516052,
+      "filename": "kbombsniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "b954e27d437f15edf3e0a408892369479ec0837807c45a59f1b5c96e0632acc8",
+      "solve_log_sha256": "f89d119d614cff21808ffa791896b20cb7c32b4dd58bab56520c3fab05c57d59",
+      "started_unix": 1789250491.5055954,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kcheckerangelk.uftb": {
+      "audit_log_sha256": "4cae58d37abc433b04a1cc66c44ca56775af20cc9b0e84878f3972f3a15d99a5",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 569368864,
+      "elapsed_seconds": 36.231091260910034,
+      "filename": "kcheckerangelk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "d13ad96148a6abf9d1ea2fcf2247b96f4c2743dfcdc20c70ccf81c1cb7287406",
+      "solve_log_sha256": "7f0e6474a2abe9d816abdeeb785926d1d9af910f5bad8d4798c9a91ad1423664",
+      "started_unix": 1789256959.2641816,
+      "states": 455495040,
+      "workers": 64
+    },
+    "kcheckercheckerk.uftb": {
+      "audit_log_sha256": "c05152b607dec1a3a54939245b1d726ecd6dd3e16ff1e02d7bf1db704cf63a56",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 47.52635073661804,
+      "filename": "kcheckercheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "b8e1b13e2f9f8bbc85e175ef46aea6513989565e69f537f6755390466f65d53f",
+      "solve_log_sha256": "9a21b3edc7dddb1099590e4274bca0914b313e6ed4108c3d40a5c6570056a6da",
+      "started_unix": 1789254457.7123709,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kcheckerdragonk.uftb": {
+      "audit_log_sha256": "56d9d9de680a6076e7bb8aa45c86fdb5bef54fff967b919297bcc7c4602202aa",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 96.88375496864319,
+      "filename": "kcheckerdragonk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "fa55df8e4e7d317f0f98662fae98b40f58cb68363a3a70e0c1b6bd57adbbb79a",
+      "solve_log_sha256": "e276976b00d701482d3c5f2d8e21313fb1346aee181fffaf1019fd10aec3be61",
+      "started_unix": 1789250595.1761878,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kcheckerfishermank.uftb": {
+      "audit_log_sha256": "89566151957ee792b93405d6250d47154dc93335886d7e0e4cc0d32ddc3212e6",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 109.60713720321655,
+      "filename": "kcheckerfishermank.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "645e98bf0435ed5fe773d0c76d3e9ade46309a12a6959f4788af0d39a0120baf",
+      "solve_log_sha256": "98474697d66a2f713d70f85e99f1d57f7866f5743579548116d9cf4b973db750",
+      "started_unix": 1789250692.0604048,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kcheckergiantk.uftb": {
+      "audit_log_sha256": "0fa58ded2495d7e83ee30d760611b4716ad9e0be464b78440249b2a11af7367f",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 46.442339181900024,
+      "filename": "kcheckergiantk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "2d0f2394e19a15a91660f37a978196861830d4491884420326c811d74571d767",
+      "solve_log_sha256": "d949392aa65cae0ef9930f4c62ec3cc92c1a8117bf0b4d99dd6e1227a2bbc0c3",
+      "started_unix": 1789250801.6679778,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kcheckerkdragon.uftb": {
+      "audit_log_sha256": "ed4946702e608e10f4e751d4be2423adcf9e9328b25d39a2f116dd057c286693",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 101.10789227485657,
+      "filename": "kcheckerkdragon.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "b9f02ce8be524c9824b394a4d2f7921005f958f9a2b0b82561854b11e71d2d53",
+      "solve_log_sha256": "5f05e4b385c224c0708e620f03c5edcf71de73698a4ee92be99043ee0d95356a",
+      "started_unix": 1789250848.110753,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kcheckerkgiant.uftb": {
+      "audit_log_sha256": "2c79ad63c2eb64ff33844d92bf6723b7a9569f98adc7510a5c0efc3c3a19587e",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 45.32863426208496,
+      "filename": "kcheckerkgiant.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "0613ab52b06998728bb45ad0d3717e738e07a55c4b5551623102194f6c9b9bd6",
+      "solve_log_sha256": "74ddde882d966ded59395ccf959f837ac8ae52007db574300dc5ac87097070c6",
+      "started_unix": 1789250949.2190626,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kcopycatcheckerk.uftb": {
+      "audit_log_sha256": "e447054defef8e4b299dca1bc911e821e3ffcce3ae41ca2b852a851abe79c5c7",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 202.71026754379272,
+      "filename": "kcopycatcheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "9784b3d12c60e641458bf0787a1888cf01cf2b4dd4d3fc0219f39e91dec70a00",
+      "solve_log_sha256": "4702514652aa1c78043a5479e5d84c08930ae25b9bfaad8069b272ef699b3f64",
+      "started_unix": 1789254505.2391703,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kcopycatkchecker.uftb": {
+      "audit_log_sha256": "c790c2400b4d7a81aacba184bd2a0d0044438e38843cc9c9d228fa9dc3e769ef",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 183.42554140090942,
+      "filename": "kcopycatkchecker.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "4ca4c4e5cc233702a023bbcdd2a7aaaf2075ad5d8b4f2cf5da59d6f9fb58dfba",
+      "solve_log_sha256": "b351ccb98a354b8aa5084b4a14b00985f3d9b97bb40be518992e610f4753c402",
+      "started_unix": 1789254707.9498925,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kcopycatksniper.uftb": {
+      "audit_log_sha256": "4537517610d7d41f7063aa36cf0748d56ea38430bf9eb6522c43f2b982a585aa",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 251.7748384475708,
+      "filename": "kcopycatksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "71b400f43d88d08ffd3d661f87b71068c8bcf2b00e89b066c05d98547cc11994",
+      "solve_log_sha256": "ab13f8fa8da1e92a49c24bceef288ea5d05c1ac647c52e076a16f42946c546c5",
+      "started_unix": 1789254891.37596,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kcopycatsniperk.uftb": {
+      "audit_log_sha256": "753cf4be802898c7fd78bf7fd08e8c90b5379c4efb926883f64ab5874650cad6",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 260.78736329078674,
+      "filename": "kcopycatsniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "1e4c78561100b52b6953ad484880cc44df9371c699f878a0280dc02b86adc893",
+      "solve_log_sha256": "2050735f06af378da169e14987265b2c63380e4f6a933fa0174a153ed37f3069",
+      "started_unix": 1789255143.151246,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kghostcheckerk.uftb": {
+      "audit_log_sha256": "e216e5b5f856a44652fe750768b76df7d36e10c878e2896c3d1e3dca44dcbe85",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 149.7628617286682,
+      "filename": "kghostcheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "2cba1e00c090e9cd62f34bc967c40d7bba441478c938b5a338764df2806fa723",
+      "solve_log_sha256": "651aba986408045827931d89dbe3753bfad9cb06079032f2ba43ad846ce56212",
+      "started_unix": 1789255403.9390578,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kghostkchecker.uftb": {
+      "audit_log_sha256": "e952bd046cc92946588255bd9c243406f326ab1a38e3321400af3aee784bb55c",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 131.91457271575928,
+      "filename": "kghostkchecker.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "167d37f16f69d048033e06fabb5b6acc919681380c23ea20dc00c908171c21fe",
+      "solve_log_sha256": "3d8381a796e9f3480dd26e0f43fd9d8cb8f7fcb5d2571fcc9e4aaa993ff308f4",
+      "started_unix": 1789255553.7023647,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kghostksniper.uftb": {
+      "audit_log_sha256": "f9d0bd5bc80c460f2f2350f690e824ed6ff57caff651eb4630d68d59ea314966",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 166.8293206691742,
+      "filename": "kghostksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "607aa04e85e59bfff387b4a45ae2078aae96eda7dc8a07ab442cdef15ec855c7",
+      "solve_log_sha256": "fe31250fd1d66393e4f6ed2b74e48720239855fa6c59f8c5fd9692a4a52fffc5",
+      "started_unix": 1789255685.6173792,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kghostsniperk.uftb": {
+      "audit_log_sha256": "a1b39552b7be51c73a544cd4b981e7b0d8cd8d8f43acf1650d03406ec38a8674",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 166.4527461528778,
+      "filename": "kghostsniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "8425f93c93e9a3c7ad39820efb7fedb690f24fb64b540c6b9e8eced5e8aaa7f5",
+      "solve_log_sha256": "e560567878df0a63c2ae90af68a2757fc6fbd44a104527f722f607a0291eb164",
+      "started_unix": 1789255852.4471757,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kjestercheckerk.uftb": {
+      "audit_log_sha256": "67b48044821a4ce6192dd5e38b8a3dbebf2ad34fd2ff61fa89ea208f96077fbd",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 79.18183541297913,
+      "filename": "kjestercheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "765ab1071a233b804b9e84b2e9f1d2252a2a893012127ed6e6315062f7a87088",
+      "solve_log_sha256": "d0f2f34f36bde5e0381e4a3a6653d26864d03bfd62e50c1e4c3fe7286671566d",
+      "started_unix": 1789250994.548113,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kjesterkchecker.uftb": {
+      "audit_log_sha256": "8bb0d5c958d0f7f5bd1685907b191226783ec9d7e762c6c30804cfa848d93a19",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 63.255417823791504,
+      "filename": "kjesterkchecker.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "9c06beadd8d4aa9916ed54845e8ed0ef74bbd725ca0cf1ad56d9ddd012f0a57b",
+      "solve_log_sha256": "a42f8ef0bc8bee1d345adba023b14e26b8754dcc68bc56a04c9b1fb52b5fcb74",
+      "started_unix": 1789251073.7303858,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kjesterksniper.uftb": {
+      "audit_log_sha256": "e9407c90777588e98d76bdcf30af6b2d4918b3be92b1273a808762787c1c86c1",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 98.58187627792358,
+      "filename": "kjesterksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "c14fcdedd9fdf8be63216be8c2b57b361978fa2b46ad156bf327c60ada9f1821",
+      "solve_log_sha256": "b80a5827e6dd013e5a31e048bb51992157ca7d06d0d0e8e15a52e049f25d78b0",
+      "started_unix": 1789251136.9862728,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kjestersniperk.uftb": {
+      "audit_log_sha256": "9ac40aac14f18489c6e3097fc447df094ddd603ed123f1fa4dc7ec8e58bff8d0",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 123.49154257774353,
+      "filename": "kjestersniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "c1bd35768e20537b72440d39663b72ad0ca6dbd16174c41f9da1d474229ebd2a",
+      "solve_log_sha256": "0e47b136b0848fd208aad9ddcf3a94af3d8c977320df628479e523b0030bd003",
+      "started_unix": 1789251235.5687127,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kknightcheckerk.uftb": {
+      "audit_log_sha256": "fecebae9dfa9bfed8302d0dad64ff41739a31b5d6f0591c02c603bb11cea035d",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 62.79701805114746,
+      "filename": "kknightcheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "9efad7daf872a2f94de47d55dd915f3924e2c2bba3248bff2aecd087de9b6ba2",
+      "solve_log_sha256": "6d1273cc28c57d3eb766244cc1dff890bea7ca5dcd0a9b75cd1295958e2ead7c",
+      "started_unix": 1789251359.060683,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kknightksniper.uftb": {
+      "audit_log_sha256": "0a39cf80dd3ce4380e2dce53427d2ccf47b631c5c7065756e20c900870573000",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 70.77047657966614,
+      "filename": "kknightksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "aeacee2856eaac26b0212a2abe920903a6eb102bb1498b2fd6960485cfb4fc7d",
+      "solve_log_sha256": "51c0734a5e3f33a8470cfc4143c36d858615b8c4baf4b43c0a07925069f9840a",
+      "started_unix": 1789251421.8581488,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kknightsniperk.uftb": {
+      "audit_log_sha256": "ed7217583c3b73a50534bf863dd9b04ceaf3a8a73a2290834aa865a34bc06c04",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 86.86411190032959,
+      "filename": "kknightsniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "4421f6ea32a9d1c839c6d674f9fa58d895443d10d340fcfe73e28ebd7c2d8d91",
+      "solve_log_sha256": "fce3e1c29308e2417b62eb271ebf6f0b6da949a4e5d34ca7b084dc5cbf1ca64a",
+      "started_unix": 1789251492.6290514,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kmagecheckerk.uftb": {
+      "audit_log_sha256": "3692e3439a787c1c84d4d615a9808641d90474e8a3d238a425c5a1e5c5438dbb",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 56.32815146446228,
+      "filename": "kmagecheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "e5339d041993e4103990524fcc28cd0e1bbf439c75c96e3c83e6597eaba85eb1",
+      "solve_log_sha256": "dea04da093930d0b0e44d3ec7d2a5ef823a33efbc26cb3b7865050f849896454",
+      "started_unix": 1789251579.4935927,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kmageksniper.uftb": {
+      "audit_log_sha256": "266e65f47c5c1fcea8594fd9c62866094c230dbf9333e64ec4bca5e4a9a60bd2",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 65.75044512748718,
+      "filename": "kmageksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "7d54059428567ef8a9d4237e93549c8f35ba7e76c85875e31fdb8d5610c31222",
+      "solve_log_sha256": "0776141dabb2c9ccfb5102f96194ad94541a6c3a1a977f6718c65c6453ef9e74",
+      "started_unix": 1789251635.8221939,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kmagesniperk.uftb": {
+      "audit_log_sha256": "964ccd47e799e38e841a73698d770bbb6ca03364040a402ab6fee5d7f41f66cf",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 90.0498960018158,
+      "filename": "kmagesniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "d7a98c2879c2bd64a06515eddb0a2a86ad66b2658a814b2b77562b2a2d34d8da",
+      "solve_log_sha256": "38511e7983f65a3b71dff8442beaf73ba074009d6760f8cd1d9663897fc46013",
+      "started_unix": 1789251701.5732193,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kninjacheckerk.uftb": {
+      "audit_log_sha256": "04bff6ae986686224c674cef9ec6c45dee5160623f37c40ea64f33c678654944",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 114.01982712745667,
+      "filename": "kninjacheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "a783bebfd6d0f21e1b6119ed9b3c38a71281aa23920ee717f879df08806152dc",
+      "solve_log_sha256": "e1c49647be70dd8d15c97196e4d11fab0e907c88b7f0bb9e67dcc20febbd19cb",
+      "started_unix": 1789251791.6235595,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kninjakchecker.uftb": {
+      "audit_log_sha256": "74d2d480905f99c3e052b911ceeae05d403e059b54ebda925ce36c4f6840a02f",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 106.7851402759552,
+      "filename": "kninjakchecker.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "2a8e542a356976c88424ca252057011453a22abf41cb54a609629533c51c12dd",
+      "solve_log_sha256": "edae7722ba89f7fc8d43cb8e2ee2f6dd057ef1c4319b6682bc84e7329e3626d8",
+      "started_unix": 1789251905.6438174,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kninjaksniper.uftb": {
+      "audit_log_sha256": "0ed7e31db158037a5114a57c51064c74d309487c667db3aaa0647a430da10fc1",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 135.55534195899963,
+      "filename": "kninjaksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "758fe0ccde6c489d79a1f10ce7e50706dc34fccd9e72b79e5d175894590337d1",
+      "solve_log_sha256": "22e08e4cf5dafac47617a0916f52b5ee3de881051dcbf3f1c79c8ce8398b8603",
+      "started_unix": 1789252012.4294019,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kninjasniperk.uftb": {
+      "audit_log_sha256": "04d35c1e9886d2ea4ad40b7a0cb211b8d536c4dda367eccd79977f2ce6e0cbed",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 124.46314287185669,
+      "filename": "kninjasniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "44d590f5974489b3113e7cbb9babc64163836a2a1d9a6fe6a6059da39be1eaf8",
+      "solve_log_sha256": "abfadae9017cf2d7ae46045579abbda763a2b0a5ef81290b258dcd6638422564",
+      "started_unix": 1789252147.9852142,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kparasitecheckerk.uftb": {
+      "audit_log_sha256": "5c42ebe6771d5744c7a35e7b198329fd5077f7dc8d7d273f214e220d66eec120",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 65.86142492294312,
+      "filename": "kparasitecheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "8f18645b95bda9f1178c3f176a70da79c63007804a6932b0eff0fad5ec433427",
+      "solve_log_sha256": "696722fa0078398b47b17d1958f4025c4597e347927963805b039c0a9dc88129",
+      "started_unix": 1789252272.4488597,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kparasitekchecker.uftb": {
+      "audit_log_sha256": "a50255334b1eb93bcdf8c6f18d6b41a46ec343f815572741218506ad240f017b",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 87.25861382484436,
+      "filename": "kparasitekchecker.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "88089aa51aa31624a0cb7a7582709970a21fd80b4f9b716e259eab9cbd0b1194",
+      "solve_log_sha256": "1ea8eefe116518e72884d3d44ec2a5aad79fcd1b5759fec674830ad42da62bb1",
+      "started_unix": 1789252338.3107936,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kparasiteksniper.uftb": {
+      "audit_log_sha256": "b1262612c5594b74423829e9a376b23a722790949f3c1d80c4b6fadec442d392",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 110.18002700805664,
+      "filename": "kparasiteksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "7f80e142bafee1871caa9a449086c3e7a97a2a931cee8ba107fe3b376dff5001",
+      "solve_log_sha256": "9024aa73ce7c1e41f3f961bcff766e72d00159cb2dcf19913bb79811d4501a47",
+      "started_unix": 1789252425.5698528,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kparasitesniperk.uftb": {
+      "audit_log_sha256": "0ebd2adcee712322f3e830f8a55538108b8816d321ab3c7e5ab00b04f1c8483c",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 86.0621886253357,
+      "filename": "kparasitesniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "adebafcbd0f7def70d28ac54896c559896040a7233bbd244ddba2922c8c4b015",
+      "solve_log_sha256": "42332f9382df8357ae09875a5ac33b07ac4395cd96a3cea5346dc04a85e04573",
+      "started_unix": 1789252535.750329,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kpawncheckerk.uftb": {
+      "audit_log_sha256": "8cef3f77b27b5a4937d3f9f2e157ee75e71efa95ddcb3bd9655b39a537b18910",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 119.01549458503723,
+      "filename": "kpawncheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "d5151d7f0a5bdccbe8c129ee9433e9c9e375d5402f669df4d40436e547dfb1d1",
+      "solve_log_sha256": "f1c654bd1414170f944fb26cde2e1b1107c3b189c82c28cc4f6a53c4187b9249",
+      "started_unix": 1789296719.9703557,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kpawnkchecker.uftb": {
+      "audit_log_sha256": "07aa2fd9bbbfff31278b709055446304ce23665bea8597be15c9ebd0d64a03f2",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 106.6917781829834,
+      "filename": "kpawnkchecker.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "87cd97abc6b2b6273593e32eabbef1b1f6fd057a148e2ff76754185bffcba793",
+      "solve_log_sha256": "34fb2f2ce4df33853ad46e1eb114c58fc751dbba40401a54f7847d3f65f2161e",
+      "started_unix": 1789296838.9863114,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kpawnksniper.uftb": {
+      "audit_log_sha256": "76710d203ddb4545d4b9ca904dceeaf944ae5bf510679d92742c63fbf517b78c",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 120.14570426940918,
+      "filename": "kpawnksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "aa8fc2a415116f30f85494da65e254f9f46f4817f0e4099cea9b6beca7a00a05",
+      "solve_log_sha256": "2d0428eeea4e1e4d7a7f712989423253cfda96ab29debcf3b6fdb4b8078a014f",
+      "started_unix": 1789296945.6785367,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kpawnsniperk.uftb": {
+      "audit_log_sha256": "4882a377dd1ec8bacb1f5b4f31dee1a88a30815fd631557c6def3dbf249099cf",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 129.10731768608093,
+      "filename": "kpawnsniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "aa9cac0996afdf4491edaae5b625f6a00b5a7f3852b8dea89052befcdd8c0213",
+      "solve_log_sha256": "b818d990b2af5c5532a4c67547a4a8e9818051a9c37ede52b73f6482fc17f5eb",
+      "started_unix": 1789297065.8246775,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kpenguincheckerk.uftb": {
+      "audit_log_sha256": "43b72362dc155131387ab255a46af2de8718bc04e387069a4620352f593a28f6",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 1518316864,
+      "elapsed_seconds": 165.376567363739,
+      "filename": "kpenguincheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "24b47258003c4509cc740106de2b81b5d1c8cc6a3c3e400e4fa7d32c2cf79dee",
+      "solve_log_sha256": "e7749287bc4e4ae7406d27c8a239cea85b6f930bd7e3fdc301ca4dd9e4adea07",
+      "started_unix": 1789257752.2881892,
+      "states": 1214653440,
+      "workers": 64
+    },
+    "kpenguinkchecker.uftb": {
+      "audit_log_sha256": "7281c3e44c806d980ba4619b6c12fc9de410595d649fa82f88355ce4e7b341fa",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 1518316864,
+      "elapsed_seconds": 187.08045506477356,
+      "filename": "kpenguinkchecker.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "6337f97029a5e1cd77053872248b0838285d1fab82cd0dc4a68ca27ac66a36d2",
+      "solve_log_sha256": "c5a79bc39df2101a1ca7839fe4cb5c79fca90152a775431f436c357495d9015b",
+      "started_unix": 1789257917.6652613,
+      "states": 1214653440,
+      "workers": 64
+    },
+    "kpenguinksniper.uftb": {
+      "audit_log_sha256": "89980f9c7fe3612643b953b657ea480d94cd49505fa269e1d4cd655235c4bdf4",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 1518316864,
+      "elapsed_seconds": 212.71208715438843,
+      "filename": "kpenguinksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "78f0c822661bab03efc83b94694198df6d3065c68b9f55fd206a6e5063356f7b",
+      "solve_log_sha256": "783899854e5277352c0768416f3c54941dcd166f9785794640f0334fc070de0f",
+      "started_unix": 1789258104.746254,
+      "states": 1214653440,
+      "workers": 64
+    },
+    "kpenguinsniperk.uftb": {
+      "audit_log_sha256": "4692854fa3bc37d0ee86ef1dd08ec6c1bc8d554bd8e0bdc24089cf8fdc28f453",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 1518316864,
+      "elapsed_seconds": 194.78535342216492,
+      "filename": "kpenguinsniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "ac6fdfab5c0d5288035efd0e952ffde5255d61b6db945d30a93e857727b57ef5",
+      "solve_log_sha256": "c6d802bd65adc431e63e74e552366aaaa39c31ae25244af5541bc0e38d678a06",
+      "started_unix": 1789258317.4588494,
+      "states": 1214653440,
+      "workers": 64
+    },
+    "kprincecheckerk.uftb": {
+      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "audit_log_sha256": "236839caa300b094f7b7a52370579908f2ebcf8cfba503c1262e319f28c10b6b",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 134.75553965568542,
+      "filename": "kprincecheckerk.uftb",
+      "prior_audit_log_sha256": "c11cfb2d2a8fc02e091c6756088a854a541b71699750aa1a58dcce1310387c2c",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "0d42f159471c36f6e5f50b91479277cfeaf065a2731da2f6514f6b048eed50c8",
+      "solve_log_sha256": "d7d95672b0aa86f6a34a77373b90c866ff82fbd847269875fc42bab2da69afb3",
+      "started_unix": 1789256018.9003892,
+      "states": 303663360,
+      "turn_boundary_audit": true,
+      "workers": 64
+    },
+    "kprincekchecker.uftb": {
+      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "audit_log_sha256": "b26deae532dd4dd4a3d9493a8c296ef83e3601260b183f8646a7be74d657c647",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 168.30255699157715,
+      "filename": "kprincekchecker.uftb",
+      "prior_audit_log_sha256": "743f01b7b248f382122412e9fe448a12694f70e886f698db6a934181ac6def4b",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "fc1398617a85051149265c4dcce99ca23b7706f51d1be0f78a2ad9242cad02aa",
+      "solve_log_sha256": "1333ca500d0e8e2aa950efd0e3d392b115197b7a387811a7d1ba1a8cc93779e6",
+      "started_unix": 1789256153.6563976,
+      "states": 303663360,
+      "turn_boundary_audit": true,
+      "workers": 64
+    },
+    "kqueencheckerk.uftb": {
+      "audit_log_sha256": "4f99fb3000ec7e17acace989da17b1cb3939aab2bf066ac2ed7664c8beb46e70",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 128.76860213279724,
+      "filename": "kqueencheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "22bbc9ec9487fb39b7573112764a004215f2f7682ebbbd877dedfc4aced19d0a",
+      "solve_log_sha256": "9de6281d154e74e341d1628aac5ccb070baa451573fa6157cd10dd5ceb9f3faa",
+      "started_unix": 1789252621.8129785,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kqueenkchecker.uftb": {
+      "audit_log_sha256": "69a4bc7fe8a3728692cc4ca015273db95e50df6bec508be76d99bc07fbb4c632",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 123.1830050945282,
+      "filename": "kqueenkchecker.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "2f085f5c06747d6687388c49931310bb455058098507463f3be55245a0645df3",
+      "solve_log_sha256": "5172bc79c9b11a054bb070b14f5e7a8205314c08947dccff5492f828834a6a2b",
+      "started_unix": 1789252750.582057,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kqueenksniper.uftb": {
+      "audit_log_sha256": "7332f25d7d3ad0d528cbf461ae0a866672ce8a5304c769a20e78b165145a3916",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 171.78985834121704,
+      "filename": "kqueenksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "8435fb5d79b7ecfeaca1dda0d0e7e6287efe1a82df8fdf951c04bc18b4a3b895",
+      "solve_log_sha256": "9c8e72ff415e765c77adeac7e654b1e5c3edd36b26b528084a992c259a3b9738",
+      "started_unix": 1789252873.7654922,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kqueensniperk.uftb": {
+      "audit_log_sha256": "0fd02451c9f1397643757b9933940b2e275f2f584cbc2617d489097c035b5915",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 190.77781581878662,
+      "filename": "kqueensniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "e9832914f399b2276a2d0d6593b5cf38d26735e8289b9478a71879d0afc7be8f",
+      "solve_log_sha256": "dc3e45ead8b1e7ccb1dbfe99bb98cac1a29edc2b9071784c7b032b3a671b5567",
+      "started_unix": 1789253045.5557833,
+      "states": 151831680,
+      "workers": 64
+    },
+    "krookcheckerk.uftb": {
+      "audit_log_sha256": "4f376dc7b8e74af42c043968c22a0a9dc7f98605ff00b6ecc31b9cc8c44dfe8a",
+      "binary_sha256": "6d42cd4d0d1ddb6245c1ea31b65f03e478beacf25497ef801479cce71513abcb",
+      "bytes": 189789664,
+      "elapsed_seconds": 95.3,
+      "filename": "krookcheckerk.uftb",
+      "pilot": true,
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "6096ee00c30f6dd399d10f946f0862b73a56101400891468a711dcff8063ace0",
+      "solve_log_sha256": "232724b77b1d2edddf8929f3e21970e22f55dd0aab7ca39bb29f5f0c19e892dd",
+      "states": 151831680,
+      "workers": 64
+    },
+    "krookkchecker.uftb": {
+      "audit_log_sha256": "446ef55e581d2a8f642fab306d3da0b66902c6a8874c0b3f28b3e826727c050c",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 100.60875606536865,
+      "filename": "krookkchecker.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "66bfb089ca9b1734f4477d7db7c3d57d00dc979a80536f5cda52901f4b191283",
+      "solve_log_sha256": "ddcc52ebaa6caa49a3cff92a32867fbaf0a6f636eeb9d6f4edeff93b6b3822a9",
+      "started_unix": 1789253236.3340633,
+      "states": 151831680,
+      "workers": 64
+    },
+    "krookksniper.uftb": {
+      "audit_log_sha256": "2469157f3b20b3f240d06eaa799e7931f4fd5c20eef24b9c7e7a0c35721b61e4",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 121.87974786758423,
+      "filename": "krookksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "b3ae604bead55ec6eeace2312733ca0df934f989d7d9e05dc5dca745cc5860d8",
+      "solve_log_sha256": "e96ba5c0f3ea64296b2b756a0bb70870f4e6c80dd9fec9e186d8435632df7246",
+      "started_unix": 1789253336.9432683,
+      "states": 151831680,
+      "workers": 64
+    },
+    "krooksniperk.uftb": {
+      "audit_log_sha256": "d9a74b0bfa226bedaab6db8b9a591b0fd84cfad8d942cb78b50e17c16810b21a",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 129.5965917110443,
+      "filename": "krooksniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "61cea65649c179ad16a78d9ad332d87ad8a8b19d7dfd420bb3fe7c43e1003692",
+      "solve_log_sha256": "5adb2fe8f8846d197c27878e4aa8c6bd1b81bd413dabb67e031c3160d6ed544b",
+      "started_unix": 1789253458.823436,
+      "states": 151831680,
+      "workers": 64
+    },
+    "ksniperangelk.uftb": {
+      "audit_log_sha256": "0f447f295133f0aecd0ccd8730987bd86ba4b6f9873ca61179348d7a24838f13",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 569368864,
+      "elapsed_seconds": 188.49639916419983,
+      "filename": "ksniperangelk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "8c2bcb7078cb3d83f697b46f7b38040b65779e85cab49b1977b8949d8d472baa",
+      "solve_log_sha256": "c9385182f64fef3982c6ce318b51848456c23a5e8fa82db351c3f9d5765bdca5",
+      "started_unix": 1789256995.4957557,
+      "states": 455495040,
+      "workers": 64
+    },
+    "ksnipercheckerk.uftb": {
+      "audit_log_sha256": "4e4878d3ba564445900b587861f1e454e2374956353452ac6840838e84ebd0da",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 759158464,
+      "elapsed_seconds": 187.25181007385254,
+      "filename": "ksnipercheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "ced03891ec4b2b43c91e460619c5858ab1247b08ac23fdfeda24c77362d6b406",
+      "solve_log_sha256": "361e3865666f5cb28a886f654d34d446338a78de49e7ef4774077ac7924b208e",
+      "started_unix": 1789257183.9926255,
+      "states": 607326720,
+      "workers": 64
+    },
+    "ksniperdragonk.uftb": {
+      "audit_log_sha256": "773d24fd92d6e94013e2b1b428f7bce866706db67d1111e92de612c8ec33343a",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 126.89273810386658,
+      "filename": "ksniperdragonk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "d8bcdae461823a25c35b412b8e1587e4433692ef0633039661f635e8158d33c3",
+      "solve_log_sha256": "03d43d83d17caeccc9ef79dd148fad61338ca867527aa541756d21d9cf379105",
+      "started_unix": 1789253588.4204595,
+      "states": 151831680,
+      "workers": 64
+    },
+    "ksniperfishermank.uftb": {
+      "audit_log_sha256": "ff59e1e634b9e7ce2b11f1b54e7fc72ac9315de46927b8d86944c15b6459e00e",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 178.90706777572632,
+      "filename": "ksniperfishermank.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "955fcc0df73ce95234d9d12bbfb85e9938118caf60509341ec0a14c2cd14e1d4",
+      "solve_log_sha256": "959ddb5e6bc209a2f327de8d44f48cacf3362fcb992e69612a8ddf3ad2a012f9",
+      "started_unix": 1789253715.3136237,
+      "states": 151831680,
+      "workers": 64
+    },
+    "ksnipergiantk.uftb": {
+      "audit_log_sha256": "bd90469f0446911dec05db4684a5e66f5862ec01b9ef623d30f18d4c560e3b75",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 56.11981511116028,
+      "filename": "ksnipergiantk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "e367f6fe9479fb217e435d6a97aca6262b13a6c8967f52889745ad11cb8c5960",
+      "solve_log_sha256": "e1513fb3712b5127e3e00b08a52e174696d87f477a340ae03e76210414c12398",
+      "started_unix": 1789253894.2211144,
+      "states": 151831680,
+      "workers": 64
+    },
+    "ksniperk.uftb": {
+      "audit_log_sha256": "ebe2afcd07eebea3711c9e28b43bb4e3ceaf736edf2c2d11f2ec6b8bf0e4a77e",
+      "binary_sha256": "6d42cd4d0d1ddb6245c1ea31b65f03e478beacf25497ef801479cce71513abcb",
+      "bytes": 4929664,
+      "elapsed_seconds": 1.2999999999999998,
+      "filename": "ksniperk.uftb",
+      "pilot": true,
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "f28197aa5319c9db3d2db5cefaec124eb611cc6d77e1db1c1817f997e9fed5f3",
+      "solve_log_sha256": "513ce068985c385cfd5f6d6ed788f55ecfffa0abc044bd301b3c4ffc54e5479a",
+      "states": 3943680,
+      "workers": 32
+    },
+    "ksniperkangel.uftb": {
+      "audit_log_sha256": "9bc74954881122c3c36a3f9403bce830d0a5ea8f2a7d292f2ef2ddda76f70574",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 144.11497974395752,
+      "filename": "ksniperkangel.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "641cc0c5d6fe400d91ebc5e7c6bcadd9c246a388e6ef8b96c1215b399c43949a",
+      "solve_log_sha256": "bb35a7ddbf12dbbe1dc48d8bddf7d855e81b3863be7ae207c3a99339368aa3c2",
+      "started_unix": 1789256321.9594262,
+      "states": 303663360,
+      "workers": 64
+    },
+    "ksniperkchecker.uftb": {
+      "audit_log_sha256": "267b1562dbce31b52e494b5b53d45ef8f89b8febc26751fe5744fa7f46998697",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 759158464,
+      "elapsed_seconds": 179.89918661117554,
+      "filename": "ksniperkchecker.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "a79166458f539cda6082618c4c61f6a3f80b84bf6c896be7706c8a6133e1a2ce",
+      "solve_log_sha256": "856e33fbf1df684ee1beb2363cf7d1b90d4d4ff3ebcf2015eaacac6284b0a488",
+      "started_unix": 1789257371.2449348,
+      "states": 607326720,
+      "workers": 64
+    },
+    "ksniperkdragon.uftb": {
+      "audit_log_sha256": "c25a551283cca93b8fdefbb34ed14dba2505368a3449c5a4ec26e87f8f9ef3da",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 115.68259525299072,
+      "filename": "ksniperkdragon.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "dcb8e951aefe2bf8ce6b24b7a693352af861527b1c0cecf8fc0d8e0f5789edb9",
+      "solve_log_sha256": "f733e7ab03be44a243aa41c26d5ca1a1171cb9041c98631045cd15769b7653a4",
+      "started_unix": 1789253950.3413608,
+      "states": 151831680,
+      "workers": 64
+    },
+    "ksniperkfisherman.uftb": {
+      "audit_log_sha256": "e86990e13d2345df22ae0d2f7d20642e4d72798e38cfd4ac652ffef8b9f1901a",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 161.42160391807556,
+      "filename": "ksniperkfisherman.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "37f92044e25d9da4269904a81058bb64a36fbd424835f7a3cfa28c5aef15d55b",
+      "solve_log_sha256": "2cbca6b51c7c76e1ad0d5a3b3b3a429ec6ff75d903e1f18084f09d5c384ffb40",
+      "started_unix": 1789254066.0243897,
+      "states": 151831680,
+      "workers": 64
+    },
+    "ksniperkgiant.uftb": {
+      "audit_log_sha256": "8b98c2db22ee15511e038ef3fb2d7cc0f9ef0a98f89be4bd7adc556b21e9318f",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 53.96030831336975,
+      "filename": "ksniperkgiant.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "3de79e04d2201bed29fdccf8d86efd10d06489bcf3096fd7f73eb1a9895feeff",
+      "solve_log_sha256": "aa55808be5b7bafefc6a625d71dab739e5476c7be9ee528670385604fd76113c",
+      "started_unix": 1789254227.4464452,
+      "states": 151831680,
+      "workers": 64
+    },
+    "ksniperkprince.uftb": {
+      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "audit_log_sha256": "5694e0e92c85f40ee0582bc09fc6770cb60d3289e0b3d83977c0bbe7d40f41f1",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 182.34461855888367,
+      "filename": "ksniperkprince.uftb",
+      "prior_audit_log_sha256": "0bc4c3a8c1fba51c096e3c6524a4abf7b73531a542e26689cfab0b19bd31e11d",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "02e01ef36855c2095df7639e7ebfbe6692c5d31e79f9c2b96c81634c9e616bbe",
+      "solve_log_sha256": "3fa5951114a283660692be8456321bcccc98d133dd04530e0852cc81e3547e1b",
+      "started_unix": 1789256466.0748727,
+      "states": 303663360,
+      "turn_boundary_audit": true,
+      "workers": 64
+    },
+    "ksniperksniper.uftb": {
+      "audit_log_sha256": "a8cd18085435618a29fc01604e54c6851fddefb631ae8618481929abcc666e70",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 759158464,
+      "elapsed_seconds": 201.1431429386139,
+      "filename": "ksniperksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "9827156f0e0ac1417d3182cb16edb5472342f48dfa0f4c12d7be522127432e9b",
+      "solve_log_sha256": "e85dd679fbcbe75db088ca3513fb5a946239792cb4a3f74f140c610be36b55c3",
+      "started_unix": 1789257551.1445813,
+      "states": 607326720,
+      "workers": 64
+    },
+    "ksniperprincek.uftb": {
+      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "audit_log_sha256": "3207d81fece529e1db4aab3a0023ff54b1bed9738ab9eaa8b98df272582dd59e",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 193.60729813575745,
+      "filename": "ksniperprincek.uftb",
+      "prior_audit_log_sha256": "effc257bf3624cfc6adf15edff9b4de61ef38fc5b9bff7c8aa26ad7e4e9d8804",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "3559aaabf8c8686a4e07453e03626ac544a0f53815bb72fb427541989eaa8d18",
+      "solve_log_sha256": "b31ce695ac58876ace66b79c12832f7f8e239a68bb2dce0a5239a3b9c6edc390",
+      "started_unix": 1789256648.419941,
+      "states": 303663360,
+      "turn_boundary_audit": true,
+      "workers": 64
+    },
+    "ksnipersniperk.uftb": {
+      "audit_log_sha256": "14ecdec9d6df93b3efd7eae7a5315720ac3fa2b1d9f16373af1c5c0f40697dc3",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 379579264,
+      "elapsed_seconds": 117.23601818084717,
+      "filename": "ksnipersniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "68670d71a2bdbe1ef49ccf2f01bbdee9f344f91fc86629c07ea675f8af0142fe",
+      "solve_log_sha256": "86c55befeab997c20c1a13884e63523495b001602ea1848f4a4239eab82592ce",
+      "started_unix": 1789256842.0276887,
+      "states": 303663360,
+      "workers": 64
+    },
+    "kturtlecheckerk.uftb": {
+      "audit_log_sha256": "c128df8fcec4cf1b8d7fb5c3f2559177797fe113a6061955ad88daf52ce77eab",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 52.62316012382507,
+      "filename": "kturtlecheckerk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "92cb239ec1b5c4403cee19d0bc14ac405180eb992c101ed99315defe7d31f816",
+      "solve_log_sha256": "5a290623056df0e9f133217d4fe3e34f5a2d68def0869b2094c29aebbbacf25c",
+      "started_unix": 1789254281.4072087,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kturtleksniper.uftb": {
+      "audit_log_sha256": "ca386cf7995e87620a8e05bf8cf9f669ba3dbd0d480578014cd3af159637f17e",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 60.3326313495636,
+      "filename": "kturtleksniper.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "87239a8c515d93bc3fa605f37610539e755eb724aa06e105bfd8c9f277117765",
+      "solve_log_sha256": "7dd6849666c3d780505cab8c78082f5d4b40c49af7176b12b327f3c1f17a7d7d",
+      "started_unix": 1789254334.0308042,
+      "states": 151831680,
+      "workers": 64
+    },
+    "kturtlesniperk.uftb": {
+      "audit_log_sha256": "6829ce01e7a995f9bedeb02b40a8337239bfc38922f0e0f82804ec5aca13e4c9",
+      "binary_sha256": "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
+      "bytes": 189789664,
+      "elapsed_seconds": 63.348060607910156,
+      "filename": "kturtlesniperk.uftb",
+      "rules_revision": "checker-rays-and-native-turn-start-20260912",
+      "schema": "ultimate-fish-rules-repair-v1",
+      "sha256": "04460ad1d8d98804fc86a3ce5cbb3f5469a156b7b610c0a72c4803755ee66797",
+      "solve_log_sha256": "bfeb8d95d83afee7c78bc9d8b1ae2da45c1d813d5392660c21e3dd910bef8966",
+      "started_unix": 1789254394.3638735,
+      "states": 151831680,
+      "workers": 64
+    }
+  },
+  "dataset_revision": "847eb02da6cd3a0879226bac293464c0e72763dd",
+  "generations": {
+    "kberserkercheckerk.uftb": {
+      "draw": 466148508,
+      "edges": 7691415400,
+      "loss": 622547772,
+      "win": 429620520
+    },
+    "kberserkerkchecker.uftb": {
+      "draw": 528056639,
+      "edges": 7913533715,
+      "loss": 561712051,
+      "win": 428548110
+    },
+    "kberserkerksniper.uftb": {
+      "draw": 65718376,
+      "edges": 14525583709,
+      "loss": 619987115,
+      "win": 832611309
+    },
+    "kberserkersniperk.uftb": {
+      "draw": 55035250,
+      "edges": 13952158150,
+      "loss": 639738830,
+      "win": 823542720
+    },
+    "kbishopcheckerk.uftb": {
+      "draw": 138349768,
+      "edges": 457838849,
+      "loss": 6233624,
+      "win": 7248288
+    },
+    "kbishopksniper.uftb": {
+      "draw": 129645208,
+      "edges": 1461345674,
+      "loss": 4752,
+      "win": 22181720
+    },
+    "kbishopsniperk.uftb": {
+      "draw": 95662141,
+      "edges": 1482178483,
+      "loss": 15588356,
+      "win": 40581183
+    },
+    "kbombcheckerk.uftb": {
+      "draw": 62020402,
+      "edges": 898000614,
+      "loss": 46849226,
+      "win": 42962052
+    },
+    "kbombkchecker.uftb": {
+      "draw": 63116244,
+      "edges": 852460099,
+      "loss": 43780294,
+      "win": 44935142
+    },
+    "kbombksniper.uftb": {
+      "draw": 1267958,
+      "edges": 1473353864,
+      "loss": 67318736,
+      "win": 83244986
+    },
+    "kbombsniperk.uftb": {
+      "draw": 134200,
+      "edges": 1497375344,
+      "loss": 69343212,
+      "win": 82354268
+    },
+    "kcheckerangelk.uftb": {
+      "draw": 455495040,
+      "edges": 0,
+      "loss": 0,
+      "win": 0
+    },
+    "kcheckercheckerk.uftb": {
+      "draw": 286951664,
+      "edges": 393650121,
+      "loss": 9837648,
+      "win": 6874048
+    },
+    "kcheckerdragonk.uftb": {
+      "draw": 62625243,
+      "edges": 1058090549,
+      "loss": 46244393,
+      "win": 42962044
+    },
+    "kcheckerfishermank.uftb": {
+      "draw": 134023320,
+      "edges": 1429478992,
+      "loss": 7941180,
+      "win": 9867180
+    },
+    "kcheckergiantk.uftb": {
+      "draw": 122206020,
+      "edges": 447976981,
+      "loss": 14020081,
+      "win": 15605579
+    },
+    "kcheckerkdragon.uftb": {
+      "draw": 64445572,
+      "edges": 994442191,
+      "loss": 42839542,
+      "win": 44546566
+    },
+    "kcheckerkgiant.uftb": {
+      "draw": 132393237,
+      "edges": 412801744,
+      "loss": 8728165,
+      "win": 10710278
+    },
+    "kcopycatcheckerk.uftb": {
+      "draw": 139353248,
+      "edges": 1890183780,
+      "loss": 81963192,
+      "win": 82346920
+    },
+    "kcopycatkchecker.uftb": {
+      "draw": 204457024,
+      "edges": 1774928124,
+      "loss": 41646020,
+      "win": 57560316
+    },
+    "kcopycatksniper.uftb": {
+      "draw": 59955804,
+      "edges": 3168525456,
+      "loss": 94891100,
+      "win": 148816456
+    },
+    "kcopycatsniperk.uftb": {
+      "draw": 31055220,
+      "edges": 3218857732,
+      "loss": 114213736,
+      "win": 158394404
+    },
+    "kghostcheckerk.uftb": {
+      "draw": 137727990,
+      "edges": 1667698544,
+      "loss": 80011266,
+      "win": 85924104
+    },
+    "kghostkchecker.uftb": {
+      "draw": 216102266,
+      "edges": 1639540487,
+      "loss": 33854782,
+      "win": 53706312
+    },
+    "kghostksniper.uftb": {
+      "draw": 12668810,
+      "edges": 2708936695,
+      "loss": 124419698,
+      "win": 166574852
+    },
+    "kghostsniperk.uftb": {
+      "draw": 10979812,
+      "edges": 2733726114,
+      "loss": 127975004,
+      "win": 164708544
+    },
+    "kjestercheckerk.uftb": {
+      "draw": 69110063,
+      "edges": 872192822,
+      "loss": 39759565,
+      "win": 42962052
+    },
+    "kjesterkchecker.uftb": {
+      "draw": 109731897,
+      "edges": 845296378,
+      "loss": 14997789,
+      "win": 27101994
+    },
+    "kjesterksniper.uftb": {
+      "draw": 7727770,
+      "edges": 1420542398,
+      "loss": 61252686,
+      "win": 82851224
+    },
+    "kjestersniperk.uftb": {
+      "draw": 5496998,
+      "edges": 1414016431,
+      "loss": 63980410,
+      "win": 82354272
+    },
+    "kknightcheckerk.uftb": {
+      "draw": 129526872,
+      "edges": 777908991,
+      "loss": 10189404,
+      "win": 12115404
+    },
+    "kknightksniper.uftb": {
+      "draw": 133171471,
+      "edges": 1241224563,
+      "loss": 6904,
+      "win": 18653305
+    },
+    "kknightsniperk.uftb": {
+      "draw": 89545408,
+      "edges": 1253705769,
+      "loss": 19671976,
+      "win": 42614296
+    },
+    "kmagecheckerk.uftb": {
+      "draw": 134023320,
+      "edges": 679424600,
+      "loss": 7941180,
+      "win": 9867180
+    },
+    "kmageksniper.uftb": {
+      "draw": 137984474,
+      "edges": 986966753,
+      "loss": 5590,
+      "win": 13841616
+    },
+    "kmagesniperk.uftb": {
+      "draw": 128706551,
+      "edges": 1058215175,
+      "loss": 3112592,
+      "win": 20012537
+    },
+    "kninjacheckerk.uftb": {
+      "draw": 62025517,
+      "edges": 1116061353,
+      "loss": 46844111,
+      "win": 42962052
+    },
+    "kninjakchecker.uftb": {
+      "draw": 63708481,
+      "edges": 1047974816,
+      "loss": 43519670,
+      "win": 44603529
+    },
+    "kninjaksniper.uftb": {
+      "draw": 6764714,
+      "edges": 1895415755,
+      "loss": 61818029,
+      "win": 83248937
+    },
+    "kninjasniperk.uftb": {
+      "draw": 5674918,
+      "edges": 1929072333,
+      "loss": 63802490,
+      "win": 82354272
+    },
+    "kparasitecheckerk.uftb": {
+      "draw": 63357680,
+      "edges": 812155994,
+      "loss": 45511948,
+      "win": 42962052
+    },
+    "kparasitekchecker.uftb": {
+      "draw": 65161642,
+      "edges": 779733847,
+      "loss": 42106177,
+      "win": 44563861
+    },
+    "kparasiteksniper.uftb": {
+      "draw": 5506243,
+      "edges": 1310674766,
+      "loss": 64892371,
+      "win": 81433066
+    },
+    "kparasitesniperk.uftb": {
+      "draw": 8604,
+      "edges": 1324438335,
+      "loss": 69468804,
+      "win": 82354272
+    },
+    "kpawncheckerk.uftb": {
+      "draw": 169736654,
+      "edges": 1287537536,
+      "loss": 62874532,
+      "win": 71052174
+    },
+    "kpawnkchecker.uftb": {
+      "draw": 220827934,
+      "edges": 1259215162,
+      "loss": 34556102,
+      "win": 48279324
+    },
+    "kpawnksniper.uftb": {
+      "draw": 155012783,
+      "edges": 1968046598,
+      "loss": 51127479,
+      "win": 97523098
+    },
+    "kpawnsniperk.uftb": {
+      "draw": 83405334,
+      "edges": 1973773329,
+      "loss": 88229386,
+      "win": 132028640
+    },
+    "kpenguincheckerk.uftb": {
+      "draw": 1192164345,
+      "edges": 934837711,
+      "loss": 9743435,
+      "win": 12745660
+    },
+    "kpenguinkchecker.uftb": {
+      "draw": 1152901544,
+      "edges": 973217325,
+      "loss": 25251418,
+      "win": 36500478
+    },
+    "kpenguinksniper.uftb": {
+      "draw": 1096397273,
+      "edges": 1579213503,
+      "loss": 43051001,
+      "win": 75205166
+    },
+    "kpenguinsniperk.uftb": {
+      "draw": 1194860769,
+      "edges": 1543430704,
+      "loss": 899742,
+      "win": 18892929
+    },
+    "kprincecheckerk.uftb": {
+      "draw": 141954649,
+      "edges": 1238204236,
+      "loss": 83757199,
+      "win": 77951512
+    },
+    "kprincekchecker.uftb": {
+      "draw": 143787476,
+      "edges": 1206454314,
+      "loss": 81558543,
+      "win": 78317341
+    },
+    "kqueencheckerk.uftb": {
+      "draw": 58605446,
+      "edges": 1333991333,
+      "loss": 50264182,
+      "win": 42962052
+    },
+    "kqueenkchecker.uftb": {
+      "draw": 60485083,
+      "edges": 1238276676,
+      "loss": 46751158,
+      "win": 44595439
+    },
+    "kqueenksniper.uftb": {
+      "draw": 6731531,
+      "edges": 2314493995,
+      "loss": 61838356,
+      "win": 83261793
+    },
+    "kqueensniperk.uftb": {
+      "draw": 5688926,
+      "edges": 2361208014,
+      "loss": 63788482,
+      "win": 82354272
+    },
+    "krookcheckerk.uftb": {
+      "draw": 62532288,
+      "edges": 1056606664,
+      "loss": 46337340,
+      "win": 42962052
+    },
+    "krookkchecker.uftb": {
+      "draw": 89871772,
+      "edges": 992161328,
+      "loss": 27359686,
+      "win": 34600222
+    },
+    "krookksniper.uftb": {
+      "draw": 6890600,
+      "edges": 1775876767,
+      "loss": 61743559,
+      "win": 83197521
+    },
+    "krooksniperk.uftb": {
+      "draw": 5511906,
+      "edges": 1806828732,
+      "loss": 63965502,
+      "win": 82354272
+    },
+    "ksniperangelk.uftb": {
+      "draw": 399701257,
+      "edges": 2943766127,
+      "loss": 8099736,
+      "win": 47694047
+    },
+    "ksnipercheckerk.uftb": {
+      "draw": 500071048,
+      "edges": 2475459762,
+      "loss": 47837138,
+      "win": 59418534
+    },
+    "ksniperdragonk.uftb": {
+      "draw": 5540058,
+      "edges": 1813965637,
+      "loss": 63937374,
+      "win": 82354248
+    },
+    "ksniperfishermank.uftb": {
+      "draw": 23374322,
+      "edges": 2558055636,
+      "loss": 51349686,
+      "win": 77107672
+    },
+    "ksnipergiantk.uftb": {
+      "draw": 116041815,
+      "edges": 702099390,
+      "loss": 8333890,
+      "win": 27455975
+    },
+    "ksniperk.uftb": {
+      "draw": 3574070,
+      "edges": 24180908,
+      "loss": 2420,
+      "win": 367190
+    },
+    "ksniperkangel.uftb": {
+      "draw": 283087964,
+      "edges": 1964599252,
+      "loss": 80899,
+      "win": 20494497
+    },
+    "ksniperkchecker.uftb": {
+      "draw": 530902906,
+      "edges": 2418568356,
+      "loss": 34970922,
+      "win": 41452892
+    },
+    "ksniperkdragon.uftb": {
+      "draw": 7012887,
+      "edges": 1781360573,
+      "loss": 61680796,
+      "win": 83137997
+    },
+    "ksniperkfisherman.uftb": {
+      "draw": 137984497,
+      "edges": 2514024149,
+      "loss": 4342,
+      "win": 13842841
+    },
+    "ksniperkgiant.uftb": {
+      "draw": 134030634,
+      "edges": 693566756,
+      "loss": 125897,
+      "win": 17675149
+    },
+    "ksniperkprince.uftb": {
+      "draw": 7277538,
+      "edges": 2170172699,
+      "loss": 144852955,
+      "win": 151532867
+    },
+    "ksniperksniper.uftb": {
+      "draw": 547638900,
+      "edges": 3739723940,
+      "loss": 144532,
+      "win": 59543288
+    },
+    "ksniperprincek.uftb": {
+      "draw": 5509242,
+      "edges": 2183327129,
+      "loss": 145822224,
+      "win": 152331894
+    },
+    "ksnipersniperk.uftb": {
+      "draw": 239746767,
+      "edges": 1871954151,
+      "loss": 14079168,
+      "win": 49837425
+    },
+    "kturtlecheckerk.uftb": {
+      "draw": 131048648,
+      "edges": 719837560,
+      "loss": 9428516,
+      "win": 11354516
+    },
+    "kturtleksniper.uftb": {
+      "draw": 134813670,
+      "edges": 1130314178,
+      "loss": 7733,
+      "win": 17010277
+    },
+    "kturtlesniperk.uftb": {
+      "draw": 100483846,
+      "edges": 1138275756,
+      "loss": 14993110,
+      "win": 36354724
+    }
+  },
+  "information": {
+    "kghostcheckerk.uftb": {
+      "arbitrary_sidecar": {
+        "bytes": 3586151162,
+        "filename": "kghostcheckerk.ufgd",
+        "sha256": "913fab5d32006b72f31ed8925296dd29b971c9d7b0ae74b5f214203e965218bc"
+      },
+      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "audit_log_sha256": "44c4a86bdb3ee2f1cc48c7f26b88d7b93b5bd19fdac4465236c4660feb37bc6f",
+      "bytes": 303663520,
+      "elapsed_seconds": 34686.84479260445,
+      "filename": "kghostcheckerk.ufiw",
+      "model_sha256": "e69929a1b356c9fd2245fee77f2dcc33faea5b0acd1825d2d8979b305ce96e30",
+      "normalized_source_sha256": "77a5d16a5c1dd75fac2846a233590fc226aff3f07af9cfc67054624eef0d2d3a",
+      "proof_logs": {
+        "kghostcheckerk.ghost-build.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "kghostcheckerk.ghost-merge.log": {
+          "bytes": 6187,
+          "sha256": "43851dad80be886d873bd826983cc52f16a09444d20f2208d54f38ede7d0f319"
+        },
+        "kghostcheckerk.ghost-self-test.log": {
+          "bytes": 1337,
+          "sha256": "3bffca5c867e83c205f2d41d65284775dfdcb0a013fe6b058897098b0688ec7b"
+        },
+        "kghostcheckerk.ghost-shard-00.log": {
+          "bytes": 13056,
+          "sha256": "5ee949357d27b565feb2001f8abcbf7c9fed88d60f6741cb9063b6ef6570858e"
+        },
+        "kghostcheckerk.ghost-shard-01.log": {
+          "bytes": 13119,
+          "sha256": "7cae4184ac8bc52d022860127702ee9359f80b087e2744c5138a5a788085de3b"
+        },
+        "kghostcheckerk.ghost-shard-02.log": {
+          "bytes": 13167,
+          "sha256": "483ca7495d306e8aabee41b0e6083ef018530758807d46aa2e588dcc4cc0ffb7"
+        },
+        "kghostcheckerk.ghost-shard-03.log": {
+          "bytes": 13162,
+          "sha256": "8ab7b557cf47ad920e8114c4b6d734b4ac97a62503366501d32b2fa84edef788"
+        },
+        "kghostcheckerk.ghost-shard-04.log": {
+          "bytes": 13124,
+          "sha256": "0a3e9cc047467cdaa243594220f9f0ebfb41f0f155b0282344762b848afb8cd1"
+        },
+        "kghostcheckerk.ghost-shard-05.log": {
+          "bytes": 13175,
+          "sha256": "b15c19201b7b5ac845b37a9df27ed6f7e9cc7398d8d8ff7b829b0e536b1d0b4c"
+        },
+        "kghostcheckerk.ghost-shard-06.log": {
+          "bytes": 13166,
+          "sha256": "d7dde9caf119e7374e1dd0d41cb1462a80f53f713678fa6ec9cfdb097d1ab60c"
+        },
+        "kghostcheckerk.ghost-shard-07.log": {
+          "bytes": 13165,
+          "sha256": "b86612a3c6ccbed1639a61d8795c295bb0b4e8039e7cedc9312d29491b3fe850"
+        },
+        "kghostcheckerk.ghost-shard-08.log": {
+          "bytes": 13151,
+          "sha256": "02396b34f2c6d5ea2f9012c33089108239c22947bdbaa2087f5ffeba8a7fb090"
+        },
+        "kghostcheckerk.ghost-shard-09.log": {
+          "bytes": 13155,
+          "sha256": "be6c1a2f7d02362d41e7ea850ae3b14e1834e17198a58d9629a4f88c344f313d"
+        },
+        "kghostcheckerk.ghost-shard-10.log": {
+          "bytes": 13161,
+          "sha256": "26db7f3025adfd828b78ce4aed83687f1f3cb0d71ca35b5ce5f2a2814664e4ba"
+        },
+        "kghostcheckerk.ghost-shard-11.log": {
+          "bytes": 13168,
+          "sha256": "f1692ffdd3f2ae601265267fd9091d44f6c33a64ba26d924d1dbcdd52bb4a325"
+        },
+        "kghostcheckerk.ghost-shard-12.log": {
+          "bytes": 13160,
+          "sha256": "57b744eb6bec59362a89836a067851c89bf24d5189c951c2c8ec9fe0f9b6b551"
+        },
+        "kghostcheckerk.ghost-shard-13.log": {
+          "bytes": 13153,
+          "sha256": "9bc9abbbc40ab294acfdc81a506107472b9c44e83a1760b8e780dda0fd7aefa8"
+        },
+        "kghostcheckerk.ghost-shard-14.log": {
+          "bytes": 13145,
+          "sha256": "7d921609cba3a766d0a64c39b72276bfe0be6dd63b7b75e752edad9451835358"
+        },
+        "kghostcheckerk.ghost-shard-15.log": {
+          "bytes": 13167,
+          "sha256": "55e1b3848587071d0e3a91651da21b9230de8f713f2441f8c66657a04a268824"
+        },
+        "kghostcheckerk.ghost-shard-16.log": {
+          "bytes": 13222,
+          "sha256": "8ca8a67cd9c2b2fef8fceb6bb87c2eb1479ad8018ce82613c572b5138eed30a0"
+        },
+        "kghostcheckerk.ghost-shard-17.log": {
+          "bytes": 13232,
+          "sha256": "a5fe7f4fd03b1e9b72fb21b4f3a780aa7517ab7f8f670a1fdbfe68260209911f"
+        },
+        "kghostcheckerk.ghost-shard-18.log": {
+          "bytes": 13220,
+          "sha256": "ee1ab1ce88af0a7b71f78176ddab76b1e71acf29c79db4c9ba1ce8b9cccd5130"
+        },
+        "kghostcheckerk.ghost-shard-19.log": {
+          "bytes": 13252,
+          "sha256": "5fd2c2f90538a3527a67c675892d2e8ae318f8c8a3e7a45bd33d82b43e5da0c4"
+        },
+        "kghostcheckerk.ghost-shard-20.log": {
+          "bytes": 13242,
+          "sha256": "a893a27ce3db857cff69f2bee9389caa010c09a8ea0aac9059329ed625537e04"
+        },
+        "kghostcheckerk.ghost-shard-21.log": {
+          "bytes": 13243,
+          "sha256": "91d9cb08d57ac8cce0dfa3706828838accce5e9dedc04c09acc3f90b9e0e8036"
+        },
+        "kghostcheckerk.ghost-shard-22.log": {
+          "bytes": 13224,
+          "sha256": "a0f2b3836763a21be560ccfab48697eaa0ae4aebfdb62022b901c424e7018d30"
+        },
+        "kghostcheckerk.ghost-shard-23.log": {
+          "bytes": 13238,
+          "sha256": "ba9ce3b0aa1e0d90e0dd3df7c0d9a2ccf7e38714d4a33e40428420d12bef4981"
+        },
+        "kghostcheckerk.ghost-shard-24.log": {
+          "bytes": 13237,
+          "sha256": "d692e9c9b8ab27f730f64aa9967e3d39d44eccee6badc9e627324d12461c57df"
+        },
+        "kghostcheckerk.ghost-shard-25.log": {
+          "bytes": 13240,
+          "sha256": "e4f7e2b729cb87ba0abc6a2b92ba7c311b900965d07743b0188c3d14c8bb8a5a"
+        },
+        "kghostcheckerk.ghost-shard-26.log": {
+          "bytes": 13237,
+          "sha256": "d1fe2bc7080db8a3b9207bb6307b8d9c11655a852a72f9ddcd01e0b67663d7fe"
+        },
+        "kghostcheckerk.ghost-shard-27.log": {
+          "bytes": 13232,
+          "sha256": "624ef2ed80b544aae91c0251bc5387b6ac1f72602615940caa6206f7690a2564"
+        },
+        "kghostcheckerk.ghost-shard-28.log": {
+          "bytes": 13249,
+          "sha256": "5b49b8b446e9fcf99ace15f9201df17841d28fa900998a723f317e62a96f6787"
+        },
+        "kghostcheckerk.ghost-shard-29.log": {
+          "bytes": 13234,
+          "sha256": "5ec8cf77163ae29e1787c4f19df9a62589aab01df913037db425c2bc069a8487"
+        },
+        "kghostcheckerk.ghost-shard-30.log": {
+          "bytes": 13242,
+          "sha256": "28da277fe7f0f6e88040c80f671605b2cc1c95cec071b956844cc734c0a6b176"
+        },
+        "kghostcheckerk.ghost-shard-31.log": {
+          "bytes": 13220,
+          "sha256": "e42e311d70a5fdfec5734a45946dac2bf0392a19f3fc088538c7f1b1f3f33c40"
+        },
+        "kghostcheckerk.ghost-shard-32.log": {
+          "bytes": 13205,
+          "sha256": "7ff646cf66e28079da12da6bd6464701a647f50dd5e55d95ba5bcb3f629dc3f2"
+        },
+        "kghostcheckerk.ghost-shard-33.log": {
+          "bytes": 13216,
+          "sha256": "464f7a9c689cffe08eaa1f4b87ed83b7a9b33649e60ccb1b6fafb6778152b36f"
+        },
+        "kghostcheckerk.ghost-shard-34.log": {
+          "bytes": 13211,
+          "sha256": "f5929bcb972e73b9a096dd3a457a06c38ccd3bb080f4a5d566efa3678442ac16"
+        },
+        "kghostcheckerk.ghost-shard-35.log": {
+          "bytes": 13200,
+          "sha256": "ca9a1db404d4393ca86ea628a8da0e656c6a01fe5ed6078df669dc578d6960de"
+        },
+        "kghostcheckerk.ghost-shard-36.log": {
+          "bytes": 13167,
+          "sha256": "28b2f80221a674fb8746caace8f66b608f718b70eb1e0494632605e97249d2a2"
+        },
+        "kghostcheckerk.ghost-shard-37.log": {
+          "bytes": 13214,
+          "sha256": "c926027af3652ee70a63ac583955ca041d0a40b70996213a7126d6c82a37863d"
+        },
+        "kghostcheckerk.ghost-shard-38.log": {
+          "bytes": 13212,
+          "sha256": "6cbbed6dc31be17e192bb2e835fc5acf7a7da703e6f46a0aa4251eb09bab23d1"
+        },
+        "kghostcheckerk.ghost-shard-39.log": {
+          "bytes": 13199,
+          "sha256": "a36ecaaa2fc3fe9edd4d8d2ffa8eaa0a4228ea39512831f5b0953ab158407f6e"
+        },
+        "kghostcheckerk.ghost-shard-40.log": {
+          "bytes": 13170,
+          "sha256": "b65f9d39e8e7c24e8a03a6a6455962bdc91183e296130082dd9747f92066cac3"
+        },
+        "kghostcheckerk.ghost-shard-41.log": {
+          "bytes": 13195,
+          "sha256": "379305af3a016bb6394ac713fce2bee9eaa943d6359254b307c25c3108f3221d"
+        },
+        "kghostcheckerk.ghost-shard-42.log": {
+          "bytes": 13213,
+          "sha256": "ddd2644e20ff13922c4bdd0e9da68f0544e6910fb821d78f6ba744144ffa252c"
+        },
+        "kghostcheckerk.ghost-shard-43.log": {
+          "bytes": 13195,
+          "sha256": "8d5e1df509dbd9a40a550d7f3ec448c12d91dfad9337866985e8d3d36ed1eee9"
+        },
+        "kghostcheckerk.ghost-shard-44.log": {
+          "bytes": 13187,
+          "sha256": "3f50601109e1b73717ca0c783d7259ac0befd795a0d9d6adbce7d5aabb4d88d5"
+        },
+        "kghostcheckerk.ghost-shard-45.log": {
+          "bytes": 13197,
+          "sha256": "c24415154639ebbe177863943ea31e27a3dd76e28a50fdbb69d4d24beec19cc9"
+        },
+        "kghostcheckerk.ghost-shard-46.log": {
+          "bytes": 13181,
+          "sha256": "052d4aeec839b4b14a73bcb50865e448d9faca797dedf05d51b1dd7906c40906"
+        },
+        "kghostcheckerk.ghost-shard-47.log": {
+          "bytes": 13202,
+          "sha256": "9b4b80c4af46e08ca54350ca706b8831d7e65ca7d5a069fcebded5f5d557225a"
+        },
+        "kghostcheckerk.ghost-shard-48.log": {
+          "bytes": 13205,
+          "sha256": "db7b5b90b70296e04f345b89d5e2cfe0fe88cf4cf9cdc2086f786ab4bc4c8ba8"
+        },
+        "kghostcheckerk.ghost-shard-49.log": {
+          "bytes": 13196,
+          "sha256": "95033c00634effc984ac27c315c3691bb9ae4a835c0161af82a560ac4de18e0d"
+        },
+        "kghostcheckerk.ghost-shard-50.log": {
+          "bytes": 13181,
+          "sha256": "bae1dc4939e700f7285eef57584c75d36b18f30a3dc37acb7d68155390e09e3c"
+        },
+        "kghostcheckerk.ghost-shard-51.log": {
+          "bytes": 13206,
+          "sha256": "a2dc9a4ecf722bb6393ac378546127f16cd7e7183d88e0d6044be9ef95e55636"
+        },
+        "kghostcheckerk.ghost-shard-52.log": {
+          "bytes": 13201,
+          "sha256": "b0eba6de8462faf5009dc6860aecf57a626f9a06d70b256c9c67c9f0bd980d31"
+        },
+        "kghostcheckerk.ghost-shard-53.log": {
+          "bytes": 13200,
+          "sha256": "ab340efcdd497c0a1872961fb5078f5307011ed0de8d231381ee1dd2c5129505"
+        },
+        "kghostcheckerk.ghost-shard-54.log": {
+          "bytes": 13175,
+          "sha256": "fa194a74899aec76002aaa5c56b7e7eea2be0bafe3e9a01f3cd30916869a3acf"
+        },
+        "kghostcheckerk.ghost-shard-55.log": {
+          "bytes": 13193,
+          "sha256": "7aadee496de08de878b673232ac8c101fb176e32f125e39b0ccf023606486812"
+        },
+        "kghostcheckerk.ghost-shard-56.log": {
+          "bytes": 13202,
+          "sha256": "5958d7c1d1be02006dbb319f184b37dcb9eabb8f6528fc3ac91a79f0dde79aa9"
+        },
+        "kghostcheckerk.ghost-shard-57.log": {
+          "bytes": 13201,
+          "sha256": "f9eb03128acc3591eb26ec2141e8859136c4f046503818099eff2f43ab02bb91"
+        },
+        "kghostcheckerk.ghost-shard-58.log": {
+          "bytes": 13203,
+          "sha256": "a8e6af607df0d3605c477a4e29d6d8b6e770c31071b5a07c4400077c2789ac31"
+        },
+        "kghostcheckerk.ghost-shard-59.log": {
+          "bytes": 13191,
+          "sha256": "8e2b382b50dc9aa9572a9de0127f15e5b41c83e8a20716acc7550d8a9b16ec1f"
+        },
+        "kghostcheckerk.ghost-shard-60.log": {
+          "bytes": 13203,
+          "sha256": "99b629cf7cc06e01e6065abf27919a3ec7402a5675fe09cafb61f06ae6694ed7"
+        },
+        "kghostcheckerk.ghost-shard-61.log": {
+          "bytes": 13212,
+          "sha256": "7f225575339bb4c0bd3660705140d737842a4ed57b0cfc7f618a3ad775c651cc"
+        },
+        "kghostcheckerk.ghost-shard-62.log": {
+          "bytes": 13202,
+          "sha256": "d2c60e350591c471047895c104306ec1643b299c97e6793a24c04520c37919ce"
+        },
+        "kghostcheckerk.ghost-shard-63.log": {
+          "bytes": 13193,
+          "sha256": "f6be876334f2cd0419adf1ca1c7c63730d45b1f6507a8db844f41123c2b8801c"
+        },
+        "kghostcheckerk.ghost-solve.log": {
+          "bytes": 5800999,
+          "sha256": "717c9c4f0d392c8179c07809a2b73361350b00eacc6a5bab9703e502cc241076"
+        }
+      },
+      "proof_manifest_sha256": "875da3b749be72736012f8a216f38a6e09538328b7c869e1840cd350db60db8b",
+      "schema": "ultimate-fish-information-repair-v1",
+      "sha256": "fe3957955bd0795db7da15b216dccc1095d0071141153bc50e4421c9208a1ba3",
+      "solve_log_sha256": "ee4c66b28e1ca5cd32c679975559df333d50119547ddade8bfbe9271d7ce89ed",
+      "solver_binary_sha256": "95472955cb2897e604b38a5125aee50d97171c0a56904b3e6f9f7d6115694a22",
+      "source_sha256": "2cba1e00c090e9cd62f34bc967c40d7bba441478c938b5a338764df2806fa723",
+      "transition_payload_sha256": "054a7ad7069f7b2c0840de9837090394bccc44dd1992b9bc3e259f2a4a082132",
+      "workers": 64
+    },
+    "kghostkchecker.uftb": {
+      "arbitrary_sidecar": {
+        "bytes": 3508199730,
+        "filename": "kghostkchecker.ufgd",
+        "sha256": "f156756d2a2b5698baa48d94917f89b065767f116370e5c552fe2c100e8b01ef"
+      },
+      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "audit_log_sha256": "6ced85cf52412ee8501fc6f1244792cd8ee746df5b42237218e45017f64eae02",
+      "bytes": 303663520,
+      "elapsed_seconds": 34168.15988254547,
+      "filename": "kghostkchecker.ufiw",
+      "model_sha256": "6cac380d00ad8fc0490718b4498ae7c142a9a9833ac63f5a1098832bffaefa2c",
+      "normalized_source_sha256": "13ae548e0ecf37ac6ff9ae79c06fc838fd2f9b7565ed3ee1ad107f649ecd2f97",
+      "proof_logs": {
+        "kghostkchecker.ghost-build.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "kghostkchecker.ghost-merge.log": {
+          "bytes": 6190,
+          "sha256": "c74a4bd746ff98045ff45ed785847f81e64835ae9ff385ebd94edeb77e4882f7"
+        },
+        "kghostkchecker.ghost-self-test.log": {
+          "bytes": 1337,
+          "sha256": "aa5d52273244746cd1890530d829f9b4b10387e59e8606c1268e2bbfb1fbe9ed"
+        },
+        "kghostkchecker.ghost-shard-00.log": {
+          "bytes": 12824,
+          "sha256": "632f8e344cf36f367b11267f829fb524a3513ce52302e6609fefd834a9d7301e"
+        },
+        "kghostkchecker.ghost-shard-01.log": {
+          "bytes": 12894,
+          "sha256": "f3c2ec653832cca20ef8f0b7269db8127eb762af82ad07d184298ee29ee93592"
+        },
+        "kghostkchecker.ghost-shard-02.log": {
+          "bytes": 12939,
+          "sha256": "31e4974ced837aaf51574bb6920ec2d633a3d284b5916e4957dda20940ed120e"
+        },
+        "kghostkchecker.ghost-shard-03.log": {
+          "bytes": 12931,
+          "sha256": "09aa510c5a3d950e5ac0ffef2bc72452cd73700b523e217f31c92570ce0d7784"
+        },
+        "kghostkchecker.ghost-shard-04.log": {
+          "bytes": 12909,
+          "sha256": "1c85a4a184f0e59a073d406202c8817b4bae504122dbfa47af3d44f3c5dbf7de"
+        },
+        "kghostkchecker.ghost-shard-05.log": {
+          "bytes": 12951,
+          "sha256": "4f005ed5e39a8412508885f19cbcf1a84016a49199fde411a3d1fa3c441bd929"
+        },
+        "kghostkchecker.ghost-shard-06.log": {
+          "bytes": 12949,
+          "sha256": "0dc7eff56613e9f172fe447f65c4309cbf3e4cce63ae532dcb06f35afa641ef2"
+        },
+        "kghostkchecker.ghost-shard-07.log": {
+          "bytes": 12933,
+          "sha256": "fd4c8b389e614272b3640a3d13c417b96f87d890f7446731ce459bc6f22df806"
+        },
+        "kghostkchecker.ghost-shard-08.log": {
+          "bytes": 12927,
+          "sha256": "04086b9e8ab0c992c8a58e60cc55d9a77160e825038776e4ed2006e8ceaf44e6"
+        },
+        "kghostkchecker.ghost-shard-09.log": {
+          "bytes": 12937,
+          "sha256": "79e1aac7471d5ed8dcf0c710180a26695b2e58e4ee3cb8ece4b73c948cf68f50"
+        },
+        "kghostkchecker.ghost-shard-10.log": {
+          "bytes": 12941,
+          "sha256": "8a2b47558cc9a2f4eed10e72e6a2a4422707fef59e044d0c78ff34a8b491c171"
+        },
+        "kghostkchecker.ghost-shard-11.log": {
+          "bytes": 12942,
+          "sha256": "ad5b278690e99a328e95ea008d99f587b09d9f37d70c03268947e53c04226e7d"
+        },
+        "kghostkchecker.ghost-shard-12.log": {
+          "bytes": 12931,
+          "sha256": "d4a745831bf814386d92a1795d2aae49c00ff091b61a4dd5f83e2e58c1f1d32f"
+        },
+        "kghostkchecker.ghost-shard-13.log": {
+          "bytes": 12914,
+          "sha256": "5dd7a8a445b2a33209a11bb1d39720bcf3a3cdb14d223f4837cfd5d07e30c040"
+        },
+        "kghostkchecker.ghost-shard-14.log": {
+          "bytes": 12927,
+          "sha256": "25e74d1e26e64ff3464878eb7f8a808d3d6e86f7cb2f5f2833e02791dc7c228d"
+        },
+        "kghostkchecker.ghost-shard-15.log": {
+          "bytes": 12941,
+          "sha256": "2b09174d5aad193ab1ce207cbb58bbfc9a2f6d2462ac434531baec733f4da1be"
+        },
+        "kghostkchecker.ghost-shard-16.log": {
+          "bytes": 12998,
+          "sha256": "d6882d1fc2fa96aeb5ca1dde250e6b02d515b807089d62f082327de4f622e4c2"
+        },
+        "kghostkchecker.ghost-shard-17.log": {
+          "bytes": 12998,
+          "sha256": "ea4f7572be7d221f4e5eb2c20ccdcb7ac70ccad05b456f98c8a5c7dfffe90755"
+        },
+        "kghostkchecker.ghost-shard-18.log": {
+          "bytes": 13007,
+          "sha256": "c7df25906858a975b05ad37f45e4fc3e2ebda45cf1e9a565f6debcf24ed05447"
+        },
+        "kghostkchecker.ghost-shard-19.log": {
+          "bytes": 13019,
+          "sha256": "2e567093d1280b7e97a6b274083c5c39c3915f166d5fd59f31976719d23e4a94"
+        },
+        "kghostkchecker.ghost-shard-20.log": {
+          "bytes": 13025,
+          "sha256": "6a1eae4ac6391d5c768f38d8f79b57ad7831314a9878948c3445c7708b73393e"
+        },
+        "kghostkchecker.ghost-shard-21.log": {
+          "bytes": 13015,
+          "sha256": "e971f0195f7871d4ed6cec23747c9632bcc0176ceb18c07481889d43c7541bea"
+        },
+        "kghostkchecker.ghost-shard-22.log": {
+          "bytes": 12996,
+          "sha256": "0b8a328b3911d70a718de6226dd2c95e8329be5054055c2b0ba124d1edf8de09"
+        },
+        "kghostkchecker.ghost-shard-23.log": {
+          "bytes": 13014,
+          "sha256": "645e73d36a73d0506713bb1d6adbda0b3e7cab84ca5d2aba81b5910e77efa772"
+        },
+        "kghostkchecker.ghost-shard-24.log": {
+          "bytes": 13020,
+          "sha256": "f65218ff7490986ecc238d3c47e413bbdb15fde36e59b3c12a68c0138ddd6015"
+        },
+        "kghostkchecker.ghost-shard-25.log": {
+          "bytes": 13020,
+          "sha256": "215d8fb23e5ff41deb083a6d4b207be1ffef3faea24617ade0ec91460ce5882a"
+        },
+        "kghostkchecker.ghost-shard-26.log": {
+          "bytes": 13011,
+          "sha256": "085b89544981e4343dbc960ad6503cb081963a3301aa49075fb4c28fd9f37eb7"
+        },
+        "kghostkchecker.ghost-shard-27.log": {
+          "bytes": 13007,
+          "sha256": "1e0ac98b5670eaf8c427612fea0f58fabd1f4524f51ad4d746e62fde274f97a6"
+        },
+        "kghostkchecker.ghost-shard-28.log": {
+          "bytes": 13029,
+          "sha256": "207fec2b6fbdb9dc398f9a2750c2fdcb20a9697175d4299b58db48870659b32a"
+        },
+        "kghostkchecker.ghost-shard-29.log": {
+          "bytes": 13004,
+          "sha256": "7289c3027ba61a72a44024cc65a02c5387f29341bb43b97756e970e27b810cd4"
+        },
+        "kghostkchecker.ghost-shard-30.log": {
+          "bytes": 13010,
+          "sha256": "e213f6ca7bca4cb1dd342042d41d48036d1d626df9e8889ca367b73497dc8860"
+        },
+        "kghostkchecker.ghost-shard-31.log": {
+          "bytes": 13003,
+          "sha256": "8a2ad4e84271df007e4be219931695ff6134602e5f45731ce56cc2085d3a813f"
+        },
+        "kghostkchecker.ghost-shard-32.log": {
+          "bytes": 13012,
+          "sha256": "e8025f7a6d75bcd5f28bea98fe4f6b9b0d3f7de247f2c149c9072fc7a2c70364"
+        },
+        "kghostkchecker.ghost-shard-33.log": {
+          "bytes": 13019,
+          "sha256": "743df740e677580308d62e6ddfda0ecab7e5df5de6652002781cba84ef0f1a17"
+        },
+        "kghostkchecker.ghost-shard-34.log": {
+          "bytes": 13012,
+          "sha256": "57790d7b43c8ec39924eb0741253b3437d4f4860cf5089c2567ef3d3cd19c76b"
+        },
+        "kghostkchecker.ghost-shard-35.log": {
+          "bytes": 13016,
+          "sha256": "ef543581cc54dd5234458c0c3d7435190ce994f0a0afbb04f4e06bb4dfbe4f9f"
+        },
+        "kghostkchecker.ghost-shard-36.log": {
+          "bytes": 12981,
+          "sha256": "88d661f971fd831c66aa8313018193361057570b185e3bafab9f34e21ecf0872"
+        },
+        "kghostkchecker.ghost-shard-37.log": {
+          "bytes": 13021,
+          "sha256": "d7655bb0fa4c2d03745c60f55144d82737c6613709cc0439ee5b3f5dc2d5732f"
+        },
+        "kghostkchecker.ghost-shard-38.log": {
+          "bytes": 13021,
+          "sha256": "63b365b1fc9861a4e10c6aff014a17c94a84f2709b9da45bd1ed84e775188142"
+        },
+        "kghostkchecker.ghost-shard-39.log": {
+          "bytes": 13014,
+          "sha256": "08034c05da556f520abcba96d98b7034c70fbe90f55af4b349bce58251916d05"
+        },
+        "kghostkchecker.ghost-shard-40.log": {
+          "bytes": 13001,
+          "sha256": "1864841d57ee889489882ff78ce346c5c18abb8cdf35ed71a0813632fca5a363"
+        },
+        "kghostkchecker.ghost-shard-41.log": {
+          "bytes": 13007,
+          "sha256": "884fad09d5622517021306d0c27b6b7de7b945cc0d4264384afcbfaceadc511a"
+        },
+        "kghostkchecker.ghost-shard-42.log": {
+          "bytes": 13017,
+          "sha256": "3dd59db7af00e778ed757dff8d0d6fc5b70fad79d47d27285be4514dd12eef40"
+        },
+        "kghostkchecker.ghost-shard-43.log": {
+          "bytes": 13021,
+          "sha256": "38eae73931d263b1e778d8309ceb1a0579e682b163cb9f2f600cd556813eebc3"
+        },
+        "kghostkchecker.ghost-shard-44.log": {
+          "bytes": 12999,
+          "sha256": "d8933c2512f971fe2e4b466cd3096bf12edc89f005864707987787ca5a953cfd"
+        },
+        "kghostkchecker.ghost-shard-45.log": {
+          "bytes": 13010,
+          "sha256": "aca6205ec1719736bc1fd037d81357a1849179711f43320b8b81ba1c49c122ee"
+        },
+        "kghostkchecker.ghost-shard-46.log": {
+          "bytes": 12995,
+          "sha256": "d2db77f1f966fd00cc23395303ab7c28971ce94bdd0ff1e34af5b65ad512ba12"
+        },
+        "kghostkchecker.ghost-shard-47.log": {
+          "bytes": 13020,
+          "sha256": "5f1d1871fb7cfd56c57e05004fe18db0442a3b72b72ca3f94191ae42b25f183d"
+        },
+        "kghostkchecker.ghost-shard-48.log": {
+          "bytes": 13017,
+          "sha256": "21381943bd34682021d362abc16419d054934d3199b8881ec26f63c66981a053"
+        },
+        "kghostkchecker.ghost-shard-49.log": {
+          "bytes": 13004,
+          "sha256": "26f4f81eadf2ea8c9eedef3a8b5cbf5cefeb6c7100a0ec720394444dd3cba7b6"
+        },
+        "kghostkchecker.ghost-shard-50.log": {
+          "bytes": 13004,
+          "sha256": "a42e0eeffce2265b1b5138c90ffc5a9533c7e09f8a8da21798844c081771b575"
+        },
+        "kghostkchecker.ghost-shard-51.log": {
+          "bytes": 13017,
+          "sha256": "65e51c3824a32b4028b0efaf0e5c801bc80c722924922e7f38bb8b8a490d9f49"
+        },
+        "kghostkchecker.ghost-shard-52.log": {
+          "bytes": 13018,
+          "sha256": "9f7d66d07c407d32df9a253d6db1dfaa341f6a350d70b07a0deceb7a73eca173"
+        },
+        "kghostkchecker.ghost-shard-53.log": {
+          "bytes": 13007,
+          "sha256": "8a8d370b8db40398dd99dd3083aeb36e16ccaccff32eb15bdc5751617fa8d82b"
+        },
+        "kghostkchecker.ghost-shard-54.log": {
+          "bytes": 12996,
+          "sha256": "12c3b6af9ada0f2c19e2c55e9570370261df1c21b052056efdb8c1c8f0b683e3"
+        },
+        "kghostkchecker.ghost-shard-55.log": {
+          "bytes": 13013,
+          "sha256": "fd81153a51bd7b913f3ca7a5f6f1c373dec150baf7f70e3556c6027f29f33afc"
+        },
+        "kghostkchecker.ghost-shard-56.log": {
+          "bytes": 13015,
+          "sha256": "fda4a6a41ef3ff7777b433fbfe07cf776a62fdce782485e92a623ffd2abdd570"
+        },
+        "kghostkchecker.ghost-shard-57.log": {
+          "bytes": 13017,
+          "sha256": "a38230f0fce44ab2d408530a9a3d9b1e1c685edfdcca95542d0d17e56eae7e71"
+        },
+        "kghostkchecker.ghost-shard-58.log": {
+          "bytes": 13012,
+          "sha256": "7eff6e80fd667d434c5f9605d72e61312de8d6429106532219f7ad7a3ead0b2c"
+        },
+        "kghostkchecker.ghost-shard-59.log": {
+          "bytes": 13001,
+          "sha256": "7981d08810f9468197718cae19d545c89408e87ef52c1263eecc5d92a37a68c5"
+        },
+        "kghostkchecker.ghost-shard-60.log": {
+          "bytes": 13022,
+          "sha256": "e6def34e5ebf79957de5387cd2a373c3d0170cb99d82f7ce97b670b4250211df"
+        },
+        "kghostkchecker.ghost-shard-61.log": {
+          "bytes": 13020,
+          "sha256": "4af358172fc8a782e8032f697eca18151a4260114323d0bfee3564ce5617fe4d"
+        },
+        "kghostkchecker.ghost-shard-62.log": {
+          "bytes": 13015,
+          "sha256": "c2f4e4498c8fcc1aa2a55d5b012f87a569b98676b58066bcd5b27c66cdf101ca"
+        },
+        "kghostkchecker.ghost-shard-63.log": {
+          "bytes": 13008,
+          "sha256": "31e39ccdeceae4598f5a54cd6bec34777c60870b4ea85103da65396602e1bce2"
+        },
+        "kghostkchecker.ghost-solve.log": {
+          "bytes": 6507804,
+          "sha256": "9ef62049e8a03174678e08d3eee592a01d0b7b92597544e267d0310a289304ed"
+        }
+      },
+      "proof_manifest_sha256": "5bf335c87f4468223d36dbdfa492a68fa510bcd26a4a7956ad54d79d82738d7f",
+      "schema": "ultimate-fish-information-repair-v1",
+      "sha256": "b5cf8f2b0010ef6840946565793b0f160c35dcaaa39620cc27689948bc0b6fa1",
+      "solve_log_sha256": "c965d94d7ee6d0f696533bd67aed08f1ed0c06ebd3d58ddfbe4f8bf3e0caa614",
+      "solver_binary_sha256": "95472955cb2897e604b38a5125aee50d97171c0a56904b3e6f9f7d6115694a22",
+      "source_sha256": "167d37f16f69d048033e06fabb5b6acc919681380c23ea20dc00c908171c21fe",
+      "transition_payload_sha256": "25e08606af5bf5026b3792c226ac0ee97bfb3796028e4386447f2cf1b8bcf78d",
+      "workers": 32
+    },
+    "kghostksniper.uftb": {
+      "arbitrary_sidecar": {
+        "bytes": 3528123090,
+        "filename": "kghostksniper.ufgd",
+        "sha256": "4a54dc80057d34232debc7870894d866f57cc16d3d72dcb6cac46fd9e43de9b2"
+      },
+      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "audit_log_sha256": "2786e30cac64ee7bb6f97c0db8e0f50ab4c49390630e01c08d7bab210955ad39",
+      "bytes": 303663520,
+      "elapsed_seconds": 84341.93683028221,
+      "filename": "kghostksniper.ufiw",
+      "model_sha256": "01e5e3e92db72dd0ee561224207d56a8a5ce985b2c33a472b6d29a122f59ddb2",
+      "normalized_source_sha256": "bbf0eccfe9c0eb90bd30c217a149bab2dddfc4ab4379224a25aafc36b4999e86",
+      "proof_logs": {
+        "kghostksniper.ghost-build.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "kghostksniper.ghost-merge.log": {
+          "bytes": 6322,
+          "sha256": "caf663d0a30408d22573e0e796415a821026f8340b195658e0a77ace39a652d5"
+        },
+        "kghostksniper.ghost-self-test.log": {
+          "bytes": 1343,
+          "sha256": "156549f090f91e15842660dc179070c920b263c190d07bec5976d3f3b41c71c9"
+        },
+        "kghostksniper.ghost-shard-00.log": {
+          "bytes": 12959,
+          "sha256": "1d7ed7ccf67019d52a4057fe043ba52964f1a43a4d06b9c945bbaaea25e676d9"
+        },
+        "kghostksniper.ghost-shard-01.log": {
+          "bytes": 13050,
+          "sha256": "f4e7cea265895f9a065e43076007b432a967688e9176f5d2edc89c30d3d24cf2"
+        },
+        "kghostksniper.ghost-shard-02.log": {
+          "bytes": 13094,
+          "sha256": "1c524ac904ce2c7162b28eae964caab612f75fc13902fa46b60e06df4dff32dd"
+        },
+        "kghostksniper.ghost-shard-03.log": {
+          "bytes": 13089,
+          "sha256": "9f371767c2be658918643f764cf4c825b5eab69c6c4dfcc25ba7bf0ace019a4a"
+        },
+        "kghostksniper.ghost-shard-04.log": {
+          "bytes": 13069,
+          "sha256": "9cb34f5602983019eb74fe479996218d55a5fdd274093524d66f008c9a5a141a"
+        },
+        "kghostksniper.ghost-shard-05.log": {
+          "bytes": 13112,
+          "sha256": "a964e52c79017a44619be2685438d3757be956d98a61aeb94ad24e748fd8da14"
+        },
+        "kghostksniper.ghost-shard-06.log": {
+          "bytes": 13110,
+          "sha256": "edb2c6ea89fe27ed3108a5905ae1e3d6146a92bfa9ad9328a584ad224036f759"
+        },
+        "kghostksniper.ghost-shard-07.log": {
+          "bytes": 13093,
+          "sha256": "3741eb551c34543006534874513232a0328f587bebd7b1bae22cda979a0850d9"
+        },
+        "kghostksniper.ghost-shard-08.log": {
+          "bytes": 13094,
+          "sha256": "029d18ac8cb3e1a3b65b155d72b17a055928dd9547047d6af5c8dda879b2cb5e"
+        },
+        "kghostksniper.ghost-shard-09.log": {
+          "bytes": 13097,
+          "sha256": "825973a4d198033fce3fd59cfee9ff86eec6964b1423ee285aa708a297bb479e"
+        },
+        "kghostksniper.ghost-shard-10.log": {
+          "bytes": 13102,
+          "sha256": "b7449f560a65c94ce5b5b8f002dcc1b8959c9f033c3de4bbcfa7995a4bda9c56"
+        },
+        "kghostksniper.ghost-shard-11.log": {
+          "bytes": 13117,
+          "sha256": "e9fb7cf9ec11d1525bfcdd13a6c07d5b44e8825ef9a76e337183b1e175f5fac6"
+        },
+        "kghostksniper.ghost-shard-12.log": {
+          "bytes": 13103,
+          "sha256": "5febcb50ef5d29882c606348d70faf74dbbf25c434e457d816dc95b4cdd5641e"
+        },
+        "kghostksniper.ghost-shard-13.log": {
+          "bytes": 13079,
+          "sha256": "ca542b59ed2bd4b065820eb1eade93a7e0a9d9803332610ba3fa2b8f479c7276"
+        },
+        "kghostksniper.ghost-shard-14.log": {
+          "bytes": 13087,
+          "sha256": "56723be91eb3752f3f36cce16b0d994852b9253ab1ce8ee6bf43fd0a25014b15"
+        },
+        "kghostksniper.ghost-shard-15.log": {
+          "bytes": 13118,
+          "sha256": "6dc011331c3cc16c2f9a582afe4f77b2750b75516e1b00e052bc821be4110e9a"
+        },
+        "kghostksniper.ghost-shard-16.log": {
+          "bytes": 13150,
+          "sha256": "cc66dde1134b50b9959b364176021ab1e643d0312dbe5c7de07ec6fcf9d6417b"
+        },
+        "kghostksniper.ghost-shard-17.log": {
+          "bytes": 13171,
+          "sha256": "05affe6f803e1c6ba3c88b71d6f67eb2b32e013e11971d7736a5ce98d42efddc"
+        },
+        "kghostksniper.ghost-shard-18.log": {
+          "bytes": 13164,
+          "sha256": "e6f8849e1ac7f079378a9bff1c2b6e6ec5753cf77169f302861869b135abd471"
+        },
+        "kghostksniper.ghost-shard-19.log": {
+          "bytes": 13192,
+          "sha256": "507ec4897c0e9036646871275ed0df795c18af6f0446b99ae3ac3fdea9473a0a"
+        },
+        "kghostksniper.ghost-shard-20.log": {
+          "bytes": 13188,
+          "sha256": "3e27fbee85a16e1469c7746b40be17774d3b0cbd12741826260f9e1d54e02f8b"
+        },
+        "kghostksniper.ghost-shard-21.log": {
+          "bytes": 13181,
+          "sha256": "4166ff04d85fa55f72050203a306113cd78597f46eb0eb62b1c2cf03a05a2ffd"
+        },
+        "kghostksniper.ghost-shard-22.log": {
+          "bytes": 13169,
+          "sha256": "d0c7210f192751073a03646efe4d4686653065b6a4b28b39ac031117edc3017b"
+        },
+        "kghostksniper.ghost-shard-23.log": {
+          "bytes": 13169,
+          "sha256": "3946b3a2fa6a9ba31bca871e0370c6156b476cb5ba03ece26a18a1cfb1510f77"
+        },
+        "kghostksniper.ghost-shard-24.log": {
+          "bytes": 13191,
+          "sha256": "ceecc254b83f1f972c966da0dacbe4c0551f7da421bfe37d946edda368a432f1"
+        },
+        "kghostksniper.ghost-shard-25.log": {
+          "bytes": 13189,
+          "sha256": "c6a197b7b242a317b559224aa19b40a9359817a3f8ab2b764891f2a940031a4c"
+        },
+        "kghostksniper.ghost-shard-26.log": {
+          "bytes": 13164,
+          "sha256": "7b89ebcda9afc1be0affceafc8bfd7eb32131c030fc3299794694edaa41ed59f"
+        },
+        "kghostksniper.ghost-shard-27.log": {
+          "bytes": 13174,
+          "sha256": "f05ab14caa80913a65cfb23602bf7b8244729823eb97fdf0716f2ce44c2916a0"
+        },
+        "kghostksniper.ghost-shard-28.log": {
+          "bytes": 13190,
+          "sha256": "dbc1919ed4ea60f27f3ef4a347a1ba2c5c9079749688d3d4d1ba115ac7d7b225"
+        },
+        "kghostksniper.ghost-shard-29.log": {
+          "bytes": 13143,
+          "sha256": "d8650b7d5c553c7611691909c639459f4de46a6176b092c1a948e5d9413f2708"
+        },
+        "kghostksniper.ghost-shard-30.log": {
+          "bytes": 13163,
+          "sha256": "51e1aa9fcd905d3a60eef9f3d6530c75d7674d02693481478fd1c0c49b603cb9"
+        },
+        "kghostksniper.ghost-shard-31.log": {
+          "bytes": 13152,
+          "sha256": "9169ffb8808e5cb6eefed5fc33f01f15dab1cc64f16ab0cfca8a323f5e8fa766"
+        },
+        "kghostksniper.ghost-shard-32.log": {
+          "bytes": 13173,
+          "sha256": "092cad6358a9a1c0f21eb24b18a46c8c84c7644fb0635dc59111c1f2883e1088"
+        },
+        "kghostksniper.ghost-shard-33.log": {
+          "bytes": 13194,
+          "sha256": "f1f4d002ed6714a60ee1b5b9507c9ceefa4dbb1c0f4542d2009aad2cf1aad78b"
+        },
+        "kghostksniper.ghost-shard-34.log": {
+          "bytes": 13191,
+          "sha256": "9bb17e6b32036010bb6f72cc81055df0b44ebec015243cac74d2643fab3099c6"
+        },
+        "kghostksniper.ghost-shard-35.log": {
+          "bytes": 13185,
+          "sha256": "c7f4a2729590d61489c71be6879d36ff6a28baeabcfa2f92cb5b232c39c91496"
+        },
+        "kghostksniper.ghost-shard-36.log": {
+          "bytes": 13150,
+          "sha256": "247f646b485fec6dd864a666c42623a9788b3ce4ff1f642ebd842ccf0fe12113"
+        },
+        "kghostksniper.ghost-shard-37.log": {
+          "bytes": 13189,
+          "sha256": "43ce87b71a9ec7a3b1d9a3aa06c07b12d3ea54c5fe0326d3a3c5c7ef5df06688"
+        },
+        "kghostksniper.ghost-shard-38.log": {
+          "bytes": 13189,
+          "sha256": "d8214c7df7a57c5d45bffcc7e1d4264c712840ea7ec964903d8aaa23390fc0c0"
+        },
+        "kghostksniper.ghost-shard-39.log": {
+          "bytes": 13183,
+          "sha256": "3fe87411e4b5171baa7aa6148856b9553a82ff5ebfd5cadbc22560898c5945db"
+        },
+        "kghostksniper.ghost-shard-40.log": {
+          "bytes": 13173,
+          "sha256": "ed3a9e1fd6f5e277a809c0e7c844c15e748ce5b92b4c65860f982b82a15277c7"
+        },
+        "kghostksniper.ghost-shard-41.log": {
+          "bytes": 13174,
+          "sha256": "0f332fba409782c54dfccfaee9a142c5ed089cc4aabc2d7f551ea33061a834ed"
+        },
+        "kghostksniper.ghost-shard-42.log": {
+          "bytes": 13185,
+          "sha256": "adf0a6489ce7f0a696cbe66a77d6082479a8dddf347d3bc755e5e9426d23ee90"
+        },
+        "kghostksniper.ghost-shard-43.log": {
+          "bytes": 13187,
+          "sha256": "1c541d1a453210ff3fb5fcacc0b12a12e7473af36bd82f2ffadfb26863425a7f"
+        },
+        "kghostksniper.ghost-shard-44.log": {
+          "bytes": 13178,
+          "sha256": "762b9c7666a90a41af6088104b215256e53df4e7777e8e89a9a71001fa21ca0e"
+        },
+        "kghostksniper.ghost-shard-45.log": {
+          "bytes": 13174,
+          "sha256": "796d3dc89a97019a49e81804411f7f9e6709ec722cbc2ae2145b5281e8d9cc77"
+        },
+        "kghostksniper.ghost-shard-46.log": {
+          "bytes": 13162,
+          "sha256": "cbbcd1659d453e491a1c246b3994c0d771558f543866062c98b5868a519ff610"
+        },
+        "kghostksniper.ghost-shard-47.log": {
+          "bytes": 13188,
+          "sha256": "844b6c132c538e51c0075eec85d92ad3e0ccbfb60342d69c81ae6c27fdaac63e"
+        },
+        "kghostksniper.ghost-shard-48.log": {
+          "bytes": 13178,
+          "sha256": "2ad18256ccb860afb428a2298b1c7c658fed0f3300afa82344ac7b75558efcb6"
+        },
+        "kghostksniper.ghost-shard-49.log": {
+          "bytes": 13178,
+          "sha256": "f90a5b08a50dc9151a225538ef4b63e3122b15da2f287a6cb12673dae469390f"
+        },
+        "kghostksniper.ghost-shard-50.log": {
+          "bytes": 13164,
+          "sha256": "eed9b39d8be5be8d345528569ec08dbb65f9cc632b3fc91982ad1aafd98241b8"
+        },
+        "kghostksniper.ghost-shard-51.log": {
+          "bytes": 13188,
+          "sha256": "37c4127876f27b2724454e6982479f1924a23471941fca7b199583759edbd9c8"
+        },
+        "kghostksniper.ghost-shard-52.log": {
+          "bytes": 13184,
+          "sha256": "7b2eae7c3183118db55bf68fec618a7905527b9cb664b1740be42a896a9aa0a8"
+        },
+        "kghostksniper.ghost-shard-53.log": {
+          "bytes": 13185,
+          "sha256": "15275295d33c6195c6dcf5898c2f638fb164076d92fb4e79d18ecd6a0fa1c686"
+        },
+        "kghostksniper.ghost-shard-54.log": {
+          "bytes": 13163,
+          "sha256": "215108f06542f631b8d248b85eabef28dcfc36c440afdd22ba72953b215e7624"
+        },
+        "kghostksniper.ghost-shard-55.log": {
+          "bytes": 13179,
+          "sha256": "eced3cdb53a861673d156b3a42cc174900826e107aa85545c2f6add51f134d94"
+        },
+        "kghostksniper.ghost-shard-56.log": {
+          "bytes": 13192,
+          "sha256": "632156e9d4134821094136d1d5e78f2f0970ca2dcf6f060642fe9b546c6d54b2"
+        },
+        "kghostksniper.ghost-shard-57.log": {
+          "bytes": 13188,
+          "sha256": "cbd28428704bcc83fe3c6ebf69321c9e565a0ac50a31b9c8f8b56688e0c779e8"
+        },
+        "kghostksniper.ghost-shard-58.log": {
+          "bytes": 13184,
+          "sha256": "61cbc755fef632525c7fe33f6ace26642a86a04b07934d7d598bd01f74a6be63"
+        },
+        "kghostksniper.ghost-shard-59.log": {
+          "bytes": 13174,
+          "sha256": "f4216f03932533b6682e26839c474316022f15c71a36fc8854a512f1bb24f689"
+        },
+        "kghostksniper.ghost-shard-60.log": {
+          "bytes": 13184,
+          "sha256": "59a2b169091c5c37677670638515df1e6bc2c82e1dd26c1a1ed76c09b1614e14"
+        },
+        "kghostksniper.ghost-shard-61.log": {
+          "bytes": 13191,
+          "sha256": "6b492c8e5034e9c5002e3c65479ab1b58006891c750dec70538cdf50a6399334"
+        },
+        "kghostksniper.ghost-shard-62.log": {
+          "bytes": 13185,
+          "sha256": "46a96b051d01e71885765b66b6330e46631c110604c2ad7485cbedf6c79f2f37"
+        },
+        "kghostksniper.ghost-shard-63.log": {
+          "bytes": 13171,
+          "sha256": "625670d63426da9aaf0d34a85f4fc3d58c55a26e6c1e468f958624fd59165d21"
+        },
+        "kghostksniper.ghost-solve.log": {
+          "bytes": 8110102,
+          "sha256": "7cf58339d3a19a76a47d976627a31cf8228a7b311d0e194387ee25bd12128fef"
+        }
+      },
+      "proof_manifest_sha256": "3922ee03d95b2e72a94a7e8d7ee8653ed6e94260e2c2208cdf951bf230f70bb5",
+      "schema": "ultimate-fish-information-repair-v1",
+      "sha256": "c30c94fa0c72755847552d2c03ff0d0de63fb2afd208ded9c002c24ac2f86498",
+      "solve_log_sha256": "f50e1648b7dc036b20699f08441e1ea635896d8e15efa9374ad448909f2fa638",
+      "solver_binary_sha256": "f728f42d24c308b0b6ab6d6d8ab3b45e1fa72851e7e20fbb5ea610dc00732898",
+      "source_sha256": "607aa04e85e59bfff387b4a45ae2078aae96eda7dc8a07ab442cdef15ec855c7",
+      "transition_payload_sha256": "fc4bec40c94d3c64114515ab7c75cb4db0e84052e0a1d0c0f3e5131e8b6cfa05",
+      "workers": 32
+    },
+    "kghostsniperk.uftb": {
+      "arbitrary_sidecar": {
+        "bytes": 3548518770,
+        "filename": "kghostsniperk.ufgd",
+        "sha256": "0814e838e3fc1480ef1b6b50076d5c9574442965e9492bb9f7711956f4ecd137"
+      },
+      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "audit_log_sha256": "cc7ce6f1a2c29f3d97b5dcfff6334c41cb8ba834736f4c0445c713d53b4fc9f3",
+      "bytes": 303663520,
+      "elapsed_seconds": 47529.58132600784,
+      "filename": "kghostsniperk.ufiw",
+      "model_sha256": "328509ac52c125a8428c00589bb657c7ff8ad1265d4e2759c9500237e2ca323b",
+      "normalized_source_sha256": "40daac760bad05ef0288863c2049ce3f70ffa41be168e21a7c7812f9bebeca38",
+      "proof_logs": {
+        "kghostsniperk.ghost-build.log": {
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "kghostsniperk.ghost-merge.log": {
+          "bytes": 6315,
+          "sha256": "bde57aaf2790ae0d45bbf81741eafd72a1b41a1825586944b995e7fdcb75160f"
+        },
+        "kghostsniperk.ghost-self-test.log": {
+          "bytes": 1343,
+          "sha256": "7a01e778534ee277dafdc7c31e86b4712fcc4788f9841bfe907e439d170b9a39"
+        },
+        "kghostsniperk.ghost-shard-00.log": {
+          "bytes": 13200,
+          "sha256": "f29651b4ce8fdc418ba594084b70906f3566b2f321988d55cd4809e1fa45b4a9"
+        },
+        "kghostsniperk.ghost-shard-01.log": {
+          "bytes": 13270,
+          "sha256": "3272d90d4869358422fca89c0f4f9ac41f8c4773c5c27e58d65fdf5d60e4d174"
+        },
+        "kghostsniperk.ghost-shard-02.log": {
+          "bytes": 13318,
+          "sha256": "431f900268f0fe4bdb49eb0a4ee75c60a06c5a02d86f36a6cd7fe9d034a5481f"
+        },
+        "kghostsniperk.ghost-shard-03.log": {
+          "bytes": 13310,
+          "sha256": "1d73043210b56b80752b49ffa989f84b906a9f30b00cb759970f837a63ebfb12"
+        },
+        "kghostsniperk.ghost-shard-04.log": {
+          "bytes": 13280,
+          "sha256": "4b24f9fbf74c5db542879c27f86696a280cd97dd50faa6c3dbdc95e64ffa1848"
+        },
+        "kghostsniperk.ghost-shard-05.log": {
+          "bytes": 13322,
+          "sha256": "e0c4fc1f4f9742e4598161ce5ceb30a71cb8e2d53774206a1566c172fdf8b570"
+        },
+        "kghostsniperk.ghost-shard-06.log": {
+          "bytes": 13323,
+          "sha256": "c68bc4fae354d1684f3fc1cb7551d05ff85aa2e6bb2cc3b48318a99bc88b3115"
+        },
+        "kghostsniperk.ghost-shard-07.log": {
+          "bytes": 13317,
+          "sha256": "8c9403a9f96c1928b97c05fa80e6ea2f6978b871b1834c040287c4ff72710e39"
+        },
+        "kghostsniperk.ghost-shard-08.log": {
+          "bytes": 13302,
+          "sha256": "f3b75d70df8a245fc0196c3461ba34b3cbc30aa2bebf79757da49b4bbd32c381"
+        },
+        "kghostsniperk.ghost-shard-09.log": {
+          "bytes": 13309,
+          "sha256": "d898939d39d8312aa1451a2d537ffee2852cacbd3fc943647439cdfeb3ef8e21"
+        },
+        "kghostsniperk.ghost-shard-10.log": {
+          "bytes": 13318,
+          "sha256": "cbfa582e23022406866a7c626a4e4fb7f8485f80e2bbb6c3a44d3a88071d5bf5"
+        },
+        "kghostsniperk.ghost-shard-11.log": {
+          "bytes": 13324,
+          "sha256": "36dcd97fc9dd0ae2fb97e69be844f9405e7d7c5cc8db3ec32b99a2ec7294abd9"
+        },
+        "kghostsniperk.ghost-shard-12.log": {
+          "bytes": 13316,
+          "sha256": "0a9cc1b8e4e2800fb52add92b324efb4e2cda7590992126a1376589090078ac8"
+        },
+        "kghostsniperk.ghost-shard-13.log": {
+          "bytes": 13299,
+          "sha256": "9fc9fe05cb69207b2326e78a6f1a0e6e8e82f45c8a3992a0424274f0971079a1"
+        },
+        "kghostsniperk.ghost-shard-14.log": {
+          "bytes": 13299,
+          "sha256": "acc4ffffd428a6b49d5dc2c16b96652f781bb3b546e924e293c5cd4578f20e21"
+        },
+        "kghostsniperk.ghost-shard-15.log": {
+          "bytes": 13323,
+          "sha256": "557c37644e0b06052ed9b2ef62153cca99c48068450175f0543a5c78670f16d6"
+        },
+        "kghostsniperk.ghost-shard-16.log": {
+          "bytes": 13381,
+          "sha256": "e196cebeaf01641d396b4429aee9ffd7d1be91f93e758b442706505f7620d225"
+        },
+        "kghostsniperk.ghost-shard-17.log": {
+          "bytes": 13381,
+          "sha256": "a35772b92afd84169a0a40e0c3b8fcace31af228f3c72938066aab34144e8254"
+        },
+        "kghostsniperk.ghost-shard-18.log": {
+          "bytes": 13381,
+          "sha256": "858aec64f4bec6654493d79a6740f8b1cc3cc6e23acf1702d1451ec23b3409e5"
+        },
+        "kghostsniperk.ghost-shard-19.log": {
+          "bytes": 13401,
+          "sha256": "bda0bd8aff3a829b727f3eb1e9645b842737bb1d4a89c70783112cb2924a77ac"
+        },
+        "kghostsniperk.ghost-shard-20.log": {
+          "bytes": 13402,
+          "sha256": "65d43b131dbaab4481d853a989eee2e6e623dfb94fe555db045a061c90b08e8c"
+        },
+        "kghostsniperk.ghost-shard-21.log": {
+          "bytes": 13400,
+          "sha256": "97bdce5f763d6d46b5c30667b5a4aed67ec238261bfaa0e28ed905a97296df6c"
+        },
+        "kghostsniperk.ghost-shard-22.log": {
+          "bytes": 13371,
+          "sha256": "983a269f2b137710bc6f5c8963e5f2d00d6580935c285bc4976dd83b7df7428e"
+        },
+        "kghostsniperk.ghost-shard-23.log": {
+          "bytes": 13388,
+          "sha256": "76efc5359fe8e4dc13757a6f7ec856b4bc819f1f5c5e7622668ac7c59d5d79e3"
+        },
+        "kghostsniperk.ghost-shard-24.log": {
+          "bytes": 13409,
+          "sha256": "f6189c5aa3e2716035dc1f297bd93a599c3377196a079d01842d67216b888b9e"
+        },
+        "kghostsniperk.ghost-shard-25.log": {
+          "bytes": 13404,
+          "sha256": "4edcdfadb9200575e1be66eb4b683f7221a566de1813456d63519a65ee0eef9b"
+        },
+        "kghostsniperk.ghost-shard-26.log": {
+          "bytes": 13387,
+          "sha256": "700cdab295ac26a2f1fa95861b014d34f389c7adc2a598820dc9e732fb866d07"
+        },
+        "kghostsniperk.ghost-shard-27.log": {
+          "bytes": 13384,
+          "sha256": "ceb8760784d0e0aa9ca6a1b03afc04f1558545d3fe57f00ce663553ba72cac81"
+        },
+        "kghostsniperk.ghost-shard-28.log": {
+          "bytes": 13401,
+          "sha256": "51c29393389920cc88489b03a88fcc2f8c1bdda3f755b82230b5f545698b62e7"
+        },
+        "kghostsniperk.ghost-shard-29.log": {
+          "bytes": 13391,
+          "sha256": "edd8b8c5ad378ce28e717dfe75182cd3b9badf89fe35a66531f93ba354560e31"
+        },
+        "kghostsniperk.ghost-shard-30.log": {
+          "bytes": 13392,
+          "sha256": "41cceb92ea80db2a1f3cf59e4c2c7d2e63913b0cca5acb01f146ea106921c9cd"
+        },
+        "kghostsniperk.ghost-shard-31.log": {
+          "bytes": 13375,
+          "sha256": "cecc5bb922e9207bf68f4f1d539b103bccf3612f22c337d81612b091d181c24e"
+        },
+        "kghostsniperk.ghost-shard-32.log": {
+          "bytes": 13379,
+          "sha256": "945bd80e9efb033e12e3d5c647549b823d074131701ffbb76a386a9beb8bbf71"
+        },
+        "kghostsniperk.ghost-shard-33.log": {
+          "bytes": 13401,
+          "sha256": "53fc8249d3c081506d02612be0c0bffa9927515b52aa210432bb7ecca65da303"
+        },
+        "kghostsniperk.ghost-shard-34.log": {
+          "bytes": 13401,
+          "sha256": "de955d1e25d23fe55e94cfe642fa03ae07f718414fc4c019e808fe65415f190d"
+        },
+        "kghostsniperk.ghost-shard-35.log": {
+          "bytes": 13385,
+          "sha256": "04f5521f6f944547617be1f88059fb09512c8ad6b985f04f734ceeea9875d754"
+        },
+        "kghostsniperk.ghost-shard-36.log": {
+          "bytes": 13345,
+          "sha256": "b333e5f38471fe3194f63ec68fb17b63f2e19b197125c368bd132b6b27c68641"
+        },
+        "kghostsniperk.ghost-shard-37.log": {
+          "bytes": 13400,
+          "sha256": "1f00380c57434c334a5fe3d28701b5ceb815abebe0e9787ace0d4df927a8a7e9"
+        },
+        "kghostsniperk.ghost-shard-38.log": {
+          "bytes": 13400,
+          "sha256": "ce891713d32e74d91bcea0e62bd7ffbc33bf87a7a91ec14251b0613ec515b4ea"
+        },
+        "kghostsniperk.ghost-shard-39.log": {
+          "bytes": 13386,
+          "sha256": "a68a56bfcd3f94996abddaed673a2f5e03edb6d9f663700076952489d5a99fa3"
+        },
+        "kghostsniperk.ghost-shard-40.log": {
+          "bytes": 13366,
+          "sha256": "f2edbd386686496f20fe5c62b614a1add878f797a91fc41ac8316be619a8594a"
+        },
+        "kghostsniperk.ghost-shard-41.log": {
+          "bytes": 13379,
+          "sha256": "fd2a58214235f844e6864fb3ab0f115aa10cfcdd07b8db89e86b2bc2eebe7a24"
+        },
+        "kghostsniperk.ghost-shard-42.log": {
+          "bytes": 13400,
+          "sha256": "98a5163d2c03bdf341506638aaf3c7292de708b53658b078f3df5d23a3707a4a"
+        },
+        "kghostsniperk.ghost-shard-43.log": {
+          "bytes": 13394,
+          "sha256": "681243c779d5e7c0e2834a3fcee662039b007abf648e29f1b4a538d2f4c3ece7"
+        },
+        "kghostsniperk.ghost-shard-44.log": {
+          "bytes": 13376,
+          "sha256": "b0400c415f6ef807d244b020afb365ba9253e4acdb75ad7725625b8e4ed050e6"
+        },
+        "kghostsniperk.ghost-shard-45.log": {
+          "bytes": 13379,
+          "sha256": "0fde89faaba35f81c35dce8951c8467f1861370a657a767b1f2ccd23d589058d"
+        },
+        "kghostsniperk.ghost-shard-46.log": {
+          "bytes": 13374,
+          "sha256": "29a1b828f7182de2084f2ff95e27eb560e79e8185ab2b5b3aef20f07e79bc6cf"
+        },
+        "kghostsniperk.ghost-shard-47.log": {
+          "bytes": 13391,
+          "sha256": "e8d2935b83c1e3cd9e0d540281858d6f6e57ae54bef66c86a3a2c18d1b5b880f"
+        },
+        "kghostsniperk.ghost-shard-48.log": {
+          "bytes": 13393,
+          "sha256": "0646900bec5c6011871bec52edc7892b60bad31b129b20a33648be8406d3334a"
+        },
+        "kghostsniperk.ghost-shard-49.log": {
+          "bytes": 13379,
+          "sha256": "47ad997392068f79ae5e6a78a78cfbaaaa76dad5bb382abe3789a7f7a4b37bdf"
+        },
+        "kghostsniperk.ghost-shard-50.log": {
+          "bytes": 13372,
+          "sha256": "7dfeb6dbe74c4fb29a333f7f6f32a879e154c3a79cbcd426eaac8edc95ee843c"
+        },
+        "kghostsniperk.ghost-shard-51.log": {
+          "bytes": 13389,
+          "sha256": "64e515300851df99c217c5caa48098320251585c8b9c214f03f9644b446e2bc9"
+        },
+        "kghostsniperk.ghost-shard-52.log": {
+          "bytes": 13393,
+          "sha256": "b4fd002aaca27661604656739e4c19a1daa50d5df5c0dd5db6f619a7a2d9a72b"
+        },
+        "kghostsniperk.ghost-shard-53.log": {
+          "bytes": 13389,
+          "sha256": "93414ba74a6973c3282c847d525530ecddcf7fa805fe76980b21c1d6d78ea4d1"
+        },
+        "kghostsniperk.ghost-shard-54.log": {
+          "bytes": 13365,
+          "sha256": "3e6893420d1baeaf9d4211386b5f53be083978a262ba6c7fed2024ce3c9fcb11"
+        },
+        "kghostsniperk.ghost-shard-55.log": {
+          "bytes": 13388,
+          "sha256": "b0d519ac69c5ddd78f220e3ec7a2b49dfdc74f10a4342439681eea96d9642399"
+        },
+        "kghostsniperk.ghost-shard-56.log": {
+          "bytes": 13393,
+          "sha256": "97bb3e015ccc78b8e95a30633892a73d3f474fb04471e6efdce1c26bc6a7a99d"
+        },
+        "kghostsniperk.ghost-shard-57.log": {
+          "bytes": 13400,
+          "sha256": "54262db62f284743dac05d70340ed5f0d8844bde1411c156349f068bd5382e7b"
+        },
+        "kghostsniperk.ghost-shard-58.log": {
+          "bytes": 13387,
+          "sha256": "1e004344972973e4a13d3581591b4b2c72b669c39012e064f8f900153a03ab77"
+        },
+        "kghostsniperk.ghost-shard-59.log": {
+          "bytes": 13380,
+          "sha256": "a2b06dfeec5e08222e892e420e632363f14e2bb380739b937c08647edcaa5aeb"
+        },
+        "kghostsniperk.ghost-shard-60.log": {
+          "bytes": 13392,
+          "sha256": "12b3ce43a6257abde7b07a7244ca846694b517111015eb1014d074bdcea7536c"
+        },
+        "kghostsniperk.ghost-shard-61.log": {
+          "bytes": 13397,
+          "sha256": "1d5cb186800d4e15ea1e5704fb33ebfd2643b44cf240ff78785afcf441b8c457"
+        },
+        "kghostsniperk.ghost-shard-62.log": {
+          "bytes": 13392,
+          "sha256": "26e8f4650d0893fb59a4a52c48e059d9f0b1792e69d52760f08d9d41405af233"
+        },
+        "kghostsniperk.ghost-shard-63.log": {
+          "bytes": 13379,
+          "sha256": "7fbda80f039c0a07b6ec6ddbf16b6fffeff51066f2609eeb59ac2a78e566b998"
+        },
+        "kghostsniperk.ghost-solve.log": {
+          "bytes": 5793605,
+          "sha256": "8292bb6e20813304b025fca000ba37d9516bb49cddf9de1b272a722f9f0e6083"
+        }
+      },
+      "proof_manifest_sha256": "55cb1c578993f96a41a815ebb3d1a0546321433c1ff3819f5baadd4cdd9a1d28",
+      "schema": "ultimate-fish-information-repair-v1",
+      "sha256": "756a07246f4ba31dae1627e014d531c5eec841bb99f1406bd303f9a8c191220e",
+      "solve_log_sha256": "d0434146aa03df16859ed215991fb40645a9fa98a1fe72667d9a68d9809a4903",
+      "solver_binary_sha256": "f728f42d24c308b0b6ab6d6d8ab3b45e1fa72851e7e20fbb5ea610dc00732898",
+      "source_sha256": "8425f93c93e9a3c7ad39820efb7fedb690f24fb64b540c6b9e8eced5e8aaa7f5",
+      "transition_payload_sha256": "6154c8e73fa410b264c731ef63ea2246ed326bdb40aa8cf0c67d334c1776b267",
+      "workers": 32
+    },
+    "kjestercheckerk.uftb": {
+      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "audit_log_sha256": "39dcacb5fb7973dba09d341b964012be5fd7e59861b6f45a7db6b891dadd3238",
+      "bytes": 151831840,
+      "elapsed_seconds": 472.89051818847656,
+      "filename": "kjestercheckerk.ufiw",
+      "model_sha256": "ccf4252543e1b1f6bb13985edf310ce46082e2618d3a2cced85a8c043fc3533f",
+      "schema": "ultimate-fish-information-repair-v1",
+      "sha256": "6b3d197ec463ef0c06d9b5c236ac01c108734357a338d5be6e5ce2bbb41b6e60",
+      "solve_log_sha256": "bcdd73a8425fc379943490956748cc8b1a6eed967d870f093db657fe1d0d8fe8",
+      "source_bundle_sha256": "1d00b8ca081af57600e35b4ada5237410008d67048c0255a53718543b3b1bc33",
+      "source_sha256": "765ab1071a233b804b9e84b2e9f1d2252a2a893012127ed6e6315062f7a87088",
+      "workers": 32
+    },
+    "kjesterkchecker.uftb": {
+      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "audit_log_sha256": "e6d29d0cc8515bfc187c72915304f22d8e1631f2c36a05f9eefbd9ac11fe02fe",
+      "bytes": 151831840,
+      "elapsed_seconds": 660.8119914531708,
+      "filename": "kjesterkchecker.ufiw",
+      "model_sha256": "ccf4252543e1b1f6bb13985edf310ce46082e2618d3a2cced85a8c043fc3533f",
+      "schema": "ultimate-fish-information-repair-v1",
+      "sha256": "1fc7b3a66f4e99b55705bce344b58058832e795aabfa7b417cb9d30770a47c17",
+      "solve_log_sha256": "9a9faea7d12df4f8f4ddef55feceb011bfcb0d9753badfb906363cf5ad183968",
+      "source_bundle_sha256": "1d00b8ca081af57600e35b4ada5237410008d67048c0255a53718543b3b1bc33",
+      "source_sha256": "9c06beadd8d4aa9916ed54845e8ed0ef74bbd725ca0cf1ad56d9ddd012f0a57b",
+      "workers": 32
+    },
+    "kjesterksniper.uftb": {
+      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "audit_log_sha256": "7ccfed19e129cbad28ca49e7b94720020fde9a2b9f908bcc924218c2aa769436",
+      "bytes": 151831840,
+      "elapsed_seconds": 773.6958458423615,
+      "filename": "kjesterksniper.ufiw",
+      "model_sha256": "ccf4252543e1b1f6bb13985edf310ce46082e2618d3a2cced85a8c043fc3533f",
+      "schema": "ultimate-fish-information-repair-v1",
+      "sha256": "b960e610782606207955471e0db38f7e5d829ab2bfb4bac1b4cc51fc9304c766",
+      "solve_log_sha256": "de88714a35b863312fae57200ca92e8bc87a9a2194e335a58aec207387668011",
+      "source_bundle_sha256": "1d00b8ca081af57600e35b4ada5237410008d67048c0255a53718543b3b1bc33",
+      "source_sha256": "c14fcdedd9fdf8be63216be8c2b57b361978fa2b46ad156bf327c60ada9f1821",
+      "workers": 32
+    },
+    "kjestersniperk.uftb": {
+      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "audit_log_sha256": "cb9da68c59bccb5bb12810f20188717470aeb7bb6a4ddb3caedeb5b42d6931ec",
+      "bytes": 151831840,
+      "elapsed_seconds": 712.2857789993286,
+      "filename": "kjestersniperk.ufiw",
+      "model_sha256": "ccf4252543e1b1f6bb13985edf310ce46082e2618d3a2cced85a8c043fc3533f",
+      "schema": "ultimate-fish-information-repair-v1",
+      "sha256": "c97c201f794c579aea89696578c0c7f0aee6f965794956f88c7763da6f0d8c1b",
+      "solve_log_sha256": "335cedf03227f2bda3530f792bb656b4c5b18b4da33171f740f2fe67068db0ed",
+      "source_bundle_sha256": "1d00b8ca081af57600e35b4ada5237410008d67048c0255a53718543b3b1bc33",
+      "source_sha256": "c1bd35768e20537b72440d39663b72ad0ca6dbd16174c41f9da1d474229ebd2a",
+      "workers": 32
+    }
+  },
+  "schema": "ultimate-fish-rules-repair-certificate-v1"
+}

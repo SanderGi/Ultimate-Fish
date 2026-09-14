@@ -1,0 +1,106 @@
+{
+  "schema": "ultimate-fish-rules-repair-performance-v1",
+  "baseline_commit": "204c3ee5",
+  "tablebases_enabled": true,
+  "tablebase_directory_empty": true,
+  "repeats": 9,
+  "discarded_warmups_per_fixture_mode": 1,
+  "nodes": 1000000,
+  "depth": 8,
+  "alternating_order": "AB/BA",
+  "baseline_binary_sha256": "d695f91e989d873335d2c56bc88b59eef4dfa0da78c435c1726ace6880fbbb85",
+  "candidate_binary_sha256": "ca90791918dbdd33ec8084b2565864c0f4bea8af58e7d7a9abc1a00726a8ea6c",
+  "raw_log_sha256": "9d8758b6abc738a24667b349c7fd5dcc975a9956dfec04d30e54abe8196e89cd",
+  "summaries": [
+    {
+      "summary": true,
+      "fixture": "classic",
+      "mode": "nodes",
+      "baseline_ms": 1244,
+      "candidate_ms": 1181,
+      "median_paired_nps_ratio": 1.0560747663551402,
+      "same_nodes_score_pv": true
+    },
+    {
+      "summary": true,
+      "fixture": "ultimate",
+      "mode": "nodes",
+      "baseline_ms": 605,
+      "candidate_ms": 612,
+      "median_paired_nps_ratio": 0.9936204146730463,
+      "same_nodes_score_pv": true
+    },
+    {
+      "summary": true,
+      "fixture": "minions",
+      "mode": "nodes",
+      "baseline_ms": 429,
+      "candidate_ms": 423,
+      "median_paired_nps_ratio": 1.0069605568445474,
+      "same_nodes_score_pv": true
+    },
+    {
+      "summary": true,
+      "fixture": "cooldowns",
+      "mode": "nodes",
+      "baseline_ms": 354,
+      "candidate_ms": 368,
+      "median_paired_nps_ratio": 0.9678284182305631,
+      "same_nodes_score_pv": true
+    },
+    {
+      "summary": true,
+      "fixture": "native_interactions",
+      "mode": "nodes",
+      "baseline_ms": 1147,
+      "candidate_ms": 1148,
+      "median_paired_nps_ratio": 0.9868189806678382,
+      "same_nodes_score_pv": true
+    },
+    {
+      "summary": true,
+      "fixture": "classic",
+      "mode": "depth",
+      "baseline_ms": 88,
+      "candidate_ms": 87,
+      "median_paired_nps_ratio": 1.0235294117647058,
+      "same_nodes_score_pv": true
+    },
+    {
+      "summary": true,
+      "fixture": "ultimate",
+      "mode": "depth",
+      "baseline_ms": 420,
+      "candidate_ms": 419,
+      "median_paired_nps_ratio": 0.9976019184652279,
+      "same_nodes_score_pv": true
+    },
+    {
+      "summary": true,
+      "fixture": "minions",
+      "mode": "depth",
+      "baseline_ms": 63,
+      "candidate_ms": 63,
+      "median_paired_nps_ratio": 1.0,
+      "same_nodes_score_pv": true
+    },
+    {
+      "summary": true,
+      "fixture": "cooldowns",
+      "mode": "depth",
+      "baseline_ms": 8,
+      "candidate_ms": 8,
+      "median_paired_nps_ratio": 1.0,
+      "same_nodes_score_pv": true
+    },
+    {
+      "summary": true,
+      "fixture": "native_interactions",
+      "mode": "depth",
+      "baseline_ms": 697,
+      "candidate_ms": 706,
+      "median_paired_nps_ratio": 0.9929676511954993,
+      "same_nodes_score_pv": true
+    }
+  ]
+}

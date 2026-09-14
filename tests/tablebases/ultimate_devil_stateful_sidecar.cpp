@@ -49,7 +49,7 @@ std::uint64_t key(Color side, unsigned whiteKing, unsigned blackKing,
 #pragma pack(push, 1)
 struct Header {
     std::array<char, 8> magic{{'U','F','D','S','V','1','\0','\0'}};
-    std::uint32_t version = 1;
+    std::uint32_t version = 2;
     std::uint32_t square = 18;
     std::uint64_t count = 0;
     std::uint32_t recordBytes = 10;
@@ -105,6 +105,19 @@ int main() {
     output.close();
     if (!TablebaseProbe::uses_compatible_codec(path.string()))
         return 7;
+    // Identical historical payloads must remain quarantined, including when
+    // both generations are installed in the same search directory.
+    const auto stalePath = directory / "old-devil-18.ufds";
+    Header staleHeader = header;
+    staleHeader.version = 1;
+    {
+        std::ofstream stale(stalePath, std::ios::binary);
+        stale.write(reinterpret_cast<const char*>(&staleHeader), sizeof(staleHeader));
+        stale.write(reinterpret_cast<const char*>(records.data()),
+                    records.size() * sizeof(Record));
+    }
+    if (TablebaseProbe::uses_compatible_codec(stalePath.string()))
+        return 10;
     ::setenv("ULTIMATE_TABLEBASE_PATH", directory.c_str(), 1);
 
     Position live;

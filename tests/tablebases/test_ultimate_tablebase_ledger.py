@@ -1,4 +1,5 @@
 import importlib.util
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -41,8 +42,9 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
                          lone.filename)
         self.assertIn("entry-root projection", lone.storage)
         self.assertIn("all twelve primary planes", lone.storage)
-        self.assertIn("95649cf36a9f6287379e9d29ee80b67f7af9c8ca6dff0298e73977f458bd3e0f",
-                      lone.storage)
+        self.assertIn(hashlib.sha256(
+            (ROOT / "tablebases" / lone.filename).read_bytes()).hexdigest(),
+            lone.storage)
         self.assertNotIn("companion", lone.storage.lower())
         self.assertNotIn("bishop", lone.storage.lower())
 
@@ -246,7 +248,7 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual("unknown", catalog.opposed("ghost", "pawn").kind)
         self.assertEqual("no_forced_loss",
                          catalog.opposed("ghost", "turtle").kind)
-        self.assertEqual("win", catalog.opposed("ghost", "checker").kind)
+        self.assertEqual("no_forced_win", catalog.opposed("ghost", "checker").kind)
 
     def test_certified_ghost_angel_rows_fill_both_mirrored_cells(self):
         catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))
@@ -298,9 +300,9 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         cell = plot.OutcomeCatalog(summary).single("devil")
         self.assertEqual("mixed", cell.kind)
         self.assertEqual(
-            plot.WDL(0, 4_129_343, 7_478_888_477), cell.first)
+            plot.WDL(841_726, 4_129_343, 7_478_046_751), cell.first)
         self.assertEqual(
-            plot.WDL(0, 21_773_540, 24_906_270_149), cell.second)
+            plot.WDL(387_623, 21_773_540, 24_905_882_526), cell.second)
         self.assertEqual(7_483_017_820, cell.first.total)
         self.assertEqual(24_928_043_689, cell.second.total)
         self.assertEqual(32_411_061_509,
@@ -541,16 +543,16 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
             item for item in ledger.entries(ledger.README.read_text())
             if item.filename == "kberserkerksniper.uftb")
         self.assertEqual(
-            "112,834,132 [43,082,802] (645,862,628) / 8,413 [0] (479) / "
-            "222,407 [119,288] (230,341)",
+            "112,834,132 [43,082,802] (645,862,628) / 8,565 [115] (8,565) / "
+            "222,255 [119,173] (222,255)",
             row.first)
         self.assertEqual(
-            "126,266 [80,882] (73,752,811) / "
+            "126,042 [79,840] (73,788,507) / "
             "301,329,375 [12,310,654] (318,640,610) / "
-            "36,606,979 [36,051,389] (28,702,359)",
+            "36,607,203 [36,052,431] (28,666,663)",
             row.second)
         self.assertIn(
-            "reachability v3 sha256:3eb5719205688ab9c980db29ef18f6f3b4773e5d8aef153674bc9eb39fe2153c",
+            "root audit sha256:7755a0dc53ac220cb4922b00ddc35423c21749510f4285b3f98cf1746353025b",
             row.storage)
 
     def test_legacy_receipt_corrections_remain_canonical(self):

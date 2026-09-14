@@ -454,8 +454,8 @@ def summary(path: Path, data: bytes | None = None,
     if data is None:
         data = shards.read_logical(path)
     magic, version, piece, count, _edges = struct.unpack_from("<8sIIII", data)
-    if magic != MAGIC or version not in (4, 5, 6, 7):
-        raise ValueError(f"{path}: summary requires packed v4-v7")
+    if magic != MAGIC or version not in (4, 5, 6, 7, 12):
+        raise ValueError(f"{path}: summary requires packed v4-v7 or corrected v12")
     substates, wdl_bytes, dtw_bytes, exceptions = struct.unpack_from("<IIII", data, 24)
     offset = (40 + (8 if version >= 5 else 0) +
               (8 if version >= 6 else 0) + (8 if version >= 7 else 0))
@@ -465,6 +465,8 @@ def summary(path: Path, data: bytes | None = None,
     totals = [count_results(wdl, side * count // 2, (side + 1) * count // 2)
               for side in range(2)]
     native_full = audited_counts(path, data, "necessary_reachability", digest)
+    if version == 12 and native_full is None:
+        raise ValueError(f"{path}: corrected tables require a hash-bound native audit")
     native_safety = audited_counts(
         path, data, "ordinary_predecessor_safety", digest) if native_full is None else None
     illegal = native_full or native_safety or [[0, 0, 0, 0] for _ in range(2)]

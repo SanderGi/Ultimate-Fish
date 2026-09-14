@@ -1,17 +1,17 @@
 {
   "alive_root_outcomes": {
-    "draw": 32385253973,
-    "loss": 4129343,
-    "win": 1242065074
+    "draw": 32384024624,
+    "loss": 4516966,
+    "win": 1242906800
   },
   "alive_root_states": 33631448390,
-  "audit_binary_sha256": "b398310892e312c388262a3992bb304a547cf57bb31642a1721f3894175b9143",
-  "audit_source_sha256": "9181f97e8209def10013b9e86fe4d123a9f4b7105f4fe75d51eb20d8c840dfc9",
-  "certificate_sha256": "95649cf36a9f6287379e9d29ee80b67f7af9c8ca6dff0298e73977f458bd3e0f",
-  "classifier_verifier_result": "DEVIL_SLICE_VERIFIED states=841552 admitted=769882",
-  "classifier_verifier_source_sha256": "3f2e10fc0e0e0bad623a58d9fbcc27baa74189ceac4d826af5aa3dae994b6b2b",
+  "audit_binary_sha256": "eb2b4746a0fcd10853cf364fd8c1c119058856af46c4f33fb525eb835ffa0c61",
+  "audit_source_sha256": "469ef6a9d36e7e83469055743d7adc8aa42ceac7d29b7785f8ab9f001f205f6f",
+  "certificate_sha256": "5637dde5cafa70a8014b38a44949e99becaa1b8e5c5dc7d61d5148279eb68ae5",
+  "classifier_verifier_result": "DEVIL_SLICE_VERIFIED states=1591553 admitted=1456370",
+  "classifier_verifier_source_sha256": "d5b9c9f790e941f2864278aca58dbae5898bde03cffa83900a93124f14bb41eb",
   "dataset": "SanderGi/Ultimate-Fish-Tablebases",
-  "dataset_revision": "ed8375c43f26e42c5b14ac79ff41e77d4317b97f",
+  "dataset_revision": "847eb02da6cd3a0879226bac293464c0e72763dd",
   "dead_devil_continuation_states": 1350183129,
   "description": "Certified lone-Devil UFDS root states grouped by current Minion count after root reachability admission and trivial subtraction; all solved successors remain unrestricted",
   "files": {
@@ -76,14 +76,14 @@
         "1": {
           "first_starts": {
             "admitted": {
-              "draws": 3322639,
+              "draws": 3322354,
               "losses": 115,
-              "wins": 0
+              "wins": 285
             },
             "display": {
-              "draws": 3322639,
+              "draws": 3322354,
               "losses": 115,
-              "wins": 0
+              "wins": 285
             },
             "excluded": {
               "draws": 0,
@@ -91,9 +91,9 @@
               "wins": 0
             },
             "total": {
-              "draws": 3322639,
+              "draws": 3322354,
               "losses": 115,
-              "wins": 0
+              "wins": 285
             },
             "trivial": {
               "draws": 0,
@@ -103,13 +103,13 @@
           },
           "second_starts": {
             "admitted": {
-              "draws": 3396630,
-              "losses": 0,
+              "draws": 3396607,
+              "losses": 23,
               "wins": 40427
             },
             "display": {
-              "draws": 3374009,
-              "losses": 0,
+              "draws": 3373986,
+              "losses": 23,
               "wins": 567
             },
             "excluded": {
@@ -118,8 +118,8 @@
               "wins": 0
             },
             "total": {
-              "draws": 3396630,
-              "losses": 0,
+              "draws": 3396607,
+              "losses": 23,
               "wins": 40427
             },
             "trivial": {
@@ -132,14 +132,14 @@
         "2": {
           "first_starts": {
             "admitted": {
-              "draws": 57337258,
+              "draws": 57330317,
               "losses": 6254,
-              "wins": 0
+              "wins": 6941
             },
             "display": {
-              "draws": 57337258,
+              "draws": 57330317,
               "losses": 6254,
-              "wins": 0
+              "wins": 6941
             },
             "excluded": {
               "draws": 0,
@@ -147,9 +147,9 @@
               "wins": 0
             },
             "total": {
-              "draws": 57337258,
+              "draws": 57330317,
               "losses": 6254,
-              "wins": 0
+              "wins": 6941
             },
             "trivial": {
               "draws": 0,
@@ -159,13 +159,13 @@
           },
           "second_starts": {
             "admitted": {
-              "draws": 70060584,
-              "losses": 0,
+              "draws": 70059831,
+              "losses": 753,
               "wins": 1650354
             },
             "display": {
-              "draws": 70021548,
-              "losses": 0,
+              "draws": 70020795,
+              "losses": 753,
               "wins": 23815
             },
             "excluded": {
@@ -174,8 +174,8 @@
               "wins": 0
             },
             "total": {
-              "draws": 70060584,
-              "losses": 0,
+              "draws": 70059831,
+              "losses": 753,
               "wins": 1650354
             },
             "trivial": {
@@ -188,14 +188,14 @@
         "3": {
           "first_starts": {
             "admitted": {
-              "draws": 553565691,
+              "draws": 553489912,
               "losses": 153645,
-              "wins": 0
+              "wins": 75779
             },
             "display": {
-              "draws": 553565691,
+              "draws": 553489912,
               "losses": 153645,
-              "wins": 0
+              "wins": 75779
             },
             "excluded": {
               "draws": 0,
@@ -203,9 +203,9 @@
               "wins": 0
             },
             "total": {
-              "draws": 553565691,
+              "draws": 553489912,
               "losses": 153645,
-              "wins": 0
+              "wins": 75779
             },
             "trivial": {
               "draws": 0,
@@ -215,13 +215,13 @@
           },
           "second_starts": {
             "admitted": {
-              "draws": 825112834,
-              "losses": 0,
+              "draws": 825101247,
+              "losses": 11587,
               "wins": 28777969
             },
             "display": {
-              "draws": 825100172,
-              "losses": 0,
+              "draws": 825088585,
+              "losses": 11587,
               "wins": 477676
             },
             "excluded": {
@@ -230,8 +230,8 @@
               "wins": 0
             },
             "total": {
-              "draws": 825112834,
-              "losses": 0,
+              "draws": 825101247,
+              "losses": 11587,
               "wins": 28777969
             },
             "trivial": {
@@ -244,14 +244,14 @@
         "4": {
           "first_starts": {
             "admitted": {
-              "draws": 2841552221,
+              "draws": 2841157945,
               "losses": 1539973,
-              "wins": 0
+              "wins": 394276
             },
             "display": {
-              "draws": 2841552221,
+              "draws": 2841157945,
               "losses": 1539973,
-              "wins": 0
+              "wins": 394276
             },
             "excluded": {
               "draws": 0,
@@ -259,9 +259,9 @@
               "wins": 0
             },
             "total": {
-              "draws": 2841552221,
+              "draws": 2841157945,
               "losses": 1539973,
-              "wins": 0
+              "wins": 394276
             },
             "trivial": {
               "draws": 0,
@@ -271,13 +271,13 @@
           },
           "second_starts": {
             "admitted": {
-              "draws": 5717668854,
-              "losses": 0,
+              "draws": 5717576654,
+              "losses": 92200,
               "wins": 258956368
             },
             "display": {
-              "draws": 5717668854,
-              "losses": 0,
+              "draws": 5717576654,
+              "losses": 92200,
               "wins": 4801362
             },
             "excluded": {
@@ -286,8 +286,8 @@
               "wins": 0
             },
             "total": {
-              "draws": 5717668854,
-              "losses": 0,
+              "draws": 5717576654,
+              "losses": 92200,
               "wins": 258956368
             },
             "trivial": {
@@ -300,14 +300,14 @@
         "5": {
           "first_starts": {
             "admitted": {
-              "draws": 4022840024,
+              "draws": 4022475579,
               "losses": 2429356,
-              "wins": 0
+              "wins": 364445
             },
             "display": {
-              "draws": 4022840024,
+              "draws": 4022475579,
               "losses": 2429356,
-              "wins": 0
+              "wins": 364445
             },
             "excluded": {
               "draws": 0,
@@ -315,9 +315,9 @@
               "wins": 0
             },
             "total": {
-              "draws": 4022840024,
+              "draws": 4022475579,
               "losses": 2429356,
-              "wins": 0
+              "wins": 364445
             },
             "trivial": {
               "draws": 0,
@@ -327,13 +327,13 @@
           },
           "second_starts": {
             "admitted": {
-              "draws": 18289855926,
-              "losses": 0,
+              "draws": 18289572866,
+              "losses": 283060,
               "wins": 952589716
             },
             "display": {
-              "draws": 18289855926,
-              "losses": 0,
+              "draws": 18289572866,
+              "losses": 283060,
               "wins": 16470120
             },
             "excluded": {
@@ -342,8 +342,8 @@
               "wins": 0
             },
             "total": {
-              "draws": 18289855926,
-              "losses": 0,
+              "draws": 18289572866,
+              "losses": 283060,
               "wins": 952589716
             },
             "trivial": {
@@ -357,9 +357,9 @@
     }
   },
   "full_class_outcomes": {
-    "draw": 33705922321,
-    "loss": 4444400,
-    "win": 1271264798
+    "draw": 33704684422,
+    "loss": 4833105,
+    "win": 1272113992
   },
   "full_class_states": 34981631519,
   "minion_counts": [
@@ -372,116 +372,116 @@
   ],
   "partitions": [
     {
-      "elapsed_seconds": 169.617,
+      "elapsed_seconds": 0,
       "label": "A1",
       "payloads": [
         {
           "bytes": 3050732842,
           "filename": "kdevilk-a1.ufds",
-          "sha256": "c61336d801b525944e445394362a5f497c85784d91575ee14655872c8d809416"
+          "sha256": "4568e12827826614a9fae469b0b3d1c15679bcc9cb1469c2590023b49b512b21"
         }
       ],
-      "sidecar_sha256": "c61336d801b525944e445394362a5f497c85784d91575ee14655872c8d809416",
+      "sidecar_sha256": "4568e12827826614a9fae469b0b3d1c15679bcc9cb1469c2590023b49b512b21",
       "square": 0,
       "states": 305073281
     },
     {
-      "elapsed_seconds": 699.092,
+      "elapsed_seconds": 1096.9736382961273,
       "label": "B1",
       "payloads": [
         {
           "bytes": 12700092512,
           "filename": "kdevilk-b1.ufds",
-          "sha256": "8cf55860941658896decd2b212d0e4f4f5c86d8ecb4a534966b773e7e57a64db"
+          "sha256": "75032b2d6135f6633c239ed7d2f9e8663b9d0fec7c5b1e2463cde2a1fdd867fc"
         }
       ],
-      "sidecar_sha256": "8cf55860941658896decd2b212d0e4f4f5c86d8ecb4a534966b773e7e57a64db",
+      "sidecar_sha256": "75032b2d6135f6633c239ed7d2f9e8663b9d0fec7c5b1e2463cde2a1fdd867fc",
       "square": 1,
       "states": 1270009248
     },
     {
-      "elapsed_seconds": 2224.079,
+      "elapsed_seconds": 4840.75931763649,
       "label": "C1",
       "payloads": [
         {
           "bytes": 38612131772,
           "filename": "kdevilk-c1.ufds",
-          "sha256": "dc9f0e891e0ce3ab643099f61f5fad561f7c9c3ff197906804c9001d5a092dcc"
+          "sha256": "0ed497a87aaf38d12cc84d26a07926e5118a852e4598e60c3616f018a0581673"
         }
       ],
-      "sidecar_sha256": "dc9f0e891e0ce3ab643099f61f5fad561f7c9c3ff197906804c9001d5a092dcc",
+      "sidecar_sha256": "0ed497a87aaf38d12cc84d26a07926e5118a852e4598e60c3616f018a0581673",
       "square": 2,
       "states": 3861213174
     },
     {
-      "elapsed_seconds": 2363.798,
+      "elapsed_seconds": 4617.653989076614,
       "label": "D1",
       "payloads": [
         {
           "bytes": 38733071332,
           "filename": "kdevilk-d1.ufds",
-          "sha256": "2eed8d96428f5c80b19d849552e5ac932a737c36d1d2de873540c0e6fe22576c"
+          "sha256": "d24bc85bc7e6313b6b620d416375860de216dd22511651d2de6045a3e32f05d3"
         }
       ],
-      "sidecar_sha256": "2eed8d96428f5c80b19d849552e5ac932a737c36d1d2de873540c0e6fe22576c",
+      "sidecar_sha256": "d24bc85bc7e6313b6b620d416375860de216dd22511651d2de6045a3e32f05d3",
       "square": 3,
       "states": 3873307130
     },
     {
-      "elapsed_seconds": 198.075,
+      "elapsed_seconds": 311.2136218547821,
       "label": "A2",
       "payloads": [
         {
           "bytes": 3647465862,
           "filename": "kdevilk-a2.ufds",
-          "sha256": "3ffbc72261530aaf0210d9fa8a6c57a3300c1318dc19a53873d5239e44ce50da"
+          "sha256": "b79beff8923efe26b22d8e85f4abe68ef293232751de362c95810db5bcf32dcf"
         }
       ],
-      "sidecar_sha256": "3ffbc72261530aaf0210d9fa8a6c57a3300c1318dc19a53873d5239e44ce50da",
+      "sidecar_sha256": "b79beff8923efe26b22d8e85f4abe68ef293232751de362c95810db5bcf32dcf",
       "square": 8,
       "states": 364746583
     },
     {
-      "elapsed_seconds": 909.857,
+      "elapsed_seconds": 1479.589727640152,
       "label": "B2",
       "payloads": [
         {
           "bytes": 16320718232,
           "filename": "kdevilk-b2.ufds",
-          "sha256": "91df1b1560c9cb11b54b5c4fac5636ec3814b95cea2ca57f8eb9e1b9a4da8846"
+          "sha256": "04e726fa74b4dfe4130922b6123ff76f0a0b00a6a69fe2ac15286006ba15ed11"
         }
       ],
-      "sidecar_sha256": "91df1b1560c9cb11b54b5c4fac5636ec3814b95cea2ca57f8eb9e1b9a4da8846",
+      "sidecar_sha256": "04e726fa74b4dfe4130922b6123ff76f0a0b00a6a69fe2ac15286006ba15ed11",
       "square": 9,
       "states": 1632071820
     },
     {
-      "elapsed_seconds": 2842.719,
+      "elapsed_seconds": 6580.929840326309,
       "label": "C2",
       "payloads": [
         {
           "bytes": 32000000000,
           "filename": "kdevilk-c2-part000.ufdsp",
-          "sha256": "9ac37e4bc3182e4a2820df037bdfceb68750b71129b57f2cd7adad2a648f8615"
+          "sha256": "ab258ca629352474db1370aadf67d9468145c19c5ab4b7aede30111c2f16199d"
         },
         {
           "bytes": 19769877022,
           "filename": "kdevilk-c2-part001.ufdsp",
-          "sha256": "b4afcf47b34618552c7a6bf97139c3d17ed35660167f2beb53c651b5c03668b1"
+          "sha256": "870086f174bb06b4fe023c19da6239e8ba1a009c4ef7a4c8f480cf97260accb7"
         }
       ],
-      "sidecar_sha256": "8cb1d1d54de8bf373cd8529c853895e3afa56610cf1855cf0674d0829510c68b",
+      "sidecar_sha256": "74d175a36b548f9d2890ac00dca061ed87d9e425d62bc166aaf2602664a6c681",
       "square": 10,
       "states": 5176987699
     },
     {
-      "elapsed_seconds": 2832.446,
+      "elapsed_seconds": 6165.036734819412,
       "label": "D2",
       "payloads": [
         {
           "bytes": 32000000000,
           "filename": "kdevilk-d2-part000.ufdsp",
-          "sha256": "7352ee27599182f367c17c28199e14c169b99081a575f4f148b1920e475cca81"
+          "sha256": "d0c782bfac883759645a63f6cb5abae98876ba96e75210f8a625bbeeb1937aed"
         },
         {
           "bytes": 19941921902,
@@ -489,65 +489,65 @@
           "sha256": "b2ffbeadbea1597578fb921efe87959da3c13388e026c684c7d3f237a4bcfd58"
         }
       ],
-      "sidecar_sha256": "28bb449efb79e539d5461cfcaee0150f84dd7e46e08902e1afd2f3b0b1bd8c19",
+      "sidecar_sha256": "758183a5a3fc845a4d1c70fb3921375600a8eb6d9d1097a0be893d85bbc31d14",
       "square": 11,
       "states": 5194192187
     },
     {
-      "elapsed_seconds": 195.788,
+      "elapsed_seconds": 313.45876264572144,
       "label": "A3",
       "payloads": [
         {
           "bytes": 3612299802,
           "filename": "kdevilk-a3.ufds",
-          "sha256": "c47ad91cdc0489c0ca0f7dfebe61d906ecdc1634c77766929dfd242e0a79e816"
+          "sha256": "c9675d29468442ecb96f76b0c2b9bdc468ff87fb4974502e9e8915e74eff349a"
         }
       ],
-      "sidecar_sha256": "c47ad91cdc0489c0ca0f7dfebe61d906ecdc1634c77766929dfd242e0a79e816",
+      "sidecar_sha256": "c9675d29468442ecb96f76b0c2b9bdc468ff87fb4974502e9e8915e74eff349a",
       "square": 16,
       "states": 361229977
     },
     {
-      "elapsed_seconds": 929.485,
+      "elapsed_seconds": 1544.4211776256561,
       "label": "B3",
       "payloads": [
         {
           "bytes": 17102460312,
           "filename": "kdevilk-b3.ufds",
-          "sha256": "c760ccd336d4635d89c837c3bb7c932afff31649c92246413a94bf3e5a0344d6"
+          "sha256": "386ecf5d4ce5684cefdb480dfca4cde5d8837cb7c14fccb14602658418052651"
         }
       ],
-      "sidecar_sha256": "c760ccd336d4635d89c837c3bb7c932afff31649c92246413a94bf3e5a0344d6",
+      "sidecar_sha256": "386ecf5d4ce5684cefdb480dfca4cde5d8837cb7c14fccb14602658418052651",
       "square": 17,
       "states": 1710246028
     },
     {
-      "elapsed_seconds": 3175.801,
+      "elapsed_seconds": 7022.4557502269745,
       "label": "C3",
       "payloads": [
         {
           "bytes": 32000000000,
           "filename": "kdevilk-c3-part000.ufdsp",
-          "sha256": "113a10972630729321fbe8629799a135d1ac80d3f85dce33e0c45944b5d20abb"
+          "sha256": "324fcd34013f361d2a6435fba40509075fba663c622537e2606ea1ef3f2a7624"
         },
         {
           "bytes": 24067532292,
           "filename": "kdevilk-c3-part001.ufdsp",
-          "sha256": "726e2194a6a5e27022b527c17e724bc9caf81d30705ad141f8974e179ce157d0"
+          "sha256": "1b2267a67a5be34e643956f039889e832d39a3d9f1f6c1da60eb9dea4dcb9629"
         }
       ],
-      "sidecar_sha256": "0f633ae24c591c395056e491c42c2efe997bd64eeabea62f8b4c286ecc78384b",
+      "sidecar_sha256": "739686cc6e9af0efc38cf1f6c5c9e89c1fe245d0b188aff4d435ecf50ac18178",
       "square": 18,
       "states": 5606753226
     },
     {
-      "elapsed_seconds": 3045.023,
+      "elapsed_seconds": 6868.714417934418,
       "label": "D3",
       "payloads": [
         {
           "bytes": 32000000000,
           "filename": "kdevilk-d3-part000.ufdsp",
-          "sha256": "d8058f79bbc6e36b78318eaaaf4d354b77860b02d142d12e447b5f6e615f34e7"
+          "sha256": "628c394ea63c78bed46d9159d5bcc5478d2b232e97efc3ea41d8f476674f4c3b"
         },
         {
           "bytes": 24258011692,
@@ -555,7 +555,7 @@
           "sha256": "c9a45e2ab373b7fd536399940fc0fa5aa641f2236e23591c1b83126382dc9aea"
         }
       ],
-      "sidecar_sha256": "593387d6faf9704bcb1571406ff12f8f587de93f745ebb74e65feb71c4ce42e8",
+      "sidecar_sha256": "eb9644ff9469ebb134f93fbe51f56239f516fd8d476737eae53838de1e834c0e",
       "square": 19,
       "states": 5625801166
     }
@@ -567,7 +567,8 @@
     "total": 33631448390,
     "trivial": 1220336641
   },
+  "rules_revision": 2,
   "schema": 2,
   "semantics": "stateful-reachability-admitted-minus-trivial-v1",
-  "zero_minion_oracle": "authenticated-entry-root-v2"
+  "zero_minion_oracle": "recomputed-native-turn-start-v2"
 }

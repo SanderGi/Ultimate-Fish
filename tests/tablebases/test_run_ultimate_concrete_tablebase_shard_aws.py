@@ -261,6 +261,27 @@ class ConcreteAwsRunnerTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "codec header"):
                 runner.parse_uftb(output, record, log)
 
+    def test_corrected_sniper_header_and_rules_tag(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            output = root / "ksniperk.uftb"
+            record = dict(primary="sniper", secondary=None, opposing=False, states=4)
+            header = struct.pack(
+                "<8sIIIIIIIIIIQQ", b"UFTB1\0\0\0", 12,
+                runner.PIECE_INDEX["sniper"], 4, 7, 4, 1, 4, 0,
+                len(runner.PIECE_TYPES), 0, 7, runner.CORRECTED_RULES_TAG)
+            output.write_bytes(header + b"\xff" + bytes(4))
+            log = root / "proof.log"
+            log.write_text(f"verifyok states 4\noutput outputs/{output.name} "
+                           "edges 7 win 0 loss 0 draw 4\ncomplete states 4/4\n")
+            self.assertEqual(12, runner.parse_uftb(output, record, log)["version"])
+            self.assertEqual(64, runner.uftb_extent(output)["header_bytes"])
+            damaged = bytearray(output.read_bytes())
+            struct.pack_into("<Q", damaged, 56, 0)
+            output.write_bytes(damaged)
+            with self.assertRaisesRegex(RuntimeError, "codec header"):
+                runner.parse_uftb(output, record, log)
+
     def test_aws_source_preserves_named_scratch(self) -> None:
         source = (ROOT / "src/ultimate/tablebases/tablebase.cpp").read_text()
         self.assertIn("ULTIMATE_TABLEBASE_PRESERVE_SCRATCH", source)

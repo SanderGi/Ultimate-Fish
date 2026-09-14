@@ -67,6 +67,7 @@ ANGEL_GIANT_TAG = 0x314741474E414655
 LINKED_COPYCAT_TAG = 0x314B4E4C43434655
 ANGEL_COPYCAT_TAG = 0x3152504343414655
 SPAWNED_DEVIL_ROOT_V1_TAG = 0x315256444E505355
+CORRECTED_RULES_TAG = 0x3132393036524655
 SPAWNED_DEVIL_ROOT_DENSE_STATES = 3_943_680
 LINKED_COPYCAT_LOWER = "kcopycatlinkedk.uftb"
 PIECE_TYPES = (
@@ -179,7 +180,7 @@ def uftb_extent(path: Path) -> dict[str, int | str]:
             raise RuntimeError("truncated UFTB header")
         (magic, version, primary, states, legacy_edges, substates,
          wdl_bytes, dtw_bytes, exceptions) = base.unpack(header)
-        if magic != b"UFTB1\0\0\0" or version not in (4, 5, 6, 7, 8, 9, 10, 11):
+        if magic != b"UFTB1\0\0\0" or version not in range(4, 13):
             raise RuntimeError("invalid UFTB magic/version")
         header_bytes = base.size
         secondary = -1
@@ -626,7 +627,7 @@ def parse_uftb(path: Path, record: Mapping[str, object],
             raise RuntimeError("truncated generated UFTB header")
         (magic, version, primary, states, legacy_edges, substates,
          wdl_bytes, dtw_bytes, exceptions) = base.unpack(header)
-        if magic != b"UFTB1\0\0\0" or version not in (4, 5, 6, 7, 8, 9, 10, 11):
+        if magic != b"UFTB1\0\0\0" or version not in range(4, 13):
             raise RuntimeError("generated UFTB magic/version residual")
         secondary = -1
         secondary_color = 0
@@ -660,6 +661,17 @@ def parse_uftb(path: Path, record: Mapping[str, object],
         linked_copycat = bool(record.get("linked_copycat_pair"))
         spawned_devil = (record["primary"] == "devil" and
                          not record["secondary"])
+        material = {record["primary"], record["secondary"]}
+        layout_version, layout_tag = version, codec_tag
+        if version == 12:
+            if not material & {"checker", "checkerking", "sniper", "devil"}:
+                raise RuntimeError("corrected UFTB material/codec header residual")
+            layout_tag ^= CORRECTED_RULES_TAG
+            layout_version = (11 if spawned_devil else 9 if "angel" in material
+                              else 7 if "giant" in material and record["secondary"]
+                              else 6 if record["secondary"] else 4)
+            if layout_version in (4, 6) and layout_tag:
+                raise RuntimeError("corrected UFTB material/codec header residual")
         expected_states = (SPAWNED_DEVIL_ROOT_DENSE_STATES
                            if spawned_devil else int(record["states"]))
         if linked_copycat:
@@ -686,8 +698,9 @@ def parse_uftb(path: Path, record: Mapping[str, object],
                                  secondary_color != int(bool(record["opposing"])))
         else:
             expected_substates = plan.material_state_factor(primary_spec)
-            material_residual = version != (11 if spawned_devil else 4)
-        material = {record["primary"], record["secondary"]}
+            material_residual = layout_version != (11 if spawned_devil else 4)
+            if version == 12:
+                material_residual |= secondary != len(PIECE_TYPES) or secondary_color != 0
         giant = "giant" in material
         angel = "angel" in material
         angel_copycat = (angel and record["primary"] == "copycat" and
@@ -695,17 +708,17 @@ def parse_uftb(path: Path, record: Mapping[str, object],
                          not bool(record["opposing"]))
         codec_residual = (
             (spawned_devil and
-             codec_tag != SPAWNED_DEVIL_ROOT_V1_TAG) or
+             layout_tag != SPAWNED_DEVIL_ROOT_V1_TAG) or
             (not spawned_devil and linked_copycat and
              (version != 10 or codec_tag != LINKED_COPYCAT_TAG)) or
             (not spawned_devil and angel_copycat and
              (version != 10 or codec_tag != ANGEL_COPYCAT_TAG)) or
             (not spawned_devil and angel and not angel_copycat and
-             (version != 9 or codec_tag !=
+             (layout_version != 9 or layout_tag !=
               (ANGEL_GIANT_TAG if giant else ANGEL_TAG))) or
             (not spawned_devil and not angel and not linked_copycat and
-             ((version == 7) != giant or version in (8, 9, 10) or
-                            (giant and codec_tag != GIANT_TAG)))
+             ((layout_version == 7) != giant or layout_version in (8, 9, 10) or
+                            (giant and layout_tag != GIANT_TAG)))
         )
         if (primary != primary_piece or material_residual or
                 states != expected_states or substates != expected_substates or

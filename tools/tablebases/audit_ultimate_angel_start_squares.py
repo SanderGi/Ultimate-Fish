@@ -41,9 +41,9 @@ ALL_SQUARES = tuple(
 PLOTTED_SQUARES = tuple(
     f"{file}{rank}" for rank in range(1, 4) for file in "abcd"
 )
-DEFAULT_REVISION = "3532f701f81f8ba190d932891818a16af13243b8"
+DEFAULT_REVISION = "847eb02da6cd3a0879226bac293464c0e72763dd"
 HISTORICALLY_UNAVAILABLE_OVERLAYS_BY_REVISION = {
-    common.DEFAULT_REVISION: frozenset({
+    "ed8375c43f26e42c5b14ac79ff41e77d4317b97f": frozenset({
         "kjesterangelk.uftb", "kjesterkangel.uftb",
     }),
 }

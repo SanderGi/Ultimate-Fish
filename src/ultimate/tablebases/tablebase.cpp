@@ -7,6 +7,7 @@
 #include "information_solver.h"
 #include "position.h"
 #include "tablebase_probe.h"
+#include "rules_revision.h"
 
 #include <algorithm>
 #include <array>
@@ -2209,6 +2210,17 @@ constexpr bool packed_codec_matches(
   std::uint32_t version, bool trackedGhost, bool angelGraph,
   bool foldedGiant, bool linkedCopycatPair, bool angelCopycatGraph,
   std::uint64_t codecTag) {
+    if (version == 12) {
+        const auto layout = linkedCopycatPair ? LinkedCopycatPairV1Tag
+          : angelCopycatGraph ? AngelCopycatGraphV1Tag
+          : angelGraph ? (foldedGiant ? AngelGiantGraphV1Tag : AngelGraphV1Tag)
+          : trackedGhost ? TrackedGhostV1Tag
+          : foldedGiant ? GiantAnchorV2Tag : std::uint64_t{0};
+        return codecTag == (layout ^ CorrectedRulesTag) ||
+          (!trackedGhost && !angelGraph && !foldedGiant &&
+           !linkedCopycatPair && !angelCopycatGraph &&
+           codecTag == (SpawnedDevilRootV1Tag ^ CorrectedRulesTag));
+    }
     if (version == 11)
         return !trackedGhost && !angelGraph && !foldedGiant &&
           !linkedCopycatPair && !angelCopycatGraph &&
@@ -7033,12 +7045,21 @@ class TablebaseGenerator {
                     longestWin = std::max(longestWin, childDtw);
             });
             allChildrenWin = legal && allChildrenWin;
+            if (!legal) {
+                const auto winner = parent.winner();
+                const Wdl expected = !winner ? Wdl::Draw
+                  : *winner == parent.side_to_move() ? Wdl::Win : Wdl::Loss;
+                if (node.wdl != expected || node.dtw != 0)
+                    throw std::runtime_error(
+                      "spawned-only Devil terminal residual at graph index " +
+                      std::to_string(index));
+                return;
+            }
             const bool valid = node.wdl == Wdl::Win
               ? hasWinningMove && node.dtw == shortestLoss + 1
               : node.wdl == Wdl::Loss
-                ? ((!legal && node.dtw == 0) ||
-                   (allChildrenWin && node.dtw == longestWin + 1))
-                : !hasWinningMove && (!legal || hasDraw);
+                ? allChildrenWin && node.dtw == longestWin + 1
+                : node.wdl == Wdl::Draw && !hasWinningMove && hasDraw;
             if (!valid)
                 throw std::runtime_error(
                   "spawned-only Devil Bellman residual at graph index " +
@@ -8535,7 +8556,10 @@ class TablebaseGenerator {
           secondaryType_ == PieceType::Angel;
         const bool angelCopycatGraph = compoundCopycat_ &&
           secondaryType_ == PieceType::Angel && secondaryColor_ == Color::White;
-        const std::uint32_t version = linkedCopycatPair_ || angelCopycatGraph
+        const bool correctedRules = corrected_tablebase_rules(attackerType_) ||
+          corrected_tablebase_rules(secondaryType_);
+        const std::uint32_t version = correctedRules ? 12
+          : linkedCopycatPair_ || angelCopycatGraph
           ? 10 : angelGraph ? 9 : trackedGhost_ ? 8
           : foldedGiant ? 7
           : edges > std::numeric_limits<std::uint32_t>::max() ? 6
@@ -8568,12 +8592,15 @@ class TablebaseGenerator {
         if (version >= 6)
             stream.write(reinterpret_cast<const char*>(&edges), sizeof(edges));
         if (version >= 7) {
-            const std::uint64_t codecTag = linkedCopycatPair_
+            const std::uint64_t layoutTag = linkedCopycatPair_
               ? LinkedCopycatPairV1Tag
               : angelCopycatGraph ? AngelCopycatGraphV1Tag
               : angelGraph
               ? (foldedGiant ? AngelGiantGraphV1Tag : AngelGraphV1Tag)
-              : trackedGhost_ ? TrackedGhostV1Tag : GiantAnchorV2Tag;
+              : trackedGhost_ ? TrackedGhostV1Tag
+              : foldedGiant ? GiantAnchorV2Tag : std::uint64_t{0};
+            const std::uint64_t codecTag = layoutTag ^
+              (correctedRules ? CorrectedRulesTag : std::uint64_t{0});
             stream.write(reinterpret_cast<const char*>(&codecTag),
                          sizeof(GiantAnchorV2Tag));
         }

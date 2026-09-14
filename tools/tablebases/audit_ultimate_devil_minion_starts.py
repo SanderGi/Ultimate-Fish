@@ -38,7 +38,7 @@ CERTIFICATE = ROOT / "tablebases/ultimate-devil-stateful-class-certificate.json"
 OUTPUT = ROOT / "tablebases/devil-minion-start-summary.json"
 DEFAULT_DATASET = "SanderGi/Ultimate-Fish-Tablebases"
 DEFAULT_ORIGIN = "https://huggingface.co"
-DEFAULT_REVISION = "ed8375c43f26e42c5b14ac79ff41e77d4317b97f"
+DEFAULT_REVISION = "847eb02da6cd3a0879226bac293464c0e72763dd"
 LFS_MAX_FILE_BYTES = 50_000_000_000
 TRANSFER_BYTES = 8 * 1024 * 1024
 PROGRESS_BYTES = 1024 * 1024 * 1024
@@ -256,9 +256,13 @@ def validate_certificate(path: Path) -> dict[str, Any]:
     if (certificate.get("schema") !=
             "ultimate-devil-stateful-class-certificate-v1"):
         raise RuntimeError("invalid Devil class certificate schema")
+    if certificate.get("rules_revision", 1) not in (1, 2):
+        raise RuntimeError("unsupported Devil rules revision")
     partitions = certificate.get("partitions", ())
     if len(partitions) != 12:
         raise RuntimeError("Devil certificate does not contain twelve partitions")
+    if {part["square"] for part in partitions} != {rank * 8 + file for rank in range(3) for file in range(4)}:
+        raise RuntimeError("Devil certificate square coverage residual")
     return certificate
 
 
@@ -457,9 +461,16 @@ def side_record(record: dict[str, dict[str, int]]) -> dict[str, dict[str, int]]:
     }
 
 
-def validate_a1_gate(census: dict[str, Any]) -> None:
+def validate_a1_gate(census: dict[str, Any], rules_revision: int = 1) -> None:
     """Fail before the long stream unless its smallest shard matches history."""
     rows = census.get("by_minion_count", ())
+    if rules_revision == 2:
+        if census.get("square") != 0 or len(rows) != MAX_MINIONS + 1:
+            raise RuntimeError("corrected Devil A1 census is incomplete")
+        for row in rows:
+            for side in row["root_filter_by_side_to_move"]:
+                validate_filter(side, "corrected A1 pilot")
+        return
     if (census.get("label") != "A1" or census.get("square") != 0 or
             len(rows) != MAX_MINIONS + 1 or rows[0].get("minions") != 0 or
             tuple(rows[0].get("root_filter_by_side_to_move", ())) !=
@@ -521,7 +532,7 @@ def build_summary(certificate: dict[str, Any], certificate_sha: str,
         for side in range(2):
             validate_filter(classes[minions][side],
                             f"aggregate minions={minions} side={side}")
-    if tuple(classes[0]) != ZERO_MINION_ORACLE:
+    if certificate.get("rules_revision", 1) == 1 and tuple(classes[0]) != ZERO_MINION_ORACLE:
         raise RuntimeError(
             "Devil zero-Minion slice does not reproduce the authenticated "
             "entry-root reachability/trivial oracle")
@@ -548,7 +559,10 @@ def build_summary(certificate: dict[str, Any], certificate_sha: str,
         "audit_binary_sha256": binary_sha,
         "classifier_verifier_source_sha256": verifier_source_sha,
         "classifier_verifier_result": verifier_result,
-        "zero_minion_oracle": "authenticated-entry-root-v2",
+        "rules_revision": certificate.get("rules_revision", 1),
+        "zero_minion_oracle": ("authenticated-entry-root-v2"
+            if certificate.get("rules_revision", 1) == 1 else
+            "recomputed-native-turn-start-v2"),
         "minion_counts": list(range(MAX_MINIONS + 1)),
         "full_class_states": total_states,
         "alive_root_states": alive_states,
@@ -613,7 +627,7 @@ def main() -> None:
                 cached.get("dataset_revision") == revision and
                 cached.get("audit_source_sha256") == source_sha):
             if square == 0:
-                validate_a1_gate(cached)
+                validate_a1_gate(cached, certificate.get("rules_revision", 1))
             print(f"reusing {partition['label']} checkpoint", flush=True)
             continue
         entries = payloads(
@@ -633,7 +647,7 @@ def main() -> None:
             "audit_binary_sha256": binary_sha,
         })
         if square == 0:
-            validate_a1_gate(census)
+            validate_a1_gate(census, certificate.get("rules_revision", 1))
         progress[str(square)] = census
         write_json(progress_path, progress)
         print(

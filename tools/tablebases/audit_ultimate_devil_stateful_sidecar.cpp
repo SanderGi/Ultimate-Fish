@@ -150,7 +150,7 @@ Header read_header(std::istream& stream, unsigned expectedSquare) {
     if (stream.gcount() != static_cast<std::streamsize>(sizeof(header)))
         throw std::runtime_error("truncated sidecar header");
     const std::array<char, 8> magic{{'U','F','D','S','V','1','\0','\0'}};
-    if (header.magic != magic || header.version != 1 ||
+    if (header.magic != magic || (header.version != 1 && header.version != 2) ||
         header.square != expectedSquare || header.recordBytes != RecordBytes ||
         header.reserved != 0)
         throw std::runtime_error("invalid stateful sidecar header");
@@ -231,7 +231,7 @@ int main(int argc, char** argv) try {
         const auto* bytes = static_cast<const std::uint8_t*>(mapped);
         std::memcpy(&header, bytes, sizeof(header));
         const std::array<char, 8> magic{{'U','F','D','S','V','1','\0','\0'}};
-        if (header.magic != magic || header.version != 1 ||
+        if (header.magic != magic || (header.version != 1 && header.version != 2) ||
             header.square != expectedSquare || header.recordBytes != RecordBytes ||
             header.reserved != 0)
             throw std::runtime_error("invalid stateful sidecar header");

@@ -126,10 +126,16 @@ def build(readme: Path) -> dict[str, object]:
         hashes = re.findall(r"sha256:([0-9a-f]{64})", fields[10])
         if not hashes:
             raise ValueError(f"missing exact storage bindings for {filename}")
-        try:
-            version = artifact_version(fields[10])
-        except ValueError as error:
-            raise ValueError(f"{error} for {filename}") from error
+        hf = re.search(r"HF revision `([0-9a-f]{40})`", fields[10])
+        if hf:
+            if kind.startswith("information"):
+                raise ValueError("HF information audit requires explicit sidecar bindings")
+            version = None
+        else:
+            try:
+                version = artifact_version(fields[10])
+            except ValueError as error:
+                raise ValueError(f"{error} for {filename}") from error
         raw = summary[filename]
         primary = str(record["primary"])
         secondary = str(record["secondary"])
@@ -146,11 +152,11 @@ def build(readme: Path) -> dict[str, object]:
             "result_kind": kind,
             "berserker_slot": slot,
             "expected_sha256": None if kind.startswith("information") else hashes[0],
-            "expected_payload_sha256": dependency_hashes.get(filename),
+            "expected_payload_sha256": hashes[0] if hf else dependency_hashes.get(filename),
             "expected_archive_sha256": hashes[0] if kind.startswith("information") else None,
             "expected_archive_version_id": version,
             "expected_archive_key": (
-                None if excluded else exact_object_key(filename, version)
+                None if excluded or hf else exact_object_key(filename, version)
             ),
             "aggregate": {
                 "first_starts": vars(raw.first_starts),
@@ -161,6 +167,10 @@ def build(readme: Path) -> dict[str, object]:
                 "same-team identical Berserkers are exchange-folded and have no "
                 "distinguished row piece" if excluded else None),
         }
+        if hf:
+            records[filename].update(
+                hf_dataset="SanderGi/Ultimate-Fish-Tablebases",
+                hf_revision=hf.group(1))
     return {
         "schema": 1,
         "bucket": "ultimatefish-info-20260808-a4e679c6-831688117652",

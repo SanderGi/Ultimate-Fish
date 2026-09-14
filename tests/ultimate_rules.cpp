@@ -906,7 +906,7 @@ void test_checker_king_long_diagonals() {
 void test_stale_checker_tablebase_codec() {
     const auto path = std::filesystem::temp_directory_path() /
       "ultimatefish-stale-checker-codec.uftb";
-    std::array<char, 48> header{};
+    std::array<char, 64> header{};
     std::memcpy(header.data(), "UFTB1\0\0\0", 8);
     const auto put = [&](int offset, std::uint32_t value) {
         std::memcpy(header.data() + offset, &value, sizeof(value));
@@ -927,6 +927,33 @@ void test_stale_checker_tablebase_codec() {
     for (const PieceType stale : {PieceType::Devil, PieceType::Sniper})
         expect(!check(stale, PieceType::Rook) && !check(PieceType::Rook, stale),
                "pre-turn-start check codecs are rejected in either material slot");
+    put(8, 12);
+    const std::uint64_t correctedTag = 0x3132393036524655ULL;
+    std::memcpy(header.data() + 56, &correctedTag, sizeof(correctedTag));
+    for (const PieceType corrected : {PieceType::Checker, PieceType::Sniper,
+                                      PieceType::Devil})
+        expect(check(corrected, PieceType::Rook) &&
+                 check(PieceType::Rook, corrected),
+               "corrected rules authenticate both material slots");
+    expect(!check(PieceType::Rook, PieceType::Bishop),
+           "rules revision is restricted to repaired material");
+    expect(!check(PieceType::Checker, PieceType::Giant) &&
+             !check(PieceType::Angel, PieceType::Sniper),
+           "a plain corrected tag cannot erase Giant or Angel layout semantics");
+    const std::uint64_t giantTag = correctedTag ^ 0x32474e4149474655ULL;
+    std::memcpy(header.data() + 56, &giantTag, sizeof(giantTag));
+    expect(check(PieceType::Checker, PieceType::Giant) &&
+             check(PieceType::Giant, PieceType::Sniper),
+           "corrected Giant classes retain their anchor codec");
+    const std::uint64_t angelTag = correctedTag ^ 0x314c45474e414655ULL;
+    std::memcpy(header.data() + 56, &angelTag, sizeof(angelTag));
+    expect(check(PieceType::Angel, PieceType::Checker) &&
+             check(PieceType::Sniper, PieceType::Angel),
+           "corrected Angel classes retain their rescue graph codec");
+    std::memcpy(header.data() + 56, &correctedTag, sizeof(correctedTag));
+    header[56] ^= 1;
+    expect(!check(PieceType::Sniper, PieceType::Rook),
+           "wrong rules tag cannot enable a repaired probe");
     std::filesystem::remove(path);
 }
 
@@ -2652,8 +2679,14 @@ void test_exact_tablebase_probing() {
     moved(blackSniper, PieceType::King, Color::White, "a3");
     blackSniper.set_side_to_move(Color::White);
     const auto blackSniperResult = TablebaseProbe::probe(blackSniper);
-    expect(!whiteSniperResult && !blackSniperResult,
-           "pre-turn-start Sniper tablebases are quarantined for both colors");
+    const bool repairedSniperInstalled = TablebaseProbe::uses_compatible_codec(
+      "../tablebases/ksniperk.uftb");
+    expect(whiteSniperResult.has_value() == repairedSniperInstalled &&
+             blackSniperResult.has_value() == repairedSniperInstalled &&
+             (!whiteSniperResult ||
+              (whiteSniperResult->wdl == blackSniperResult->wdl &&
+               whiteSniperResult->dtw == blackSniperResult->dtw)),
+           "only corrected Sniper tables probe symmetrically for both colors");
 
     Position unmovedBishopDragon;
     std::string unmovedBishopDragonError;
@@ -2743,7 +2776,8 @@ void test_exact_tablebase_probing() {
             stateful.piece(extra).visible = false;
         else if (type == PieceType::Sniper)
             stateful.piece(extra).cooldown = 3;
-        expect(TablebaseProbe::probe(stateful).has_value() == (type != PieceType::Sniper),
+        expect(TablebaseProbe::probe(stateful).has_value() ==
+                 (type != PieceType::Sniper || repairedSniperInstalled),
                std::string("stateful K+") + std::string(Position::type_name(type)) +
                  "+K tablebase is probeable unless its check-rule seeds are stale");
     }
@@ -3809,8 +3843,9 @@ void test_turn_start_check() {
              mate.terminal_reason() == TerminalReason::Checkmate &&
              mate.winner() == Color::White,
            "automatic Minion advance is checkmate, not stalemate");
-    expect(!TablebaseProbe::probe(mate),
-           "stale Devil/Minion tables cannot override turn-start checkmate");
+    const auto mateProbe = TablebaseProbe::probe(mate);
+    expect(!mateProbe || (mateProbe->wdl == TablebaseWdl::Loss && mateProbe->dtw == 0),
+           "an installed Devil table agrees with native turn-start checkmate");
     SearchLimits limits;
     limits.depth = 2;
     limits.useTablebases = false;
@@ -3917,10 +3952,12 @@ void test_turn_start_check() {
     expect(!cooldownAttack.in_check(), "a still-cooling Sniper does not give check");
     Position sniperMate = parse(
       "b;king,w,b8;king,b,a10;sniper,w,a9,0,1;knight,w,c8");
+    const auto sniperMateProbe = TablebaseProbe::probe(sniperMate);
     expect(sniperMate.in_check() && sniperMate.legal_moves().empty() &&
              sniperMate.terminal_reason() == TerminalReason::Checkmate &&
-             !TablebaseProbe::probe(sniperMate),
-           "a ready-next-turn Sniper mates and cannot use stale tablebase seeds");
+             (!sniperMateProbe || (sniperMateProbe->wdl == TablebaseWdl::Loss &&
+                                  sniperMateProbe->dtw == 0)),
+           "a corrected table agrees with a ready-next-turn Sniper mate");
 
     Position disguised = mate;
     disguised.add_piece(PieceType::Jester, Color::Black, Position::square_from_name("h10"));

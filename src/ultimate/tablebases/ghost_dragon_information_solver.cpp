@@ -15,6 +15,7 @@
 #include "ghost_information_probe.h"
 #include "information.h"
 #include "position.h"
+#include "rules_revision.h"
 
 #include <algorithm>
 #include <atomic>
@@ -476,10 +477,17 @@ class OriginalTable {
             return value;
         };
         const std::uint32_t version = word(8);
+        const bool correctedRules = corrected_tablebase_rules(SourcePrimary) ||
+          corrected_tablebase_rules(SourceSecondary);
+        const bool rulesMatch = correctedRules
+          ? version == 12 &&
+            (std::uint64_t(word(56)) | (std::uint64_t(word(60)) << 32)) ==
+              CorrectedRulesTag
+          : version >= 5 && version <= 9;
         wdlOffset_ = concrete_header_bytes(version);
         if (bytes_.size() < wdlOffset_ ||
             std::memcmp(bytes_.data(), "UFTB1\0\0\0", 8) ||
-            version < 5 || version > 9 ||
+            !rulesMatch ||
             word(12) != static_cast<std::uint32_t>(SourcePrimary) ||
             word(16) != StateCount ||
             word(24) != 2 * ExtraSubstates ||
@@ -561,19 +569,24 @@ class LowerDragonTable {
             std::memcpy(&value, bytes_.data() + offset, 4);
             return value;
         };
-        constexpr std::size_t HeaderBytes =
+        const bool correctedRules = corrected_tablebase_rules(pieceType_);
+        headerBytes_ = correctedRules ? 64 :
 #ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
           48;
 #else
           40;
 #endif
-        if (bytes_.size() < HeaderBytes ||
-            std::memcmp(bytes_.data(), "UFTB1\0\0\0", 8) ||
+        const bool rulesMatch = correctedRules
+          ? word(8) == 12 && word(40) == static_cast<std::uint32_t>(PieceType::Count) &&
+            word(44) == 0 &&
+            (std::uint64_t(word(56)) | (std::uint64_t(word(60)) << 32)) == CorrectedRulesTag
 #ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
-            word(8) != 5 ||
+          : word(8) == 5;
 #else
-            word(8) != 4 ||
+          : word(8) == 4;
 #endif
+        if (bytes_.size() < headerBytes_ ||
+            std::memcmp(bytes_.data(), "UFTB1\0\0\0", 8) || !rulesMatch ||
             word(12) != static_cast<std::uint32_t>(pieceType_) ||
             word(16) != 985'920 * substates_ ||
             word(24) != substates_ ||
@@ -583,7 +596,7 @@ class LowerDragonTable {
             word(40) != static_cast<std::uint32_t>(PieceType::CopycatClone) ||
             word(44) != static_cast<std::uint32_t>(Color::White) ||
 #endif
-            bytes_.size() != HeaderBytes +
+            bytes_.size() != headerBytes_ +
                                (985'920 * substates_ + 3) / 4 +
                                985'920 * substates_)
             throw std::runtime_error("incompatible authenticated kdragonk");
@@ -643,13 +656,7 @@ class LowerDragonTable {
         const std::uint32_t stateIndex = index * substates_ +
                                          *extraSubstate;
         const std::uint8_t value =
-          (bytes_[
-#ifdef ULTIMATE_GHOST_EXTRA_IS_COPYCAT
-                   48
-#else
-                   40
-#endif
-                 + stateIndex / 4] >> (2 * (stateIndex % 4))) & 3;
+          (bytes_[headerBytes_ + stateIndex / 4] >> (2 * (stateIndex % 4))) & 3;
         if (value < 1 || value > 3)
             throw std::runtime_error("kdragonk WDL value is invalid");
         return static_cast<DragonWdl>(value);
@@ -660,6 +667,7 @@ class LowerDragonTable {
     std::vector<std::uint8_t> bytes_;
     PieceType pieceType_ = ExtraPiece;
     [[maybe_unused]] std::uint32_t substates_ = LowerExtraSubstates;
+    [[maybe_unused]] std::size_t headerBytes_ = 0;
 };
 
 [[nodiscard]] std::uint8_t lower_dragon_force_flags(

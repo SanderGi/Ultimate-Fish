@@ -1,0 +1,1055 @@
+{
+  "campaign": "ultimate-fish-rules-repair-20260912",
+  "region": "us-west-2",
+  "account": "831688117652",
+  "budget_usd": 2000,
+  "compute_rate_usd_hour": 4.2336,
+  "initial_stop_hours": 6,
+  "created_at": "2026-09-12T21:35:34.234772+00:00",
+  "resources": {
+    "bucket": "ultimate-fish-rules-repair-20260912-831688117652",
+    "role": "ultimate-fish-rules-repair-20260912",
+    "instance_profile": "ultimate-fish-rules-repair-20260912",
+    "security_group": "sg-00ced6c991c16afe5",
+    "instance": "i-033f20afbe0ec238e",
+    "network_interfaces": [
+      "eni-0af59dbbb1fbd8da3"
+    ],
+    "volumes": [
+      "vol-04ce6cb2da5179b55"
+    ],
+    "devil_worker": {
+      "instance": "i-001a12c4a1506607b",
+      "network_interfaces": [
+        "eni-00c191dc6dc2638ef"
+      ],
+      "launch_time": "2026-09-12T21:57:12+00:00",
+      "name": "ultimate-fish-rules-repair-20260912-devil",
+      "volumes": [
+        "vol-03aea21eaca896927"
+      ],
+      "state": "stopped"
+    },
+    "ghost_worker": {
+      "instance": "i-0c677b8dfb5d72b95",
+      "network_interfaces": [
+        "eni-08f825b9133575e20"
+      ],
+      "launch_time": "2026-09-12T22:31:03+00:00",
+      "name": "ultimate-fish-rules-repair-20260912-ghost",
+      "volumes": [
+        "vol-06ce12bf486366bb0"
+      ],
+      "state": "stopped"
+    },
+    "sniper_opposed_worker": {
+      "instance": "i-0afa42259e930b057",
+      "state": "stopped",
+      "launch_time": "2026-09-13T01:51:41+00:00",
+      "network_interfaces": [
+        "eni-0f56c430bf917b87b"
+      ],
+      "volumes": [
+        "vol-0e95fc6b2174923bc"
+      ],
+      "name": "ultimate-fish-rules-repair-20260912-sniper-opposed"
+    },
+    "checker_opposed_worker": {
+      "region": "us-east-2",
+      "security_group": "sg-06355ba62dd71b244",
+      "name": "ultimate-fish-rules-repair-20260912-checker-opposed",
+      "state": "stopped",
+      "instance": "i-06945e3dc42f324ba",
+      "launch_time": "2026-09-13T04:32:43+00:00",
+      "network_interfaces": [
+        "eni-095052d6e12759b33"
+      ],
+      "volumes": [
+        "vol-0c2a1ec5d19c92d84"
+      ],
+      "runner_update_sha256": "83e40c9f7594a9703fdaac7f385cd9fbc33615805fa8460acc5a0a97a625750b",
+      "startup_recovery": "Preserved 0.03-second CLI option failure log; native solver unchanged; updated unique-slot option before any transition work."
+    }
+  },
+  "launch": {
+    "ImageId": "ami-03db3415e6524c5d2",
+    "InstanceType": "r7i.16xlarge",
+    "MinCount": 1,
+    "MaxCount": 1,
+    "ClientToken": "ultimate-fish-rules-repair-20260912",
+    "SubnetId": "subnet-0a5cfacd426a594b0",
+    "SecurityGroupIds": [
+      "sg-00ced6c991c16afe5"
+    ],
+    "IamInstanceProfile": {
+      "Name": "ultimate-fish-rules-repair-20260912"
+    },
+    "InstanceInitiatedShutdownBehavior": "stop",
+    "MetadataOptions": {
+      "HttpTokens": "required",
+      "HttpEndpoint": "enabled"
+    },
+    "BlockDeviceMappings": [
+      {
+        "DeviceName": "/dev/xvda",
+        "Ebs": {
+          "VolumeSize": 3072,
+          "VolumeType": "gp3",
+          "Iops": 6000,
+          "Throughput": 500,
+          "Encrypted": true,
+          "DeleteOnTermination": false
+        }
+      }
+    ],
+    "TagSpecifications": [
+      {
+        "ResourceType": "instance",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      },
+      {
+        "ResourceType": "volume",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      },
+      {
+        "ResourceType": "network-interface",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      }
+    ]
+  },
+  "launch_time": "2026-09-12T21:36:18+00:00",
+  "state": "stopped",
+  "devil_compute_rate_usd_hour": 6.3504,
+  "devil_initial_stop_hours": 24,
+  "conservative_30_day_storage_and_transfer_reserve_usd": 1100,
+  "compute_authorized_cap_usd": 800,
+  "devil_launch": {
+    "ImageId": "ami-03db3415e6524c5d2",
+    "InstanceType": "r7i.24xlarge",
+    "MinCount": 1,
+    "MaxCount": 1,
+    "ClientToken": "ultimate-fish-rules-repair-20260912-devil",
+    "SubnetId": "subnet-0a5cfacd426a594b0",
+    "SecurityGroupIds": [
+      "sg-00ced6c991c16afe5"
+    ],
+    "IamInstanceProfile": {
+      "Name": "ultimate-fish-rules-repair-20260912"
+    },
+    "InstanceInitiatedShutdownBehavior": "stop",
+    "MetadataOptions": {
+      "HttpTokens": "required",
+      "HttpEndpoint": "enabled"
+    },
+    "BlockDeviceMappings": [
+      {
+        "DeviceName": "/dev/xvda",
+        "Ebs": {
+          "VolumeSize": 3072,
+          "VolumeType": "gp3",
+          "Iops": 6000,
+          "Throughput": 500,
+          "Encrypted": true,
+          "DeleteOnTermination": false
+        }
+      }
+    ],
+    "TagSpecifications": [
+      {
+        "ResourceType": "instance",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912-devil"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      },
+      {
+        "ResourceType": "volume",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912-devil"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      },
+      {
+        "ResourceType": "network-interface",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912-devil"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      }
+    ]
+  },
+  "source_bundles": {
+    "pilot": "688ed9d157d356fcddf25474cc2bf6bd5761bb3bdf4e39376fe7d0b60e87fbe1",
+    "concrete": "e90309d7b8a8eaf9e9d3458762d22358ab6913c9ccd761cc5b1ede9f5d867c23",
+    "devil_and_information": "1d00b8ca081af57600e35b4ada5237410008d67048c0255a53718543b3b1bc33",
+    "sniper_information": "534328388946d5c744845256e1d94235ef1fd412add60c44452aa5341ef3cc06"
+  },
+  "baseline_hf_revision": "3532f701f81f8ba190d932891818a16af13243b8",
+  "updated_at": "2026-09-14T01:46:05.911281+00:00",
+  "pilot": {
+    "sniper_states": 3943680,
+    "sniper_solve_seconds": 1.14,
+    "rook_checker_states": 151831680,
+    "rook_checker_solve_seconds": 84.69,
+    "devil_a1_states": 305073281,
+    "devil_a1_solve_seconds": 258.57,
+    "devil_a1_peak_rss_kib": 27565776,
+    "devil_a1_export_sha256": "4568e12827826614a9fae469b0b3d1c15679bcc9cb1469c2590023b49b512b21"
+  },
+  "ghost_launch": {
+    "ImageId": "ami-03db3415e6524c5d2",
+    "InstanceType": "r7i.16xlarge",
+    "MinCount": 1,
+    "MaxCount": 1,
+    "ClientToken": "ultimate-fish-rules-repair-20260912-ghost",
+    "SubnetId": "subnet-0a5cfacd426a594b0",
+    "SecurityGroupIds": [
+      "sg-00ced6c991c16afe5"
+    ],
+    "IamInstanceProfile": {
+      "Name": "ultimate-fish-rules-repair-20260912"
+    },
+    "InstanceInitiatedShutdownBehavior": "stop",
+    "MetadataOptions": {
+      "HttpTokens": "required",
+      "HttpEndpoint": "enabled"
+    },
+    "BlockDeviceMappings": [
+      {
+        "DeviceName": "/dev/xvda",
+        "Ebs": {
+          "VolumeSize": 2048,
+          "VolumeType": "gp3",
+          "Iops": 6000,
+          "Throughput": 500,
+          "Encrypted": true,
+          "DeleteOnTermination": false
+        }
+      }
+    ],
+    "TagSpecifications": [
+      {
+        "ResourceType": "instance",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912-ghost"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      },
+      {
+        "ResourceType": "volume",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912-ghost"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      },
+      {
+        "ResourceType": "network-interface",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912-ghost"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      }
+    ]
+  },
+  "ghost_compute_rate_usd_hour": 4.2336,
+  "ghost_initial_stop_hours": 24,
+  "main_stop_deadline_utc": "2026-09-13T22:33:36.709828+00:00",
+  "devil_stop_deadline_utc": "2026-09-13T21:57:24.840187+00:00",
+  "ghost_stop_deadline_utc": "2026-09-13T22:31:14.885183+00:00",
+  "retention_pricing": {
+    "verified_at": "2026-09-12",
+    "source": "AWS Pricing GetProducts, AmazonEC2, us-west-2 and us-east-2",
+    "gp3_gib_month_usd": 0.08,
+    "gp3_extra_iops_month_usd": 0.005,
+    "gp3_extra_mibps_month_usd": 0.04,
+    "total_gib": 9192,
+    "base_storage_month_usd": 735.36,
+    "initial_performance_month_usd": 150,
+    "current_performance_month_usd": 0,
+    "verified_regions": [
+      "us-west-2",
+      "us-east-2"
+    ]
+  },
+  "volume_performance_changes": [
+    {
+      "volume": "vol-03aea21eaca896927",
+      "requested_at": "2026-09-13T00:03:29.606402+00:00",
+      "original_throughput_mibps": 500,
+      "target_throughput_mibps": 1000,
+      "iops": 6000,
+      "reason": "Measured 500.29 MiB/s writes at 98.59% disk busy during Devil reverse-edge construction",
+      "incremental_monthly_usd": 20
+    }
+  ],
+  "scheduling_changes": [
+    {
+      "at": "2026-09-13T00:42:31.847357+00:00",
+      "work": "Ghost/Sniper both orientations",
+      "from_instance": "i-033f20afbe0ec238e",
+      "to_instance": "i-0c677b8dfb5d72b95",
+      "reason": "Concrete worker uses all 64 CPUs; Ghost/Checker uses about 28 of 64 CPUs and has a 26.05 GB certified resident memory bound. Run two 32-worker Ghost campaigns concurrently.",
+      "ghost_memory_limit_gib_each": 240,
+      "main_concrete_memory_limit_gib": 460
+    },
+    {
+      "at": "2026-09-13T01:51:41+00:00",
+      "work": "Opposite Ghost/Sniper orientation",
+      "to_instance": "i-0afa42259e930b057",
+      "reason": "Use the remaining 32-vCPU quota to avoid a serial CPU-bound transition/proof pass. The original batch stops after its completed same-team orientation.",
+      "memory_limit_gib": 240,
+      "stop_coordinator_runtime_max_seconds": 43200
+    },
+    {
+      "at": "2026-09-13T04:32:43+00:00",
+      "work": "Opposite Checker/Ghost orientation",
+      "to_instance": "i-06945e3dc42f324ba",
+      "region": "us-east-2",
+      "reason": "Use existing Ohio 32-vCPU quota; Oregon increase closed with unchanged256 limit. Original Checker batch stops after completed same-team proof.",
+      "memory_limit_gib": 240,
+      "stop_coordinator_runtime_max_seconds": 43200
+    }
+  ],
+  "scratch_reclamation": {
+    "helper_sha256": "4aab3d42d96202e06b7816c12025973a26c90a033b026b8fcf7deded9e70e88c",
+    "updated_at": "2026-09-13T01:36:16.481110+00:00",
+    "scope": "Completed, restored Devil reverse arrays and native reverse-spool edge files only; inputs, keys, solved nodes, results, logs, and proof markers retained.",
+    "receipts": "repaired/devil/*.scratch-reclaimed.json",
+    "aws_resources_deleted": false
+  },
+  "sniper_opposed_launch": {
+    "ImageId": "ami-03db3415e6524c5d2",
+    "InstanceType": "r7i.8xlarge",
+    "MinCount": 1,
+    "MaxCount": 1,
+    "ClientToken": "ultimate-fish-rules-repair-20260912-sniper-opposed",
+    "SubnetId": "subnet-0a5cfacd426a594b0",
+    "SecurityGroupIds": [
+      "sg-00ced6c991c16afe5"
+    ],
+    "IamInstanceProfile": {
+      "Name": "ultimate-fish-rules-repair-20260912"
+    },
+    "InstanceInitiatedShutdownBehavior": "stop",
+    "MetadataOptions": {
+      "HttpTokens": "required",
+      "HttpEndpoint": "enabled"
+    },
+    "BlockDeviceMappings": [
+      {
+        "DeviceName": "/dev/xvda",
+        "Ebs": {
+          "VolumeSize": 500,
+          "VolumeType": "gp3",
+          "Iops": 6000,
+          "Throughput": 500,
+          "Encrypted": true,
+          "DeleteOnTermination": false
+        }
+      }
+    ],
+    "TagSpecifications": [
+      {
+        "ResourceType": "instance",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912-sniper-opposed"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      },
+      {
+        "ResourceType": "volume",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912-sniper-opposed"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      },
+      {
+        "ResourceType": "network-interface",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912-sniper-opposed"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      }
+    ]
+  },
+  "sniper_opposed_compute_rate_usd_hour": 2.1168,
+  "sniper_opposed_initial_stop_hours": 12,
+  "sniper_opposed_stop_deadline_utc": "2026-09-14T13:52:51.815590Z",
+  "interim_compute_estimate": {
+    "at": "2026-09-13T19:26:39.793023+00:00",
+    "workers": [
+      {
+        "worker": "main",
+        "launch_time": "2026-09-12T21:36:18+00:00",
+        "end_or_observation": "2026-09-13T19:26:39.793023+00:00",
+        "end_basis": "confirmed stopped observation",
+        "hours": 21.839386950833333,
+        "rate_usd_hour": 4.2336,
+        "estimated_compute_usd": 92.459228595048
+      },
+      {
+        "worker": "devil",
+        "launch_time": "2026-09-12T21:57:12+00:00",
+        "end_or_observation": "2026-09-13T09:52:02+00:00",
+        "end_basis": "estimated automatic shutdown immediately after final S3 batch log",
+        "hours": 11.91388888888889,
+        "rate_usd_hour": 6.3504,
+        "estimated_compute_usd": 75.65796
+      },
+      {
+        "worker": "ghost",
+        "launch_time": "2026-09-12T22:31:03+00:00",
+        "end_or_observation": "2026-09-13T19:08:06.929122+00:00",
+        "end_basis": "confirmed stopped observation",
+        "hours": 20.617758089444443,
+        "rate_usd_hour": 4.2336,
+        "estimated_compute_usd": 87.28734064747199
+      },
+      {
+        "worker": "sniper_opposed",
+        "launch_time": "2026-09-13T01:51:41+00:00",
+        "end_or_observation": "2026-09-13T19:26:39.793023+00:00",
+        "end_basis": "currently running",
+        "hours": 17.582998061944444,
+        "rate_usd_hour": 2.1168,
+        "estimated_compute_usd": 37.219690297524
+      },
+      {
+        "worker": "checker_opposed",
+        "launch_time": "2026-09-13T04:32:43+00:00",
+        "end_or_observation": "2026-09-13T19:08:06.929122+00:00",
+        "end_basis": "confirmed stopped observation",
+        "hours": 14.589980311666666,
+        "rate_usd_hour": 2.1168,
+        "estimated_compute_usd": 30.884070323736
+      }
+    ],
+    "estimated_compute_usd": 323.50828986377996,
+    "billing_note": "Launch-to-stop/observation estimate at published on-demand rates, including idle time. Devil shutdown inferred from the final batch log; excludes EBS, S3, and transfer."
+  },
+  "quota_requests": [
+    {
+      "id": "40aa4b409c7f476eb7bf185612e626a7bWXRmHCW",
+      "service": "ec2",
+      "quota": "L-1216C47A",
+      "desired_vcpus": 288,
+      "status": "CASE_CLOSED",
+      "purpose": "Allow a separate bounded 32-vCPU opposite Checker/Ghost proof, without interrupting existing work",
+      "new_instances_launched": 0,
+      "enforced_vcpus": 256
+    }
+  ],
+  "checker_opposed_compute_rate_usd_hour": 2.1168,
+  "checker_opposed_initial_stop_hours": 12,
+  "checker_opposed_launch": {
+    "ImageId": "ami-06f5453d29c62393b",
+    "InstanceType": "r7i.8xlarge",
+    "MinCount": 1,
+    "MaxCount": 1,
+    "ClientToken": "ultimate-fish-rules-repair-20260912-checker-opposed",
+    "SubnetId": "subnet-03b039e2aa329ccd7",
+    "SecurityGroupIds": [
+      "sg-06355ba62dd71b244"
+    ],
+    "IamInstanceProfile": {
+      "Name": "ultimate-fish-rules-repair-20260912"
+    },
+    "InstanceInitiatedShutdownBehavior": "stop",
+    "MetadataOptions": {
+      "HttpTokens": "required",
+      "HttpEndpoint": "enabled"
+    },
+    "BlockDeviceMappings": [
+      {
+        "DeviceName": "/dev/xvda",
+        "Ebs": {
+          "VolumeSize": 500,
+          "VolumeType": "gp3",
+          "Iops": 6000,
+          "Throughput": 500,
+          "Encrypted": true,
+          "DeleteOnTermination": false
+        }
+      }
+    ],
+    "TagSpecifications": [
+      {
+        "ResourceType": "instance",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912-checker-opposed"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      },
+      {
+        "ResourceType": "volume",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912-checker-opposed"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      },
+      {
+        "ResourceType": "network-interface",
+        "Tags": [
+          {
+            "Key": "Name",
+            "Value": "ultimate-fish-rules-repair-20260912-checker-opposed"
+          },
+          {
+            "Key": "Project",
+            "Value": "ultimate-fish"
+          },
+          {
+            "Key": "Campaign",
+            "Value": "ultimate-fish-rules-repair-20260912"
+          }
+        ]
+      }
+    ]
+  },
+  "checker_opposed_stop_deadline_utc": "2026-09-14T04:33:23.467975+00:00",
+  "stop_deadline_extensions": [
+    {
+      "worker": "sniper_opposed",
+      "at": "2026-09-13T05:51:02.867170+00:00",
+      "from_utc": "2026-09-13T13:51:50.962565+00:00",
+      "to_utc": "2026-09-14T01:52:19.565474+00:00",
+      "reason": "Measured Ghost proof pace requires verification margin; preserve in-flight computation within the existing budget."
+    },
+    {
+      "worker": "checker_opposed",
+      "at": "2026-09-13T05:51:02.867170+00:00",
+      "from_utc": "2026-09-13T16:32:52.751603+00:00",
+      "to_utc": "2026-09-14T04:33:23.467975+00:00",
+      "reason": "Measured Ghost proof pace requires verification margin; preserve in-flight computation within the existing budget."
+    },
+    {
+      "worker": "sniper_opposed",
+      "requested_at": "2026-09-13T19:14:09.564720+00:00",
+      "deadline_utc": "2026-09-14T13:52:51.815590Z",
+      "scheduled_usec": 1789393971815590,
+      "reason": "Protect the final non-converged proof and verification margin; automatic completion shutdown now stops it immediately after proof preservation.",
+      "ssm_command_id": "1f6228ee-08f8-44c9-8c32-ff1e2dca37e1",
+      "extra_compute_ceiling_usd": 25.43
+    }
+  ],
+  "ghost_completion_coordinators": {
+    "sniper": "ultimate-fish-repair-sniper-same-boundary-v2",
+    "checker": "ultimate-fish-repair-checker-same-boundary-v2",
+    "runtime_max_seconds": 86400,
+    "native_services_restarted": false
+  },
+  "scheduled_compute_ceiling_usd": 486.78,
+  "transport_scheduling": [
+    {
+      "at": "2026-09-13T06:05:11.453406+00:00",
+      "instance": "i-001a12c4a1506607b",
+      "order": [
+        "c2",
+        "d2",
+        "c3",
+        "d3"
+      ],
+      "script_sha256": "bf703b15717208333e94d06a0dc8f0c5159858668e9641fbb63b0bf541498a60",
+      "native_computation_restarted": false,
+      "note": "Recreated idle transient transport service after ordering correction; verified C2 output is reauthenticated before sharding completed D2."
+    }
+  ],
+  "completion_states": {
+    "devil": {
+      "state": "stopped",
+      "native_completed_partitions": 12,
+      "last_running_observation": "2026-09-13T09:50:37Z",
+      "shutdown_policy": "automatic shutdown after final verified export; no restart",
+      "stopped_confirmed_by_utc": "2026-09-13T18:58:43Z",
+      "final_batch_log_s3_last_modified": "2026-09-13T09:52:02Z",
+      "estimated_guest_shutdown_at": "2026-09-13T09:52:02Z",
+      "shutdown_time_estimate_basis": "The successful batch uploaded its final log immediately before executing shutdown; API confirms stopped. Exact transition timestamp was not returned."
+    },
+    "ghost": {
+      "instance_id": "i-0c677b8dfb5d72b95",
+      "state": "stopped",
+      "confirmed_at": "2026-09-13T19:08:06.929122+00:00",
+      "results_uploaded_and_verified": true
+    },
+    "checker_opposed": {
+      "instance_id": "i-06945e3dc42f324ba",
+      "state": "stopped",
+      "confirmed_at": "2026-09-13T19:08:06.929122+00:00",
+      "results_uploaded_and_verified": true
+    },
+    "main": {
+      "instance_id": "i-033f20afbe0ec238e",
+      "state": "stopped",
+      "stop_response_observed_at": "2026-09-13T19:23:06.987804+00:00",
+      "all_concrete_and_devil_uploads_verified": true,
+      "confirmed_at": "2026-09-13T19:26:39.793023+00:00"
+    },
+    "sniper_opposed": {
+      "instance_id": "i-0afa42259e930b057",
+      "state": "stopped",
+      "confirmed_at": "2026-09-14T01:29:05.913314+00:00",
+      "proof_completion_stop": {
+        "schema": "ultimate-fish-proof-completion-stop-v1",
+        "at": "2026-09-14T01:26:16.396909+00:00",
+        "instance_id": "i-0afa42259e930b057",
+        "source_sha256": "607aa04e85e59bfff387b4a45ae2078aae96eda7dc8a07ab442cdef15ec855c7",
+        "model_sha256": "01e5e3e92db72dd0ee561224207d56a8a5ce985b2c33a472b6d29a122f59ddb2",
+        "overlay_sha256": "c30c94fa0c72755847552d2c03ff0d0de63fb2afd208ded9c002c24ac2f86498",
+        "arbitrary_sha256": "4a54dc80057d34232debc7870894d866f57cc16d3d72dcb6cac46fd9e43de9b2",
+        "proof_manifest_sha256": "3922ee03d95b2e72a94a7e8d7ee8653ed6e94260e2c2208cdf951bf230f70bb5",
+        "results_and_logs_synced": true
+      },
+      "results_uploaded_and_verified": true
+    }
+  },
+  "retained_performance_reductions": [
+    {
+      "volume_id": "vol-03aea21eaca896927",
+      "region": "us-west-2",
+      "requested_at": "2026-09-13T19:03:04Z",
+      "original_iops": 6000,
+      "original_throughput": 1000,
+      "target_iops": 3000,
+      "target_throughput": 125,
+      "size_gib": 3072,
+      "state": "optimizing",
+      "settings_verified_at": "2026-09-14T01:46:05.911281+00:00",
+      "actual_iops": 3000,
+      "actual_throughput": 125
+    },
+    {
+      "volume_id": "vol-06ce12bf486366bb0",
+      "region": "us-west-2",
+      "size_gib": 2048,
+      "requested_at": "2026-09-13T19:08:02Z",
+      "original_iops": 6000,
+      "original_throughput": 500,
+      "target_iops": 3000,
+      "target_throughput": 125,
+      "state": "completed",
+      "settings_verified_at": "2026-09-14T01:46:05.911281+00:00",
+      "actual_iops": 3000,
+      "actual_throughput": 125
+    },
+    {
+      "volume_id": "vol-0c2a1ec5d19c92d84",
+      "region": "us-east-2",
+      "size_gib": 500,
+      "requested_at": "2026-09-13T19:08:06Z",
+      "original_iops": 6000,
+      "original_throughput": 500,
+      "target_iops": 3000,
+      "target_throughput": 125,
+      "state": "completed",
+      "settings_verified_at": "2026-09-14T01:46:05.911281+00:00",
+      "actual_iops": 3000,
+      "actual_throughput": 125
+    },
+    {
+      "volume_id": "vol-04ce6cb2da5179b55",
+      "region": "us-west-2",
+      "size_gib": 3072,
+      "requested_at": "2026-09-13T19:24:20Z",
+      "original_iops": 6000,
+      "original_throughput": 500,
+      "target_iops": 3000,
+      "target_throughput": 125,
+      "state": "completed",
+      "settings_verified_at": "2026-09-14T01:46:05.911281+00:00",
+      "actual_iops": 3000,
+      "actual_throughput": 125
+    },
+    {
+      "volume_id": "vol-0e95fc6b2174923bc",
+      "region": "us-west-2",
+      "requested_at": "2026-09-14T01:27:59+00:00",
+      "original_iops": 6000,
+      "original_throughput": 500,
+      "target_iops": 3000,
+      "target_throughput": 125,
+      "size_gib": 500,
+      "state": "optimizing",
+      "settings_verified_at": "2026-09-14T01:46:05.911281+00:00",
+      "actual_iops": 3000,
+      "actual_throughput": 125
+    }
+  ],
+  "final_transport": {
+    "worker": "i-033f20afbe0ec238e",
+    "logical_file": "kdevilk-d3.ufds",
+    "source_sha256": "eb9644ff9469ebb134f93fbe51f56239f516fd8d476737eae53838de1e834c0e",
+    "script_sha256": "1a48b492ef23821a155f452efced2d70d2a5d59dc6f6a40a003fbb3cc301e083",
+    "ssm_command_id": "d20ed668-c194-4205-b51f-d2032379515b",
+    "devil_restarted": false,
+    "state": "completed and LFS upload verified",
+    "lfs_wave": "devil-9"
+  },
+  "final_proof_completion_shutdown": {
+    "instance_id": "i-0afa42259e930b057",
+    "unit": "ultimate-fish-repair-sniper-opposed-completion",
+    "script_sha256": "345fa562bc61e145a2bb0bbd264b2b11a754aa7a3877cd90543b221f48f968f6",
+    "completion_receipt_key": "progress/ghost-opposed/completion-stop.json",
+    "runtime_max_seconds": 86400,
+    "final_lfs_transfer": "local, from authenticated S3 outputs"
+  },
+  "campaign_state": "all five EC2 instances stopped; resources retained",
+  "ec2_stop_reason_audit": {
+    "at": "2026-09-13T22:01:22.169415+00:00",
+    "records": [
+      {
+        "instance_id": "i-001a12c4a1506607b",
+        "state": "stopped",
+        "state_transition_reason": "User initiated",
+        "state_reason_code": "Client.InstanceInitiatedShutdown",
+        "timestamp_available": false
+      },
+      {
+        "instance_id": "i-033f20afbe0ec238e",
+        "state": "stopped",
+        "state_transition_reason": "User initiated (2026-09-13 19:22:34 GMT)",
+        "state_reason_code": "Client.UserInitiatedShutdown",
+        "shutdown_initiated_at": "2026-09-13T19:22:34Z"
+      },
+      {
+        "instance_id": "i-0c677b8dfb5d72b95",
+        "state": "stopped",
+        "state_transition_reason": "User initiated (2026-09-13 19:06:13 GMT)",
+        "state_reason_code": "Client.UserInitiatedShutdown",
+        "shutdown_initiated_at": "2026-09-13T19:06:13Z"
+      },
+      {
+        "instance_id": "i-06945e3dc42f324ba",
+        "state": "stopped",
+        "state_transition_reason": "User initiated (2026-09-13 19:06:18 GMT)",
+        "state_reason_code": "Client.UserInitiatedShutdown",
+        "shutdown_initiated_at": "2026-09-13T19:06:18Z"
+      },
+      {
+        "instance_id": "i-0afa42259e930b057",
+        "state": "running",
+        "state_transition_reason": "",
+        "state_reason_code": null
+      }
+    ],
+    "note": "EC2 confirms instance-initiated Devil shutdown but exposes no timestamp for it. Keep the final S3 batch log as the estimated shutdown time; API initiation timestamps for the other three workers precede their saved stopped confirmations."
+  },
+  "ec2_name_tag_audit": {
+    "at": "2026-09-14T01:46:05.911281+00:00",
+    "resources": {
+      "i-001a12c4a1506607b": "ultimate-fish-rules-repair-20260912-devil",
+      "i-033f20afbe0ec238e": "ultimate-fish-rules-repair-20260912",
+      "i-0afa42259e930b057": "ultimate-fish-rules-repair-20260912-sniper-opposed",
+      "i-0c677b8dfb5d72b95": "ultimate-fish-rules-repair-20260912-ghost",
+      "sg-00ced6c991c16afe5": "ultimate-fish-rules-repair-20260912",
+      "vol-03aea21eaca896927": "ultimate-fish-rules-repair-20260912-devil",
+      "vol-04ce6cb2da5179b55": "ultimate-fish-rules-repair-20260912",
+      "vol-06ce12bf486366bb0": "ultimate-fish-rules-repair-20260912-ghost",
+      "vol-0e95fc6b2174923bc": "ultimate-fish-rules-repair-20260912-sniper-opposed",
+      "eni-00c191dc6dc2638ef": "ultimate-fish-rules-repair-20260912-devil",
+      "eni-08f825b9133575e20": "ultimate-fish-rules-repair-20260912-ghost",
+      "eni-0af59dbbb1fbd8da3": "ultimate-fish-rules-repair-20260912",
+      "eni-0f56c430bf917b87b": "ultimate-fish-rules-repair-20260912-sniper-opposed",
+      "sg-06355ba62dd71b244": "ultimate-fish-rules-repair-20260912-checker-opposed",
+      "eni-095052d6e12759b33": "ultimate-fish-rules-repair-20260912-checker-opposed",
+      "vol-0c2a1ec5d19c92d84": "ultimate-fish-rules-repair-20260912-checker-opposed",
+      "i-06945e3dc42f324ba": "ultimate-fish-rules-repair-20260912-checker-opposed"
+    }
+  },
+  "final_ec2_audit": {
+    "at": "2026-09-14T01:46:05.911281+00:00",
+    "instances": [
+      {
+        "instance_id": "i-001a12c4a1506607b",
+        "state": "stopped",
+        "state_transition_reason": "User initiated",
+        "state_reason_code": "Client.InstanceInitiatedShutdown",
+        "delete_on_termination": false
+      },
+      {
+        "instance_id": "i-033f20afbe0ec238e",
+        "state": "stopped",
+        "state_transition_reason": "User initiated (2026-09-13 19:22:34 GMT)",
+        "state_reason_code": "Client.UserInitiatedShutdown",
+        "delete_on_termination": false
+      },
+      {
+        "instance_id": "i-0c677b8dfb5d72b95",
+        "state": "stopped",
+        "state_transition_reason": "User initiated (2026-09-13 19:06:13 GMT)",
+        "state_reason_code": "Client.UserInitiatedShutdown",
+        "delete_on_termination": false
+      },
+      {
+        "instance_id": "i-0afa42259e930b057",
+        "state": "stopped",
+        "state_transition_reason": "User initiated",
+        "state_reason_code": "Client.InstanceInitiatedShutdown",
+        "delete_on_termination": false
+      },
+      {
+        "instance_id": "i-06945e3dc42f324ba",
+        "state": "stopped",
+        "state_transition_reason": "User initiated (2026-09-13 19:06:18 GMT)",
+        "state_reason_code": "Client.UserInitiatedShutdown",
+        "delete_on_termination": false
+      }
+    ],
+    "volumes": [
+      {
+        "volume_id": "vol-04ce6cb2da5179b55",
+        "size_gib": 3072,
+        "iops": 3000,
+        "throughput": 125,
+        "encrypted": true
+      },
+      {
+        "volume_id": "vol-03aea21eaca896927",
+        "size_gib": 3072,
+        "iops": 3000,
+        "throughput": 125,
+        "encrypted": true
+      },
+      {
+        "volume_id": "vol-06ce12bf486366bb0",
+        "size_gib": 2048,
+        "iops": 3000,
+        "throughput": 125,
+        "encrypted": true
+      },
+      {
+        "volume_id": "vol-0e95fc6b2174923bc",
+        "size_gib": 500,
+        "iops": 3000,
+        "throughput": 125,
+        "encrypted": true
+      },
+      {
+        "volume_id": "vol-0c2a1ec5d19c92d84",
+        "size_gib": 500,
+        "iops": 3000,
+        "throughput": 125,
+        "encrypted": true
+      }
+    ]
+  },
+  "final_compute_estimate": {
+    "at": "2026-09-14T01:46:05.911281+00:00",
+    "workers": [
+      {
+        "worker": "main",
+        "launch_time": "2026-09-12T21:36:18+00:00",
+        "end_or_observation": "2026-09-13T19:26:39.793023+00:00",
+        "end_basis": "confirmed stopped observation",
+        "hours": 21.839386950833333,
+        "rate_usd_hour": 4.2336,
+        "estimated_compute_usd": 92.459228595048
+      },
+      {
+        "worker": "devil",
+        "launch_time": "2026-09-12T21:57:12+00:00",
+        "end_or_observation": "2026-09-13T09:52:02+00:00",
+        "end_basis": "estimated automatic shutdown immediately after final S3 batch log",
+        "hours": 11.91388888888889,
+        "rate_usd_hour": 6.3504,
+        "estimated_compute_usd": 75.65796
+      },
+      {
+        "worker": "ghost",
+        "launch_time": "2026-09-12T22:31:03+00:00",
+        "end_or_observation": "2026-09-13T19:08:06.929122+00:00",
+        "end_basis": "confirmed stopped observation",
+        "hours": 20.617758089444443,
+        "rate_usd_hour": 4.2336,
+        "estimated_compute_usd": 87.28734064747199
+      },
+      {
+        "worker": "sniper_opposed",
+        "launch_time": "2026-09-13T01:51:41+00:00",
+        "end_or_observation": "2026-09-14T01:29:05.913314+00:00",
+        "end_basis": "confirmed stopped observation; includes shutdown margin",
+        "hours": 23.623587031666666,
+        "rate_usd_hour": 2.1168,
+        "estimated_compute_usd": 50.006409028632
+      },
+      {
+        "worker": "checker_opposed",
+        "launch_time": "2026-09-13T04:32:43+00:00",
+        "end_or_observation": "2026-09-13T19:08:06.929122+00:00",
+        "end_basis": "confirmed stopped observation",
+        "hours": 14.589980311666666,
+        "rate_usd_hour": 2.1168,
+        "estimated_compute_usd": 30.884070323736
+      }
+    ],
+    "total_usd": 336.295008594888,
+    "basis": "On-demand compute estimate, including idle time; Devil shutdown inferred from final batch log. Not an AWS invoice. Storage and transfer are additional."
+  },
+  "publication": {
+    "payload_revision": "a93b3a0cb917a2d899a65353e8e1c4899fb2a90f",
+    "revision": "847eb02da6cd3a0879226bac293464c0e72763dd",
+    "files": 112,
+    "changed_files": 110,
+    "reused_identical_files": [
+      "kdevilk-d2-part001.ufdsp",
+      "kdevilk-d3-part001.ufdsp"
+    ],
+    "managed_files": 588
+  },
+  "validation": {
+    "tablebase_python_tests": 580,
+    "skipped": 24,
+    "native_source_snapshot_files": 88,
+    "native_source_snapshot_unchanged": true,
+    "published_runtime_validation_sha256": "823a0d7447c76cc80f7fc06e35efbdcdc8ca2614743caa9be8d85268a9f3d325",
+    "plot_png_sha256": "9986baf547d5246936f739b85f67c72a20ef9842a4a6de0fe3cbb51cf6722526"
+  }
+}

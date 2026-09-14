@@ -1,6 +1,7 @@
 /* Ultimate Fish exact endgame tablebase probing, GPLv3 or later. */
 
 #include "tablebase_probe.h"
+#include "rules_revision.h"
 
 #include <algorithm>
 #include <array>
@@ -177,16 +178,35 @@ struct DevilStatefulStorage {
 
 bool compatible_codec(std::uint32_t version, PieceType primary,
                       PieceType secondary, std::uint64_t codecTag) {
+    const bool corrected = version == 12;
+    if (corrected) {
+        if (!corrected_tablebase_rules(primary) &&
+            !corrected_tablebase_rules(secondary))
+            return false;
+        codecTag ^= CorrectedRulesTag;
+        if (primary == PieceType::Angel || secondary == PieceType::Angel)
+            version = 9;
+        else if (secondary != PieceType::Count &&
+                 (primary == PieceType::Giant || secondary == PieceType::Giant))
+            version = 7;
+        else if (primary == PieceType::Devil && secondary == PieceType::Count)
+            version = 11;
+        else {
+            if (codecTag != 0)
+                return false;
+            version = 6;
+        }
+    }
     // These classes used pre-ChangeTurn check/stalemate seeds. Snipers become
     // ready on that phase; Devils create automatically advancing Minions.
-    if (primary == PieceType::Devil || secondary == PieceType::Devil ||
-        primary == PieceType::Sniper || secondary == PieceType::Sniper)
+    if (!corrected && (primary == PieceType::Devil || secondary == PieceType::Devil ||
+        primary == PieceType::Sniper || secondary == PieceType::Sniper))
         return false;
     // All existing Checker payload versions used short-range Checker Kings.
     // Ordinary Checker roots are affected too: they can promote. Do not let
     // a stale WDL/DTW verdict override the corrected native move generator.
-    if (primary == PieceType::Checker || primary == PieceType::CheckerKing ||
-        secondary == PieceType::Checker || secondary == PieceType::CheckerKing)
+    if (!corrected && (primary == PieceType::Checker || primary == PieceType::CheckerKing ||
+        secondary == PieceType::Checker || secondary == PieceType::CheckerKing))
         return false;
     if (version < 2 || version > 11)
         return false;
@@ -237,7 +257,7 @@ bool compatible_secondary_color(std::uint32_t version, PieceType primary,
             secondaryColor == Color::White) ||
            (secondary == PieceType::Angel &&
             secondaryColor == Color::White));
-    return version != 9 || primary != PieceType::Copycat ||
+    return (version != 9 && version != 12) || primary != PieceType::Copycat ||
            secondary != PieceType::Angel || secondaryColor == Color::Black;
 }
 
@@ -562,10 +582,16 @@ std::vector<std::shared_ptr<DevilStatefulStorage>> load_devil_stateful() {
             continue;
         DevilStatefulHeader header;
         const ssize_t received = ::pread(fd, &header, sizeof(header), 0);
+        if (received == static_cast<ssize_t>(sizeof(header)) &&
+            header.magic == expected && header.version == 1) {
+            // Historical outcomes used pre-ChangeTurn stalemate seeds.
+            ::close(fd);
+            continue;
+        }
         struct stat status {};
         const bool valid = received == static_cast<ssize_t>(sizeof(header)) &&
           ::fstat(fd, &status) == 0 && header.magic == expected &&
-          header.version == 1 && header.recordBytes == DevilStatefulRecordBytes &&
+          header.version == 2 && header.recordBytes == DevilStatefulRecordBytes &&
           !header.reserved && header.square < 24 && header.square % 8 < 4 &&
           header.count && static_cast<std::uint64_t>(status.st_size) ==
             DevilStatefulHeaderBytes + header.count * DevilStatefulRecordBytes;
@@ -735,7 +761,7 @@ std::vector<Database> load_databases() {
         std::uint32_t substates = 1;
         if (version >= 3)
             stream.read(reinterpret_cast<char*>(&substates), sizeof(substates));
-        if (!stream || magic != expected || (version < 2 || version > 11) ||
+        if (!stream || magic != expected || (version < 2 || version > 12) ||
             !substates || (version < 5 && count != StateCount * substates) ||
             piece >= static_cast<std::uint32_t>(PieceType::Count))
             continue;
@@ -754,7 +780,7 @@ std::vector<Database> load_databases() {
                 stream.read(reinterpret_cast<char*>(&secondaryColor), sizeof(secondaryColor));
                 if (secondary > static_cast<std::uint32_t>(PieceType::Count) ||
                     (secondary == static_cast<std::uint32_t>(PieceType::Count) &&
-                     version != 8 && version != 9 && version != 11) ||
+                     version != 8 && version != 9 && version != 11 && version != 12) ||
                     secondaryColor > static_cast<std::uint32_t>(Color::Black)) {
                     database.count = 0;
                     continue;
@@ -797,7 +823,8 @@ std::vector<Database> load_databases() {
             database.linkedCopycatPair =
               codecTag == LinkedCopycatPairV1Tag;
             database.spawnedDevilRoot =
-              codecTag == SpawnedDevilRootV1Tag;
+              codecTag == SpawnedDevilRootV1Tag ||
+              (version == 12 && codecTag == (SpawnedDevilRootV1Tag ^ CorrectedRulesTag));
             if (!compatible_codec(version, database.attacker,
                                   database.secondary, codecTag) ||
                 !compatible_secondary_color(
@@ -873,6 +900,54 @@ const std::vector<Database>& databases() {
     return loaded;
 }
 
+struct RepairedAvailability {
+    bool anyPaths = false;
+    bool checker = false;
+    bool sniper = false;
+    bool devil = false;
+};
+
+const RepairedAvailability& repaired_availability() {
+    // Like the table caches, this inventory lives until the engine reloads.
+    // Inspect headers only: a midgame with no compatible repair installed
+    // should not repeatedly scan pieces or allocate a Minion vector.
+    static const RepairedAvailability available = [] {
+        RepairedAvailability result;
+        for (const std::string& path : paths()) {
+            result.anyPaths = true;
+            if (std::filesystem::path(path).extension() == ".ufds") {
+                result.devil |= TablebaseProbe::uses_compatible_codec(path);
+                continue;
+            }
+            std::array<char, 64> header{};
+            std::ifstream stream(path, std::ios::binary);
+            stream.read(header.data(), header.size());
+            if (!std::memcmp(header.data(), "UFTBS1\0\0", 8)) {
+                // A split manifest may wrap any repaired material. Let the
+                // normal decoder authenticate it without eagerly joining it.
+                result.checker = result.sniper = result.devil = true;
+                continue;
+            }
+            const auto word = [&](std::size_t offset) {
+                std::uint32_t value;
+                std::memcpy(&value, header.data() + offset, sizeof(value));
+                return value;
+            };
+            if (!stream || std::memcmp(header.data(), "UFTB1\0\0\0", 8) ||
+                word(8) != 12 || !TablebaseProbe::uses_compatible_codec(path))
+                continue;
+            for (const std::size_t offset : {12, 40}) {
+                const auto piece = static_cast<PieceType>(word(offset));
+                result.checker |= piece == PieceType::Checker || piece == PieceType::CheckerKing;
+                result.sniper |= piece == PieceType::Sniper;
+                result.devil |= piece == PieceType::Devil;
+            }
+        }
+        return result;
+    }();
+    return available;
+}
+
 }  // namespace
 
 void TablebaseProbe::preload() { (void) databases(); }
@@ -890,7 +965,7 @@ bool TablebaseProbe::uses_compatible_codec(const std::string& path) {
           ::pread(fd, &header, sizeof(header), 0) ==
             static_cast<ssize_t>(sizeof(header)) &&
           ::fstat(fd, &status) == 0 && header.magic == expected &&
-          header.version == 1 && header.recordBytes == DevilStatefulRecordBytes &&
+          header.version == 2 && header.recordBytes == DevilStatefulRecordBytes &&
           !header.reserved && header.square < 24 && header.square % 8 < 4 &&
           header.count && static_cast<std::uint64_t>(status.st_size) ==
             DevilStatefulHeaderBytes + header.count * DevilStatefulRecordBytes &&
@@ -919,7 +994,7 @@ bool TablebaseProbe::uses_compatible_codec(const std::string& path) {
     stream.read(reinterpret_cast<char*>(&count), sizeof(count));
     stream.read(reinterpret_cast<char*>(&edges), sizeof(edges));
     const std::array<char, 8> expected{{'U','F','T','B','1','\0','\0','\0'}};
-    if (!stream || magic != expected || version < 2 || version > 11 ||
+    if (!stream || magic != expected || version < 2 || version > 12 ||
         piece >= static_cast<std::uint32_t>(PieceType::Count))
         return false;
     std::uint32_t substates = 1;
@@ -940,7 +1015,7 @@ bool TablebaseProbe::uses_compatible_codec(const std::string& path) {
                         sizeof(encodedSecondaryColor));
             if (encodedSecondary > static_cast<std::uint32_t>(PieceType::Count) ||
                 (encodedSecondary == static_cast<std::uint32_t>(PieceType::Count) &&
-                 version != 8 && version != 9 && version != 11) ||
+                 version != 8 && version != 9 && version != 11 && version != 12) ||
                 encodedSecondaryColor > static_cast<std::uint32_t>(Color::Black))
                 return false;
             secondary = static_cast<PieceType>(encodedSecondary);
@@ -970,16 +1045,18 @@ std::optional<TablebaseResult> TablebaseProbe::probe(const Position& position) {
     if (position.forcedTimeoutWinner_ >= 0)
         return std::nullopt;
 
-    // Published Devil/Sniper closures predate turn-start check detection.
-    // Even Minion-free roots (and Minions whose Devil has died) inherit those
-    // incorrect stalemate seeds. Search must not trust their WDL/DTW until a
-    // new rule-versioned closure has been solved and independently verified.
-    if (position.pieces(Color::White, PieceType::Devil) ||
-        position.pieces(Color::Black, PieceType::Devil) ||
-        position.pieces(Color::White, PieceType::Minion) ||
-        position.pieces(Color::Black, PieceType::Minion) ||
-        position.pieces(Color::White, PieceType::Sniper) ||
-        position.pieces(Color::Black, PieceType::Sniper))
+    const auto& available = repaired_availability();
+    if (!available.anyPaths ||
+        (!available.devil && (position.pieces(Color::White, PieceType::Devil) ||
+          position.pieces(Color::Black, PieceType::Devil) ||
+          position.pieces(Color::White, PieceType::Minion) ||
+          position.pieces(Color::Black, PieceType::Minion))) ||
+        (!available.sniper && (position.pieces(Color::White, PieceType::Sniper) ||
+          position.pieces(Color::Black, PieceType::Sniper))) ||
+        (!available.checker && (position.pieces(Color::White, PieceType::Checker) ||
+          position.pieces(Color::Black, PieceType::Checker) ||
+          position.pieces(Color::White, PieceType::CheckerKing) ||
+          position.pieces(Color::Black, PieceType::CheckerKing))))
         return std::nullopt;
 
     // Generated tables represent the closed no-castling state class. Most

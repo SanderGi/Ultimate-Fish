@@ -239,6 +239,8 @@ def main() -> None:
               "when the compact source bundle omits inventory-only files"))
     parser.add_argument("--solve-max-nodes", type=int, default=500_000_000,
                         help="exact ROBDD node budget for solve-only retries")
+    parser.add_argument("--solve-unique-slots", type=int, default=1 << 30,
+                        help="ROBDD unique-table slots; retain historical default")
     parser.add_argument("--transitions-only", action="store_true",
                         help="build and merge fresh transition shards, then stop")
     parser.add_argument("--resume-transitions", action="store_true",
@@ -266,6 +268,8 @@ def main() -> None:
                         help="authenticate existing outputs and write the manifest")
     args = parser.parse_args()
 
+    if args.solve_unique_slots <= 0 or args.solve_unique_slots & (args.solve_unique_slots - 1):
+        raise ValueError("solve unique slots must be a positive power of two")
     if args.transitions_only and args.solve_existing:
         raise RuntimeError("transition and solve modes are mutually exclusive")
     if args.resume_transitions and (args.solve_existing or
@@ -549,7 +553,7 @@ def main() -> None:
       "--lower-model-sha256", args.lower_ghost_model_sha256,
       "--lower-observation-sha256", args.lower_ghost_observation_sha256,
       "--max-nodes", str(args.solve_max_nodes),
-      "--unique-slots", str(1 << 30),
+      "--unique-slots", str(args.solve_unique_slots),
       "--compact-every", "1", *solve_worker_arguments(args.solve_workers)]
     solve += fixed_point_resume_arguments(
         work / f"work/solve/{stem}", solve_existing=args.solve_existing,

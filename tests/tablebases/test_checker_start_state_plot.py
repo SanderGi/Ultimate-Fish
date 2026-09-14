@@ -266,15 +266,15 @@ class CheckerStartStatePlotTests(unittest.TestCase):
         path = ROOT / "tablebases" / "checker-start-state-summary.json"
         slices = plot.read_checker_start_states(path)
         king = slices[("kghostcheckerk.uftb", "king")]
-        self.assertEqual(plot.WDL(30_817_192, 0, 0), king.first_starts)
-        self.assertEqual(plot.WDL(0, 29_259_238, 0), king.second_starts)
+        self.assertEqual(plot.WDL(29_224_216, 0, 0), king.first_starts)
+        self.assertEqual(plot.WDL(0, 29_344_098, 0), king.second_starts)
 
         summary = plot.read_summary(ROOT / "tablebases" / "README.md")
         catalog = plot.OutcomeCatalog(summary, checker_start_states=slices)
         cell = catalog.together_row("checker_king", "ghost")
         self.assertEqual("win", cell.kind)
-        self.assertEqual(plot.WDL(30_817_192, 0, 0), cell.first)
-        self.assertEqual(plot.WDL(29_259_238, 0, 0), cell.second)
+        self.assertEqual(plot.WDL(29_224_216, 0, 0), cell.first)
+        self.assertEqual(plot.WDL(29_344_098, 0, 0), cell.second)
 
         aggregate = catalog.together("checker", "ghost")
         normal = catalog.together_row("checker_normal", "ghost")

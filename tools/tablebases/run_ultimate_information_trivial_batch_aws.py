@@ -100,9 +100,9 @@ def source_header(path: Path) -> dict[str, object]:
     version, primary, states = struct.unpack_from("<3I", header, 8)
     substates = struct.unpack_from("<I", header, 24)[0]
     # Concrete storage now includes the packed v8/v9 codecs and the v11
-    # stationary-Devil codec.  The material/state fields used by this auditor
+    # stationary-Devil codec and rules-bound v12 codec.  The material/state fields used by this auditor
     # retain the same offsets; reject every unassigned version explicitly.
-    if version not in {*range(1, 10), 11} or primary >= len(PIECES):
+    if version not in {*range(1, 10), 11, 12} or primary >= len(PIECES):
         raise ValueError(f"unsupported UFTB codec: {path}")
     secondary, color = ((len(PIECES) - 1, 0) if version < 5 else
                         struct.unpack_from("<2I", header, 40))

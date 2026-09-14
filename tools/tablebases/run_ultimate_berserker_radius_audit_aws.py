@@ -12,6 +12,7 @@ import re
 import shutil
 import struct
 import subprocess
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
@@ -70,6 +71,26 @@ def fetch_record(record: dict[str, object], objects: list[dict[str, object]],
     if record.get("excluded"):
         return {"excluded": True, "reason": record["exclusion_reason"]}
     table = root / "tables" / filename
+    if record.get("hf_revision"):
+        revision = str(record["hf_revision"])
+        if not re.fullmatch(r"[0-9a-f]{40}", revision):
+            raise ValueError("HF audit source must use an immutable revision")
+        dataset = str(record["hf_dataset"])
+        if dataset != "SanderGi/Ultimate-Fish-Tablebases" or Path(filename).name != filename:
+            raise ValueError("unexpected HF audit source")
+        if not table.exists():
+            table.parent.mkdir(parents=True, exist_ok=True)
+            temporary = table.with_suffix(table.suffix + ".part")
+            url = f"https://huggingface.co/datasets/{dataset}/resolve/{revision}/tablebases/{filename}"
+            with urllib.request.urlopen(url, timeout=120) as response, temporary.open("wb") as output:
+                shutil.copyfileobj(response, output)
+            if sha256(temporary) != record["expected_payload_sha256"]:
+                raise RuntimeError("HF Berserker source hash mismatch")
+            temporary.replace(table)
+        if sha256(table) != record["expected_payload_sha256"]:
+            raise RuntimeError("HF Berserker source hash mismatch")
+        return {"table": str(table), "source_sha256": record["expected_payload_sha256"],
+                "source": "huggingface", "dataset": dataset, "dataset_revision": revision}
     if filename == "kberserkerk.uftb":
         payload_sha = sha256(single_table)
         if payload_sha != record.get("expected_payload_sha256"):

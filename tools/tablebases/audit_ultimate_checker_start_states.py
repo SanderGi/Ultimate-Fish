@@ -36,7 +36,7 @@ import plot_ultimate_tablebases as plot  # noqa: E402
 
 DEFAULT_DATASET = "SanderGi/Ultimate-Fish-Tablebases"
 DEFAULT_ORIGIN = "https://huggingface.co"
-DEFAULT_REVISION = "ed8375c43f26e42c5b14ac79ff41e77d4317b97f"
+DEFAULT_REVISION = "847eb02da6cd3a0879226bac293464c0e72763dd"
 TRANSFER_BYTES = 8 * 1024 * 1024
 RESULT_NAMES = ("unknown", "wins", "losses", "draws")
 START_STATES = ("normal", "king")
@@ -48,12 +48,32 @@ INFORMATION_LINE = re.compile(
     r"information_reachability_substate_(admitted|excluded|trivial) "
     r"substate (\d+) side ([01]) unknown (\d+) win (\d+) loss (\d+) draw (\d+)"
 )
-# These certified overlays are intentionally encoded in logical [Checker
+# These certified overlays are intentionally encoded in logical [extra-piece
 # substate][Ghost visibility] order while their concrete Ghost-primary sources
-# are [visibility][Checker substate]. Bind each transpose to its exact
+# are [visibility][extra-piece substate]. Bind each transpose to its exact
 # source/model pair and material orientation so a future overlay cannot
 # silently inherit the exception.
 TRANSPOSED_INFORMATION_OVERLAYS = {
+    (
+        "kghostksniper",
+        "607aa04e85e59bfff387b4a45ae2078aae96eda7dc8a07ab442cdef15ec855c7",
+        "01e5e3e92db72dd0ee561224207d56a8a5ce985b2c33a472b6d29a122f59ddb2",
+    ): ("ghost", "sniper", True),
+    (
+        "kghostsniperk",
+        "8425f93c93e9a3c7ad39820efb7fedb690f24fb64b540c6b9e8eced5e8aaa7f5",
+        "328509ac52c125a8428c00589bb657c7ff8ad1265d4e2759c9500237e2ca323b",
+    ): ("ghost", "sniper", False),
+    (
+        "kghostkchecker",
+        "167d37f16f69d048033e06fabb5b6acc919681380c23ea20dc00c908171c21fe",
+        "6cac380d00ad8fc0490718b4498ae7c142a9a9833ac63f5a1098832bffaefa2c",
+    ): ("ghost", "checker", True),
+    (
+        "kghostcheckerk",
+        "2cba1e00c090e9cd62f34bc967c40d7bba441478c938b5a338764df2806fa723",
+        "e69929a1b356c9fd2245fee77f2dcc33faea5b0acd1825d2d8979b305ce96e30",
+    ): ("ghost", "checker", False),
     (
         "kghostcheckerk",
         "fdd9329ed29fb7823b27e4bd46263b62f6ac66e638b510e232b3ee386ca6be1e",
@@ -244,7 +264,8 @@ def command(binary: Path, record: dict[str, Any], table: Path,
                    if "prince" in {record["primary"], record.get("secondary")}
                    else "--audit-reachability", str(table)]
         return result
-    header = overlay.read_bytes()[:160]
+    with overlay.open("rb") as stream:
+        header = stream.read(160)
     if len(header) != 160 or header[:8] != b"UFIW2\0\0\0":
         raise RuntimeError(f"invalid information overlay: {overlay.name}")
     source_sha = header[32:96].decode("ascii")
