@@ -248,7 +248,21 @@ class UltimateTablebaseLedgerTests(unittest.TestCase):
         self.assertEqual("unknown", catalog.opposed("ghost", "pawn").kind)
         self.assertEqual("no_forced_loss",
                          catalog.opposed("ghost", "turtle").kind)
-        self.assertEqual("no_forced_win", catalog.opposed("ghost", "checker").kind)
+        # Independently matched against the retained solver before filtering.
+        # Flying Checkers introduce real draws; the old audit reversed W/L.
+        checker = catalog.opposed("ghost", "checker")
+        self.assertEqual("no_forced_loss", checker.kind)
+        self.assertEqual(plot.WDL(17_911_313, 0, 35_370_171), checker.first)
+        self.assertEqual(plot.WDL(17_897_812, 0, 39_193_768), checker.second)
+        reverse = catalog.opposed("checker", "ghost")
+        self.assertEqual(plot.WDL(0, 17_897_812, 39_193_768), reverse.first)
+        self.assertEqual(plot.WDL(0, 17_911_313, 35_370_171), reverse.second)
+        sniper = catalog.opposed("ghost", "sniper")
+        self.assertEqual(plot.WDL(106_612_764, 12_940, 27_324), sniper.first)
+        self.assertEqual(plot.WDL(124_139_016, 34_575, 252_302), sniper.second)
+        reverse = catalog.opposed("sniper", "ghost")
+        self.assertEqual(plot.WDL(34_575, 124_139_016, 252_302), reverse.first)
+        self.assertEqual(plot.WDL(12_940, 106_612_764, 27_324), reverse.second)
 
     def test_certified_ghost_angel_rows_fill_both_mirrored_cells(self):
         catalog = plot.OutcomeCatalog(plot.read_summary(ledger.README))

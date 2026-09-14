@@ -151,6 +151,7 @@ DRAGON_GHOST_SOLVER_SOURCES = (
     ROOT / "src" / "ultimate" / "position.h",
     ROOT / "src" / "ultimate" / "position.cpp",
     TABLEBASE_SOURCES / "information.h",
+    TABLEBASE_SOURCES / "information_overlay_format.h",
     TABLEBASE_SOURCES / "information.cpp",
     TABLEBASE_SOURCES / "ghost_information_probe.h",
     TABLEBASE_SOURCES / "ghost_information_probe.cpp",

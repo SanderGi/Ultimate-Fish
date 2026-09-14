@@ -2,6 +2,7 @@
   "audit_binary_sha256s": [
     "1bfe64d6e0797a66257171612c3dcfc25dcf7d5bfee28a4c339fa29dd286383f",
     "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+    "4b1088b25e9c40d945353531d02b81d95bbc3c394e869beae32870b10f7a47bf",
     "6d42cd4d0d1ddb6245c1ea31b65f03e478beacf25497ef801479cce71513abcb"
   ],
   "dataset": "SanderGi/Ultimate-Fish-Tablebases",
@@ -1625,8 +1626,8 @@
       "tablebase_sha256": "4ca4c4e5cc233702a023bbcdd2a7aaaf2075ad5d8b4f2cf5da59d6f9fb58dfba"
     },
     "kghostcheckerk.uftb": {
-      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
-      "audit_log_sha256": "44c4a86bdb3ee2f1cc48c7f26b88d7b93b5bd19fdac4465236c4660feb37bc6f",
+      "audit_binary_sha256": "4b1088b25e9c40d945353531d02b81d95bbc3c394e869beae32870b10f7a47bf",
+      "audit_log_sha256": "bfc3843f2a518b0924ef3ece13eeaa31c275b0f0c3884bab4797f2abe4ef3996",
       "checker_slot": "secondary",
       "dataset_revision": "847eb02da6cd3a0879226bac293464c0e72763dd",
       "information_overlay_sha256": "fe3957955bd0795db7da15b216dccc1095d0071141153bc50e4421c9208a1ba3",
@@ -1749,8 +1750,8 @@
       "tablebase_sha256": "2cba1e00c090e9cd62f34bc967c40d7bba441478c938b5a338764df2806fa723"
     },
     "kghostkchecker.uftb": {
-      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
-      "audit_log_sha256": "6ced85cf52412ee8501fc6f1244792cd8ee746df5b42237218e45017f64eae02",
+      "audit_binary_sha256": "4b1088b25e9c40d945353531d02b81d95bbc3c394e869beae32870b10f7a47bf",
+      "audit_log_sha256": "2818b407047663d49faaee8b25860d0be67f0b460d5decf14c3e9de79f98325b",
       "checker_slot": "secondary",
       "dataset_revision": "847eb02da6cd3a0879226bac293464c0e72763dd",
       "information_overlay_sha256": "b5cf8f2b0010ef6840946565793b0f160c35dcaaa39620cc27689948bc0b6fa1",
@@ -1761,13 +1762,13 @@
           "first_starts": {
             "admitted": {
               "draws": 26712262,
-              "losses": 6542806,
-              "wins": 0
+              "losses": 0,
+              "wins": 6542806
             },
             "display": {
               "draws": 26506454,
-              "losses": 90142,
-              "wins": 0
+              "losses": 0,
+              "wins": 90142
             },
             "excluded": {
               "draws": 31974188,
@@ -1776,25 +1777,25 @@
             },
             "total": {
               "draws": 58686450,
-              "losses": 12526538,
-              "wins": 4702852
+              "losses": 5983732,
+              "wins": 11245658
             },
             "trivial": {
               "draws": 205808,
-              "losses": 6452664,
-              "wins": 0
+              "losses": 0,
+              "wins": 6452664
             }
           },
           "second_starts": {
             "admitted": {
               "draws": 30511704,
-              "losses": 0,
-              "wins": 51970
+              "losses": 51970,
+              "wins": 0
             },
             "display": {
               "draws": 26251944,
-              "losses": 0,
-              "wins": 29770
+              "losses": 29770,
+              "wins": 0
             },
             "excluded": {
               "draws": 33281650,
@@ -1803,13 +1804,13 @@
             },
             "total": {
               "draws": 63793354,
-              "losses": 2985020,
-              "wins": 9137466
+              "losses": 3036990,
+              "wins": 9085496
             },
             "trivial": {
               "draws": 4259760,
-              "losses": 0,
-              "wins": 22200
+              "losses": 22200,
+              "wins": 0
             }
           }
         },
@@ -1817,13 +1818,13 @@
           "first_starts": {
             "admitted": {
               "draws": 8888890,
-              "losses": 24366178,
-              "wins": 0
+              "losses": 0,
+              "wins": 24366178
             },
             "display": {
               "draws": 8863717,
-              "losses": 17821171,
-              "wins": 0
+              "losses": 0,
+              "wins": 17821171
             },
             "excluded": {
               "draws": 34219488,
@@ -1832,25 +1833,25 @@
             },
             "total": {
               "draws": 43108378,
-              "losses": 28104610,
-              "wins": 4702852
+              "losses": 3738432,
+              "wins": 29069030
             },
             "trivial": {
               "draws": 25173,
-              "losses": 6545007,
-              "wins": 0
+              "losses": 0,
+              "wins": 6545007
             }
           },
           "second_starts": {
             "admitted": {
               "draws": 14882877,
-              "losses": 0,
-              "wins": 17873088
+              "losses": 17873088,
+              "wins": 0
             },
             "display": {
               "draws": 12941824,
-              "losses": 0,
-              "wins": 17868042
+              "losses": 17868042,
+              "wins": 0
             },
             "excluded": {
               "draws": 35631207,
@@ -1859,13 +1860,13 @@
             },
             "total": {
               "draws": 50514084,
-              "losses": 3222540,
-              "wins": 22179216
+              "losses": 21095628,
+              "wins": 4306128
             },
             "trivial": {
               "draws": 1941053,
-              "losses": 0,
-              "wins": 5046
+              "losses": 5046,
+              "wins": 0
             }
           }
         }

@@ -18,6 +18,7 @@ import finalize_ultimate_aws_concrete_class as finalizer
 import plot_ultimate_tablebases as plot
 import update_ultimate_tablebase_ledger as ledger
 from run_ultimate_rules_repair_concrete import sha256
+from validate_ultimate_information_outcomes import validate_information_outcomes
 
 ROOT = Path(__file__).resolve().parents[2]
 KINDS = ('total', 'excluded', 'admitted', 'trivial', 'display')
@@ -64,7 +65,7 @@ def checked_receipts(results, logs, materials):
             info = document(results / (overlay_name + '.repair.json'))
             if info['filename'] != overlay_name or info['source_sha256'] != receipt['sha256']:
                 raise ValueError('information source binding residual')
-            authenticated_log(logs, info, 'solve')
+            solver_log = authenticated_log(logs, info, 'solve')
             audit = authenticated_log(logs, info, 'audit')
             binding = (f'information_reachability_binding source_sha256 {receipt["sha256"]} '
                        f'model_sha256 {info["model_sha256"]} ')
@@ -74,6 +75,8 @@ def checked_receipts(results, logs, materials):
                 manifest = results / (Path(name).stem + '.ghost-artifact-manifest.json')
                 if sha256(manifest) != info['proof_manifest_sha256']:
                     raise ValueError('Ghost proof inventory mismatch')
+                if Path(name).stem + '.ghost-solve.log' not in info['proof_logs']:
+                    raise ValueError('Ghost solver outcome log lacks a hash binding')
                 for log_name, binding in info['proof_logs'].items():
                     if sha256(logs / log_name) != binding['sha256']:
                         raise ValueError('Ghost exact proof log mismatch')
@@ -81,6 +84,8 @@ def checked_receipts(results, logs, materials):
                 sidecar_receipt = document(results / (arbitrary['filename'] + '.repair.json'))
                 if sidecar_receipt['sha256'] != arbitrary['sha256']:
                     raise ValueError('Ghost arbitrary sidecar binding mismatch')
+                solver_log = (logs / (Path(name).stem + '.ghost-solve.log')).read_text()
+            info['solver_audit_wdl'] = validate_information_outcomes(solver_log, audit, name)
             information[name] = info
             counts[name] = finalizer.information_reporting_counts(name, audit)
     return concrete, information, counts, generations
@@ -244,6 +249,7 @@ def main():
     write(args.output / 'reachability.json', reachability)
     write(args.output / 'rules-repair-certificate-20260912.json', dict(
         schema='ultimate-fish-rules-repair-certificate-v1', dataset_revision=args.revision,
+        information_outcome_gate='solver-audit-wdl-equality-v1',
         concrete=concrete, information=information, generations=generations))
     print(f'PLOTS_REPAIRED concrete={len(concrete)} information={len(information)}')
 

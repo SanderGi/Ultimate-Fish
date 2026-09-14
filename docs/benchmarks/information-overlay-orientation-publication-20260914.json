@@ -1,0 +1,42 @@
+{
+  "revision": "abadaed7b98be098e8a2ccb3427c9be477df1679",
+  "payload_revision": "847eb02da6cd3a0879226bac293464c0e72763dd",
+  "outcome_gate": "passed",
+  "payload_files": 588,
+  "tests": {
+    "tablebase_python": 583,
+    "skipped": 24,
+    "native_information": "passed",
+    "ghost_writer": "passed"
+  },
+  "archive": "s3://ultimate-fish-rules-repair-20260912-831688117652/repaired/validation/orientation-20260914/",
+  "archive_manifest_sha256": "6065a4e6ceecd0424de89c0439c50605cba7d3e8e3e881266bc8cc3f2fe27eae",
+  "certificate_sha256": "be3a413abdef1a797dd4f8595189487f026b08e4ef9b4515a58eac242e5771b6",
+  "compute_started": false,
+  "resources_created": [],
+  "resources_deleted": [],
+  "ec2_states": [
+    {
+      "id": "i-001a12c4a1506607b",
+      "state": "stopped"
+    },
+    {
+      "id": "i-033f20afbe0ec238e",
+      "state": "stopped"
+    },
+    {
+      "id": "i-0c677b8dfb5d72b95",
+      "state": "stopped"
+    },
+    {
+      "id": "i-0afa42259e930b057",
+      "state": "stopped"
+    },
+    {
+      "id": "i-06945e3dc42f324ba",
+      "state": "stopped"
+    }
+  ],
+  "archive_objects": 588,
+  "archive_manifest_restore_verified": true
+}

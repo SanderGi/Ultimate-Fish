@@ -541,6 +541,16 @@ class BerserkerRadiusPlotTests(unittest.TestCase):
         self.assertEqual(([0, 0, 1, 0], [0, 0, 1, 0]),
                          rows[1]["display"])
 
+    def test_legacy_information_parser_rejects_ghost_force_roles(self):
+        payload = (b"UFIW2\0\0\0" +
+                   struct.pack("<6I", 2, audit.BERSERKER, 11, 1, 20, 10) +
+                   b"a" * 128 + bytes([5]) * 20)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "ghost.ufiw"
+            path.write_bytes(payload)
+            with self.assertRaisesRegex(RuntimeError, "native owner/observer"):
+                audit.parse_information(path, "primary")
+
     def test_information_trivial_import_subtracts_authenticated_substates(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import time
+from validate_ultimate_information_outcomes import validate_information_outcomes
 
 from run_ultimate_rules_repair_concrete import sha256
 import ultimate_information_tablebases as information
@@ -114,12 +115,17 @@ def main():
             with audit_log.open('x') as stream:
                 subprocess.run(['/usr/bin/time', '-v', *audit], env=environment,
                     stdout=stream, stderr=subprocess.STDOUT, check=True)
+            outcome_log = (class_work / 'work/logs/solve.log'
+                           if args.kind == 'ghost' else solve_log)
+            outcome_check = validate_information_outcomes(
+                outcome_log.read_text(), audit_log.read_text(), name)
             receipt = dict(schema='ultimate-fish-information-repair-v1', filename=overlay.name,
                            sha256=sha256(overlay), bytes=overlay.stat().st_size,
                            source_sha256=source_sha, model_sha256=model_sha,
                            elapsed_seconds=time.time()-started, workers=args.workers,
                            audit_binary_sha256=sha256(solver),
-                           solve_log_sha256=sha256(solve_log), audit_log_sha256=sha256(audit_log))
+                           solve_log_sha256=sha256(solve_log), audit_log_sha256=sha256(audit_log),
+                           solver_audit_wdl=outcome_check)
             receipt_path.write_text(json.dumps(receipt, indent=2) + '\n')
             print(f'COMPLETE {overlay.name} seconds={receipt["elapsed_seconds"]:.1f}', flush=True)
 

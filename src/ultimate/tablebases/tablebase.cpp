@@ -5,6 +5,7 @@
 
 #include "information.h"
 #include "information_solver.h"
+#include "information_overlay_format.h"
 #include "position.h"
 #include "tablebase_probe.h"
 #include "rules_revision.h"
@@ -3711,10 +3712,11 @@ class TablebaseGenerator {
         if (jesterSemantics && ghostSemantics)
             throw std::runtime_error(
               "crossed Jester/Ghost overlay needs explicit force semantics");
-        if (informationWord(20) > static_cast<std::uint32_t>(Color::Black))
-            throw std::runtime_error("information overlay owner color is invalid");
-        const Color ownerColor =
-          static_cast<Color>(informationWord(20));
+        if (overlayPrimary != attackerType_ || overlaySecondary != secondaryType_ ||
+            informationWord(20) != static_cast<std::uint32_t>(secondaryColor_))
+            throw std::runtime_error("information overlay material/color mismatch");
+        const Color firstForceColor = information_first_force_color(
+          overlayPrimary, overlaySecondary, static_cast<Color>(informationWord(20)));
         if (transposeInformationSubstates &&
             (attackerType_ != PieceType::Ghost ||
              secondaryType_ == PieceType::Count ||
@@ -3813,8 +3815,7 @@ class TablebaseGenerator {
                         const bool firstForces = (flag & 1) != 0;
                         const bool secondForces = (flag & 2) != 0;
                         const Color mover = encoded_side(index);
-                        const bool moverIsFirst = jesterSemantics
-                          ? mover == Color::White : mover == ownerColor;
+                        const bool moverIsFirst = mover == firstForceColor;
                         const bool moverForces = moverIsFirst
                           ? firstForces : secondForces;
                         const bool opponentForces = moverIsFirst
@@ -4188,9 +4189,10 @@ class TablebaseGenerator {
                   << sourceSha256 << " model_sha256 " << modelSha256
                   << " primary " << informationWord(12)
                   << " secondary " << informationWord(16)
-                  << " owner_color " << informationWord(20)
+                  << " owner_color " << static_cast<unsigned>(firstForceColor)
                   << " states " << stateCount_
                   << " substates " << substates_
+                  << " secondary_color " << informationWord(20)
                   << " semantics "
                   << (jesterSemantics ? "white-black-forces-v1" :
                                         "ghost-owner-observer-forces-v1")

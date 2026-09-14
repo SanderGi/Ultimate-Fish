@@ -14,6 +14,7 @@
 #include "external_robdd.h"
 #include "ghost_information_probe.h"
 #include "information.h"
+#include "information_overlay_format.h"
 #include "position.h"
 #include "rules_revision.h"
 
@@ -257,21 +258,9 @@ void write_overlay_header(std::ostream& output, Orientation orientation,
                           const std::string& modelSha) {
     if (!valid_sha(sourceSha) || !valid_sha(modelSha))
         throw std::invalid_argument("Dragon overlay header SHA is invalid");
-    output.write("UFIW2\0\0\0", 8);
-    const auto write32 = [&](std::uint32_t value) {
-        output.write(reinterpret_cast<const char*>(&value), 4);
-    };
-    write32(2);
-    write32(static_cast<std::uint32_t>(SourcePrimary));
-    write32(static_cast<std::uint32_t>(SourceSecondary));
-    write32(static_cast<std::uint32_t>(
-      orientation == Orientation::Same ? Color::White : Color::Black));
-    write32(StateCount);
-    write32(2 * ExtraSubstates);
-    output.write(sourceSha.data(), 64);
-    output.write(modelSha.data(), 64);
-    if (!output)
-        throw std::runtime_error("failed writing Dragon overlay header");
+    write_information_overlay_header(output, SourcePrimary, SourceSecondary,
+      orientation == Orientation::Same ? Color::White : Color::Black,
+      StateCount, 2 * ExtraSubstates, sourceSha, modelSha);
 }
 
 [[nodiscard]] std::pair<bool, bool> mover_force_result(

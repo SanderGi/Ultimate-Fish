@@ -1623,13 +1623,16 @@
         "filename": "kghostcheckerk.ufgd",
         "sha256": "913fab5d32006b72f31ed8925296dd29b971c9d7b0ae74b5f214203e965218bc"
       },
-      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
-      "audit_log_sha256": "44c4a86bdb3ee2f1cc48c7f26b88d7b93b5bd19fdac4465236c4660feb37bc6f",
+      "audit_binary_sha256": "4b1088b25e9c40d945353531d02b81d95bbc3c394e869beae32870b10f7a47bf",
+      "audit_log_sha256": "bfc3843f2a518b0924ef3ece13eeaa31c275b0f0c3884bab4797f2abe4ef3996",
       "bytes": 303663520,
       "elapsed_seconds": 34686.84479260445,
       "filename": "kghostcheckerk.ufiw",
       "model_sha256": "e69929a1b356c9fd2245fee77f2dcc33faea5b0acd1825d2d8979b305ce96e30",
       "normalized_source_sha256": "77a5d16a5c1dd75fac2846a233590fc226aff3f07af9cfc67054624eef0d2d3a",
+      "orientation_reaudit_seconds": 70.96534299850464,
+      "previous_audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "previous_audit_log_sha256": "44c4a86bdb3ee2f1cc48c7f26b88d7b93b5bd19fdac4465236c4660feb37bc6f",
       "proof_logs": {
         "kghostcheckerk.ghost-build.log": {
           "bytes": 0,
@@ -1908,6 +1911,34 @@
       "schema": "ultimate-fish-information-repair-v1",
       "sha256": "fe3957955bd0795db7da15b216dccc1095d0071141153bc50e4421c9208a1ba3",
       "solve_log_sha256": "ee4c66b28e1ca5cd32c679975559df333d50119547ddade8bfbe9271d7ce89ed",
+      "solver_audit_wdl": {
+        "audit": {
+          "0": {
+            "draw": 0,
+            "loss": 0,
+            "win": 63354136
+          },
+          "1": {
+            "draw": 2674251,
+            "loss": 63835885,
+            "win": 0
+          }
+        },
+        "orientation_residual": 0,
+        "semantics": "encoded-side-to-move-admitted-before-trivial-v1",
+        "solver": {
+          "0": {
+            "draw": 0,
+            "loss": 0,
+            "win": 63354136
+          },
+          "1": {
+            "draw": 2674251,
+            "loss": 63835885,
+            "win": 0
+          }
+        }
+      },
       "solver_binary_sha256": "95472955cb2897e604b38a5125aee50d97171c0a56904b3e6f9f7d6115694a22",
       "source_sha256": "2cba1e00c090e9cd62f34bc967c40d7bba441478c938b5a338764df2806fa723",
       "transition_payload_sha256": "054a7ad7069f7b2c0840de9837090394bccc44dd1992b9bc3e259f2a4a082132",
@@ -1919,13 +1950,16 @@
         "filename": "kghostkchecker.ufgd",
         "sha256": "f156756d2a2b5698baa48d94917f89b065767f116370e5c552fe2c100e8b01ef"
       },
-      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
-      "audit_log_sha256": "6ced85cf52412ee8501fc6f1244792cd8ee746df5b42237218e45017f64eae02",
+      "audit_binary_sha256": "4b1088b25e9c40d945353531d02b81d95bbc3c394e869beae32870b10f7a47bf",
+      "audit_log_sha256": "2818b407047663d49faaee8b25860d0be67f0b460d5decf14c3e9de79f98325b",
       "bytes": 303663520,
       "elapsed_seconds": 34168.15988254547,
       "filename": "kghostkchecker.ufiw",
       "model_sha256": "6cac380d00ad8fc0490718b4498ae7c142a9a9833ac63f5a1098832bffaefa2c",
       "normalized_source_sha256": "13ae548e0ecf37ac6ff9ae79c06fc838fd2f9b7565ed3ee1ad107f649ecd2f97",
+      "orientation_reaudit_seconds": 73.29487323760986,
+      "previous_audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "previous_audit_log_sha256": "6ced85cf52412ee8501fc6f1244792cd8ee746df5b42237218e45017f64eae02",
       "proof_logs": {
         "kghostkchecker.ghost-build.log": {
           "bytes": 0,
@@ -2204,6 +2238,34 @@
       "schema": "ultimate-fish-information-repair-v1",
       "sha256": "b5cf8f2b0010ef6840946565793b0f160c35dcaaa39620cc27689948bc0b6fa1",
       "solve_log_sha256": "c965d94d7ee6d0f696533bd67aed08f1ed0c06ebd3d58ddfbe4f8bf3e0caa614",
+      "solver_audit_wdl": {
+        "audit": {
+          "0": {
+            "draw": 35601152,
+            "loss": 0,
+            "win": 30908984
+          },
+          "1": {
+            "draw": 45394581,
+            "loss": 17925058,
+            "win": 0
+          }
+        },
+        "orientation_residual": 0,
+        "semantics": "encoded-side-to-move-admitted-before-trivial-v1",
+        "solver": {
+          "0": {
+            "draw": 35601152,
+            "loss": 0,
+            "win": 30908984
+          },
+          "1": {
+            "draw": 45394581,
+            "loss": 17925058,
+            "win": 0
+          }
+        }
+      },
       "solver_binary_sha256": "95472955cb2897e604b38a5125aee50d97171c0a56904b3e6f9f7d6115694a22",
       "source_sha256": "167d37f16f69d048033e06fabb5b6acc919681380c23ea20dc00c908171c21fe",
       "transition_payload_sha256": "25e08606af5bf5026b3792c226ac0ee97bfb3796028e4386447f2cf1b8bcf78d",
@@ -2215,13 +2277,16 @@
         "filename": "kghostksniper.ufgd",
         "sha256": "4a54dc80057d34232debc7870894d866f57cc16d3d72dcb6cac46fd9e43de9b2"
       },
-      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
-      "audit_log_sha256": "2786e30cac64ee7bb6f97c0db8e0f50ab4c49390630e01c08d7bab210955ad39",
+      "audit_binary_sha256": "4b1088b25e9c40d945353531d02b81d95bbc3c394e869beae32870b10f7a47bf",
+      "audit_log_sha256": "2abd76d4ef3d5e0ad30ecd1b167cb6a60f69b7824475e1bfd89299a4a727915d",
       "bytes": 303663520,
       "elapsed_seconds": 84341.93683028221,
       "filename": "kghostksniper.ufiw",
       "model_sha256": "01e5e3e92db72dd0ee561224207d56a8a5ce985b2c33a472b6d29a122f59ddb2",
       "normalized_source_sha256": "bbf0eccfe9c0eb90bd30c217a149bab2dddfc4ab4379224a25aafc36b4999e86",
+      "orientation_reaudit_seconds": 98.63364768028259,
+      "previous_audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "previous_audit_log_sha256": "2786e30cac64ee7bb6f97c0db8e0f50ab4c49390630e01c08d7bab210955ad39",
       "proof_logs": {
         "kghostksniper.ghost-build.log": {
           "bytes": 0,
@@ -2500,6 +2565,34 @@
       "schema": "ultimate-fish-information-repair-v1",
       "sha256": "c30c94fa0c72755847552d2c03ff0d0de63fb2afd208ded9c002c24ac2f86498",
       "solve_log_sha256": "f50e1648b7dc036b20699f08441e1ea635896d8e15efa9374ad448909f2fa638",
+      "solver_audit_wdl": {
+        "audit": {
+          "0": {
+            "draw": 115646,
+            "loss": 12982,
+            "win": 132891644
+          },
+          "1": {
+            "draw": 7017861,
+            "loss": 124139016,
+            "win": 48305
+          }
+        },
+        "orientation_residual": 0,
+        "semantics": "encoded-side-to-move-admitted-before-trivial-v1",
+        "solver": {
+          "0": {
+            "draw": 115646,
+            "loss": 12982,
+            "win": 132891644
+          },
+          "1": {
+            "draw": 7017861,
+            "loss": 124139016,
+            "win": 48305
+          }
+        }
+      },
       "solver_binary_sha256": "f728f42d24c308b0b6ab6d6d8ab3b45e1fa72851e7e20fbb5ea610dc00732898",
       "source_sha256": "607aa04e85e59bfff387b4a45ae2078aae96eda7dc8a07ab442cdef15ec855c7",
       "transition_payload_sha256": "fc4bec40c94d3c64114515ab7c75cb4db0e84052e0a1d0c0f3e5131e8b6cfa05",
@@ -2511,13 +2604,16 @@
         "filename": "kghostsniperk.ufgd",
         "sha256": "0814e838e3fc1480ef1b6b50076d5c9574442965e9492bb9f7711956f4ecd137"
       },
-      "audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
-      "audit_log_sha256": "cc7ce6f1a2c29f3d97b5dcfff6334c41cb8ba834736f4c0445c713d53b4fc9f3",
+      "audit_binary_sha256": "4b1088b25e9c40d945353531d02b81d95bbc3c394e869beae32870b10f7a47bf",
+      "audit_log_sha256": "fbeea4aefc76133fa4ca28d356820d4658e1cccd5c3f0bad68f40e5e8bb47aba",
       "bytes": 303663520,
       "elapsed_seconds": 47529.58132600784,
       "filename": "kghostsniperk.ufiw",
       "model_sha256": "328509ac52c125a8428c00589bb657c7ff8ad1265d4e2759c9500237e2ca323b",
       "normalized_source_sha256": "40daac760bad05ef0288863c2049ce3f70ffa41be168e21a7c7812f9bebeca38",
+      "orientation_reaudit_seconds": 108.25249528884888,
+      "previous_audit_binary_sha256": "3f611acb0d4afeaec6978d7b859da8019650fb73694a4b4ed10a0196ee4ed750",
+      "previous_audit_log_sha256": "cc7ce6f1a2c29f3d97b5dcfff6334c41cb8ba834736f4c0445c713d53b4fc9f3",
       "proof_logs": {
         "kghostsniperk.ghost-build.log": {
           "bytes": 0,
@@ -2796,6 +2892,34 @@
       "schema": "ultimate-fish-information-repair-v1",
       "sha256": "756a07246f4ba31dae1627e014d531c5eec841bb99f1406bd303f9a8c191220e",
       "solve_log_sha256": "d0434146aa03df16859ed215991fb40645a9fa98a1fe72667d9a68d9809a4903",
+      "solver_audit_wdl": {
+        "audit": {
+          "0": {
+            "draw": 0,
+            "loss": 0,
+            "win": 131203740
+          },
+          "1": {
+            "draw": 5491378,
+            "loss": 127528894,
+            "win": 0
+          }
+        },
+        "orientation_residual": 0,
+        "semantics": "encoded-side-to-move-admitted-before-trivial-v1",
+        "solver": {
+          "0": {
+            "draw": 0,
+            "loss": 0,
+            "win": 131203740
+          },
+          "1": {
+            "draw": 5491378,
+            "loss": 127528894,
+            "win": 0
+          }
+        }
+      },
       "solver_binary_sha256": "f728f42d24c308b0b6ab6d6d8ab3b45e1fa72851e7e20fbb5ea610dc00732898",
       "source_sha256": "8425f93c93e9a3c7ad39820efb7fedb690f24fb64b540c6b9e8eced5e8aaa7f5",
       "transition_payload_sha256": "6154c8e73fa410b264c731ef63ea2246ed326bdb40aa8cf0c67d334c1776b267",
@@ -2811,6 +2935,34 @@
       "schema": "ultimate-fish-information-repair-v1",
       "sha256": "6b3d197ec463ef0c06d9b5c236ac01c108734357a338d5be6e5ce2bbb41b6e60",
       "solve_log_sha256": "bcdd73a8425fc379943490956748cc8b1a6eed967d870f093db657fe1d0d8fe8",
+      "solver_audit_wdl": {
+        "audit": {
+          "0": {
+            "draw": 0,
+            "loss": 0,
+            "win": 30259264
+          },
+          "1": {
+            "draw": 5472248,
+            "loss": 32060909,
+            "win": 424763
+          }
+        },
+        "orientation_residual": 0,
+        "semantics": "encoded-side-to-move-admitted-before-trivial-v1",
+        "solver": {
+          "0": {
+            "draw": 0,
+            "loss": 0,
+            "win": 30259264
+          },
+          "1": {
+            "draw": 5472248,
+            "loss": 32060909,
+            "win": 424763
+          }
+        }
+      },
       "source_bundle_sha256": "1d00b8ca081af57600e35b4ada5237410008d67048c0255a53718543b3b1bc33",
       "source_sha256": "765ab1071a233b804b9e84b2e9f1d2252a2a893012127ed6e6315062f7a87088",
       "workers": 32
@@ -2825,6 +2977,34 @@
       "schema": "ultimate-fish-information-repair-v1",
       "sha256": "1fc7b3a66f4e99b55705bce344b58058832e795aabfa7b417cb9d30770a47c17",
       "solve_log_sha256": "9a9faea7d12df4f8f4ddef55feceb011bfcb0d9753badfb906363cf5ad183968",
+      "solver_audit_wdl": {
+        "audit": {
+          "0": {
+            "draw": 17503890,
+            "loss": 0,
+            "win": 14267542
+          },
+          "1": {
+            "draw": 28131613,
+            "loss": 9212293,
+            "win": 614014
+          }
+        },
+        "orientation_residual": 0,
+        "semantics": "encoded-side-to-move-admitted-before-trivial-v1",
+        "solver": {
+          "0": {
+            "draw": 17503890,
+            "loss": 0,
+            "win": 14267542
+          },
+          "1": {
+            "draw": 28131613,
+            "loss": 9212293,
+            "win": 614014
+          }
+        }
+      },
       "source_bundle_sha256": "1d00b8ca081af57600e35b4ada5237410008d67048c0255a53718543b3b1bc33",
       "source_sha256": "9c06beadd8d4aa9916ed54845e8ed0ef74bbd725ca0cf1ad56d9ddd012f0a57b",
       "workers": 32
@@ -2839,6 +3019,34 @@
       "schema": "ultimate-fish-information-repair-v1",
       "sha256": "b960e610782606207955471e0db38f7e5d829ab2bfb4bac1b4cc51fc9304c766",
       "solve_log_sha256": "de88714a35b863312fae57200ca92e8bc87a9a2194e335a58aec207387668011",
+      "solver_audit_wdl": {
+        "audit": {
+          "0": {
+            "draw": 482522,
+            "loss": 0,
+            "win": 63060342
+          },
+          "1": {
+            "draw": 13976325,
+            "loss": 61245762,
+            "win": 693753
+          }
+        },
+        "orientation_residual": 0,
+        "semantics": "encoded-side-to-move-admitted-before-trivial-v1",
+        "solver": {
+          "0": {
+            "draw": 482522,
+            "loss": 0,
+            "win": 63060342
+          },
+          "1": {
+            "draw": 13976325,
+            "loss": 61245762,
+            "win": 693753
+          }
+        }
+      },
       "source_bundle_sha256": "1d00b8ca081af57600e35b4ada5237410008d67048c0255a53718543b3b1bc33",
       "source_sha256": "c14fcdedd9fdf8be63216be8c2b57b361978fa2b46ad156bf327c60ada9f1821",
       "workers": 32
@@ -2853,10 +3061,39 @@
       "schema": "ultimate-fish-information-repair-v1",
       "sha256": "c97c201f794c579aea89696578c0c7f0aee6f965794956f88c7763da6f0d8c1b",
       "solve_log_sha256": "335cedf03227f2bda3530f792bb656b4c5b18b4da33171f740f2fe67068db0ed",
+      "solver_audit_wdl": {
+        "audit": {
+          "0": {
+            "draw": 0,
+            "loss": 0,
+            "win": 62681510
+          },
+          "1": {
+            "draw": 11262534,
+            "loss": 63980410,
+            "win": 672896
+          }
+        },
+        "orientation_residual": 0,
+        "semantics": "encoded-side-to-move-admitted-before-trivial-v1",
+        "solver": {
+          "0": {
+            "draw": 0,
+            "loss": 0,
+            "win": 62681510
+          },
+          "1": {
+            "draw": 11262534,
+            "loss": 63980410,
+            "win": 672896
+          }
+        }
+      },
       "source_bundle_sha256": "1d00b8ca081af57600e35b4ada5237410008d67048c0255a53718543b3b1bc33",
       "source_sha256": "c1bd35768e20537b72440d39663b72ad0ca6dbd16174c41f9da1d474229ebd2a",
       "workers": 32
     }
   },
+  "information_outcome_gate": "solver-audit-wdl-equality-v1",
   "schema": "ultimate-fish-rules-repair-certificate-v1"
 }

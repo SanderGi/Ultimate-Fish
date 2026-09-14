@@ -280,6 +280,8 @@ def parse_information(
         raise RuntimeError(f"invalid information overlay: {path}")
     version, primary, secondary, _color, count, substates = struct.unpack_from(
         "<IIIIII", data, 8)
+    if primary == 11 or secondary == 11:
+        raise RuntimeError("Ghost overlays require the native owner/observer information audit")
     offset = 32 if magic == b"UFIW1\0\0\0" else 160
     flags = data[offset:]
     if version not in (1, 2) or len(flags) != count:

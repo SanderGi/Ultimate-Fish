@@ -1,5 +1,11 @@
 # Native tablebase rules repair, 2026-09-12
 
+**Reporting correction (2026-09-14):** the initial opposed Ghost/Checker and
+Ghost/Sniper audits reversed W/L. The payloads were correct. See the
+[orientation correction and publication gates](information-overlay-orientation-2026-09-14.md)
+for the corrected counts, local re-audits, and regression tests. The original
+campaign record below retains its historical publication revision.
+
 The preceding rule commits were `a8393fd6` (flying Checker Kings) and
 `204c3ee5` (native turn-start check classification). This campaign recomputed
 the affected closures and root plots and restored probes for the repaired formats. The rules,
